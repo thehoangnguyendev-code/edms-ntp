@@ -1,73 +1,42 @@
 ﻿import React, { useState } from 'react';
+import { DeliveryFailuresTable } from './DeliveryFailuresTable';
 import { FormSection } from '@/components/ui/form/FormSection';
-import { useEffect } from 'react';
-import { NotificationConfig } from '../types';
+
+import { NotificationConfig, type ToastPosition } from '../types';
+import { Select } from '@/components/ui/select/Select';
+import { FormField, Input } from '@/components/ui/form/ResponsiveForm';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
 import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
 import { InlineLoading } from '@/components/ui/loading/Loading';
-import { Eye, EyeOff, Bell, RefreshCw, RotateCcw } from 'lucide-react';
+import { Eye, EyeOff, Bell } from 'lucide-react';
 import gmailLogo from '@/assets/images/logo-app/gmail.svg';
 import { settingsApi } from '@/services/api';
 import type { SmtpConnectionTestPayload } from '@/services/api/settings';
-import { notificationApi, type NotificationDeliveryFailure } from '@/services/api/notifications';
-import { TableMarkup } from "@/components/ui/table/TablePrimitives";
+
+const TOAST_POSITION_OPTIONS: Array<{ label: string; value: ToastPosition }> = [
+  { label: 'Top Right', value: 'top-right' },
+  { label: 'Top Left', value: 'top-left' },
+  { label: 'Center', value: 'center' },
+  { label: 'Bottom Right', value: 'bottom-right' },
+  { label: 'Bottom Left', value: 'bottom-left' },
+];
 
 interface NotificationTabProps {
   config: NotificationConfig;
   onChange: (config: NotificationConfig) => void;
+  /** Stored with the appearance settings (General), edited here with the other notification options. */
+  toastPosition: ToastPosition;
+  onToastPositionChange: (position: ToastPosition) => void;
+  toastDurationSeconds?: number;
+  onToastDurationChange: (seconds: number | undefined) => void;
 }
 
 
-export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChange }) => {
+export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChange, toastPosition, onToastPositionChange, toastDurationSeconds, onToastDurationChange }) => {
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
   const [testingSmtp, setTestingSmtp] = useState(false);
-  const [deliveryFailures, setDeliveryFailures] = useState<NotificationDeliveryFailure[]>([]);
-  const [isLoadingDeliveryFailures, setIsLoadingDeliveryFailures] = useState(true);
-  const [retryingFailureId, setRetryingFailureId] = useState<string | null>(null);
   const { showToast } = useToast();
-
-  const loadDeliveryFailures = async (showFailureToast = false) => {
-    setIsLoadingDeliveryFailures(true);
-    try {
-      const response = await notificationApi.getDeliveryFailures(1, 5);
-      setDeliveryFailures(response.data);
-    } catch (error: any) {
-      if (showFailureToast) {
-        showToast({
-          type: 'error',
-          title: 'Unable to load delivery failures',
-          message: error?.response?.data?.message || 'Notification delivery failures could not be loaded.',
-        });
-      }
-    } finally {
-      setIsLoadingDeliveryFailures(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadDeliveryFailures();
-    // Refresh only on demand or after a retry; configuration must not create a polling loop.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleRetryDeliveryFailure = async (failure: NotificationDeliveryFailure) => {
-    setRetryingFailureId(failure.id);
-    try {
-      const updated = await notificationApi.retryDeliveryFailure(failure.id);
-      setDeliveryFailures((current) => current.map((item) => item.id === updated.id ? updated : item));
-      showToast({ type: 'success', title: 'Delivery retry queued', message: `Retry requested for ${failure.recipient}.` });
-    } catch (error: any) {
-      showToast({
-        type: 'error',
-        title: 'Delivery retry failed',
-        message: error?.response?.data?.message || 'The notification could not be retried.',
-      });
-    } finally {
-      setRetryingFailureId(null);
-    }
-  };
-
   const handleChange = (key: keyof NotificationConfig, value: any) => {
     onChange({ ...config, [key]: value });
   };
@@ -152,36 +121,46 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
               Display notifications within the application interface
             </p>
           </div>
+          <div className="grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 md:grid-cols-2">
+            <div>
+              <div>
+                <Select
+                  label="Toast Position"
+                  value={toastPosition}
+                  onChange={(value) => onToastPositionChange(value as ToastPosition)}
+                  options={TOAST_POSITION_OPTIONS}
+                />
+              </div>
+              <p className="mt-1 text-xs text-slate-500">Where system messages pop up on screen. Applies to every signed-in user after Save Changes.</p>
+            </div>
+            <div>
+              <div>
+                <FormField
+                  label="Toast Display Time (seconds)"
+                  hint="How long a system message stays on screen before it goes away (2 to 60). Empty: 5 seconds. Applies to every signed-in user after Save Changes."
+                  error={toastDurationSeconds !== undefined && !(Number.isInteger(toastDurationSeconds) && toastDurationSeconds >= 2 && toastDurationSeconds <= 60) ? 'Enter a whole number from 2 to 60, or leave it empty for 5 seconds.' : undefined}
+                >
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={2}
+                    placeholder="5"
+                    aria-label="Toast display time in seconds"
+                    value={toastDurationSeconds === undefined ? '' : String(toastDurationSeconds)}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, '');
+                      onToastDurationChange(digits === '' ? undefined : Number(digits));
+                    }}
+                  />
+                </FormField>
+              </div>
+            </div>
+          </div>
         </div>
       </FormSection>
 
       <FormSection title="Delivery Failures" icon={<Bell className="h-4 w-4" />}>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-xs text-slate-500">Recent failed deliveries are stored by the server. Retry reuses the saved, redacted event payload and the active template.</p>
-          <Button size="sm" variant="outline-emerald" onClick={() => void loadDeliveryFailures(true)} disabled={isLoadingDeliveryFailures} className="shrink-0 gap-1.5">
-            {isLoadingDeliveryFailures ? <InlineLoading size="xs" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Refresh
-          </Button>
-        </div>
-        {isLoadingDeliveryFailures ? (
-          <div className="flex justify-center py-5"><InlineLoading size="sm" /></div>
-        ) : deliveryFailures.length === 0 ? (
-          <p className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">No failed notification deliveries.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-200">
-            <TableMarkup.Root className="min-w-full text-xs">
-              <TableMarkup.Head className="bg-slate-50 text-slate-600"><TableMarkup.Row><TableMarkup.HeaderCell className="px-3 py-2 text-left font-semibold">Recipient</TableMarkup.HeaderCell><TableMarkup.HeaderCell className="px-3 py-2 text-left font-semibold">Type</TableMarkup.HeaderCell><TableMarkup.HeaderCell className="px-3 py-2 text-left font-semibold">Attempts</TableMarkup.HeaderCell><TableMarkup.HeaderCell className="px-3 py-2 text-right font-semibold">Action</TableMarkup.HeaderCell></TableMarkup.Row></TableMarkup.Head>
-              <TableMarkup.Body className="divide-y divide-slate-100">
-                {deliveryFailures.map((failure) => <TableMarkup.Row key={failure.id}>
-                  <TableMarkup.Cell className="max-w-48 truncate px-3 py-2 text-slate-700" title={failure.recipient}>{failure.recipient}</TableMarkup.Cell>
-                  <TableMarkup.Cell className="px-3 py-2 text-slate-600">{failure.notificationType}</TableMarkup.Cell>
-                  <TableMarkup.Cell className="px-3 py-2 text-slate-600">{failure.attempts}/5</TableMarkup.Cell>
-                  <TableMarkup.Cell className="px-3 py-2 text-right"><Button size="sm" variant="ghost" onClick={() => void handleRetryDeliveryFailure(failure)} disabled={retryingFailureId === failure.id || failure.attempts >= 5} className="gap-1 text-emerald-700"><RotateCcw className="h-3.5 w-3.5" />Retry</Button></TableMarkup.Cell>
-                </TableMarkup.Row>)}
-              </TableMarkup.Body>
-            </TableMarkup.Root>
-          </div>
-        )}
+        <DeliveryFailuresTable />
       </FormSection>
 
       {/* Email Configuration */}

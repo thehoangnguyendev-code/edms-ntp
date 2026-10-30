@@ -70,7 +70,7 @@ export function TrainingVendorsView() {
   const rowMenu = useTrainingRowMenu(table.items, (r) => [
     ...(r.actions.view ? [{ label: "View Details", icon: <IconInfoCircle className="h-4 w-4" />, onClick: () => setDetails(r) }] : []),
     ...(r.actions.edit ? [{ label: "Edit Vendor", icon: <IconPencilMinus className="h-4 w-4" />, onClick: () => setEditing({ id: r.id, name: r.name, reference: r.reference ?? "", validUntil: r.validUntil ?? "" }) }] : []),
-    ...(r.actions.approve ? [{ label: "Complete Approve", icon: <IconChecks className="h-4 w-4" />, onClick: () => { setApproving(r); setSigning("approve"); } }] : []),
+    ...(r.actions.approve ? [{ label: "Complete Approval", icon: <IconChecks className="h-4 w-4" />, onClick: () => { setApproving(r); setSigning("approve"); } }] : []),
     ...(r.actions.deactivate ? [{ label: "Deactivate Vendor", icon: <IconToggleLeft className="h-4 w-4" />, onClick: () => setChanging({ vendor: r, kind: "deactivate", reason: "", validUntil: "" }) }] : []),
     ...(r.actions.activate ? [{ label: "Activate Vendor", icon: <IconToggleRight className="h-4 w-4" />, onClick: () => setChanging({ vendor: r, kind: "activate", reason: "", validUntil: r.validUntil ?? "" }) }] : []),
   ]);

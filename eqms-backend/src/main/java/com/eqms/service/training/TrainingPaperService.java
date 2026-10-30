@@ -45,7 +45,7 @@ public class TrainingPaperService {
 
     private Map<String, Object> sessionOf(UUID sessionId) {
         return jdbc.queryForList("""
-            select s.*, a.training_number, a.training_title as activity_title, a.organizer_department_id, a.status as activity_status,
+            select s.*, a.training_number, training_activity_topics(a.id) as training_topics, a.organizer_department_id, a.status as activity_status,
                    coalesce(tu.full_name, s.external_trainer_name) as trainer_name
               from training_sessions s join training_activities a on a.id = s.activity_id left join app_users tu on tu.id = s.trainer_user_id where s.id = ?
             """, sessionId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
@@ -175,12 +175,11 @@ public class TrainingPaperService {
                         text(s, font, 10, MARGIN, y, "Danh sách tham dự và kết quả đánh giá đào tạo"); y -= 18;
                         text(s, strong, 9, MARGIN, y, "1. General information / Thông tin chung"); y -= 13;
                         y = line(s, font, strong, y, "Training Number / Mã đào tạo", String.valueOf(session.get("training_number")), width);
-                        y = line(s, font, strong, y, "Training Title / Nội dung", String.valueOf(session.get("activity_title")), width);
                         for (String t : topics) y = line(s, font, strong, y, "Topic / Chuyên đề", t, width);
                         y -= 3;
                         text(s, strong, 9, MARGIN, y, "2. Session details / Chi tiết buổi đào tạo"); y -= 13;
                         y = line(s, font, strong, y, "Session / Buổi", "S" + session.get("session_no") + "  " + dateOf(session.get("held_on") != null ? session.get("held_on") : session.get("scheduled_on")), width);
-                        y = line(s, font, strong, y, "Venue / Địa điểm", "ONLINE".equals(session.get("location_type")) ? "Online" : valueOf(session.get("venue")), width);
+                        y = line(s, font, strong, y, "Venue / Địa điểm", "ONLINE".equals(session.get("location_type")) ? "Online" : "HYBRID".equals(session.get("location_type")) ? valueOf(session.get("venue")) + " + Online" : valueOf(session.get("venue")), width);
                         y = line(s, font, strong, y, "Trainer / Người đào tạo", valueOf(session.get("trainer_name")), width);
                         y = line(s, font, strong, y, "Method / Assessment", valueOf(session.get("method")) + " / " + valueOf(session.get("assessment_method")), width);
                         y -= 3;

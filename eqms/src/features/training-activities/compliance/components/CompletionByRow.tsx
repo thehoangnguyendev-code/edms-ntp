@@ -8,7 +8,7 @@ import { STATE_STYLE } from "./CompletionHeatmap";
 const GROUPS: { id: CompletionColumn["group"]; title: string }[] = [
   { id: "FACTORY_GENERAL", title: "General training of the whole factory" },
   { id: "DEPARTMENT_GENERAL", title: "General training of the department" },
-  { id: "SOP", title: "SOP for each Job Role" },
+  { id: "SOP", title: "SOP for each Work Position" },
 ];
 /** Order of the segments of a bar: done first, then what is under way, then what is missing. */
 const BAR_ORDER: CompletionState[] = ["QUALIFIED", "IN_PROGRESS", "UPDATE_NEEDED", "DUE", "REQUIRED"];
@@ -67,7 +67,7 @@ function Annual({ yes }: { yes: boolean }) {
 }
 
 /**
- * Matrix completion laid out as the form APD.0011: one line per row of the matrix (No, SOP No, Subject / SOP title, Annual training Yes / No) in its three
+ * Matrix completion laid out as the form APD.0011: one line per row of the matrix (No, Code, Subject / Title, Annual training Yes / No) in its three
  * groups, with how far the people of the position are through it and who is still to be trained. A row opens to name them. On a phone each row is a card.
  */
 export function CompletionByRow({ columns, summary }: { columns: CompletionColumn[]; summary?: CompletionSummary }) {
@@ -82,8 +82,8 @@ export function CompletionByRow({ columns, summary }: { columns: CompletionColum
           <TableMarkup.Head>
             <TableMarkup.Row className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
               <TableMarkup.HeaderCell className="w-16 whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left">No</TableMarkup.HeaderCell>
-              <TableMarkup.HeaderCell className="w-40 whitespace-nowrap border-b border-slate-200 px-4 py-3">SOP No</TableMarkup.HeaderCell>
-              <TableMarkup.HeaderCell className="whitespace-nowrap border-b border-slate-200 px-4 py-3">Subject / SOP title</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell className="w-40 whitespace-nowrap border-b border-slate-200 px-4 py-3">Code</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell className="whitespace-nowrap border-b border-slate-200 px-4 py-3">Subject / Title</TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell className="w-40 whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left">Annual training</TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell className="w-64 whitespace-nowrap border-b border-slate-200 px-4 py-3">Completion</TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell className="w-[26rem] whitespace-nowrap border-b border-slate-200 px-4 py-3">Still to be trained</TableMarkup.HeaderCell>
@@ -181,19 +181,19 @@ function OpenSummary({ facts }: { facts: RowFacts }) {
   );
 }
 
-/** Totals of the Job Role, from the server: the people, those ready for a work assignment, those with a gap, and the rows everyone has finished. */
+/** Totals of the Work Position, from the server: the people, those ready for a work assignment, those with a gap, and the rows everyone has finished. */
 export function CompletionSummaryStrip({ summary, columns }: { summary?: CompletionSummary; columns: CompletionColumn[] }) {
   if (!summary) return null;
   const facts = columns.map((c) => factsOf(c, summary));
   const rowsDone = facts.filter((f) => f.required > 0 && f.openTotal === 0).length;
   const tiles = [
-    { label: "People in the Job Role", value: summary.people, tone: "text-slate-900" },
+    { label: "People in the Work Position", value: summary.people, tone: "text-slate-900" },
     { label: "Ready for a work assignment", value: `${summary.ready} / ${summary.people}`, tone: "text-emerald-700", hint: "Trained on every row of the matrix" },
     { label: "People with a gap", value: summary.withGap, tone: summary.withGap > 0 ? "text-red-700" : "text-slate-900", hint: "Required, update needed or annual due" },
     { label: "Rows everyone has finished", value: `${rowsDone} / ${facts.length}`, tone: "text-slate-900" },
   ];
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Totals of the Job Role">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Totals of the Work Position">
       {tiles.map((t) => (
         <div key={t.label} className="rounded-xl border border-slate-200 bg-white p-3.5">
           <div className="text-xs font-medium text-slate-500">{t.label}</div>

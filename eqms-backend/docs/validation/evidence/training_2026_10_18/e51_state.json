@@ -1,0 +1,43 @@
+{
+ "requirement": {
+  "id": "ea09fa3b-b5e0-4b74-91ba-e668c5a987e3",
+  "requestNo": "REQ/2032-001",
+  "year": 2032,
+  "lines": [
+   "a2c9655c-9df7-494b-ab6e-774d81593640",
+   "7a586c66-9eb6-4e73-afe8-47e78411192c"
+  ]
+ },
+ "flow1": {
+  "aid": "ce3b9e4d-d28d-4a5a-8c39-195fbfbc4802",
+  "number": "TRN/QA/26-792",
+  "sid": "9548fe60-4fc1-4557-a72e-f3c337965e20",
+  "pid": {
+   "dcb7b6aa-28b2-4160-bf76-ad81a353929f": "fded582e-aa98-4687-9740-5a0ca22126a0",
+   "33d18a36-95ae-4bb4-a832-971311ec9dfb": "1edbd03a-8213-4499-97e1-950edea9ffa4",
+   "101d6401-84e4-4bea-90fa-b18a5fdceb8f": "6a59a3a4-8884-4a2e-a6b1-f4d9acf2418d"
+  },
+  "retrain": "def2c04a-8912-41c7-8d9e-82467df5504e"
+ },
+ "flow2": {
+  "doc": "SOP.10383",
+  "aid": "215b7a92-6729-4b8d-9f11-74623e8169e0",
+  "rid": "13c6eeca-8816-4971-a29a-7483e63cca03",
+  "sid": "83faa213-dc07-4a06-897f-096e6fd4d000",
+  "pid": {
+   "dcb7b6aa-28b2-4160-bf76-ad81a353929f": "ddd679e9-fa38-42d6-be5a-281343a43eea",
+   "33d18a36-95ae-4bb4-a832-971311ec9dfb": "e716e5ca-3520-4689-8e54-bcf47fb3c6f3",
+   "101d6401-84e4-4bea-90fa-b18a5fdceb8f": "a1139836-697e-4f16-be7e-862318d48472"
+  }
+ },
+ "flow5": {
+  "req_activity": "bb05fc0a-a2e7-4508-bf00-cf51421b3c8e"
+ },
+ "flow4": {
+  "jobs": {
+   "dcb7b6aa-28b2-4160-bf76-ad81a353929f": "61cc7af4-f49c-4850-87b5-10ba338679a5",
+   "33d18a36-95ae-4bb4-a832-971311ec9dfb": "2dfd82a1-61d3-4d88-baf7-43ba6f976975",
+   "101d6401-84e4-4bea-90fa-b18a5fdceb8f": "e94ae7c6-d5c8-4666-b60e-dad72fc0cebd"
+  }
+ }
+}

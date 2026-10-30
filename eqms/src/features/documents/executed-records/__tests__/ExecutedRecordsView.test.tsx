@@ -19,6 +19,14 @@ vi.mock("@/hooks", () => ({
 vi.mock("@/features/realtime/useEntityChanged", () => ({ useEntityChanged: () => undefined }));
 vi.mock("@/components/ui/page/PageHeader", () => ({ PageHeader: ({ title }: { title: string }) => <h1>{title}</h1> }));
 vi.mock("../RecordScanPreview", () => ({ RecordScanPreview: ({ record }: { record: { recordNumber: string } | null }) => (record ? <div>preview {record.recordNumber}</div> : null) }));
+vi.mock("@/components/ui/datetime-picker/DateRangePicker", () => ({
+  DateRangePicker: ({ label, startDate, endDate, onStartDateChange, onEndDateChange }: {
+    label: string; startDate: string; endDate: string; onStartDateChange: (value: string) => void; onEndDateChange: (value: string) => void;
+  }) => <div>
+    <input aria-label={`${label} from`} value={startDate} onChange={(e) => onStartDateChange(e.target.value)} />
+    <input aria-label={`${label} to`} value={endDate} onChange={(e) => onEndDateChange(e.target.value)} />
+  </div>,
+}));
 
 const record = {
   id: "r1", recordNumber: "REC-1", formDocumentId: "d1", formDocumentNumber: "SOP-001", formDocumentTitle: "Cleaning",
@@ -55,6 +63,23 @@ describe("ExecutedRecordsView", () => {
     await waitFor(() => expect(getExecutedRecords).toHaveBeenCalled());
     fireEvent.change(screen.getAllByPlaceholderText("Record, document or copy number...")[0], { target: { value: "CC-9" } });
     await waitFor(() => expect(getExecutedRecords).toHaveBeenLastCalledWith(expect.objectContaining({ search: "CC-9", page: 1 })));
+  });
+
+  it("sends independent received and recorded ISO ranges to the server and clears both", async () => {
+    renderView();
+    await screen.findByRole("button", { name: "Open scan of REC-1" });
+    fireEvent.change(screen.getAllByLabelText("Received Date Range from")[0], { target: { value: "01/10/2026" } });
+    fireEvent.change(screen.getAllByLabelText("Recorded Date Range from")[0], { target: { value: "20/10/2026" } });
+    fireEvent.change(screen.getAllByLabelText("Recorded Date Range to")[0], { target: { value: "26/10/2026" } });
+    await waitFor(() => expect(getExecutedRecords).toHaveBeenLastCalledWith(expect.objectContaining({
+      filledFrom: "2026-10-01", recordedFrom: "2026-10-20", recordedTo: "2026-10-26", page: 1,
+    })));
+    // The screen renders the server's page even when its record is outside the selected dates.
+    expect(screen.getByRole("button", { name: "Open scan of REC-1" })).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: /Clear Filters/i })[0]);
+    await waitFor(() => expect(getExecutedRecords).toHaveBeenLastCalledWith(expect.objectContaining({
+      filledFrom: undefined, filledTo: undefined, recordedFrom: undefined, recordedTo: undefined, page: 1,
+    })));
   });
 
   it("names the columns in full and asks the server to sort by each of them", async () => {

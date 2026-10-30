@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button/Button";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { Input, Textarea } from "../../shared/TrainingFields";
 import { Select } from "@/components/ui/select/Select";
 import { RadioGroup } from "@/components/ui/radio";
-import { trainingActivitiesApi, trainingMatrixApi, type TrainingPerson, type TrainingSession, type TrainingSuggestedParticipant, type TrainingTopic } from "@/services/api/trainingActivities";
+import { trainingActivitiesApi, type TrainingPerson, type TrainingSession, type TrainingSuggestedParticipant } from "@/services/api/trainingActivities";
 import { ASSESSMENT_BY_METHOD, ASSESSMENT_LABEL, METHOD_LABEL } from "../../shared/trainingLabels";
-import { TrainingDateField } from "../../shared/TrainingDateField";
+import { TrainingDateField, DATE_HINT } from "../../shared/TrainingDateField";
 import { TrainingAssigneePicker, type AssigneeSelection, type Outsider } from "./TrainingAssigneePicker";
 
 export type SessionDraft = Parameters<typeof trainingActivitiesApi.addSession>[1];
@@ -28,41 +28,35 @@ export function PersonPicker({ value, onChange, label }: { value: string; onChan
 const PLATFORMS = ["Zoom", "Microsoft Teams", "Google Meet", "Other"].map((p) => ({ label: p, value: p }));
 
 /** The fields of one session, shown directly in the tab (no frame, no dialog). `onSave` gets the body of the session. */
-export function SessionPanel({ busy = false, onSave, onDraft, saveText = "Add session", external = false }: { busy?: boolean; onSave?: (body: SessionDraft) => void; onDraft?: (body: SessionDraft | null) => void; saveText?: string; /** An external training: no method or assessment of its own (SOP.0003 5.1.2 is for internal training); the trainer is outside. */ external?: boolean }) {
+export function SessionPanel({ dueDate, busy = false, onSave, onDraft, saveText = "Add session", external = false, initialTopic, documentRevisionId }: { /** The topic is filled in when the screen opens (the number and the name of the document for a training that comes from Document Control); the person can edit it. */ initialTopic?: string; /** The revision of the document the training is about: the topic is then linked to it. */ documentRevisionId?: string; busy?: boolean; onSave?: (body: SessionDraft) => void; onDraft?: (body: SessionDraft | null) => void; saveText?: string; /** The Due Date of the activity, shown on the same row as the Scheduled date. */ dueDate?: ReactNode; /** An external training: no method or assessment of its own (SOP.0003 5.1.2 is for internal training); the trainer is outside. */ external?: boolean }) {
   const empty = { method: "CLASSROOM", assessmentMethod: "TEST", instructor: "INTERNAL", trainerUserId: "", externalTrainerName: "", scheduledOn: "", locationType: "ONSITE", venue: "", platform: "Zoom", meetingLink: "", topic: "" };
-  const [form, setForm] = useState(empty);
-  const [topics, setTopics] = useState<TrainingTopic[]>([]);
-  useEffect(() => { trainingMatrixApi.topics(undefined, true).then(setTopics).catch(() => setTopics([])); }, []);
+  const [form, setForm] = useState({ ...empty, topic: initialTopic ?? "" });
   const trainerOk = external || (form.instructor === "INTERNAL" ? !!form.trainerUserId : !!form.externalTrainerName.trim());
-  const placeOk = form.locationType === "ONSITE" ? !!form.venue.trim() : !!form.platform && /^https:\/\/\S+$/i.test(form.meetingLink.trim());
+  const linkOk = !!form.platform && /^https:\/\/\S+$/i.test(form.meetingLink.trim());
+  const placeOk = form.locationType === "ONSITE" ? !!form.venue.trim() : form.locationType === "HYBRID" ? !!form.venue.trim() && linkOk : linkOk;
   const ready = form.topic.trim() && trainerOk && placeOk;
   const body = (): SessionDraft => ({
     method: external ? undefined : form.method, assessmentMethod: external ? undefined : form.assessmentMethod,
     trainerUserId: !external && form.instructor === "INTERNAL" ? form.trainerUserId : undefined,
     externalTrainerName: external ? form.externalTrainerName.trim() || undefined : form.instructor === "EXTERNAL" ? form.externalTrainerName.trim() : undefined,
     scheduledOn: form.scheduledOn || undefined,
-    locationType: form.locationType as "ONSITE" | "ONLINE",
-    venue: form.locationType === "ONSITE" ? form.venue.trim() : undefined,
-    onlinePlatform: form.locationType === "ONLINE" ? form.platform : undefined,
-    meetingLink: form.locationType === "ONLINE" ? form.meetingLink.trim() : undefined,
-    topics: [{ topicText: form.topic.trim() }],
+    locationType: form.locationType as "ONSITE" | "ONLINE" | "HYBRID",
+    venue: form.locationType !== "ONLINE" ? form.venue.trim() : undefined,
+    onlinePlatform: form.locationType !== "ONSITE" ? form.platform : undefined,
+    meetingLink: form.locationType !== "ONSITE" ? form.meetingLink.trim() : undefined,
+    topics: [{ topicText: form.topic.trim(), documentRevisionId }],
   });
   // The page that saves the session together with the activity reads the current form instead of a button.
   useEffect(() => { onDraft?.(ready ? body() : null); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, ready]);
   const save = () => {
     onSave?.(body());
-    setForm(empty);
+    setForm({ ...empty, topic: initialTopic ?? "" });
   };
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-        <div className="md:col-span-2">
-          <Select label="Standard topic (optional)" value="" enableSearch placeholder="Pick a standard topic to fill the topic below"
-            onChange={(id) => { const t = topics.find((x) => x.id === id); if (t) setForm({ ...form, topic: `${t.code} - ${t.name}` }); }}
-            options={topics.map((t) => ({ label: `${t.code} — ${t.name}`, value: t.id }))} />
-        </div>
-        <div className="md:col-span-2"><FormField label="Topic" required><Input value={form.topic} maxLength={500} placeholder="What will be taught (a SOP, or a standard topic)" onChange={(e) => setForm({ ...form, topic: e.target.value })} /></FormField></div>
+        <div className="md:col-span-2"><FormField label="Training Topic" required><Input value={form.topic} maxLength={500} placeholder="What will be taught, e.g., SOP.0009 Qualification of equipment and systems" onChange={(e) => setForm({ ...form, topic: e.target.value })} /></FormField></div>
         {!external && <Select label="Mode" value={form.method} enableSearch={false} onChange={(v) => setForm({ ...form, method: v, assessmentMethod: ASSESSMENT_BY_METHOD[v][0] })} options={Object.entries(METHOD_LABEL).map(([value, label]) => ({ label, value }))} />}
         {!external && <Select label="Assessment" value={form.assessmentMethod} enableSearch={false} onChange={(v) => setForm({ ...form, assessmentMethod: v })} options={Object.entries(ASSESSMENT_LABEL).map(([value, label]) => ({ label: ASSESSMENT_BY_METHOD[form.method].includes(value) ? `${label} (SOP default)` : label, value }))} />}
         {!external && !ASSESSMENT_BY_METHOD[form.method].includes(form.assessmentMethod) && (
@@ -79,13 +73,15 @@ export function SessionPanel({ busy = false, onSave, onDraft, saveText = "Add se
             : <Input value={form.externalTrainerName} maxLength={255} placeholder="Name of the external expert or consultant" onChange={(e) => setForm({ ...form, externalTrainerName: e.target.value })} />}
         </div>
         )}
-        <div className="md:col-span-2"><TrainingDateField label="Scheduled date" value={form.scheduledOn} onChange={(v) => setForm({ ...form, scheduledOn: v })} /></div>
+        {dueDate ? <div>{dueDate}</div> : null}
+        <div className={dueDate ? undefined : "md:col-span-2"}><TrainingDateField label="Scheduled date" hint={DATE_HINT.scheduled} value={form.scheduledOn} onChange={(v) => setForm({ ...form, scheduledOn: v })} /></div>
         <div className="space-y-3 md:col-span-2">
           <RadioGroup label="Location Type" required name="session-location" layout="horizontal" value={form.locationType} onChange={(v) => setForm({ ...form, locationType: String(v) })}
-            options={[{ label: "On-site (Physical)", value: "ONSITE" }, { label: "Online (Virtual)", value: "ONLINE" }]} />
-          {form.locationType === "ONSITE" ? (
+            options={[{ label: "On-site (Physical)", value: "ONSITE" }, { label: "Online (Virtual)", value: "ONLINE" }, { label: "Hybrid (On-site and Online)", value: "HYBRID" }]} />
+          {form.locationType !== "ONLINE" && (
             <FormField label="Physical Location" required><Input value={form.venue} maxLength={255} placeholder="e.g., Training Room A" onChange={(e) => setForm({ ...form, venue: e.target.value })} /></FormField>
-          ) : (
+          )}
+          {form.locationType !== "ONSITE" && (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-4">
               <Select label="Platform" value={form.platform} enableSearch={false} onChange={(v) => setForm({ ...form, platform: v })} options={PLATFORMS} />
               <FormField label="Meeting Link" required><Input value={form.meetingLink} placeholder="https://zoom.us/j/..." onChange={(e) => setForm({ ...form, meetingLink: e.target.value })} /></FormField>
@@ -134,9 +130,9 @@ export function ParticipantsPanel({ activityId, session, busy, onSave }: { activ
 export type ParticipantsDraft = { personUserIds: string[]; externals: Outsider[]; reason: string };
 
 /** The people of the session, chosen on the New screen before the activity exists: they are added to the session when the activity is saved. */
-export function ParticipantsDraftPanel({ onDraft }: { onDraft: (draft: ParticipantsDraft | null) => void }) {
-  const [selection, setSelection] = useState<AssigneeSelection>({ personIds: [], outsiders: [] });
-  const [reason, setReason] = useState("");
+export function ParticipantsDraftPanel({ onDraft, initialPeople, initialReason }: { onDraft: (draft: ParticipantsDraft | null) => void; initialPeople?: TrainingPerson[]; initialReason?: string }) {
+  const [selection, setSelection] = useState<AssigneeSelection>({ personIds: (initialPeople ?? []).map((p) => p.id), outsiders: [] });
+  const [reason, setReason] = useState(initialReason ?? "");
   const count = selection.personIds.length + selection.outsiders.length;
   // Nobody here comes from the matrix, so every person added needs the reason that stays on the row.
   const ready = count > 0 && reason.trim() !== "";
@@ -146,7 +142,7 @@ export function ParticipantsDraftPanel({ onDraft }: { onDraft: (draft: Participa
   }, [selection, reason, ready]);
   return (
     <div className="space-y-4">
-      <TrainingAssigneePicker onChange={setSelection} />
+      <TrainingAssigneePicker onChange={setSelection} initialPeople={initialPeople} />
       <FormField label="Reason for adding by hand" required><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
       <p className="text-xs text-slate-500">{count} selected. They are added to the session when you save. The people the training matrix requires are offered on the next screen, after the activity is saved.</p>
     </div>

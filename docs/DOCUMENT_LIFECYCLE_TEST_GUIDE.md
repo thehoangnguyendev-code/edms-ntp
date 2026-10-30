@@ -91,7 +91,7 @@ Sidebar → **User Management → Add User** — điền thông tin, mục "Acco
 
 1. Mở revision đang PENDING_APPROVAL → menu 3 chấm → **Approve**.
 2. **Test nhánh Reject**: bấm **"Reject"** → điền lý do → xác nhận → xem revision quay về trạng thái nào (tuỳ cấu hình, thường về DRAFT hoặc PENDING_REVIEW) → Author sửa lại, Submit lại, Review lại (lặp B.3-B.4) rồi quay lại đây.
-3. Lần cuối: bấm **"Complete Approve"** → ký điện tử → xác nhận:
+3. Lần cuối: bấm **"Complete Approval"** → ký điện tử → xác nhận:
    - Nếu **Requires Training = bật** → chuyển **PENDING_TRAINING**.
    - Nếu **tắt** → chuyển thẳng **READY_FOR_PUBLISHING** (bỏ qua bước B.6).
 
@@ -138,7 +138,7 @@ Lặp lại B.1-B.2 tạo 1 Document Master + Revision mới khác, rồi:
 - [x] Nhập Training Information (bật/tắt Requires Training, Training Period)
 - [x] Submit For Review
 - [x] Reject (ở cả Review và Approval)
-- [x] Complete Review / Complete Approve
+- [x] Complete Review / Complete Approval
 - [x] Complete Training (nếu bật)
 - [x] Publish → Effective
 - [x] Cancel (Document Master + Revision)

@@ -46,11 +46,13 @@ public class ExecutedRecordController {
             @RequestParam(required = false) String controlledCopyId,
             @RequestParam(required = false) String filledFrom,
             @RequestParam(required = false) String filledTo,
+            @RequestParam(required = false) String recordedFrom,
+            @RequestParam(required = false) String recordedTo,
             @RequestParam(required = false, defaultValue = "created") String sortBy,
             @RequestParam(required = false, defaultValue = "desc") String sortDirection
     ) {
         return ResponseEntity.ok(executedRecordService.list(
-                page, limit, search, formDocumentId, controlledCopyId, filledFrom, filledTo, sortBy, sortDirection));
+                page, limit, search, formDocumentId, controlledCopyId, filledFrom, filledTo, recordedFrom, recordedTo, sortBy, sortDirection));
     }
 
     @GetMapping("/executed-records/{id}")

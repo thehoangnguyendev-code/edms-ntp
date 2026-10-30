@@ -41,6 +41,12 @@ public class PublishingTemplatePlaceholderMapperService {
     }
 
     private PublishingTemplatePlaceholderMappingResponse buildMapping(PublishingPlaceholderSyntax.PlaceholderToken token, RevisionDetailResponse revision) {
+        SignatureDisplayStyle displayStyle = SignatureDisplayStyle.ofName(token.name());
+        if (displayStyle != null) {
+            // {{approvedSignatureCompact}}: the same signature as {{approvedSignature}}, in the display style the ending names
+            PublishingTemplatePlaceholderMappingResponse base = buildMapping(new PublishingPlaceholderSyntax.PlaceholderToken(SignatureDisplayStyle.baseName(token.name()), token.transform()), revision);
+            return mapping(token.key(), base.revisionField(), base.label() + " (" + displayStyle.label() + " style)", base.sampleValue(), base.sourceSection());
+        }
         String placeholder = token.key();
         String normalized = token.name().toLowerCase(Locale.ROOT);
         String transform = token.transform();

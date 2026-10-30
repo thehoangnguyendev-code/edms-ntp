@@ -38,7 +38,7 @@ export const AccessProfilePermissionsTab: React.FC<{
     setLoading(true);
     Promise.all([
       settingsApi.listPermissionSets(true), // include the auto-managed ROLE_ set
-      settingsApi.getAccessProfile(profileId),
+      settingsApi.getAccessProfileEditorSummary(profileId).then((result) => result.profile),
     ])
       .then(([sets, detail]) => {
         if (!active) return;

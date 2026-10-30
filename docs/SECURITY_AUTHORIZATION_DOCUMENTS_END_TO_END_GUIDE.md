@@ -117,7 +117,7 @@ Trong **Permission Sets**, Permission Explorer nhóm quyền theo module. Hãy t
 | `documents.revision.submit_review` | DCO submit revision | **Submit For Review** |
 | `documents.revision.review` | Assigned Reviewer complete review | **Complete Review** |
 | `documents.revision.reject_review` | Assigned Reviewer reject | **Reject** tại Review |
-| `documents.revision.approve` | Assigned Approver approve | **Complete Approve** |
+| `documents.revision.approve` | Assigned Approver approve | **Complete Approval** |
 | `documents.revision.reject_approval` | Assigned Approver reject | **Reject** tại Approval |
 | `documents.revision.complete_training` | DCO/Document Admin hoàn tất training | **Complete Training** |
 | `documents.revision.publish` | DCO publish revision | **Publish** |
@@ -276,7 +276,7 @@ Nếu user có `documents.revision.review` nhưng không có Workflow Role phù 
 ### 4.8. E-Sign Config
 
 1. Mở **Security & Authorization -> E-Sign Config**.
-2. Kiểm tra e-sign bắt buộc cho: Complete Authoring, Submit For Review, Complete Review, Reject, Complete Approve, Complete Training, Publish, Cancel, Obsolete và controlled-copy action quan trọng.
+2. Kiểm tra e-sign bắt buộc cho: Complete Authoring, Submit For Review, Complete Review, Reject, Complete Approval, Complete Training, Publish, Cancel, Obsolete và controlled-copy action quan trọng.
 3. Kiểm tra meaning phù hợp, ví dụ `Prepared`, `Reviewed`, `Approved`.
 4. Nếu sửa cấu hình, ghi change-control reference trong lý do/description, bấm Save và ký điện tử.
 5. Thực hiện một action UAT để xác nhận đóng modal signature thì action không được hoàn tất.
@@ -336,7 +336,7 @@ Tab này quyết định action nào có thể đổi trạng thái. Dùng filte
 | `DRAFT` | Submit For Review | `documents.revision.submit_review` | `DCO` hoặc `DOCUMENT_ADMIN` |
 | `PENDING_REVIEW` | Complete Review | `documents.revision.review` | `ASSIGNED_REVIEWER` |
 | `PENDING_REVIEW` | Reject | `documents.revision.reject_review` | `ASSIGNED_REVIEWER` |
-| `PENDING_APPROVAL` | Complete Approve | `documents.revision.approve` | `ASSIGNED_APPROVER` |
+| `PENDING_APPROVAL` | Complete Approval | `documents.revision.approve` | `ASSIGNED_APPROVER` |
 | `PENDING_APPROVAL` | Reject | `documents.revision.reject_approval` | `ASSIGNED_APPROVER` |
 | `PENDING_TRAINING` | Complete Training | `documents.revision.complete_training` | `DCO` hoặc `DOCUMENT_ADMIN` |
 | `READY_FOR_PUBLISHING` | Publish | `documents.revision.publish` | `DCO` hoặc `DOCUMENT_ADMIN` |
@@ -572,7 +572,7 @@ Negative test: user có `documents.revision.review` nhưng không phải assigne
 3. Mở **Approve Revision**.
 4. Test Reject nếu cần: bấm **Reject**, điền reason, ký điện tử; kiểm tra trạng thái trả về theo policy active.
 5. Sau khi Author/DCO sửa, submit và Reviewer review lại, mở lại revision Pending Approval.
-6. Bấm **Complete Approve**, ký điện tử.
+6. Bấm **Complete Approval**, ký điện tử.
 7. Kết quả:
    - Requires Training On: `PENDING_APPROVAL -> PENDING_TRAINING`.
    - Requires Training Off: `PENDING_APPROVAL -> READY_FOR_PUBLISHING`.

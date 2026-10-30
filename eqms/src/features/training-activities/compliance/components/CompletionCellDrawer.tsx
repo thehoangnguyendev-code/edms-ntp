@@ -7,9 +7,9 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { trainingComplianceApi, trainingError, type CompletionCellDetail, type CompletionState } from "@/services/api/trainingActivities";
 import { METHOD_LABEL, STATUS_COLOR, STATUS_LABEL, day } from "../../shared/trainingLabels";
 
-const STATE_LABEL: Record<CompletionState, string> = { NOT_REQUIRED: "Not required", REQUIRED: "Required", IN_PROGRESS: "In progress", QUALIFIED: "Qualified", UPDATE_NEEDED: "Update needed", DUE: "Annual training due" };
+const STATE_LABEL: Record<CompletionState, string> = { NOT_REQUIRED: "Not required", REQUIRED: "Required", IN_PROGRESS: "In Progress", QUALIFIED: "Qualified", UPDATE_NEEDED: "Update needed", DUE: "Annual training due" };
 const STATE_COLOR: Record<CompletionState, "slate" | "red" | "blue" | "emerald" | "amber" | "orange"> = { NOT_REQUIRED: "slate", REQUIRED: "red", IN_PROGRESS: "blue", QUALIFIED: "emerald", UPDATE_NEEDED: "amber", DUE: "orange" };
-const GROUP_LABEL = { FACTORY_GENERAL: "General training of the whole factory", DEPARTMENT_GENERAL: "General training of the department", SOP: "SOP of the Job Role" } as const;
+const GROUP_LABEL = { FACTORY_GENERAL: "General training of the whole factory", DEPARTMENT_GENERAL: "General training of the department", SOP: "SOP of the Work Position" } as const;
 const RESULT_LABEL: Record<string, string> = { PASSED: "Passed", READ: "Read and understood", ATTENDED: "Attended" };
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
@@ -56,7 +56,7 @@ export function CompletionCellDrawer({ departmentId, personId, rowId, onClose }:
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Fact label="Name">{detail.person.fullName}{detail.person.employeeCode ? ` (${detail.person.employeeCode})` : ""}</Fact>
               <Fact label="Department">{detail.person.department ?? "—"}</Fact>
-              <Fact label="Job Roles">{detail.person.positions ?? "—"}</Fact>
+              <Fact label="Work Positions">{detail.person.positions ?? "—"}</Fact>
             </dl>
           </section>
 
@@ -64,7 +64,7 @@ export function CompletionCellDrawer({ departmentId, personId, rowId, onClose }:
             <h3 className="mb-2 text-sm font-semibold text-slate-900">Requirement</h3>
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Fact label="Kind">{GROUP_LABEL[detail.requirement.group]}</Fact>
-              <Fact label={detail.requirement.sop ? "SOP" : "Topic code"}>{detail.requirement.code ?? "—"}</Fact>
+              <Fact label={detail.requirement.sop ? "SOP" : "Training Topic code"}>{detail.requirement.code ?? "—"}</Fact>
               <Fact label="Annual training">{detail.requirement.annual ? "Required every year" : "Not required"}</Fact>
               {detail.requirement.sop && <Fact label="Revision in force">{detail.requirement.currentRevision ?? "—"}</Fact>}
               <Fact label="Last trained">{day(detail.lastDoneOn) || "—"}</Fact>
@@ -86,7 +86,7 @@ export function CompletionCellDrawer({ departmentId, personId, rowId, onClose }:
                       <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => open(a.id)}>{a.trainingNumber}</button>
                       <Badge color={STATUS_COLOR[a.status as keyof typeof STATUS_COLOR] ?? "slate"}>{STATUS_LABEL[a.status] ?? a.status}</Badge>
                     </div>
-                    <div className="mt-1 text-slate-700">{a.trainingTitle}</div>
+                    <div className="mt-1 text-slate-700">{a.trainingTopics}</div>
                     <div className="mt-1 text-xs text-slate-500">{a.scheduledOn ? `Session on ${day(a.scheduledOn)}` : "No date yet"}{a.dueDate ? ` · due ${day(a.dueDate)}` : ""}</div>
                   </li>
                 ))}

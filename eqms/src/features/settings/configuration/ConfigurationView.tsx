@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Shield, Bell, Menu, Cloud, Server, Check, Eye } from 'lucide-react';
@@ -7,22 +7,27 @@ import { configuration } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { Button } from '@/components/ui/button/Button';
 import { TabNav } from '@/components/ui/tabs/TabNav';
 import { useToast } from '@/components/ui/toast/Toast';
-import { FullPageLoading } from "@/components/ui/loading/Loading";
+import { Loading } from "@/components/ui/loading/Loading";
 import { AlertModal } from '@/components/ui/modal/AlertModal';
 import { NavigationGuardModal } from "@/components/ui/modal/NavigationGuardModal";
 import { SystemConfig } from './types';
-import { GeneralTab } from './tabs/GeneralTab';
-import { NavigationLabelsTab } from './tabs/NavigationLabelsTab';
-import { SecurityTab } from './tabs/SecurityTab';
-import { OnlyOfficeTab } from './tabs/OnlyOfficeTab';
-import { NotificationTab } from './tabs/NotificationTab';
-import { IntegrationTab } from './tabs/IntegrationTab';
-import { PreviewFileTab } from './tabs/PreviewFileTab';
-import { FeaturesTab } from './tabs/FeaturesTab';
 import { BROWSER_TAB_TITLE_STORAGE_KEY, SECURITY_CONFIG_STORAGE_KEY } from '@/config/security';
 import { settingsApi } from '@/services/api/settings';
+import { useNetworkAccessDraft } from './useNetworkAccessDraft';
 import { usePermissions } from '@/hooks/usePermissions';
 import { IconDragDrop, IconFileIsr, IconPlugConnected, IconSettings2 } from '@tabler/icons-react';
+
+const GeneralTab = lazy(() => import('./tabs/GeneralTab').then(m => ({ default: m.GeneralTab })));
+const DashboardRoleDefaults = lazy(() => import('./tabs/DashboardRoleDefaults').then(m => ({ default: m.DashboardRoleDefaults })));
+const NavigationLabelsTab = lazy(() => import('./tabs/NavigationLabelsTab').then(m => ({ default: m.NavigationLabelsTab })));
+const SecurityTab = lazy(() => import('./tabs/SecurityTab').then(m => ({ default: m.SecurityTab })));
+const OnlyOfficeTab = lazy(() => import('./tabs/OnlyOfficeTab').then(m => ({ default: m.OnlyOfficeTab })));
+const NotificationTab = lazy(() => import('./tabs/NotificationTab').then(m => ({ default: m.NotificationTab })));
+const IntegrationTab = lazy(() => import('./tabs/IntegrationTab').then(m => ({ default: m.IntegrationTab })));
+const StorageUsagePanel = lazy(() => import('./tabs/StorageUsagePanel').then(m => ({ default: m.StorageUsagePanel })));
+const NetworkAccessPanel = lazy(() => import('./tabs/NetworkAccessPanel').then(m => ({ default: m.NetworkAccessPanel })));
+const PreviewFileTab = lazy(() => import('./tabs/PreviewFileTab').then(m => ({ default: m.PreviewFileTab })));
+const FeaturesTab = lazy(() => import('./tabs/FeaturesTab').then(m => ({ default: m.FeaturesTab })));
 
 type TabId = 'general' | 'navigation' | 'security' | 'notification' | 'integration' | 'preview' | 'features';
 
@@ -104,6 +109,10 @@ export const ConfigurationView: React.FC = () => {
   const [config, setConfig] = useState<SystemConfig | null>(null);
   const [originalConfig, setOriginalConfig] = useState<SystemConfig | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const network = useNetworkAccessDraft(canManageConfiguration && activeTab === 'security');
+  const hasUnsavedChanges = isDirty || network.isDirty;
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
   const [isGeneralValid, setIsGeneralValid] = useState(true);
   const [isOnlyOfficeValid, setIsOnlyOfficeValid] = useState(true);
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -189,7 +198,10 @@ export const ConfigurationView: React.FC = () => {
   };
 
   const saveConfiguration = async () => {
-    if (!config) return;
+    if (!config || savingRef.current) return;
+    savingRef.current = true;
+    setIsSaving(true);
+    let systemSaved = false;
     try {
       const delta: any = {};
       if (originalConfig) {
@@ -202,15 +214,20 @@ export const ConfigurationView: React.FC = () => {
       } else {
         Object.assign(delta, config);
       }
-      const saved = await settingsApi.updateSystemConfiguration(delta) as unknown as SystemConfig;
-      setConfig(saved);
-      setOriginalConfig(JSON.parse(JSON.stringify(saved)));
-      window.localStorage.setItem(SECURITY_CONFIG_STORAGE_KEY, JSON.stringify(saved));
-      window.dispatchEvent(new Event(SECURITY_CONFIG_UPDATED_EVENT));
-      window.dispatchEvent(new Event('eqms:branding-updated'));
-      window.dispatchEvent(new Event('eqms:localization-updated'));
-      updateBrowserTabTitle(saved.general?.systemDisplayName);
-      setIsDirty(false);
+      if (Object.keys(delta).length > 0) {
+        const saved = await settingsApi.updateSystemConfiguration(delta) as unknown as SystemConfig;
+        setConfig(saved);
+        setOriginalConfig(JSON.parse(JSON.stringify(saved)));
+        window.localStorage.setItem(SECURITY_CONFIG_STORAGE_KEY, JSON.stringify(saved));
+        window.dispatchEvent(new Event(SECURITY_CONFIG_UPDATED_EVENT));
+        window.dispatchEvent(new Event('eqms:branding-updated'));
+        window.dispatchEvent(new Event('eqms:localization-updated'));
+        updateBrowserTabTitle(saved.general?.systemDisplayName);
+        setIsDirty(false);
+        systemSaved = true;
+      }
+      // Save the network restriction last: it can immediately limit subsequent requests.
+      await network.save();
       setShowSaveModal(false);
       showToast({
         type: "success",
@@ -222,8 +239,11 @@ export const ConfigurationView: React.FC = () => {
       showToast({
         type: "error",
         title: "Save failed",
-        message: extractServerErrorMessage(error),
+        message: `${systemSaved ? 'System configuration was saved, but the network policy was not saved. Your network changes are kept. ' : ''}${extractServerErrorMessage(error)}`,
       });
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
     }
   };
 
@@ -236,6 +256,7 @@ export const ConfigurationView: React.FC = () => {
   };
 
   const handleResetConfirm = () => {
+    network.reset();
     if (originalConfig) {
       setConfig(JSON.parse(JSON.stringify(originalConfig)));
       setIsDirty(false);
@@ -253,17 +274,27 @@ export const ConfigurationView: React.FC = () => {
     if (!config) return null;
     switch (activeTab) {
       case 'general':
-        return <GeneralTab config={config.general} onChange={(val) => handleConfigChange('general', val)} onValidationChange={setIsGeneralValid} />;
+        return <><GeneralTab config={config.general} onChange={(val) => handleConfigChange('general', val)} onValidationChange={setIsGeneralValid} />{canManageConfiguration && <div className="px-4 pb-5 md:px-5"><DashboardRoleDefaults /></div>}</>;
       case 'navigation':
         return <NavigationLabelsTab config={config.general} onChange={(val) => handleConfigChange('general', val)} />;
       case 'security':
-        return <SecurityTab config={config.security} onChange={(val) => handleConfigChange('security', val)} />;
+        return <><SecurityTab config={config.security} onChange={(val) => handleConfigChange('security', val)} />{canManageConfiguration && <div className="px-4 pb-5 md:px-5"><NetworkAccessPanel value={network.draft} onChange={network.setDraft} failed={network.failed} /></div>}</>;
       case 'notification':
-        return <NotificationTab config={config.notifications} onChange={(val) => handleConfigChange('notifications', val)} />;
+        return (
+          <NotificationTab
+            config={config.notifications}
+            onChange={(val) => handleConfigChange('notifications', val)}
+            toastPosition={config.general.appearance?.toastPosition ?? 'top-right'}
+            onToastPositionChange={(toastPosition) => handleConfigChange('general', { ...config.general, appearance: { ...config.general.appearance, toastPosition } })}
+            toastDurationSeconds={config.general.appearance?.toastDurationSeconds}
+            onToastDurationChange={(toastDurationSeconds) => handleConfigChange('general', { ...config.general, appearance: { ...config.general.appearance, toastDurationSeconds } })}
+          />
+        );;
       case 'integration':
         return (
           <div className="space-y-0">
             <IntegrationTab config={config.integrations} onChange={(val) => handleConfigChange('integrations', val)} />
+            {canManageConfiguration && <div className="px-4 pb-5 md:px-5"><StorageUsagePanel /></div>}
             <OnlyOfficeTab
               embedded
               onlyOfficeConfig={config.general.backupSettings.onlyOffice}
@@ -301,10 +332,6 @@ export const ConfigurationView: React.FC = () => {
     }
   };
 
-  if (isMountLoading) {
-    return <FullPageLoading text="Loading System Configuration..." />;
-  }
-
   return (
     <div className="space-y-6 w-full flex-1 flex flex-col">
       {/* Header */}
@@ -314,10 +341,10 @@ export const ConfigurationView: React.FC = () => {
         actions={
           canManageConfiguration ? (
             <>
-              <Button variant="outline-emerald" onClick={handleResetClick} disabled={!isDirty} size="sm" className="gap-2">
+              <Button variant="outline-emerald" onClick={handleResetClick} disabled={!hasUnsavedChanges || isSaving} size="sm" className="gap-2">
                 Reset
               </Button>
-              <Button variant="outline-emerald" onClick={handleSaveClick} disabled={!isDirty || !isGeneralValid || !isOnlyOfficeValid} size="sm" className="gap-2">
+              <Button variant="outline-emerald" onClick={handleSaveClick} disabled={!hasUnsavedChanges || !isGeneralValid || !isOnlyOfficeValid || isSaving} size="sm" className="gap-2" loading={isSaving}>
                 Save Changes
               </Button>
             </>
@@ -329,6 +356,7 @@ export const ConfigurationView: React.FC = () => {
         isOpen={showSaveModal}
         onClose={() => setShowSaveModal(false)}
         onConfirm={saveConfiguration}
+        isLoading={isSaving}
         type="confirm"
         title="Save System Configuration?"
         description={
@@ -368,7 +396,7 @@ export const ConfigurationView: React.FC = () => {
       />
 
       {/* Section tabs + content */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <fieldset disabled={isSaving} className="min-w-0 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <TabNav
           tabs={TABS}
           activeTab={activeTab}
@@ -383,10 +411,14 @@ export const ConfigurationView: React.FC = () => {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
           >
-            {renderTabContent()}
+            <Suspense fallback={<Loading text="Loading configuration section..." className="min-h-48 py-12" />}>
+              {isMountLoading
+                ? <Loading text="Loading System Configuration..." className="min-h-48 py-12" />
+                : renderTabContent()}
+            </Suspense>
           </motion.div>
         </AnimatePresence>
-      </div>
+      </fieldset>
     </div>
   );
 };

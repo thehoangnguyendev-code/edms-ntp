@@ -68,7 +68,6 @@ class TrainingActivityLockRulesTest {
         a.put("status", status);
         a.put("version", 3);
         a.put("kind", "INTERNAL");
-        a.put("training_title", "GMP basics");
         a.put("training_number", "TRN/QA/26-001");
         a.put("organizer_department_id", departmentId);
         when(store.activityForUpdate(activityId)).thenReturn(Optional.of(a));
@@ -97,25 +96,25 @@ class TrainingActivityLockRulesTest {
     void theRemarksCanStillBeChangedOnceTheActivityIsInProgress() {
         activity("IN_PROGRESS");
 
-        service.update(actor, activityId, new TrainingActivityService.UpdateRequest(3, "GMP basics", null, "A new remark", null, null));
+        service.update(actor, activityId, new TrainingActivityService.UpdateRequest(3, null, "A new remark", null, null));
 
-        verify(jdbc).update(contains("update training_activities set training_title=?"), any(), any(), eq("A new remark"), any(), any(), eq(activityId));
+        verify(jdbc).update(contains("update training_activities set due_date=?"), any(), eq("A new remark"), any(), any(), eq(activityId));
     }
 
     @Test
-    void theTitleCannotBeChangedAfterTheActivityIsNotified() {
+    void theDueDateCannotBeChangedAfterTheActivityIsNotified() {
         activity("NOTIFIED");
 
-        assertThatThrownBy(() -> service.update(actor, activityId, new TrainingActivityService.UpdateRequest(3, "Another title", null, "r", null, null)))
+        assertThatThrownBy(() -> service.update(actor, activityId, new TrainingActivityService.UpdateRequest(3, LocalDate.of(2027, 1, 1), "r", null, null)))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("TRAINING_ACTIVITY_FIELD_LOCKED");
-        verify(jdbc, never()).update(contains("update training_activities set training_title=?"), any(), any(), any(), any(), any(), any());
+        verify(jdbc, never()).update(contains("update training_activities set due_date=?"), any(), any(), any(), any(), any(), any());
     }
 
     @Test
     void nothingCanBeChangedOnceTheActivityIsCompleted() {
         activity("COMPLETED");
 
-        assertThatThrownBy(() -> service.update(actor, activityId, new TrainingActivityService.UpdateRequest(3, "GMP basics", null, "r", null, null)))
+        assertThatThrownBy(() -> service.update(actor, activityId, new TrainingActivityService.UpdateRequest(3, null, "r", null, null)))
                 .isInstanceOf(ResponseStatusException.class);
     }
 
@@ -243,5 +242,128 @@ class TrainingActivityLockRulesTest {
 
         assertThatThrownBy(() -> service.cancel(actor, activityId, new TrainingActivityService.CommandRequest(3, "Trainer left", "token")))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("TRAINING_ACTIVITY_HAS_RESULTS");
+    }
+
+    @Test
+    void postponingAfterTheDueDateMovesTheDueDateToTheEndOfThatMonthOnlyWhenTheUserAgreed() {
+        activity("PLANNED").put("due_date", java.sql.Date.valueOf("2026-10-31"));
+        session("PLANNED");
+
+        service.postponeSession(actor, sessionId, new TrainingActivityService.PostponeRequest(LocalDate.of(2026, 11, 12), "Trainer is ill", true));
+
+        verify(jdbc).update(contains("update training_activities set due_date=?"), eq(LocalDate.of(2026, 11, 30)), eq(activityId));
+        verify(store).auditActivity(any(), any(), eq("TRAINING_DUE_DATE_MOVED"), eq("2026-10-31"), eq("2026-11-30"), eq("Trainer is ill"));
+    }
+
+    @Test
+    void theLineOfTheRequirementFollowsTheDueDateAndKeepsTheMonthItWasApprovedFor() {
+        activity("PLANNED").put("due_date", java.sql.Date.valueOf("2026-10-31"));
+        session("PLANNED");
+        UUID requirementId = UUID.randomUUID();
+        UUID lineId = UUID.randomUUID();
+        Map<String, Object> line = new HashMap<>();
+        line.put("id", lineId);
+        line.put("requirement_id", requirementId);
+        line.put("planned_month", java.sql.Date.valueOf("2026-10-01"));
+        line.put("postponed_from", null);
+        line.put("request_no", "TRQ/26-001");
+        UUID qa = UUID.randomUUID();
+        line.put("prepared_by", qa);
+        line.put("created_by", qa);
+        UserAccount qaUser = mock(UserAccount.class);
+        when(users.findById(qa)).thenReturn(Optional.of(qaUser));
+        when(jdbc.queryForList(contains("from training_requirement_lines l"), eq(activityId))).thenReturn(List.of(line));
+
+        service.postponeSession(actor, sessionId, new TrainingActivityService.PostponeRequest(LocalDate.of(2026, 11, 12), "Trainer is ill", true));
+
+        verify(jdbc).update(contains("update training_requirement_lines set planned_month=?"), eq(LocalDate.of(2026, 11, 1)), eq(java.sql.Date.valueOf("2026-10-01")), eq("Trainer is ill"), eq(lineId));
+        verify(store).auditRequirement(any(), eq("TRQ/26-001"), eq(requirementId), eq("TRAINING_REQUIREMENT_LINE_POSTPONED"), eq("2026-10-01"), eq("2026-11-01"), eq("Trainer is ill"));
+        // one note to the QA who prepared it, once, and it does not say "later than the month after" for one month
+        verify(notifier).send(eq("TRAINING_REQUIREMENT_LINE_MOVED"), eq(qaUser), any(), any(), org.mockito.ArgumentMatchers.argThat(m -> !m.contains("later than")), eq("TRAINING_REQUIREMENT"), eq(requirementId), any());
+    }
+
+    @Test
+    void aMoveOfMoreThanOneMonthIsToldToQaAsLaterThanTheSopWindow() {
+        activity("PLANNED").put("due_date", java.sql.Date.valueOf("2026-10-31"));
+        session("PLANNED");
+        UUID requirementId = UUID.randomUUID();
+        UUID qa = UUID.randomUUID();
+        Map<String, Object> line = new HashMap<>();
+        line.put("id", UUID.randomUUID());
+        line.put("requirement_id", requirementId);
+        line.put("planned_month", java.sql.Date.valueOf("2026-10-01"));
+        line.put("postponed_from", null);
+        line.put("request_no", "TRQ/26-001");
+        line.put("prepared_by", qa);
+        UserAccount qaUser = mock(UserAccount.class);
+        when(users.findById(qa)).thenReturn(Optional.of(qaUser));
+        when(jdbc.queryForList(contains("from training_requirement_lines l"), eq(activityId))).thenReturn(List.of(line));
+
+        service.postponeSession(actor, sessionId, new TrainingActivityService.PostponeRequest(LocalDate.of(2026, 12, 3), "Plant shutdown", true));
+
+        verify(notifier).send(eq("TRAINING_REQUIREMENT_LINE_MOVED"), eq(qaUser), any(), any(), org.mockito.ArgumentMatchers.argThat(m -> m.contains("later than")), eq("TRAINING_REQUIREMENT"), eq(requirementId), any());
+    }
+
+    @Test
+    void theLineIsLeftAloneWhenTheDueDateStays() {
+        activity("PLANNED").put("due_date", java.sql.Date.valueOf("2026-10-31"));
+        session("PLANNED");
+
+        service.postponeSession(actor, sessionId, new TrainingActivityService.PostponeRequest(LocalDate.of(2026, 11, 12), "Trainer is ill", false));
+
+        verify(jdbc, never()).update(contains("update training_requirement_lines"), any(), any(), any(), any());
+    }
+
+    @Test
+    void postponingAfterTheDueDateKeepsTheDueDateWhenTheUserDidNotAgree() {
+        activity("PLANNED").put("due_date", java.sql.Date.valueOf("2026-10-31"));
+        session("PLANNED");
+
+        service.postponeSession(actor, sessionId, new TrainingActivityService.PostponeRequest(LocalDate.of(2026, 11, 12), "Trainer is ill", false));
+
+        verify(jdbc, never()).update(contains("update training_activities set due_date=?"), any(), any());
+    }
+
+    @Test
+    void postponingWithinTheDueDateNeverTouchesTheDueDate() {
+        activity("PLANNED").put("due_date", java.sql.Date.valueOf("2026-10-31"));
+        session("PLANNED");
+
+        service.postponeSession(actor, sessionId, new TrainingActivityService.PostponeRequest(LocalDate.of(2026, 10, 28), "Room busy", true));
+
+        verify(jdbc, never()).update(contains("update training_activities set due_date=?"), any(), any());
+    }
+
+    private void waitingSelfReading(UUID department) {
+        Map<String, Object> row = new HashMap<>();
+        row.put("id", UUID.randomUUID());
+        row.put("person_user_id", UUID.randomUUID());
+        row.put("department_id", department);
+        when(jdbc.queryForList(contains("p.state='READ_CONFIRMED' and p.result='PENDING'"), eq(activityId))).thenReturn(List.of(row));
+    }
+
+    @Test
+    void aDepartmentWithoutAHeadIsConfirmedByWhoMayCloseTheTrainingAndTheRecordSaysSo() {
+        activity("IN_PROGRESS");
+        waitingSelfReading(departmentId);
+        when(access.has(any(), eq("training.activity.close"))).thenReturn(true);
+        // no department has a head
+        when(jdbc.queryForList(contains("department_head_id is not null"), eq(UUID.class))).thenReturn(List.of());
+
+        service.verifySelfReading(actor, activityId, new TrainingActivityService.CommandRequest(3, null, "token"));
+
+        verify(jdbc).update(contains("insert into training_activity_confirmations"), any(), eq(activityId), any(), eq("HEAD_SELF_READING"), any(), any(),
+                org.mockito.ArgumentMatchers.argThat((String m) -> m.contains("in place of the department head")), eq(departmentId));
+    }
+
+    @Test
+    void aDepartmentThatHasAHeadIsNotConfirmedBySomeoneElseEvenWithTheRightToClose() {
+        activity("IN_PROGRESS");
+        waitingSelfReading(departmentId);
+        when(access.has(any(), eq("training.activity.close"))).thenReturn(true);
+        when(jdbc.queryForList(contains("department_head_id is not null"), eq(UUID.class))).thenReturn(List.of(departmentId));
+
+        assertThatThrownBy(() -> service.verifySelfReading(actor, activityId, new TrainingActivityService.CommandRequest(3, null, "token")))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("TRAINING_NOT_DEPARTMENT_HEAD");
     }
 }

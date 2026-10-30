@@ -102,11 +102,11 @@ public class TrainingCheckInService {
         if (request == null || request.code() == null || !request.code().matches("\\d{6}")) throw new IllegalArgumentException("TRAINING_CHECKIN_CODE_INVALID");
         // Only sessions where this person is still invited can match, so a code of another room never shows that it exists.
         Map<String, Object> hit = jdbc.queryForList("""
-            select p.id as participant_id, p.session_id, p.activity_id, s.session_no, s.scheduled_on, s.status as session_status, s.held_on as session_held_on
+            select p.id as participant_id, p.session_id, p.activity_id, p.participation_role, s.session_no, s.scheduled_on, s.status as session_status, s.held_on as session_held_on
             from training_participants p
             join training_sessions s on s.id = p.session_id
             join training_session_checkins c on c.session_id = p.session_id and c.closed_at is null
-            where p.person_user_id = ? and p.state = 'INVITED'
+            where p.person_user_id = ? and p.state = 'INVITED' and p.participation_role <> 'NAME_ONLY'
               and (c.code = ? or (c.previous_code = ? and c.code_issued_at > now() - make_interval(secs => ?)))
             order by s.scheduled_on desc nulls last limit 1
             """, actor.getId(), request.code(), request.code(), GRACE_SECONDS).stream().findFirst()
@@ -119,7 +119,8 @@ public class TrainingCheckInService {
         UUID participantId = (UUID) hit.get("participant_id");
         Integer still = jdbc.queryForObject("select count(*) from (select 1 from training_participants where id = ? and state = 'INVITED' for update) x", Integer.class, participantId);
         if (still == null || still == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CHECKIN_ALREADY");
-        String result = "EXTERNAL".equals(activity.get("kind")) ? "PASSED" : "PENDING";
+        // A person who only attends, or is the trainer, takes no assessment: the signed check-in is all that is asked of them (a person who is only listed does not check in at all).
+        String result = "EXTERNAL".equals(activity.get("kind")) || !"TRAINEE".equals(hit.get("participation_role")) ? "PASSED" : "PENDING";
         // The trainee signs the attendance (SOP.0003 5.3.7: the signature of the trainee in the list): the person is signed in, and confirms with the password.
         if (request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
         UUID signature = signatures.createEntitySignature("TRAINING_ACTIVITY", (UUID) hit.get("activity_id"), String.valueOf(activity.get("training_number")), actor, request.signatureToken(),

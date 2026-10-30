@@ -68,6 +68,12 @@ class TrainingLinkServiceTest {
     }
 
     @Test
+    void theRevisionCanBeCompletedOnlyFromTheDayTheTrainerFinishedTheTraining() {
+        // the attendance list is sent but the training is not finished: no finishing day, so the revision cannot be completed yet
+        assertThat(readLink(Timestamp.from(Instant.parse("2026-10-23T10:00:00Z"))).get("finishedOn")).isNull();
+    }
+
+    @Test
     void unsentAttendanceHasNoDate() {
         assertThat(readLink(null).get("attendanceSentOn")).isNull();
     }

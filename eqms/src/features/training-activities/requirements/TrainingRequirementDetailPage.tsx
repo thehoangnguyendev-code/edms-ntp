@@ -14,6 +14,7 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
 import { useToast } from "@/components/ui/toast/Toast";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
+import { SignaturesTab } from "@/features/documents/document-detail/tabs/SignaturesTab";
 import { documentApi } from "@/services/api/documents";
 import {
   trainingError, trainingFormsApi, trainingMatrixApi, trainingRequirementsApi, type TrainingPerson, type TrainingRequirementDetail, type TrainingRequirementLine, type TrainingSuggestion, type TrainingTopic,
@@ -25,7 +26,7 @@ import { TrainingCopiesPanel } from "../shared/TrainingCopiesPanel";
 import { REQUIREMENT_STATUS_LABEL } from "./TrainingRequirementListView";
 import { useTrainingBack } from "../shared/useTrainingBack";
 
-const LINE_LABEL: Record<string, string> = { PLANNED: "Planned", POSTPONED: "Postponed", IN_PROGRESS: "In progress", DONE: "Done", OVERDUE: "Overdue" };
+const LINE_LABEL: Record<string, string> = { PLANNED: "Planned", POSTPONED: "Postponed", IN_PROGRESS: "In Progress", DONE: "Done", OVERDUE: "Overdue" };
 const LINE_COLOR: Record<string, "blue" | "amber" | "emerald" | "red"> = { PLANNED: "blue", POSTPONED: "amber", IN_PROGRESS: "amber", DONE: "emerald", OVERDUE: "red" };
 /** A month as MM/yyyy (the planned month of a line). */
 const monthText = (value: string) => `${value.slice(5, 7)}/${value.slice(0, 4)}`;
@@ -37,7 +38,7 @@ const REQUIREMENT_STEPS = [
   { status: "APPROVED", label: "Approved" },
 ];
 
-type DraftLine = { plannedMonth: string; topicId?: string | null; documentId?: string | null; title: string; code?: string | null };
+type DraftLine = { plannedMonth: string; topicText?: string | null; documentId?: string | null; title: string; code?: string | null };
 type Dialog = "addTopic" | "addDocument" | "submit" | "review" | "reject" | { postpone: string } | { qa: string } | undefined;
 interface SignRequest { title: string; code: string; name: string; changes: ReturnType<typeof statusChange>; run: (token: string) => Promise<TrainingRequirementDetail> }
 
@@ -68,7 +69,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
 
   const apply = useCallback((r: TrainingRequirementDetail) => {
     setReq(r);
-    setLines(r.lines.map((l) => ({ plannedMonth: l.plannedMonth.slice(0, 10), topicId: l.topicId, documentId: l.documentId, title: l.title, code: l.code })));
+    setLines(r.lines.map((l) => ({ plannedMonth: l.plannedMonth.slice(0, 10), topicText: l.topicText, documentId: l.documentId, title: l.title, code: l.code })));
     setDirty(false);
   }, []);
   const refetch = useCallback(() => { trainingRequirementsApi.get(requirementId).then(apply).catch((e) => setError(trainingError(e))); }, [requirementId, apply]);
@@ -95,15 +96,22 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
 
   const title = MODE_TITLE[mode];
   const crumbs = trainingBreadcrumbs(navigate, "requirements", title);
-  const tabs: TabItem[] = [{ id: "overview", label: "General Information" }, { id: "lines", label: "Lines", count: req?.lines.length }, { id: "audit", label: "Audit Trail" }];
+  const tabs: TabItem[] = [{ id: "overview", label: "General Information" }, { id: "lines", label: "Lines", count: req?.lines.length }, { id: "signatures", label: "Signatures" }, { id: "audit", label: "Audit Trail" }];
 
   const lineColumns: DataTableColumn<TrainingRequirementLine>[] = useMemo(() => {
     if (!req) return [];
     const caps = limitCaps(req.capabilities, mode);
     return [
       { id: "no", header: "No.", cell: (l) => l.lineNo },
-      { id: "month", header: "Planned month", cell: (l) => <div>{monthText(l.plannedMonth)}{l.postponedFrom ? <div className="text-xs text-amber-700">Postponed from {monthText(l.postponedFrom)}: {l.postponeReason}</div> : null}</div> },
-      { id: "title", header: "Topic or SOP", cell: (l) => <div className="max-w-80 whitespace-normal">{l.code ? `${l.code} — ` : ""}{l.title}</div> },
+      { id: "month", header: "Planned month", cell: (l) => (
+        <div className="whitespace-normal">
+          {l.postponedFrom ? <div className="text-xs text-slate-500">Approved month: {monthText(l.postponedFrom)}</div> : null}
+          <div>{l.postponedFrom ? "Current month: " : ""}{monthText(l.plannedMonth)}</div>
+          {l.postponedFrom ? <div className="text-xs text-amber-700">Postponed: {l.postponeReason}</div> : null}
+          {l.beyondSopWindow ? <Badge color="amber">Beyond SOP window</Badge> : null}
+        </div>
+      ) },
+      { id: "title", header: "Training Topic or SOP", cell: (l) => <div className="max-w-80 whitespace-normal">{l.code ? `${l.code} — ` : ""}{l.title}</div> },
       { id: "activity", header: "Training Number", cell: (l) => (l.activityId ? <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/activities/${l.activityId}`)}>{l.trainingNumber}</button> : "—") },
       { id: "status", header: "Status", cell: (l) => <Badge color={LINE_COLOR[l.lineStatus]}>{LINE_LABEL[l.lineStatus]}</Badge> },
       { id: "qa", header: "QA", cell: (l) => (l.qaSignedAt ? <div className="max-w-60 whitespace-normal">{l.qaSignedByName} ({day(l.qaSignedAt)}){l.qaComment ? `: ${l.qaComment}` : ""}</div> : "—") },
@@ -131,7 +139,13 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
     );
   }
   const caps = limitCaps(req.capabilities, mode);
-  const body = () => ({ version: req.version, lines: lines.map((l) => ({ plannedMonth: l.plannedMonth, topicId: l.topicId ?? null, documentId: l.documentId ?? null })) });
+  const body = () => ({ version: req.version, lines: lines.map((l) => ({ plannedMonth: l.plannedMonth, topicText: l.topicText ?? null, documentId: l.documentId ?? null })) });
+  // Each pair is filled by the server only when the signed action succeeded: the preparer when the requirement is sent for review, then the reviewer, then the approver.
+  const signatureRecords = [
+    { actionBy: "Prepared By", actionByName: req.preparedAt && req.status !== "DRAFT" ? req.preparedByName ?? "" : "", actionOn: "Prepared On (Date - Time)", actionOnValue: req.preparedAt && req.status !== "DRAFT" ? req.preparedAt : "" },
+    { actionBy: "Reviewed By", actionByName: req.reviewedAt ? req.reviewedByName ?? "" : "", actionOn: "Reviewed On (Date - Time)", actionOnValue: req.reviewedAt ?? "" },
+    { actionBy: "Approved By", actionByName: req.approvedAt ? req.approvedByName ?? "" : "", actionOn: "Approved On (Date - Time)", actionOnValue: req.approvedAt ?? "" },
+  ];
   const pending = req.approvers.filter((a) => a.status === "PENDING").map((a) => a.assigneeName).join(", ");
 
   const footer = (
@@ -172,8 +186,6 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
             <ReadonlyField label="Year" value={String(req.year)} />
             <ReadonlyField label="Department" value={req.departmentName} />
             <ReadonlyField label="Due By" value={day(req.dueBy)} />
-            <ReadonlyField label="Reviewed By" value={req.reviewedByName} />
-            <ReadonlyField label="Approved By" value={req.approvedByName} />
             {pending && <ReadonlyField label="Pending With" value={pending} wide />}
             {req.rejectReason && req.status === "DRAFT" && <ReadonlyField label="Last rejection" value={req.rejectReason} wide />}
           </ReadonlyGrid>
@@ -181,10 +193,10 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
         {tab === "lines" && (
           <TabBlock title="Lines" action={caps.edit ? <div className="flex gap-2"><Button size="sm" variant="outline-emerald" onClick={() => setDialog("addTopic")}>Add topic</Button><Button size="sm" variant="outline-emerald" onClick={() => setDialog("addDocument")}>Add SOP</Button></div> : undefined}>
             {caps.edit ? (
-              lines.length === 0 ? <p className="p-4 text-sm text-slate-500">No line yet. Add a topic or a SOP, or take the annual topics of the matrix.</p> : (
+              lines.length === 0 ? <p className="p-4 text-sm text-slate-500">No line yet. Add a Training Topic or a SOP, or take the annual topics of the matrix.</p> : (
                 <div className="space-y-2 p-3">
                   {lines.map((l, i) => (
-                    <div key={`${l.plannedMonth}|${l.topicId ?? l.documentId}`} className="grid grid-cols-1 items-center gap-3 rounded-lg border border-slate-200 p-3 md:grid-cols-[160px_1fr_auto]">
+                    <div key={`${l.plannedMonth}|${l.topicText ?? l.documentId}`} className="grid grid-cols-1 items-center gap-3 rounded-lg border border-slate-200 p-3 md:grid-cols-[160px_1fr_auto]">
                       <Input type="month" value={l.plannedMonth.slice(0, 7)} onChange={(e) => { setLines(lines.map((x, k) => (k === i ? { ...x, plannedMonth: `${e.target.value}-01` } : x))); setDirty(true); }} />
                       <div className="text-sm">{l.code ? `${l.code} — ` : ""}{l.title}</div>
                       <button type="button" className="text-xs text-red-600 hover:underline" onClick={() => { setLines(lines.filter((_x, k) => k !== i)); setDirty(true); }}>Remove</button>
@@ -197,6 +209,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
             )}
           </TabBlock>
         )}
+        {tab === "signatures" && <SignaturesTab records={signatureRecords} />}
         {tab === "audit" && <AuditTrailTab entityId={req.id} entityType="TRAINING_REQUIREMENT" />}
       </TrainingDetailLayout>
 
@@ -253,29 +266,28 @@ function NextPersonDialog({ requirementId, step, busy, onClose, onPick }: { requ
 }
 
 function AddTopicDialog({ year, lines, requirementId, departmentId, onClose, onAdd }: { year: number; lines: DraftLine[]; requirementId: string; departmentId: string; onClose: () => void; onAdd: (l: DraftLine) => void }) {
-  const [topics, setTopics] = useState<TrainingTopic[]>([]);
   const [suggestions, setSuggestions] = useState<TrainingSuggestion[]>([]);
-  const [id, setId] = useState("");
+  const [text, setText] = useState("");
   const [month, setMonth] = useState(`${year}-01`);
   useEffect(() => {
-    trainingMatrixApi.topics(undefined, true).then(setTopics).catch(() => setTopics([]));
     trainingRequirementsApi.suggestions(year, departmentId).then(setSuggestions).catch(() => setSuggestions([]));
   }, [year, departmentId, requirementId]);
-  const chosen = topics.find((t) => t.id === id);
-  const fromSuggestion = suggestions.filter((s) => !lines.some((l) => (s.topicId && l.topicId === s.topicId) || (s.documentId && l.documentId === s.documentId)));
+  const clean = text.trim().replace(/\s+/g, " ");
+  const same = (a?: string | null, b?: string | null) => !!a && !!b && a.trim().replace(/\s+/g, " ").toLowerCase() === b.trim().replace(/\s+/g, " ").toLowerCase();
+  const fromSuggestion = suggestions.filter((s) => !lines.some((l) => same(s.topicText, l.topicText) || (s.documentId && l.documentId === s.documentId)));
   return (
-    <FormModal isOpen onClose={onClose} title="Add a Topic" confirmText="Add" confirmDisabled={!chosen} size="md" onConfirm={() => chosen && onAdd({ plannedMonth: `${month}-01`, topicId: chosen.id, title: chosen.name, code: chosen.code })}>
+    <FormModal isOpen onClose={onClose} title="Add a Training Topic" confirmText="Add" confirmDisabled={!clean || lines.some((l) => same(l.topicText, clean))} size="md" onConfirm={() => onAdd({ plannedMonth: `${month}-01`, topicText: clean, title: clean, code: undefined })}>
       <div className="grid gap-4">
         <FormField label="Month" required><Input type="month" value={month} min={`${year}-01`} max={`${year}-12`} onChange={(e) => setMonth(e.target.value)} /></FormField>
-        <FormField label="Topic" required><Select value={id} onChange={setId} options={topics.map((t) => ({ label: `${t.code} — ${t.name}`, value: t.id }))} placeholder="Choose a topic" /></FormField>
+        <FormField label="Training Topic" required><Input value={text} maxLength={500} onChange={(e) => setText(e.target.value)} /></FormField>
         {fromSuggestion.length > 0 && (
           <div className="rounded-lg border border-slate-200 p-3 text-sm">
-            <div className="mb-2 font-medium">Annual topics of the matrix not yet planned this year</div>
+            <div className="mb-2 font-medium">Annual Training Topics of the matrix not yet planned this year</div>
             <ul className="space-y-1">
               {fromSuggestion.map((s) => (
-                <li key={`${s.topicId}|${s.documentId}`} className="flex items-center justify-between gap-2">
+                <li key={`${s.topicText}|${s.documentId}`} className="flex items-center justify-between gap-2">
                   <span>{s.code ? `${s.code} — ` : ""}{s.title}</span>
-                  <Button size="sm" variant="outline" onClick={() => onAdd({ plannedMonth: `${month}-01`, topicId: s.topicId, documentId: s.documentId, title: s.title, code: s.code })}>Add</Button>
+                  <Button size="sm" variant="outline" onClick={() => onAdd({ plannedMonth: `${month}-01`, topicText: s.topicText, documentId: s.documentId, title: s.title, code: s.code })}>Add</Button>
                 </li>
               ))}
             </ul>

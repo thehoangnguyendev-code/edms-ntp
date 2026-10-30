@@ -14,7 +14,7 @@ import { CompletionCellDrawer } from "../components/CompletionCellDrawer";
 
 /** Names of the six cell states. The server decides the state; these are only the labels (PLAN-TR-001 17.11, D-58 — QA may rename them). */
 const STATE_LABEL: Record<CompletionState, string> = {
-  NOT_REQUIRED: "Not required", REQUIRED: "Required", IN_PROGRESS: "In progress", QUALIFIED: "Qualified", UPDATE_NEEDED: "Update needed", DUE: "Annual training due",
+  NOT_REQUIRED: "Not required", REQUIRED: "Required", IN_PROGRESS: "In Progress", QUALIFIED: "Qualified", UPDATE_NEEDED: "Update needed", DUE: "Annual training due",
 };
 const STATE_COLOR: Record<CompletionState, "slate" | "red" | "blue" | "emerald" | "amber" | "orange"> = {
   NOT_REQUIRED: "slate", REQUIRED: "red", IN_PROGRESS: "blue", QUALIFIED: "emerald", UPDATE_NEEDED: "amber", DUE: "orange",
@@ -85,7 +85,7 @@ export function ComplianceCompletionTab({ departmentId, departmentFilter }: { de
           return [...old, ...res.data.filter((p) => !have.has(p.personId))];
         });
       })
-      .catch((e) => { if (token !== request.current) return; if (target === 1) { setResult(undefined); setPeople([]); } setError(trainingError(e) === "TRAINING_MATRIX_TOO_LARGE" ? "This matrix or Job Role is too large to show at once. Narrow it with the search." : trainingError(e)); })
+      .catch((e) => { if (token !== request.current) return; if (target === 1) { setResult(undefined); setPeople([]); } setError(trainingError(e) === "TRAINING_MATRIX_TOO_LARGE" ? "This matrix or Work Position is too large to show at once. Narrow it with the search." : trainingError(e)); })
       .finally(() => { if (token === request.current) { setLoading(false); setLoadingMore(false); } });
   }, [departmentId, positionId, search, status, gapsOnly, columnPage, view]);
   // Any change of what is asked for starts again from the first page.
@@ -99,7 +99,7 @@ export function ComplianceCompletionTab({ departmentId, departmentFilter }: { de
 
   const columnsInView = result?.columns ?? [];
 
-  const positionFilter: ReportSelectFilter = { id: "position", label: "Position", value: positionId, options: positions.map((p) => ({ label: `${p.name} (${p.peopleCount})`, value: p.id })), onChange: (v) => { setPositionId(v); setPage(1); setColumnPage(1); } };
+  const positionFilter: ReportSelectFilter = { id: "position", label: "Work Position", value: positionId, options: positions.map((p) => ({ label: `${p.name} (${p.peopleCount})`, value: p.id })), onChange: (v) => { setPositionId(v); setPage(1); setColumnPage(1); } };
   const filters: ReportSelectFilter[] = view === "rows" ? [departmentFilter, positionFilter] : [
     departmentFilter,
     positionFilter,
@@ -121,7 +121,7 @@ export function ComplianceCompletionTab({ departmentId, departmentFilter }: { de
       {result && !result.hasEffectiveMatrix ? (
         <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">This department has no effective training matrix, so there is nothing to measure yet.</p>
       ) : positions.length === 0 && !error ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">The effective matrix has no Job Role yet.</p>
+        <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">The effective matrix has no Work Position yet.</p>
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -168,13 +168,13 @@ export function ComplianceCompletionTab({ departmentId, departmentFilter }: { de
                   </div>
                 </div>
               ))}
-              {result && people.length === 0 && !loading && <p className="p-3 text-sm text-slate-500">No person holds this Job Role, or nobody matches the filters.</p>}
+              {result && people.length === 0 && !loading && <p className="p-3 text-sm text-slate-500">No person holds this Work Position, or nobody matches the filters.</p>}
               <LoadMoreSentinel onVisible={loadMore} active={Boolean(result && page < result.pagination.totalPages)} />
               {loadingMore && <p className="py-2 text-center text-xs text-slate-500">Loading more people…</p>}
             </div>
             <div className="hidden space-y-3 md:block">
               {result && people.length === 0 && !loading ? (
-                <TableEmptyState title="Nothing to show" description="No person holds this Job Role, or nobody matches the filters." />
+                <TableEmptyState title="Nothing to show" description="No person holds this Work Position, or nobody matches the filters." />
               ) : (
                 <CompletionHeatmap people={people} columns={columnsInView} firstNo={1} loading={loading} loadingMore={loadingMore} onNearEnd={loadMore} onPick={(person, column, cell) => setPicked({ person, column, cell })} />
               )}

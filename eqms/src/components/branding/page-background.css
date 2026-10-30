@@ -1,0 +1,8 @@
+html[data-main-background="custom"] #main-scroll-container { background: var(--main-page-background); }
+html[data-auth-background="custom"] [data-auth-layout] { background: var(--auth-page-background); }
+html[data-auth-background="custom"] [data-auth-glow] { display: none; }
+html[data-auth-background="custom"] [data-auth-maintenance] > div:not([data-auth-glow]):not([data-auth-video]) { background: white; border-radius: 1rem; padding: 1rem; }
+/* Authentication text remains readable even when a dark background was selected on a phone. */
+@media (max-width: 639px) {
+  html[data-auth-background="custom"] [data-auth-card] { background-color: white; border-radius: 1rem; }
+}

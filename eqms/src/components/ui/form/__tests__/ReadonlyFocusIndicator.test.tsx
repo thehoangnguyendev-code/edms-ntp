@@ -10,7 +10,7 @@ function Fixture() {
   return <>
     <ReadonlyFocusIndicator />
     <button onClick={() => navigate('/next')}>Next page</button>
-    <input aria-label="Readonly status" readOnly disabled value="In progress" />
+    <input aria-label="Readonly status" readOnly disabled value="In Progress" />
     <textarea aria-label="Readonly note" readOnly disabled value="Note" />
     <input aria-label="Editable name" defaultValue="Name" />
     <input aria-label="Busy input" disabled value="Busy" />
@@ -21,7 +21,7 @@ describe('UI-only focus border on disabled readonly fields', () => {
   it('marks the clicked field without enabling it, focusing it or calling input handlers', () => {
     const change = vi.fn();
     const click = vi.fn();
-    render(<MemoryRouter><ReadonlyFocusIndicator /><input aria-label="Status" value="In progress" disabled readOnly onChange={change} onClick={click} /></MemoryRouter>);
+    render(<MemoryRouter><ReadonlyFocusIndicator /><input aria-label="Status" value="In Progress" disabled readOnly onChange={change} onClick={click} /></MemoryRouter>);
     const field = screen.getByRole('textbox');
     fireEvent.pointerDown(field, { button: 0 });
     fireEvent.focusIn(field.parentElement!);
@@ -29,7 +29,7 @@ describe('UI-only focus border on disabled readonly fields', () => {
     expect(field).toBeDisabled();
     expect(field).toHaveAttribute('readonly');
     expect(field).not.toHaveFocus();
-    expect(field).toHaveValue('In progress');
+    expect(field).toHaveValue('In Progress');
     expect(change).not.toHaveBeenCalled();
     expect(click).not.toHaveBeenCalled();
   });

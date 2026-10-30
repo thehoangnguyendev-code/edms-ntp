@@ -110,6 +110,7 @@ export interface KnowledgeBrowseResult {
 }
 
 export interface KnowledgeBrowseOptions {
+  search?: string;
   page?: number;
   limit?: number;
   sortBy?: string;
@@ -162,6 +163,8 @@ export const knowledgeApi = {
       paramsSerializer: { indexes: null },
     })).data,
   search: async (q: string) => (await api.get<KnowledgePortalDocument[]>(`${PORTAL}/search`, { params: { q } })).data,
+  queryDocuments: async (options: KnowledgeBrowseOptions & { collection?: string }) =>
+    (await api.get<KnowledgeBrowseResult>(`${PORTAL}/documents`, { params: options })).data,
   recordView: async (documentId: string) => { await api.post(`${PORTAL}/documents/${documentId}/view`); },
   giveFeedback: async (documentId: string, helpful: boolean) => { await api.put(`${PORTAL}/documents/${documentId}/feedback`, { helpful }); },
   setFeatured: async (documentId: string, featured: boolean) => {

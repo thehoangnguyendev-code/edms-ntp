@@ -28,23 +28,23 @@ public class TrainingStore {
     }
 
     public Optional<Map<String, Object>> activity(UUID id) {
-        List<Map<String, Object>> rows = jdbc.queryForList("select * from training_activities where id=?", id);
+        List<Map<String, Object>> rows = jdbc.queryForList("select a.*, training_activity_topics(a.id) as training_topics from training_activities a where id=?", id);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
     }
 
     /** The row is locked until the end of the transaction: used before a status change. */
     public Optional<Map<String, Object>> activityForUpdate(UUID id) {
-        List<Map<String, Object>> rows = jdbc.queryForList("select * from training_activities where id=? for update", id);
+        List<Map<String, Object>> rows = jdbc.queryForList("select a.*, training_activity_topics(a.id) as training_topics from training_activities a where id=? for update", id);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
     }
 
     public Optional<Map<String, Object>> byRevision(UUID revisionId) {
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "select * from training_activities where revision_id=? and parent_activity_id is null and status <> 'CANCELLED'", revisionId);
+                "select a.*, training_activity_topics(a.id) as training_topics from training_activities a where revision_id=? and parent_activity_id is null and status <> 'CANCELLED'", revisionId);
         if (rows.isEmpty()) {
             // A revision of a related document shares the Training Number (and the activity) of the document it goes with: the link is on the revision.
             rows = jdbc.queryForList("""
-                select a.* from training_activities a join document_revisions r on r.training_activity_id = a.id
+                select a.*, training_activity_topics(a.id) as training_topics from training_activities a join document_revisions r on r.training_activity_id = a.id
                  where r.id = ? and a.parent_activity_id is null and a.status <> 'CANCELLED'
                 """, revisionId);
         }
@@ -54,7 +54,7 @@ public class TrainingStore {
     /** The activity of a new document that is waiting for its first revision. */
     public Optional<Map<String, Object>> pendingByDocument(UUID documentId) {
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "select * from training_activities where document_id=? and revision_id is null and parent_activity_id is null and status <> 'CANCELLED'", documentId);
+                "select a.*, training_activity_topics(a.id) as training_topics from training_activities a where document_id=? and revision_id is null and parent_activity_id is null and status <> 'CANCELLED'", documentId);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
     }
 
@@ -67,6 +67,11 @@ public class TrainingStore {
         }
         jdbc.update("insert into training_events(id, object_type, object_id, activity_id, event_type, payload, actor_user_id) values (?,?,?,?,?,cast(? as jsonb),?)",
                 UUID.randomUUID(), objectType, objectId, activityId, type, body, actorId);
+    }
+
+    /** One Audit Trail entry about a training requirement (the requirement is the object; its number is the entity code). */
+    public void auditRequirement(UserAccount actor, String requestNo, UUID requirementId, String action, String from, String to, String comment) {
+        audit.logAs(actor, "TRAINING_REQUIREMENT", requestNo, requirementId, action, from, to, comment);
     }
 
     /** One Audit Trail entry about an activity; the entity id is never empty (the Audit Trail refuses an entry without it). */

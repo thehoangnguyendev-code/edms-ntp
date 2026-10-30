@@ -72,6 +72,25 @@ public class AuditTrailController {
         return ResponseEntity.ok(auditTrailService.listUsers(module, documentNumber, entityId));
     }
 
+    @GetMapping("/entity/{module}/{entityId}/paged")
+    public ResponseEntity<PageResponse<AuditTrailRecordResponse>> getEntityPage(
+            @PathVariable String module, @PathVariable UUID entityId,
+            @RequestParam(defaultValue = "false") boolean includeChildren,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "All") String action,
+            @RequestParam(required = false) String user,
+            @RequestParam(required = false) Boolean eSignatureOnly,
+            @RequestParam(required = false) String dateFrom,
+            @RequestParam(required = false) String dateTo,
+            @RequestParam(defaultValue = "timestamp") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit
+    ) {
+        return ResponseEntity.ok(auditTrailService.getEntityPage(module, entityId, includeChildren, search, action,
+                user, eSignatureOnly, dateFrom, dateTo, sortBy, sortDirection, page, limit));
+    }
+
     @GetMapping("/export")
     public ResponseEntity<StreamingResponseBody> export(
             @RequestParam(required = false) String search,

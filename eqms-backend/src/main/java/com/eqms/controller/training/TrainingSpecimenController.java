@@ -2,7 +2,6 @@ package com.eqms.controller.training;
 
 import com.eqms.auth.CurrentUserService;
 import com.eqms.service.training.TrainingSpecimenService;
-import com.eqms.service.training.TrainingSpecimenService.*;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -41,16 +40,9 @@ public class TrainingSpecimenController {
         return ResponseEntity.ok(specimens.revisions(users.requireCurrentUser(), id, search, sortBy, sortDirection, page, limit));
     }
 
-    @GetMapping("/eligible-confirmers")
-    public ResponseEntity<?> eligible(@RequestParam(required = false) UUID personId, @RequestParam(required = false) String search,
-                                      @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {
-        return ResponseEntity.ok(specimens.eligibleConfirmers(users.requireCurrentUser(), personId, search, page, limit));
-    }
-
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> upload(@RequestPart("file") MultipartFile file, @RequestPart(value = "file2", required = false) MultipartFile file2, @RequestParam(required = false) UUID personId, @RequestParam UUID confirmerId,
-                                    @RequestParam(required = false) String reason) {
-        return ResponseEntity.ok(specimens.upload(users.requireCurrentUser(), personId, file, file2, confirmerId, reason));
+    public ResponseEntity<?> upload(@RequestPart("file") MultipartFile file, @RequestPart(value = "file2", required = false) MultipartFile file2, @RequestParam(required = false) UUID personId, @RequestParam(required = false) String reason) {
+        return ResponseEntity.ok(specimens.upload(users.requireCurrentUser(), personId, file, file2, reason));
     }
 
     /** The specimen signature in force of a person, to open it beside a scan; an empty answer when there is none. */
@@ -65,10 +57,4 @@ public class TrainingSpecimenController {
         Map<String, Object> image = specimens.image(users.requireCurrentUser(), id, which);
         return ResponseEntity.ok().contentType(MediaType.parseMediaType((String) image.get("contentType"))).cacheControl(CacheControl.noStore()).body((byte[]) image.get("bytes"));
     }
-
-    @PostMapping("/{id}/confirm")
-    public ResponseEntity<?> confirm(@PathVariable UUID id, @RequestBody SignRequest request) { return ResponseEntity.ok(specimens.confirm(users.requireCurrentUser(), id, request)); }
-
-    @PostMapping("/{id}/reject")
-    public ResponseEntity<?> reject(@PathVariable UUID id, @RequestBody RejectRequest request) { return ResponseEntity.ok(specimens.reject(users.requireCurrentUser(), id, request)); }
 }

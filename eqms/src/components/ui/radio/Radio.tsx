@@ -84,7 +84,7 @@ export const Radio: React.FC<RadioProps> = ({
             checked
               ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500/20'
               : 'border-slate-200 bg-white hover:border-emerald-400',
-          disabled && 'cursor-not-allowed hover:border-slate-200 bg-slate-100 text-slate-600',
+          disabled && 'cursor-default hover:border-slate-200',
           className
         )}
       >
@@ -95,7 +95,8 @@ export const Radio: React.FC<RadioProps> = ({
           value={value}
           checked={checked}
           onChange={handleChange}
-          disabled={disabled}
+          aria-disabled={disabled || undefined}
+          tabIndex={disabled ? -1 : undefined}
           className="sr-only peer"
         />
         <div className="flex-1">
@@ -117,7 +118,7 @@ export const Radio: React.FC<RadioProps> = ({
             checked
               ? 'bg-white border-emerald-600'
               : 'bg-white border-slate-200 hover:border-emerald-400',
-            disabled && 'bg-slate-100 border-slate-200 hover:border-slate-200'
+            disabled && !checked && 'hover:border-slate-200'
           )}
         >
           {checked && (
@@ -138,10 +139,12 @@ export const Radio: React.FC<RadioProps> = ({
         value={value}
         checked={checked}
         onChange={handleChange}
-        disabled={disabled}
-          className={cn(
+        onClick={(e) => { if (disabled) e.preventDefault(); }}
+        aria-disabled={disabled || undefined}
+        tabIndex={disabled ? -1 : undefined}
+        className={cn(
           'h-4 w-4 border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600 transition-all shrink-0',
-          disabled && 'cursor-not-allowed opacity-60 accent-slate-400'
+          disabled && 'cursor-default'
         )}
       />
       {(label || description) && (
@@ -151,7 +154,7 @@ export const Radio: React.FC<RadioProps> = ({
               htmlFor={radioId}
               className={cn(
                 'block text-xs sm:text-sm font-medium text-slate-700 cursor-pointer',
-                disabled && 'cursor-not-allowed text-slate-600'
+                disabled && 'cursor-default'
               )}
             >
               {label}

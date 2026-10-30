@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
+import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button/Button";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
@@ -10,7 +10,9 @@ import type { TabItem } from "@/components/ui/tabs/TabNav";
 import {
   trainingActivitiesApi,
   trainingError,
+  trainingFilesApi,
   type TrainingKind,
+  type TrainingPerson,
 } from "@/services/api/trainingActivities";
 import {
   EXTERNAL_TYPE_HINT,
@@ -23,7 +25,7 @@ import {
   ReadonlyField,
   TrainingDetailLayout,
 } from "../shared/TrainingDetailLayout";
-import { TrainingDateField } from "../shared/TrainingDateField";
+import { TrainingDateField, DATE_HINT } from "../shared/TrainingDateField";
 import {
   ParticipantsDraftPanel,
   SessionPanel,
@@ -31,6 +33,9 @@ import {
   type SessionDraft,
 } from "./components/TrainingActivityPlanning";
 import { useTrainingBack } from "../shared/useTrainingBack";
+import { TrainingMaterialsBoard, type MaterialItem } from "./components/TrainingMaterialsBoard";
+import { useBranding } from "@/components/branding/BrandLogo";
+import { useAuth } from "@/contexts/AuthContext";
 
 const CREATE_KINDS: TrainingKind[] = [
   "INITIAL",
@@ -42,11 +47,14 @@ const STEPS = [
   "New",
   "Planned",
   "Notified",
-  "In progress",
+  "In Progress",
   "Pending QA Confirmation",
   "Completed",
 ];
-const LATER = ["materials", "assessment", "approvers"];
+const LATER = ["assessment", "signatures"];
+
+/** A material added on this screen: it waits here and is saved with the activity (the same board as in planning, so the person meets one layout). */
+type StagedMaterial = { id: string; title: string; file?: File; url?: string };
 
 /** A new training activity as a page with tabs, like Document Details. Basic Information and the sessions are filled here; the Training Number is issued when the activity is saved, and the other tabs open on the next screen. */
 export function TrainingActivityCreatePage() {
@@ -55,26 +63,31 @@ export function TrainingActivityCreatePage() {
   const { showToast } = useToast();
   const [tab, setTab] = useState("basic");
   const [busy, setBusy] = useState(false);
+  // "Create a Training" from the initial training of a new employee: the kind Initial, the topic of the session and the employee are filled in
+  const [prefill] = useSearchParams();
+  const prefillIds = prefill.getAll("person");
+  const prefillPeople: TrainingPerson[] = prefillIds.map((id, i) => ({ id, fullName: prefill.getAll("personName")[i] ?? "", employeeCode: prefill.getAll("personCode")[i] || null, department: null, position: null, businessUnit: null }) as TrainingPerson);
   const [form, setForm] = useState({
-    kind: "UNPLANNED",
+    kind: prefill.get("kind") === "INITIAL" ? "INITIAL" : "UNPLANNED",
     kindReason: "OTHER",
     externalType: "ACTIVE",
-    trainingTitle: "",
     dueDate: "",
-    remarks: "",
+    remarks: prefill.get("remarks") ?? "",
     trainingUnitName: "",
     vendorRef: "",
   });
   const [session, setSession] = useState<SessionDraft | null>(null);
   const [people, setPeople] = useState<ParticipantsDraft | null>(null);
+  const [staged, setStaged] = useState<StagedMaterial[]>([]);
+  const { trainingMaterialsLayout } = useBranding();
+  const { user } = useAuth();
 
   const tabs: TabItem[] = [
     { id: "basic", label: "General Information" },
-    { id: "sessions", label: "Sessions" },
     { id: "participants", label: "Participants" },
     { id: "materials", label: "Training Materials" },
     { id: "assessment", label: "Assessment" },
-    { id: "approvers", label: "Approvers" },
+    { id: "signatures", label: "Signatures" },
   ];
 
   const save = async () => {
@@ -91,7 +104,6 @@ export function TrainingActivityCreatePage() {
           form.kind === "EXTERNAL"
             ? form.vendorRef.trim() || undefined
             : undefined,
-        trainingTitle: form.trainingTitle.trim(),
         dueDate: form.dueDate || undefined,
         remarks: form.remarks.trim() || undefined,
       });
@@ -140,10 +152,24 @@ export function TrainingActivityCreatePage() {
         });
       }
     }
+    let materialsFailed = 0;
+    for (const m of staged) {
+      try {
+        if (m.file) await trainingFilesApi.uploadMaterial(created.id, m.file, m.title || undefined, "CONTENT");
+        else await trainingFilesApi.addLink(created.id, m.title, m.url ?? "");
+      } catch (e) {
+        materialsFailed += 1;
+        showToast({
+          type: "error",
+          title: `The material "${m.title || m.file?.name || m.url}" was not added`,
+          message: trainingError(e),
+        });
+      }
+    }
     showToast({
       type: "success",
       title: "Training activity created",
-      message: `${created.trainingNumber}${failed ? ` (${failed} session not added: add it on the next screen)` : ""}`,
+      message: `${created.trainingNumber}${failed ? ` (${failed} session not added: add it on the next screen)` : ""}${materialsFailed ? ` (${materialsFailed} material not added: add it on the next screen)` : ""}`,
     });
     setBusy(false);
     navigate(`/training-management/activities/${created.id}/edit`, {
@@ -159,8 +185,7 @@ export function TrainingActivityCreatePage() {
       className="whitespace-nowrap"
       loading={busy}
       disabled={
-        !form.trainingTitle.trim() ||
-        (form.kind === "EXTERNAL" && !form.trainingUnitName.trim())
+        !session || !form.remarks.trim() || (form.kind === "EXTERNAL" && !form.trainingUnitName.trim())
       }
       onClick={() => void save()}
     >
@@ -188,14 +213,10 @@ export function TrainingActivityCreatePage() {
     >
       {tab === "basic" && (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-          <ReadonlyField label="Training Number" value="">
-            <input
-              type="text"
-              readOnly
-              value="Auto-generated after Save"
-              className={CONTROL_STATE_CLASSES.readonlyField}
-            />
-          </ReadonlyField>
+          <ReadonlyField label="Training Number" value="" placeholder="Auto-generated after Save" />
+          <ReadonlyField label="Department" value={user?.department ?? ""} />
+          <ReadonlyField label="Opened By" value={user?.fullName ?? ""} />
+          <ReadonlyField label="Created Time" value="" placeholder="Auto-generated after Save" />
           <FormField label="Type" required>
             <Select
               value={form.kind}
@@ -260,25 +281,19 @@ export function TrainingActivityCreatePage() {
               </FormField>
             </>
           )}
+        </div>
+      )}
+      {/* The session and the people stay mounted while another tab is open, so what was typed is not lost when the tab is changed. */}
+      <div className={tab === "basic" ? "mt-3 space-y-3 md:mt-4 md:space-y-4" : "hidden"}>
+        <SessionPanel
+          onDraft={setSession}
+          dueDate={<TrainingDateField label="Due Date" hint={DATE_HINT.due} value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />}
+          external={form.kind === "EXTERNAL"}
+          initialTopic={prefill.get("topic") ?? undefined}
+        />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
           <div className="md:col-span-2">
-            <FormField label="Training Title" required>
-              <Input
-                value={form.trainingTitle}
-                maxLength={255}
-                placeholder="e.g., GMP refresher for the packaging department"
-                onChange={(e) =>
-                  setForm({ ...form, trainingTitle: e.target.value })
-                }
-              />
-            </FormField>
-          </div>
-          <TrainingDateField
-            label="Due date"
-            value={form.dueDate}
-            onChange={(v) => setForm({ ...form, dueDate: v })}
-          />
-          <div className="md:col-span-2">
-            <FormField label="Remarks">
+            <FormField label="Description" required>
               <Textarea
                 rows={3}
                 value={form.remarks}
@@ -292,32 +307,37 @@ export function TrainingActivityCreatePage() {
             training.
           </p>
         </div>
-      )}
-      {/* The session and the people stay mounted while another tab is open, so what was typed is not lost when the tab is changed. */}
-      <div className={tab === "sessions" ? undefined : "hidden"}>
-        <SessionPanel
-          onDraft={setSession}
-          external={form.kind === "EXTERNAL"}
-        />
       </div>
       <div className={tab === "participants" ? undefined : "hidden"}>
         {!session && (
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-6 text-center text-sm text-slate-600">
-            The people are added to the session. Complete the session first (tab
-            Sessions): the Topic, the Instructor and the Physical Location, or
+            The people are added to the session. Complete the session first (General
+            Information): the Topic, the Instructor and the Physical Location, or
             the Platform and the Meeting Link.
           </div>
         )}
         <div className={session ? undefined : "hidden"}>
-          <ParticipantsDraftPanel onDraft={setPeople} />
+          <ParticipantsDraftPanel onDraft={setPeople} initialPeople={prefillPeople} initialReason={prefillPeople.length ? prefill.get("reason") ?? "Training required by the matrix" : undefined} />
         </div>
       </div>
+      {tab === "materials" && (
+        <TrainingMaterialsBoard
+          layout={trainingMaterialsLayout === "TILES" ? "TILES" : "TABLE"}
+          items={staged.map((m): MaterialItem => ({ id: m.id, title: m.title || m.file?.name || m.url || "", linkUrl: m.url ?? null, fileName: m.file?.name ?? null, sizeBytes: m.file?.size ?? null, staged: true }))}
+          canAdd
+          canRemove
+          emptyText="No material yet. A file (PDF, slides, video) or a link can be added here and is saved with the activity; more can be added until the content is reviewed."
+          onAddFile={(file, title) => { setStaged((old) => [...old, { id: crypto.randomUUID(), title, file }]); return true; }}
+          onAddLink={(title, url) => { setStaged((old) => [...old, { id: crypto.randomUUID(), title, url }]); return true; }}
+          onRemove={(m) => setStaged((old) => old.filter((x) => x.id !== m.id))}
+        />
+      )}
       {LATER.includes(tab) && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-6 text-center text-sm text-slate-600">
           This tab opens after you save the activity. Press{" "}
           <span className="font-medium">Save and Continue</span>: the Training
           Number is issued and you continue on the next screen, where you add
-          the materials, the exam and the people who review and approve.
+          the exam and the people who review and approve.
         </div>
       )}
     </TrainingDetailLayout>

@@ -38,7 +38,7 @@ export const SessionTimeoutGuard: React.FC = () => {
           let cached: Record<string, any> = {};
           try { cached = JSON.parse(window.localStorage.getItem(SECURITY_CONFIG_STORAGE_KEY) || "{}"); } catch { cached = {}; }
           const security = await settingsApi.getSecurityConfiguration();
-          config = { ...cached, security: { ...(cached.security ?? {}), sessionTimeoutMinutes: security.sessionTimeoutMinutes } };
+          config = { ...cached, security: { ...(cached.security ?? {}), sessionTimeoutMinutes: security.sessionTimeoutMinutes, sessionTimeoutEnabled: security.sessionTimeoutEnabled } };
         }
         if (!isActive) return;
         window.localStorage.setItem(SECURITY_CONFIG_STORAGE_KEY, JSON.stringify(config));
@@ -55,9 +55,14 @@ export const SessionTimeoutGuard: React.FC = () => {
         void hydrateSecurityConfig();
       }
     });
+    const refreshOnVisible = () => { if (!document.hidden) void hydrateSecurityConfig(); };
+    document.addEventListener('visibilitychange', refreshOnVisible);
+    const refreshTimer = window.setInterval(refreshOnVisible, 60_000);
     return () => {
       isActive = false;
       unsubscribeRealtime();
+      document.removeEventListener('visibilitychange', refreshOnVisible);
+      window.clearInterval(refreshTimer);
     };
   }, [isAuthenticated, user?.permissions]);
 
@@ -102,6 +107,10 @@ export const SessionTimeoutGuard: React.FC = () => {
     }
     return 30;
   });
+  const [sessionTimeoutEnabled, setSessionTimeoutEnabled] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(SECURITY_CONFIG_STORAGE_KEY) || '{}')?.security?.sessionTimeoutEnabled !== false; }
+    catch { return true; }
+  });
 
   useEffect(() => {
     const handleConfigUpdated = () => {
@@ -109,6 +118,7 @@ export const SessionTimeoutGuard: React.FC = () => {
         const raw = localStorage.getItem(SECURITY_CONFIG_STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
+          setSessionTimeoutEnabled(parsed?.security?.sessionTimeoutEnabled !== false);
           const val = Number(parsed?.security?.sessionTimeoutMinutes);
           if (Number.isFinite(val) && val >= 1 && val <= 1440) {
             setSessionTimeoutMinutes(val);
@@ -123,7 +133,7 @@ export const SessionTimeoutGuard: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !sessionTimeoutEnabled) {
       return;
     }
     const checkInactivity = setInterval(() => {
@@ -137,7 +147,7 @@ export const SessionTimeoutGuard: React.FC = () => {
       }
     }, 5000);
     return () => clearInterval(checkInactivity);
-  }, [isAuthenticated, sessionTimeoutMinutes]);
+  }, [isAuthenticated, sessionTimeoutMinutes, sessionTimeoutEnabled]);
 
   useEffect(() => {
     if (!isAuthenticated) {

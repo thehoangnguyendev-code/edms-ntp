@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { useDebounce } from '@/hooks';
 import { useNavigate } from 'react-router-dom';
 import { Workflow } from 'lucide-react';
 import { dashboardApi } from '@/services/api/dashboard';
@@ -11,13 +12,16 @@ import { SystemMonitoringSection } from './SystemMonitoringSection';
 import { EffectiveByTypePanel } from '../shared/EffectiveByTypePanel';
 import { PendingWorkPanel } from '../shared/PendingWorkPanel';
 import { useDashboardResource } from '../shared/useDashboardResource';
+import { DashboardWidgets } from '../shared/DashboardWidgets';
 
 const dash = '—';
 
 export function AdminDashboardView() {
   const navigate = useNavigate();
   const summary = useDashboardResource(() => dashboardApi.getSummary(), []);
-  const tasks = useDashboardResource(() => dashboardApi.getPendingWorkflowActions(), []);
+  const [taskQuery, setTaskQuery] = useState('');
+  const taskSearch = useDebounce(taskQuery, 300);
+  const tasks = useDashboardResource(() => dashboardApi.getPendingWorkflowActions(taskSearch), [taskSearch]);
   const stats = useDashboardResource(() => dashboardApi.getAdminStats(), []);
 
   const st = stats.data;
@@ -41,7 +45,8 @@ export function AdminDashboardView() {
         </div>
       </header> */}
 
-      <KpiStrip
+      <DashboardWidgets widgets={[
+      { id: 'admin-kpis', label: 'Overview', width: 'full', content: <><KpiStrip
         label="Users, documents and audit totals"
         cells={[
           { title: 'Total users', accent: '#10b981', value: st ? st.totalUsers : dash, chip: st ? `${activeRate}% active` : undefined, footValue: st ? st.activeUsers : dash, footLabel: 'Active users' },
@@ -50,10 +55,9 @@ export function AdminDashboardView() {
           { title: 'Audit events (30 days)', accent: '#6ee7b7', value: st ? st.auditEventsLast30Days : dash, footValue: st ? auditPeak.value : dash, footLabel: st ? `Peak day · ${auditPeak.label}` : 'Peak day' },
         ]}
       />
-      {stats.error && <PanelError message="Administrative statistics could not be loaded." onRetry={stats.reload} />}
+      {stats.error && <PanelError message="Administrative statistics could not be loaded." onRetry={stats.reload} />}</> },
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card aria-label="Audit activity">
+      { id: 'audit-activity', label: 'Audit activity', width: 'half', content: <Card aria-label="Audit activity">
           <CardHeader title="Audit activity" subtitle={st ? `${st.auditEventsLast30Days.toLocaleString()} events in the last 30 days, per UTC day` : 'Audit events per day'} />
           {st ? (
             auditSeries.some((point) => point.value > 0)
@@ -62,9 +66,9 @@ export function AdminDashboardView() {
           ) : (
             <p className="flex h-[232px] items-center justify-center text-sm text-slate-400">{stats.loading ? 'Loading…' : 'Unavailable'}</p>
           )}
-        </Card>
+        </Card> },
 
-        <Card aria-label="Revision pipeline">
+      { id: 'revision-pipeline', label: 'Revision pipeline', width: 'half', content: <Card aria-label="Revision pipeline">
           <CardHeader title="Revision pipeline" subtitle={st ? `${inPipeline.toLocaleString()} in review, approval or training · ${revision('READY_FOR_PUBLISHING').toLocaleString()} ready to publish` : 'Revisions waiting in each stage'} />
           {st ? (
             <GrowthColumns
@@ -77,23 +81,23 @@ export function AdminDashboardView() {
           ) : (
             <p className="flex h-[250px] items-center justify-center text-sm text-slate-400">{stats.loading ? 'Loading…' : 'Unavailable'}</p>
           )}
-        </Card>
-      </div>
+        </Card> },
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <EffectiveByTypePanel />
-        <DocumentsByStatusPanel stats={stats} />
-      </div>
+      { id: 'effective-by-type', label: 'Effective documents by type', width: 'half', content: <EffectiveByTypePanel /> },
+      { id: 'documents-by-status', label: 'Documents by status', width: 'half', content: <DocumentsByStatusPanel stats={stats} /> },
 
-      <SystemMonitoringSection />
+      { id: 'system-monitoring', label: 'System monitoring', width: 'full', content: <SystemMonitoringSection /> },
 
-      <PendingWorkPanel
+      { id: 'pending-work', label: 'Pending work', width: 'full', content: <PendingWorkPanel
+        query={taskQuery}
+        onQueryChange={setTaskQuery}
         tasks={tasks}
         work={work}
         awaitingAction={awaitingAction}
         onOpenTask={(task) => navigate(`/documents/${task.documentId}/revisions/${task.revisionId}`)}
         onOpenAll={() => navigate('/documents/revisions')}
-      />
+      /> },
+      ]} />
     </div>
   );
 }

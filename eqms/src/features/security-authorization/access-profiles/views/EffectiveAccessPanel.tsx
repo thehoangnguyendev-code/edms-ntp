@@ -9,6 +9,7 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { EmptyState } from "@/components/ui/page/EmptyState";
 import { securityApi, type EffectiveAccessResponse, type EffectiveAccessRow } from "@/services/api/security";
 import { EffectiveActionRow } from "./EffectiveActionRow";
+import { useDebounce } from "@/hooks";
 
 interface EffectiveAccessPanelProps {
   accessProfileId: string;
@@ -39,6 +40,7 @@ export const EffectiveAccessPanel: React.FC<EffectiveAccessPanelProps> = ({ acce
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>("ALL");
+  const debouncedSearch = useDebounce(search, 300);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(["DOCUMENT_REVISION", "DOCUMENT"]));
   const shouldReduceMotion = useReducedMotion();
   const expandTransition = useMemo(
@@ -51,33 +53,21 @@ export const EffectiveAccessPanel: React.FC<EffectiveAccessPanelProps> = ({ acce
     setLoading(true);
     setError(null);
 
-    securityApi.getEffectiveAccess(accessProfileId, documentTypeId)
+    securityApi.getEffectiveAccess(accessProfileId, documentTypeId, { search: debouncedSearch || undefined, outcome: outcomeFilter })
       .then((response) => { if (!cancelled) setData(response); })
       .catch(() => { if (!cancelled) setError("Failed to load effective access."); })
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [accessProfileId, documentTypeId]);
+  }, [accessProfileId, documentTypeId, debouncedSearch, outcomeFilter]);
 
   const summary = useMemo(() => {
-    const rows = data?.rows ?? [];
-    const allowed = rows.filter((row) => row.allowed).length;
-    return { total: rows.length, allowed, denied: rows.length - allowed };
+    return data?.summary ?? { total: 0, allowed: 0, denied: 0 };
   }, [data]);
 
   const groups = useMemo(() => {
     if (!data) return [];
-    const query = search.trim().toLowerCase();
-    const filtered = data.rows.filter((row) => {
-      const matchesSearch = !query ||
-        row.actionLabel.toLowerCase().includes(query) ||
-        row.actionCode.toLowerCase().includes(query) ||
-        row.statusLabel.toLowerCase().includes(query) ||
-        (row.requiredPermissionCode?.toLowerCase().includes(query) ?? false);
-      const matchesOutcome = outcomeFilter === "ALL" ||
-        (outcomeFilter === "ALLOWED" ? row.allowed : !row.allowed);
-      return matchesSearch && matchesOutcome;
-    });
+    const filtered = data.rows;
 
     const byType = new Map<string, EffectiveAccessRow[]>();
     filtered.forEach((row) => {
@@ -86,7 +76,7 @@ export const EffectiveAccessPanel: React.FC<EffectiveAccessPanelProps> = ({ acce
       byType.set(row.objectType, list);
     });
     return Array.from(byType.entries());
-  }, [data, outcomeFilter, search]);
+  }, [data]);
 
   const toggleSection = (key: string) => {
     setOpenSections((previous) => {
@@ -97,7 +87,7 @@ export const EffectiveAccessPanel: React.FC<EffectiveAccessPanelProps> = ({ acce
     });
   };
 
-  if (loading) return <SectionLoading text="Loading effective access..." />;
+  if (loading && !data) return <SectionLoading text="Loading effective access..." />;
   if (error) return <EmptyState title="Could not load" description={error} />;
   if (!data) return null;
 

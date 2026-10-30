@@ -77,4 +77,15 @@ class DashboardServiceTest {
     private DashboardService service() {
         return new DashboardService(documentRepository, revisionRepository, auditLogRepository, userRepository);
     }
+
+    @Test void pendingWorkSearchIsBoundToCurrentUserAndLimitedAfterRepositoryFiltering() {
+        UUID actor = UUID.randomUUID();
+        var principal = new AuthenticatedUser(actor, UUID.randomUUID(), "user", "USER", Set.of());
+        when(revisionRepository.findMyPendingTasksMatching(eq(actor), anySet(), anySet(), eq("literal!%!_!!"), org.mockito.ArgumentMatchers.any(org.springframework.data.domain.Pageable.class))).thenReturn(List.of());
+        assertThat(service().getMyTasks(principal, "literal%_!")).isEmpty();
+        var page = org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+        verify(revisionRepository).findMyPendingTasksMatching(eq(actor), anySet(), anySet(), eq("literal!%!_!!"), page.capture());
+        assertThat(page.getValue().getPageSize()).isEqualTo(20);
+        assertThat(page.getValue().getPageNumber()).isZero();
+    }
 }

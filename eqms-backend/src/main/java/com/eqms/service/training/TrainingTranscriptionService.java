@@ -71,6 +71,31 @@ public class TrainingTranscriptionService {
         return rows;
     }
 
+    @Transactional(readOnly = true)
+    public Map<String, Object> listPage(UserAccount actor, UUID activityId, int page, int limit) {
+        access.require(actor, "training.activity.view", "training.activity.organize", "training.activity.conduct", "training.paper.verify");
+        access.requireScope(actor, jdbc.queryForObject("select organizer_department_id from training_activities where id = ?", UUID.class, activityId));
+        int safePage = Math.max(1, page), size = Math.max(1, Math.min(100, limit));
+        Long total = jdbc.queryForObject("select count(*) from training_transcriptions where activity_id = ?", Long.class, activityId);
+        List<UUID> pending = jdbc.queryForList("select distinct session_id from training_transcriptions where activity_id = ? and status = 'ENTERED'", UUID.class, activityId);
+        List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList("""
+            select t.id, t.session_id, s.session_no, t.status, t.late_reason, t.reject_reason, t.entered_at, t.verified_at, e.original_name as evidence_name, t.evidence_id,
+                   eu.full_name as entered_by_name, vu.full_name as verified_by_name, t.entered_by
+              from training_transcriptions t join training_sessions s on s.id = t.session_id join training_paper_evidence e on e.id = t.evidence_id
+              join app_users eu on eu.id = t.entered_by left join app_users vu on vu.id = t.verified_by
+             where t.activity_id = ? order by s.session_no, t.entered_at desc, t.id limit ? offset ?
+            """, activityId, size, (long) (safePage - 1) * size));
+        for (Map<String, Object> row : rows) {
+            row.put("lines", TrainingRows.camel(jdbc.queryForList("""
+                select l.participant_id, p.full_name, l.state, l.absence_reason, l.score_obtained, l.score_max, l.remarks
+                  from training_transcription_lines l join training_participants p on p.id = l.participant_id where l.transcription_id = ? order by p.full_name, p.id
+                """, row.get("id"))));
+        }
+        long count = total == null ? 0 : total;
+        return Map.of("data", rows, "pendingSessionIds", pending,
+                "pagination", new com.eqms.dto.user.PaginationResponse(safePage, size, count, (int) Math.ceil((double) count / size)));
+    }
+
     @Transactional
     public Map<String, Object> enter(UserAccount actor, UUID sessionId, EnterRequest request) {
         access.require(actor, "training.paper.transcribe");
@@ -103,7 +128,7 @@ public class TrainingTranscriptionService {
         boolean scored = session.get("assessment_method") != null && !"SELF_READING_CONFIRMATION".equals(session.get("assessment_method"));
         for (Line line : lines) {
             if (line.participantId() == null || !seen.add(line.participantId())) throw new IllegalArgumentException("TRAINING_TRANSCRIPTION_LINES_INVALID");
-            Map<String, Object> p = jdbc.queryForList("select state, person_user_id from training_participants where id = ? and session_id = ?", line.participantId(), sessionId).stream().findFirst()
+            Map<String, Object> p = jdbc.queryForList("select state, person_user_id, participation_role from training_participants where id = ? and session_id = ?", line.participantId(), sessionId).stream().findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("TRAINING_TRANSCRIPTION_LINES_INVALID"));
             // What is already recorded (on the screen, or by an earlier transcription) is not typed again.
             if (!"INVITED".equals(p.get("state"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_TRANSCRIPTION_ALREADY_RECORDED");
@@ -112,7 +137,7 @@ public class TrainingTranscriptionService {
             if ("ABSENT".equals(line.state())) {
                 if (line.absenceReason() == null || line.absenceReason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
                 if (line.scoreObtained() != null || line.scoreMax() != null) throw new IllegalArgumentException("TRAINING_SCORE_INVALID");
-            } else if (scored) {
+            } else if (scored && "TRAINEE".equals(p.get("participation_role"))) {
                 BigDecimal got = line.scoreObtained(), max = line.scoreMax();
                 if (got == null || max == null || max.signum() <= 0 || got.signum() < 0 || got.compareTo(max) > 0) throw new IllegalArgumentException("TRAINING_SCORE_INVALID");
             } else if (line.scoreObtained() != null || line.scoreMax() != null) {

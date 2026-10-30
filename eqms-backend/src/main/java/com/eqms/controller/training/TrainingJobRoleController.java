@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import java.util.UUID;
 
-/** Job Roles of Training (the columns of the matrix, what a job assignment gives). Every command is checked again in the service. */
+/** Work Positions of Training (the columns of the matrix, what a job assignment gives). Every command is checked again in the service. */
 @RestController
 @RequestMapping("/training/job-roles")
 public class TrainingJobRoleController {
@@ -36,6 +36,10 @@ public class TrainingJobRoleController {
 
     @GetMapping("/{id}")
     public ResponseEntity<?> get(@PathVariable UUID id) { return ResponseEntity.ok(roles.get(users.requireCurrentUser(), id)); }
+
+    /** The training that the Work Position requires, from the effective matrix of its department. */
+    @GetMapping("/{id}/requirements")
+    public ResponseEntity<?> requirements(@PathVariable UUID id) { return ResponseEntity.ok(roles.requirements(users.requireCurrentUser(), id)); }
 
     @PostMapping
     public ResponseEntity<?> create(@RequestBody SaveRequest request) { return ResponseEntity.ok(roles.save(users.requireCurrentUser(), null, request)); }

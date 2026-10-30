@@ -31,7 +31,7 @@ export const Switch: React.FC<SwitchProps> = ({
           ? "h-5 w-9"
           : "h-5 w-9 sm:h-6 sm:w-11",
         checked ? "bg-emerald-500" : "bg-slate-300",
-        disabled && "cursor-not-allowed pointer-events-none",
+        disabled && "cursor-default pointer-events-none",
         disabled && !checked && "bg-slate-200",
         !disabled && "cursor-pointer",
         className

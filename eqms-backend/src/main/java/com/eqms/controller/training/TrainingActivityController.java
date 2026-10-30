@@ -50,6 +50,20 @@ public class TrainingActivityController {
     @GetMapping("/activities/{id}")
     public ResponseEntity<?> get(@PathVariable UUID id) { return ResponseEntity.ok(activities.get(users.requireCurrentUser(), id)); }
 
+    @GetMapping("/activities/{id}/overview")
+    public ResponseEntity<?> overview(@PathVariable UUID id, @RequestParam(required = false) UUID sessionId,
+            @RequestParam(defaultValue = "false") boolean participantContext) {
+        return ResponseEntity.ok(activities.overview(users.requireCurrentUser(), id, sessionId, participantContext));
+    }
+
+    @GetMapping("/activities/{id}/participants")
+    public ResponseEntity<?> participantPage(@PathVariable UUID id, @RequestParam(required = false) UUID sessionId,
+            @RequestParam(defaultValue = "ALL") String group, @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection) {
+        return ResponseEntity.ok(activities.participantPage(users.requireCurrentUser(), id, sessionId, group, search, page, limit, sortBy, sortDirection));
+    }
+
     @PutMapping("/activities/{id}")
     public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody UpdateRequest request) { return ResponseEntity.ok(activities.update(users.requireCurrentUser(), id, request)); }
 
@@ -100,8 +114,6 @@ public class TrainingActivityController {
     @PostMapping("/activities/{id}/finish-training")
     public ResponseEntity<?> finishTraining(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.finishTraining(users.requireCurrentUser(), id, request)); }
 
-    @PostMapping("/activities/{id}/submit-for-confirmation")
-    public ResponseEntity<?> submit(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.submitForConfirmation(users.requireCurrentUser(), id, request)); }
 
     @PostMapping("/activities/{id}/confirm-completion")
     public ResponseEntity<?> complete(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.confirmCompletion(users.requireCurrentUser(), id, request)); }
@@ -126,6 +138,9 @@ public class TrainingActivityController {
 
     @PostMapping("/participants/{id}/attendance/correct")
     public ResponseEntity<?> correctAttendance(@PathVariable UUID id, @RequestBody TrainingActivityService.CorrectionRequest request) { return ResponseEntity.ok(activities.correctAttendance(users.requireCurrentUser(), id, request)); }
+
+    @PostMapping("/participants/{id}/participation")
+    public ResponseEntity<?> participation(@PathVariable UUID id, @RequestBody TrainingActivityService.ParticipationRequest request) { return ResponseEntity.ok(activities.setParticipation(users.requireCurrentUser(), id, request)); }
 
     @PostMapping("/participants/{id}/attendance")
     public ResponseEntity<?> attendance(@PathVariable UUID id, @RequestBody AttendanceRequest request) { return ResponseEntity.ok(activities.recordAttendance(users.requireCurrentUser(), id, request)); }

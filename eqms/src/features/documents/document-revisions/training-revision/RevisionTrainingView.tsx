@@ -321,11 +321,11 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
   const handleCompleteTraining = () => {
     if (!canCompleteTraining) return;
     if (integrated) {
-      if (trainingLink?.status !== "COMPLETED" && !trainingLink?.attendanceSentOn) {
+      if (trainingLink?.status !== "COMPLETED" && !trainingLink?.finishedOn) {
         showToast({
           type: "error",
           title: "Training is not completed",
-          message: "Training " + (trainingLink?.trainingNumber ?? "") + " must have its attendance list sent to QA in Training Management first.",
+          message: "Training " + (trainingLink?.trainingNumber ?? "") + " must be finished by its trainer (Finish Training) in Training Management first.",
           duration: 3000,
         });
         return;
@@ -352,9 +352,9 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
     && Boolean(document?.status === "Pending Training")
     && revisionActionCapabilities.can("completeTraining");
   const canEditTrainingDates = document?.status === "Pending Training" && canCompleteTraining;
-  // A training run in Training Management is complete for the revision once its trainer has sent the attendance list to QA; until then the button stays off and says why.
-  const trainingNotDone = integrated && trainingLink?.status !== "COMPLETED" && !trainingLink?.attendanceSentOn;
-  const completeTitle = trainingNotDone ? `Training ${trainingLink?.trainingNumber ?? ""} is not done yet: its trainer has not sent the attendance list to QA.` : undefined;
+  // A training run in Training Management is complete for the revision once its trainer has finished it (Finish Training); until then the button stays off and says why.
+  const trainingNotDone = integrated && trainingLink?.status !== "COMPLETED" && !trainingLink?.finishedOn;
+  const completeTitle = trainingNotDone ? `Training ${trainingLink?.trainingNumber ?? ""} is not done yet: its trainer has not finished it (Finish Training).` : undefined;
 
   const handleESignConfirm = async (signature: {
     username: string;

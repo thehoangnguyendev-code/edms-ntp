@@ -445,6 +445,17 @@ export const trainingProperties = (navigate?: NavigateFn): BreadcrumbItem[] => [
   { label: "Training Properties", isActive: true },
 ];
 
+export const trainingAnnex = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...trainingAdministrationBase(navigate),
+  { label: "Training Annex", isActive: true },
+];
+
+export const trainingAnnexDetail = (navigate: NavigateFn | undefined, _code: string, label = "Training Annex Details"): BreadcrumbItem[] => [
+  ...trainingAdministrationBase(navigate),
+  { label: "Training Annex", onClick: () => navigate?.("/settings/administration/training/annex") },
+  { label, isActive: true },
+];
+
 export const trainingNotifications = (navigate?: NavigateFn): BreadcrumbItem[] => [
   ...trainingAdministrationBase(navigate),
   { label: "Training Notifications", isActive: true },

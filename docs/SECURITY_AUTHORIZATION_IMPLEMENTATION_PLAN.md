@@ -163,7 +163,7 @@ Security & Authorization → Permission Sets → New/Edit Permission Set
 | DRAFT…READY_FOR_PUBLISHING | Cancel Revision | (capability `cancel`, dùng chung alias `documents.revision.submit`) | **Có** | ⚠️ Có nhưng dùng **chung mã** với Submit — không tách được quyền "chỉ hủy, không được submit" nếu cần (ghi nhận, không bắt buộc sửa ngay) |
 | PENDING_REVIEW | Complete Review / Reject | `documents.revision.review` / `documents.revision.reject_review` | **Có** | ✅ Có |
 | PENDING_REVIEW | Retry Snapshot | (cùng quyền Review) | Không | N/A |
-| PENDING_APPROVAL | Complete Approve / Reject | `documents.revision.approve` / `documents.revision.reject_approval` | **Có** | ✅ Có |
+| PENDING_APPROVAL | Complete Approval / Reject | `documents.revision.approve` / `documents.revision.reject_approval` | **Có** | ✅ Có |
 | PENDING_TRAINING | Complete Training | `documents.training.complete` | **Có** | ✅ Có |
 | READY_FOR_PUBLISHING | Publish | `documents.revision.publish` | **Có** | ✅ Có (permission được seed ở V171) |
 | EFFECTIVE | Request Controlled Copy | (điều kiện trạng thái) | Không (ký ở form con) | N/A |

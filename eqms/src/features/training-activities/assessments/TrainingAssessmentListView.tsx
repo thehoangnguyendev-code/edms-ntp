@@ -77,7 +77,7 @@ export function TrainingAssessmentListView() {
   ];
   const rowMenu = useTrainingRowMenu(table.items, (r) => [
     ...(r.actions?.view ? [{ label: "View Details", icon: <IconInfoCircle className="h-4 w-4" />, onClick: () => open(r.id) }] : []),
-    ...(r.actions?.continueDraft ? [{ label: "Continue Draft", icon: <IconPencilMinus className="h-4 w-4" />, onClick: () => open(r.id) }] : []),
+    ...(r.actions?.continueDraft ? [{ label: "Edit Assessment", icon: <IconPencilMinus className="h-4 w-4" />, onClick: () => open(r.id) }] : []),
     ...(r.actions?.review ? [{ label: "Review and Approve", icon: <IconChecks className="h-4 w-4" />, onClick: () => open(r.id) }] : []),
   ]);
   const { layout, control } = useCustomColumnLayout("training.assessments", columns, rowMenu.action);

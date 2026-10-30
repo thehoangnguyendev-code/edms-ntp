@@ -97,7 +97,7 @@ describe("KnowledgeView portal", () => {
     });
     render(<MemoryRouter><KnowledgeView /></MemoryRouter>);
     fireEvent.click(await screen.findByText("Quality Unit"));
-    await waitFor(() => expect(knowledgeApiMock.browse).toHaveBeenCalledWith("h1", "kb1", []));
+    await waitFor(() => expect(knowledgeApiMock.browse).toHaveBeenCalledWith("h1", "kb1", [], expect.objectContaining({ page: 1, limit: 20, sortBy: "name" })));
     expect(await screen.findByText("QA")).toBeTruthy();
   });
 });

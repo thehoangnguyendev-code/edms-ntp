@@ -38,7 +38,7 @@ public class TrainingPersonnelReviewService {
                     new Item("RULES_SAFETY", "Company rules and occupational safety", "Initial training, part 1: given by Human Resources and Administration.", false),
                     new Item("GMP_GENERAL", "General GMP principles", "Initial training, part 2: given by QA.", true),
                     new Item("JOB_SPECIFIC", "Job-specific training", "Initial training, part 3: given by the department of the employee, on the SOPs of the position.", true),
-                    new Item("SPECIMEN", "Specimen signature", "FRM.0007: the employee signs; the head of the department confirms.", false),
+                    new Item("SPECIMEN", "Specimen signature", "FRM.0007 is signed by hand on paper; its scan is kept as the specimen signature record.", false),
                     new Item("JOB_ASSIGNMENT", "Job assignment", "APD.0024: given after the training the matrix requires for the position is complete.", false)),
             "ABSENCE_RETURN", List.of(
                     new Item("REVIEW_RECORDS", "Review the training record", "Decide what has to be repeated after the absence.", false),
@@ -154,7 +154,7 @@ public class TrainingPersonnelReviewService {
         Map<String, Object> out = TrainingRows.camel(r);
         Map<String, Map<String, Object>> stored = new LinkedHashMap<>();
         for (Map<String, Object> row : jdbc.queryForList("""
-            select i.item_code, i.status, i.activity_id, a.training_number, a.training_title, a.status as activity_status, i.note, i.done_at, du.full_name as done_by_name
+            select i.item_code, i.status, i.activity_id, a.training_number, training_activity_topics(a.id) as training_topics, a.status as activity_status, i.note, i.done_at, du.full_name as done_by_name
               from training_personnel_review_items i left join training_activities a on a.id = i.activity_id left join app_users du on du.id = i.done_by where i.review_id = ?
             """, id)) stored.put((String) row.get("item_code"), row);
         List<Map<String, Object>> items = new ArrayList<>();
@@ -314,7 +314,7 @@ public class TrainingPersonnelReviewService {
         UserAccount owner = users.findById(person).orElseThrow();
         String reason = switch ((String) r.get("kind")) { case "NEW_HIRE" -> "NEW_HIRE"; case "ABSENCE_RETURN" -> "ABSENCE_RETURN"; default -> "TRANSFER"; };
         String title = item.label() + " — " + owner.getFullName();
-        Map<String, Object> created = activities.create(actor, new TrainingActivityService.CreateRequest(null, "UNPLANNED", reason, null, title.length() > 255 ? title.substring(0, 255) : title, null,
+        Map<String, Object> created = activities.create(actor, new TrainingActivityService.CreateRequest(null, "UNPLANNED", reason, null, null,
                 "From training review " + r.get("review_no"), null, null));
         UUID activityId = (UUID) created.get("id");
         jdbc.update("update training_personnel_review_items set activity_id = ? where review_id = ? and item_code = ?", activityId, id, itemCode);
@@ -332,8 +332,8 @@ public class TrainingPersonnelReviewService {
         switch (code) {
             case "SPECIMEN": {
                 List<Map<String, Object>> rows = jdbc.queryForList("select version_no, effective_date from training_specimen_signatures where person_user_id = ? and status = 'APPROVED' order by version_no desc limit 1", person);
-                return rows.isEmpty() ? check(false, "No approved specimen signature yet.")
-                        : check(true, "Approved specimen signature, version " + rows.getFirst().get("version_no") + (rows.getFirst().get("effective_date") == null ? "" : ", effective " + rows.getFirst().get("effective_date")) + ".");
+                return rows.isEmpty() ? check(false, "No specimen signature record yet.")
+                        : check(true, "Specimen signature record, version " + rows.getFirst().get("version_no") + (rows.getFirst().get("effective_date") == null ? "" : ", effective " + rows.getFirst().get("effective_date")) + ".");
             }
             case "JOB_ASSIGNMENT": {
                 List<Map<String, Object>> rows = jdbc.queryForList("select issue_no, effective_at from training_job_assignments where person_user_id = ? and status = 'EFFECTIVE' order by issue_no desc limit 1", person);

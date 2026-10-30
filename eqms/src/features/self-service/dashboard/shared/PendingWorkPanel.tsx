@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge/Badge';
 import type { DashboardPendingWorkflowAction } from '@/services/api/dashboard';
@@ -32,6 +32,8 @@ const COLUMNS: FlatColumn<DashboardPendingWorkflowAction>[] = [
 ];
 
 interface PendingWorkPanelProps {
+  query: string;
+  onQueryChange: (query: string) => void;
   tasks: DashboardResource<DashboardPendingWorkflowAction[]>;
   /** Authoritative count from the summary; null while it is unavailable. */
   work: MyWork | null;
@@ -46,13 +48,9 @@ interface PendingWorkPanelProps {
  * Work items waiting for the current user, each with the document it belongs to. The task list is
  * capped by the API, so the counts come from the summary and the table says when it shows a part.
  */
-export const PendingWorkPanel: React.FC<PendingWorkPanelProps> = ({ tasks, work, awaitingAction, onOpenTask, onOpenAll, className }) => {
-  const [query, setQuery] = useState('');
+export const PendingWorkPanel: React.FC<PendingWorkPanelProps> = ({ tasks, work, awaitingAction, onOpenTask, onOpenAll, className, query, onQueryChange }) => {
   const loaded = tasks.data ?? [];
-  const rows = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return needle ? loaded.filter((task) => `${task.documentName} ${task.documentNumber}`.toLowerCase().includes(needle)) : loaded;
-  }, [loaded, query]);
+  const rows = loaded;
 
   const subtitle = work
     ? awaitingAction !== undefined && awaitingAction > 0
@@ -64,7 +62,7 @@ export const PendingWorkPanel: React.FC<PendingWorkPanelProps> = ({ tasks, work,
     <Card className={className} aria-label="Pending work">
       <CardHeader title="Pending work" subtitle={subtitle} />
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-        <SearchBox value={query} onChange={setQuery} placeholder="Search document…" label="Search pending work" />
+        <SearchBox value={query} onChange={onQueryChange} placeholder="Search document…" label="Search pending work" />
         <ToolbarButton onClick={onOpenAll}>Open document revisions <ArrowRight className="h-3.5 w-3.5" /></ToolbarButton>
       </div>
       <div className="border-t border-slate-200">
@@ -83,7 +81,7 @@ export const PendingWorkPanel: React.FC<PendingWorkPanelProps> = ({ tasks, work,
           />
         )}
       </div>
-      {work && work.total > loaded.length && loaded.length > 0 && (
+      {!query.trim() && work && work.total > loaded.length && loaded.length > 0 && (
         <p className="border-t border-slate-200 px-4 py-2.5 text-xs text-slate-500">Showing {loaded.length} of {work.total.toLocaleString()} items.</p>
       )}
     </Card>

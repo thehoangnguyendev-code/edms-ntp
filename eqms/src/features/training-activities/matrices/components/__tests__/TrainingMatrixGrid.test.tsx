@@ -8,7 +8,7 @@ afterEach(cleanup);
 
 const positions: TrainingPosition[] = [{ id: "p1", code: "OP", name: "Operator" }, { id: "p2", code: "QC", name: "QC Analyst" }];
 const rows: TrainingMatrixRow[] = [
-  { rowGroup: "FACTORY_GENERAL", topicId: "t1", topicCode: "GMP", topicName: "GMP overview", annualRequired: true, positionIds: ["p1"] },
+  { rowGroup: "FACTORY_GENERAL", topicText: "GMP overview", annualRequired: true, positionIds: ["p1"] },
   { rowGroup: "SOP", documentId: "d1", documentNumber: "SOP.0003", documentName: "Training", annualRequired: false, positionIds: ["p1", "p2"] },
 ];
 
@@ -16,27 +16,32 @@ describe("TrainingMatrixGrid (APD.0011 layout)", () => {
   it("shows No, SOP No, title, the positions under Work position, and Annual Yes/No, in groups", () => {
     render(<TrainingMatrixGrid rows={rows} positions={positions} editing={false} onToggle={vi.fn()} onAnnual={vi.fn()} onRemove={vi.fn()} />);
 
-    expect(screen.getByText("Job Role")).toBeTruthy();
-    expect(screen.getByText("SOP No")).toBeTruthy();
-    expect(screen.getByText("Subject / SOP title")).toBeTruthy();
+    expect(screen.getAllByText("Work Position").length).toBeGreaterThan(0);
+    expect(screen.getByText("Code")).toBeTruthy();
+    expect(screen.getByText("Subject / Title")).toBeTruthy();
     expect(screen.getByText("General training of the whole factory")).toBeTruthy();
-    expect(screen.getByText("SOP for each Job Role")).toBeTruthy();
+    expect(screen.getByText("SOP for each Work Position")).toBeTruthy();
     expect(screen.getByText("GMP overview")).toBeTruthy();
     expect(screen.getByText("Yes")).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "Operator" })).toBeTruthy();
   });
 
-  it("shows only the rows of the chosen position and collapses a group", () => {
+  it("shows only the rows of the chosen position and collapses and expands a group", async () => {
     render(<TrainingMatrixGrid rows={rows} positions={positions} editing={false} onToggle={vi.fn()} onAnnual={vi.fn()} onRemove={vi.fn()} />);
 
-    fireEvent.change(screen.getByLabelText("Show only the rows of a Job Role"), { target: { value: "p2" } });
+    fireEvent.click(screen.getByRole("combobox", { name: "Work Position" }));
+    fireEvent.click(await screen.findByRole("option", { name: "QC Analyst" }));
     expect(screen.queryByText("GMP overview")).toBeNull();
     expect(screen.getByText("Training")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Collapse SOP for each Job Role" }));
-    expect(screen.queryByText("Training")).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Operator" })).toBeNull();
+    expect(screen.getByRole("columnheader", { name: "QC Analyst" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Collapse SOP for each Work Position" }));
+    await waitFor(() => expect(screen.queryByText("Training")).toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "Expand SOP for each Work Position" }));
+    expect(await screen.findByText("Training")).toBeTruthy();
   });
 
-  it("marks what was added, removed and changed against the version before", () => {
+  it("marks what was added, removed and changed against the version before", async () => {
     const before: TrainingMatrixRow[] = [
       { rowGroup: "SOP", documentId: "d1", documentNumber: "SOP.0003", documentName: "Training", annualRequired: false, positionIds: ["p1"] },
       { rowGroup: "SOP", documentId: "d9", documentNumber: "SOP.0009", documentName: "Gone", annualRequired: false, positionIds: ["p1"] },
@@ -46,7 +51,8 @@ describe("TrainingMatrixGrid (APD.0011 layout)", () => {
     expect(screen.getByText(/Compared with version 1: 1 added, 1 removed, 1 changed/)).toBeTruthy();
     expect(screen.getByText("New")).toBeTruthy();
     expect(screen.getByText(/Removed: SOP.0009 Gone/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Changes only" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Changes" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Changed since the previous version" }));
     expect(screen.queryByText("GMP overview")).toBeTruthy();
   });
 
@@ -55,18 +61,49 @@ describe("TrainingMatrixGrid (APD.0011 layout)", () => {
     const onAnnual = vi.fn();
     render(<TrainingMatrixGrid rows={rows} positions={positions} editing onToggle={onToggle} onAnnual={onAnnual} onRemove={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole("checkbox", { name: "GMP GMP overview — QC Analyst" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "GMP overview — QC Analyst" }));
     expect(onToggle).toHaveBeenCalledWith(0, "p2");
     fireEvent.click(screen.getByRole("switch", { name: "Annual training required: Training" }));
     expect(onAnnual).toHaveBeenCalledWith(1, true);
-    const footer = screen.getByText("Rows required of the Job Role").closest("tr") as HTMLElement;
+    const footer = screen.getByText("Rows required of the Work Position").closest("tr") as HTMLElement;
     expect(within(footer).getAllByText("2").length).toBeGreaterThan(0);
-    expect(screen.getByRole("checkbox", { name: "GMP GMP overview — Operator" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("checkbox", { name: "GMP overview — Operator" }).getAttribute("aria-checked")).toBe("true");
   });
 
   it("has no checkboxes when it is only being read", () => {
     render(<TrainingMatrixGrid rows={rows} positions={positions} editing={false} onToggle={vi.fn()} onAnnual={vi.fn()} onRemove={vi.fn()} />);
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+  });
+
+  it("drags the matrix horizontally without taking over checkbox clicks", () => {
+    const onToggle = vi.fn();
+    render(<TrainingMatrixGrid rows={rows} positions={positions} editing onToggle={onToggle} onAnnual={vi.fn()} onRemove={vi.fn()} />);
+    const scroller = screen.getByRole("table").parentElement as HTMLDivElement;
+    fireEvent.mouseDown(scroller, { button: 0, clientX: 300, clientY: 10 });
+    fireEvent.mouseMove(scroller, { clientX: 200, clientY: 10 });
+    expect(scroller.scrollLeft).toBe(100);
+    expect(scroller.className).toContain("cursor-grabbing");
+    fireEvent.mouseUp(scroller, { clientX: 200, clientY: 10 });
+    fireEvent.click(scroller);
+    const checkbox = screen.getByRole("checkbox", { name: "GMP overview — QC Analyst" });
+    fireEvent.mouseDown(checkbox, { button: 0, clientX: 300, clientY: 10 });
+    fireEvent.mouseMove(scroller, { clientX: 100, clientY: 10 });
+    fireEvent.click(checkbox);
+    expect(onToggle).toHaveBeenCalledWith(0, "p2");
+    expect(scroller.scrollLeft).toBe(100);
+  });
+
+  it("uses a sticky, centered Work Position label without a scroll position handler", () => {
+    render(<TrainingMatrixGrid rows={rows} positions={positions} editing={false} onToggle={vi.fn()} onAnnual={vi.fn()} onRemove={vi.fn()} />);
+    const scroller = screen.getByRole("table").parentElement as HTMLDivElement;
+    const roleHeader = screen.getByRole("columnheader", { name: "Work Position" });
+    const label = within(roleHeader).getByText("Work Position");
+    expect(scroller.className).toContain("[container-type:inline-size]");
+    expect(label.className).toContain("sticky");
+    expect(label.className).toContain("text-center");
+    expect(label.className).toContain("md:w-[min(100%,calc(100cqw-540px))]");
+    fireEvent.scroll(scroller);
+    expect(label.style.left).toBe("");
   });
 });
 

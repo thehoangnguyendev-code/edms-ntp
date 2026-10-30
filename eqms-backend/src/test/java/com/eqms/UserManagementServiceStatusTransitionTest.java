@@ -69,6 +69,7 @@ class UserManagementServiceStatusTransitionTest {
 
     @BeforeEach
     void setUp() {
+        org.springframework.test.util.ReflectionTestUtils.setField(userManagementService, "emergencyAccountChangeGuard", mock(EmergencyAccountChangeGuard.class));
         // electronicSignatureService is an @Autowired field (not a constructor arg), so
         // @InjectMocks does not populate it — set it explicitly.
         org.springframework.test.util.ReflectionTestUtils.setField(

@@ -1,5 +1,6 @@
 package com.eqms.dto.configuration;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Map;
 
 /** Branding that is safe to expose before authentication. */
@@ -10,7 +11,15 @@ public record PublicBrandingResponse(
         boolean showSidebarUserProfile,
         boolean knowledgeExplorerEnabled,
         boolean compactDesktopFilters,
+        boolean alternatingRecordColors,
+        String alternatingRecordColor,
+        JsonNode mainBackground,
+        JsonNode authBackground,
         String toastPosition,
+        /** How long a system message stays on screen, in seconds (2 to 60; 5 when the administrator set nothing). */
+        int toastDurationSeconds,
+        /** How the materials of a training are drawn: TABLE or TILES (TABLE when the administrator set nothing). */
+        String trainingMaterialsLayout,
         String systemFavicon,
         String systemFooter,
         /** Text of the top bar on the Dashboard; null when the administrator left it empty (the screen then uses its default). */

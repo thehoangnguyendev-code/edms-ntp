@@ -30,10 +30,16 @@ public class TrainingComplianceController {
     public ResponseEntity<?> summary(@RequestParam(required = false) UUID departmentId) { return ResponseEntity.ok(compliance.summary(users.requireCurrentUser(), departmentId)); }
 
     @GetMapping("/coverage")
-    public ResponseEntity<?> coverage(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) String status, @RequestParam(required = false) String search,
+    public ResponseEntity<?> coverage(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) String status, @RequestParam(defaultValue = "false") boolean newOnly, @RequestParam(required = false) String search,
                                       @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
                                   @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(compliance.coverage(users.requireCurrentUser(), departmentId, status, search, sortBy, sortDirection, page, limit));
+        return ResponseEntity.ok(compliance.coverage(users.requireCurrentUser(), departmentId, status, newOnly, search, sortBy, sortDirection, page, limit));
+    }
+
+    /** The training activities that are planned for a training, to add people to one of them. */
+    @GetMapping("/planned-trainings")
+    public ResponseEntity<?> plannedTrainings(@RequestParam(required = false) String topicName, @RequestParam(required = false) String documentNumber) {
+        return ResponseEntity.ok(java.util.Map.of("data", compliance.plannedTrainings(users.requireCurrentUser(), topicName, documentNumber)));
     }
 
     @GetMapping("/positions")

@@ -13,7 +13,7 @@ vi.mock("@/components/ui/page/PageHeader", () => ({ PageHeader: ({ title }: { ti
 
 import { DocumentTrainingsView } from "../DocumentTrainingsView";
 
-const row = { id: "a1", trainingNumber: "TRN/QA/26-002", trainingTitle: "SOP.10292 Cleaning", activityStatus: "PLANNED", documentId: "doc1", documentNumber: "SOP.10292", documentName: "Cleaning", revisionNumber: "02", departmentName: "Quality Assurance", createdAt: "2026-10-20T00:00:00Z", impactStatus: "PENDING", canAssess: true };
+const row = { id: "a1", trainingNumber: "TRN/QA/26-002", trainingTopics: "SOP.10292 Cleaning", activityStatus: "PLANNED", documentId: "doc1", documentNumber: "SOP.10292", documentName: "Cleaning", revisionNumber: "02", departmentName: "Quality Assurance", createdAt: "2026-10-20T00:00:00Z", impactStatus: "PENDING", canAssess: true };
 const context = { activityId: "a1", trainingNumber: "TRN/QA/26-002", documentNumber: "SOP.10292", documentName: "Cleaning", revisionNumber: "02", effectiveMatrix: { id: "m1", versionNo: 3 }, inEffectiveMatrix: false, positionsInMatrix: [], positions: [{ id: "p1", name: "QA Specialist" }, { id: "p2", name: "Operator" }], latest: [] };
 
 beforeEach(() => {
@@ -64,6 +64,6 @@ describe("DocumentTrainingsView", () => {
   it("does not offer 'already covers' when no effective matrix has the document", async () => {
     await openDialog();
 
-    expect((screen.getByLabelText("The effective matrix already covers the document") as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText("The effective matrix already covers the document") as HTMLInputElement).getAttribute("aria-disabled")).toBe("true");
   });
 });

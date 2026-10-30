@@ -35,7 +35,8 @@ public class TrainingExamService {
     private static final List<String> LETTERS = List.of("A", "B", "C", "D", "E", "F", "G", "H");
 
     public record OptionDto(String id, String text) {}
-    public record QuestionDto(String kind, String prompt, List<OptionDto> options, List<String> correct, BigDecimal points) {}
+    /** {@code image}: a picture under the text of the question, as a data URL (PNG or JPEG), like a question of the assessment library. */
+    public record QuestionDto(String kind, String prompt, List<OptionDto> options, List<String> correct, BigDecimal points, String image) {}
     public record SaveRequest(Integer minutes, List<QuestionDto> questions) {}
     public record SubmitRequest(Map<String, List<String>> answers, String signatureToken) {}
     public record ResetRequest(String reason) {}
@@ -84,7 +85,7 @@ public class TrainingExamService {
         boolean manager = access.has(actor, "training.activity.organize");
         boolean keyViewer = manager || assignedReviewer(actor, activityId);
         List<Map<String, Object>> questions = new ArrayList<>();
-        for (Map<String, Object> q : jdbc.queryForList("select id, q_no, kind, prompt, options::text as options, correct::text as correct, points from training_exam_questions where activity_id = ? order by q_no", activityId)) {
+        for (Map<String, Object> q : jdbc.queryForList("select id, q_no, kind, prompt, options::text as options, correct::text as correct, points, image from training_exam_questions where activity_id = ? order by q_no", activityId)) {
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("id", q.get("id"));
             entry.put("qNo", q.get("q_no"));
@@ -92,6 +93,7 @@ public class TrainingExamService {
             entry.put("prompt", q.get("prompt"));
             entry.put("options", read(q.get("options"), new TypeReference<List<Map<String, String>>>() {}));
             entry.put("points", q.get("points"));
+            if (q.get("image") != null) entry.put("image", q.get("image"));
             if (keyViewer) entry.put("correct", read(q.get("correct"), new TypeReference<List<String>>() {}));
             questions.add(entry);
         }
@@ -119,6 +121,12 @@ public class TrainingExamService {
             if (q == null || q.kind() == null || q.prompt() == null || q.prompt().isBlank() || q.prompt().length() > 2000) throw new IllegalArgumentException("TRAINING_EXAM_INVALID");
             BigDecimal points = q.points() == null ? BigDecimal.ONE : q.points();
             if (points.signum() <= 0 || points.compareTo(BigDecimal.valueOf(100)) > 0) throw new IllegalArgumentException("TRAINING_EXAM_INVALID");
+            String image;
+            try {
+                image = TrainingAssessmentLibraryService.checkedImage(q.kind(), q.image());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("TRAINING_ASSESSMENT_IMAGE_INVALID");
+            }
             List<Map<String, String>> options = new ArrayList<>();
             List<String> correct = q.correct() == null ? List.of() : q.correct();
             switch (q.kind()) {
@@ -143,12 +151,12 @@ public class TrainingExamService {
                 }
                 default -> throw new IllegalArgumentException("TRAINING_EXAM_INVALID");
             }
-            rows.add(new Object[]{no, q.kind(), q.prompt().trim(), write(options), write(correct), points});
+            rows.add(new Object[]{no, q.kind(), q.prompt().trim(), write(options), write(correct), points, image});
         }
         jdbc.update("delete from training_exam_questions where activity_id = ?", activityId);
         for (Object[] r : rows) {
-            jdbc.update("insert into training_exam_questions(id, activity_id, q_no, kind, prompt, options, correct, points, created_by) values (?,?,?,?,?,cast(? as jsonb),cast(? as jsonb),?,?)",
-                    UUID.randomUUID(), activityId, r[0], r[1], r[2], r[3], r[4], r[5], actor.getId());
+            jdbc.update("insert into training_exam_questions(id, activity_id, q_no, kind, prompt, options, correct, points, created_by, image) values (?,?,?,?,?,cast(? as jsonb),cast(? as jsonb),?,?,?)",
+                    UUID.randomUUID(), activityId, r[0], r[1], r[2], r[3], r[4], r[5], actor.getId(), r[6]);
         }
         jdbc.update("update training_activities set exam_minutes = ?, version = version + 1, updated_at = now() where id = ?", minutes, activityId);
         store.auditActivity(actor, activity, "TRAINING_EXAM_SAVED", null, null, rows.size() + " question(s)" + (minutes == null ? "" : ", " + minutes + " minutes"));
@@ -201,7 +209,7 @@ public class TrainingExamService {
     /** The questions without the key. */
     private Map<String, Object> view(Map<String, Object> attempt, UUID activityId) {
         List<Map<String, Object>> questions = new ArrayList<>();
-        for (Map<String, Object> q : jdbc.queryForList("select id, q_no, kind, prompt, options::text as options, points from training_exam_questions where activity_id = ? order by q_no", activityId)) {
+        for (Map<String, Object> q : jdbc.queryForList("select id, q_no, kind, prompt, options::text as options, points, image from training_exam_questions where activity_id = ? order by q_no", activityId)) {
             Map<String, Object> e = new LinkedHashMap<>();
             e.put("id", q.get("id"));
             e.put("qNo", q.get("q_no"));
@@ -209,6 +217,7 @@ public class TrainingExamService {
             e.put("prompt", q.get("prompt"));
             e.put("options", read(q.get("options"), new TypeReference<List<Map<String, String>>>() {}));
             e.put("points", q.get("points"));
+            if (q.get("image") != null) e.put("image", q.get("image"));
             questions.add(e);
         }
         Map<String, Object> out = new LinkedHashMap<>();

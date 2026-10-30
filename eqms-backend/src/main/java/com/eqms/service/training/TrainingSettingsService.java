@@ -18,7 +18,7 @@ import java.util.UUID;
 
 /**
  * The settings of Training Management in one row (SDS-TR-001 section 4.1): the pass mark, the days to train on a new document, the days to send results,
- * the retention after leaving, and the switch of the link with Document Control. A change needs the version that was read and a reason, is checked
+ * the retention after leaving, and the switch of the link with Document Control. A change needs the version that was read, is checked
  * against the limits of the SOP, and is recorded in the Audit Trail with what changed.
  */
 @Service
@@ -38,11 +38,12 @@ public class TrainingSettingsService {
     public record SettingsWrite(Integer version, Integer passPercent, Integer documentTrainingDaysDefault,
                                 Integer annualRequirementDueMonth, Integer annualRequirementDueDay, Integer absenceRetrainMonths,
                                 Integer retentionYearsAfterLeaving, Integer reviewReadyReminderDays, Integer reviewOpenReminderDays,
-                                Integer resultsDueDays, Boolean integrationEnabled, String reason) {}
+                                Integer resultsDueDays, String reason, String resultsDueDayType, Integer initialTrainingDays,
+                                Boolean warnScheduledAfterDue) {}
 
     // ---- values used by other services (no permission: they run for the person who triggered the work) ----
 
-    public boolean integrationEnabled() { return bool("integration_enabled", true); }
+    public boolean warnScheduledAfterDue() { return bool("warn_scheduled_after_due", true); }
     public int passPercent() { return intValue("pass_percent", 70); }
     public int documentTrainingDaysDefault() { return intValue("document_training_days_default", 10); }
 
@@ -66,7 +67,7 @@ public class TrainingSettingsService {
     private Map<String, Object> read() {
         var row = jdbc.queryForMap("""
             select pass_percent, document_training_days_default, annual_requirement_due_month, annual_requirement_due_day,
-                   absence_retrain_months, retention_years_after_leaving, review_ready_reminder_days, review_open_reminder_days, results_due_days, integration_enabled, version, updated_at
+                   absence_retrain_months, retention_years_after_leaving, review_ready_reminder_days, review_open_reminder_days, results_due_days, results_due_day_type, initial_training_days, warn_scheduled_after_due, version, updated_at
               from training_settings where id=1
             """);
         Map<String, Object> result = new LinkedHashMap<>();
@@ -79,7 +80,9 @@ public class TrainingSettingsService {
         result.put("reviewReadyReminderDays", row.get("review_ready_reminder_days"));
         result.put("reviewOpenReminderDays", row.get("review_open_reminder_days"));
         result.put("resultsDueDays", row.get("results_due_days"));
-        result.put("integrationEnabled", row.get("integration_enabled"));
+        result.put("resultsDueDayType", row.get("results_due_day_type"));
+        result.put("initialTrainingDays", row.get("initial_training_days"));
+        result.put("warnScheduledAfterDue", row.get("warn_scheduled_after_due"));
         result.put("version", row.get("version"));
         result.put("updatedAt", row.get("updated_at"));
         return result;
@@ -89,7 +92,7 @@ public class TrainingSettingsService {
     public Map<String, Object> update(UserAccount actor, SettingsWrite request) {
         access.require(actor, "training.settings.manage");
         if (request == null) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
-        if (request.reason() == null || request.reason().isBlank() || request.reason().length() > 1000) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
+        if (request.reason() != null && request.reason().length() > 1000) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         var current = jdbc.queryForMap("select * from training_settings where id=1 for update");
         if (!Objects.equals(((Number) current.get("version")).intValue(), request.version())) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SETTINGS_VERSION_CHANGED");
 
@@ -102,9 +105,14 @@ public class TrainingSettingsService {
         int readyDays = pick(request.reviewReadyReminderDays(), current, "review_ready_reminder_days");
         int openDays = pick(request.reviewOpenReminderDays(), current, "review_open_reminder_days");
         int resultsDays = pick(request.resultsDueDays(), current, "results_due_days");
-        boolean integration = request.integrationEnabled() == null ? Boolean.TRUE.equals(current.get("integration_enabled")) : request.integrationEnabled();
+        int initialDays = pick(request.initialTrainingDays(), current, "initial_training_days");
+        String dayType = request.resultsDueDayType() == null ? String.valueOf(current.get("results_due_day_type")) : request.resultsDueDayType();
+        if (!TrainingWorkingDays.valid(dayType)) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
+        boolean warnAfterDue = request.warnScheduledAfterDue() == null ? Boolean.TRUE.equals(current.get("warn_scheduled_after_due")) : request.warnScheduledAfterDue();
         if (pass < 1 || pass > 100 || days < 1 || days > 365 || absence < 1 || absence > 60) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
         if (resultsDays < 1 || resultsDays > 60) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
+        // the limits of the column (V674): a person counts as a new employee for 1 to 730 days after the start
+        if (initialDays < 1 || initialDays > 730) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
         if (readyDays < 1 || readyDays > 60 || openDays < 1 || openDays > 365) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
         if (month < 1 || month > 12 || day < 1 || day > 31 || day > LocalDate.of(2025, month, 1).lengthOfMonth()) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
         // The SOP keeps training records for at least ten years after the employee leaves: a shorter time is refused.
@@ -119,16 +127,20 @@ public class TrainingSettingsService {
         change(changes, "Years to keep records after leaving", current.get("retention_years_after_leaving"), retention);
         change(changes, "Days before a review that is ready to close is reminded", current.get("review_ready_reminder_days"), readyDays);
         change(changes, "Days before a review with items to do is reminded", current.get("review_open_reminder_days"), openDays);
-        change(changes, "Days to send the results of a training to QA", current.get("results_due_days"), resultsDays);
-        change(changes, "Link with Document Control", Boolean.TRUE.equals(current.get("integration_enabled")) ? "on" : "off", integration ? "on" : "off");
+        change(changes, "Days to finish a training and send the results to QA", current.get("results_due_days"), resultsDays);
+        change(changes, "How the days to send the results to QA are counted", current.get("results_due_day_type"), dayType);
+        change(changes, "Days a person counts as a new employee", current.get("initial_training_days"), initialDays);
+        change(changes, "Warn when a session is scheduled after the due date", Boolean.TRUE.equals(current.get("warn_scheduled_after_due")) ? "on" : "off", warnAfterDue ? "on" : "off");
         if (changes.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SETTINGS_UNCHANGED");
 
         jdbc.update("""
             update training_settings set pass_percent=?, document_training_days_default=?, annual_requirement_due_month=?,
               annual_requirement_due_day=?, absence_retrain_months=?, retention_years_after_leaving=?, review_ready_reminder_days=?, review_open_reminder_days=?, results_due_days=?,
-              integration_enabled=?, version=version+1, updated_by=?, updated_at=now() where id=1
-            """, pass, days, month, day, absence, retention, readyDays, openDays, resultsDays, integration, actor.getId());
-        audit.logAs(actor, "TRAINING_SETTINGS", "TRAINING_SETTINGS", AUDIT_ID, "TRAINING_SETTINGS_UPDATED", null, null, request.reason().trim() + " | " + String.join("; ", changes));
+              results_due_day_type=?, initial_training_days=?, warn_scheduled_after_due=?, version=version+1, updated_by=?, updated_at=now() where id=1
+            """, pass, days, month, day, absence, retention, readyDays, openDays, resultsDays, dayType, initialDays, warnAfterDue, actor.getId());
+        String reason = request.reason() == null ? "" : request.reason().trim();
+        audit.logAs(actor, "TRAINING_SETTINGS", "TRAINING_SETTINGS", AUDIT_ID, "TRAINING_SETTINGS_UPDATED", null, null,
+                (reason.isEmpty() ? "" : reason + " | ") + String.join("; ", changes));
         return read();
     }
 

@@ -26,7 +26,7 @@ const row = (id: string, originalName: string, contentType: string, extra: Recor
   id, kind: "ASSESSMENT", originalName, contentType, sizeBytes: 2048, sha256: "x", uploadedAt: "2026-10-21T00:00:00", uploadedByName: "A. Trainer", wholeSession: false, ...extra,
 });
 const page = (data: unknown[], extra: Record<string, unknown> = {}) => ({
-  trainingNumber: "TRN/QA/26-001", trainingTitle: "Title", data, pagination: { page: 1, limit: 10, total: data.length, totalPages: 1 }, ...extra,
+  trainingNumber: "TRN/QA/26-001", trainingTopics: "Title", data, pagination: { page: 1, limit: 10, total: data.length, totalPages: 1 }, ...extra,
 });
 const renderModal = () => render(<MemoryRouter><TrainingScannedTestsModal personId="p" activityId="a" onClose={vi.fn()} /></MemoryRouter>);
 

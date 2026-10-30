@@ -31,10 +31,10 @@ export function SpecimenViewModal({ personId, personName, onClose }: { personId:
 
   return (
     <FormModal isOpen onClose={onClose} onConfirm={onClose} title={`Specimen signature: ${personName}`} confirmText="Close" showCancel={false} size="lg"
-      description={state.versionNo ? `Version ${state.versionNo}, in force since ${state.effectiveDate ? day(state.effectiveDate) : "—"}. Compare it by eye with the signature on the paper.` : undefined}>
+      description={state.versionNo ? `Version ${state.versionNo}, current since ${state.effectiveDate ? day(state.effectiveDate) : "—"}. Compare it by eye with the signature on the paper.` : undefined}>
       {state.loading && <SectionLoading text="Opening the specimen signature…" />}
       {state.error && <p role="alert" className="text-sm text-red-700">{state.error}</p>}
-      {state.none && <p className="text-sm text-slate-600">This person has no approved specimen signature.</p>}
+      {state.none && <p className="text-sm text-slate-600">This person has no specimen signature record.</p>}
       {state.urls.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2">
           {state.urls.map((url, i) => (

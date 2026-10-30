@@ -121,7 +121,7 @@ public class TrainingRecordService {
     public List<Map<String, Object>> myTasks(UserAccount actor) {
         access.require(actor, "training.self.view");
         return TrainingRows.camel(jdbc.queryForList("""
-            select p.id as participant_id, a.id as activity_id, a.training_number, a.training_title, a.status, a.due_date, s.method, s.scheduled_on, p.state, p.result,
+            select p.id as participant_id, a.id as activity_id, a.training_number, training_activity_topics(a.id) as training_topics, a.status, a.due_date, s.method, s.scheduled_on, p.state, p.result,
                    (select string_agg(t.topic_text, '; ') from training_session_topics t where t.session_id = s.id) as topics
               from training_participants p join training_activities a on a.id = p.activity_id join training_sessions s on s.id = p.session_id
              where p.person_user_id = ? and a.status in ('NOTIFIED','IN_PROGRESS') and p.state = 'INVITED' and s.status = 'PLANNED'
@@ -145,7 +145,7 @@ public class TrainingRecordService {
         int safeLimit = Math.min(Math.max(limit, 1), 100);
         int safePage = Math.max(page, 1);
         String like = search == null || search.isBlank() ? null : "%" + search.trim().toLowerCase(java.util.Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-        String filter = like == null ? "" : " and (lower(a.training_number) like ? escape '\\' or lower(a.training_title) like ? escape '\\' or lower(coalesce(a.document_number,'')) like ? escape '\\' or lower(coalesce(a.cancel_reason,'')) like ? escape '\\')";
+        String filter = like == null ? "" : " and (lower(a.training_number) like ? escape '\\' or lower(training_activity_topics(a.id)) like ? escape '\\' or lower(coalesce(a.document_number,'')) like ? escape '\\' or lower(coalesce(a.cancel_reason,'')) like ? escape '\\')";
         List<Object> args = new ArrayList<>(List.of(department, y));
         if (like != null) { args.add(like); args.add(like); args.add(like); args.add(like); }
         TrainingListFilter extra = new TrainingListFilter().equal("a.kind", more.get("kind")).equal("a.status", more.get("status")).equal("a.kind_reason", more.get("kindReason"))
@@ -157,11 +157,11 @@ public class TrainingRecordService {
         pageArgs.add(safeLimit);
         pageArgs.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select a.training_number, a.created_at, a.kind, a.status, a.training_title, a.document_number, a.revision_number, a.cancel_reason,
+            select a.training_number, a.created_at, a.kind, a.status, training_activity_topics(a.id) as training_topics, a.document_number, a.revision_number, a.cancel_reason,
                    (select count(*) from training_sessions s where s.activity_id = a.id and s.status <> 'CANCELLED') as sessions,
                    (select count(*) from training_events e where e.activity_id = a.id and e.event_type = 'SESSION_POSTPONED') as postponements
               from training_activities a where a.organizer_department_id=? and a.year=?""" + filter
-                + TrainingRows.orderBy(sortBy, sortDirection, Map.of("date", "a.created_at", "number", "a.serial", "kind", "a.kind", "title", "a.training_title", "document", "a.document_number", "sessions", "sessions", "status", "a.status"),
+                + TrainingRows.orderBy(sortBy, sortDirection, Map.of("date", "a.created_at", "number", "a.serial", "kind", "a.kind", "title", "training_activity_topics(a.id)", "document", "a.document_number", "sessions", "sessions", "status", "a.status"),
                 "a.serial, a.suffix nulls first") + " limit ? offset ?", pageArgs.toArray());
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", TrainingRows.camel(rows));

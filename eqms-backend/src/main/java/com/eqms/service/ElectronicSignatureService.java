@@ -292,36 +292,39 @@ public class ElectronicSignatureService {
                 continue;
             }
             String key = token.key();
-            String normalized = token.name().trim().toUpperCase(Locale.ROOT);
+            // {{approvedSignatureCompact}} and the like: the same signature as {{approvedSignature}}, drawn in the style the ending names
+            SignatureDisplayStyle style = SignatureDisplayStyle.ofName(token.name());
+            String baseName = style == null ? token.name() : SignatureDisplayStyle.baseName(token.name());
+            String normalized = baseName.trim().toUpperCase(Locale.ROOT);
             String collapsed = collapsePlaceholderName(normalized);
 
             // New documents with no review stage leave every reviewer-signature cell blank.
             // Legacy skipped-stage rendering and existing signatures remain unchanged.
             if ("OPTIONAL".equals(revision.reviewRequirement()) && isStageSkipped(revision, "REVIEWED")
                     && (isReviewerCollectionPlaceholder(collapsed) || isReviewerIndexedPlaceholder(collapsed)
-                    || "REVIEWED".equals(meaningFromSignaturePlaceholder(placeholder)))) {
+                    || "REVIEWED".equals(meaningFromSignaturePlaceholder(style == null ? placeholder : baseName)))) {
                 values.put(key, "");
                 continue;
             }
 
             if (isReviewerCollectionPlaceholder(collapsed)) {
-                values.put(key, renderParticipantSignatureCollection(reviewerBlocks, token.transform()));
+                values.put(key, renderParticipantSignatureCollection(reviewerBlocks, token.transform(), style));
                 continue;
             }
             if (isApproverCollectionPlaceholder(collapsed)) {
-                values.put(key, renderParticipantSignatureCollection(approverBlocks, token.transform()));
+                values.put(key, renderParticipantSignatureCollection(approverBlocks, token.transform(), style));
                 continue;
             }
             if (isReviewerIndexedPlaceholder(collapsed)) {
-                values.put(key, renderIndexedParticipantSignature(reviewerBlocks, extractPlaceholderIndex(collapsed), token.transform()));
+                values.put(key, renderIndexedParticipantSignature(reviewerBlocks, extractPlaceholderIndex(collapsed), token.transform(), style));
                 continue;
             }
             if (isApproverIndexedPlaceholder(collapsed)) {
-                values.put(key, renderIndexedParticipantSignature(approverBlocks, extractPlaceholderIndex(collapsed), token.transform()));
+                values.put(key, renderIndexedParticipantSignature(approverBlocks, extractPlaceholderIndex(collapsed), token.transform(), style));
                 continue;
             }
 
-            String meaning = meaningFromSignaturePlaceholder(placeholder);
+            String meaning = meaningFromSignaturePlaceholder(style == null ? placeholder : baseName);
             if (!StringUtils.hasText(meaning)) {
                 continue;
             }
@@ -336,7 +339,7 @@ public class ElectronicSignatureService {
                 );
             }
             if (signature != null) {
-                values.put(key, signatureRendererService.renderTextBlock(signature, requireSetting()));
+                values.put(key, style == null ? signatureRendererService.renderTextBlock(signature, requireSetting()) : signatureRendererService.renderStyled(signature, style));
             } else if (isStageSkipped(revision, meaning)) {
                 // No participant is configured for this stage at all (e.g. the document
                 // subtype skips review entirely) -- distinct from "not signed yet", which
@@ -360,22 +363,21 @@ public class ElectronicSignatureService {
         return signatureRendererService.renderTextBlock(signature, requireSetting());
     }
 
+    /** The block of a signature in one of the three styles of Publishing Template (compact, standard, detailed); null keeps the block of the configuration. */
+    @Transactional(readOnly = true)
+    public String renderSignatureBlock(ElectronicSignature signature, SignatureDisplayStyle style) {
+        return style == null ? renderSignatureBlock(signature) : signatureRendererService.renderStyled(signature, style);
+    }
+
     @Transactional(readOnly = true)
     public String renderPreviewSignatureBlock() {
         return signatureRendererService.renderPreviewText(requireSetting());
     }
 
+    /** The three display styles of a signed signature, drawn by the server from one sample record, for the settings screen. */
     @Transactional(readOnly = true)
-    public String previewTimestamp(String format, String timezone) {
-        ElectronicSignatureSetting current = requireSetting();
-        ElectronicSignatureSetting preview = new ElectronicSignatureSetting();
-        preview.setSignatureTimestampFormat(signatureRendererService.normalizeTimestampFormat(format));
-        // The time zone of a signature is the zone of the site: it is not chosen.
-        preview.setSignatureTimezone(DateTimeFormatUtils.ZONE_ID);
-        // The whole signature block (name, "Electronically Signed", time, reason, signature id ...) rendered with the
-        // UNSAVED format/timezone -- returning only the formatted timestamp made every other line disappear from the
-        // preview as soon as the format was changed.
-        return signatureRendererService.renderPreviewText(preview);
+    public List<ElectronicSignatureRendererService.StylePreview> displayStyles() {
+        return signatureRendererService.renderStylePreviews();
     }
 
     public Double getDisplayFontSizePt() {
@@ -397,14 +399,6 @@ public class ElectronicSignatureService {
 
     public String getDisplayStyle() {
         return "DETAILED_TABLE";
-    }
-
-    @Transactional(readOnly = true)
-    public List<ElectronicSignatureMeaningResponse> searchMeanings(String search) {
-        List<ElectronicSignatureMeaning> results = StringUtils.hasText(search)
-                ? meaningRepository.findByCodeContainingIgnoreCaseOrDisplayNameContainingIgnoreCaseOrderByCodeAsc(search.trim(), search.trim())
-                : meaningRepository.findAllByOrderByCodeAsc();
-        return results.stream().map(this::toMeaningResponse).toList();
     }
 
     private void validateSigningRules(String signatureToken, UserAccount user, String reason) {
@@ -651,24 +645,24 @@ public class ElectronicSignatureService {
         return StringUtils.hasText(value) ? value.trim().toLowerCase(Locale.ROOT) : "";
     }
 
-    private String renderParticipantSignatureCollection(List<ParticipantSignatureBlock> blocks, String transform) {
+    private String renderParticipantSignatureCollection(List<ParticipantSignatureBlock> blocks, String transform, SignatureDisplayStyle style) {
         if (blocks == null || blocks.isEmpty()) {
             return applyTransform("-", transform);
         }
         return blocks.stream()
-                .map(this::renderParticipantSignatureBlock)
+                .map(block -> renderParticipantSignatureBlock(block, style))
                 .filter(StringUtils::hasText)
                 .collect(java.util.stream.Collectors.joining("\n\n"));
     }
 
-    private String renderIndexedParticipantSignature(List<ParticipantSignatureBlock> blocks, Integer index, String transform) {
+    private String renderIndexedParticipantSignature(List<ParticipantSignatureBlock> blocks, Integer index, String transform, SignatureDisplayStyle style) {
         if (blocks == null || blocks.isEmpty() || index == null || index < 1 || index > blocks.size()) {
             return applyTransform("-", transform);
         }
-        return renderParticipantSignatureBlock(blocks.get(index - 1));
+        return renderParticipantSignatureBlock(blocks.get(index - 1), style);
     }
 
-    private String renderParticipantSignatureBlock(ParticipantSignatureBlock block) {
+    private String renderParticipantSignatureBlock(ParticipantSignatureBlock block, SignatureDisplayStyle style) {
         if (block == null) {
             return "-";
         }
@@ -715,7 +709,7 @@ public class ElectronicSignatureService {
         if (!StringUtils.hasText(display.getTimezone())) {
             display.setTimezone(displayTimezone(requireSetting()));
         }
-        return signatureRendererService.renderTextBlock(display, requireSetting());
+        return style == null ? signatureRendererService.renderTextBlock(display, requireSetting()) : signatureRendererService.renderStyled(display, style);
     }
 
     private String resolveParticipantDisplayStatus(DocumentParticipantResponse participant, ElectronicSignature signature) {

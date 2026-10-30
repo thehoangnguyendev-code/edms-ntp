@@ -125,6 +125,30 @@ class AuditTrailServiceTest {
     }
 
     @Test
+    void pagedRevisionHistoryUsesTheSameObjectGateWithoutGlobalAuditView() {
+        DocumentRevisionRecord revision = new DocumentRevisionRecord();
+        revision.setId(entityId);
+        when(documentRevisionRepository.findById(entityId)).thenReturn(Optional.of(revision));
+        when(auditLogRepository.findAll(org.mockito.ArgumentMatchers.<org.springframework.data.jpa.domain.Specification<com.eqms.entity.AuditLog>>any(),
+                org.mockito.ArgumentMatchers.any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+        service.getEntityPage("REVISION", entityId, false, "search", "All", null, null, null, null, "timestamp", "desc", 1, 10);
+        verify(documentAuthorizationService).requireCanViewRevision(user, revision);
+        org.mockito.Mockito.verifyNoInteractions(permissionEvaluationService);
+    }
+
+    @Test
+    void pagedRevisionHistoryFailsClosedBeforeRunningTheQuery() {
+        DocumentRevisionRecord revision = new DocumentRevisionRecord();
+        revision.setId(entityId);
+        when(documentRevisionRepository.findById(entityId)).thenReturn(Optional.of(revision));
+        doThrow(new AccessDeniedException("Revision access denied")).when(documentAuthorizationService).requireCanViewRevision(user, revision);
+        assertThatThrownBy(() -> service.getEntityPage("REVISION", entityId, false, null, "All", null, null, null, null, "timestamp", "desc", 1, 10))
+                .isInstanceOf(AccessDeniedException.class);
+        org.mockito.Mockito.verifyNoInteractions(auditLogRepository);
+    }
+
+    @Test
     void revision_getByEntity_deniedWhenCannotViewRevision() {
         DocumentRevisionRecord revision = new DocumentRevisionRecord();
         revision.setId(entityId);

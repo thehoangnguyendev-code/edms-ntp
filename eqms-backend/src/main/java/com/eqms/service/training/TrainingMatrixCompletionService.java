@@ -58,17 +58,29 @@ public class TrainingMatrixCompletionService {
         return department;
     }
 
-    /** The positions that have at least one row in the effective matrix of the department. */
+    /** The choice "All employees": the rows of the matrix for all employees of the department, with every active employee of the department, whether the person holds a Work Position or not. */
+    public static final UUID ALL_EMPLOYEES = new UUID(0L, 1L);
+
+    /** The positions that have at least one row in the effective matrix of the department, and first the choice "All employees". */
     @Transactional(readOnly = true)
     public List<Map<String, Object>> positions(UserAccount actor, UUID departmentId) {
         UUID department = department(actor, departmentId);
-        return TrainingRows.camel(jdbc.queryForList("""
+        List<Map<String, Object>> out = new java.util.ArrayList<>();
+        Map<String, Object> all = new LinkedHashMap<>();
+        all.put("id", ALL_EMPLOYEES);
+        all.put("code", "ALL");
+        all.put("name", "All employees");
+        all.put("rowCount", jdbc.queryForObject("select count(*) from training_matrix_rows r join training_matrix_versions v on v.id = r.version_id and v.status = 'EFFECTIVE' join training_matrices m on m.id = v.matrix_id where m.department_id = ? and r.all_employees", Integer.class, department));
+        all.put("peopleCount", jdbc.queryForObject("select count(*) from app_users u where u.status = 'Active' and lower(trim(u.department)) = lower(trim((select name from departments where id = ?)))", Integer.class, department));
+        out.add(all);
+        out.addAll(TrainingRows.camel(jdbc.queryForList("""
             select p.id, p.code, p.name, count(distinct r.id) as row_count,
                    (select count(*) from training_person_positions tp join app_users u on u.id = tp.person_user_id where tp.position_id = p.id and tp.valid_to is null and u.status = 'Active') as people_count
               from training_matrices m join training_matrix_versions v on v.matrix_id = m.id and v.status = 'EFFECTIVE'
               join training_matrix_rows r on r.version_id = v.id join training_matrix_cells c on c.row_id = r.id join training_job_roles p on p.id = c.position_id
              where m.department_id = ? group by p.id, p.code, p.name order by p.name
-            """, department));
+            """, department)));
+        return out;
     }
 
     @Transactional(readOnly = true)
@@ -88,24 +100,34 @@ public class TrainingMatrixCompletionService {
         out.put("matrixVersionNo", version.get("version_no"));
 
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select r.id as row_id, r.row_no, r.row_group, r.annual_required, coalesce(t.code, d.document_number) as code, coalesce(t.name, d.document_name) as title,
-                   t.name as tname, d.document_number as dnum, d.id as doc_id,
+            select r.id as row_id, r.row_no, r.row_group, r.annual_required, d.document_number as code, coalesce(r.topic_text, d.document_name) as title,
+                   r.topic_text as tname, d.document_number as dnum, d.id as doc_id,
                    (select dr.revision_number from document_revisions dr where dr.document_id = d.id and dr.status_code = 'EFFECTIVE' order by dr.effective_date desc nulls last limit 1) as eff_rev,
                    (select dr.requires_training from document_revisions dr where dr.document_id = d.id and dr.status_code = 'EFFECTIVE' order by dr.effective_date desc nulls last limit 1) as eff_requires
-              from training_matrix_rows r join training_matrix_cells c on c.row_id = r.id and c.position_id = ?
-              left join training_topics t on t.id = r.topic_id left join documents d on d.id = r.document_id
-             where r.version_id = ?
+              from training_matrix_rows r left join training_matrix_cells c on c.row_id = r.id and c.position_id = ?
+              left join documents d on d.id = r.document_id
+             where r.version_id = ? and (case when ?::boolean then r.all_employees else c.row_id is not null end)
              order by case r.row_group when 'FACTORY_GENERAL' then 0 when 'DEPARTMENT_GENERAL' then 1 else 2 end, r.row_no
-            """, positionId, version.get("id"));
+            """, positionId, version.get("id"), ALL_EMPLOYEES.equals(positionId));
         if (rows.size() > MAX_ROWS) throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "TRAINING_MATRIX_TOO_LARGE");
 
         List<Object> args = new ArrayList<>();
-        args.add(positionId);
         String like = null;
-        StringBuilder sql = new StringBuilder("""
-            select u.id as pid, u.full_name, u.employee_code from training_person_positions tp join app_users u on u.id = tp.person_user_id
-             where tp.position_id = ? and tp.valid_to is null and u.status = 'Active'
-            """);
+        StringBuilder sql;
+        if (ALL_EMPLOYEES.equals(positionId)) {
+            // every active employee of the department, with or without a Work Position
+            args.add(department);
+            sql = new StringBuilder("""
+                select u.id as pid, u.full_name, u.employee_code from app_users u
+                 where u.status = 'Active' and lower(trim(u.department)) = lower(trim((select name from departments where id = ?)))
+                """);
+        } else {
+            args.add(positionId);
+            sql = new StringBuilder("""
+                select u.id as pid, u.full_name, u.employee_code from training_person_positions tp join app_users u on u.id = tp.person_user_id
+                 where tp.position_id = ? and tp.valid_to is null and u.status = 'Active'
+                """);
+        }
         if (search != null && !search.isBlank()) {
             like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
             sql.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\')");
@@ -128,17 +150,17 @@ public class TrainingMatrixCompletionService {
             String factSql = """
                 select pe.pid, ro.row_id, lr.last_done, lr.last_rev, oa.activity_id
                   from (select u.id as pid from app_users u where u.id in (%s)) pe
-                  cross join (select r.id as row_id, t.name as tname, d.document_number as dnum from training_matrix_rows r
-                               left join training_topics t on t.id = r.topic_id left join documents d on d.id = r.document_id
+                  cross join (select r.id as row_id, r.topic_text as tname, d.document_number as dnum from training_matrix_rows r
+                               left join documents d on d.id = r.document_id
                                where r.id in (%s) and r.version_id = ?) ro
                   left join lateral (select rec.completed_on as last_done, rec.document_revision as last_rev from training_records rec left join training_record_voids v on v.record_id = rec.id
                                       where rec.person_user_id = pe.pid and v.id is null
-                                        and ((ro.dnum is not null and rec.document_number = ro.dnum) or (ro.tname is not null and lower(rec.topic_text) = lower(ro.tname)))
+                                        and ((ro.dnum is not null and rec.document_number = ro.dnum) or (ro.tname is not null and training_topic_key(rec.topic_text) = training_topic_key(ro.tname)))
                                       order by rec.completed_on desc limit 1) lr on true
                   left join lateral (select a.id as activity_id from training_participants p join training_activities a on a.id = p.activity_id
                                       join training_session_topics st on st.session_id = p.session_id
                                       where p.person_user_id = pe.pid and a.status in ('PLANNED','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION') and p.state <> 'ABSENT'
-                                        and ((ro.dnum is not null and st.document_number = ro.dnum) or (ro.tname is not null and lower(st.topic_text) = lower(ro.tname)))
+                                        and ((ro.dnum is not null and st.document_number = ro.dnum) or (ro.tname is not null and training_topic_key(st.topic_text) = training_topic_key(ro.tname)))
                                       limit 1) oa on true
                 """.formatted(peopleMarks, rowMarks);
             for (Map<String, Object> f : jdbc.queryForList(factSql, factArgs.toArray())) {
@@ -261,27 +283,27 @@ public class TrainingMatrixCompletionService {
         UUID department = department(actor, departmentId);
         if (personId == null || rowId == null) throw new IllegalArgumentException("TRAINING_POSITION_REQUIRED");
         Map<String, Object> row = jdbc.queryForList("""
-            select r.id as row_id, r.row_group, r.annual_required, coalesce(t.code, d.document_number) as code, coalesce(t.name, d.document_name) as title, t.name as tname, d.document_number as dnum,
+            select r.id as row_id, r.row_group, r.annual_required, d.document_number as code, coalesce(r.topic_text, d.document_name) as title, r.topic_text as tname, d.document_number as dnum,
                    (select dr.revision_number from document_revisions dr where dr.document_id = d.id and dr.status_code = 'EFFECTIVE' order by dr.effective_date desc nulls last limit 1) as eff_rev,
                    (select dr.requires_training from document_revisions dr where dr.document_id = d.id and dr.status_code = 'EFFECTIVE' order by dr.effective_date desc nulls last limit 1) as eff_requires
               from training_matrix_rows r join training_matrix_versions v on v.id = r.version_id and v.status = 'EFFECTIVE' join training_matrices m on m.id = v.matrix_id and m.department_id = ?
-              left join training_topics t on t.id = r.topic_id left join documents d on d.id = r.document_id
-             where r.id = ? and exists (select 1 from training_matrix_cells c join training_person_positions tp on tp.position_id = c.position_id and tp.person_user_id = ? and tp.valid_to is null where c.row_id = r.id)
+              left join documents d on d.id = r.document_id
+             where r.id = ? and (r.all_employees or exists (select 1 from training_matrix_cells c join training_person_positions tp on tp.position_id = c.position_id and tp.person_user_id = ? and tp.valid_to is null where c.row_id = r.id))
             """, department, rowId, personId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         Map<String, Object> person = jdbc.queryForList("""
             select u.id, u.full_name, u.employee_code, u.department, (select string_agg(p.name, ', ') from training_person_positions tp join training_job_roles p on p.id = tp.position_id where tp.person_user_id = u.id and tp.valid_to is null) as positions
               from app_users u where u.id = ?
             """, personId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        String match = "((?::text is not null and rec.document_number = ?) or (?::text is not null and lower(rec.topic_text) = lower(?)))";
+        String match = "((?::text is not null and rec.document_number = ?) or (?::text is not null and training_topic_key(rec.topic_text) = training_topic_key(?)))";
         List<Map<String, Object>> records = TrainingRows.camel(jdbc.queryForList("""
             select rec.id, rec.record_no, rec.training_number, rec.activity_id, rec.completed_on, rec.document_revision, rec.method, rec.result, (v.id is not null) as voided, v.reason as void_reason
               from training_records rec left join training_record_voids v on v.record_id = rec.id
              where rec.person_user_id = ? and """ + match + " order by rec.completed_on desc, rec.record_no desc limit 20", personId, row.get("dnum"), row.get("dnum"), row.get("tname"), row.get("tname")));
         List<Map<String, Object>> open = TrainingRows.camel(jdbc.queryForList("""
-            select distinct a.id, a.training_number, a.training_title, a.status, a.due_date, s.scheduled_on
+            select distinct a.id, a.training_number, training_activity_topics(a.id) as training_topics, a.status, a.due_date, s.scheduled_on
               from training_participants p join training_activities a on a.id = p.activity_id join training_sessions s on s.id = p.session_id join training_session_topics st on st.session_id = s.id
              where p.person_user_id = ? and a.status in ('PLANNED','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION') and p.state <> 'ABSENT'
-               and ((?::text is not null and st.document_number = ?) or (?::text is not null and lower(st.topic_text) = lower(?)))
+               and ((?::text is not null and st.document_number = ?) or (?::text is not null and training_topic_key(st.topic_text) = training_topic_key(?)))
              order by a.due_date nulls last limit 5
             """, personId, row.get("dnum"), row.get("dnum"), row.get("tname"), row.get("tname")));
         Map<String, Object> last = records.stream().filter(r -> !Boolean.TRUE.equals(r.get("voided"))).findFirst().orElse(null);

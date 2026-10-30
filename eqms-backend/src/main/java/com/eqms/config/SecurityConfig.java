@@ -69,6 +69,7 @@ public class SecurityConfig {
                                 "/auth/**",
                                 "/branding",
                                 "/branding/logo",
+                                "/branding/auth-background-video/*",
                                 // Home-screen shortcut: a phone reads the manifest and the icon before anyone signs in
                                 "/branding/pwa/**",
                                 "/system/environment",

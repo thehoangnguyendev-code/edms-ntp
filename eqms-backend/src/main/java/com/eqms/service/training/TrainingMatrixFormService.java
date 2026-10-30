@@ -73,15 +73,15 @@ public class TrainingMatrixFormService {
         Map<String, Object> data = new java.util.HashMap<>(v);
         List<List<String>> signatureBlocks = new ArrayList<>();
         for (Map<String, Object> a : (List<Map<String, Object>>) v.get("approvers")) {
-            if ("DONE".equals(a.get("status")) && a.get("signatureId") instanceof UUID id) signatureBlocks.add(blocks.lines(id));
+            if ("DONE".equals(a.get("status")) && a.get("signatureId") instanceof UUID id) signatureBlocks.add(blocks.lines(id, TEMPLATE_CODE, "MATRIX"));
         }
         data.put("signatureBlocks", signatureBlocks);
         data.put("signatureFontPt", blocks.fontPt());
-        TrainingFormTemplates.Template template = templates.enabled(TEMPLATE_CODE);
+        TrainingFormTemplates.Template template = templates.enabledFor(TEMPLATE_CODE, "MATRIX_VERSION", versionId, actor, format, true);
         byte[] source = template.bytes();
         byte[] docx;
         try {
-            docx = fill(source, data);
+            docx = TrainingAnnexEngine.isTokenized(source) ? TrainingAnnexEngine.render(source, annex(data, signatureBlocks, template.versionLabel())) : fill(source, data);
         } catch (IOException | XmlException e) {
             throw new IllegalStateException("TRAINING_PRINT_FAILED", e);
         }
@@ -91,6 +91,23 @@ public class TrainingMatrixFormService {
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ the form
+
+    /** The tokens of APD.0011 (PLAN-TR-004, 8.5): the table of the matrix is drawn by the system at {{BLOCK:MATRIX}} because its columns follow the Work Positions of the version. */
+    static TrainingAnnexData annex(Map<String, Object> v, List<List<String>> signatureBlocks, String revision) {
+        List<String> signed = new ArrayList<>();
+        for (List<String> block : signatureBlocks) signed.addAll(block);
+        return TrainingAnnexData.forForm(TEMPLATE_CODE, revision).scalar("DEPARTMENT", String.valueOf(v.get("departmentName"))).scalar("MATRIX_CODE", String.valueOf(v.get("matrixCode")))
+                .scalar("MATRIX_VERSION", v.get("versionNo") + " (" + ("EFFECTIVE".equals(v.get("status")) ? "Effective" : "Obsoleted") + ")").signature("MATRIX", signed)
+                .block("MATRIX", (doc, marker) -> {
+                    try {
+                        XmlCursor made = XmlObject.Factory.parse(table(v)).newCursor();
+                        made.toFirstChild();
+                        made.moveXml(marker.newCursor());
+                    } catch (XmlException e) {
+                        throw new IllegalStateException("TRAINING_PRINT_FAILED", e);
+                    }
+                });
+    }
 
     @SuppressWarnings("unchecked")
     static byte[] fill(byte[] template, Map<String, Object> v) throws IOException, XmlException {
@@ -255,12 +272,12 @@ public class TrainingMatrixFormService {
                 group = g;
                 x.append("<w:tr><w:trPr><w:cantSplit/></w:trPr>").append(cell(5000, "<w:gridSpan w:val=\"" + (n + 4) + "\"/><w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"E7E6E6\"/>", left(groupTitle(g), true))).append("</w:tr>");
             }
-            boolean topic = r.get("topicId") != null;
+            boolean topic = r.get("topicText") != null;
             List<?> ids = (List<?>) r.get("positionIds");
             x.append("<w:tr><w:trPr><w:cantSplit/></w:trPr>")
                     .append(cell(widths[0], "", center(String.valueOf(++no_))))
-                    .append(cell(widths[1], "", center(topic ? text(r.get("topicCode")) : text(r.get("documentNumber")))))
-                    .append(cell(widths[2], "", left(topic ? text(r.get("topicName")) : text(r.get("documentName")), false)));
+                    .append(cell(widths[1], "", center(topic ? "" : text(r.get("documentNumber")))))
+                    .append(cell(widths[2], "", left(topic ? text(r.get("topicText")) : text(r.get("documentName")), false)));
             if (positions.isEmpty()) x.append(cell(widths[3], "", "<w:p/>"));
             for (int i = 0; i < positions.size(); i++) x.append(cell(widths[3 + i], "", center(ids.contains(positions.get(i).get("id")) ? "X" : "")));
             x.append(cell(widths[n + 3], "", center(Boolean.TRUE.equals(r.get("annualRequired")) ? "Yes" : "No"))).append("</w:tr>");

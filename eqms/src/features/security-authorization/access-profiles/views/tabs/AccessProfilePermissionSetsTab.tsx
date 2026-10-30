@@ -6,6 +6,8 @@ import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { SectionLoading } from "@/components/ui/loading/Loading";
+import { TablePagination } from "@/components/ui/table/TablePagination";
+import { useDebounce } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
 import { ROUTES } from "@/app/routes.constants";
 import { settingsApi, type PermissionCatalogGroup, type PermissionSetSummary, type PermissionSetResponse } from "@/services/api/settings";
@@ -27,21 +29,25 @@ export const PermissionSetsTab: React.FC<{
   const [catalog, setCatalog] = useState<PermissionCatalogGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const searchTerm = useDebounce(search, 300);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [availableCount, setAvailableCount] = useState(0);
+  const [listLoading, setListLoading] = useState(false);
   const [pendingRemove, setPendingRemove] = useState<PermissionSetSummary | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [sets, catalogData, profileDetail] = await Promise.all([
-        settingsApi.listPermissionSets(),
+      const [catalogData, profileDetail] = await Promise.all([
         settingsApi.getPermissionCatalog(),
-        settingsApi.getAccessProfile(profileId),
+        settingsApi.getAccessProfileEditorSummary(profileId).then((result) => result.profile),
       ]);
-      setAllSets(sets);
       setCatalog(catalogData);
       // Only track shared sets visible in this list — the auto-managed ROLE_ set is
       // edited on the Permissions tab and must never enter this tab's diff.
-      const visible = new Set(sets.map((s) => s.id));
-      const ids = profileDetail.permissionSets.map((s) => s.id).filter((psId) => visible.has(psId));
+      const ids = profileDetail.permissionSets.filter((s) => !s.code.startsWith("ROLE_")).map((s) => s.id);
       setOriginalIds(ids);
       setAssignedIdsState(ids);
       onChangesChange?.({ added: [], removed: [] });
@@ -54,6 +60,24 @@ export const PermissionSetsTab: React.FC<{
   }, [profileId, showToast, reloadKey]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    let active = true;
+    setListLoading(true);
+    settingsApi.listPermissionSetsPaged({ page, limit, search: searchTerm || undefined, sortBy: "name", sortDir: "asc" })
+      .then((result) => {
+        if (!active) return;
+        setAllSets(result.data);
+        setTotal(result.pagination.total);
+        const pages = Math.max(1, result.pagination.totalPages);
+        setTotalPages(pages);
+        if (!searchTerm) setAvailableCount(result.pagination.total);
+        if (page > pages) setPage(pages);
+      })
+      .catch(() => { if (active) { setAllSets([]); setTotal(0); setTotalPages(1); showToast({ type: "error", message: "Failed to load permission sets" }); } })
+      .finally(() => { if (active) setListLoading(false); });
+    return () => { active = false; };
+  }, [page, limit, searchTerm, reloadKey, showToast]);
 
   const reportDiff = (nextAssigned: string[]) => {
     const originalSet = new Set(originalIds);
@@ -105,17 +129,6 @@ export const PermissionSetsTab: React.FC<{
 
   const assignedSet = new Set(assignedIdsState);
 
-  const filteredSets = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return allSets;
-    return allSets.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.code.toLowerCase().includes(q) ||
-        (s.description ?? "").toLowerCase().includes(q),
-    );
-  }, [allSets, search]);
-
   const handleToggle = (set: PermissionSetResponse) => {
     if (!canAssign) return;
     if (assignedSet.has(set.id)) {
@@ -142,7 +155,7 @@ export const PermissionSetsTab: React.FC<{
 
   if (loading) return <SectionLoading />;
 
-  const assignedVisibleCount = allSets.filter((s) => assignedSet.has(s.id)).length;
+  const assignedVisibleCount = assignedIdsState.length;
 
   return (
     <div className="space-y-4">
@@ -173,20 +186,20 @@ export const PermissionSetsTab: React.FC<{
         <input
           className="w-full h-9 pl-9 pr-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           placeholder="Search permission sets…"
         />
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Badge color="emerald" size="sm">{assignedVisibleCount} assigned</Badge>
-        <span className="text-xs text-slate-500">{allSets.length} shared set(s) available</span>
+        <span className="text-xs text-slate-500">{availableCount} shared set(s) available</span>
       </div>
 
       <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
-        {filteredSets.length === 0 && (
+        {!listLoading && allSets.length === 0 && (
           <p className="p-4 text-sm text-slate-400">No permission sets match your search.</p>
         )}
-        {filteredSets.map((ps) => (
+        {allSets.map((ps) => (
           <div key={ps.id} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
             <Checkbox
               id={`profile-ps-${ps.id}`}
@@ -216,6 +229,7 @@ export const PermissionSetsTab: React.FC<{
           </div>
         ))}
       </div>
+      {total > 0 && <TablePagination currentPage={page} totalPages={totalPages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} />}
       <AlertModal
         isOpen={Boolean(pendingRemove)}
         onClose={() => setPendingRemove(null)}

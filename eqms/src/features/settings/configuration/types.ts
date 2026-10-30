@@ -1,3 +1,5 @@
+import type { PageBackground } from '@/config/page-background';
+
 export interface CompanyInfo {
   companyName: string;
   companyAddress: string;
@@ -47,10 +49,18 @@ export interface LocaleSettings {
 export type ToastPosition = 'center' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
 
 export interface AppearanceSettings {
+  mainBackground?: PageBackground | null;
+  authBackground?: PageBackground | null;
+  alternatingRecordColors?: boolean;
+  alternatingRecordColor?: string;
   /** Desktop Search + two-column draft filter panel. */
   compactDesktopFilters?: boolean;
   /** Where system toast notifications appear. Machine values only; labels live in GeneralTab. */
   toastPosition?: ToastPosition;
+  /** How long a system message stays on screen, in seconds (2 to 60; 5 when empty). */
+  toastDurationSeconds?: number;
+  /** How the materials of a training are drawn on every Training screen: a table (default) or tiles. */
+  trainingMaterialsLayout?: 'TABLE' | 'TILES';
   systemSidebarCollapsedLogo?: string;
   /** When enabled by an administrator, show the signed-in user's profile at the bottom of the sidebar. */
   showSidebarUserProfile?: boolean;
@@ -72,7 +82,7 @@ export interface GeneralConfig {
   systemFavicon: string;
   /** Home-screen shortcut icon (PNG or JPEG data URL, at least 512 x 512). Empty means the built-in icon. */
   appIcon?: string;
-  /** Label under the shortcut icon, at most 12 characters; empty means the display name. */
+  /** Label under the shortcut icon, at most 64 characters; empty means the display name. */
   appShortName?: string;
   /** Colour behind the icon on the home screen (#RRGGBB); a transparent logo needs one. */
   appIconBackground?: string;
@@ -109,6 +119,7 @@ export interface SecurityConfig {
   preventPasswordReuse: boolean;
   passwordHistoryCount: number;
   sessionTimeoutMinutes: number;
+  sessionTimeoutEnabled?: boolean;
   enable2FA: boolean;
   forcePasswordChangeOnFirstLogin: boolean;
   enableAccountLockout: boolean;

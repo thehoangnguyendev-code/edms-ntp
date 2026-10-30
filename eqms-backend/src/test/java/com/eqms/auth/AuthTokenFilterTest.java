@@ -111,6 +111,40 @@ class AuthTokenFilterTest {
         return response;
     }
 
+    @Test
+    void disabledIdleTimeoutDoesNotLockAnInactiveSession() throws Exception {
+        stubParsedToken();
+        session.setLastActivityAt(Instant.now().minusSeconds(7200));
+        when(systemConfigurationService.getSessionTimeoutMinutes()).thenReturn(0);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user(UserStatus.Active)));
+        when(systemConfigurationService.isPasswordExpired(any())).thenReturn(false);
+        when(systemConfigurationService.isMaintenanceModeEnabled()).thenReturn(false);
+        when(permissionEvaluationService.getPermissionCodes(any())).thenReturn(Set.of());
+        when(tokenService.toAuthorities(any())).thenReturn(java.util.List.of());
+        assertEquals(200, runFilter(requestWithBearerToken()).getStatus());
+        assertEquals(AuthSession.SessionStatus.ACTIVE, session.getStatus());
+        verify(sessionRepository, never()).save(any());
+    }
+
+    @Test
+    void enabledIdleTimeoutLocksAnInactiveSession() throws Exception {
+        stubParsedToken();
+        session.setLastActivityAt(Instant.now().minusSeconds(7200));
+        when(systemConfigurationService.getSessionTimeoutMinutes()).thenReturn(30);
+        assertEquals(423, runFilter(requestWithBearerToken()).getStatus());
+        assertEquals(AuthSession.SessionStatus.LOCKED, session.getStatus());
+        verify(sessionRepository).save(session);
+        verify(auditTrailService).logSafely(eq("SESSION"), any(), eq(sessionId), eq("SESSION_LOCKED_IDLE_TIMEOUT"), any(), any(), any());
+    }
+
+    @Test
+    void previouslyLockedSessionRemainsLockedWhenTimeoutIsDisabled() throws Exception {
+        stubParsedToken();
+        session.setStatus(AuthSession.SessionStatus.LOCKED);
+        assertEquals(423, runFilter(requestWithBearerToken()).getStatus());
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
     // ── Non-Active statuses are denied before any permission/password check ────────────────
 
     @Test

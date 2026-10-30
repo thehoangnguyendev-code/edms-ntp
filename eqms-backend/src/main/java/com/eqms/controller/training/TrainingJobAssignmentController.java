@@ -37,8 +37,8 @@ public class TrainingJobAssignmentController {
     }
 
     @GetMapping("/eligibility")
-    public ResponseEntity<?> eligibility(@RequestParam UUID person, @RequestParam UUID position, @RequestParam(required = false) java.util.List<UUID> topicIds, @RequestParam(required = false) java.util.List<UUID> documentIds) {
-        return ResponseEntity.ok(jobs.eligibility(users.requireCurrentUser(), person, position, topicIds, documentIds));
+    public ResponseEntity<?> eligibility(@RequestParam UUID person, @RequestParam java.util.List<UUID> position, @RequestParam(required = false) java.util.List<String> topics, @RequestParam(required = false) java.util.List<UUID> documentIds) {
+        return ResponseEntity.ok(jobs.eligibility(users.requireCurrentUser(), person, position, topics, documentIds));
     }
 
     @PostMapping
@@ -46,6 +46,12 @@ public class TrainingJobAssignmentController {
 
     @GetMapping("/{id}")
     public ResponseEntity<?> get(@PathVariable UUID id) { return ResponseEntity.ok(jobs.get(users.requireCurrentUser(), id)); }
+
+    @GetMapping("/{id}/positions")
+    public ResponseEntity<?> positions(@PathVariable UUID id, @RequestParam(required = false) String search,
+                                       @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {
+        return ResponseEntity.ok(jobs.positions(users.requireCurrentUser(), id, search, page, limit));
+    }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody SaveRequest request) { return ResponseEntity.ok(jobs.update(users.requireCurrentUser(), id, request)); }

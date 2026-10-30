@@ -56,6 +56,8 @@ export const ExecutedRecordsView: React.FC = () => {
   const debouncedSearch = useDebounce(searchQuery, 400);
   const [receivedFrom, setReceivedFrom] = useState("");
   const [receivedTo, setReceivedTo] = useState("");
+  const [recordedFrom, setRecordedFrom] = useState("");
+  const [recordedTo, setRecordedTo] = useState("");
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["received"]));
 
@@ -79,6 +81,8 @@ export const ExecutedRecordsView: React.FC = () => {
         search: debouncedSearch || undefined,
         filledFrom: receivedFrom ? toIsoDate(receivedFrom) : undefined,
         filledTo: receivedTo ? toIsoDate(receivedTo) : undefined,
+        recordedFrom: recordedFrom ? toIsoDate(recordedFrom) : undefined,
+        recordedTo: recordedTo ? toIsoDate(recordedTo) : undefined,
         sortBy: sortConfig.key,
         sortDirection: sortConfig.direction,
       })
@@ -99,11 +103,11 @@ export const ExecutedRecordsView: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [currentPage, itemsPerPage, debouncedSearch, receivedFrom, receivedTo, reloadKey, sortConfig]);
+  }, [currentPage, itemsPerPage, debouncedSearch, receivedFrom, receivedTo, recordedFrom, recordedTo, reloadKey, sortConfig]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, receivedFrom, receivedTo]);
+  }, [debouncedSearch, receivedFrom, receivedTo, recordedFrom, recordedTo]);
 
   const toggleSection = (id: string) =>
     setExpandedSections((prev) => {
@@ -117,6 +121,8 @@ export const ExecutedRecordsView: React.FC = () => {
     setSearchQuery("");
     setReceivedFrom("");
     setReceivedTo("");
+    setRecordedFrom("");
+    setRecordedTo("");
     setCurrentPage(1);
   };
 
@@ -332,6 +338,7 @@ export const ExecutedRecordsView: React.FC = () => {
               filters={[]}
               dates={[
                 { id: "received", label: "Received Date Range", from: receivedFrom, to: receivedTo, onFromChange: setReceivedFrom, onToChange: setReceivedTo },
+                { id: "recorded", label: "Recorded Date Range", from: recordedFrom, to: recordedTo, onFromChange: setRecordedFrom, onToChange: setRecordedTo },
               ]}
             >
               <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
@@ -355,6 +362,16 @@ export const ExecutedRecordsView: React.FC = () => {
                     endDate={receivedTo}
                     onStartDateChange={setReceivedFrom}
                     onEndDateChange={setReceivedTo}
+                    placeholder="Select date range"
+                  />
+                </div>
+                <div>
+                  <DateRangePicker
+                    label="Recorded Date Range"
+                    startDate={recordedFrom}
+                    endDate={recordedTo}
+                    onStartDateChange={setRecordedFrom}
+                    onEndDateChange={setRecordedTo}
                     placeholder="Select date range"
                   />
                 </div>
@@ -383,6 +400,22 @@ export const ExecutedRecordsView: React.FC = () => {
                     endDate={receivedTo}
                     onStartDateChange={setReceivedFrom}
                     onEndDateChange={setReceivedTo}
+                    placeholder="Select date range"
+                  />
+                </div>
+              </FilterAccordionItem>
+              <FilterAccordionItem
+                label="Recorded Date Range"
+                isExpanded={expandedSections.has("recorded")}
+                onToggle={() => toggleSection("recorded")}
+              >
+                <div className="pt-2 pb-4">
+                  <DateRangePicker
+                    label="Recorded Date Range"
+                    startDate={recordedFrom}
+                    endDate={recordedTo}
+                    onStartDateChange={setRecordedFrom}
+                    onEndDateChange={setRecordedTo}
                     placeholder="Select date range"
                   />
                 </div>

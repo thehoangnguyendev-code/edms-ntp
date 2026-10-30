@@ -318,6 +318,19 @@ class AccessEffectiveServiceTest {
         when(accessProfileService.getPermissionSets(profileId)).thenReturn(sets);
     }
 
+    @Test void queryFiltersEvaluatedRowsButKeepsTheWholeMatrixSummary() {
+        var allowed = com.eqms.dto.security.EffectiveAccessRowResponse.allow("documents", "EDIT", "Edit", "documents.edit", "DOCUMENT", "DRAFT", "Draft", false);
+        var denied = com.eqms.dto.security.EffectiveAccessRowResponse.deny("documents", "EDIT", "Edit", "documents.edit", "DOCUMENT", "ACTIVE", "Active", "MISSING_PERMISSION", "Denied", false);
+        var queried = org.mockito.Mockito.spy(service);
+        org.mockito.Mockito.doReturn(new EffectiveAccessResponse(profileId, "Profile", null, false, "Note", List.of(allowed, denied))).when(queried).getEffectiveAccess(profileId, null);
+        var response = queried.queryEffectiveAccess(profileId, null, "active", "DENIED");
+        assertThat(response.rows()).containsExactly(denied);
+        assertThat(response.summary().total()).isEqualTo(2);
+        assertThat(response.summary().allowed()).isEqualTo(1);
+        assertThat(response.summary().denied()).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> queried.queryEffectiveAccess(profileId, null, "", "SQL" )).isInstanceOf(IllegalArgumentException.class);
+    }
+
     private List<PermissionSetItem> itemsFor(String... codes) {
         return java.util.Arrays.stream(codes).map(code -> {
             PermissionSetItem item = new PermissionSetItem();

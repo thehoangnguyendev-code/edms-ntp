@@ -201,6 +201,8 @@ export interface PublishingWorkspaceResponse {
   publishedPdfPath?: string | null;
   conversionEngine?: string | null;
   previewReady?: boolean;
+  /** The preview is older than the revision file or the live template: it is not what would be published. */
+  previewStale?: boolean;
   publishReady?: boolean;
   publishingTemplateName?: string | null;
   publishingTemplateStatus?: string | null;

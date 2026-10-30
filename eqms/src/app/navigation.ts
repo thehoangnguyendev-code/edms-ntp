@@ -825,6 +825,7 @@ const SYSTEM_MODULES: NavItem[] = [
           "training.admin.properties.view",
           "training.settings.view",
           "training.admin.manage",
+          "training.annex.view",
         ],
         children: [
           {
@@ -834,10 +835,10 @@ const SYSTEM_MODULES: NavItem[] = [
             allowedPermissions: ["training.admin.properties.view", "training.settings.view"],
           },
           {
-            id: "training-admin-topics",
-            label: "Training Topics",
-            path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.TOPICS,
-            allowedPermissions: ["training.admin.manage"],
+            id: "training-admin-code-rules",
+            label: "Training Code Rules",
+            path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.CODE_RULES,
+            allowedPermissions: ["training.admin.properties.view", "training.settings.view"],
           },
           {
             id: "training-admin-vendors",
@@ -847,7 +848,7 @@ const SYSTEM_MODULES: NavItem[] = [
           },
           {
             id: "training-admin-job-roles",
-            label: "Job Roles",
+            label: "Work Positions",
             path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.JOB_ROLES,
             allowedPermissions: ["training.admin.manage"],
           },
@@ -856,6 +857,12 @@ const SYSTEM_MODULES: NavItem[] = [
             label: "Training Notifications",
             path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.NOTIFICATIONS,
             allowedPermissions: ["training.admin.manage"],
+          },
+          {
+            id: "training-admin-annex",
+            label: "Training Annex",
+            path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.ANNEX,
+            allowedPermissions: ["training.annex.view"],
           },
         ],
       },

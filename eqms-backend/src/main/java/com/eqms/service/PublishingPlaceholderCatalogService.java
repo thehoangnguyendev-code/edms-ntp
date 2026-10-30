@@ -32,6 +32,37 @@ public class PublishingPlaceholderCatalogService {
         return new PublishingPlaceholderCatalogResponse(filteredGroups);
     }
 
+    /**
+     * The signature placeholders, one group for each display style and one placeholder for each step (Prepared, Reviewed, Approved, Published). All three styles draw the same electronic
+     * signature record; they differ only in how much of it is written (name, meaning and date and time are in every one; see {@link SignatureDisplayStyle}).
+     */
+    private java.util.List<PublishingPlaceholderGroupResponse> signatureStyleGroups() {
+        String[][] styles = {
+                {"COMPACT", "Compact", "Name, then meaning and date and time on one line (Approved · 26/10/2026 23:16 (UTC+07)). For the signature cells of the table at the top of a document."},
+                {"STANDARD", "Standard", "Name, then Electronically approved, then the date and time. For a signature area of its own."},
+                {"DETAILED", "Detailed", "Name, then meaning and date and time, then the signature ID in small grey type. For a signature page or an important record."}
+        };
+        String[][] steps = {
+                {"PREPARED", "Prepared (complete editing)"}, {"REVIEWED", "Reviewed"}, {"APPROVED", "Approved"}, {"PUBLISHED", "Published"}
+        };
+        java.util.List<PublishingPlaceholderGroupResponse> groups = new java.util.ArrayList<>();
+        for (String[] style : styles) {
+            java.util.List<PublishingPlaceholderItemResponse> items = new java.util.ArrayList<>();
+            for (String[] step : steps) {
+                items.add(item("{{" + step[0] + "_SIGNATURE_" + style[0] + "}}", step[1] + " signature in the " + style[1] + " style. " + style[2]));
+            }
+            groups.add(new PublishingPlaceholderGroupResponse("Signature - " + style[1], style[2] + " The same electronic signature record is used by all three styles.", java.util.List.copyOf(items)));
+        }
+        // several reviewers or approvers: all of them in the order of the workflow, or one by its number
+        java.util.List<PublishingPlaceholderItemResponse> several = new java.util.ArrayList<>();
+        for (String[] style : styles) {
+            several.add(item("{{REVIEWER_SIGNATURES_" + style[0] + "}}", "All reviewers, one signature under another in the order of the workflow, in the " + style[1] + " style. One reviewer: the same as a single signature."));
+            several.add(item("{{APPROVER_SIGNATURES_" + style[0] + "}}", "All approvers, one signature under another in the order of the workflow, in the " + style[1] + " style."));
+        }
+        groups.add(new PublishingPlaceholderGroupResponse("Signature - Several Reviewers or Approvers", "Use these when a document has more than one reviewer or approver. To put each person in a cell of their own, number the placeholder: {{REVIEWER_SIGNATURE_1_COMPACT}}, {{REVIEWER_SIGNATURE_2_COMPACT}}, {{APPROVER_SIGNATURE_1_STANDARD}} and so on, in the style you need. A number with no person leaves the cell empty.", java.util.List.copyOf(several)));
+        return groups;
+    }
+
     private boolean matches(PublishingPlaceholderItemResponse item, String needle) {
         String value = item.value() == null ? "" : item.value().toLowerCase(Locale.ROOT);
         String description = item.description() == null ? "" : item.description().toLowerCase(Locale.ROOT);
@@ -39,7 +70,7 @@ public class PublishingPlaceholderCatalogService {
     }
 
     private PublishingPlaceholderCatalogResponse getAllPlaceholders() {
-        return new PublishingPlaceholderCatalogResponse(List.of(
+        List<PublishingPlaceholderGroupResponse> groups = new java.util.ArrayList<>(List.of(
                 new PublishingPlaceholderGroupResponse(
                         "Cover and Identity",
                         "Primary cover page fields for title blocks and code areas.",
@@ -73,20 +104,7 @@ public class PublishingPlaceholderCatalogService {
                                 item("{{submittedByUsername}}", "Login username of the user who submitted the revision for review."),
                                 item("{{submittedOn}}", "Timestamp when the revision was submitted for review."),
                                 item("{{reviewedOn}}", "Timestamp when the review step was completed."),
-                                item("{{approvedOn}}", "Timestamp when the approval step was completed."),
-                                item("{{PREPARED_SIGNATURE}}", "Electronic signature block for the Author/Co-Author complete editing step. Aliases (same block, do not add both): {{authorSignature}}, {{authorBlock}}."),
-                                item("{{DCO_SIGNATURE}}", "Electronic signature block for the submit-for-review step. Aliases: {{submittedSignature}}, {{submittedBySignature}}, {{submittedForReviewSignature}}."),
-                                item("{{REVIEWED_SIGNATURE}}", "Electronic signature block for the reviewer stage. Use with single reviewer flows."),
-                                item("{{REVIEWER_SIGNATURES}}", "All reviewer signature blocks in sequence order."),
-                                item("{{REVIEWER_SIGNATURE_1}}", "First reviewer signature block in sequence order. Repeat the same pattern for 3, 4, and so on."),
-                                item("{{REVIEWER_SIGNATURE_2}}", "Second reviewer signature block in sequence order. Repeat the same pattern for 3, 4, and so on."),
-                                item("{{APPROVED_SIGNATURE}}", "Electronic signature block for the approver stage. Use with single approver flows."),
-                                item("{{APPROVER_SIGNATURES}}", "All approver signature blocks in sequence order."),
-                                item("{{APPROVER_SIGNATURE_1}}", "First approver signature block in sequence order. Repeat the same pattern for 3, 4, and so on."),
-                                item("{{APPROVER_SIGNATURE_2}}", "Second approver signature block in sequence order. Repeat the same pattern for 3, 4, and so on."),
-                                item("{{PUBLISHED_SIGNATURE}}", "Electronic signature block for the published step."),
-                                item("{{OBSOLETED_SIGNATURE}}", "Electronic signature block for the obsoleted step."),
-                                item("{{CANCELLED_SIGNATURE}}", "Electronic signature block for the cancelled step.")
+                                item("{{approvedOn}}", "Timestamp when the approval step was completed.")
                         )
                 ),
                 new PublishingPlaceholderGroupResponse(
@@ -141,6 +159,13 @@ public class PublishingPlaceholderCatalogService {
                         )
                 )
         ));
+        // the signature placeholders follow the group of the sign-off fields, one group for each display style
+        int signOff = 0;
+        for (int i = 0; i < groups.size(); i++) {
+            if ("Sign-off and Workflow".equals(groups.get(i).title())) signOff = i + 1;
+        }
+        groups.addAll(signOff, signatureStyleGroups());
+        return new PublishingPlaceholderCatalogResponse(List.copyOf(groups));
     }
 
     private PublishingPlaceholderItemResponse item(String value, String description) {

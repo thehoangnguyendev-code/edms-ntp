@@ -25,7 +25,7 @@ export function TrainingSpecimenDetailPage() {
   const refetch = useCallback(() => { trainingSpecimenApi.get(specimenId).then(setSpecimen).catch((e) => setError(trainingError(e))); }, [specimenId]);
   useEffect(() => { setSpecimen(undefined); setError(""); refetch(); }, [refetch]);
   useEntityChanged(["TRAINING"], refetch);
-  const actions = useSpecimenActions(refetch);
+  const actions = useSpecimenActions();
 
   const title = "Specimen Signature Details";
   const crumbs = trainingBreadcrumbs(navigate, "specimen", title);
@@ -39,20 +39,13 @@ export function TrainingSpecimenDetailPage() {
   }
 
   const caps = specimen.capabilities;
-  // all three states are always shown; a rejected signature stays in Pending Confirmation until the images are uploaded again
-  const wasApproved = specimen.status === "OBSOLETED" && !!specimen.effectiveDate;
-  const steps = ["Pending Confirmation", "Approved", "Obsoleted"];
-  const stepIndex = specimen.status === "PENDING_CONFIRMATION" ? 0 : specimen.status === "APPROVED" ? 1 : 2;
+  // the newest scan is Current; an earlier one is Superseded. A scan that was waiting for a confirmation when the workflow ended stays as it was (shown as Not confirmed).
+  const steps = ["Current", "Superseded"];
+  const stepIndex = specimen.status === "OBSOLETED" ? 1 : 0;
   const tabs: TabItem[] = [{ id: "overview", label: "General Information" }, { id: "audit", label: "Audit Trail" }];
   const footer = (
     <>
       {caps.viewImage && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => void actions.view(specimen)}>View Image</Button>}
-      {caps.viewImage && (specimen.status === "APPROVED" || wasApproved) && (["docx", "pdf"] as const).map((format) => (
-        <Button key={format} size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => void actions.downloadForm(specimen, format)}>{format === "docx" ? "Download Word (FRM.0007)" : "Download PDF (FRM.0007)"}</Button>
-      ))}
-      {caps.confirm && <Button size="sm" className="whitespace-nowrap" onClick={() => actions.askConfirm(specimen)}>Confirm</Button>}
-      {caps.reupload && <Button size="sm" className="whitespace-nowrap" onClick={() => navigate(`/training-management/specimen-signatures?uploadAgain=${specimen.personUserId}`)}>Upload Again</Button>}
-      {caps.reject && <Button size="sm" variant="destructive" className="whitespace-nowrap" onClick={() => actions.askReject(specimen)}>Reject</Button>}
     </>
   );
 
@@ -64,7 +57,6 @@ export function TrainingSpecimenDetailPage() {
         onBack={() => navigate("/training-management/specimen-signatures")}
         steps={steps}
         currentStepIndex={stepIndex}
-        terminalProgressStep={wasApproved ? "Approved" : "Pending Confirmation"}
         tabs={tabs}
         activeTab={tab}
         onTab={setTab}
@@ -82,10 +74,9 @@ export function TrainingSpecimenDetailPage() {
             <ReadonlyField label="Effective Date" value={day(specimen.effectiveDate)} />
             <ReadonlyField label="Uploaded By" value={specimen.uploadedByName} />
             <ReadonlyField label="Uploaded On" value={when(specimen.createdAt)} />
-            <ReadonlyField label="Confirmed By" value={specimen.confirmedByName ?? "—"} />
+            <ReadonlyField label="Confirmed By (earlier workflow)" value={specimen.confirmedByName ?? "—"} />
             <ReadonlyField label="Signatures" value={specimen.hasSecond ? "1st and 2nd signature" : "1st signature only"} />
             {specimen.changeReason && <ReadonlyField label="Reason for the Change" value={specimen.changeReason} wide />}
-            {specimen.rejectReason && <ReadonlyField label={specimen.status === "PENDING_CONFIRMATION" ? "Rejected Because (upload the images again)" : "Rejected Because"} value={specimen.rejectReason} wide />}
           </ReadonlyGrid>
         )}
         {tab === "audit" && <AuditTrailTab entityId={specimen.id} entityType="TRAINING_SPECIMEN_SIGNATURE" />}

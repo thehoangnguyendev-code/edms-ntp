@@ -61,7 +61,6 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         boolean required = document.isRequiresTraining() && document.getTrainingPeriodDays() != null && document.getTrainingPeriodDays() >= 1;
         Optional<Map<String, Object>> pending = store.pendingByDocument(document.getId());
         if (required) {
-            if (!settings.integrationEnabled()) return;
             if (pending.isEmpty()) {
                 // A document that another one lists as related goes with it: it takes the Training Number of that one when its revision is created, not a number of its own.
                 if (leadFor(document.getId()).isPresent()) return;
@@ -112,7 +111,7 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         // The revision row must exist before the activity row points at it.
         entityManager.flush();
         Optional<Map<String, Object>> pending = store.pendingByDocument(document.getId());
-        Optional<Map<String, Object>> lead = settings.integrationEnabled() ? leadFor(document.getId()) : Optional.empty();
+        Optional<Map<String, Object>> lead = leadFor(document.getId());
         if (lead.isPresent()) {
             // The document goes with another one (it is listed as related): one Training Number for the group. A number of its own that nobody used is given up.
             pending.ifPresent(own -> mergeInto(lead.get(), own, actor));
@@ -122,10 +121,6 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         if (pending.isPresent()) {
             bind(pending.get(), revision, actor);
             store.activity((UUID) pending.get().get("id")).ifPresent(activity -> reconcileGroup(activity, document.getId(), actor));
-            return;
-        }
-        if (!settings.integrationEnabled()) {
-            revision.setTrainingMode(MODE_MANUAL);
             return;
         }
         createForDocument(document, revision, days, actor);
@@ -144,11 +139,9 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
                     updatePeriod(existing.get(), revision.getTrainingPeriodDays(), actor);
                     reconcileGroup(existing.get(), document.getId(), actor);
                 }
-            } else if (settings.integrationEnabled()) {
+            } else {
                 entityManager.flush();
                 createForDocument(document, revision, revision.getTrainingPeriodDays(), actor);
-            } else {
-                revision.setTrainingMode(MODE_MANUAL);
             }
         } else if (existing.isPresent() && !revision.getId().equals(existing.get().get("revision_id"))) {
             // A revision of a related document that no longer needs training leaves the group; the Training Number goes on for the others.
@@ -204,7 +197,7 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         jdbc.update("""
             insert into training_records(id, person_user_id, activity_id, training_number, topic_text, document_number, document_revision, completed_on, method, result, source,
                                          employee_code, full_name, department, position, content_sha256)
-            select gen_random_uuid(), u.id, a.id, a.training_number, a.training_title, a.document_number, a.revision_number, ?, 'SIGNATORY', 'READ', 'SIGNATORY_INITIAL',
+            select gen_random_uuid(), u.id, a.id, a.training_number, training_activity_topics(a.id) as training_topics, a.document_number, a.revision_number, ?, 'SIGNATORY', 'READ', 'SIGNATORY_INITIAL',
                    u.employee_code, u.full_name, u.department, u.position,
                    encode(sha256(convert_to(a.training_number || '|' || u.id || '|' || coalesce(a.document_number, '') || '|' || coalesce(a.revision_number, '') || '|' || ? || '|SIGNATORY_INITIAL', 'UTF8')), 'hex')
               from (select distinct user_id from electronic_signatures where revision_id = ? and status = 'SIGNED' and meaning in ('PREPARED','SUBMITTED_FOR_REVIEW','REVIEWED','APPROVED')) s
@@ -234,8 +227,8 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         Optional<Map<String, Object>> existing = store.byRevision(revision.getId());
         if (existing.isEmpty()) return null;
         Map<String, Object> a = existing.get();
-        // The revision can be completed once the attendance list was sent to QA (APD.0117); the day is the day of the training. The results come later.
-        boolean completed = "COMPLETED".equals(String.valueOf(a.get("status"))) || a.get("attendance_sent_at") != null;
+        // The revision can be completed once the trainer has finished the training (Finish Training, every result in); the day is the day of the training.
+        boolean completed = "COMPLETED".equals(String.valueOf(a.get("status"))) || a.get("results_finished_at") != null;
         LocalDate completedOn = toDate(a.get("completed_on"));
         if (completedOn == null && completed) {
             java.sql.Date held = jdbc.queryForObject("select max(held_on) from training_sessions where activity_id = ? and status = 'PLANNED'", java.sql.Date.class, a.get("id"));
@@ -260,7 +253,7 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
     /** The activity that opened first for a document that lists this one as related, while it is still planned (not yet notified): the activity this document joins. */
     private Optional<Map<String, Object>> leadFor(UUID documentId) {
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select a.* from training_activities a
+            select a.*, training_activity_topics(a.id) as training_topics from training_activities a
              where a.parent_activity_id is null and a.status in ('RESERVED','PLANNED') and a.document_id in
                    (select r.source_document_id from document_relations r where r.target_document_id = ? and r.relation_type = 'RELATED')
              order by a.created_at limit 1
@@ -324,7 +317,7 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         List<UUID> related = relatedOf(documentId);
         for (UUID other : related) {
             for (Map<String, Object> own : jdbc.queryForList("""
-                select * from training_activities where document_id = ? and parent_activity_id is null and id <> ? and status not in ('CANCELLED','COMPLETED')
+                select a.*, training_activity_topics(a.id) as training_topics from training_activities a where document_id = ? and parent_activity_id is null and id <> ? and status not in ('CANCELLED','COMPLETED')
                  order by created_at
                 """, other, activity.get("id"))) {
                 mergeInto(activity, own, actor);
@@ -385,14 +378,13 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         boolean first = revision == null
                 ? Boolean.TRUE
                 : jdbc.queryForObject("select count(*) from document_revisions where document_id=? and id<>?", Integer.class, document.getId(), revision.getId()) == 0;
-        String title = (document.getDocumentNumber() == null ? "" : document.getDocumentNumber() + " ") + (document.getDocumentName() == null ? "" : document.getDocumentName());
         jdbc.update("""
-            insert into training_activities(id, training_number, base_number, organizer_department_id, year, serial, kind, kind_reason, training_title, status,
+            insert into training_activities(id, training_number, base_number, organizer_department_id, year, serial, kind, kind_reason, status,
                                             document_id, revision_id, revision_number, document_number, document_name, training_period_days, created_by)
-            values (?,?,?,?,?,?, 'UNPLANNED', ?, ?, 'RESERVED', ?,?,?,?,?,?,?)
+            values (?,?,?,?,?,?, 'UNPLANNED', ?, 'RESERVED', ?,?,?,?,?,?,?)
             """,
                 id, issued.baseNumber(), issued.baseNumber(), document.getDepartment().getId(), issued.year(), issued.serial(),
-                first ? "NEW_SOP" : "SOP_VERSION", trim(title, 255),
+                first ? "NEW_SOP" : "SOP_VERSION",
                 document.getId(), revision == null ? null : revision.getId(), revision == null ? null : revision.getRevisionNumber(),
                 document.getDocumentNumber(), trim(document.getDocumentName(), 255), days, actor == null ? null : actor.getId());
         Map<String, Object> created = store.activity(id).orElseThrow();

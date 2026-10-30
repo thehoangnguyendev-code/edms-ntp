@@ -75,6 +75,7 @@ export interface AuditTrailTabProps {
   documentNumber?: string;
   entityId?: string;
   entityType?: string;
+  includeChildren?: boolean;
   emptyMessage?: string;
 }
 
@@ -185,6 +186,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
   documentNumber,
   entityId,
   entityType,
+  includeChildren = false,
   emptyMessage = "No audit trail records available.",
 }) => {
   // Memoized so its reference stays stable across re-renders when records/auditEntries are
@@ -201,12 +203,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
   ]);
   const [isUserOptionsLoading, setIsUserOptionsLoading] = useState(false);
   const [eSignatureFilter, setESignatureFilter] = useState<"All" | "Yes" | "No">("All");
-  // Same sort keys/columns as the standalone All Audit Trail screen (AuditTrailView.tsx), so this
-  // embedded tab behaves identically. Sorted server-side via auditTrailApi.getAuditTrail's
-  // sortBy/sortDirection whenever this tab fetches its own data; when a parent instead supplies
-  // pre-fetched `records`/`auditEntries` (e.g. a merged batch + child-copies timeline that no
-  // single server query can produce), the exact same key/direction is applied client-side instead
-  // so the header behavior stays consistent either way.
+  // Same server sort keys as the standalone audit register, including batch/child timelines.
   const [sortConfig, setSortConfig] = useState<{ key: "timestamp" | "user" | "action"; direction: "asc" | "desc" }>({
     key: "timestamp",
     direction: "desc",
@@ -228,14 +225,10 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
 
   const scopedEntityId = entityId || documentId;
-  // An explicitly supplied empty list means the parent already queried the
-  // object-scoped endpoint and found no records (or the object has no audit
-  // history). Do not fall back to the global audit endpoint, which requires
-  // audit.view and incorrectly surfaces a 403 in detail tabs.
-  const shouldFetchServer = records === undefined && auditEntries === undefined
-    && sourceRecords.length === 0 && Boolean(scopedEntityId || documentNumber);
-  const [dateFrom, setDateFrom] = useState(() => (shouldFetchServer ? defaultAuditTrailDateRange.startDate : ""));
-  const [dateTo, setDateTo] = useState(() => (shouldFetchServer ? defaultAuditTrailDateRange.endDate : ""));
+  // Scoped tabs use the object's existing authorization gate rather than global audit.view.
+  const shouldFetchServer = Boolean(scopedEntityId || documentNumber);
+  const [dateFrom, setDateFrom] = useState(() => (records === undefined && auditEntries === undefined ? defaultAuditTrailDateRange.startDate : ""));
+  const [dateTo, setDateTo] = useState(() => (records === undefined && auditEntries === undefined ? defaultAuditTrailDateRange.endDate : ""));
 
   const [internalRecords, setInternalRecords] = useState<AuditTrailRecord[]>([]);
   const [totalItems, setTotalItems] = useState(0);
@@ -254,8 +247,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
     setIsLoading(true);
     setLoadError(null);
 
-    auditTrailApi
-      .getAuditTrail({
+    const params = {
         searchQuery: debouncedSearchQuery,
         action: actionFilter as any,
         user: userFilter,
@@ -266,10 +258,13 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
         limit: itemsPerPage,
         documentNumber,
         entityId: scopedEntityId || undefined,
-        module: entityType as AuditModule | string | undefined,
         sortBy: sortConfig.key,
         sortDirection: sortConfig.direction,
-      })
+      };
+    const request = scopedEntityId && entityType
+      ? auditTrailApi.getEntityPage(entityType, scopedEntityId, { ...params, includeChildren })
+      : auditTrailApi.getAuditTrail({ ...params, module: entityType as AuditModule | string | undefined });
+    request
       .then((response) => {
         if (!alive) return;
         setInternalRecords(response.data || []);
@@ -303,7 +298,9 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
     documentNumber,
     scopedEntityId,
     entityType,
+    includeChildren,
     sortConfig,
+    sourceRecords,
   ]);
 
   useEffect(() => {
@@ -362,133 +359,10 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
     };
   }, [entityType, documentNumber, scopedEntityId, sourceRecords]);
 
-  useEffect(() => {
-    if (!shouldFetchServer) {
-      return;
-    }
-    if (!dateFrom && !dateTo) {
-      setDateFrom(defaultAuditTrailDateRange.startDate);
-      setDateTo(defaultAuditTrailDateRange.endDate);
-    }
-  }, [shouldFetchServer, dateFrom, dateTo, defaultAuditTrailDateRange]);
-
-  const filteredRecords = useMemo(() => {
-    if (shouldFetchServer) {
-      return internalRecords;
-    }
-
-    const search = normalizeText(debouncedSearchQuery);
-    const userFilterNormalized = normalizeText(userFilter);
-    return sourceRecords.filter((record) => {
-      const user = record.user;
-      const fullName = user?.fullName || record.fullName || "";
-      const employeeId = user?.employeeCode || record.userId || "";
-      const role = user?.role || "";
-      const position = user?.position || "";
-      const department = user?.department || "";
-      const action = record.action || "";
-      const entity = buildEntityLabel(record);
-      const changeSummary = buildChangeSummary(record);
-      const ipAddress = record.ipAddress || "";
-      const device = record.device || "";
-      const reason = record.reason || "";
-
-      if (actionFilter !== "All" && action !== actionFilter) {
-        return false;
-      }
-
-      if (userFilterNormalized) {
-        const haystack = [
-          fullName,
-          employeeId,
-          role,
-          position,
-          department,
-        ]
-          .map(normalizeText)
-          .join(" ");
-        if (!haystack.includes(userFilterNormalized)) {
-          return false;
-        }
-      }
-
-      if (eSignatureFilter === "Yes" && !hasESignature(record)) {
-        return false;
-      }
-      if (eSignatureFilter === "No" && hasESignature(record)) {
-        return false;
-      }
-
-      if (dateFrom || dateTo) {
-        const timestamp = new Date(record.timestamp).getTime();
-        if (!Number.isNaN(timestamp)) {
-          if (dateFrom && timestamp < new Date(dateFrom).getTime()) {
-            return false;
-          }
-          if (dateTo) {
-            const upperBound = new Date(dateTo);
-            upperBound.setHours(23, 59, 59, 999);
-            if (timestamp > upperBound.getTime()) {
-              return false;
-            }
-          }
-        }
-      }
-
-      if (!search) {
-        return true;
-      }
-
-      const searchHaystack = [
-        fullName,
-        employeeId,
-        role,
-        position,
-        department,
-        action,
-        entity,
-        changeSummary,
-        reason,
-        ipAddress,
-        device,
-        record.id,
-      ]
-        .map(normalizeText)
-        .join(" ");
-
-      return searchHaystack.includes(search);
-    });
-  }, [shouldFetchServer, sourceRecords, actionFilter, userFilter, eSignatureFilter, dateFrom, dateTo, debouncedSearchQuery]);
-
-  // Only reached when a parent supplies pre-fetched records/auditEntries (shouldFetchServer is
-  // false) -- there is no server round-trip to sort on in that case, so apply the exact same
-  // key/direction here instead, keeping header behavior identical either way.
-  const sortedRecords = useMemo(() => {
-    if (shouldFetchServer) return filteredRecords;
-    const direction = sortConfig.direction === "asc" ? 1 : -1;
-    return [...filteredRecords].sort((a, b) => {
-      if (sortConfig.key === "timestamp") {
-        return (new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) * direction;
-      }
-      if (sortConfig.key === "user") {
-        const left = a.user?.fullName || a.fullName || "";
-        const right = b.user?.fullName || b.fullName || "";
-        return left.localeCompare(right) * direction;
-      }
-      const left = a.action || "";
-      const right = b.action || "";
-      return left.localeCompare(right) * direction;
-    });
-  }, [shouldFetchServer, filteredRecords, sortConfig]);
-
-  const totalItemsClient = sortedRecords.length;
-  const totalPagesClient = Math.max(1, Math.ceil(totalItemsClient / itemsPerPage));
+  const recordsList = internalRecords;
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedRecords = sortedRecords.slice(startIndex, startIndex + itemsPerPage);
-
-  const recordsList = shouldFetchServer ? internalRecords : paginatedRecords;
-  const displayTotalItems = shouldFetchServer ? totalItems : totalItemsClient;
-  const displayTotalPages = shouldFetchServer ? totalPages : totalPagesClient;
+  const displayTotalItems = totalItems;
+  const displayTotalPages = totalPages;
   const shouldShowEmpty = displayTotalItems === 0;
 
   return (

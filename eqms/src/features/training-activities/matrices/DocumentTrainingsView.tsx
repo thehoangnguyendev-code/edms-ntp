@@ -32,7 +32,7 @@ const OUTCOME_LABEL: Record<string, string> = {
 
 /**
  * The documents that were issued or revised and need training, one line each, with what the department has done about the training matrix (SOP.0003 5.3.1: when a document is
- * issued, the department assesses the training impact, names the Job Roles to be trained and updates the matrix). The assessment is signed. "Pending Matrix Update" ends by
+ * issued, the department assesses the training impact, names the Work Positions to be trained and updates the matrix). The assessment is signed. "Pending Matrix Update" ends by
  * itself when an effective matrix of the department contains the document.
  */
 export function DocumentTrainingsView() {
@@ -82,7 +82,7 @@ export function DocumentTrainingsView() {
     { id: "impact", header: "Impact on the Matrix", sort: sorted("impactStatus"), cell: (r) => <Badge color={IMPACT_COLOR[r.impactStatus]}>{IMPACT_LABEL[r.impactStatus]}</Badge> },
     { id: "outcome", header: "Assessment", cell: (r) => (r.outcome ? <div className="max-w-72 whitespace-normal">{OUTCOME_LABEL[r.outcome]}<div className="text-xs text-slate-500">{r.assessedByName} · {when(r.assessedAt)}</div></div> : "—") },
   ];
-  const { layout, control } = useCustomColumnLayout("training.documentTrainings", columns, rowMenu.action);
+  const { layout, control } = useCustomColumnLayout("training.document.trainings", columns, rowMenu.action);
   const filters: ReportSelectFilter[] = [
     { id: "department", label: "Department", value: departmentId, options: [{ label: "My department", value: "" }, ...departments], onChange: (v) => { setDepartmentId(v); table.setCurrentPage(1); } },
     { id: "activityStatus", label: "Training Status", value: activityStatus, options: [{ label: "All statuses", value: "" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setActivityStatus(v); table.setCurrentPage(1); } },
@@ -107,7 +107,7 @@ export function DocumentTrainingsView() {
   return (
     <div className="flex h-full w-full min-w-0 flex-1 flex-col gap-4 md:gap-6">
       <PageHeader title={TRAINING_PAGES.documentTrainings.title} breadcrumbItems={trainingBreadcrumbs(navigate, "documentTrainings")} />
-      <p className="text-xs text-slate-500">When a document is issued or revised, the department assesses its effect on the training matrix, names the Job Roles that must be trained and updates the matrix (SOP.0003 5.3.1). Each assessment is signed.</p>
+      <p className="text-xs text-slate-500">When a document is issued or revised, the department assesses its effect on the training matrix, names the Work Positions that must be trained and updates the matrix (SOP.0003 5.3.1). Each assessment is signed.</p>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar
         searchPlaceholder="Search document or training number…"
@@ -135,7 +135,7 @@ export function DocumentTrainingsView() {
             <p className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700">
               {ctx.effectiveMatrix
                 ? ctx.inEffectiveMatrix
-                  ? `The effective matrix (version ${ctx.effectiveMatrix.versionNo}) already has this document, for: ${ctx.positionsInMatrix.length ? ctx.positionsInMatrix.join(", ") : "no Job Role"}.`
+                  ? `The effective matrix (version ${ctx.effectiveMatrix.versionNo}) already has this document, for: ${ctx.positionsInMatrix.length ? ctx.positionsInMatrix.join(", ") : "no Work Position"}.`
                   : `The effective matrix (version ${ctx.effectiveMatrix.versionNo}) does not have this document.`
                 : "The department has no effective matrix yet."}
             </p>
@@ -147,9 +147,9 @@ export function DocumentTrainingsView() {
               ]} />
             {needsPositions && (
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-slate-700 sm:text-sm">Job Roles that must be trained on the document <span className="text-red-500">*</span></p>
+                <p className="text-xs font-medium text-slate-700 sm:text-sm">Work Positions that must be trained on the document <span className="text-red-500">*</span></p>
                 <div className="grid max-h-56 grid-cols-1 gap-1 overflow-y-auto rounded-xl border border-slate-200 p-2 md:grid-cols-2">
-                  {ctx.positions.length === 0 && <p className="p-2 text-slate-500">The department has no Job Role.</p>}
+                  {ctx.positions.length === 0 && <p className="p-2 text-slate-500">The department has no Work Position.</p>}
                   {ctx.positions.map((p) => (
                     <label key={p.id} className="flex cursor-pointer items-center gap-2 rounded-lg p-1.5 hover:bg-emerald-50/50">
                       <Checkbox checked={positionIds.includes(p.id)} onChange={(c) => setPositionIds(c ? [...positionIds, p.id] : positionIds.filter((x) => x !== p.id))} />

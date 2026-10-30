@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const api = vi.hoisted(() => ({ get: vi.fn(), create: vi.fn(), update: vi.fn(), submit: vi.fn(), returnToDraft: vi.fn(), approve: vi.fn(), newVersion: vi.fn(), remove: vi.fn(), list: vi.fn(), approved: vi.fn(), preview: vi.fn(), revisions: vi.fn() }));
+const api = vi.hoisted(() => ({ get: vi.fn(), create: vi.fn(), update: vi.fn(), submit: vi.fn(), returnToDraft: vi.fn(), approve: vi.fn(), upgradeRevision: vi.fn(), remove: vi.fn(), list: vi.fn(), approved: vi.fn(), preview: vi.fn(), revisions: vi.fn() }));
 vi.mock("@/services/api/trainingActivities", async (importOriginal) => ({ ...(await importOriginal<object>()), trainingAssessmentsApi: api }));
 vi.mock("@/features/realtime/useEntityChanged", () => ({ useEntityChanged: () => undefined }));
 vi.mock("@/components/ui/toast/Toast", () => ({ useToast: () => ({ showToast: vi.fn() }) }));
@@ -16,16 +16,16 @@ vi.mock("@/components/ui/esign-modal/ESignatureModal", () => ({
   ESignatureModal: ({ isOpen, onConfirm }: { isOpen: boolean; onConfirm: (d: { signatureToken: string }) => void }) => (isOpen ? <button onClick={() => onConfirm({ signatureToken: "tok" })}>SIGN</button> : null),
 }));
 
-import { TrainingAssessmentDetailPage, distributePoints, reorderAnswers, type Draft } from "../TrainingAssessmentDetailPage";
+import { TrainingAssessmentDetailPage, distributePoints, itemValid, reorderAnswers, type Draft } from "../TrainingAssessmentDetailPage";
 
-const NO_CAPS = { edit: false, delete: false, submit: false, returnToDraft: false, approve: false, newVersion: false };
+const NO_CAPS = { edit: false, delete: false, submit: false, returnToDraft: false, approve: false, upgradeRevision: false };
 const detail = (over: Record<string, unknown> = {}, caps: Record<string, boolean> = {}) => ({
   id: "d1", code: "TAS-0001", versionNo: 1, revisionNumber: "0.0.1", name: "Kiểm tra SOP.0006", kind: "QUESTIONS", status: "DRAFT", version: 3, itemCount: 1, maxScore: 2,
   updatedAt: "2026-10-24T07:00:00Z", updatedByName: "Designer", approvedAt: null, approvedByName: null, createdByName: "Designer", usedByActivities: 0,
   items: [{ no: 1, kind: "SINGLE", prompt: "Câu 1", options: [{ id: "A", text: "Một" }, { id: "B", text: "Hai" }], correct: ["A"], points: 2, modelAnswer: null }],
   capabilities: { ...NO_CAPS, edit: true, delete: true, submit: true, ...caps }, approveBlocker: null, ...over,
 });
-const draftOf = (points: string): Draft => ({ id: "x", kind: "ESSAY", prompt: "q", options: [], correct: [], points, modelAnswer: "" });
+const draftOf = (points: string): Draft => ({ id: "x", kind: "ESSAY", prompt: "q", options: [], correct: [], points, modelAnswer: "", optionLayout: "VERTICAL", answerLines: "" });
 
 const renderPage = (path: string, isNew = false) =>
   render(
@@ -78,7 +78,7 @@ describe("Training Assessment (APD.0009) in the library", () => {
   it("a new assessment cannot be created until it is complete, and the draft is created with the typed content", async () => {
     api.create.mockResolvedValue(detail());
     renderPage("/training-management/assessments/new", true);
-    const create = (await screen.findByRole("button", { name: "Create draft" })) as HTMLButtonElement;
+    const create = (await screen.findByRole("button", { name: "Create Draft" })) as HTMLButtonElement;
     expect(create.disabled).toBe(true);
     fireEvent.change(screen.getByPlaceholderText("Kiểm tra đào tạo SOP.0006"), { target: { value: "Kiểm tra SOP.0006" } });
     await openItems();
@@ -92,8 +92,8 @@ describe("Training Assessment (APD.0009) in the library", () => {
     fireEvent.click(create);
     await waitFor(() => expect(api.create).toHaveBeenCalledTimes(1));
     expect(api.create).toHaveBeenCalledWith({
-      version: undefined, name: "Kiểm tra SOP.0006", kind: "QUESTIONS",
-      items: [{ kind: "SINGLE", prompt: "Câu 1", options: [{ text: "Một" }, { text: "Hai" }], correct: ["A"], points: 1, modelAnswer: undefined }],
+      version: undefined, name: "Kiểm tra SOP.0006", kind: "QUESTIONS", essayNumbering: "CONTINUE",
+      items: [{ kind: "SINGLE", prompt: "Câu 1", options: [{ text: "Một" }, { text: "Hai" }], correct: ["A"], points: 10, modelAnswer: undefined, optionLayout: "VERTICAL", answerLines: undefined }],
     });
   });
 
@@ -111,6 +111,20 @@ describe("Training Assessment (APD.0009) in the library", () => {
     const fields = Array.from(document.querySelectorAll('input[type="number"]')).map((e) => (e as HTMLInputElement).value);
     expect(fields).toEqual(["2.5", "7.5"]);
     expect(await screen.findByText(/total 10 points/)).toBeTruthy();
+  });
+
+  it("a new test is out of 10: adding or taking out a question shares the 10 again, until the points are set by hand", async () => {
+    renderPage("/training-management/assessments/new", true);
+    expect(totalField().value).toBe("10");
+    await openItems();
+    const points = () => Array.from(document.querySelectorAll('input[type="number"]')).map((e) => (e as HTMLInputElement).value);
+    expect(points()).toEqual(["10"]);
+    fireEvent.click(await screen.findByRole("button", { name: "Add a Question" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add a Question" }));
+    await waitFor(() => expect(points()).toEqual(["3.34", "3.33", "3.33"]));
+    fireEvent.change(document.querySelectorAll('input[type="number"]')[0], { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add a Question" }));
+    await waitFor(() => expect(points()).toEqual(["5", "3.33", "3.33", "1"]));
   });
 
   it("a checklist has no score: no Total Score, no Points, a key per line", async () => {
@@ -150,7 +164,7 @@ describe("Training Assessment (APD.0009) in the library", () => {
   });
 
   it("an effective version has no grip: it cannot be re-ordered", async () => {
-    api.get.mockResolvedValue(detail({ status: "EFFECTIVE" }, { ...NO_CAPS, newVersion: true }));
+    api.get.mockResolvedValue(detail({ status: "EFFECTIVE" }, { ...NO_CAPS, upgradeRevision: true }));
     renderPage("/training-management/assessments/d1");
     await openItems();
     await screen.findByLabelText("Answer A");
@@ -158,9 +172,17 @@ describe("Training Assessment (APD.0009) in the library", () => {
   });
 });
 
+describe("the lines of an essay question", () => {
+  it("are an empty value (the default) or a whole number from 1 to 30", () => {
+    for (const [lines, ok] of [["", true], ["1", true], ["30", true], ["0", false], ["31", false], ["2.5", false]] as const) {
+      expect(itemValid({ ...draftOf("1"), answerLines: lines, prompt: "q" }), lines).toBe(ok);
+    }
+  });
+});
+
 describe("reorderAnswers: the ticks follow the answers", () => {
   const q = (correct: string[], kind: "SINGLE" | "MULTI" = "SINGLE"): Draft => ({
-    id: "q", kind, prompt: "Q", correct, points: "1", modelAnswer: "",
+    id: "q", kind, prompt: "Q", correct, points: "1", modelAnswer: "", optionLayout: "VERTICAL", answerLines: "",
     options: [{ key: "k1", text: "Một" }, { key: "k2", text: "Hai" }, { key: "k3", text: "Ba" }],
   });
   const order = (d: Draft, keys: string[]) => keys.map((k) => d.options.find((o) => o.key === k) as Draft["options"][number]);
@@ -183,26 +205,26 @@ describe("reorderAnswers: the ticks follow the answers", () => {
   });
 });
 describe("the flow of the assessment", () => {
-  it("the flow: the designer saves and submits; the approver signs; the effective version is read only and has New Version", async () => {
+  it("the flow: the designer saves and submits; the approver signs; the effective version is read only and has Upgrade Revision", async () => {
     api.get.mockResolvedValue(detail());
     api.submit.mockResolvedValue(detail({ status: "PENDING_APPROVAL", submittedByName: "Designer" }, { ...NO_CAPS, returnToDraft: true, approve: true }));
-    api.approve.mockResolvedValue(detail({ status: "EFFECTIVE", approvedByName: "Approver", approvedAt: "2026-10-24T08:00:00Z" }, { ...NO_CAPS, newVersion: true }));
+    api.approve.mockResolvedValue(detail({ status: "EFFECTIVE", approvedByName: "Approver", approvedAt: "2026-10-24T08:00:00Z" }, { ...NO_CAPS, upgradeRevision: true }));
     renderPage("/training-management/assessments/d1");
-    expect(await screen.findByRole("button", { name: "Save draft" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Save Draft" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Delete Draft" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Complete Approval" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Submit for Approval" }));
     await waitFor(() => expect(api.submit).toHaveBeenCalledWith("d1"));
     // pending: nothing to edit, the approver may approve or return it
-    expect(await screen.findByRole("button", { name: "Approve" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Complete Approval" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Return to Draft" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Save draft" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save Draft" })).toBeNull();
     expect((screen.getByPlaceholderText("Kiểm tra đào tạo SOP.0006") as HTMLInputElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+    fireEvent.click(screen.getByRole("button", { name: "Complete Approval" }));
     fireEvent.click(await screen.findByRole("button", { name: "SIGN" }));
     await waitFor(() => expect(api.approve).toHaveBeenCalledWith("d1", "tok"));
-    expect((await screen.findAllByRole("button", { name: "New Version" })).length).toBe(2);
-    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    expect((await screen.findAllByRole("button", { name: "Upgrade Revision" })).length).toBe(2);
+    expect(screen.queryByRole("button", { name: "Complete Approval" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Submit for Approval" })).toBeNull();
   });
 
@@ -224,11 +246,11 @@ describe("the flow of the assessment", () => {
     api.get.mockResolvedValue(detail({ status: "PENDING_APPROVAL", approveBlocker: "TRAINING_SEGREGATION_OF_DUTIES" }, { ...NO_CAPS, returnToDraft: true }));
     renderPage("/training-management/assessments/d1");
     expect(await screen.findByText(/You cannot approve this assessment/)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Complete Approval" })).toBeNull();
   });
 
   it("an effective version cannot be edited: its fields are read only", async () => {
-    api.get.mockResolvedValue(detail({ status: "EFFECTIVE" }, { ...NO_CAPS, newVersion: true }));
+    api.get.mockResolvedValue(detail({ status: "EFFECTIVE" }, { ...NO_CAPS, upgradeRevision: true }));
     renderPage("/training-management/assessments/d1");
     const title = (await screen.findByPlaceholderText("Kiểm tra đào tạo SOP.0006")) as HTMLInputElement;
     expect(title.disabled).toBe(true);
@@ -248,8 +270,8 @@ describe("the flow of the assessment", () => {
     expect(await screen.findByRole("dialog", { name: "Preview: Đổi tên chưa lưu" })).toBeTruthy();
     expect(api.preview).toHaveBeenCalledTimes(1);
     expect(api.preview).toHaveBeenCalledWith({
-      name: "Đổi tên chưa lưu", kind: "QUESTIONS", key: false, code: "TAS-0001", revisionNumber: "0.0.1",
-      items: [{ kind: "SINGLE", prompt: "Câu 1", options: [{ text: "Một" }, { text: "Hai" }], correct: ["A"], points: 2, modelAnswer: undefined }],
+      name: "Đổi tên chưa lưu", kind: "QUESTIONS", essayNumbering: "CONTINUE", key: false, code: "TAS-0001", revisionNumber: "0.0.1",
+      items: [{ kind: "SINGLE", prompt: "Câu 1", options: [{ text: "Một" }, { text: "Hai" }], correct: ["A"], points: 2, modelAnswer: undefined, optionLayout: "VERTICAL", answerLines: undefined }],
     });
     expect(screen.getByTestId("pdf").textContent).toBe("blob:preview-paper");
     // no button that swaps the papers: tabs
@@ -278,20 +300,20 @@ describe("the flow of the assessment", () => {
   });
 
   it("Preview loads on its own: the other buttons do not look busy, and nothing is created by it", async () => {
-    api.get.mockResolvedValue(detail({ status: "EFFECTIVE" }, { ...NO_CAPS, newVersion: true }));
+    api.get.mockResolvedValue(detail({ status: "EFFECTIVE" }, { ...NO_CAPS, upgradeRevision: true }));
     let release: (b: Blob) => void = () => undefined;
     api.preview.mockImplementation(() => new Promise<Blob>((resolve) => { release = resolve; }));
     renderPage("/training-management/assessments/d1");
     fireEvent.click((await screen.findAllByRole("button", { name: "Preview" }))[0]);
     await waitFor(() => expect(api.preview).toHaveBeenCalled());
-    // while the paper is being drawn, New Version is not loading (a loading button is disabled)
-    for (const button of screen.getAllByRole("button", { name: "New Version" })) expect((button as HTMLButtonElement).disabled).toBe(true);
-    expect(api.newVersion).not.toHaveBeenCalled();
+    // while the paper is being drawn, Upgrade Revision is not loading (a loading button is disabled)
+    for (const button of screen.getAllByRole("button", { name: "Upgrade Revision" })) expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(api.upgradeRevision).not.toHaveBeenCalled();
     expect(api.create).not.toHaveBeenCalled();
     release(new Blob(["%PDF"]));
     await waitFor(() => expect(screen.getByRole("dialog", { name: /Preview/ })).toBeTruthy());
-    for (const button of screen.getAllByRole("button", { name: "New Version" })) expect((button as HTMLButtonElement).disabled).toBe(false);
-    expect(api.newVersion).not.toHaveBeenCalled();
+    for (const button of screen.getAllByRole("button", { name: "Upgrade Revision" })) expect((button as HTMLButtonElement).disabled).toBe(false);
+    expect(api.upgradeRevision).not.toHaveBeenCalled();
   });
 
   it("Preview is not offered while a question is not complete, and a refusal of the server opens nothing", async () => {
@@ -309,7 +331,7 @@ describe("the flow of the assessment", () => {
   });
 
   it("Preview is also there for an effective version, which is read only", async () => {
-    api.get.mockResolvedValue(detail({ status: "EFFECTIVE" }, { ...NO_CAPS, newVersion: true }));
+    api.get.mockResolvedValue(detail({ status: "EFFECTIVE" }, { ...NO_CAPS, upgradeRevision: true }));
     renderPage("/training-management/assessments/d1");
     expect((await screen.findAllByRole("button", { name: "Preview" })).length).toBe(2);
   });

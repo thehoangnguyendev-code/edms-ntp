@@ -289,6 +289,10 @@ public class PublishingWorkspaceService {
             throw new com.eqms.exception.RevisionLifecycleConflictException("PUBLISHING_TEMPLATE_NOT_ACTIVE",
                     "The Publishing Template used for this preview is no longer the active template. Regenerate the preview before publishing.");
         }
+        if (isPreviewStale(revision, metadata)) {
+            throw new com.eqms.exception.RevisionLifecycleConflictException("PUBLISHING_PREVIEW_STALE",
+                    "The revision file or the Publishing Template changed after the preview was generated. Regenerate the preview and check it before publishing.");
+        }
         PublishingTemplate template = storedTemplate;
         String selectedLayout = resolveSelectedLayout(template, request == null ? null : request.selectedLayout(), metadata);
         if (StringUtils.hasText(metadata.getSelectedPublishingLayout()) && !metadata.getSelectedPublishingLayout().equalsIgnoreCase(selectedLayout)) {
@@ -502,8 +506,32 @@ public class PublishingWorkspaceService {
                 job == null ? null : job.getId(),
                 job == null ? null : job.getStatus(),
                 job == null ? null : job.getMessage(),
-                job == null ? null : job.getErrorMessage()
+                job == null ? null : job.getErrorMessage(),
+                isPreviewStale(revision == null ? null : revisionRepository.findById(UUID.fromString(revision.id())).orElse(null), metadata)
         );
+    }
+
+    /**
+     * A preview shows the revision as it was when it was generated. It is stale when the revision file was saved or uploaded after that, or when the
+     * template it used is no longer the live one (another template, or the same one changed). A stale preview is never what would be published.
+     */
+    private boolean isPreviewStale(DocumentRevisionRecord revision, RevisionPublishingMetadata metadata) {
+        if (metadata == null || metadata.getPreviewGeneratedAt() == null || revision == null) {
+            return false;
+        }
+        Instant generated = metadata.getPreviewGeneratedAt();
+        if (revision.getStorageLastSyncedAt() != null && revision.getStorageLastSyncedAt().isAfter(generated)) {
+            return true;
+        }
+        if (revision.getSourceUploadedAt() != null && revision.getSourceUploadedAt().isAfter(generated)) {
+            return true;
+        }
+        PublishingTemplate live = publishingTemplateRepository.findAll().stream().filter(this::isLiveTemplate).findFirst().orElse(null);
+        PublishingTemplate used = metadata.getPublishingTemplate();
+        if (live == null || used == null) {
+            return live != used;
+        }
+        return !live.getId().equals(used.getId()) || (live.getUpdatedAt() != null && live.getUpdatedAt().isAfter(generated));
     }
 
     private Integer countPages(String path) {

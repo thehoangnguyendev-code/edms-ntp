@@ -27,8 +27,7 @@ export function MyTrainingTodoTab({ onTotal }: { onTotal: (total: number) => voi
   const columns: DataTableColumn<TrainingTask>[] = [
     { id: "no", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
     { id: "number", header: "Training Number", sort: sorted("trainingNumber"), cell: (t) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(t.examReady ? `/training-management/participations/${t.participantId}/test` : `/training-management/activities/${t.activityId}/participate`)}>{t.trainingNumber}</button> },
-    { id: "title", header: "Training Title", sort: sorted("trainingTitle"), cell: (t) => <div className="max-w-80 whitespace-normal">{t.trainingTitle}</div> },
-    { id: "topics", header: "Topics", sort: sorted("topics"), cell: (t) => <div className="max-w-80 whitespace-normal">{t.topics ?? "—"}</div> },
+    { id: "topics", header: "Training Topic", sort: sorted("topics"), cell: (t) => <div className="max-w-80 whitespace-normal">{t.topics ?? "—"}</div> },
     { id: "method", header: "Mode", sort: sorted("method"), cell: (t) => METHOD_LABEL[t.method] ?? t.method },
     { id: "when", header: "Scheduled", sort: sorted("scheduledOn"), cell: (t) => day(t.scheduledOn) },
     { id: "due", header: "Due", sort: sorted("dueDate"), cell: (t) => day(t.dueDate) },
@@ -38,7 +37,7 @@ export function MyTrainingTodoTab({ onTotal }: { onTotal: (total: number) => voi
   const { layout, control } = useCustomColumnLayout("training.mine.tasks", columns);
   const change = (setter: (value: string) => void) => (value: string) => { setter(value); table.setCurrentPage(1); };
   return <ReportListToolbar
-    searchPlaceholder="Search Training Number, Training Title or topic…" search={table.searchQuery}
+    searchPlaceholder="Search Training Number or Training Topic…" search={table.searchQuery}
     onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
     filters={[
       { id: "method", label: "Mode", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))], onChange: change(setMethod) },

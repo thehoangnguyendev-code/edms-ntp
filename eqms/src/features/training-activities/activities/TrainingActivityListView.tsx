@@ -98,8 +98,7 @@ export function TrainingActivityListView() {
         </button>
       ),
     },
-    { id: "title", header: "Training Title", sort: sorted("trainingTitle"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.trainingTitle}</div> },
-    { id: "topics", header: "Topics", sort: sorted("topics"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.topics ?? "—"}</div> },
+    { id: "topics", header: "Training Topic", sort: sorted("topics"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.topics ?? "—"}</div> },
     { id: "trainer", header: "Trainer", sort: sorted("trainers"), cell: (r) => <div className="max-w-60 whitespace-normal">{r.trainers ?? r.trainingUnitName ?? "—"}</div> },
     { id: "method", header: "Mode", sort: sorted("methods"), cell: (r) => (r.methods ? r.methods.split(",").map((m) => METHOD_LABEL[m] ?? m).join(", ") + (r.onPaper ? " (paper)" : "") : "—") },
     { id: "scheduled", header: "Scheduled", sort: sorted("scheduledOn"), cell: (r) => (r.scheduledFrom ? (r.scheduledTo && r.scheduledTo !== r.scheduledFrom ? `${day(r.scheduledFrom)} – ${day(r.scheduledTo)}` : day(r.scheduledFrom)) : "—") },
@@ -151,7 +150,7 @@ export function TrainingActivityListView() {
         </p>
       )}
       <ReportListToolbar
-        searchPlaceholder="Search number, title, topic, trainer, document, creator…"
+        searchPlaceholder="Search number, Training Topic, trainer, document, creator…"
         search={table.searchQuery}
         onSearch={(value) => {
           table.setSearchQuery(value);

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Search,
   X,
@@ -7,6 +7,8 @@ import {
   Plus,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useDebounce } from "@/hooks";
+import { TablePagination } from "@/components/ui/table/TablePagination";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
@@ -87,6 +89,7 @@ interface AccessProfilesSectionProps {
   headerAction?: React.ReactNode;
   rows: AccessProfileRow[];
   totalCount: number;
+  rowOffset?: number;
   emptyStateTitle: string;
   emptyStateDescription: string;
   noSearchMatchDescription: string;
@@ -100,6 +103,7 @@ const AccessProfilesSection: React.FC<AccessProfilesSectionProps> = ({
   headerAction,
   rows,
   totalCount,
+  rowOffset = 0,
   emptyStateTitle,
   emptyStateDescription,
   noSearchMatchDescription,
@@ -177,7 +181,7 @@ const AccessProfilesSection: React.FC<AccessProfilesSectionProps> = ({
                 rows.map((row, index) => (
                   <TableMarkup.Row key={row.id} className="hover:bg-slate-50/80 transition-colors group">
                     <TableMarkup.Cell className={TABLE_STYLES.cell1}>
-                      {index + 1}
+                      {rowOffset + index + 1}
                     </TableMarkup.Cell>
                     <TableMarkup.Cell className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-xs sm:text-sm">
                       <div className="flex items-center gap-2.5">
@@ -325,9 +329,12 @@ const ExistingModeSecurityTab: React.FC<ExistingModeProps> = ({
   const { hasPermission } = usePermissions();
   const { user: currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<UserAuthorizationSummary | null>(null);
-  const [workflowRoleLabels, setWorkflowRoleLabels] = useState<Record<string, string>>({});
+  const [summary, setSummary] = useState<Awaited<ReturnType<typeof settingsApi.queryUserAuthorizationSummary>> | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const search = useDebounce(searchQuery, 300);
+  const generation = useRef(0);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const isSelf = currentUser?.id === user.id;
@@ -335,57 +342,34 @@ const ExistingModeSecurityTab: React.FC<ExistingModeProps> = ({
   const canEditMfaRequirement = canEdit && !isSelf;
 
   const load = useCallback(async () => {
+    const request = ++generation.current;
     setLoading(true);
     try {
-      const [authorizationSummary, workflowRoleCatalog] = await Promise.all([
-        settingsApi.getUserAuthorizationSummary(user.id),
-        settingsApi.listWorkflowRoleCatalog(),
-      ]);
-      setSummary(authorizationSummary);
-      setWorkflowRoleLabels(
-        Object.fromEntries(
-          workflowRoleCatalog.map((role: WorkflowRoleCatalogSummary) => [role.code, role.label])
-        )
-      );
+      const result = await settingsApi.queryUserAuthorizationSummary(user.id, { search: search || undefined, page, limit });
+      if (request !== generation.current) return;
+      setSummary(result);
+      const pages = Math.max(1, result.pagination.totalPages);
+      if (page > pages) setPage(pages);
     } catch (error: any) {
-      showToast({
-        type: "error",
-        message:
-          error?.response?.status === 403
-            ? "You do not have permission to view this user's authorization."
-            : "Failed to load authorization summary.",
-      });
+      if (request !== generation.current) return;
+      setSummary(null);
+      showToast({ type: "error", message: error?.response?.status === 403
+        ? "You do not have permission to view this user's authorization."
+        : "Failed to load authorization summary." });
     } finally {
-      setLoading(false);
+      if (request === generation.current) setLoading(false);
     }
-  }, [showToast, user.id]);
+  }, [showToast, user.id, search, page, limit]);
 
   useEffect(() => {
     void load();
+    return () => { generation.current++; };
   }, [load]);
 
-  const filteredProfiles = useMemo(() => {
-    if (!summary?.accessProfiles) return [];
-    if (!searchQuery.trim()) return summary.accessProfiles;
-
-    const query = searchQuery.toLowerCase().trim();
-    return summary.accessProfiles.filter((profile) => {
-      const nameMatch = profile.name.toLowerCase().includes(query);
-      const codeMatch = profile.code.toLowerCase().includes(query);
-      const setMatch = profile.permissionSets.some(
-        (set) => set.name.toLowerCase().includes(query)
-      );
-      const roleMatch = profile.workflowRoles.some((role) =>
-        (workflowRoleLabels[role] || role).toLowerCase().includes(query)
-      );
-      return nameMatch || codeMatch || setMatch || roleMatch;
-    });
-  }, [summary?.accessProfiles, searchQuery, workflowRoleLabels]);
-
-  if (loading) return <SectionLoading text="Loading security authorization matrix..." minHeight="240px" />;
+  if (loading && !summary) return <SectionLoading text="Loading security authorization matrix..." minHeight="240px" />;
   if (!summary) return null;
 
-  const rows: AccessProfileRow[] = filteredProfiles.map((profile) => ({
+  const rows: AccessProfileRow[] = summary.accessProfiles.map((profile) => ({
     id: profile.id,
     name: profile.name,
     code: profile.code,
@@ -418,21 +402,25 @@ const ExistingModeSecurityTab: React.FC<ExistingModeProps> = ({
         eyebrow="Access Profiles"
         statLine={`${summary.effectivePermissionCount} effective permission${summary.effectivePermissionCount === 1 ? "" : "s"}`}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={(value) => { setSearchQuery(value); setPage(1); }}
         headerAction={
           canEditAccessProfiles && isEditingProfile ? (
-            <Button variant={summary.accessProfiles.length === 0 ? "default" : "default"} size="sm" className="gap-1.5 flex-shrink-0" onClick={() => setIsEditModalOpen(true)}>
-              {summary.accessProfiles.length === 0 ? <Plus className="h-3.5 w-3.5" /> : <IconPencilMinus className="h-3.5 w-3.5" />}
-              {summary.accessProfiles.length === 0 ? "New Access Profile" : "Edit Access Profile"}
+            <Button variant={summary.assignedProfileIds.length === 0 ? "default" : "default"} size="sm" className="gap-1.5 flex-shrink-0" onClick={() => setIsEditModalOpen(true)}>
+              {summary.assignedProfileIds.length === 0 ? <Plus className="h-3.5 w-3.5" /> : <IconPencilMinus className="h-3.5 w-3.5" />}
+              {summary.assignedProfileIds.length === 0 ? "New Access Profile" : "Edit Access Profile"}
             </Button>
           ) : undefined
         }
         rows={rows}
-        totalCount={summary.accessProfiles.length}
+        totalCount={summary.assignedProfileIds.length}
+        rowOffset={(page - 1) * limit}
         emptyStateTitle="No Access Profile Assigned"
         emptyStateDescription="This user has no application permissions assigned. Please contact a System Administrator to assign an active Access Profile."
         noSearchMatchDescription={`No results for "${searchQuery}".`}
       />
+
+      {summary.pagination.total > 0 && <TablePagination currentPage={page} totalPages={Math.max(1, summary.pagination.totalPages)} totalItems={summary.pagination.total}
+        itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} />}
 
       {canEditAccessProfiles && (
         <EditAccessProfilesModal
@@ -440,7 +428,7 @@ const ExistingModeSecurityTab: React.FC<ExistingModeProps> = ({
           onClose={() => setIsEditModalOpen(false)}
           userId={user.id}
           userName={user.fullName}
-          currentProfileIds={summary.accessProfiles.map((p) => p.id)}
+          currentProfileIds={summary.assignedProfileIds}
           onSaved={() => void load()}
         />
       )}

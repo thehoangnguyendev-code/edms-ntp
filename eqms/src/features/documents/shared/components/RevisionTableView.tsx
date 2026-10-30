@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { ChevronRight, MoreVertical } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { TablePagination } from "@/components/ui/table/TablePagination";
@@ -140,8 +140,8 @@ interface RevisionTableViewProps<
   itemsPerPage: number;
   isTableLoading: boolean;
 
-  totalItems?: number;
-  totalPages?: number;
+  totalItems: number;
+  totalPages: number;
 
   // Event Handlers
   onExpandRow: (id: string | null) => void;
@@ -215,16 +215,10 @@ const RevisionTableViewInner = <
   }: RevisionTableViewProps<T>,
   ref: React.ForwardedRef<HTMLDivElement>
 ) => {
-  // Calculate pagination
-  const isServerSide = totalItemsProp !== undefined;
-  const totalRevisions = isServerSide ? totalItemsProp : (revisions?.length || 0);
-  const totalPages = isServerSide ? (totalPagesProp || 1) : Math.ceil(totalRevisions / itemsPerPage);
-  const startIndex = isServerSide ? 0 : ((currentPage - 1) * itemsPerPage);
-  const paginatedRevisions = useMemo(() => {
-    if (!revisions) return [];
-    if (isServerSide) return revisions;
-    return revisions.slice(startIndex, startIndex + itemsPerPage);
-  }, [revisions, startIndex, itemsPerPage, isServerSide]);
+  // The caller supplies the authorized server page, including totals and ordering.
+  const totalRevisions = totalItemsProp;
+  const totalPages = Math.max(1, totalPagesProp);
+  const paginatedRevisions = revisions ?? [];
 
   const tableColumns = columnLayout?.columns ?? buildRevisionColumns({
     columns,

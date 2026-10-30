@@ -94,7 +94,8 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const { toastPosition: configuredPosition } = useBranding();
+  const { toastPosition: configuredPosition, toastDurationSeconds } = useBranding();
+  const defaultDuration = (toastDurationSeconds ?? 5) * 1000;
   const toastPosition: ToastPlacement =
     configuredPosition && configuredPosition in TOAST_CONTAINER ? configuredPosition : 'top-right';
 
@@ -109,7 +110,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
       setToasts((prev) => {
         const newToasts = [
           ...prev,
-          { ...toast, id, title: resolveToastTitle(toast) },
+          { ...toast, id, title: resolveToastTitle(toast), duration: toast.duration ?? defaultDuration },
         ];
         if (newToasts.length > MAX_TOASTS) {
           return newToasts.slice(-MAX_TOASTS);
@@ -117,7 +118,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
         return newToasts;
       });
     },
-    [],
+    [defaultDuration],
   );
 
   return (

@@ -28,6 +28,7 @@ const { knowledgeApiMock } = vi.hoisted(() => ({
     overview: vi.fn(),
     browse: vi.fn(),
     search: vi.fn(),
+    queryDocuments: vi.fn(),
     recordView: vi.fn(async () => undefined),
     giveFeedback: vi.fn(async () => undefined),
     setFeatured: vi.fn(async () => undefined),
@@ -72,6 +73,9 @@ const browseFolders = {
   documents: [],
 };
 const browseDocs = {
+  totalDocuments: 2,
+  page: 1,
+  limit: 20,
   path: [
     { fieldLabel: "Business Unit", key: "mfg", label: "Manufacturing" },
     { fieldLabel: "Department", key: "lab", label: "QC Laboratory" },
@@ -104,6 +108,12 @@ describe("KnowledgeExplorerPage", () => {
     knowledgeApiMock.overview.mockResolvedValue(overview);
     knowledgeApiMock.browse.mockImplementation(async (_h: unknown, _kb: string, path: string[]) => (path.length === 0 ? browseFolders : browseDocs));
     knowledgeApiMock.search.mockResolvedValue([doc("s1", "Deviation handling")]);
+    knowledgeApiMock.queryDocuments.mockImplementation(async (options) => {
+      const current = await knowledgeApiMock.overview();
+      const documents = options.collection === "viewed" ? current.mostViewed : options.collection === "featured" ? current.featured
+        : options.collection === "useful" ? current.mostUseful : await knowledgeApiMock.search();
+      return { documents, totalDocuments: documents.length, page: options.page, limit: options.limit, folders: [], path: [] };
+    });
     openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
   });
 
@@ -125,9 +135,9 @@ describe("KnowledgeExplorerPage", () => {
   it("opens a folder on double-click, walks down the hierarchy and back up", async () => {
     renderPage();
     fireEvent.doubleClick(await screen.findByRole("option", { name: /Manufacturing/ }));
-    await waitFor(() => expect(knowledgeApiMock.browse).toHaveBeenCalledWith("h1", "mfg", []));
+    await waitFor(() => expect(knowledgeApiMock.browse).toHaveBeenCalledWith("h1", "mfg", [], expect.objectContaining({ page: 1, limit: 20 })));
     fireEvent.doubleClick(await screen.findByRole("option", { name: /QC Laboratory/ }));
-    await waitFor(() => expect(knowledgeApiMock.browse).toHaveBeenCalledWith("h1", "mfg", ["lab"]));
+    await waitFor(() => expect(knowledgeApiMock.browse).toHaveBeenCalledWith("h1", "mfg", ["lab"], expect.objectContaining({ page: 1, limit: 20 })));
     expect(await screen.findByText("Balance calibration")).toBeTruthy();
     const location = screen.getByRole("navigation", { name: "Location" });
     expect(within(location).getByText("QC Laboratory").getAttribute("aria-current")).toBe("page");
@@ -183,9 +193,9 @@ describe("KnowledgeExplorerPage", () => {
     const input = screen.getByLabelText("Search all documents");
     fireEvent.change(input, { target: { value: "de" } });
     expect(await screen.findByText("Keep typing")).toBeTruthy();
-    expect(knowledgeApiMock.search).not.toHaveBeenCalled();
+    expect(knowledgeApiMock.queryDocuments).not.toHaveBeenCalled();
     fireEvent.change(input, { target: { value: "devi" } });
-    await waitFor(() => expect(knowledgeApiMock.search).toHaveBeenCalledWith("devi"));
+    await waitFor(() => expect(knowledgeApiMock.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ search: "devi", page: 1, limit: 20 })));
     expect(await screen.findByRole("option", { name: /Deviation handling/ })).toBeTruthy();
     fireEvent.click(screen.getByLabelText("Clear search"));
     expect(await screen.findByRole("option", { name: /Manufacturing/ })).toBeTruthy();

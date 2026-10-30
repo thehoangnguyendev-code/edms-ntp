@@ -39,7 +39,7 @@ Bật mẫu danh sách APD.0117: Training Properties, tab form templates, phải
 3. Tab **Training Materials**: thêm file hoặc link (bắt buộc với đào tạo thường). Nếu không cần: bấm **Training Materials are not required…**, nhập lý do. Bảng sẽ ghi "Training Materials are not required for this training. Reason: …".
 4. Tab **Assessment**: với session Test hoặc Checklist, tải mẫu APD.0009 (nút **Start from APD.0009…**), hoặc upload file, hoặc **Write the test** (bài test viết ngay trong hệ thống). Nếu không cần: **An assessment form is not required…** kèm lý do. Nếu session chỉ Observation hay Self-reading confirmation thì bảng tự ghi "No test or checklist is required…".
 5. Bấm **Confirm attendee list** (ký, meaning "Attendance List Verified"). Sau bước này danh sách người tham gia bị khoá.
-6. Tab **Approvers**: chỉ định người Review (REV) và người Approve (APP).
+6. Tab **Signatures**: chỉ định người Review (REV) và người Approve (APP).
 
 **Kỳ vọng:** nếu thiếu tài liệu hay bài test mà chưa miễn, nút duyệt nội dung và **Notify participants** bị chặn và nêu lý do.
 
@@ -114,7 +114,7 @@ Form mẫu là file **APD.0009.02 Training assessment.docx** đã tải lên và
 4. **Điền sẵn trong form (khi chọn):** Training topic (các chủ đề của session), Số đào tạo (Training number), Loại đào tạo (ô ☒: lần đầu / đào tạo lại / định kỳ / đột xuất), Thời gian làm bài; câu hỏi chia **Phần I** (trắc nghiệm) và **Phần II** (tự luận, có dòng kẻ) hoặc bảng checklist Đúng / Không đúng; "Bài làm gồm N câu hỏi". Header (logo, tên form, Page n/N) và footer (số đào tạo, học viên, Sign/Date) trên mọi trang.
 5. **Tải bài cho từng học viên, trước khi vào In progress.** Sau **Notify**, session giao bằng giấy: tab Sessions hoặc Prepare trong workspace: **Download test copies** (ZIP, mỗi học viên một file PDF) hoặc **Download as Word** (ZIP file Word để sửa trước khi in). Mỗi file đã có **họ tên, mã nhân viên, bộ phận, ngày** của học viên đó và học viên ở footer. In lại phải có lý do.
 6. **Chấm.** Trainer chấm trên giấy, ở Step 5 nhập điểm từng người. Ô Maximum score tự điền bằng tổng điểm của bài. Bài Test: đạt theo pass mark của Training Properties. **Checklist: chọn Pass / Not passed cho từng người; chỉ đạt khi đúng hết mọi dòng.**
-7. **Giảng viên nội bộ:** theo SOP.0003 5.3.4 giảng viên phải có hồ sơ đào tạo GMP và được đào tạo SOP. Chưa có thì ở tab Sessions bấm **Request Exception** (chọn người duyệt), người duyệt ký **Complete Approve** rồi mới Notify được.
+7. **Giảng viên nội bộ:** theo SOP.0003 5.3.4 giảng viên phải có hồ sơ đào tạo GMP và được đào tạo SOP. Chưa có thì ở tab Sessions bấm **Request Exception** (chọn người duyệt), người duyệt ký **Complete Approval** rồi mới Notify được.
 ## B. Đào tạo từ SOP (Document Control)
 
 ### B1. Tạo tài liệu (ORG hoặc tác giả)
@@ -177,12 +177,23 @@ Việc gỡ tài liệu liên quan, tài liệu liên quan đã thông báo đà
 | F13 | Settings → Training Administration → Training Vendors: Approve Vendor (tên, mã tham chiếu, hiệu lực), ký điện tử | Đơn vị hiện trong danh sách trạng thái Active; trùng tên đang Active (kể cả khác hoa/thường) bị từ chối; hiệu lực trong quá khứ bị từ chối |
 | F14 | Tạo hoạt động đào tạo ngoài (External) với đơn vị chưa có trong danh mục | Hoạt động vẫn tạo được; màn hình có thông báo vàng "not on the register of approved training providers (SOP.0025)" |
 | F15 | Tạo đào tạo ngoài với đơn vị đã duyệt | Không có thông báo; sau khi Make Inactive (có lý do và chữ ký) thì thông báo quay lại |
-| F16 | Settings → Training Administration → Job Roles: New Job Role (mã, tên, bộ phận, Position, mô tả, quyền hạn) | Job Role xuất hiện trong danh sách Active; mã trùng hoặc tên trùng trong cùng bộ phận bị từ chối; người không có quyền Training Administration không thấy menu |
-| F17 | Mở một phiên bản ma trận Draft của bộ phận đó | Mỗi cột là một Job Role (không còn cột Position); tick các chủ đề cho Job Role, lưu, gửi duyệt như thường |
-| F18 | Job Assignments → New Job Assignment cho một nhân viên chưa giữ Job Role nào | Chỉ chọn Employee và Job Role; bản nháp là Initial; quyền hạn lấy sẵn từ Job Role |
-| F19 | Hoàn tất bản đó (ký người giao, nhân viên chấp nhận), rồi tạo bản giao việc thứ hai cho cùng người | Form hỏi "Is added to the ones held" hay "Replaces one held"; chọn Additional thì sau khi ký người đó giữ **cả hai** Job Role; chọn Replaces thì phải nhập lý do, Job Role cũ thành Obsoleted |
-| F20 | Settings → Training Administration → Person Job Roles | Chỉ đọc: mỗi người một dòng với các Job Role họ giữ và nguồn; không còn ô "Set position" |
+| F16 | Settings → Training Administration → Work Positions: New Work Position (mã, tên, bộ phận, Position, mô tả, quyền hạn) | Work Position xuất hiện trong danh sách Active; mã trùng hoặc tên trùng trong cùng bộ phận bị từ chối; người không có quyền Training Administration không thấy menu |
+| F17 | Mở một phiên bản ma trận Draft của bộ phận đó | Mỗi cột là một Work Position (không còn cột Position); tick các chủ đề cho Work Position, lưu, gửi duyệt như thường |
+| F18 | Job Assignments → New Job Assignment cho một nhân viên chưa giữ Work Position nào | Chỉ chọn Employee và Work Position; bản nháp là Initial; quyền hạn lấy sẵn từ Work Position |
+| F19 | Hoàn tất bản đó (ký người giao, nhân viên chấp nhận), rồi tạo bản giao việc thứ hai cho cùng người | Form hỏi "Is added to the ones held" hay "Replaces one held"; chọn Additional thì sau khi ký người đó giữ **cả hai** Work Position; chọn Replaces thì phải nhập lý do, Work Position cũ thành Obsoleted |
+| F20 | Settings → Training Administration → Person Work Positions | Chỉ đọc: mỗi người một dòng với các Work Position họ giữ và nguồn; không còn ô "Set position" |
 | F21 | Job Assignments, mở menu hành động của từng dòng | View Details luôn có; Continue Draft chỉ ở bản nháp của người có quyền; Review and Accept chỉ ở bản chờ ký của chính nhân viên đó. Tương tự ở Training Assessments (Continue Draft, Review and Approve) |
-| F22 | Vào Job Roles, cố Deactivate một Job Role mà có người đang giữ | Bị từ chối (đang có người giữ); Job Role không ai giữ thì tắt được và không còn trong danh sách chọn |
+| F26 | Work Positions → menu của một Work Position → View Details | Có mục "Training required before the Work Position is given": danh sách chủ đề, SOP trong ma trận hiệu lực của bộ phận được tick cho Work Position đó, cùng nút mở ma trận |
+| F22 | Vào Work Positions, cố Deactivate một Work Position mà có người đang giữ | Bị từ chối (đang có người giữ); Work Position không ai giữ thì tắt được và không còn trong danh sách chọn |
+| F23 | New Job Assignment cho một nhân viên chưa giữ Work Position nào: thêm **hai** Work Position vào ô Work Positions, tick thêm một Topic hoặc SOP | Khung kiểm tra hiện ngay mục nào chưa đào tạo (cả của ma trận và mục vừa tick); bản nháp là một phiếu, một số lần ban hành; chỉ ký được khi đủ hoặc có ngoại lệ |
+| F24 | Hoàn tất phiếu đó, rồi tạo phiếu thứ hai cho cùng người: chọn "Is added to the ones held", nhập lý do, thêm một Work Position | Phiếu mới liệt kê hai vai trò đã giữ (đánh dấu held before) và ba vai trò sau; chỉ vai trò mới bị kiểm tra đào tạo; sau khi ký phiếu cũ là Obsoleted và người đó giữ cả ba |
+| F25 | Download Word của phiếu thứ hai | "Current position" hai dòng (hai vai trò cũ), "New position" ba dòng; phần 4 có tiếng Việt, tiếng Anh in nghiêng dưới, mỗi dòng một đoạn |
+| F27 | Training Administration → Training Topics: tạo hoặc sửa một chủ đề phạm vi "General (whole factory)", tick "Required of all employees" (và "Repeated every year") | Cột Scope ghi "required of all employees"; chủ đề phạm vi khác không có ô này |
+| F28 | Mở ma trận Draft của một bộ phận, bấm lưu | Chủ đề vừa đánh dấu xuất hiện ở nhóm đào tạo chung toàn nhà máy với nhãn "All employees", tick đủ mọi Work Position, khóa: không bỏ tick, không đổi Annual, nút Remove bị khóa |
+| F29 | Tạo Job Assignment cho người chưa học chủ đề đó | Khung kiểm tra liệt kê chủ đề, nguồn "All employees (Quality Assurance)"; chỉ ký được khi đã học hoặc có ngoại lệ |
+| F30 | Training Topics: tạo hoặc sửa một chủ đề, ô Training unit | Là danh sách Department (không gõ tay); cột Training Unit hiện trong danh sách; Activate/Deactivate không làm mất đơn vị |
+| F31 | Ma trận Draft của một bộ phận: cột **All employees** (đứng trước các cột Work Position) | Tick một hàng ở cột này là mọi nhân viên của bộ phận phải học chủ đề đó (kể cả người chưa có Work Position); hàng bị tick đủ mọi cột Work Position; hàng QA bắt buộc có nhãn "Required by QA" và bị khóa; bỏ tick thì hàng thành hàng thường |
+| F32 | Training Compliance → Gap List | Danh sách gồm mọi nhân viên của bộ phận; nhân viên mới có nhãn xanh "New employee", người chưa có Work Position có nhãn vàng "No Work Position"; cột "Given by" cho biết Department giảng dạy; bộ lọc "New employees only"; ô New employees ở tab Summary |
+| F33 | Gap List: tick nhiều dòng cùng thiếu một chủ đề → Add to a Training | Cửa sổ liệt kê các hoạt động đang lên kế hoạch có chủ đề đó (buổi, ngày, số người); Add to This Training thêm cả nhóm; Create a Training for Them mở màn tạo hoạt động (loại Initial nếu tất cả là nhân viên mới) đã điền sẵn chủ đề và cả nhóm người |
 
 **Chưa kiểm chứng (cần bạn nhìn):** file Word mở trong Microsoft Word (ô đánh dấu, dòng đầu bản in, chữ ký không bị tách trang), các nút mới trên trình duyệt.

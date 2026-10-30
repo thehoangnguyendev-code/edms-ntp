@@ -5,7 +5,6 @@ import com.eqms.entity.UserStatus;
 import com.eqms.repository.UserAccountRepository;
 import com.eqms.service.AuditTrailService;
 import com.eqms.service.ClamAvScanService;
-import com.eqms.service.ElectronicSignatureService;
 import com.eqms.service.FileStorageService;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -30,10 +29,11 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Specimen signatures (SOP.0003 section 5.3.9): the image of the signature of a person, kept for comparison with signed records. The person (or someone who
- * manages them) uploads it and chooses who confirms it; the file is checked (a real PNG, JPEG, WebP or BMP picture, not a GIF, of a bounded size), scanned for malware and stored in the records
- * bucket, which never deletes. The person chosen confirms with a signature and cannot be the person themselves or the uploader. Only one image is approved for
- * a person; a newer approved one replaces it and the older one stays on record. The image is never part of a list; opening it is recorded in the Audit Trail.
+ * Specimen signatures (SOP.0003 section 5.3.9; FRM.0007): the scan of the paper that a person signed by hand, kept as a record for comparison with signed records. The paper is the original
+ * (owner decision 2026-10-28, TRAINING-FRM-PAPER): the system does not write the form and does not ask anybody to confirm the scan. The person (or someone who manages them) uploads the
+ * scans; each file is checked (a real PNG, JPEG, WebP or BMP picture, not a GIF, of a bounded size), scanned for malware and stored in the records bucket, which never deletes. The newest
+ * upload is the current record of the person and the older one stays on record (Superseded). A record that was confirmed under the earlier workflow keeps its confirmer and signature. The image
+ * is never part of a list; opening it is recorded in the Audit Trail.
  */
 @Service
 public class TrainingSpecimenService {
@@ -43,27 +43,20 @@ public class TrainingSpecimenService {
 
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;
-    private final TrainingApprovalService approvals;
-    private final ElectronicSignatureService signatures;
     private final AuditTrailService audit;
     private final UserAccountRepository users;
     private final FileStorageService files;
     private final ClamAvScanService virusScan;
 
-    public TrainingSpecimenService(JdbcTemplate jdbc, TrainingAccess access, TrainingApprovalService approvals, ElectronicSignatureService signatures, AuditTrailService audit,
+    public TrainingSpecimenService(JdbcTemplate jdbc, TrainingAccess access, AuditTrailService audit,
                                    UserAccountRepository users, FileStorageService files, ClamAvScanService virusScan) {
         this.jdbc = jdbc;
         this.access = access;
-        this.approvals = approvals;
-        this.signatures = signatures;
         this.audit = audit;
         this.users = users;
         this.files = files;
         this.virusScan = virusScan;
     }
-
-    public record SignRequest(String signatureToken) {}
-    public record RejectRequest(String reason) {}
 
     private static final String SELECT = """
         select s.id, s.person_user_id, u.full_name, u.employee_code, u.avatar, u.department, s.version_no, s.status, s.effective_date, s.content_type, s.size_bytes, s.sha256,
@@ -165,21 +158,9 @@ public class TrainingSpecimenService {
     }
 
     private Map<String, Object> capabilities(UserAccount actor, UUID id, UUID personId, String status, boolean rejected) {
-        boolean assigned = jdbc.queryForObject("select count(*) from training_approval_assignments where object_type=? and object_id=? and status='PENDING' and assignee_user_id=?",
-                Integer.class, TYPE, id, actor.getId()) > 0;
         Map<String, Object> caps = new LinkedHashMap<>();
         caps.put("viewImage", actor.getId().equals(personId) || access.has(actor, "training.signature.view", "training.signature.manage", "training.signature.confirm"));
-        // a rejected one is still Pending Confirmation but waits for the person to upload again, so it cannot be confirmed or rejected again
-        caps.put("confirm", "PENDING_CONFIRMATION".equals(status) && !rejected && assigned && access.has(actor, "training.signature.confirm"));
-        caps.put("reject", caps.get("confirm"));
-        caps.put("reupload", "PENDING_CONFIRMATION".equals(status) && rejected && (actor.getId().equals(personId) ? access.has(actor, "training.self.view", "training.signature.manage") : access.has(actor, "training.signature.manage")));
         return caps;
-    }
-
-    @Transactional(readOnly = true)
-    public Map<String, Object> eligibleConfirmers(UserAccount actor, UUID personId, String search, int page, int limit) {
-        UUID person = personId == null ? actor.getId() : personId;
-        return approvals.eligibleApprovers(actor, subjectFor(person, null), "SPECIMEN_CONFIRM", search, page, limit, TrainingApprovalService.apart(person, actor.getId()));
     }
 
     /**
@@ -221,9 +202,9 @@ public class TrainingSpecimenService {
 
     // ----------------------------------------------------------------------------------------------------------------------------- writing
 
-    /** A new specimen image for a person, waiting for the confirmation of the person chosen. */
+    /** The scans of the paper that a person signed: they become the current record of the person at once; the earlier current record becomes Superseded and stays on record. */
     @Transactional
-    public Map<String, Object> upload(UserAccount actor, UUID personId, MultipartFile file, MultipartFile file2, UUID confirmerId, String reason) {
+    public Map<String, Object> upload(UserAccount actor, UUID personId, MultipartFile file, MultipartFile file2, String reason) {
         UUID person = personId == null ? actor.getId() : personId;
         boolean self = actor.getId().equals(person);
         if (self) access.require(actor, "training.self.view", "training.signature.manage");
@@ -237,14 +218,9 @@ public class TrainingSpecimenService {
         // FRM.0007: the 1st and the 2nd specimen signature; both are required and both are checked the same way.
         if (file2 == null || file2.isEmpty()) throw new IllegalArgumentException("TRAINING_SPECIMEN_SECOND_REQUIRED");
         Checked first = check(file), second = check(file2);
-        List<Map<String, Object>> pending = jdbc.queryForList("select id, version_no, reject_reason from training_specimen_signatures where person_user_id=? and status='PENDING_CONFIRMATION' for update", person);
-        if (!pending.isEmpty()) {
-            // one that was rejected goes back to Pending Confirmation and is uploaded again on the same row; one that waits for the confirmer is left alone
-            if (pending.getFirst().get("reject_reason") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SPECIMEN_PENDING_EXISTS");
-            return reupload(actor, owner, pending.getFirst(), first, second, confirmerId, reason);
-        }
-        Integer approved = jdbc.queryForObject("select count(*) from training_specimen_signatures where person_user_id=? and status='APPROVED'", Integer.class, person);
-        if (approved != null && approved > 0 && (reason == null || reason.isBlank())) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
+        jdbc.queryForList("select id from training_specimen_signatures where person_user_id=? for update", person);
+        Integer current = jdbc.queryForObject("select count(*) from training_specimen_signatures where person_user_id=? and status='APPROVED'", Integer.class, person);
+        if (current != null && current > 0 && (reason == null || reason.isBlank())) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         int versionNo = ((Number) jdbc.queryForObject("select coalesce(max(version_no),0)+1 from training_specimen_signatures where person_user_id=?", Number.class, person)).intValue();
         UUID id = UUID.randomUUID();
         FileStorageService.StorageWriteResult stored, stored2;
@@ -254,37 +230,15 @@ public class TrainingSpecimenService {
         } catch (IOException e) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "TRAINING_FILE_UNAVAILABLE");
         }
+        jdbc.update("update training_specimen_signatures set status='OBSOLETED', updated_at=now() where person_user_id=? and status='APPROVED'", person);
         jdbc.update("""
-            insert into training_specimen_signatures(id, person_user_id, version_no, provider, stored_path, object_key, content_type, size_bytes, sha256, uploaded_by, change_reason,
+            insert into training_specimen_signatures(id, person_user_id, version_no, status, effective_date, provider, stored_path, object_key, content_type, size_bytes, sha256, uploaded_by, change_reason,
                                                      provider_2, stored_path_2, object_key_2, content_type_2, size_bytes_2, sha256_2)
-            values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            values (?,?,?,'APPROVED',current_date,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, id, person, versionNo, stored.provider(), stored.storedPath(), stored.objectKey(), first.type(), first.bytes().length, sha256(first.bytes()), actor.getId(), reason == null || reason.isBlank() ? null : reason.trim(),
                 stored2.provider(), stored2.storedPath(), stored2.objectKey(), second.type(), second.bytes().length, sha256(second.bytes()));
-        approvals.designate(actor, subjectFor(person, id), "SPECIMEN_CONFIRM", confirmerId, TrainingApprovalService.apart(person, actor.getId()));
-        audit.logAs(actor, TYPE, "Specimen signature of " + owner.getFullName() + " #" + versionNo, id, "TRAINING_SPECIMEN_UPLOADED", null, "PENDING_CONFIRMATION", reason == null ? "Uploaded" : reason.trim());
-        return TrainingRows.camel(jdbc.queryForList(SELECT + " where s.id=?", id).getFirst());
-    }
-
-    /** The person uploads the two images again after a rejection: same row and version, the reason of the rejection is cleared (it stays in the Audit Trail), a confirmer is designated again. */
-    private Map<String, Object> reupload(UserAccount actor, UserAccount owner, Map<String, Object> pending, Checked first, Checked second, UUID confirmerId, String reason) {
-        UUID id = (UUID) pending.get("id");
-        UUID person = owner.getId();
-        FileStorageService.StorageWriteResult stored, stored2;
-        String stamp = UUID.randomUUID().toString().substring(0, 8);
-        try {
-            stored = files.storeReportArtifact("training/specimen-signatures/" + person + "/" + id + "-r" + stamp + extensionOf(first.type()), new ByteArrayInputStream(first.bytes()), first.type());
-            stored2 = files.storeReportArtifact("training/specimen-signatures/" + person + "/" + id + "-r" + stamp + "-2" + extensionOf(second.type()), new ByteArrayInputStream(second.bytes()), second.type());
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "TRAINING_FILE_UNAVAILABLE");
-        }
-        jdbc.update("""
-            update training_specimen_signatures set provider=?, stored_path=?, object_key=?, content_type=?, size_bytes=?, sha256=?, provider_2=?, stored_path_2=?, object_key_2=?, content_type_2=?, size_bytes_2=?, sha256_2=?,
-                   uploaded_by=?, confirmed_by=null, reject_reason=null, change_reason=coalesce(?, change_reason), created_at=now(), updated_at=now() where id=?
-            """, stored.provider(), stored.storedPath(), stored.objectKey(), first.type(), first.bytes().length, sha256(first.bytes()),
-                stored2.provider(), stored2.storedPath(), stored2.objectKey(), second.type(), second.bytes().length, sha256(second.bytes()),
-                actor.getId(), reason == null || reason.isBlank() ? null : reason.trim(), id);
-        approvals.designate(actor, subjectFor(person, id), "SPECIMEN_CONFIRM", confirmerId, TrainingApprovalService.apart(person, actor.getId()));
-        audit.logAs(actor, TYPE, "Specimen signature of " + owner.getFullName() + " #" + pending.get("version_no"), id, "TRAINING_SPECIMEN_REUPLOADED", "PENDING_CONFIRMATION", "PENDING_CONFIRMATION", "Uploaded again after the rejection: " + pending.get("reject_reason"));
+        audit.logAs(actor, TYPE, "Specimen signature of " + owner.getFullName() + " #" + versionNo, id, "TRAINING_SPECIMEN_UPLOADED", current != null && current > 0 ? "APPROVED" : null, "APPROVED",
+                reason == null || reason.isBlank() ? "Scan of the signed paper kept as the current record" : reason.trim());
         return TrainingRows.camel(jdbc.queryForList(SELECT + " where s.id=?", id).getFirst());
     }
 
@@ -304,53 +258,10 @@ public class TrainingSpecimenService {
         return new Checked(bytes, type);
     }
 
-    @Transactional
-    public Map<String, Object> confirm(UserAccount actor, UUID id, SignRequest request) {
-        Map<String, Object> s = lock(id);
-        requirePending(s);
-        UUID person = (UUID) s.get("person_user_id");
-        UUID assignment = approvals.requireCanSign(actor, subjectFor(person, id), "SPECIMEN_CONFIRM", TrainingApprovalService.apart(person, (UUID) s.get("uploaded_by")));
-        if (request == null || request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
-        UUID signature = signatures.createEntitySignature(TYPE, id, "Specimen signature #" + s.get("version_no"), actor, request.signatureToken(), "TRAINING_SPECIMEN_APPROVED",
-                "Training Management: specimen signature approved", null, null, null).getId();
-        approvals.complete(assignment, signature);
-        jdbc.update("update training_specimen_signatures set status='OBSOLETED', updated_at=now() where person_user_id=? and status='APPROVED'", person);
-        jdbc.update("update training_specimen_signatures set status='APPROVED', confirmed_by=?, confirmed_signature_id=?, effective_date=current_date, updated_at=now() where id=?", actor.getId(), signature, id);
-        audit.logAs(actor, TYPE, "Specimen signature #" + s.get("version_no"), id, "TRAINING_SPECIMEN_APPROVED", "PENDING_CONFIRMATION", "APPROVED", "Specimen signature confirmed");
-        return TrainingRows.camel(jdbc.queryForList(SELECT + " where s.id=?", id).getFirst());
-    }
-
-    @Transactional
-    public Map<String, Object> reject(UserAccount actor, UUID id, RejectRequest request) {
-        Map<String, Object> s = lock(id);
-        requirePending(s);
-        UUID person = (UUID) s.get("person_user_id");
-        if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
-        UUID assignment = approvals.requireCanSign(actor, subjectFor(person, id), "SPECIMEN_CONFIRM", TrainingApprovalService.apart(person, (UUID) s.get("uploaded_by")));
-        approvals.complete(assignment, null);
-        jdbc.update("update training_specimen_signatures set reject_reason=?, confirmed_by=null, updated_at=now() where id=?", request.reason().trim(), id);
-        audit.logAs(actor, TYPE, "Specimen signature #" + s.get("version_no"), id, "TRAINING_SPECIMEN_REJECTED", "PENDING_CONFIRMATION", "PENDING_CONFIRMATION", "Rejected, to be uploaded again: " + request.reason().trim());
-        return TrainingRows.camel(jdbc.queryForList(SELECT + " where s.id=?", id).getFirst());
-    }
-
     // ----------------------------------------------------------------------------------------------------------------------------- helpers
 
     private Map<String, Object> row(UUID id) {
         return jdbc.queryForList("select * from training_specimen_signatures where id=?", id).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-    }
-
-    private Map<String, Object> lock(UUID id) {
-        return jdbc.queryForList("select * from training_specimen_signatures where id=? for update", id).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-    }
-
-    private static void requirePending(Map<String, Object> s) {
-        if (!"PENDING_CONFIRMATION".equals(s.get("status")) || s.get("reject_reason") != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SPECIMEN_INVALID_TRANSITION");
-    }
-
-    /** The department of the person is the department of the confirmation; a person without a department can only be handled by someone with the right on all departments. */
-    private TrainingApprovalService.Subject subjectFor(UUID personId, UUID id) {
-        UserAccount person = users.findById(personId).orElseThrow(() -> new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE"));
-        return new TrainingApprovalService.Subject(TYPE, id, access.departmentOf(person), "Specimen signature of " + person.getFullName(), "training.signature.manage");
     }
 
     /** The kind of image, from its content and not from its name. A GIF (and anything else) is refused; only a picture that every browser shows is kept. */

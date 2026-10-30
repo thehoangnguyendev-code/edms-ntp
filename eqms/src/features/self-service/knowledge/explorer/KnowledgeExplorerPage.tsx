@@ -29,7 +29,6 @@ import {
   DEFAULT_SORT_DIR,
   PAGE_SIZE,
   serverSortKey,
-  sortDocuments,
   sortFolders,
   SMART_LABELS,
   type ExplorerNav,
@@ -93,6 +92,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<KnowledgePortalDocument[]>([]);
+  const [searchTotal, setSearchTotal] = useState(0);
   const [searchStatus, setSearchStatus] = useState<Status>("ready");
   const [searchVersion, setSearchVersion] = useState(0);
 
@@ -157,14 +157,17 @@ export const KnowledgeExplorerPage: React.FC = () => {
   }, [searchInput]);
 
   useEffect(() => {
-    if (!searchTerm) { setSearchResults([]); setSearchStatus("ready"); return undefined; }
+    const collection = nav.kind === "smart" && nav.key !== "subscribed" ? nav.key : undefined;
+    if (!searchTerm && !collection) { setSearchResults([]); setSearchTotal(0); setSearchStatus("ready"); return undefined; }
     let alive = true;
     setSearchStatus("loading");
-    knowledgeApi.search(searchTerm)
-      .then((result) => { if (alive) { setSearchResults(result); setSearchStatus("ready"); } })
-      .catch(() => { if (alive) { setSearchResults([]); setSearchStatus("error"); } });
+    knowledgeApi.queryDocuments({ search: searchTerm || undefined, collection: searchTerm ? undefined : collection, page, limit: PAGE_SIZE,
+      sortBy: sortTouched ? serverSortKey(sort) : !searchTerm && collection ? (collection === "useful" ? "helpful" : "views") : "name",
+      sortDirection: sortTouched ? sortDir : !searchTerm && collection ? "desc" : "asc" })
+      .then((result) => { if (alive) { setSearchResults(result.documents); setSearchTotal(result.totalDocuments); setSearchStatus("ready"); } })
+      .catch(() => { if (alive) { setSearchResults([]); setSearchTotal(0); setSearchStatus("error"); } });
     return () => { alive = false; };
-  }, [searchTerm, searchVersion]);
+  }, [searchTerm, searchVersion, nav, page, sort, sortDir, sortTouched]);
 
   const refreshAll = useCallback(() => {
     setOverviewVersion((v) => v + 1);
@@ -234,26 +237,21 @@ export const KnowledgeExplorerPage: React.FC = () => {
     } else if (nav.kind === "home") {
       folders = cardsToFolders(overview?.knowledgeBases ?? []);
     } else if (nav.kind === "smart") {
-      if (nav.key === "featured") docs = overview?.featured ?? [];
-      if (nav.key === "viewed") docs = overview?.mostViewed ?? [];
-      if (nav.key === "useful") docs = overview?.mostUseful ?? [];
+      if (nav.key !== "subscribed") docs = searchResults;
       if (nav.key === "subscribed") folders = cardsToFolders((overview?.knowledgeBases ?? []).filter((kb) => kb.subscribed));
     } else if (browse) {
       folders = browse.folders.map((f) => ({ key: f.key, label: f.label, documentCount: f.documentCount, isKnowledgeBase: false }));
       docs = browse.documents;
     }
-    // A folder's documents arrive already sorted and cut to the page by the server. Search hits and the ranked lists are
-    // short lists held here, so they are sorted and cut to the page here; ranked lists keep their ranking until asked to re-sort.
-    const fromServer = !searching && nav.kind === "kb";
+    // Business document rows arrive in server order. Only navigation folders are arranged here.
+    const fromServer = searching || nav.kind === "kb" || (nav.kind === "smart" && nav.key !== "subscribed");
     const rankedList = searching || nav.kind === "smart";
     if (!rankedList || sortTouched) {
-      if (!fromServer) docs = sortDocuments(docs, sort, sortDir);
       folders = sortFolders(folders, sort);
     }
-    const totalDocs = fromServer ? browse?.totalDocuments ?? docs.length : docs.length;
-    if (!fromServer) docs = docs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const totalDocs = fromServer ? (searching || nav.kind === "smart" ? searchTotal : browse?.totalDocuments ?? 0) : docs.length;
     return { folders, docs, totalDocs };
-  }, [searching, shortQuery, searchActive, searchResults, nav, overview, browse, sort, sortDir, sortTouched, page]);
+  }, [searching, shortQuery, searchActive, searchResults, searchTotal, nav, overview, browse, sort, sortDir, sortTouched]);
 
   const knownDocuments = useMemo(() => {
     const map = new Map<string, KnowledgePortalDocument>();
@@ -262,8 +260,9 @@ export const KnowledgeExplorerPage: React.FC = () => {
     return map;
   }, [overview, content.docs]);
 
-  const loading = searching ? !shortQuery && (searchPending || searchStatus === "loading") : nav.kind === "kb" ? browseStatus === "loading" && !browse : overviewStatus === "loading";
-  const failed = searching ? !shortQuery && !searchPending && searchStatus === "error" : nav.kind === "kb" ? browseStatus === "error" : overviewStatus === "error";
+  const smartDocuments = nav.kind === "smart" && nav.key !== "subscribed";
+  const loading = searching ? !shortQuery && (searchPending || searchStatus === "loading") : smartDocuments ? searchStatus === "loading" : nav.kind === "kb" ? browseStatus === "loading" && !browse : overviewStatus === "loading";
+  const failed = searching ? !shortQuery && !searchPending && searchStatus === "error" : smartDocuments ? searchStatus === "error" : nav.kind === "kb" ? browseStatus === "error" : overviewStatus === "error";
   const itemCount = content.folders.length + content.totalDocs;
   const totalPages = Math.max(1, Math.ceil(content.totalDocs / PAGE_SIZE));
   // The list shrank (another search, a refresh): never sit on a page that no longer exists.

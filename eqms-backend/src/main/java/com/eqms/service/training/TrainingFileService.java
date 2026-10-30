@@ -345,7 +345,7 @@ public class TrainingFileService {
         long count = total == null ? 0 : total;
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("trainingNumber", activity.get("training_number"));
-        out.put("trainingTitle", activity.get("training_title"));
+        out.put("trainingTopics", activity.get("training_topics"));
         out.put("data", TrainingRows.camel(rows));
         out.put("pagination", Map.of("page", safePage, "limit", safeLimit, "total", count, "totalPages", Math.max(1, (count + safeLimit - 1) / safeLimit)));
         return out;

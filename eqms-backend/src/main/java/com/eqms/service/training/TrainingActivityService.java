@@ -17,9 +17,11 @@ import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import org.springframework.util.StringUtils;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -64,8 +66,8 @@ public class TrainingActivityService {
 
     // ------------------------------------------------------------------------------------------------------------------------------ requests
 
-    public record CreateRequest(UUID departmentId, String kind, String kindReason, String externalType, String trainingTitle, LocalDate dueDate, String remarks, String trainingUnitName, String vendorRef) {}
-    public record UpdateRequest(Integer version, String trainingTitle, LocalDate dueDate, String remarks, String trainingUnitName, String vendorRef) {}
+    public record CreateRequest(UUID departmentId, String kind, String kindReason, String externalType, LocalDate dueDate, String remarks, String trainingUnitName, String vendorRef) {}
+    public record UpdateRequest(Integer version, LocalDate dueDate, String remarks, String trainingUnitName, String vendorRef) {}
     public record TopicRequest(String topicText, UUID documentRevisionId) {}
     public record SessionRequest(String method, String assessmentMethod, UUID trainerUserId, String externalTrainerName, LocalDate scheduledOn, String venue, String locationType, String onlinePlatform, String meetingLink, List<TopicRequest> topics) {}
     public record ExternalPerson(String name, String org) {}
@@ -73,11 +75,20 @@ public class TrainingActivityService {
     public record ReasonRequest(String reason) {}
     public record ExemptionRequest(Boolean materialsExempt, Boolean assessmentExempt, String reason) {}
     public record CommandRequest(Integer version, String reason, String signatureToken) {}
-    public record HoldRequest(LocalDate heldOn, String signatureToken) {}
-    public record PostponeRequest(LocalDate newDate, String reason) {}
+    /** The day a session was held is not typed or sent: the system takes the day the trainer starts the session. */
+    public record HoldRequest(String signatureToken) {}
+    /** moveDueDate: the user accepted that the Due Date moves to the end of the month of the new date (SOP.0003 5.3.6); asked only when the new date is after the Due Date. */
+    public record PostponeRequest(LocalDate newDate, String reason, Boolean moveDueDate) {}
     public record SessionUpdateRequest(UUID trainerUserId, String externalTrainerName, LocalDate scheduledOn, String venue, String locationType, String onlinePlatform, String meetingLink, String reason) {}
     public record AttendanceRequest(String state, String absenceReason) {}
     public record CorrectionRequest(String state, String reason) {}
+    public record ParticipationRequest(String role, String reason) {}
+
+    /**
+     * How a person on the list takes part (V695, V696): TRAINEE takes the assessment; the other two do not. The trainer is not on the list: the name is in the content of the training (APD.0117)
+     * and the trainer's record is written when QA confirms the completion.
+     */
+    static final Set<String> PARTICIPATION_ROLES = Set.of("TRAINEE", "ATTENDEE", "NAME_ONLY");
     public record AssessmentRequest(BigDecimal scoreObtained, BigDecimal scoreMax, String remarks) {}
     public record SupplementaryRequest(List<UUID> participantIds, String reason) {}
 
@@ -104,7 +115,6 @@ public class TrainingActivityService {
         ListFilters extra = more == null ? ListFilters.NONE : more;
         String column = switch (sortBy == null ? "createdAt" : sortBy) {
             case "trainingNumber" -> "t.training_number";
-            case "trainingTitle" -> "t.training_title";
             case "status" -> "t.status";
             case "kind" -> "t.kind";
             case "dueDate" -> "t.due_date";
@@ -128,12 +138,14 @@ public class TrainingActivityService {
         StringBuilder where = new StringBuilder(" where 1=1");
         if (!access.allDepartments(actor)) {
             UUID own = access.departmentOf(actor);
-            where.append(" and t.organizer_department_id = ?");
+            // Also the activities that have people of a department the person heads: they open them to confirm the self-reading of their own people (APD.0108).
+            where.append(" and (t.organizer_department_id = ? or exists (select 1 from training_participants hp join departments hd on lower(btrim(hd.name)) = lower(btrim(hp.department)) where hp.activity_id = t.id and hd.department_head_id = ?))");
             args.add(own == null ? new UUID(0, 0) : own);
+            args.add(actor.getId());
         }
         if (search != null && !search.isBlank()) {
             String like = "%" + escapeLike(search.trim().toLowerCase(Locale.ROOT)) + "%";
-            where.append(" and (lower(t.training_number) like ? escape '\\' or lower(t.training_title) like ? escape '\\' or lower(coalesce(t.document_number,'')) like ? escape '\\' or lower(coalesce(cu.full_name,'')) like ? escape '\\' or lower(coalesce(d.name,'')) like ? escape '\\' or exists (select 1 from training_sessions s left join app_users tu on tu.id = s.trainer_user_id left join training_session_topics st on st.session_id = s.id where s.activity_id = t.id and (lower(coalesce(st.topic_text,'')) like ? escape '\\' or lower(coalesce(tu.full_name,'')) like ? escape '\\' or lower(coalesce(s.external_trainer_name,'')) like ? escape '\\')))");
+            where.append(" and (lower(t.training_number) like ? escape '\\' or lower(training_activity_topics(t.id)) like ? escape '\\' or lower(coalesce(t.document_number,'')) like ? escape '\\' or lower(coalesce(cu.full_name,'')) like ? escape '\\' or lower(coalesce(d.name,'')) like ? escape '\\' or exists (select 1 from training_sessions s left join app_users tu on tu.id = s.trainer_user_id left join training_session_topics st on st.session_id = s.id where s.activity_id = t.id and (lower(coalesce(st.topic_text,'')) like ? escape '\\' or lower(coalesce(tu.full_name,'')) like ? escape '\\' or lower(coalesce(s.external_trainer_name,'')) like ? escape '\\')))");
             args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
         if (status != null && !status.isBlank()) { where.append(" and t.status = ?"); args.add(status); }
@@ -168,12 +180,12 @@ public class TrainingActivityService {
         pageArgs.add(safeLimit);
         pageArgs.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select t.id, t.training_number, t.training_title, t.kind, t.kind_reason, t.status, t.due_date, t.document_number, t.revision_number, t.year, t.created_at,
+            select t.id, t.training_number, training_activity_topics(t.id) as training_topics, t.kind, t.kind_reason, t.status, t.due_date, t.document_number, t.revision_number, t.year, t.created_at,
                    t.organizer_department_id, t.revision_id,
                    case when exists (select 1 from document_revisions r where r.training_activity_id = t.id and r.status_code = 'PENDING_TRAINING') then 'PENDING_TRAINING'
                         else (select r.status_code from document_revisions r where r.id = t.revision_id) end as revision_status,
                    (select r.id from document_revisions r where r.training_activity_id = t.id and r.status_code = 'PENDING_TRAINING' order by r.created_at limit 1) as pending_revision_id,
-                   t.attendance_sent_at,
+                   t.attendance_sent_at, t.results_finished_at,
                    d.name as department_name, (select count(*) from training_participants p where p.activity_id = t.id) as participant_count,
                    (select count(*) from training_participants p where p.activity_id = t.id and p.state in ('ATTENDED','ONLINE','READ_CONFIRMED')) as attended_count,
                    (select count(*) from training_participants p where p.activity_id = t.id and p.result = 'PASSED') as passed_count,
@@ -233,7 +245,8 @@ public class TrainingActivityService {
             actions.put("review", open && steps.contains("CONTENT_REVIEW"));
             actions.put("approve", open && (steps.contains("CONTENT_APPROVE") || steps.contains("TRAINER_EXCEPTION")));
             actions.put("confirm", closer && inScope && "PENDING_QA_CONFIRMATION".equals(status));
-            actions.put("completeTraining", ("COMPLETED".equals(status) || row.get("attendanceSentAt") != null) && row.get("pendingRevisionId") != null);
+            // The revision is completed in Document Control only once the trainer has finished the training (Finish Training: every result in).
+            actions.put("completeTraining", ("COMPLETED".equals(status) || row.get("resultsFinishedAt") != null) && row.get("pendingRevisionId") != null);
             // The link of the action goes to a revision of the group that waits for "Complete Training".
             if (row.get("pendingRevisionId") != null) row.put("revisionId", row.get("pendingRevisionId"));
             row.put("actions", actions);
@@ -241,6 +254,7 @@ public class TrainingActivityService {
             row.remove("revisionStatus");
             row.remove("pendingRevisionId");
             row.remove("attendanceSentAt");
+            row.remove("resultsFinishedAt");
         }
         return rows;
     }
@@ -271,6 +285,7 @@ public class TrainingActivityService {
         List<Map<String, Object>> sessions = TrainingRows.camel(jdbc.queryForList("""
             select s.*, u.full_name as trainer_name from training_sessions s left join app_users u on u.id = s.trainer_user_id where s.activity_id=? order by s.session_no
             """, id));
+        boolean warnAfterDue = settings.warnScheduledAfterDue();
         for (Map<String, Object> session : sessions) {
             Map<String, Object> qualification = trainers.qualification((UUID) session.get("id"));
             @SuppressWarnings("unchecked")
@@ -282,28 +297,34 @@ public class TrainingActivityService {
             }
             session.put("trainerQualification", qualification);
             session.put("topics", TrainingRows.camel(jdbc.queryForList("select id, topic_text, document_id, document_revision_id, document_number, revision_number from training_session_topics where session_id=?", session.get("id"))));
+            // A session scheduled after the due date of its activity is allowed but flagged (the setting "Warn when a session is scheduled after the due date").
+            Object scheduled = session.get("scheduledOn");
+            Object due = activity.get("due_date");
+            session.put("scheduledAfterDue", warnAfterDue && scheduled != null && due instanceof java.sql.Date dueDate && LocalDate.parse(String.valueOf(scheduled)).isAfter(dueDate.toLocalDate()));
         }
         out.put("sessions", sessions);
-        out.put("participants", TrainingRows.camel(jdbc.queryForList("""
-            select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.department, p.position, p.external_name, p.external_org, p.state, p.result,
-                   p.absence_reason, p.planned_absence, p.added_reason, p.sign_mode, p.read_confirmed_at,
-                   case when not exists (select 1 from training_exam_questions q where q.activity_id = p.activity_id) then null
-                        when exists (select 1 from training_exam_attempts t where t.participant_id = p.id and t.status = 'SUBMITTED') then 'DONE'
-                        when exists (select 1 from training_exam_attempts t where t.participant_id = p.id and t.status = 'IN_PROGRESS' and (t.due_at is null or t.due_at + interval '60 seconds' >= now())) then 'OPEN'
-                        when exists (select 1 from training_exam_attempts t where t.participant_id = p.id and t.status = 'IN_PROGRESS') then 'USED'
-                        when (select count(*) from training_exam_attempts t where t.participant_id = p.id) > (select count(*) from training_exam_resets r where r.participant_id = p.id) then 'USED'
-                        else 'READY' end as exam_state,
-                   (select max(attempt_no) from training_assessments a where a.participant_id = p.id) as attempts,
-                   (select a.percent from training_assessments a where a.participant_id = p.id order by attempt_no desc limit 1) as last_percent,
-                   (select a.score_obtained from training_assessments a where a.participant_id = p.id order by attempt_no desc limit 1) as last_score,
-                   (select a.score_max from training_assessments a where a.participant_id = p.id order by attempt_no desc limit 1) as last_max,
-                   (select au.avatar from app_users au where au.id = p.person_user_id) as avatar
-              from training_participants p where p.activity_id=? order by p.full_name
-            """, id)));
+        out.put("participants", TrainingRows.camel(jdbc.queryForList(PARTICIPANT_SELECT + " order by p.full_name", id)));
         out.put("confirmations", TrainingRows.camel(jdbc.queryForList("""
-            select c.id, c.kind, c.confirmed_at, c.remark, u.full_name as confirmed_by_name from training_active_confirmations c join app_users u on u.id = c.confirmed_by
+            select c.id, c.kind, c.confirmed_at, c.remark, u.full_name as confirmed_by_name, c.department_id, d.name as department_name
+              from training_active_confirmations c join app_users u on u.id = c.confirmed_by left join departments d on d.id = c.department_id
              where c.activity_id=? order by c.confirmed_at
             """, id)));
+        // APD.0108: one list and one confirmation per department. Each department of the people who read on their own, with the head who confirms and what is still waiting.
+        out.put("selfReadingDepartments", TrainingRows.camel(jdbc.queryForList("""
+            select coalesce(d.id::text, '') as department_id, coalesce(d.name, nullif(btrim(p.department), ''), '—') as department_name,
+                   count(*) as people, count(*) filter (where p.state = 'READ_CONFIRMED' and p.result = 'PENDING') as waiting, count(*) filter (where p.state = 'READ_CONFIRMED' and p.result <> 'PENDING') as verified,
+                   h.full_name as head_name, (h.id = ?) as mine
+              from training_participants p join training_sessions s on s.id = p.session_id and s.method = 'SELF_READING'
+              left join departments d on lower(btrim(d.name)) = lower(btrim(p.department)) left join app_users h on h.id = d.department_head_id
+             where p.activity_id = ? and p.external_name is null
+             group by d.id, d.name, btrim(p.department), h.id, h.full_name order by 2
+            """, actor.getId(), id)));
+        // A department that has no head (or is not in the master data): a person who holds the right to close a training confirms in place of the head, and the record says so.
+        if (access.has(actor, "training.activity.close")) {
+            for (Map<String, Object> d : (List<Map<String, Object>>) out.get("selfReadingDepartments")) {
+                if (d.get("headName") == null) { d.put("mine", true); d.put("substitute", true); }
+            }
+        }
         out.put("approvers", TrainingRows.camel(approvals.assignments("TRAINING_ACTIVITY", id)));
         out.put("qaList", qaList(activity));
         // The pass mark is the one of Training Properties (the same setting the server uses to work out a result).
@@ -311,6 +332,16 @@ public class TrainingActivityService {
         out.put("resultsFinishedAt", activity.get("results_finished_at") == null ? null : com.eqms.util.DateTimeFormatUtils.formatDateTime(activity.get("results_finished_at")));
         out.put("resultsFinishedByName", activity.get("results_finished_by") == null ? null : jdbc.queryForList("select full_name from app_users where id = ?", String.class, activity.get("results_finished_by")).stream().findFirst().orElse(null));
         out.put("contentRules", contentRules(activity).toMap());
+        // Who did the steps that are signed but not kept as a confirmation, and when: the notice to the participants and the sending of the results to QA (the last time each happened).
+        for (String[] step : new String[][] {{"NOTIFIED", "notified"}, {"PENDING_QA_CONFIRMATION", "resultsSent"}}) {
+            Map<String, Object> event = jdbc.queryForList("select e.occurred_at, u.full_name from training_events e left join app_users u on u.id = e.actor_user_id where e.activity_id = ? and e.event_type = ? order by e.occurred_at desc limit 1", id, step[0]).stream().findFirst().orElse(null);
+            out.put(step[1] + "At", event == null ? null : com.eqms.util.DateTimeFormatUtils.formatDateTime(event.get("occurred_at")));
+            out.put(step[1] + "ByName", event == null ? null : event.get("full_name"));
+        }
+        // Who approved the document the training is for, and when (the last approval signature of its revision).
+        Map<String, Object> docApproval = activity.get("revision_id") == null ? null : jdbc.queryForList("select full_name, signed_at from electronic_signatures where revision_id = ? and meaning = 'APPROVED' order by signed_at desc limit 1", activity.get("revision_id")).stream().findFirst().orElse(null);
+        out.put("documentApprovedByName", docApproval == null ? null : docApproval.get("full_name"));
+        out.put("documentApprovedAt", docApproval == null ? null : com.eqms.util.DateTimeFormatUtils.formatDateTime(docApproval.get("signed_at")));
         out.put("attendanceSentAt", activity.get("attendance_sent_at") == null ? null : com.eqms.util.DateTimeFormatUtils.formatDateTime(activity.get("attendance_sent_at")));
         out.put("attendanceSentByName", activity.get("attendance_sent_by") == null ? null : jdbc.queryForList("select full_name from app_users where id = ?", String.class, activity.get("attendance_sent_by")).stream().findFirst().orElse(null));
         // The documents that go with this Training Number (one number for the SOP and the documents it lists as related) and the revisions that wait for "Complete Training".
@@ -328,6 +359,97 @@ public class TrainingActivityService {
         return out;
     }
 
+    /** Read-only roster query; legacy detail/command responses retain their existing shape. */
+    @Transactional(readOnly = true)
+    public com.eqms.dto.user.PageResponse<Map<String, Object>> participantPage(UserAccount actor, UUID id, UUID sessionId,
+            String group, String search, int page, int limit) {
+        return participantPage(actor, id, sessionId, group, search, page, limit, null, null);
+    }
+
+    /** The columns of the participant tables that the person can sort by; only these keys become SQL. */
+    private static final Map<String, String> PARTICIPANT_SORT = Map.of(
+            "code", "lower(p.employee_code)", "name", "lower(p.full_name)", "department", "lower(p.department)", "state", "p.state", "result", "p.result",
+            "read", "p.read_confirmed_at", "sign", "p.state", "participation", "p.participation_role");
+
+    @Transactional(readOnly = true)
+    public com.eqms.dto.user.PageResponse<Map<String, Object>> participantPage(UserAccount actor, UUID id, UUID sessionId,
+            String group, String search, int page, int limit, String sortBy, String sortDirection) {
+        visible(actor, id);
+        String key = group == null ? "ALL" : group.toUpperCase(Locale.ROOT);
+        if (!Set.of("ALL", "EMPLOYEES", "ABSENT", "OUTSIDE").contains(key)) throw new IllegalArgumentException("TRAINING_PARTICIPANT_GROUP_INVALID");
+        String where = "";
+        List<Object> args = new ArrayList<>(); args.add(id);
+        if (sessionId != null) { where += " and p.session_id=?"; args.add(sessionId); }
+        String away = "(p.state='ABSENT' or (p.state='INVITED' and nullif(p.planned_absence,'') is not null))";
+        if (key.equals("EMPLOYEES")) where += " and p.person_user_id is not null and not " + away;
+        if (key.equals("ABSENT")) where += " and p.person_user_id is not null and " + away;
+        if (key.equals("OUTSIDE")) where += " and p.person_user_id is null";
+        if (search != null && !search.isBlank()) {
+            where += " and (lower(coalesce(p.full_name,'')) like ? escape '\\' or lower(coalesce(p.employee_code,'')) like ? escape '\\')";
+            String needle = "%" + escapeLike(search.trim().toLowerCase(Locale.ROOT)) + "%";
+            args.add(needle); args.add(needle);
+        }
+        Long total = jdbc.queryForObject("select count(*) from training_participants p where p.activity_id=?" + where, Long.class, args.toArray());
+        int safePage = Math.max(1, page), size = Math.max(1, Math.min(100, limit));
+        args.add(size); args.add((long) (safePage - 1) * size);
+        var rows = TrainingRows.camel(jdbc.queryForList(PARTICIPANT_SELECT + where + TrainingRows.orderBy(sortBy, sortDirection, PARTICIPANT_SORT, "lower(p.full_name), p.id") + " limit ? offset ?", args.toArray()));
+        return new com.eqms.dto.user.PageResponse<>(rows, new com.eqms.dto.user.PaginationResponse(safePage, size,
+                total == null ? 0 : total, total == null ? 0 : (int) Math.ceil((double) total / size)));
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> overview(UserAccount actor, UUID id, UUID sessionId, boolean participantContext) {
+        Map<String, Object> result = new LinkedHashMap<>(get(actor, id));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> people = (List<Map<String, Object>>) result.get("participants");
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("all", participantStats(people));
+        Map<String, Object> sessions = new LinkedHashMap<>();
+        people.stream().map(p -> p.get("sessionId")).filter(java.util.Objects::nonNull).distinct()
+                .forEach(sid -> sessions.put(sid.toString(), participantStats(people.stream().filter(p -> sid.equals(p.get("sessionId"))).toList())));
+        stats.put("sessions", sessions);
+        result.put("participantSummary", stats);
+        result.put("supplementaryCandidates", people.stream().filter(p -> "ABSENT".equals(p.get("state")) || "FAILED".equals(p.get("result"))).toList());
+        result.put("participants", participantContext ? people : List.of());
+        result.put("sessionParticipants", participantContext ? people.stream().filter(p -> sessionId == null || sessionId.equals(p.get("sessionId"))).toList() : List.of());
+        return result;
+    }
+
+    private Map<String, Long> participantStats(List<Map<String, Object>> people) {
+        Map<String, Long> stats = new LinkedHashMap<>();
+        stats.put("total", (long) people.size());
+        stats.put("pending", people.stream().filter(p -> "INVITED".equals(p.get("state"))).count());
+        stats.put("attendancePending", people.stream().filter(p -> "INVITED".equals(p.get("state")) && !StringUtils.hasLength(java.util.Objects.toString(p.get("plannedAbsence"), ""))).count());
+        // A person who takes no assessment (trainer, attends only, listed only) is not waiting for one.
+        stats.put("eligible", people.stream().filter(p -> p.get("personUserId") != null && Set.of("ATTENDED", "ONLINE").contains(p.get("state")) && (p.get("participationRole") == null || "TRAINEE".equals(p.get("participationRole")))).count());
+        stats.put("unscored", people.stream().filter(p -> p.get("personUserId") != null && Set.of("ATTENDED", "ONLINE").contains(p.get("state")) && "PENDING".equals(p.get("result"))).count());
+        stats.put("present", people.stream().filter(p -> Set.of("ATTENDED", "ONLINE", "READ_CONFIRMED").contains(p.get("state"))).count());
+        stats.put("absent", people.stream().filter(p -> "ABSENT".equals(p.get("state")) || ("INVITED".equals(p.get("state")) && StringUtils.hasLength(java.util.Objects.toString(p.get("plannedAbsence"), "")))).count());
+        stats.put("actualAbsent", people.stream().filter(p -> "ABSENT".equals(p.get("state"))).count());
+        stats.put("passed", people.stream().filter(p -> "PASSED".equals(p.get("result"))).count());
+        stats.put("failed", people.stream().filter(p -> "FAILED".equals(p.get("result"))).count());
+        stats.put("readPending", people.stream().filter(p -> "READ_CONFIRMED".equals(p.get("state")) && "PENDING".equals(p.get("result"))).count());
+        return stats;
+    }
+
+    private static final String PARTICIPANT_SELECT = """
+select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.department, p.position, p.external_name, p.external_org, p.state, p.result,
+                   p.absence_reason, p.planned_absence, p.added_reason, p.sign_mode, p.read_confirmed_at,
+                   p.participation_role, p.participation_reason, p.participation_set_at, (select su.full_name from app_users su where su.id = p.participation_set_by) as participation_set_by_name,
+                   case when not exists (select 1 from training_exam_questions q where q.activity_id = p.activity_id) then null
+                        when exists (select 1 from training_exam_attempts t where t.participant_id = p.id and t.status = 'SUBMITTED') then 'DONE'
+                        when exists (select 1 from training_exam_attempts t where t.participant_id = p.id and t.status = 'IN_PROGRESS' and (t.due_at is null or t.due_at + interval '60 seconds' >= now())) then 'OPEN'
+                        when exists (select 1 from training_exam_attempts t where t.participant_id = p.id and t.status = 'IN_PROGRESS') then 'USED'
+                        when (select count(*) from training_exam_attempts t where t.participant_id = p.id) > (select count(*) from training_exam_resets r where r.participant_id = p.id) then 'USED'
+                        else 'READY' end as exam_state,
+                   (select max(attempt_no) from training_assessments a where a.participant_id = p.id) as attempts,
+                   (select a.percent from training_assessments a where a.participant_id = p.id order by attempt_no desc limit 1) as last_percent,
+                   (select a.score_obtained from training_assessments a where a.participant_id = p.id order by attempt_no desc limit 1) as last_score,
+                   (select a.score_max from training_assessments a where a.participant_id = p.id order by attempt_no desc limit 1) as last_max,
+                   (select au.avatar from app_users au where au.id = p.person_user_id) as avatar
+              from training_participants p where p.activity_id=?
+        """;
+
     /**
      * People the effective matrices require to be trained on the topics of the session, who have no valid training on it yet (never trained, or the annual training is
      * due again) and are not on the session. The server decides; the screen only offers them to the organizer, who adds them with one click.
@@ -342,6 +464,7 @@ public class TrainingActivityService {
         List<Object> args = new ArrayList<>();
         args.add(sessionId);
         args.add(sessionId);
+        args.add(sessionId);
         String scope = "";
         if (!access.allDepartments(actor)) {
             scope = " and lower(trim(u.department)) = lower(trim(?))";
@@ -349,20 +472,24 @@ public class TrainingActivityService {
         }
         String sql = """
             select * from (
-              select distinct on (u.id, tp.topic_text) u.id as person_id, u.full_name, u.employee_code, u.department, p.name as position_name, tp.topic_text, r.annual_required,
+              select distinct on (u.id, tp.topic_text) u.id as person_id, u.full_name, u.employee_code, u.department, rp.position_name as position_name, tp.topic_text, r.annual_required,
                      (select max(rec.completed_on) from training_records rec left join training_record_voids vv on vv.record_id = rec.id
                        where rec.person_user_id = u.id and vv.id is null
-                         and ((tp.document_number is not null and rec.document_number = tp.document_number) or lower(rec.topic_text) = lower(tp.topic_text))) as last_done
+                         and ((tp.document_number is not null and rec.document_number = tp.document_number) or training_topic_key(rec.topic_text) = training_topic_key(tp.topic_text))) as last_done
                 from training_session_topics tp
                 join training_matrix_versions v on v.status = 'EFFECTIVE'
                 join training_matrix_rows r on r.version_id = v.id
-                left join training_topics t on t.id = r.topic_id
-                join training_matrix_cells c on c.row_id = r.id
-                join training_person_positions pp on pp.position_id = c.position_id and pp.valid_to is null
-                join app_users u on u.id = pp.person_user_id and u.status = 'Active'
-                join training_job_roles p on p.id = pp.position_id
-               where tp.session_id = ? and ((r.document_id is not null and r.document_id = tp.document_id) or (t.id is not null and lower(t.name) = lower(tp.topic_text)))
+                join lateral (
+                  select pp.person_user_id as person_id, p.name as position_name
+                    from training_matrix_cells c join training_person_positions pp on pp.position_id = c.position_id and pp.valid_to is null join training_job_roles p on p.id = pp.position_id
+                   where c.row_id = r.id
+                  union
+                  select u2.id, null::varchar from training_matrices m join departments dp on dp.id = m.department_id join app_users u2 on lower(trim(u2.department)) = lower(trim(dp.name))
+                   where m.id = v.matrix_id and r.all_employees) rp on true
+                join app_users u on u.id = rp.person_id and u.status = 'Active'
+               where tp.session_id = ? and ((r.document_id is not null and r.document_id = tp.document_id) or (r.topic_text is not null and training_topic_key(r.topic_text) = training_topic_key(tp.topic_text)))
                  and not exists (select 1 from training_participants x where x.session_id = ? and x.person_user_id = u.id)
+                 and not exists (select 1 from training_sessions ts where ts.id = ? and ts.trainer_user_id = u.id)
               """ + scope + """
               order by u.id, tp.topic_text) x
              where x.last_done is null or (x.annual_required and x.last_done < current_date - interval '1 year')
@@ -458,21 +585,22 @@ public class TrainingActivityService {
         caps.put("notifyBlockers", "PLANNED".equals(status) ? notifyBlockers((UUID) activity.get("id"), people == null ? 0 : people, listDone) : List.of());
         caps.put("hold", conduct && Set.of("NOTIFIED", "IN_PROGRESS").contains(status));
         caps.put("recordAttendance", conduct && "IN_PROGRESS".equals(status));
+        // How each person takes part (trainee, trainer, attends only, listed only) is decided before the training and on the day, until the trainer finishes it.
+        caps.put("setParticipation", conduct && Set.of("PLANNED", "NOTIFIED", "IN_PROGRESS").contains(status) && !finished && !"EXTERNAL".equals(activity.get("kind")));
         caps.put("printPaper", conduct && access.has(actor, "training.paper.print") && Set.of("NOTIFIED", "IN_PROGRESS").contains(status));
         caps.put("rollCall", conduct && "IN_PROGRESS".equals(status));
         caps.put("transcribe", conduct && access.has(actor, "training.paper.transcribe") && "IN_PROGRESS".equals(status));
         caps.put("verifyTranscription", access.has(actor, "training.paper.verify") && access.inScope(actor, department) && "IN_PROGRESS".equals(status));
         caps.put("recordAssessment", access.has(actor, "training.assessment.record") && access.inScope(actor, department) && "IN_PROGRESS".equals(status));
-        caps.put("submitForConfirmation", sender && listSent && finished);
         caps.put("confirmCompletion", access.has(actor, "training.activity.close") && "PENDING_QA_CONFIRMATION".equals(status));
         caps.put("editRemarks", organize && Set.of("PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION").contains(status));
         caps.put("editSession", organize && Set.of("PLANNED", "NOTIFIED").contains(status));
         // A training from a document is finished in Document Control: the revision waits for "Complete Training" once the activity is completed.
         // The trainer sends the attendance list (the screen turns the button on when everyone is recorded), then, with every result in, finishes the training and sends the results to QA.
         caps.put("sendAttendanceList", sender && !listSent);
-        caps.put("finishTraining", sender && listSent && !finished && allResultsIn((UUID) activity.get("id")));
-        // The revision is completed in Document Control once the attendance list is sent to QA (APD.0117), without waiting for the results.
-        caps.put("completeTraining", ("COMPLETED".equals(status) || activity.get("attendance_sent_at") != null)
+        caps.put("finishTraining", sender && listSent && allResultsIn((UUID) activity.get("id")) && allScansIn((UUID) activity.get("id")));
+        // The revision is completed in Document Control once the trainer has finished the training (Finish Training), not before: the attendance list sent to QA is not enough.
+        caps.put("completeTraining", ("COMPLETED".equals(status) || activity.get("results_finished_at") != null)
                 && !jdbc.queryForList("select 1 from document_revisions where training_activity_id = ? and status_code = 'PENDING_TRAINING' limit 1", Integer.class, activity.get("id")).isEmpty());
         caps.put("setContentExemptions", organize && Set.of("PLANNED", "NOTIFIED").contains(status) && !confirmed((UUID) activity.get("id"), "CONTENT_REVIEWED"));
         // The assessment of the library is chosen, like a file is uploaded, until the content is reviewed.
@@ -480,12 +608,14 @@ public class TrainingActivityService {
         caps.put("reopenContent", organize && Set.of("PLANNED", "NOTIFIED").contains(status) && (confirmed((UUID) activity.get("id"), "CONTENT_REVIEWED") || confirmed((UUID) activity.get("id"), "CONTENT_APPROVED")));
         caps.put("returnForCorrection", "PENDING_QA_CONFIRMATION".equals(status) && access.has(actor, "training.activity.close") && access.inScope(actor, department));
         caps.put("cancel", organize && open);
-        caps.put("addSupplementary", organize && Set.of("IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED").contains(status));
+        // a supplementary training is offered only when someone needs one: a person who was absent or who failed
+        Integer needMakeUp = jdbc.queryForObject("select count(*) from training_participants where activity_id=? and (state='ABSENT' or result='FAILED')", Integer.class, activity.get("id"));
+        caps.put("addSupplementary", organize && Set.of("IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED").contains(status) && needMakeUp != null && needMakeUp > 0);
         return caps;
     }
 
     /**
-     * SOP.0003 5.3.7: the results of the assessment go to QA within the days set in Training Properties, counted in calendar days from the day the last session was held.
+     * SOP.0003 5.3.7: the results of the assessment go to QA within the working days set in Training Properties (Monday to Friday, Monday to Saturday or calendar days), counted from the day the last session was held.
      * Null before the training is notified and after it is cancelled. The state tells whether it is still waiting for a session, due, due today, overdue, or sent (on time or late).
      */
     private Map<String, Object> resultsToQa(Map<String, Object> activity) {
@@ -493,9 +623,11 @@ public class TrainingActivityService {
         UUID id = (UUID) activity.get("id");
         java.sql.Date held = jdbc.queryForObject("select max(held_on) from training_sessions where activity_id = ? and status = 'PLANNED'", java.sql.Date.class, id);
         java.sql.Timestamp sent = jdbc.queryForObject("select min(occurred_at) from training_events where activity_id = ? and event_type = 'PENDING_QA_CONFIRMATION'", java.sql.Timestamp.class, id);
-        int days = jdbc.queryForObject("select results_due_days from training_settings where id = 1", Integer.class);
+        Map<String, Object> limit = jdbc.queryForMap("select results_due_days, results_due_day_type from training_settings where id = 1");
+        int days = ((Number) limit.get("results_due_days")).intValue();
+        String dayType = String.valueOf(limit.get("results_due_day_type"));
         LocalDate today = LocalDate.now(TrainingNumberService.ZONE);
-        LocalDate due = held == null ? null : held.toLocalDate().plusDays(days);
+        LocalDate due = held == null ? null : TrainingWorkingDays.add(held.toLocalDate(), days, dayType);
         LocalDate sentOn = sent == null ? null : sent.toInstant().atZone(TrainingNumberService.ZONE).toLocalDate();
         String state;
         if (sentOn != null) state = due == null || !sentOn.isAfter(due) ? "SENT" : "SENT_LATE";
@@ -505,6 +637,7 @@ public class TrainingActivityService {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("state", state);
         out.put("days", days);
+        out.put("dayType", dayType);
         out.put("dueOn", due == null ? null : due.toString());
         out.put("sentOn", sentOn == null ? null : sentOn.toString());
         return out;
@@ -561,7 +694,7 @@ public class TrainingActivityService {
     @Transactional
     public Map<String, Object> create(UserAccount actor, CreateRequest request) {
         access.require(actor, "training.activity.organize");
-        if (request == null || request.trainingTitle() == null || request.trainingTitle().isBlank() || request.trainingTitle().length() > 255) throw new IllegalArgumentException("TRAINING_TITLE_REQUIRED");
+        if (request == null) throw new IllegalArgumentException("TRAINING_KIND_INVALID");
         if (request.kind() == null || !CREATE_KINDS.contains(request.kind())) throw new IllegalArgumentException("TRAINING_KIND_INVALID");
         // The code of an initial or periodic training is allocated by QA (SOP 5.1.4); an unplanned or external one by the department that raised it.
         if (Set.of("INITIAL", "PERIODIC").contains(request.kind())) access.require(actor, "training.code.allocate");
@@ -576,13 +709,13 @@ public class TrainingActivityService {
         TrainingNumberService.Issued issued = numbers.issueRoot(department);
         UUID id = UUID.randomUUID();
         jdbc.update("""
-            insert into training_activities(id, training_number, base_number, organizer_department_id, year, serial, kind, kind_reason, external_type, training_title, status,
-              due_date, remarks, training_unit_name, vendor_ref, created_by) values (?,?,?,?,?,?,?,?,?,?,'PLANNED',?,?,?,?,?)
+            insert into training_activities(id, training_number, base_number, organizer_department_id, year, serial, kind, kind_reason, external_type, status,
+              due_date, remarks, training_unit_name, vendor_ref, created_by) values (?,?,?,?,?,?,?,?,?,'PLANNED',?,?,?,?,?)
             """, id, issued.baseNumber(), issued.baseNumber(), department, issued.year(), issued.serial(), request.kind(), request.kindReason(),
-                external ? request.externalType() : null, request.trainingTitle().trim(), request.dueDate(), request.remarks(), external ? unit : null, external ? blankToNull(request.vendorRef()) : null, actor.getId());
+                external ? request.externalType() : null, request.dueDate(), request.remarks(), external ? unit : null, external ? blankToNull(request.vendorRef()) : null, actor.getId());
         Map<String, Object> created = store.activity(id).orElseThrow();
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "NUMBER_ISSUED", Map.of("number", issued.baseNumber(), "kind", request.kind()), actor.getId());
-        store.auditActivity(actor, created, "TRAINING_ACTIVITY_CREATED", null, "PLANNED", request.trainingTitle().trim());
+        store.auditActivity(actor, created, "TRAINING_ACTIVITY_CREATED", null, "PLANNED", issued.baseNumber());
         return get(actor, id);
     }
 
@@ -593,21 +726,18 @@ public class TrainingActivityService {
         // The remarks do not touch the training or its record, so they stay open until the activity is completed; the title, due date and training unit are fixed once it is notified.
         requireStatus(activity, "PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION");
         if (!"PLANNED".equals(activity.get("status"))) {
-            boolean sameTitle = request.trainingTitle() == null || request.trainingTitle().trim().equals(String.valueOf(activity.get("training_title")));
             boolean sameDue = String.valueOf(request.dueDate() == null ? null : request.dueDate()).equals(String.valueOf(activity.get("due_date") == null ? null : activity.get("due_date").toString()));
             boolean sameUnit = request.trainingUnitName() == null || blankToNull(request.trainingUnitName()) == null && activity.get("training_unit_name") == null || String.valueOf(blankToNull(request.trainingUnitName())).equals(String.valueOf(activity.get("training_unit_name")));
             boolean sameVendor = request.vendorRef() == null || blankToNull(request.vendorRef()) == null && activity.get("vendor_ref") == null || String.valueOf(blankToNull(request.vendorRef())).equals(String.valueOf(activity.get("vendor_ref")));
-            if (!(sameTitle && sameDue && sameUnit && sameVendor)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_FIELD_LOCKED");
+            if (!(sameDue && sameUnit && sameVendor)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_FIELD_LOCKED");
         }
-        String title = request.trainingTitle() == null ? String.valueOf(activity.get("training_title")) : request.trainingTitle().trim();
-        if (title.isBlank() || title.length() > 255) throw new IllegalArgumentException("TRAINING_TITLE_REQUIRED");
         boolean external = "EXTERNAL".equals(activity.get("kind"));
         String unit = external && request.trainingUnitName() != null ? blankToNull(request.trainingUnitName()) : (String) activity.get("training_unit_name");
         if (external && unit == null) throw new IllegalArgumentException("TRAINING_UNIT_REQUIRED");
         String vendor = external && request.vendorRef() != null ? blankToNull(request.vendorRef()) : (String) activity.get("vendor_ref");
         if ((unit != null && unit.length() > 255) || (vendor != null && vendor.length() > 120)) throw new IllegalArgumentException("TRAINING_UNIT_REQUIRED");
-        jdbc.update("update training_activities set training_title=?, due_date=?, remarks=?, training_unit_name=?, vendor_ref=?, version=version+1, updated_at=now() where id=?", title, request.dueDate(), request.remarks(), unit, vendor, id);
-        store.auditActivity(actor, activity, "TRAINING_ACTIVITY_UPDATED", null, null, "Title, due date, remarks or training unit changed");
+        jdbc.update("update training_activities set due_date=?, remarks=?, training_unit_name=?, vendor_ref=?, version=version+1, updated_at=now() where id=?", request.dueDate(), request.remarks(), unit, vendor, id);
+        store.auditActivity(actor, activity, "TRAINING_ACTIVITY_UPDATED", null, null, "Due date, remarks or training unit changed");
         return get(actor, id);
     }
 
@@ -624,7 +754,8 @@ public class TrainingActivityService {
               from training_proposed_participants p join app_users u on u.id = p.person_user_id
              where p.activity_id = ? and u.status = 'Active'
                and not exists (select 1 from training_participants x where x.session_id = ? and x.person_user_id = u.id)
-            """, id, sessionId, actor.getId(), id, sessionId);
+               and not exists (select 1 from training_sessions ts where ts.id = ? and ts.trainer_user_id = u.id)
+            """, id, sessionId, actor.getId(), id, sessionId, sessionId);
         jdbc.update("update training_proposed_participants set applied_at = now() where activity_id = ? and applied_at is null", id);
         if (added > 0) {
             store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "PARTICIPANTS_ADDED", Map.of("count", added, "reason", "Proposed when the document was prepared"), actor.getId());
@@ -648,7 +779,6 @@ public class TrainingActivityService {
         // SOP.0003 5.1.2 names a way of assessment for each training method; the screen offers it as the default and lets the organizer choose another one. Only a known value is accepted.
         if (!externalActivity && !java.util.Set.of("TEST", "CHECKLIST", "OBSERVATION", "SELF_READING_CONFIRMATION").contains(request.assessmentMethod())) throw new IllegalArgumentException("TRAINING_SESSION_INVALID");
         String[] place = location(request.locationType(), request.venue(), request.onlinePlatform(), request.meetingLink());
-        boolean online = "ONLINE".equals(place[0]);
         String venue = place[1];
         String platform = place[2];
         String meeting = place[3];
@@ -658,7 +788,7 @@ public class TrainingActivityService {
             insert into training_sessions(id, activity_id, session_no, method, assessment_method, trainer_user_id, external_trainer_name, scheduled_on, venue, location_type, online_platform, meeting_link, created_by)
             values (?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, sessionId, id, next, request.method(), request.assessmentMethod(), request.trainerUserId(),
-                request.externalTrainerName() == null || request.externalTrainerName().isBlank() ? null : request.externalTrainerName().trim(), request.scheduledOn(), venue, online ? "ONLINE" : "ONSITE", platform, meeting, actor.getId());
+                request.externalTrainerName() == null || request.externalTrainerName().isBlank() ? null : request.externalTrainerName().trim(), request.scheduledOn(), venue, place[0], platform, meeting, actor.getId());
         for (TopicRequest topic : request.topics()) {
             Map<String, Object> doc = topic.documentRevisionId() == null ? Map.of() : jdbc.queryForList(
                     "select document_id, document_number, revision_number from document_revisions where id=?", topic.documentRevisionId()).stream().findFirst().orElse(Map.of());
@@ -691,6 +821,9 @@ public class TrainingActivityService {
                 if (person.getStatus() != UserStatus.Active) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");
                 Integer exists = jdbc.queryForObject("select count(*) from training_participants where session_id=? and person_user_id=?", Integer.class, request.sessionId(), personId);
                 if (exists != null && exists > 0) continue;
+                // The trainer is written in the content of the training (APD.0117), not in the list of the people who take part.
+                Integer isTrainer = jdbc.queryForObject("select count(*) from training_sessions where id=? and trainer_user_id=?", Integer.class, request.sessionId(), personId);
+                if (isTrainer != null && isTrainer > 0) throw new IllegalArgumentException("TRAINING_PARTICIPANT_IS_TRAINER");
                 jdbc.update("""
                     insert into training_participants(id, activity_id, session_id, person_user_id, employee_code, full_name, department, position, added_reason, created_by)
                     values (?,?,?,?,?,?,?,?,?,?)
@@ -868,10 +1001,9 @@ public class TrainingActivityService {
         requireConductor(actor, activity);
         requireStatus(activity, "NOTIFIED", "IN_PROGRESS");
         if (!TrainingSessionState.notStarted(session)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
-        LocalDate heldOn = request == null || request.heldOn() == null ? LocalDate.now(TrainingNumberService.ZONE) : request.heldOn();
-        if (heldOn.isAfter(LocalDate.now(TrainingNumberService.ZONE))) throw new IllegalArgumentException("TRAINING_DATE_IN_FUTURE");
+        LocalDate heldOn = LocalDate.now(TrainingNumberService.ZONE);
         requirePrepared(sessionId, session, activity);
-        // The first session of a notified activity moves the activity to In progress: that change is signed. A later session of an activity already in progress needs no signature.
+        // The first session of a notified activity moves the activity to In Progress: that change is signed. A later session of an activity already in progress needs no signature.
         if ("NOTIFIED".equals(activity.get("status"))) sign(actor, activity, "TRAINING_SESSION_STARTED", new CommandRequest(null, null, request == null ? null : request.signatureToken()));
         jdbc.update("update training_sessions set held_on=?, version=version+1 where id=?", heldOn, sessionId);
         if ("NOTIFIED".equals(activity.get("status"))) transition(actor, activity, "IN_PROGRESS", "TRAINING_SESSION_HELD", "First session held on " + heldOn);
@@ -983,6 +1115,18 @@ public class TrainingActivityService {
         if (!TrainingSessionState.notStarted(session)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
         // The number is kept; the postponement is a recorded event with the reason and both dates (SOP, TR-04).
         jdbc.update("update training_sessions set scheduled_on=?, postpone_reason=?, version=version+1 where id=?", request.newDate(), request.reason().trim(), sessionId);
+        // Only on the user's word: the Due Date is controlled data. It moves to the end of the month of the new date, and the old and new value are audited.
+        if (Boolean.TRUE.equals(request.moveDueDate()) && activity.get("due_date") != null) {
+            LocalDate oldDue = LocalDate.parse(String.valueOf(activity.get("due_date")));
+            if (request.newDate().isAfter(oldDue)) {
+                LocalDate newDue = request.newDate().withDayOfMonth(request.newDate().lengthOfMonth());
+                jdbc.update("update training_activities set due_date=?, version=version+1, updated_at=now() where id=?", newDue, activity.get("id"));
+                store.event(TrainingStore.OBJECT_ACTIVITY, (UUID) activity.get("id"), (UUID) activity.get("id"), "DUE_DATE_MOVED",
+                        Map.of("from", oldDue.toString(), "to", newDue.toString(), "reason", request.reason().trim()), actor.getId());
+                store.auditActivity(actor, activity, "TRAINING_DUE_DATE_MOVED", oldDue.toString(), newDue.toString(), request.reason().trim());
+                followOnRequirementLine(actor, activity, newDue.withDayOfMonth(1), request.reason().trim());
+            }
+        }
         store.event(TrainingStore.OBJECT_ACTIVITY, (UUID) activity.get("id"), (UUID) activity.get("id"), "SESSION_POSTPONED",
                 Map.of("sessionNo", session.get("session_no"), "from", String.valueOf(session.get("scheduled_on")), "to", request.newDate().toString(), "reason", request.reason().trim()), actor.getId());
         store.auditActivity(actor, activity, "TRAINING_SESSION_POSTPONED", String.valueOf(session.get("scheduled_on")), request.newDate().toString(), request.reason().trim());
@@ -993,6 +1137,35 @@ public class TrainingActivityService {
                             + com.eqms.util.DateTimeFormatUtils.display(request.newDate()) + ". Reason: " + request.reason().trim(), (UUID) activity.get("id"));
         }
         return get(actor, (UUID) activity.get("id"));
+    }
+
+    /**
+     * A periodic activity opened from a line of the approved requirement (APD.0118) follows its Due Date: the line moves to the new month, the month it was approved for stays in postponed_from
+     * and the reason on the line (SOP.0003 5.3.6). The requirement is not approved again; the move is an Audit Trail entry on the requirement.
+     */
+    private void followOnRequirementLine(UserAccount actor, Map<String, Object> activity, LocalDate newMonth, String reason) {
+        UUID activityId = (UUID) activity.get("id");
+        for (Map<String, Object> line : jdbc.queryForList("select l.id, l.requirement_id, l.planned_month, l.postponed_from, r.request_no, r.prepared_by, r.created_by from training_requirement_lines l join training_requirements r on r.id = l.requirement_id where l.activity_id = ? for update of l", activityId)) {
+            LocalDate current = ((java.sql.Date) line.get("planned_month")).toLocalDate();
+            if (!newMonth.isAfter(current)) continue;
+            Object original = line.get("postponed_from") == null ? line.get("planned_month") : line.get("postponed_from");
+            jdbc.update("update training_requirement_lines set planned_month=?, postponed_from=?, postpone_reason=? where id=?", newMonth, original, reason, line.get("id"));
+            store.auditRequirement(actor, String.valueOf(line.get("request_no")), (UUID) line.get("requirement_id"), "TRAINING_REQUIREMENT_LINE_POSTPONED", current.toString(), newMonth.toString(), reason);
+            // Told: the QA who prepared the requirement and the head of the department that organizes the training (the people who received the approved requirement are not listed in the system).
+            LocalDate approvedMonth = ((java.sql.Date) original).toLocalDate();
+            boolean beyond = newMonth.isAfter(approvedMonth.plusMonths(1));
+            java.util.Set<UUID> told = new java.util.LinkedHashSet<>();
+            if (line.get("prepared_by") != null) told.add((UUID) line.get("prepared_by"));
+            if (line.get("created_by") != null) told.add((UUID) line.get("created_by"));
+            if (activity.get("organizer_department_id") != null) told.addAll(jdbc.queryForList("select department_head_id from departments where id = ? and department_head_id is not null", UUID.class, activity.get("organizer_department_id")));
+            for (UUID personId : told) {
+                if (personId.equals(actor.getId())) continue;
+                users.findById(personId).ifPresent(person -> notifier.send("TRAINING_REQUIREMENT_LINE_MOVED", person, actor, "Training requirement: a line moved to another month",
+                        label(activity) + " in " + line.get("request_no") + " moves from " + approvedMonth.getMonth() + " " + approvedMonth.getYear() + " (approved) to " + newMonth.getMonth() + " " + newMonth.getYear() + ". Reason: " + reason
+                                + (beyond ? " This is later than the month after the approved one that SOP.0003 5.3.6 names." : ""),
+                        "TRAINING_REQUIREMENT", (UUID) line.get("requirement_id"), null));
+            }
+        }
     }
 
     @Transactional
@@ -1008,8 +1181,8 @@ public class TrainingActivityService {
         if (!"INVITED".equals(participant.get("state"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_ALREADY");
         if ("ABSENT".equals(request.state()) && (request.absenceReason() == null || request.absenceReason().isBlank())) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         if (participant.get("person_user_id") != null && participant.get("person_user_id").equals(actor.getId())) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
-        // An external training has no score: the person who attended has completed it.
-        String result = "EXTERNAL".equals(activity.get("kind")) && !"ABSENT".equals(request.state()) ? "PASSED" : "PENDING";
+        // An external training has no score: the person who attended has completed it. So has a person who takes no assessment (trainer, attends only, listed only).
+        String result = resultOnAttendance(activity, participant, request.state());
         jdbc.update("update training_participants set state=?, absence_reason=?, result=?, version=version+1 where id=?", request.state(),
                 "ABSENT".equals(request.state()) ? request.absenceReason().trim() : null, result, participantId);
         store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_RECORDED", String.valueOf(participant.get("state")), request.state(), String.valueOf(participant.get("full_name")));
@@ -1036,8 +1209,10 @@ public class TrainingActivityService {
             select (select count(*) from training_assessments where participant_id = ?) + (select count(*) from training_exam_attempts where participant_id = ?)
                  + (select count(*) from training_transcription_lines where participant_id = ?)
             """, Integer.class, participantId, participantId, participantId);
-        if (!"PENDING".equals(participant.get("result")) || (used != null && used > 0)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_HAS_RESULT");
-        String result = "EXTERNAL".equals(activity.get("kind")) && !"ABSENT".equals(request.state()) ? "PASSED" : "PENDING";
+        // The PASSED of a person who takes no assessment came from the attendance itself, so it does not stop the correction.
+        boolean noAssessment = !"TRAINEE".equals(participant.get("participation_role"));
+        if ((!"PENDING".equals(participant.get("result")) && !noAssessment) || (used != null && used > 0)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_HAS_RESULT");
+        String result = resultOnAttendance(activity, participant, request.state());
         String reason = request.reason().trim();
         // The earlier way of confirming no longer describes the row, so it is cleared; the Audit Trail keeps what it was.
         jdbc.update("update training_participants set state=?, absence_reason=?, result=?, sign_mode='NONE', attend_signature_id=null, version=version+1 where id=?",
@@ -1046,6 +1221,50 @@ public class TrainingActivityService {
                 Map.of("participant", String.valueOf(participant.get("full_name")), "from", before, "to", request.state(), "reason", reason, "was", String.valueOf(participant.get("sign_mode"))), actor.getId());
         store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_CORRECTED", before, request.state(), participant.get("full_name") + " (was " + participant.get("sign_mode") + "): " + reason);
         return get(actor, (UUID) activity.get("id"));
+    }
+
+    /** What the result of a person is once the attendance is recorded: a person who takes no assessment (or an external training) is done; the others wait for their score. */
+    static String resultOnAttendance(Map<String, Object> activity, Map<String, Object> participant, String state) {
+        if ("ABSENT".equals(state)) return "PENDING";
+        boolean noAssessment = "EXTERNAL".equals(activity.get("kind")) || !"TRAINEE".equals(participant.get("participation_role"));
+        return noAssessment ? "PASSED" : "PENDING";
+    }
+
+    /**
+     * How a person takes part (owner decision 2026-10-28): trainee (takes the assessment), trainer, attends without the assessment, or only listed (informed, does not sign).
+     * Any role other than trainee needs a reason. It can be set until the trainer finishes the training, and never once the person has a score, an exam attempt or a typed result,
+     * so a result never rests on a role that was changed afterwards. The person does not set their own role.
+     */
+    @Transactional
+    public Map<String, Object> setParticipation(UserAccount actor, UUID participantId, ParticipationRequest request) {
+        Map<String, Object> p = jdbc.queryForList("select * from training_participants where id=? for update", participantId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        UUID activityId = (UUID) p.get("activity_id");
+        Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        requireConductor(actor, activity);
+        requireStatus(activity, "PLANNED", "NOTIFIED", "IN_PROGRESS");
+        if (activity.get("results_finished_at") != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ALREADY_FINISHED");
+        if (request == null || request.role() == null || !PARTICIPATION_ROLES.contains(request.role())) throw new IllegalArgumentException("TRAINING_PARTICIPATION_INVALID");
+        Map<String, Object> session = session((UUID) p.get("session_id"));
+        if ("EXTERNAL".equals(activity.get("kind")) || "SELF_READING".equals(session.get("method"))) throw new IllegalArgumentException("TRAINING_PARTICIPATION_NOT_APPLICABLE");
+        if (p.get("person_user_id") != null && p.get("person_user_id").equals(actor.getId())) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
+        String before = String.valueOf(p.get("participation_role"));
+        boolean trainee = "TRAINEE".equals(request.role());
+        String reason = trainee || request.reason() == null || request.reason().isBlank() ? null : request.reason().trim();
+        if (before.equals(request.role()) && java.util.Objects.equals(reason, p.get("participation_reason"))) throw new IllegalArgumentException("TRAINING_PARTICIPATION_UNCHANGED");
+        if (!trainee && reason == null) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
+        if (reason != null && reason.length() > 1000) throw new IllegalArgumentException("TRAINING_REASON_TOO_LONG");
+        Integer used = jdbc.queryForObject("""
+            select (select count(*) from training_assessments where participant_id = ?) + (select count(*) from training_exam_attempts where participant_id = ?)
+                 + (select count(*) from training_transcription_lines where participant_id = ?)
+            """, Integer.class, participantId, participantId, participantId);
+        if ("FAILED".equals(p.get("result")) || (used != null && used > 0)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PARTICIPATION_HAS_RESULT");
+        String result = Set.of("ATTENDED", "ONLINE").contains(String.valueOf(p.get("state"))) ? (trainee ? "PENDING" : "PASSED") : String.valueOf(p.get("result"));
+        jdbc.update("update training_participants set participation_role=?, participation_reason=?, participation_set_by=?, participation_set_at=now(), result=?, version=version+1 where id=?",
+                request.role(), reason, actor.getId(), result, participantId);
+        store.event(TrainingStore.OBJECT_ACTIVITY, activityId, activityId, "PARTICIPATION_SET",
+                Map.of("participant", String.valueOf(p.get("full_name")), "from", before, "to", request.role(), "reason", reason == null ? "" : reason), actor.getId());
+        store.auditActivity(actor, activity, "TRAINING_PARTICIPATION_SET", before, request.role(), p.get("full_name") + (reason == null ? "" : ": " + reason));
+        return get(actor, activityId);
     }
 
     /** The result is computed here from the score and the pass mark in force; the screen cannot send a result. The person who marks is not the person marked. */
@@ -1101,26 +1320,56 @@ public class TrainingActivityService {
         return TrainingRows.camel(store.activity((UUID) activity.get("id")).orElseThrow());
     }
 
-    /** The head of the person confirms the self-reading of the people who confirmed it (TR-16); they are then treated as having passed. */
+    /**
+     * The head of a department confirms the self-reading of the people of that department who confirmed it (TR-16, APD.0108); they are then treated as having passed. The head is the Department Head
+     * of the master data of departments (Settings, Departments); a person who is the head of no department that has people waiting cannot confirm. A head confirms only the people of their own
+     * department, in one signature; the other departments are confirmed by their own heads. The head need not be a person of the organizing department.
+     */
     @Transactional
     public Map<String, Object> verifySelfReading(UserAccount actor, UUID activityId, CommandRequest request) {
         Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        requireConductor(actor, activity);
+        access.require(actor, "training.activity.view", "training.activity.conduct", "training.activity.organize");
         requireStatus(activity, "IN_PROGRESS", "NOTIFIED");
-        List<Map<String, Object>> rows = jdbc.queryForList("select id, person_user_id from training_participants where activity_id=? and state='READ_CONFIRMED' and result='PENDING'", activityId);
-        if (rows.isEmpty()) throw new IllegalArgumentException("TRAINING_PARTICIPANT_REQUIRED");
+        List<Map<String, Object>> waiting = jdbc.queryForList("""
+            select p.id, p.person_user_id, d.id as department_id from training_participants p
+              left join departments d on lower(btrim(d.name)) = lower(btrim(p.department))
+             where p.activity_id=? and p.state='READ_CONFIRMED' and p.result='PENDING'
+            """, activityId);
+        if (waiting.isEmpty()) throw new IllegalArgumentException("TRAINING_PARTICIPANT_REQUIRED");
+        Set<UUID> headOf = new HashSet<>();
+        for (UUID id : jdbc.queryForList("select id from departments where department_head_id = ?", UUID.class, actor.getId())) headOf.add(id);
+        // A department without a head (or one that is not in the master data) is confirmed by a person who may close the training, in place of the head; the record says so.
+        boolean canSubstitute = access.has(actor, "training.activity.close");
+        Set<UUID> withHead = new HashSet<>(jdbc.queryForList("select id from departments where department_head_id is not null", UUID.class));
+        Set<UUID> substituted = new HashSet<>();
+        List<Map<String, Object>> rows = waiting.stream().filter(r -> {
+            UUID dept = (UUID) r.get("department_id");
+            if (dept != null && headOf.contains(dept)) return true;
+            boolean noHead = dept == null || !withHead.contains(dept);
+            if (canSubstitute && noHead) { substituted.add(dept == null ? new UUID(0, 0) : dept); return true; }
+            return false;
+        }).toList();
+        if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "TRAINING_NOT_DEPARTMENT_HEAD");
         if (rows.stream().anyMatch(r -> actor.getId().equals(r.get("person_user_id")))) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
         UUID signature = sign(actor, activity, "TRAINING_READ_VERIFIED", request);
         for (Map<String, Object> row : rows) jdbc.update("update training_participants set result='PASSED', version=version+1 where id=?", row.get("id"));
-        confirmation(activityId, null, "HEAD_SELF_READING", actor, signature, null, rows.size() + " self-readings verified");
+        Map<UUID, Long> perDepartment = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) perDepartment.merge((UUID) row.get("department_id"), 1L, Long::sum);
+        // the department is null for a name that is not in the master data
+        for (Map.Entry<UUID, Long> e : perDepartment.entrySet()) {
+            jdbc.update("insert into training_activity_confirmations(id, activity_id, session_id, kind, confirmed_by, signature_id, remark, department_id) values (?,?,?,?,?,?,?,?)",
+                    UUID.randomUUID(), activityId, null, "HEAD_SELF_READING", actor.getId(), signature,
+                    e.getValue() + " self-readings verified" + (substituted.contains(e.getKey() == null ? new UUID(0, 0) : e.getKey()) ? " in place of the department head (the department has none)" : ""), e.getKey());
+        }
         if ("NOTIFIED".equals(activity.get("status"))) transition(actor, activity, "IN_PROGRESS", "TRAINING_READ_VERIFIED", rows.size() + " self-readings verified");
         else store.auditActivity(actor, activity, "TRAINING_READ_VERIFIED", null, null, rows.size() + " self-readings verified");
         return get(actor, activityId);
     }
 
     /**
-     * The trainer finishes the training with a signature once the attendance list is sent and every person who attended has a result. From then on the results are written in the column
-     * "Training result" of the list APD.0117, and the trainer may send the results to QA.
+     * The trainer finishes the training with ONE signature once the attendance list is sent and every person who attended has a result. The results are written in the column "Training result"
+     * of the list APD.0117 and, in the same act, sent to QA: the activity becomes Pending QA Confirmation and the people who hold the right to confirm are told (in the application and by e-mail,
+     * with the list attached). The revision of a document is completed in Document Control only from here on.
      */
     @Transactional
     public Map<String, Object> finishTraining(UserAccount actor, UUID id, CommandRequest request) {
@@ -1128,27 +1377,24 @@ public class TrainingActivityService {
         requireVersion(activity, request == null ? null : request.version());
         requireStatus(activity, "IN_PROGRESS");
         if (activity.get("attendance_sent_at") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_NOT_SENT");
-        if (activity.get("results_finished_at") != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ALREADY_FINISHED");
         if (!allResultsIn(id)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_RESULT_PENDING");
+        if (!allScansIn(id)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SCANS_PENDING");
         UUID signature = sign(actor, activity, "TRAINING_RESULTS_FINISHED", request);
-        jdbc.update("update training_activities set results_finished_at = now(), results_finished_by = ?, results_signature_id = ?, version = version + 1, updated_at = now() where id = ?", actor.getId(), signature, id);
-        store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "TRAINING_FINISHED", Map.of(), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_FINISHED", null, "FINISHED", "The trainer finished the training; the results are written in the list APD.0117");
+        // A training that an earlier version of the system finished without sending the results to QA keeps its finishing day and goes on from there: this one signature sends them.
+        if (activity.get("results_finished_at") == null) {
+            // The training day is known from the finish on: the latest day a session was held (QA confirms later, and that is another signature).
+            jdbc.update("update training_activities set results_finished_at = now(), results_finished_by = ?, results_signature_id = ?, completed_on = coalesce((select max(held_on) from training_sessions where activity_id = ? and status = 'PLANNED'), current_date), version = version + 1, updated_at = now() where id = ?", actor.getId(), signature, id, id);
+            store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "TRAINING_FINISHED", Map.of(), actor.getId());
+            store.auditActivity(actor, activity, "TRAINING_FINISHED", null, "FINISHED", "The trainer finished the training; the results are written in the list APD.0117");
+        }
+        sendResultsToQa(actor, activity, id);
         return get(actor, id);
     }
 
-    @Transactional
-    public Map<String, Object> submitForConfirmation(UserAccount actor, UUID id, CommandRequest request) {
-        Map<String, Object> activity = lockedForSender(actor, id);
-        requireVersion(activity, request == null ? null : request.version());
-        requireStatus(activity, "IN_PROGRESS");
-        // The order: the attendance list is sent, the results are all in, the trainer finishes the training (the results go into APD.0117), and only then the results go to QA.
-        if (activity.get("attendance_sent_at") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_NOT_SENT");
-        if (!allResultsIn(id)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_RESULT_PENDING");
-        if (activity.get("results_finished_at") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_NOT_FINISHED");
+    /** The results go to QA: the status changes and the people who may confirm are told at once, with the list APD.0117 and its results attached to the e-mail. */
+    private void sendResultsToQa(UserAccount actor, Map<String, Object> activity, UUID id) {
         Map<String, Object> qa = qaList(activity);
         boolean late = qa != null && "OVERDUE".equals(qa.get("state"));
-        sign(actor, activity, "TRAINING_SUBMITTED_FOR_CONFIRMATION", request);
         transition(actor, activity, "PENDING_QA_CONFIRMATION", "TRAINING_SUBMITTED_FOR_CONFIRMATION", late ? "Results sent to QA late: the list was due on " + qa.get("dueOn") + " (SOP.0003 5.3.6)" : "Results sent to QA");
         // QA is told at once, whatever the department that trained: the people who hold the right to confirm in the scope of all departments, or of the department of the training.
         String stamp = String.valueOf(System.currentTimeMillis());
@@ -1161,12 +1407,11 @@ public class TrainingActivityService {
         for (UserAccount confirmer : toTell.values()) {
             if (confirmer.getId().equals(actor.getId())) continue;
             notifier.send("TRAINING_SUBMITTED_TO_QA", confirmer, actor, "Training: results are waiting for QA",
-                    "The attendance list and the results of " + activity.get("training_number") + " (" + activity.get("training_title") + ") were sent to QA by " + actor.getFullName()
+                    "The attendance list and the results of " + activity.get("training_number") + " (" + activity.get("training_topics") + ") were sent to QA by " + actor.getFullName()
                             + ". " + (pdf != null ? "The list (APD.0117) with the results is attached to the e-mail as a PDF. " : "")
                             + "Please check them and confirm that the training is completed, with your signature.", "TRAINING_ACTIVITY", id, "qa-submitted:" + id + ":" + confirmer.getId() + ":" + stamp,
                     pdf == null ? null : fileName, pdf);
         }
-        return get(actor, id);
     }
 
     /** QA confirms the activity is complete (APD.0117 section 6): a person who holds the permission, not the one who prepared the list, with a signature. */
@@ -1203,7 +1448,10 @@ public class TrainingActivityService {
             """, activity.get("id"));
         int count = 0;
         for (Map<String, Object> person : people) {
-            String result = "READ_CONFIRMED".equals(person.get("state")) ? "READ" : "EXTERNAL".equals(activity.get("kind")) ? "ATTENDED" : "PASSED";
+            // The record says what the person did: read, attended (external training, or no assessment taken), or passed the assessment.
+            String role = String.valueOf(person.get("participation_role"));
+            String result = "READ_CONFIRMED".equals(person.get("state")) ? "READ"
+                    : "EXTERNAL".equals(activity.get("kind")) || !"TRAINEE".equals(role) ? "ATTENDED" : "PASSED";
             for (Map<String, Object> topic : jdbc.queryForList("select topic_text, document_number, revision_number from training_session_topics where session_id=?", person.get("sid"))) {
                 String text = String.valueOf(topic.get("topic_text"));
                 String hash = sha256(activity.get("training_number") + "|" + person.get("person_user_id") + "|" + text + "|" + topic.get("document_number") + "|" + topic.get("revision_number") + "|" + person.get("held_on") + "|" + result);
@@ -1213,6 +1461,26 @@ public class TrainingActivityService {
                     """, UUID.randomUUID(), person.get("person_user_id"), activity.get("id"), person.get("sid"), person.get("id"), activity.get("training_number"), text,
                         topic.get("document_number"), topic.get("revision_number"), person.get("held_on") == null ? completedOn : ((java.sql.Date) person.get("held_on")).toLocalDate(),
                         person.get("session_method") == null ? "EXTERNAL" : person.get("session_method"), result, person.get("employee_code"), person.get("full_name"), person.get("department"), person.get("position"), hash);
+                count++;
+            }
+        }
+        // The trainer of a held session is not on the list and takes no assessment: the training is recorded for them as "Trainer" (owner decision 2026-10-28), so the matrix counts them as trained on the topic.
+        List<Map<String, Object>> trainers = jdbc.queryForList("""
+            select s.id as sid, s.method as session_method, s.held_on, u.id as person_user_id, u.employee_code, u.full_name, u.department, u.position
+              from training_sessions s join app_users u on u.id = s.trainer_user_id
+             where s.activity_id=? and s.status='PLANNED' and s.held_on is not null
+               and not exists (select 1 from training_participants p where p.session_id = s.id and p.person_user_id = s.trainer_user_id and p.result='PASSED')
+            """, activity.get("id"));
+        for (Map<String, Object> trainer : trainers) {
+            for (Map<String, Object> topic : jdbc.queryForList("select topic_text, document_number, revision_number from training_session_topics where session_id=?", trainer.get("sid"))) {
+                String text = String.valueOf(topic.get("topic_text"));
+                String hash = sha256(activity.get("training_number") + "|" + trainer.get("person_user_id") + "|" + text + "|" + topic.get("document_number") + "|" + topic.get("revision_number") + "|" + trainer.get("held_on") + "|TRAINER");
+                jdbc.update("""
+                    insert into training_records(id, person_user_id, activity_id, session_id, participant_id, training_number, topic_text, document_number, document_revision, completed_on,
+                      method, result, employee_code, full_name, department, position, content_sha256) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    """, UUID.randomUUID(), trainer.get("person_user_id"), activity.get("id"), trainer.get("sid"), null, activity.get("training_number"), text,
+                        topic.get("document_number"), topic.get("revision_number"), ((java.sql.Date) trainer.get("held_on")).toLocalDate(),
+                        trainer.get("session_method") == null ? "EXTERNAL" : trainer.get("session_method"), "TRAINER", trainer.get("employee_code"), trainer.get("full_name"), trainer.get("department"), trainer.get("position"), hash);
                 count++;
             }
         }
@@ -1257,11 +1525,11 @@ public class TrainingActivityService {
         UUID childId = UUID.randomUUID();
         String number = parent.get("base_number") + suffix;
         jdbc.update("""
-            insert into training_activities(id, training_number, base_number, suffix, parent_activity_id, organizer_department_id, year, serial, kind, kind_reason, training_title, status,
+            insert into training_activities(id, training_number, base_number, suffix, parent_activity_id, organizer_department_id, year, serial, kind, kind_reason, status,
               document_id, revision_id, revision_number, document_number, document_name, remarks, created_by)
-            values (?,?,?,?,?,?,?,?,'RETRAINING',?,?,'PLANNED',?,?,?,?,?,?,?)
+            values (?,?,?,?,?,?,?,?,'RETRAINING',?,'PLANNED',?,?,?,?,?,?,?)
             """, childId, number, parent.get("base_number"), suffix, id, parent.get("organizer_department_id"), parent.get("year"), parent.get("serial"),
-                failed ? "FAILED_ASSESSMENT" : "ABSENT_MAKEUP", parent.get("training_title"), parent.get("document_id"), parent.get("revision_id"), parent.get("revision_number"),
+                failed ? "FAILED_ASSESSMENT" : "ABSENT_MAKEUP", parent.get("document_id"), parent.get("revision_id"), parent.get("revision_number"),
                 parent.get("document_number"), parent.get("document_name"), request.reason().trim(), actor.getId());
         Map<String, Object> child = store.activity(childId).orElseThrow();
         store.event(TrainingStore.OBJECT_ACTIVITY, childId, childId, "NUMBER_ISSUED", Map.of("number", number, "parent", String.valueOf(parent.get("training_number"))), actor.getId());
@@ -1274,8 +1542,21 @@ public class TrainingActivityService {
     private Map<String, Object> visible(UserAccount actor, UUID id) {
         access.require(actor, "training.activity.view");
         Map<String, Object> activity = store.activity(id).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        access.requireScope(actor, (UUID) activity.get("organizer_department_id"));
+        try {
+            access.requireScope(actor, (UUID) activity.get("organizer_department_id"));
+        } catch (SecurityException outOfScope) {
+            if (!headOfParticipantDepartment(actor, id)) throw outOfScope;
+        }
         return activity;
+    }
+
+    /** The head of a department that has people in the activity reads it, to confirm the self-reading of their own people (APD.0108). Nothing else is opened to them by this. */
+    private boolean headOfParticipantDepartment(UserAccount actor, UUID activityId) {
+        Integer n = jdbc.queryForObject("""
+            select count(*) from departments d join training_participants p on lower(btrim(p.department)) = lower(btrim(d.name))
+             where d.department_head_id = ? and p.activity_id = ?
+            """, Integer.class, actor.getId(), activityId);
+        return n != null && n > 0;
     }
 
     /**
@@ -1336,6 +1617,22 @@ public class TrainingActivityService {
     }
 
     /** Everyone who attended has a result (a person who was absent has none). */
+    /**
+     * A session held on paper (or mixed) has the scan of the written test of each person kept in the system, or one scan for the whole session, before the trainer may finish the training;
+     * an electronic session has nothing to scan.
+     */
+    private boolean allScansIn(UUID activityId) {
+        Integer onPaper = jdbc.queryForObject("select count(*) from training_sessions where activity_id=? and status <> 'CANCELLED' and delivery_mode is not null and delivery_mode <> 'ELECTRONIC'", Integer.class, activityId);
+        if (onPaper == null || onPaper == 0) return true;
+        Integer whole = jdbc.queryForObject("select count(*) from training_paper_evidence where activity_id=? and kind='ASSESSMENT' and participant_id is null", Integer.class, activityId);
+        if (whole != null && whole > 0) return true;
+        Integer missing = jdbc.queryForObject("""
+            select count(*) from training_participants p where p.activity_id=? and p.state <> 'ABSENT' and coalesce(p.participation_role,'TRAINEE') <> 'NAME_ONLY'
+               and not exists (select 1 from training_paper_evidence e where e.participant_id = p.id and e.kind='ASSESSMENT')
+            """, Integer.class, activityId);
+        return missing == null || missing == 0;
+    }
+
     private boolean allResultsIn(UUID activityId) {
         Integer pending = jdbc.queryForObject("select count(*) from training_participants where activity_id=? and state in ('ATTENDED','ONLINE','READ_CONFIRMED') and result='PENDING'", Integer.class, activityId);
         return pending == null || pending == 0;
@@ -1367,10 +1664,11 @@ public class TrainingActivityService {
         throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
     }
 
-    /** Where the session is held, checked as the form asks: a venue on site, or a platform and an https link online. Returns type, venue, platform, link. */
+    /** Where the session is held, checked as the form asks: a venue on site, a platform and an https link online, or both when it is hybrid. Returns type, venue, platform, link. */
     private static String[] location(String locationType, String venueText, String platformText, String linkText) {
-        if (locationType != null && !Set.of("ONSITE", "ONLINE").contains(locationType)) throw new IllegalArgumentException("TRAINING_SESSION_INVALID");
-        boolean online = "ONLINE".equals(locationType);
+        if (locationType != null && !Set.of("ONSITE", "ONLINE", "HYBRID").contains(locationType)) throw new IllegalArgumentException("TRAINING_SESSION_INVALID");
+        boolean hybrid = "HYBRID".equals(locationType);
+        boolean online = "ONLINE".equals(locationType) || hybrid;
         String venue = blankToNull(venueText);
         String platform = blankToNull(platformText);
         String meeting = blankToNull(linkText);
@@ -1379,6 +1677,10 @@ public class TrainingActivityService {
             java.net.URI uri;
             try { uri = java.net.URI.create(meeting); } catch (IllegalArgumentException e) { throw new IllegalArgumentException("TRAINING_LOCATION_INVALID"); }
             if (uri.getHost() == null || !"https".equalsIgnoreCase(uri.getScheme())) throw new IllegalArgumentException("TRAINING_LOCATION_INVALID");
+            if (hybrid) {
+                if (venue == null) throw new IllegalArgumentException("TRAINING_LOCATION_INVALID");
+                return new String[] {"HYBRID", venue, platform, meeting};
+            }
             return new String[] {"ONLINE", null, platform, meeting};
         }
         if (venue == null) throw new IllegalArgumentException("TRAINING_LOCATION_INVALID");
@@ -1408,6 +1710,10 @@ public class TrainingActivityService {
         UUID oldTrainer = (UUID) session.get("trainer_user_id");
         boolean trainerChanged = !java.util.Objects.equals(oldTrainer, request.trainerUserId()) || !java.util.Objects.equals(blankToNull((String) session.get("external_trainer_name")), externalTrainer);
         if (!externalActivity && request.trainerUserId() == null && externalTrainer == null) throw new IllegalArgumentException("TRAINING_TRAINER_REQUIRED");
+        if (trainerChanged && request.trainerUserId() != null) {
+            Integer onList = jdbc.queryForObject("select count(*) from training_participants where session_id=? and person_user_id=?", Integer.class, sessionId, request.trainerUserId());
+            if (onList != null && onList > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_TRAINER_IS_PARTICIPANT");
+        }
         if (trainerChanged) {
             Integer open = jdbc.queryForObject("select count(*) from training_trainer_exceptions where session_id=? and status in ('PENDING','APPROVED')", Integer.class, sessionId);
             if (open != null && open > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_TRAINER_EXCEPTION_OPEN");
@@ -1461,7 +1767,7 @@ public class TrainingActivityService {
 
     /**
      * QA returns the results to the organizer for correction instead of confirming them. Nothing has been written to a personal record yet (that happens only when QA confirms),
-     * so no record changes; the activity goes back to In progress, the organizer corrects and sends it again. Only the person designated for the confirmation may return it.
+     * so no record changes; the activity goes back to In Progress, the organizer corrects and sends it again. Only the person designated for the confirmation may return it.
      */
     @Transactional
     public Map<String, Object> returnForCorrection(UserAccount actor, UUID id, CommandRequest request) {
@@ -1506,7 +1812,7 @@ public class TrainingActivityService {
     // ------------------------------------------------------------------------------------------------------------------------------ notices
 
     private static String label(Map<String, Object> activity) {
-        return activity.get("training_number") + " (" + activity.get("training_title") + ")";
+        return activity.get("training_number") + " (" + activity.get("training_topics") + ")";
     }
 
     /** The people who organize the activity: who opened it and who prepared its list. */
@@ -1545,7 +1851,9 @@ public class TrainingActivityService {
             """, activity.get("id"), personId)) {
             text.append(" Session ").append(s.get("session_no")).append(": ");
             text.append(s.get("scheduled_on") == null ? "day to be announced" : com.eqms.util.DateTimeFormatUtils.display(s.get("scheduled_on")));
-            String place = "ONLINE".equals(s.get("location_type")) ? (s.get("online_platform") == null ? "online" : "online, " + s.get("online_platform")) : (s.get("venue") == null ? null : String.valueOf(s.get("venue")));
+            String onlineText = s.get("online_platform") == null ? "online" : "online, " + s.get("online_platform");
+            String place = "HYBRID".equals(s.get("location_type")) ? (s.get("venue") == null ? "" : s.get("venue") + " and ") + onlineText
+                    : "ONLINE".equals(s.get("location_type")) ? onlineText : (s.get("venue") == null ? null : String.valueOf(s.get("venue")));
             if (place != null) text.append(", ").append(place);
             if (s.get("method") != null) text.append(", ").append(methodText(s.get("method")));
             if (s.get("trainer") != null) text.append(", trainer ").append(s.get("trainer"));

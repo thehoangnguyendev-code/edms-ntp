@@ -21,7 +21,7 @@ const DictionariesView = lazy(() => import('@/features/settings').then(m => ({ d
 const EducationDegreeLevelsView = lazy(() => import('@/features/settings').then(m => ({ default: m.EducationDegreeLevelsView })));
 const EducationSchoolsView = lazy(() => import('@/features/settings').then(m => ({ default: m.EducationSchoolsView })));
 const EducationSchoolEditorView = lazy(() => import('@/features/settings').then(m => ({ default: m.EducationSchoolEditorView })));
-const ConfigurationView = lazy(() => import('@/features/settings').then(m => ({ default: m.ConfigurationView })));
+const ConfigurationView = lazy(() => import('@/features/settings/configuration/ConfigurationView').then(m => ({ default: m.ConfigurationView })));
 const EmailTemplatesView = lazy(() => import('@/features/settings').then(m => ({ default: m.EmailTemplatesView })));
 const EmailTemplateCreateView = lazy(() => import('@/features/settings').then(m => ({ default: m.EmailTemplateCreateView })));
 const EmailTemplateEditView = lazy(() => import('@/features/settings').then(m => ({ default: m.EmailTemplateEditView })));
@@ -76,8 +76,10 @@ const AnnouncementsView = lazy(() => import('@/features/settings').then(m => ({ 
 const AnnouncementEditorView = lazy(() => import('@/features/settings').then(m => ({ default: m.AnnouncementEditorView })));
 const BackupAlertsView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupAlertsView })));
 const TrainingNotificationsView = lazy(() => import('@/features/settings/training-administration/notifications/TrainingNotificationsView').then(m => ({ default: m.TrainingNotificationsView })));
+const TrainingAnnexView = lazy(() => import('@/features/settings/training-administration/annex/TrainingAnnexView').then(m => ({ default: m.TrainingAnnexView })));
+const TrainingAnnexDetailView = lazy(() => import('@/features/settings/training-administration/annex/TrainingAnnexDetailView').then(m => ({ default: m.TrainingAnnexDetailView })));
 const TrainingVendorsView = lazy(() => import('@/features/settings/training-administration/vendors/TrainingVendorsView').then(m => ({ default: m.TrainingVendorsView })));
-const TrainingTopicsView = lazy(() => import('@/features/settings/training-administration/topics/TrainingTopicsView').then(m => ({ default: m.TrainingTopicsView })));
+const TrainingCodeRulesView = lazy(() => import('@/features/settings/training-administration/code-rules/TrainingCodeRulesView').then(m => ({ default: m.TrainingCodeRulesView })));
 const TrainingJobRolesView = lazy(() => import('@/features/settings/training-administration/job-roles/TrainingJobRolesView').then(m => ({ default: m.TrainingJobRolesView })));
 const TrainingPropertiesView = lazy(() => import('@/features/settings').then(m => ({ default: m.TrainingPropertiesView })));
 
@@ -237,10 +239,13 @@ export function settingsRoutes(navigate: NavigateFunction) {
       <Route path="settings/administration/training">
         <Route index element={<Navigate to={ROUTES.SETTINGS.TRAINING_ADMINISTRATION.PROPERTIES} replace />} />
         <Route path="properties" element={<ProtectedRoute requiredPermissions={["training.admin.properties.view", "training.settings.view"]}><Suspense fallback={<LoadingFallback />}><TrainingPropertiesView /></Suspense></ProtectedRoute>} />
-        <Route path="topics" element={<ProtectedRoute requiredPermissions={["training.admin.manage"]}><Suspense fallback={<LoadingFallback />}><TrainingTopicsView /></Suspense></ProtectedRoute>} />
+        <Route path="code-rules" element={<ProtectedRoute requiredPermissions={["training.admin.properties.view", "training.settings.view"]}><Suspense fallback={<LoadingFallback />}><TrainingCodeRulesView /></Suspense></ProtectedRoute>} />
         <Route path="vendors" element={<ProtectedRoute requiredPermissions={["training.admin.manage"]}><Suspense fallback={<LoadingFallback />}><TrainingVendorsView /></Suspense></ProtectedRoute>} />
         <Route path="job-roles" element={<ProtectedRoute requiredPermissions={["training.admin.manage"]}><Suspense fallback={<LoadingFallback />}><TrainingJobRolesView /></Suspense></ProtectedRoute>} />
         <Route path="notifications" element={<ProtectedRoute requiredPermissions={["training.admin.manage"]}><Suspense fallback={<LoadingFallback />}><TrainingNotificationsView /></Suspense></ProtectedRoute>} />
+        <Route path="annex" element={<ProtectedRoute requiredPermissions={["training.annex.view"]}><Suspense fallback={<LoadingFallback />}><TrainingAnnexView /></Suspense></ProtectedRoute>} />
+        <Route path="annex/:code" element={<ProtectedRoute requiredPermissions={["training.annex.view"]}><Suspense fallback={<LoadingFallback />}><TrainingAnnexDetailView mode="view" /></Suspense></ProtectedRoute>} />
+        <Route path="annex/:code/edit" element={<ProtectedRoute requiredPermissions={["training.annex.manage"]}><Suspense fallback={<LoadingFallback />}><TrainingAnnexDetailView mode="edit" /></Suspense></ProtectedRoute>} />
       </Route>
 
       {/* ===== PREFERENCES ===== */}

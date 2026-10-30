@@ -10,7 +10,7 @@ r = admin.call('POST', '/training/personnel-reviews', {'personUserId': trainee.u
 rid = r['id']; print('review', r['reviewNo'], 'over six months:', r['absenceOverSixMonths'])
 r = admin.call('POST', f'/training/personnel-reviews/{rid}/items/RETRAINING/training')
 act = [i for i in r['items'] if i['itemCode'] == 'RETRAINING'][0]
-print('created', r['createdActivityId'][:8], act['trainingNumber'], act['trainingTitle'])
+print('created', r['createdActivityId'][:8], act['trainingNumber'], act.get('trainingTopics'))
 code, b = admin.call('POST', f'/training/personnel-reviews/{rid}/items/RETRAINING/training', None, raw=True); print('again ->', code); assert code == 409
 code, b = admin.call('POST', f'/training/personnel-reviews/{rid}/items/REVIEW_RECORDS/training', None, raw=True); print('item without training ->', code); assert code == 400
 r = admin.call('PUT', f'/training/personnel-reviews/{rid}/items/RETRAINING', {'status': 'PENDING', 'activityId': act['activityId'], 'note': 'to be organised'}); print('re-save with the same activity ok')

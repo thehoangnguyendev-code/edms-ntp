@@ -8,17 +8,12 @@ import { IconAddressBook } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
 import { settingsApi } from '@/services/api/settings';
-import type { ToastPosition } from '../types';
 import { DEFAULT_SYSTEM_HEADER_TITLE } from '@/services/api/branding';
 import { AppShortcutSection } from './AppShortcutSection';
-
-const TOAST_POSITION_OPTIONS: Array<{ label: string; value: ToastPosition }> = [
-  { label: 'Top Right', value: 'top-right' },
-  { label: 'Top Left', value: 'top-left' },
-  { label: 'Center', value: 'center' },
-  { label: 'Bottom Right', value: 'bottom-right' },
-  { label: 'Bottom Left', value: 'bottom-left' },
-];
+import { ColorPickerInput } from '@/components/ui/color-picker/ColorPickerInput';
+import { DEFAULT_ALTERNATING_RECORD_COLOR } from '@/config/record-stripes';
+import { PageBackgroundEditor } from './PageBackgroundEditor';
+import type { PageBackground } from '@/config/page-background';
 
 interface GeneralTabProps {
   config: GeneralConfig;
@@ -78,6 +73,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
       onChange({
         ...config,
         appearance: {
+          ...config.appearance,
           primaryColor: config.appearance?.primaryColor ?? '#10b981',
           compactMode: config.appearance?.compactMode ?? false,
           showBreadcrumbs: config.appearance?.showBreadcrumbs ?? true,
@@ -96,10 +92,11 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
     onChange({ ...config, [key]: value });
   };
 
-  const handleAppearanceChange = (key: keyof GeneralConfig['appearance'], value: boolean | ToastPosition) => {
+  const handleAppearanceChange = (key: keyof GeneralConfig['appearance'], value: boolean | string | PageBackground) => {
     onChange({
       ...config,
       appearance: {
+        ...config.appearance,
         primaryColor: config.appearance?.primaryColor ?? '#10b981',
         compactMode: config.appearance?.compactMode ?? false,
         showBreadcrumbs: config.appearance?.showBreadcrumbs ?? true,
@@ -226,7 +223,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                 <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3">
                   <BrandImagePreview src={config.systemLogo} alt="Application logo preview" variant="logo" />
                   <div className="flex flex-wrap gap-2">
-                    <Button type="button" size="sm" variant="outline" onClick={() => logoInputRef.current?.click()}>Upload logo</Button>
+                    <Button type="button" size="sm" variant="outline-emerald" onClick={() => logoInputRef.current?.click()}>Upload Logo</Button>
                     {config.systemLogo&&<Button type="button" size="sm" variant="ghost" onClick={() => handleChange('systemLogo','')}>Reset</Button>}
                   </div>
                 </div>
@@ -238,7 +235,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                 <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3">
                   <BrandImagePreview src={collapsedSidebarLogo} alt="Collapsed sidebar logo preview" variant="sidebar" />
                   <div className="flex flex-wrap gap-2">
-                    <Button type="button" size="sm" variant="outline" onClick={() => collapsedSidebarLogoInputRef.current?.click()}>Upload compact logo</Button>
+                    <Button type="button" size="sm" variant="outline-emerald" onClick={() => collapsedSidebarLogoInputRef.current?.click()}>Upload Compact Logo</Button>
                     {collapsedSidebarLogo&&<Button type="button" size="sm" variant="ghost" onClick={() => handleChange('systemSidebarCollapsedLogo','')}>Reset</Button>}
                   </div>
                 </div>
@@ -250,7 +247,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                 <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3">
                   <BrandImagePreview src={config.systemFavicon} alt="Favicon preview" variant="favicon" />
                   <div className="flex flex-wrap gap-2">
-                    <Button type="button" size="sm" variant="outline" onClick={() => faviconInputRef.current?.click()}>Upload favicon</Button>
+                    <Button type="button" size="sm" variant="outline-emerald" onClick={() => faviconInputRef.current?.click()}>Upload Favicon</Button>
                     {config.systemFavicon&&<Button type="button" size="sm" variant="ghost" onClick={() => handleChange('systemFavicon','')}>Reset</Button>}
                   </div>
                 </div>
@@ -285,16 +282,41 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
             <p className="ml-7 mt-1 text-xs text-slate-500">Show Search and a Filter button. Select a field on the left, edit values on the right, then click Apply. Mobile filters are unchanged. Applies after Save Changes.</p>
           </div>
           <div className="border-t border-slate-100 pt-4">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Notifications</p>
-            <div className="max-w-xs">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Record Lists</p>
+            <Checkbox id="alternatingRecordColors" label="Use alternating record colors"
+              checked={config.appearance?.alternatingRecordColors ?? false}
+              onChange={(checked) => handleAppearanceChange('alternatingRecordColors', checked)} />
+            <p className="ml-7 mt-1 text-xs text-slate-500">Apply a subtle background to alternating records after saving. Status and selection colors take priority.</p>
+            <div className="ml-7 mt-3 max-w-xs">
+              <ColorPickerInput label="Alternating row color" value={config.appearance?.alternatingRecordColor ?? DEFAULT_ALTERNATING_RECORD_COLOR}
+                onChange={(value) => handleAppearanceChange('alternatingRecordColor', value)} disabled={!config.appearance?.alternatingRecordColors} />
+            </div>
+          </div>
+          <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Page Backgrounds</p>
+            <p className="mb-3 text-xs text-slate-500">Choose backgrounds for the main workspace and authentication screens. Use light colors to keep page text readable. Changes apply after saving.</p>
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <PageBackgroundEditor title="Main Layout" value={config.appearance?.mainBackground} onChange={(value) => handleAppearanceChange('mainBackground', value)} />
+              <PageBackgroundEditor title="Authentication" allowImage value={config.appearance?.authBackground} onChange={(value) => handleAppearanceChange('authBackground', value)} />
+            </div>
+          </div>
+          <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Training Management</p>
+            <div className="w-full md:w-1/2">
               <Select
-                label="Toast Position"
-                value={config.appearance?.toastPosition ?? 'top-right'}
-                onChange={(value) => handleAppearanceChange('toastPosition', value as ToastPosition)}
-                options={TOAST_POSITION_OPTIONS}
+                label="Training Materials layout"
+                value={config.appearance?.trainingMaterialsLayout ?? 'TABLE'}
+                enableSearch={false}
+                onChange={(val) => handleAppearanceChange('trainingMaterialsLayout', val)}
+                options={[
+                  { label: 'Table', value: 'TABLE' },
+                  { label: 'Tiles with a drop zone', value: 'TILES' },
+                ]}
               />
             </div>
-            <p className="mt-1 text-xs text-slate-500">Where system messages pop up on screen. Applies to every signed-in user after Save Changes.</p>
+            <p className="mt-1 text-xs text-slate-500">
+              How the materials of a training are shown on the New, planning and conduct screens. Table keeps a list with the actions on each row; Tiles shows a drop zone and a card for each material. Takes effect for every signed-in user right after you save.
+            </p>
           </div>
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Knowledge Base</p>

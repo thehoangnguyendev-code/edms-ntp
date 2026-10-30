@@ -41,7 +41,6 @@ import {
 import { getControlledCopyActionTargetId } from "../controlledCopyActions";
 import { invalidateControlledCopyChildren } from "../components/ExpandControlledCopiesRow";
 import {
-  mergeControlledCopyAuditTrailRows,
   normalizeControlledCopyBatchDetail,
   normalizeControlledCopyDetail,
 } from "../controlledCopyMapping";
@@ -203,24 +202,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     [auditTrailRows, controlledCopy.status],
   );
 
-  // Set to the batch entityId once its per-member audit rows have been fanned-out and merged, so
-  // switching to the Audit tab a second time doesn't re-fire N requests; cleared whenever a
-  // batch-only reload happens (an action completed while the Audit tab wasn't open).
-  const auditChildrenLoadedForRef = React.useRef<string | null>(null);
-  const activeTabRef = React.useRef<TabType>(activeTab);
-  useEffect(() => {
-    activeTabRef.current = activeTab;
-  }, [activeTab]);
-
   const loadAuditTrail = useCallback(async (
     entityType: string,
     entityId: string,
-    childIds: string[] = [],
-    // A batch's Audit tab shows a merged timeline (batch rows + every member copy's own rows),
-    // which for a departmental batch is up to CHILD_PAGE_SIZE extra /audit-trail requests. The
-    // stepper and the Signatures tab only ever use the batch's own rows, so the member fan-out is
-    // deferred until the Audit tab is actually opened -- see the effect below.
-    includeChildren = false,
   ) => {
     if (!entityId) {
       setAuditTrailRows([]);
@@ -231,22 +215,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       const batchResponse = await auditTrailApi.getByEntity(entityType, entityId);
       const batchRows = Array.isArray(batchResponse) ? batchResponse : (batchResponse as any)?.data || [];
 
-      if (entityType !== "Controlled Copy Distribution Batch" || childIds.length === 0 || !includeChildren) {
-        setAuditTrailRows(batchRows);
-        return;
-      }
-
-      const childResponses = await Promise.allSettled(
-        childIds.map((childId) => auditTrailApi.getByEntity("Controlled Copy", childId))
-      );
-      const childRows = childResponses.flatMap((result) => {
-        if (result.status !== "fulfilled") {
-          return [];
-        }
-        const value = result.value;
-        return Array.isArray(value) ? value : (value as any)?.data || [];
-      });
-      setAuditTrailRows(mergeControlledCopyAuditTrailRows(batchRows, childRows));
+      // Parent history is used by the stepper and signature context only.
+      // The Audit tab loads its authorized parent/child page on the server.
+      setAuditTrailRows(batchRows);
     } catch {
       setAuditTrailRows([]);
     }
@@ -281,31 +252,14 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     }
   }, []);
 
-  const refreshDetailRelatedData = useCallback(async (entityType: string, entityId: string, childIds: string[] = []) => {
+  const refreshDetailRelatedData = useCallback(async (entityType: string, entityId: string, _childIds: string[] = []) => {
     const isBatch = entityType === "Controlled Copy Distribution Batch";
-    // Only pay the per-member audit fan-out cost if the user is currently looking at the Audit
-    // tab; otherwise reload batch-only and let the tab-switch effect fan out later if needed.
-    const includeChildren = isBatch && activeTabRef.current === "audit" && childIds.length > 0;
-    auditChildrenLoadedForRef.current = includeChildren ? entityId : null;
     await Promise.all([
-      loadAuditTrail(entityType, entityId, childIds, includeChildren),
+      loadAuditTrail(entityType, entityId),
       loadSignatureRows(entityId),
       loadEvidenceRows(entityId, isBatch),
     ]);
   }, [loadAuditTrail, loadSignatureRows, loadEvidenceRows]);
-
-  // Fan out the per-member audit rows the first time the Audit tab is opened for a batch (or
-  // after a batch-only reload cleared the marker). Non-batch records and the other tabs never
-  // trigger this.
-  useEffect(() => {
-    if (activeTab !== "audit" || !isBatchParent) return;
-    const entityId = controlledCopy.distributionBatchId || controlledCopy.id;
-    const childIds = controlledCopy.copyIds || [];
-    if (!entityId || childIds.length === 0) return;
-    if (auditChildrenLoadedForRef.current === entityId) return;
-    auditChildrenLoadedForRef.current = entityId;
-    void loadAuditTrail("Controlled Copy Distribution Batch", entityId, childIds, true);
-  }, [activeTab, isBatchParent, controlledCopy.distributionBatchId, controlledCopy.id, controlledCopy.copyIds, loadAuditTrail]);
 
   const refreshDetailCapabilities = useCallback(async () => {
     const refreshers: Array<() => Promise<any>> = [];
@@ -1300,7 +1254,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
             {isBatchParent ? (
               <AuditTrailTab
                 records={auditTrailRows as any}
+                entityId={controlledCopy.distributionBatchId || controlledCopy.id}
                 entityType="Controlled Copy Distribution Batch"
+                includeChildren
                 emptyMessage="No audit records available for this batch."
               />
             ) : (

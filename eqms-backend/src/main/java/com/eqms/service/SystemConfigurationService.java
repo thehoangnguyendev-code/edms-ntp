@@ -51,6 +51,8 @@ public class SystemConfigurationService {
 
     @org.springframework.beans.factory.annotation.Autowired
     private PermissionEvaluationService permissionEvaluationService;
+    @org.springframework.beans.factory.annotation.Autowired
+    private AuthBackgroundVideoStore authBackgroundVideoStore;
     private final EmailNotificationService emailNotificationService;
     private final StoragePathBuilder storagePathBuilder;
     private final String defaultMinioEndpoint;
@@ -184,7 +186,13 @@ public class SystemConfigurationService {
                 ? config.getGeneralConfig()
                 : onlyOfficeConfigurationService.mergeGeneralConfigForStorage(request.general(), config.getGeneralConfig());
         validateDesktopFilterConfig(nextGeneral);
+        validateAlternatingRecordColors(nextGeneral);
+        validatePageBackgrounds(nextGeneral);
+        JsonNode videoBackground = nextGeneral.path("appearance").path("authBackground");
+        if ("video".equals(videoBackground.path("mode").asText()) && (authBackgroundVideoStore == null || !authBackgroundVideoStore.exists(UUID.fromString(videoBackground.path("videoId").asText())))) throw new IllegalArgumentException("Authentication background video does not exist");
         validateToastPosition(nextGeneral);
+        validateToastDuration(nextGeneral);
+        validateTrainingMaterialsLayout(nextGeneral);
         validateSystemHeaderTitle(nextGeneral);
         PwaBrandingService.validate(nextGeneral);
         nextGeneral = withDisplayFormat(nextGeneral);
@@ -347,7 +355,13 @@ public class SystemConfigurationService {
                 appearance != null && appearance.path("showSidebarUserProfile").asBoolean(false),
                 appearance != null && appearance.path("knowledgeExplorerEnabled").asBoolean(false),
                 appearance != null && appearance.path("compactDesktopFilters").asBoolean(false),
+                appearance != null && appearance.path("alternatingRecordColors").asBoolean(false),
+                alternatingRecordColor(appearance),
+                publicPageBackground(appearance, "mainBackground"),
+                publicPageBackground(appearance, "authBackground"),
                 toastPosition(appearance),
+                toastDurationSeconds(appearance),
+                trainingMaterialsLayout(appearance),
                 textValue(general, "systemFavicon"),
                 appearance == null ? null : textValue(appearance, "systemFooter"),
                 systemHeaderTitle(general),
@@ -414,6 +428,38 @@ public class SystemConfigurationService {
         return value != null && TOAST_POSITIONS.contains(value) ? value : DEFAULT_TOAST_POSITION;
     }
 
+    static final int DEFAULT_TOAST_SECONDS = 5, MIN_TOAST_SECONDS = 2, MAX_TOAST_SECONDS = 60;
+
+    int toastDurationSeconds(JsonNode appearance) {
+        JsonNode value = appearance == null ? null : appearance.get("toastDurationSeconds");
+        return value != null && value.isInt() && value.asInt() >= MIN_TOAST_SECONDS && value.asInt() <= MAX_TOAST_SECONDS ? value.asInt() : DEFAULT_TOAST_SECONDS;
+    }
+
+    static void validateToastDuration(JsonNode general) {
+        JsonNode appearance = general == null ? null : general.get("appearance");
+        JsonNode seconds = appearance == null ? null : appearance.get("toastDurationSeconds");
+        if (seconds != null && !seconds.isNull() && (!seconds.isInt() || seconds.asInt() < MIN_TOAST_SECONDS || seconds.asInt() > MAX_TOAST_SECONDS)) {
+            throw new IllegalArgumentException("toastDurationSeconds must be a whole number from " + MIN_TOAST_SECONDS + " to " + MAX_TOAST_SECONDS);
+        }
+    }
+
+    /** Machine values only; the admin UI owns the labels. Missing or unknown values fall back to the table. */
+    static final java.util.Set<String> TRAINING_MATERIALS_LAYOUTS = java.util.Set.of("TABLE", "TILES");
+    static final String DEFAULT_TRAINING_MATERIALS_LAYOUT = "TABLE";
+
+    String trainingMaterialsLayout(JsonNode appearance) {
+        String value = appearance == null ? null : textValue(appearance, "trainingMaterialsLayout");
+        return value != null && TRAINING_MATERIALS_LAYOUTS.contains(value) ? value : DEFAULT_TRAINING_MATERIALS_LAYOUT;
+    }
+
+    static void validateTrainingMaterialsLayout(JsonNode general) {
+        JsonNode appearance = general == null ? null : general.get("appearance");
+        JsonNode layout = appearance == null ? null : appearance.get("trainingMaterialsLayout");
+        if (layout != null && !layout.isNull() && (!layout.isTextual() || !TRAINING_MATERIALS_LAYOUTS.contains(layout.asText()))) {
+            throw new IllegalArgumentException("trainingMaterialsLayout must be one of " + TRAINING_MATERIALS_LAYOUTS);
+        }
+    }
+
     static void validateToastPosition(JsonNode general) {
         JsonNode appearance = general == null ? null : general.get("appearance");
         JsonNode position = appearance == null ? null : appearance.get("toastPosition");
@@ -428,6 +474,79 @@ public class SystemConfigurationService {
         if (compact != null && !compact.isBoolean()) {
             throw new IllegalArgumentException("compactDesktopFilters must be true or false");
         }
+    }
+
+    private static String alternatingRecordColor(JsonNode appearance) {
+        JsonNode color = appearance == null ? null : appearance.get("alternatingRecordColor");
+        return color != null && color.isTextual() && color.asText().matches("^#[0-9a-fA-F]{6}$") ? color.asText() : "#F8FAFC";
+    }
+
+    static void validateAlternatingRecordColors(JsonNode general) {
+        JsonNode appearance = general == null ? null : general.get("appearance");
+        JsonNode enabled = appearance == null ? null : appearance.get("alternatingRecordColors");
+        JsonNode color = appearance == null ? null : appearance.get("alternatingRecordColor");
+        if (enabled != null && !enabled.isBoolean()) throw new IllegalArgumentException("alternatingRecordColors must be true or false");
+        if (color != null && (!color.isTextual() || !color.asText().matches("^#[0-9a-fA-F]{6}$"))) throw new IllegalArgumentException("alternatingRecordColor must be a six-digit hex color");
+    }
+
+    private static JsonNode publicPageBackground(JsonNode appearance, String field) {
+        JsonNode value = appearance == null ? null : appearance.get(field);
+        try {
+            validatePageBackground(value, field);
+            if (value == null || value.isNull()) return null;
+            var safe = com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
+            safe.set("mode", value.get("mode"));
+            safe.set("colors", value.get("colors").deepCopy());
+            safe.set("angle", value.get("angle"));
+            for (String key : new String[]{"stops", "centerX", "centerY", "image", "imageFit", "overlayColor", "overlayOpacity", "videoId", "videoLoop"}) {
+                if ("image".equals(key) && !"image".equals(value.path("mode").asText())) continue;
+                if (value.has(key)) safe.set(key, value.get(key).deepCopy());
+            }
+            return safe;
+        }
+        catch (IllegalArgumentException ignored) { return null; }
+    }
+
+    static void validatePageBackgrounds(JsonNode general) {
+        JsonNode appearance = general == null ? null : general.get("appearance");
+        validatePageBackground(appearance == null ? null : appearance.get("mainBackground"), "mainBackground");
+        validatePageBackground(appearance == null ? null : appearance.get("authBackground"), "authBackground");
+    }
+
+    private static void validatePageBackground(JsonNode value, String field) {
+        if (value == null || value.isNull()) return;
+        if (!value.isObject()) throw new IllegalArgumentException(field + " must be an object");
+        JsonNode mode = value.get("mode"), colors = value.get("colors"), angle = value.get("angle");
+        if (mode == null || !mode.isTextual() || !java.util.Set.of("default", "solid", "linear", "radial", "conic", "image", "video").contains(mode.asText()) || (java.util.Set.of("image", "video").contains(mode.asText()) && !"authBackground".equals(field))) throw new IllegalArgumentException(field + " has an invalid mode");
+        if (colors == null || !colors.isArray() || colors.size() < 2 || colors.size() > 5) throw new IllegalArgumentException(field + " requires 2 to 5 colors");
+        for (JsonNode color : colors) if (!color.isTextual() || !color.asText().matches("^#[0-9a-fA-F]{6}$")) throw new IllegalArgumentException(field + " requires hex colors");
+        if (angle == null || !angle.isIntegralNumber() || !angle.canConvertToInt() || angle.intValue() < 0 || angle.intValue() > 360) throw new IllegalArgumentException(field + " angle must be between 0 and 360");
+        JsonNode stops = value.get("stops");
+        if (stops != null) {
+            if (!stops.isArray() || stops.size() != colors.size()) throw new IllegalArgumentException(field + " has invalid stops");
+            int previous = 0;
+            for (JsonNode stop : stops) {
+                if (!stop.isIntegralNumber() || !stop.canConvertToInt() || stop.intValue() < previous || stop.intValue() > 100) throw new IllegalArgumentException(field + " has invalid stops");
+                previous = stop.intValue();
+            }
+        }
+        for (String key : new String[]{"centerX", "centerY", "overlayOpacity"}) {
+            JsonNode number = value.get(key);
+            if (number != null && (!number.isIntegralNumber() || !number.canConvertToInt() || number.intValue() < 0 || number.intValue() > 100)) throw new IllegalArgumentException(field + " has invalid " + key);
+        }
+        JsonNode overlay = value.get("overlayColor"), fit = value.get("imageFit"), image = value.get("image");
+        if (overlay != null && (!overlay.isTextual() || !overlay.asText().matches("^#[0-9a-fA-F]{6}$"))) throw new IllegalArgumentException(field + " has invalid overlay");
+        if (fit != null && (!fit.isTextual() || !java.util.Set.of("cover", "contain", "repeat").contains(fit.asText()))) throw new IllegalArgumentException(field + " has invalid image fit");
+        if (image != null) {
+            if (!"authBackground".equals(field) || !image.isTextual() || image.asText().length() > 1400000 || !image.asText().matches("^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$")) throw new IllegalArgumentException(field + " has invalid image");
+            try { if (java.util.Base64.getDecoder().decode(image.asText().substring(image.asText().indexOf(',') + 1)).length > 1048576) throw new IllegalArgumentException(field + " image is too large"); }
+            catch (IllegalArgumentException ex) { throw new IllegalArgumentException(field + " has invalid image", ex); }
+        }
+        if ("image".equals(mode.asText()) && image == null) throw new IllegalArgumentException(field + " requires an image");
+        JsonNode videoId = value.get("videoId"), videoLoop = value.get("videoLoop");
+        if (videoId != null && (!"authBackground".equals(field) || !videoId.isTextual() || !videoId.asText().matches("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"))) throw new IllegalArgumentException(field + " has invalid video ID");
+        if (videoLoop != null && !videoLoop.isBoolean()) throw new IllegalArgumentException(field + " has invalid repeat setting");
+        if ("video".equals(mode.asText()) && videoId == null) throw new IllegalArgumentException(field + " requires a video");
     }
 
     @Transactional(readOnly = true)
@@ -465,7 +584,8 @@ public class SystemConfigurationService {
 
     @Transactional(readOnly = true)
     public SecurityConfigurationResponse getSecurityConfiguration() {
-        return new SecurityConfigurationResponse(getSessionTimeoutMinutes());
+        SystemConfiguration config = requireConfiguration();
+        return new SecurityConfigurationResponse(getSessionTimeoutMinutes(config), isSessionTimeoutEnabled(config));
     }
 
     /** Admin-selected seed for the FIRST revision number of newly created documents.
@@ -793,12 +913,14 @@ public class SystemConfigurationService {
         }
         SystemConfiguration config = requireConfiguration();
         int previousTimeout = getSessionTimeoutMinutes(config);
+        JsonNode previousSecurity = config.getSecurityConfig();
         ObjectNode securityConfig = config.getSecurityConfig() != null && config.getSecurityConfig().isObject()
                 ? (ObjectNode) config.getSecurityConfig().deepCopy()
                 : objectMapper.createObjectNode();
         securityConfig.put("sessionTimeoutMinutes", request.sessionTimeoutMinutes());
         config.setSecurityConfig(securityConfig);
         SystemConfiguration saved = repository.save(config);
+        publishSecurityConfigInvalidationAfterCommit(previousSecurity, saved.getSecurityConfig());
         auditTrailService.logAs(
                 currentUser,
                 "SYSTEM_CONFIGURATION",
@@ -817,7 +939,7 @@ public class SystemConfigurationService {
                 summarizeConfigFromSections(config.getGeneralConfig(), config.getSecurityConfig(), config.getDocumentsConfig(), config.getNotificationsConfig(), config.getIntegrationsConfig(), config.getFeaturesConfig()),
                 "Session Timeout=" + request.sessionTimeoutMinutes() + " minutes"
         );
-        return new SecurityConfigurationResponse(getSessionTimeoutMinutes(saved));
+        return new SecurityConfigurationResponse(getSessionTimeoutMinutes(saved), isSessionTimeoutEnabled(saved));
     }
 
     public SystemConfiguration requireConfiguration() {
@@ -1550,6 +1672,8 @@ public class SystemConfigurationService {
     }
 
     private void validateSecurityConfig(JsonNode securityConfig) {
+        JsonNode enabled = securityConfig == null ? null : securityConfig.get("sessionTimeoutEnabled");
+        if (enabled != null && !enabled.isBoolean()) throw new IllegalArgumentException("Session timeout enabled must be true or false");
         if (securityConfig == null || securityConfig.get("sessionTimeoutMinutes") == null || securityConfig.get("sessionTimeoutMinutes").isNull()) {
             return;
         }
@@ -1761,7 +1885,14 @@ public class SystemConfigurationService {
     }
 
     public int getSessionTimeoutMinutes() {
-        return getSessionTimeoutMinutes(requireConfiguration());
+        SystemConfiguration config = requireConfiguration();
+        return isSessionTimeoutEnabled(config) ? getSessionTimeoutMinutes(config) : 0;
+    }
+
+    private static boolean isSessionTimeoutEnabled(SystemConfiguration config) {
+        JsonNode security = config.getSecurityConfig();
+        JsonNode enabled = security == null ? null : security.get("sessionTimeoutEnabled");
+        return enabled == null || !enabled.isBoolean() || enabled.booleanValue();
     }
 
     @Transactional(readOnly = true)

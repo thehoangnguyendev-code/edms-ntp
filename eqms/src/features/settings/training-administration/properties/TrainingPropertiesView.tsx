@@ -1,22 +1,19 @@
 import React from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Archive, BellRing, CalendarClock, GraduationCap, Link2, NotebookPen, Send, Timer } from "lucide-react";
-import { IconPlus } from "@tabler/icons-react";
+import { Archive, BellRing, CalendarClock, GraduationCap, NotebookPen, Send, Timer, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { Button } from "@/components/ui/button/Button";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { Switch } from "@/components/ui/switch/Switch";
+import { Select } from "@/components/ui/select/Select";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
-import { FormField } from "@/components/ui/form/ResponsiveForm";
-import { Textarea } from "@/features/training-activities/shared/TrainingFields";
 import { useToast } from "@/components/ui/toast/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { trainingProperties } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { trainingError, trainingSettingsApi, type TrainingSettings } from "@/services/api/trainingActivities";
-import { TrainingFormTemplates } from "./TrainingFormTemplates";
 
 /** Whole-number input that clamps to [min, max] and falls back when the field is emptied. */
 const NumberField: React.FC<{
@@ -52,44 +49,35 @@ const NumberField: React.FC<{
  * "Save Changes" saves the changes of every tab.
  */
 const SETTING_TABS = [
-  { id: "assessment", label: "Assessment", about: "How a test is marked, and how soon the results go to QA. It is used when the trainer records the result of a training and sends it to QA." },
-  { id: "documents", label: "Document Training", about: "How training on a new or revised document is organised. It is used when a document that requires training is created in Document Control." },
-  { id: "annual", label: "Annual & Retraining", about: "When the annual requirement is due and when a person who was away is retrained. It is used by the training requirements and by the training reviews." },
+  { id: "assessment", label: "Assessment", about: "How a test is marked, and by when the trainer must finish the training, which sends the results to QA. It is used when the trainer records the results of a training." },
+  { id: "documents", label: "Document Training", about: "How training on a new or revised document is organised. A document that requires training always goes through Training Management; this is used when it is created in Document Control." },
+  { id: "annual", label: "Annual & Retraining", about: "When the annual requirement is due, when a person who was away is retrained, and how long a person counts as a new employee. It is used by the training requirements, the training reviews and Training Compliance." },
   { id: "reminders", label: "Review Reminders", about: "When the person who must close a training review, and the person who opened it, are reminded. A reminder is sent once a week." },
   { id: "retention", label: "Records Retention", about: "How long training records are kept. It is used when the records of a person who left are archived." },
 ] as const;
-const FORMS_TAB = {
-  id: "forms",
-  label: "Assessment Forms",
-  about: "The Word source of a form such as APD.0009. The person who prepares a test starts from the enabled template and edits it in the browser. A template is enabled with an electronic signature, and enabling one disables the other of the same document number. The file never changes after it is uploaded.",
-} as const;
 
-/** Settings of Training Management. A change needs the version that was read and a reason, is checked by the server and is recorded in the Audit Trail. */
+/** Settings are version-checked and changes are recorded in the Audit Trail. */
 export const TrainingPropertiesView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
   const canManage = hasPermission("training.settings.manage");
-  const canAdminister = hasPermission("training.admin.manage");
 
   const [params, setParams] = useSearchParams();
   const tabs: TabItem[] = [
     ...SETTING_TABS.map(({ id, label }) => ({ id, label })),
-    ...(canAdminister ? [{ id: FORMS_TAB.id, label: FORMS_TAB.label }] : []),
   ];
   const requested = params.get("tab");
   const tab = tabs.some((x) => x.id === requested) ? (requested as string) : SETTING_TABS[0].id;
   const changeTab = (id: string) => setParams(id === SETTING_TABS[0].id ? {} : { tab: id }, { replace: true });
   const settingTab = SETTING_TABS.find((x) => x.id === tab);
 
-  const [uploadOpen, setUploadOpen] = React.useState(false);
   const [settings, setSettings] = React.useState<TrainingSettings | null>(null);
   const [original, setOriginal] = React.useState<TrainingSettings | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
   const [showSaveModal, setShowSaveModal] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
-  const [reason, setReason] = React.useState("");
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -134,13 +122,13 @@ export const TrainingPropertiesView: React.FC = () => {
         reviewReadyReminderDays: settings.reviewReadyReminderDays,
         reviewOpenReminderDays: settings.reviewOpenReminderDays,
         resultsDueDays: settings.resultsDueDays,
-        integrationEnabled: settings.integrationEnabled,
+        resultsDueDayType: settings.resultsDueDayType,
+        initialTrainingDays: settings.initialTrainingDays,
+        warnScheduledAfterDue: settings.warnScheduledAfterDue,
         version: settings.version,
-        reason: reason.trim(),
       });
       setSettings(saved);
       setOriginal(JSON.parse(JSON.stringify(saved)));
-      setReason("");
       setShowSaveModal(false);
       showToast({ type: "success", title: "Changes saved", message: "Training properties have been updated." });
     } catch (saveError) {
@@ -168,8 +156,8 @@ export const TrainingPropertiesView: React.FC = () => {
         </FormSection>
         <FormSection title="Results to QA" icon={<NotebookPen className="h-4 w-4" />} className="h-full">
           <NumberField
-            label="Days to send the results to QA"
-            hint="Counted in calendar days from the day the training was held (SOP.0003 5.3.7). The organizer is reminded on the last day, then every week while the results are late."
+            label="Days to finish the training and send the results to QA"
+            hint="SOP.0003 5.3.7: the results go to QA within 7 working days from the day the training was held; the number is the company's to set. This is the deadline, not a wait: Finish Training sends the results at once, and the trainer is reminded on the last day, then every week while it is late."
             value={settings.resultsDueDays}
             min={1}
             max={60}
@@ -177,6 +165,21 @@ export const TrainingPropertiesView: React.FC = () => {
             disabled={!canManage}
             onChange={(v) => patch({ resultsDueDays: v })}
           />
+          <div className="mt-4 min-w-0">
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Which days are counted</label>
+            <Select
+              value={settings.resultsDueDayType}
+              enableSearch={false}
+              disabled={!canManage}
+              onChange={(v) => patch({ resultsDueDayType: v as TrainingSettings["resultsDueDayType"] })}
+              options={[
+                { label: "Working days: Monday to Friday", value: "WORKING_MON_FRI" },
+                { label: "Working days: Monday to Saturday", value: "WORKING_MON_SAT" },
+                { label: "Every day (calendar days)", value: "CALENDAR" },
+              ]}
+            />
+            <p className="text-xs text-slate-500 mt-1">The public holidays are not known to the system: a holiday counts as a working day.</p>
+          </div>
         </FormSection>
       </div>
     ),
@@ -194,28 +197,27 @@ export const TrainingPropertiesView: React.FC = () => {
             onChange={(v) => patch({ documentTrainingDaysDefault: v })}
           />
         </FormSection>
-        <FormSection title="Document Control Link" icon={<Link2 className="h-4 w-4" />} className="h-full">
+        <FormSection title="Scheduling" icon={<CalendarClock className="h-4 w-4" />} className="h-full">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-900">Link with Document Control</p>
+              <p className="text-sm font-semibold text-slate-900">Warn when a session is scheduled after the due date</p>
               <p className="mt-1 text-xs text-slate-500">
-                <strong>{settings.integrationEnabled ? "On." : "Off."}</strong>{" "}
-                {settings.integrationEnabled
-                  ? "A document that requires training gets a Training Number and is completed through Training Management."
-                  : "Training dates are typed in Document Control, and a Training Number is not issued."}
+                <strong>{settings.warnScheduledAfterDue ? "On." : "Off."}</strong>{" "}
+                The session can still be saved; the activity shows that the day is after the due date.
               </p>
             </div>
             <Switch
-              checked={settings.integrationEnabled}
+              checked={settings.warnScheduledAfterDue}
               disabled={!canManage}
-              aria-label="Link with Document Control"
-              onChange={(checked) => patch({ integrationEnabled: checked })}
+              aria-label="Warn when a session is scheduled after the due date"
+              onChange={(checked) => patch({ warnScheduledAfterDue: checked })}
             />
           </div>
         </FormSection>
       </div>
     ),
     annual: (
+      <div className="space-y-4">
       <FormSection title="Annual Requirement & Retraining" icon={<CalendarClock className="h-4 w-4" />}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <NumberField
@@ -250,6 +252,21 @@ export const TrainingPropertiesView: React.FC = () => {
           />
         </div>
       </FormSection>
+      <FormSection title="New Employees" icon={<UserPlus className="h-4 w-4" />}>
+        <div className="max-w-md">
+          <NumberField
+            label="Days a person counts as a new employee"
+            hint="SOP.0003 5.1: a new employee has an initial training of three parts. A person who started within this number of days shows the label New employee in Training Compliance, Initial Training. The start is the start date of the person, or the day the account was created."
+            value={settings.initialTrainingDays}
+            min={1}
+            max={730}
+            fallback={90}
+            disabled={!canManage}
+            onChange={(v) => patch({ initialTrainingDays: v })}
+          />
+        </div>
+      </FormSection>
+      </div>
     ),
     reminders: (
       <FormSection title="Training Review Reminders" icon={<BellRing className="h-4 w-4" />}>
@@ -303,11 +320,6 @@ export const TrainingPropertiesView: React.FC = () => {
             <Button size="sm" variant="outline-emerald" disabled={!isDirty || saving} onClick={() => setShowSaveModal(true)}>
               Save Changes
             </Button>
-          ) : tab === "forms" && canAdminister ? (
-            <Button size="sm" onClick={() => setUploadOpen(true)}>
-              <IconPlus className="mr-2 h-4 w-4" />
-              Upload Template
-            </Button>
           ) : undefined
         }
       />
@@ -337,12 +349,6 @@ export const TrainingPropertiesView: React.FC = () => {
             )}
           </>
         )}
-        {tab === "forms" && canAdminister && (
-          <div className="space-y-4">
-            <p className="text-sm text-slate-600">{FORMS_TAB.about}</p>
-            <TrainingFormTemplates canEdit={canAdminister} uploadOpen={uploadOpen} onUploadClose={() => setUploadOpen(false)} />
-          </div>
-        )}
           </div>
         </div>
       </div>
@@ -350,21 +356,10 @@ export const TrainingPropertiesView: React.FC = () => {
       <AlertModal
         isOpen={showSaveModal}
         onClose={() => setShowSaveModal(false)}
-        onConfirm={() => {
-          if (reason.trim()) void save();
-        }}
+        onConfirm={() => { void save(); }}
         type="confirm"
         title="Save Training Properties?"
-        description={
-          <div className="space-y-3">
-            <p className="text-sm text-slate-600">
-              You are about to save changes to Training Properties. This action will be recorded in the Audit Trail.
-            </p>
-            <FormField label="Reason for the change" required hint={reason.trim() ? undefined : "Enter a reason to save."}>
-              <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
-            </FormField>
-          </div>
-        }
+        description="You are about to save changes to Training Properties. The previous and new values will be recorded in the Audit Trail."
         confirmText="Save Changes"
         cancelText="Cancel"
         isLoading={saving}

@@ -137,9 +137,40 @@ public class AccessProfileService {
     @Transactional(readOnly = true)
     public Page<AccessProfileResponse> listProfiles(int page, int size, String search, String type, String status,
             String createdFrom, String createdTo, String updatedFrom, String updatedTo) {
+        return listProfiles(page, size, search, type, status, createdFrom, createdTo, updatedFrom, updatedTo, "name", "asc");
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AccessProfileResponse> listProfiles(int page, int size, String search, String type, String status,
+            String createdFrom, String createdTo, String updatedFrom, String updatedTo, String sortBy, String sortDir) {
         requireView();
         Specification<RoleDefinition> spec = buildSpec(search, type, status, createdFrom, createdTo, updatedFrom, updatedTo);
-        Page<RoleDefinition> roles = roleRepo.findAll(spec, PageRequest.of(page, size, Sort.by("name")));
+        String key = Set.of("name", "type", "permissionSetCount", "assignedUserCount", "createdAt", "updatedAt")
+                .contains(sortBy == null ? "" : sortBy) ? sortBy : "name";
+        boolean descending = "desc".equalsIgnoreCase(sortDir);
+        Specification<RoleDefinition> ordered = spec.and((root, query, cb) -> {
+            if (query != null && query.getResultType() != Long.class && query.getResultType() != long.class) {
+                jakarta.persistence.criteria.Expression<?> expression;
+                if ("permissionSetCount".equals(key)) {
+                    var count = query.subquery(Long.class);
+                    var assignment = count.from(AccessProfilePermissionSet.class);
+                    count.select(cb.count(assignment.get("permissionSetId")))
+                            .where(cb.equal(assignment.get("accessProfileId"), root.get("id")));
+                    expression = count;
+                } else if ("assignedUserCount".equals(key)) {
+                    var count = query.subquery(Long.class);
+                    var assignment = count.from(UserAccessProfile.class);
+                    count.select(cb.count(assignment.get("userId")))
+                            .where(cb.equal(assignment.get("accessProfileId"), root.get("id")));
+                    expression = count;
+                } else {
+                    expression = root.get(key);
+                }
+                query.orderBy(descending ? cb.desc(expression) : cb.asc(expression), cb.asc(root.get("id")));
+            }
+            return cb.conjunction();
+        });
+        Page<RoleDefinition> roles = roleRepo.findAll(ordered, PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size))));
         return roles.map(this::toSummaryResponse);
     }
 
@@ -156,6 +187,14 @@ public class AccessProfileService {
         requireView();
         RoleDefinition role = requireRole(id);
         return toDetailResponse(role);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getProfileForEditor(UUID id) {
+        requireView();
+        RoleDefinition role = requireRole(id);
+        var userIds = uapRepo.findByAccessProfileId(id).stream().map(UserAccessProfile::getUserId).filter(Objects::nonNull).toList();
+        return Map.of("profile", toDetailResponse(role, false), "assignedUserIds", userIds);
     }
 
     @Transactional(readOnly = true)
@@ -981,6 +1020,19 @@ public class AccessProfileService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public Map<String, Object> queryAssignedUsers(UUID profileId, int page, int limit) {
+        var all = getAssignedUsers(profileId).stream()
+                .sorted(Comparator.comparing(AccessProfileDetailResponse.AssignedUserSummary::fullName,
+                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)).thenComparing(AccessProfileDetailResponse.AssignedUserSummary::id))
+                .toList();
+        int safePage = Math.max(1, page), size = Math.max(1, Math.min(100, limit));
+        int start = (int) Math.min((long) (safePage - 1) * size, all.size());
+        return Map.of("data", all.subList(start, Math.min(start + size, all.size())),
+                "assignedIds", all.stream().map(AccessProfileDetailResponse.AssignedUserSummary::id).toList(),
+                "pagination", new com.eqms.dto.user.PaginationResponse(safePage, size, all.size(), (int) Math.ceil((double) all.size() / size)));
+    }
+
     public void assignUser(UUID profileId, UUID userId, SecurityChangeRequest sig) {
         UserAccount actor = requireAssign();
         sig = SecurityChangeRequest.orEmpty(sig);
@@ -1348,6 +1400,10 @@ public class AccessProfileService {
     }
 
     private AccessProfileDetailResponse toDetailResponse(RoleDefinition role) {
+        return toDetailResponse(role, true);
+    }
+
+    private AccessProfileDetailResponse toDetailResponse(RoleDefinition role, boolean includeUsers) {
         List<AccessProfilePermissionSet> assignments = appSetRepo.findByAccessProfileId(role.getId());
         List<AccessProfileDetailResponse.PermissionSetSummary> psList = assignments.stream()
                 .map(a -> {
@@ -1360,7 +1416,7 @@ public class AccessProfileService {
         List<String> wfRoles = appWfRepo.findByAccessProfileId(role.getId()).stream()
                 .map(AccessProfileWorkflowRole::getWorkflowRole).toList();
 
-        List<AccessProfileDetailResponse.AssignedUserSummary> users = uapRepo.findByAccessProfileId(role.getId()).stream()
+        List<AccessProfileDetailResponse.AssignedUserSummary> users = !includeUsers ? List.of() : uapRepo.findByAccessProfileId(role.getId()).stream()
                 .map(a -> toUserSummary(a.getUser(), a.getAssignedAt()))
                 .filter(Objects::nonNull)
                 .toList();

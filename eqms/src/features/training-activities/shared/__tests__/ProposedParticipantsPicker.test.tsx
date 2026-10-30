@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const api = vi.hoisted(() => ({ people: vi.fn(), peopleGroups: vi.fn(), peopleInGroups: vi.fn() }));
+const api = vi.hoisted(() => ({ queryPeople: vi.fn(), peopleGroups: vi.fn(), peopleInGroups: vi.fn() }));
 vi.mock("@/services/api/trainingActivities", () => ({ trainingProposalApi: api }));
 
 import { ProposedParticipantsPicker } from "../ProposedParticipantsPicker";
@@ -12,7 +12,7 @@ const bob = { id: "b", fullName: "Bob Le", employeeCode: "E-002", department: "Q
 beforeEach(() => {
   Object.values(api).forEach((f) => f.mockReset());
   api.peopleGroups.mockResolvedValue([]);
-  api.people.mockResolvedValue([anne, bob]);
+  api.queryPeople.mockResolvedValue({ data: [anne, bob], pagination: { total: 2, totalPages: 1 } });
 });
 afterEach(cleanup);
 
@@ -53,6 +53,6 @@ describe("ProposedParticipantsPicker", () => {
 
     fireEvent.change(screen.getByLabelText("Search people"), { target: { value: "E-002" } });
 
-    await waitFor(() => expect(api.people).toHaveBeenLastCalledWith("E-002", 50));
+    await waitFor(() => expect(api.queryPeople).toHaveBeenLastCalledWith({ search: "E-002", businessUnit: undefined, department: undefined, page: 1, limit: 20 }));
   });
 });

@@ -18,6 +18,8 @@ const documents = vi.hoisted(() => ({ getDocumentsPage: vi.fn() }));
 const realtime = vi.hoisted(() => ({ listeners: new Set<(event: { type: string; data: string }) => void>() }));
 
 vi.mock('@/services/api/dashboard', () => ({ dashboardApi: api }));
+vi.mock('@/services/api/userUiPreferences', () => ({ DASHBOARD_LAYOUT_PREFERENCE: 'dashboard-layout', userUiPreferencesApi: { get: vi.fn().mockResolvedValue({}), save: vi.fn() } }));
+vi.mock('@/components/ui/toast/Toast', () => ({ useToast: () => ({ showToast: vi.fn() }) }));
 vi.mock('@/features/notifications/notificationRealtime', () => ({
   subscribeNotificationRealtime: (listener: (event: { type: string; data: string }) => void) => {
     realtime.listeners.add(listener);

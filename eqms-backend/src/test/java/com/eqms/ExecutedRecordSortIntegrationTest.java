@@ -137,4 +137,32 @@ class ExecutedRecordSortIntegrationTest {
     void an_unknown_key_keeps_the_default_order_newest_first() {
         assertThat(numbers("nonsense", "asc")).isEqualTo(numbers("created", "desc"));
     }
+
+    @Test
+    void recorded_date_filters_created_at_with_inclusive_local_days_and_independent_received_dates() {
+        ExecutedRecord template = recordRepository.findAll().stream()
+                .filter(r -> "SORT-A-WITHOUT".equals(r.getRecordNumber())).findFirst().orElseThrow();
+        Instant received = Instant.parse("2020-01-09T00:00:00Z");
+        String[] suffixes = {"BEFORE", "START", "LAST", "NEXT"};
+        String[] times = {"2020-01-01T16:59:59Z", "2020-01-01T17:00:00Z", "2020-01-02T16:59:59.999999Z", "2020-01-02T17:00:00Z"};
+        for (int i = 0; i < times.length; i++) {
+            save("RECORDED-DATE-" + suffixes[i], template.getFormDocument(), template.getFormRevision(), null, null,
+                    received, Instant.parse(times[i]), "recorded-date.pdf");
+        }
+
+        var day = service.list(1, 20, "RECORDED-DATE-", null, null, null, null,
+                "2020-01-02", "2020-01-02", "created", "asc");
+        assertThat(day.data()).extracting(ExecutedRecordResponse::recordNumber)
+                .containsExactly("RECORDED-DATE-START", "RECORDED-DATE-LAST");
+        assertThat(day.pagination().total()).isEqualTo(2);
+
+        assertThat(service.list(1, 20, "RECORDED-DATE-", null, null, null, null,
+                "2020-01-02", null, "created", "asc").data()).hasSize(3);
+        assertThat(service.list(1, 20, "RECORDED-DATE-", null, null, null, null,
+                null, "2020-01-02", "created", "asc").data()).hasSize(3);
+        assertThat(service.list(1, 20, "RECORDED-DATE-", null, null, "2020-01-02", "2020-01-02",
+                "2020-01-02", "2020-01-02", "created", "asc").data()).isEmpty();
+        assertThat(service.list(1, 20, "RECORDED-DATE-", null, null, null, null,
+                "2020-01-03", "2020-01-02", "created", "asc").data()).isEmpty();
+    }
 }

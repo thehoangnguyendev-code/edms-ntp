@@ -107,14 +107,21 @@ export function ComplianceSummaryTab({ departmentId, departments, onDepartment }
         <>
           <CoverageCard summary={summary} />
           <Group title="People">
-            <Tile icon={<IconUsers className="h-5 w-5" />} label="People with a Job Role" value={summary.people} hint="Counted against the effective matrix" />
+            <Tile icon={<IconUsers className="h-5 w-5" />} label="People measured" value={summary.people} hint="Every employee of the department: the rows for all employees apply to everyone, the others to the holders of a Work Position" />
+            <Tile
+              icon={<IconUsers className="h-5 w-5" />}
+              label="New employees"
+              value={summary.newEmployees ?? 0}
+              tone={(summary.newEmployeesWithGaps ?? 0) > 0 ? "amber" : "slate"}
+              hint={(summary.newEmployeesWithGaps ?? 0) > 0 ? `${summary.newEmployeesWithGaps} still miss a training: see the Gap List, filter New employees only` : "No new employee misses a training"}
+            />
             <Tile icon={<IconClipboardCheck className="h-5 w-5" />} label="Open training reviews" value={summary.openReviews ?? 0} tone={(summary.openReviews ?? 0) > 0 ? "amber" : "slate"} hint="New employees, returns after absence and transfers still being worked through" />
             <Tile
               icon={<IconUserOff className="h-5 w-5" />}
-              label="People without a Job Role"
+              label="People without a Work Position"
               value={summary.peopleWithoutPosition}
               tone={summary.peopleWithoutPosition > 0 ? "amber" : "slate"}
-              hint={summary.peopleWithoutPosition > 0 ? "Give them a Job Role (job assignment) so their requirements can be measured" : "Everyone has a Job Role"}
+              hint={summary.peopleWithoutPosition > 0 ? "Give them a Work Position (job assignment) so their requirements can be measured" : "Everyone has a Work Position"}
             />
           </Group>
           <Group title="Trainings">
@@ -125,6 +132,7 @@ export function ComplianceSummaryTab({ departmentId, departments, onDepartment }
               tone={summary.overdueActivities > 0 ? "red" : "slate"}
               hint={summary.overdueActivities > 0 ? "Past their due date and not yet completed" : "None past their due date"}
             />
+            <Tile icon={<IconAlertTriangle className="h-5 w-5" />} label="Moved beyond the SOP window" value={summary.linesBeyondSopWindow ?? 0} tone={(summary.linesBeyondSopWindow ?? 0) > 0 ? "amber" : "slate"} hint="Requirement lines moved later than the month after the approved one" />
             <Tile icon={<IconCalendarDue className="h-5 w-5" />} label="Due in 14 days" value={summary.dueSoonActivities} tone={summary.dueSoonActivities > 0 ? "amber" : "slate"} hint="Open trainings coming due" />
           </Group>
         </>

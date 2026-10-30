@@ -33,5 +33,6 @@ public record PublishingWorkspaceResponse(
         UUID publishingJobId,
         String publishingJobStatus,
         String publishingJobMessage,
-        String publishingJobError
+        String publishingJobError,
+        boolean previewStale
 ) {}

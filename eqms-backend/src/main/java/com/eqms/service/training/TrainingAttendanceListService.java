@@ -81,11 +81,11 @@ public class TrainingAttendanceListService {
         if ("RESERVED".equals(activity.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_CLOSED");
         Integer sessions = jdbc.queryForObject("select count(*) from training_sessions where activity_id = ? and status <> 'CANCELLED'", Integer.class, activityId);
         if (sessions == null || sessions == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_REQUIRED");
-        TrainingFormTemplates.Template template = templates.enabled(TEMPLATE_CODE);
+        TrainingFormTemplates.Template template = templates.enabledFor(TEMPLATE_CODE, "ACTIVITY", activityId, actor, format, !preview);
         byte[] source = template.bytes();
         byte[] docx;
         try {
-            docx = fill(source, load(activity));
+            docx = fill(source, load(activity), template.versionLabel());
         } catch (IOException e) {
             throw new IllegalStateException("TRAINING_PRINT_FAILED", e);
         }
@@ -121,7 +121,7 @@ public class TrainingAttendanceListService {
                  where st.session_id = ? order by st.topic_text
                 """, sid));
             people.put(sid, jdbc.queryForList("""
-                select p.person_user_id, p.employee_code, p.full_name, p.department, p.state, p.result, p.sign_mode, p.attend_signature_id, p.planned_absence
+                select p.person_user_id, p.employee_code, p.full_name, p.department, p.state, p.result, p.sign_mode, p.attend_signature_id, p.planned_absence, p.participation_role
                   from training_participants p where p.session_id = ? order by p.external_name is not null, p.full_name
                 """, sid));
         }
@@ -172,7 +172,19 @@ public class TrainingAttendanceListService {
     }
 
     private static String result(String result, String state) {
+        return result(result, state, "TRAINEE");
+    }
+
+    /** What the column "Training result" says; a person who takes no assessment is written with how they took part (the trainer is not on the list: the name is in the content of the training). */
+    private static String result(String result, String state, String role) {
         if ("READ_CONFIRMED".equals(state)) return "Đã đọc / Read";
+        if ("PASSED".equals(result)) {
+            switch (role) {
+                case "ATTENDEE": return "Tham dự, không làm bài / Attended, no assessment";
+                case "NAME_ONLY": return "Ghi tên, không làm bài / Listed, no assessment";
+                default: break;
+            }
+        }
         return switch (result) {
             case "PASSED" -> "Đạt / Passed";
             case "FAILED" -> "Không đạt / Failed";
@@ -187,14 +199,16 @@ public class TrainingAttendanceListService {
             case "ABSENT" -> "Vắng mặt / Absent";
             case "ONLINE" -> "Trực tuyến / Online";
             case "READ_CONFIRMED" -> "Đã đọc, ký điện tử / Read, signed electronically";
-            case "ATTENDED" -> "SELF".equals(mode) ? (p.get("attend_signature_id") != null ? "Ký điện tử khi điểm danh / Signed at check-in" : "Điểm danh điện tử / Checked in") : "ESIGN".equals(mode) ? "Ký điện tử / Signed electronically" : "Có mặt / Present";
+            case "ATTENDED" -> "NAME_ONLY".equals(text(p.get("participation_role"))) && "NONE".equals(mode) ? "Không ký, chỉ ghi tên / Not signed, listed only"
+                    : "SELF".equals(mode) ? (p.get("attend_signature_id") != null ? "Ký điện tử khi điểm danh / Signed at check-in" : "Điểm danh điện tử / Checked in") : "ESIGN".equals(mode) ? "Ký điện tử / Signed electronically" : "Có mặt / Present";
             default -> p.get("planned_absence") != null ? "Vắng mặt (đã báo) / Absent (planned)" : "";
         };
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ the form
 
-    private byte[] fill(byte[] template, Data d) throws IOException {
+    private byte[] fill(byte[] template, Data d, String revision) throws IOException {
+        if (TrainingAnnexEngine.isTokenized(template)) return TrainingAnnexEngine.render(template, annex(d, revision));
         byte[] shaped = shape(template, d.sessions().size());
         try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(shaped)); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Map<String, Object> a = d.activity();
@@ -205,7 +219,16 @@ public class TrainingAttendanceListService {
 
             XWPFTable info = find(doc, "Training Type");
             if (info.getRows().size() < 3) throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, STRUCTURE);
-            String content = text(a.get("training_title")) + (text(a.get("document_number")).isEmpty() ? "" : " (" + a.get("document_number") + (text(a.get("revision_number")).isEmpty() ? "" : " rev. " + a.get("revision_number")) + ")");
+            // What the training is about: each topic of its sessions, a topic that comes from a document written as the document (SOP.0003 5.3.5).
+            java.util.LinkedHashSet<String> subjects = new java.util.LinkedHashSet<>();
+            for (List<Map<String, Object>> list : d.topics().values()) {
+                for (Map<String, Object> t : list) {
+                    String topicNumber = text(t.get("document_number"));
+                    String subject = topicNumber.isEmpty() ? text(t.get("topic_text")) : (topicNumber + " " + text(t.get("document_name"))).trim();
+                    if (!subject.isEmpty()) subjects.add(subject);
+                }
+            }
+            String content = subjects.isEmpty() ? text(a.get("training_topics")) : String.join("; ", subjects);
             setText(info.getRow(0).getCell(1), content);
             setText(info.getRow(1).getCell(1), d.department());
             setText(info.getRow(2).getCell(1), kind(a));
@@ -237,7 +260,7 @@ public class TrainingAttendanceListService {
                 for (Map<String, Object> p : d.people().get(s.get("id"))) {
                     UUID person = (UUID) p.get("person_user_id");
                     lines.add(List.of(String.valueOf(no++), text(p.get("employee_code")), text(p.get("full_name")), text(p.get("department")), signature(p),
-                            finished ? result(text(p.get("result")), text(p.get("state"))) : "", finished && person != null ? d.retraining().getOrDefault(person, "") : ""));
+                            finished ? result(text(p.get("result")), text(p.get("state")), text(p.get("participation_role"))) : "", finished && person != null ? d.retraining().getOrDefault(person, "") : ""));
                 }
                 fillRows(lists.get(i), lines);
             }
@@ -263,6 +286,68 @@ public class TrainingAttendanceListService {
             doc.write(out);
             return out.toByteArray();
         }
+    }
+
+    /** The same facts, as the tokens of a template written for the Training Annex (PLAN-TR-004, 8.1). */
+    private TrainingAnnexData annex(Data d, String revision) {
+        Map<String, Object> a = d.activity();
+        java.util.LinkedHashSet<String> subjects = new java.util.LinkedHashSet<>();
+        for (List<Map<String, Object>> list : d.topics().values()) {
+            for (Map<String, Object> t : list) {
+                String topicNumber = text(t.get("document_number"));
+                String subject = topicNumber.isEmpty() ? text(t.get("topic_text")) : (topicNumber + " " + text(t.get("document_name"))).trim();
+                if (!subject.isEmpty()) subjects.add(subject);
+            }
+        }
+        List<TrainingAnnexData.Item> topicItems = new ArrayList<>();
+        List<TrainingAnnexData.Item> sessionItems = new ArrayList<>();
+        List<TrainingAnnexData.Item> trainerItems = new ArrayList<>();
+        boolean finished = a.get("results_finished_at") != null;
+        for (Map<String, Object> s : d.sessions()) {
+            boolean first = true;
+            Object day = s.get("held_on") != null ? s.get("held_on") : s.get("scheduled_on");
+            for (Map<String, Object> t : d.topics().get(s.get("id"))) {
+                String name = text(t.get("document_name")).isEmpty() ? text(t.get("topic_text")) : text(t.get("document_name")) + (text(t.get("local_title")).isEmpty() ? "" : " / " + t.get("local_title"));
+                topicItems.add(new TrainingAnnexData.Item().field("SESSION_NO", first ? "SS" + sessionLabel(s) : "").field("DOCUMENT_NUMBER", text(t.get("document_number"))).field("TITLE", name)
+                        .field("MODE", first ? mode(s.get("method")) : "").field("TRAINER", first ? text(s.get("trainer")) : "").field("EXECUTION_DATE", first && day != null ? DateTimeFormatUtils.display(day) : ""));
+                first = false;
+            }
+            List<TrainingAnnexData.Item> people = new ArrayList<>();
+            int no = 1;
+            for (Map<String, Object> p : d.people().get(s.get("id"))) {
+                UUID person = (UUID) p.get("person_user_id");
+                people.add(new TrainingAnnexData.Item().field("NO", String.valueOf(no++)).field("CODE", text(p.get("employee_code"))).field("NAME", text(p.get("full_name")))
+                        .field("DEPARTMENT", text(p.get("department")))
+                        .field("RESULT", finished ? result(text(p.get("result")), text(p.get("state")), text(p.get("participation_role"))) : "")
+                        .field("RETRAINING_RESULT", finished && person != null ? d.retraining().getOrDefault(person, "") : "")
+                        .signature("ATTENDANCE", attendanceSignature(p, s)));
+            }
+            sessionItems.add(new TrainingAnnexData.Item().field("LABEL", "SS" + sessionLabel(s)).children("ATTENDEE", people));
+            trainerItems.add(new TrainingAnnexData.Item().field("SESSION_NO", "SS" + sessionLabel(s)).field("NAME", text(s.get("trainer")))
+                    .signature("SENT", blocks.lines((UUID) s.get("attendance_signature_id"), TEMPLATE_CODE, "TRAINER.SENT")));
+        }
+        return TrainingAnnexData.forForm(TEMPLATE_CODE, revision).scalar("TRAINING_NUMBER", text(a.get("training_number")))
+                .scalar("ACTIVITY_CONTENT", subjects.isEmpty() ? text(a.get("training_topics")) : String.join("; ", subjects)).scalar("DEPARTMENT", d.department())
+                .scalar("TRAINING_TYPE", kind(a)).scalar("LIST_PREPARER_NAME", d.preparedBy()).scalar("QA_CONFIRMER_NAME", d.completedBy())
+                .group("TOPIC", topicItems).group("SESSION", sessionItems).group("TRAINER", trainerItems).caseOn("EXTERNAL", "EXTERNAL".equals(text(a.get("kind"))))
+                .signature("LIST_PREPARED", blocks.lines(d.preparedSignature(), TEMPLATE_CODE, "LIST_PREPARED")).signature("QA_COMPLETION", blocks.lines(d.completedSignature(), TEMPLATE_CODE, "QA_COMPLETION"));
+    }
+
+    /**
+     * The column "Signature" of APD.0117 is an electronic signature (owner decision 2026-10-29): the one the person gave when they checked in (QR code or code of the session, in My Training),
+     * or, when the trainer marked the person present on their behalf, the electronic signature of the trainer's roll call, with a line that says so. Online and absent are written as such.
+     */
+    private List<String> attendanceSignature(Map<String, Object> p, Map<String, Object> session) {
+        String state = text(p.get("state"));
+        if ("ABSENT".equals(state) || "ONLINE".equals(state)) return signature(p).isEmpty() ? List.of() : List.of(signature(p));
+        if (p.get("attend_signature_id") instanceof UUID own) return blocks.lines(own, TEMPLATE_CODE, "ATTENDEE.ATTENDANCE");
+        if ("ATTENDED".equals(state) && session.get("attendance_signature_id") instanceof UUID trainer) {
+            List<String> out = new ArrayList<>();
+            out.add("Giảng viên điểm danh hộ / Marked present by the trainer");
+            out.addAll(blocks.lines(trainer, TEMPLATE_CODE, "ATTENDEE.ATTENDANCE"));
+            return out;
+        }
+        return signature(p).isEmpty() ? List.of() : List.of(signature(p));
     }
 
     private static String sessionLabel(Map<String, Object> s) {

@@ -21,6 +21,7 @@ import {
   Tag,
   Trash2,
   Upload,
+  Download,
   Wand2,
   X,
 } from "lucide-react";
@@ -299,6 +300,28 @@ export const PublishingTemplateEditorView: React.FC = () => {
   const [slotPreviewButtonRefreshingKey, setSlotPreviewButtonRefreshingKey] = useState<string | null>(null);
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
   const [deletingSlot, setDeletingSlot] = useState<string | null>(null);
+  const [downloadingSlot, setDownloadingSlot] = useState<string | null>(null);
+
+  // The uploaded Word file as it is stored, to be completed in Word and uploaded again with Upload.
+  const handleDownloadSlot = async (componentType: "cover" | "body" | "header" | "footer", layout: "portrait" | "landscape", fileName: string | null | undefined, key: string) => {
+    if (!template?.id) return;
+    setDownloadingSlot(key);
+    try {
+      const blob = await publishingTemplatesApi.downloadComponent(template.id, componentType, layout);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName || `${componentType}-${layout}.docx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      showToast({ type: "error", title: "Download failed", message: getApiErrorMessage(error, "Unable to download the template file.") });
+    } finally {
+      setDownloadingSlot(null);
+    }
+  };
   const [copiedPlaceholder, setCopiedPlaceholder] = useState<string | null>(
     null,
   );
@@ -2139,6 +2162,17 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                     <Upload className="h-4 w-4" />
                                   )}
                                   Upload
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline-emerald"
+                                  className="gap-2"
+                                  onClick={() => void handleDownloadSlot(group.componentType, layout.toLowerCase() as "portrait" | "landscape", state.fileName, key)}
+                                  disabled={!hasFile || !template?.id || isSaving || downloadingSlot === key || deletingSlot === key}
+                                  title="Download the uploaded Word file, complete it, then upload it again"
+                                >
+                                  {downloadingSlot === key ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                  Download
                                 </Button>
                                 <Button
                                   size="sm"

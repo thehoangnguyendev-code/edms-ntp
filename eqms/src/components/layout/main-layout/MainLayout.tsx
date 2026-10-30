@@ -19,6 +19,7 @@ import { authApi } from '@/services/api/auth';
 import { settingsApi } from '@/services/api/settings';
 import { SECURITY_CONFIG_STORAGE_KEY } from '@/config/security';
 import { AnnouncementHost } from '../AnnouncementHost';
+import { subscribeNotificationRealtime } from '@/features/notifications/notificationRealtime';
 
 const MainLayoutContent: React.FC = () => {
   const navigate = useNavigate();
@@ -179,7 +180,7 @@ const MainLayoutContent: React.FC = () => {
           } catch {
             cached = {};
           }
-          config = { ...cached, documents, ...(security ? { security: { ...(cached.security ?? {}), sessionTimeoutMinutes: security.sessionTimeoutMinutes } } : {}) };
+          config = { ...cached, documents, ...(security ? { security: { ...(cached.security ?? {}), sessionTimeoutMinutes: security.sessionTimeoutMinutes, sessionTimeoutEnabled: security.sessionTimeoutEnabled } } : {}) };
         }
         if (!isActive) {
           return;
@@ -192,9 +193,18 @@ const MainLayoutContent: React.FC = () => {
     };
 
     void hydrateSecurityConfig();
+    const unsubscribeRealtime = subscribeNotificationRealtime((event) => {
+      if (event.type === 'security-config-updated') void hydrateSecurityConfig();
+    });
+    const refreshOnVisible = () => { if (!document.hidden) void hydrateSecurityConfig(); };
+    document.addEventListener('visibilitychange', refreshOnVisible);
+    const refreshTimer = window.setInterval(refreshOnVisible, 60_000);
 
     return () => {
       isActive = false;
+      unsubscribeRealtime();
+      document.removeEventListener('visibilitychange', refreshOnVisible);
+      window.clearInterval(refreshTimer);
     };
   }, [isAuthenticated, user?.permissions]);
 
@@ -243,6 +253,10 @@ const MainLayoutContent: React.FC = () => {
     }
     return 30;
   });
+  const [sessionTimeoutEnabled, setSessionTimeoutEnabled] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(SECURITY_CONFIG_STORAGE_KEY) || '{}')?.security?.sessionTimeoutEnabled !== false; }
+    catch { return true; }
+  });
   const lastActivityAtRef = useRef(Date.now());
 
   useEffect(() => {
@@ -251,6 +265,7 @@ const MainLayoutContent: React.FC = () => {
         const raw = localStorage.getItem(SECURITY_CONFIG_STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
+          setSessionTimeoutEnabled(parsed?.security?.sessionTimeoutEnabled !== false);
           const val = Number(parsed?.security?.sessionTimeoutMinutes);
           if (Number.isFinite(val) && val >= 1 && val <= 1440) {
             setSessionTimeoutMinutes(val);
@@ -265,7 +280,7 @@ const MainLayoutContent: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !sessionTimeoutEnabled) {
       return;
     }
 
@@ -281,7 +296,7 @@ const MainLayoutContent: React.FC = () => {
     }, 5000);
 
     return () => clearInterval(checkInactivity);
-  }, [isAuthenticated, sessionTimeoutMinutes]);
+  }, [isAuthenticated, sessionTimeoutMinutes, sessionTimeoutEnabled]);
 
   useEffect(() => {
     if (!isAuthenticated) {

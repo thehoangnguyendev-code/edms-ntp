@@ -1,0 +1,9 @@
+# Authentication background video — change record
+
+Requested: administrator-configured, optionally looping authentication background video, with server-side validation and transcoding and a maximum duration of 15 seconds.
+
+Implementation: FFmpeg is included in the backend Docker image. A permission-checked upload validates MP4/MOV input, probes duration and converts to H.264 without audio with bounded processing time and output size. Videos are stored separately from branding JSON; configuration stores the ID and repeat/overlay options. Public playback only serves the currently configured video; administrator preview requires configuration management permission. Configuration saves preserve the existing audit and authorization path. Background playback respects reduced-motion preferences.
+
+Evidence: backend tests cover rejection of invalid files, authorization, public access to only the active video, and configuration validation. Frontend tests cover the server upload request and preview controls alongside existing background behavior. The same FFmpeg/FFprobe command options were exercised in a disposable Ubuntu 22.04 container with a generated MP4. This is not an end-to-end application test. The container image, migration, actual 15-second rejection path, live multi-user configuration update and mobile playback still require deployment and runtime verification. Draft and historical uploads are retained; storage retention/cleanup has not been automated. This record does not assert regulatory compliance.
+
+The allowed input containers were subsequently extended to ISO media (MP4, MOV, M4V and 3GP), Matroska/WebM and AVI. Server-side signature detection chooses a fixed demuxer; file names and MIME types are not trusted for decoding. Unit tests cover accepted and rejected signatures. FFmpeg/FFprobe options were additionally exercised with generated WebM and AVI videos in a disposable Ubuntu container. Repeat uses the shared checkbox component.

@@ -34,6 +34,7 @@ import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
+import { TrainingDateField } from "../shared/TrainingDateField";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import {
@@ -92,6 +93,7 @@ export function TrainingRequirementListView() {
   const [creating, setCreating] = useState(false);
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [kind, setKind] = useState("ANNUAL");
+  const [reviewDone, setReviewDone] = useState("");
   const [busy, setBusy] = useState(false);
   const menu = usePortalDropdown();
 
@@ -213,6 +215,7 @@ export function TrainingRequirementListView() {
       const created = await trainingRequirementsApi.create({
         year: Number(year),
         kind,
+        reviewCompletedOn: kind === "SOP_PERIODIC" ? reviewDone || undefined : undefined,
       });
       showToast({
         type: "success",
@@ -389,7 +392,7 @@ export function TrainingRequirementListView() {
         description="A draft for your department. The request number is issued by the system."
         confirmText="Create draft"
         isLoading={busy}
-        confirmDisabled={!year}
+        confirmDisabled={!year || (kind === "SOP_PERIODIC" && !reviewDone)}
         size="md"
       >
         <div className="grid gap-4">
@@ -413,6 +416,11 @@ export function TrainingRequirementListView() {
               }))}
             />
           </FormField>
+          {kind === "SOP_PERIODIC" && (
+            <FormField label="Date the review of the SOPs was completed" required hint="SOP.0003 5.3.2: the requirement is prepared and approved at the latest on the last day of that month. The due date is set from it.">
+              <TrainingDateField value={reviewDone} onChange={setReviewDone} label="" />
+            </FormField>
+          )}
         </div>
       </FormModal>
     </div>

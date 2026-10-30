@@ -2,7 +2,7 @@ import { TrainingPersonName } from "../shared/TrainingPersonName";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { resettingDates, useDateRange, useDepartmentNameOptions } from "../shared/useListFilters";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { MoreVertical } from "lucide-react";
 import { IconEye, IconPlus, IconCheck, IconBan, IconPhotoShare, IconX, IconInfoCircle, IconFileDownload, IconFileTypeDocx, IconFileTypePdf } from "@tabler/icons-react";
 import { useSpecimenActions } from "./useSpecimenActions";
@@ -35,7 +35,6 @@ import {
   trainingActivitiesApi,
   trainingError,
   trainingSpecimenApi,
-  type TrainingPerson,
   type TrainingSpecimen,
 } from "@/services/api/trainingActivities";
 import {
@@ -48,7 +47,6 @@ import { SpecimenImagePicker } from "../shared/SpecimenImagePicker";
 /** Specimen signatures. The image is never in the list: it is opened on request, with a check each time, and the opening is recorded in the Audit Trail. */
 export function TrainingSpecimenView() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
   const canManage = hasPermission("training.signature.manage");
@@ -64,8 +62,6 @@ export function TrainingSpecimenView() {
   const [file2, setFile2] = useState<File | null>(null);
   const [forPerson, setForPerson] = useState("");
   const [people, setPeople] = useState<{ label: string; value: string }[]>([]);
-  const [confirmers, setConfirmers] = useState<TrainingPerson[]>([]);
-  const [confirmerId, setConfirmerId] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -102,19 +98,7 @@ export function TrainingSpecimenView() {
   useEffect(() => {
     if (!uploading) return;
     void (canManage ? searchPeople("") : Promise.resolve([]));
-    trainingSpecimenApi
-      .eligibleConfirmers(forPerson || undefined)
-      .then((p) => setConfirmers(p.data))
-      .catch(() => setConfirmers([]));
-  }, [uploading, forPerson, canManage, searchPeople]);
-  // "Upload Again" from the detail page of a rejected signature opens the upload for that person
-  useEffect(() => {
-    const again = searchParams.get("uploadAgain");
-    if (!again) return;
-    setForPerson(again);
-    setUploading(true);
-    setSearchParams({}, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [uploading, canManage, searchPeople]);
   const upload = async () => {
     if (!file || !file2) return;
     setBusy(true);
@@ -122,19 +106,17 @@ export function TrainingSpecimenView() {
       await trainingSpecimenApi.upload(
         file,
         file2,
-        confirmerId,
         forPerson || undefined,
         reason.trim() || undefined,
       );
       showToast({
         type: "success",
         title: "Specimen signature uploaded",
-        message: "It waits for confirmation.",
+        message: "It is now the current record of the person.",
       });
       setUploading(false);
       setFile(null);
       setFile2(null);
-      setConfirmerId("");
       setReason("");
       setForPerson("");
       table.reload();
@@ -148,7 +130,7 @@ export function TrainingSpecimenView() {
       setBusy(false);
     }
   };
-  const actions = useSpecimenActions(() => table.reload());
+  const actions = useSpecimenActions();
 
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
@@ -182,7 +164,7 @@ export function TrainingSpecimenView() {
     { id: "uploadedOn", header: "Uploaded On", sort: sorted("createdAt"), cell: (r) => day(r.createdAt) },
     {
       id: "confirmed",
-      header: "Confirmed By", sort: sorted("confirmedBy"),
+      header: "Confirmed By (earlier workflow)", sort: sorted("confirmedBy"),
       cell: (r) => r.confirmedByName ?? "—",
     },
     { id: "effective", header: "Effective Date", sort: sorted("effective"), cell: (r) => day(r.effectiveDate) },
@@ -191,7 +173,7 @@ export function TrainingSpecimenView() {
       header: "Reason", sort: sorted("reason"),
       cell: (r) => (
         <div className="max-w-60 whitespace-normal">
-          {r.rejectReason ?? r.changeReason ?? "—"}
+          {r.changeReason ?? "—"}
         </div>
       ),
     },
@@ -282,7 +264,7 @@ export function TrainingSpecimenView() {
           emptyState={
             <TableEmptyState
               title="No Specimen Signatures"
-              description="Upload the image of a signature to have it confirmed."
+              description="Upload the scan of the paper that the employee signed by hand (FRM.0007) to keep it as a record."
             />
           }
           pagination={
@@ -321,62 +303,6 @@ export function TrainingSpecimenView() {
                 View Image
               </DropdownMenuItem>
             )}
-            {(row.status === "APPROVED" || (row.status === "OBSOLETED" && !!row.effectiveDate)) && row.capabilities.viewImage && (
-              <>
-                <DropdownMenuItem
-                  icon={<IconFileTypeDocx className="h-4 w-4" />}
-                  onClick={() => {
-                    void actions.downloadForm(row, "docx");
-                    menu.close();
-                  }}
-                >
-                  Download Word (FRM.0007)
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  icon={<IconFileTypePdf className="h-4 w-4" />}
-                  onClick={() => {
-                    void actions.downloadForm(row, "pdf");
-                    menu.close();
-                  }}
-                >
-                  Download PDF (FRM.0007)
-                </DropdownMenuItem>
-              </>
-            )}
-            {row.capabilities.reupload && (
-              <DropdownMenuItem
-                icon={<IconPlus className="h-4 w-4" />}
-                onClick={() => {
-                  setForPerson(row.personUserId);
-                  setUploading(true);
-                  menu.close();
-                }}
-              >
-                Upload Again
-              </DropdownMenuItem>
-            )}
-            {row.capabilities.confirm && (
-              <DropdownMenuItem
-                icon={<IconCheck className="h-4 w-4" />}
-                onClick={() => {
-                  actions.askConfirm(row);
-                  menu.close();
-                }}
-              >
-                Confirm
-              </DropdownMenuItem>
-            )}
-            {row.capabilities.reject && (
-              <DropdownMenuItem
-                icon={<IconX className="h-4 w-4" />}
-                onClick={() => {
-                  actions.askReject(row);
-                  menu.close();
-                }}
-              >
-                Reject
-              </DropdownMenuItem>
-            )}
           </div>
         )}
       </PortalDropdownMenu>
@@ -390,10 +316,10 @@ export function TrainingSpecimenView() {
         }}
         onConfirm={() => void upload()}
         title="Upload a Specimen Signature"
-        description="A PNG, JPEG, WebP or BMP picture of up to 5 MB (not a GIF). The person you choose confirms it with a signature; it cannot be the employee or you."
+        description="The scan of the paper that the employee signed by hand (FRM.0007): a PNG, JPEG, WebP or BMP picture of up to 5 MB (not a GIF). It becomes the current record of the employee at once; nobody confirms it."
         confirmText="Upload"
         isLoading={busy}
-        confirmDisabled={!file || !file2 || !confirmerId}
+        confirmDisabled={!file || !file2}
         size="md"
       >
         <div className="grid gap-4">
@@ -414,24 +340,7 @@ export function TrainingSpecimenView() {
           <FormField label="2nd specimen signature" required>
             <SpecimenImagePicker file={file2} onChange={setFile2} />
           </FormField>
-          <FormField label="Who confirms" required>
-            {confirmers.length === 0 ? (
-              <p className="text-sm text-amber-700">
-                No eligible person was found.
-              </p>
-            ) : (
-              <Select
-                value={confirmerId}
-                onChange={setConfirmerId}
-                options={confirmers.map((p) => ({
-                  label: `${p.fullName}${p.position ? ` — ${p.position}` : ""}`,
-                  value: p.id,
-                }))}
-                placeholder="Choose"
-              />
-            )}
-          </FormField>
-          <FormField label="Reason (needed when it replaces an approved image)">
+          <FormField label="Reason (needed when it replaces the current record)">
             <Textarea
               rows={2}
               value={reason}

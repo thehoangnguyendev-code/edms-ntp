@@ -107,8 +107,8 @@ export const dashboardApi = {
   getSystemMonitoring: () =>
     api.get<DashboardSystemMonitoring>("/dashboard/system-monitoring").then((r) => r.data),
 
-  getPendingWorkflowActions: () =>
-    api.get<DashboardPendingWorkflowAction[]>("/dashboard/my-tasks").then((r) => r.data),
+  getPendingWorkflowActions: (search?: string) =>
+    api.get<DashboardPendingWorkflowAction[]>("/dashboard/my-tasks", { params: { search: search || undefined } }).then((r) => r.data),
 
   getRecentActivity: () =>
     api

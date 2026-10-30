@@ -374,12 +374,15 @@ public class NavigationService {
             List<NavigationItemResponse> trainingAdminChildren = new ArrayList<>();
             if (hasPermission(normalizedPermissions, "training.admin.properties.view") || hasPermission(normalizedPermissions, "training.settings.view")) {
                 trainingAdminChildren.add(new NavigationItemResponse("training-admin-properties", "Training Properties", null, "/settings/administration/training/properties", false, null));
+                trainingAdminChildren.add(new NavigationItemResponse("training-admin-code-rules", "Training Code Rules", null, "/settings/administration/training/code-rules", false, null));
             }
             if (hasPermission(normalizedPermissions, "training.admin.manage")) {
-                trainingAdminChildren.add(new NavigationItemResponse("training-admin-topics", "Training Topics", null, "/settings/administration/training/topics", false, null));
                 trainingAdminChildren.add(new NavigationItemResponse("training-admin-vendors", "Training Vendors", null, "/settings/administration/training/vendors", false, null));
-                trainingAdminChildren.add(new NavigationItemResponse("training-admin-job-roles", "Job Roles", null, "/settings/administration/training/job-roles", false, null));
+                trainingAdminChildren.add(new NavigationItemResponse("training-admin-job-roles", "Work Positions", null, "/settings/administration/training/job-roles", false, null));
                 trainingAdminChildren.add(new NavigationItemResponse("training-admin-notifications", "Training Notifications", null, "/settings/administration/training/notifications", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "training.annex.view")) {
+                trainingAdminChildren.add(new NavigationItemResponse("training-admin-annex", "Training Annex", null, "/settings/administration/training/annex", false, null));
             }
             if (!trainingAdminChildren.isEmpty()) {
                 sysAdminChildren.add(new NavigationItemResponse("training-administration", "Training Administration", "GraduationCap", null, false, trainingAdminChildren));

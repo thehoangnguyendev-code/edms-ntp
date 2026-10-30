@@ -90,10 +90,14 @@ public class DashboardService {
     }
 
     public List<DashboardMyTaskResponse> getMyTasks(AuthenticatedUser currentUser) {
-        return revisionRepo.findMyPendingTasks(
-                        currentUser.userId(), MY_TASK_STATUSES, MY_TASK_PARTICIPANT_TYPES
+        return getMyTasks(currentUser, "");
+    }
+
+    public List<DashboardMyTaskResponse> getMyTasks(AuthenticatedUser currentUser, String search) {
+        return revisionRepo.findMyPendingTasksMatching(
+                        currentUser.userId(), MY_TASK_STATUSES, MY_TASK_PARTICIPANT_TYPES,
+                        search == null ? "" : search.trim().replace("!", "!!").replace("%", "!%").replace("_", "!_"), org.springframework.data.domain.PageRequest.of(0, 20)
                 ).stream()
-                .limit(20)
                 .map(this::toMyTaskResponse)
                 .toList();
     }

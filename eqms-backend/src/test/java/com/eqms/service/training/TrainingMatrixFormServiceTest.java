@@ -29,9 +29,7 @@ class TrainingMatrixFormServiceTest {
     private static Map<String, Object> row(String group, String topicCode, String topicName, String documentNumber, String documentName, boolean annual, List<String> positions) {
         Map<String, Object> r = new java.util.HashMap<>();
         r.put("rowGroup", group);
-        r.put("topicId", topicCode == null ? null : "t-" + topicCode);
-        r.put("topicCode", topicCode);
-        r.put("topicName", topicName);
+        r.put("topicText", topicName);
         r.put("documentNumber", documentNumber);
         r.put("documentName", documentName);
         r.put("annualRequired", annual);
@@ -88,10 +86,10 @@ class TrainingMatrixFormServiceTest {
         try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(out))) {
             XWPFTable t = doc.getTables().get(0);
             // heading (2 rows), group heading, row 1
-            var gmp = t.getRows().stream().filter(r -> r.getCell(1) != null && r.getCell(1).getText().equals("GMP")).findFirst().orElseThrow();
-            assertEquals(List.of("1", "GMP", "Tổng quan về GMP", "X", "X", "Yes"), gmp.getTableCells().stream().map(c -> c.getText().trim()).toList());
-            var qa = t.getRows().stream().filter(r -> r.getCell(1) != null && r.getCell(1).getText().equals("QA-1")).findFirst().orElseThrow();
-            assertEquals(List.of("2", "QA-1", "Kỹ năng đánh giá", "X", "", "No"), qa.getTableCells().stream().map(c -> c.getText().trim()).toList());
+            var gmp = t.getRows().stream().filter(r -> r.getCell(2) != null && r.getCell(2).getText().equals("Tổng quan về GMP")).findFirst().orElseThrow();
+            assertEquals(List.of("1", "", "Tổng quan về GMP", "X", "X", "Yes"), gmp.getTableCells().stream().map(c -> c.getText().trim()).toList());
+            var qa = t.getRows().stream().filter(r -> r.getCell(2) != null && r.getCell(2).getText().equals("Kỹ năng đánh giá")).findFirst().orElseThrow();
+            assertEquals(List.of("2", "", "Kỹ năng đánh giá", "X", "", "No"), qa.getTableCells().stream().map(c -> c.getText().trim()).toList());
             var sop = t.getRows().stream().filter(r -> r.getCell(1) != null && r.getCell(1).getText().equals("SOP.0003")).findFirst().orElseThrow();
             assertEquals(List.of("3", "SOP.0003", "Training", "", "X", "Yes"), sop.getTableCells().stream().map(c -> c.getText().trim()).toList());
         }
@@ -126,6 +124,20 @@ class TrainingMatrixFormServiceTest {
             doc.write(o);
             var e = org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> TrainingMatrixFormService.fill(o.toByteArray(), version(2)));
             assertEquals("TRAINING_FORM_TEMPLATE_STRUCTURE", e.getMessage());
+        }
+    }
+
+    @Test
+    void theTokenizedTemplateDrawsTheMatrixAtItsBlockAndWritesTheDepartmentAndTheSignatures() throws Exception {
+        byte[] tokenized = java.nio.file.Files.readAllBytes(java.nio.file.Path.of("../docs/training_docs/annex-tokenized/APD.0011.docx"));
+        byte[] out = TrainingAnnexEngine.render(tokenized, TrainingMatrixFormService.annex(version(2), List.of(List.of("Signed: Nguyễn Văn An", "2026-10-20")), "2"));
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(out))) {
+            String paragraphs = String.join(" | ", doc.getParagraphs().stream().map(XWPFParagraph::getText).toList());
+            assertTrue(paragraphs.contains("Training matrix - Quality Assurance") && paragraphs.contains("Matrix code: TRM-QA") && paragraphs.contains("Signed: Nguyễn Văn An"), paragraphs);
+            assertFalse(paragraphs.contains("{{") || paragraphs.contains("LỊCH SỬ SỬA ĐỔI"));
+            assertEquals(1, doc.getTables().size());
+            String t = text(doc.getTables().get(0));
+            assertTrue(t.contains("Position 1") && t.contains("Position 2") && t.contains("Tổng quan về GMP") && t.contains("SOP.0003"));
         }
     }
 }

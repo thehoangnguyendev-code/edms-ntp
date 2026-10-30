@@ -64,6 +64,14 @@ final class TrainingWordForms {
         throw structure();
     }
 
+    /** The first table that holds one of the words (a form whose printed word was corrected keeps working). */
+    static XWPFTable findAny(XWPFDocument doc, String... tokens) {
+        for (String token : tokens) {
+            for (XWPFTable table : doc.getTables()) if (cellsText(table).contains(token)) return table;
+        }
+        throw structure();
+    }
+
     static List<XWPFTable> findAll(XWPFDocument doc, String token) {
         List<XWPFTable> out = new ArrayList<>();
         for (XWPFTable table : doc.getTables()) if (cellsText(table).contains(token)) out.add(table);

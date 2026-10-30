@@ -11,8 +11,7 @@ import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { dictionaryApi } from "@/services/api/dictionary";
-import { trainingError, trainingFormsApi, trainingRecordsApi, type TrainingNumberLogRow } from "@/services/api/trainingActivities";
-import { FormDownloadButtons } from "../shared/FormDownloadButtons";
+import { trainingError, trainingRecordsApi, type TrainingNumberLogRow } from "@/services/api/trainingActivities";
 import { KIND_LABEL, KIND_REASON_LABEL, STATUS_COLOR, STATUS_LABEL, day, trainingBreadcrumbs, TRAINING_PAGES } from "../shared/trainingLabels";
 import { resettingDates, useDateRange } from "../shared/useListFilters";
 
@@ -59,7 +58,7 @@ export function TrainingNumberLogView() {
     { id: "date", header: "Issued On", sort: sorted("date"), cell: (r) => day(r.createdAt) },
     { id: "number", header: "Training Number", sort: sorted("number"), cell: (r) => <span className="font-medium text-slate-900">{r.trainingNumber}</span> },
     { id: "kind", header: "Type", sort: sorted("kind"), cell: (r) => KIND_LABEL[r.kind] ?? r.kind },
-    { id: "title", header: "Training Title", sort: sorted("title"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.trainingTitle}</div> },
+    { id: "title", header: "Training Topic", sort: sorted("title"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.trainingTopics}</div> },
     { id: "document", header: "SOP", sort: sorted("document"), cell: (r) => (r.documentNumber ? `${r.documentNumber}${r.revisionNumber ? ` Rev ${r.revisionNumber}` : ""}` : "—") },
     { id: "sessions", header: "Sessions", sort: sorted("sessions"), cell: (r) => r.sessions },
     { id: "status", header: "Status", sort: sorted("status"), cell: (r) => <Badge color={STATUS_COLOR[r.status] ?? "slate"}>{STATUS_LABEL[r.status] ?? r.status}</Badge> },
@@ -91,17 +90,10 @@ export function TrainingNumberLogView() {
       <PageHeader
         title={TRAINING_PAGES.numberLog.title}
         breadcrumbItems={trainingBreadcrumbs(navigate, "numberLog")}
-        actions={(
-          <FormDownloadButtons
-            label="The log"
-            load={(format) => trainingFormsApi.numberLog(departmentId || undefined, Number(year), format)}
-            fileName={(format) => `FRM.0044-${year}.${format}`}
-          />
-        )}
       />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar
-        searchPlaceholder="Search Training Number, topic or SOP…"
+        searchPlaceholder="Search Training Number, Training Topic or SOP…"
         search={table.searchQuery}
         onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
         filters={filters}

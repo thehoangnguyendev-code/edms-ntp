@@ -53,8 +53,8 @@ public class TrainingJobAssignmentService {
     public record DutyRequest(String responsibility, String description, String responsibilityEn, String descriptionEn) {
         public DutyRequest(String responsibility, String description) { this(responsibility, description, null, null); }
     }
-    public record SaveRequest(UUID personUserId, UUID positionId, String directSuperiorTitle, String subordinateTitles, String substituteTitle, String changeReason,
-                              String jurisdiction, List<DutyRequest> duties, Integer version, String mode, UUID replacesPositionId, List<UUID> requiredTopicIds, List<UUID> requiredDocumentIds) {}
+    public record SaveRequest(UUID personUserId, UUID positionId, List<UUID> positionIds, String directSuperiorTitle, String subordinateTitles, String substituteTitle, String changeReason,
+                              String jurisdiction, List<DutyRequest> duties, Integer version, String mode, UUID replacesPositionId, List<String> requiredTopics, List<UUID> requiredDocumentIds) {}
     public record ExceptionRequest(String reason, UUID approverUserId) {}
     public record SignRequest(Integer version, String signatureToken, String assignorTitle) {}
     public record CancelRequest(Integer version, String reason) {}
@@ -84,10 +84,10 @@ public class TrainingJobAssignmentService {
         if (status != null && !status.isBlank()) { where.append(" and j.status = ?"); args.add(status); }
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\' or lower(p.name) like ? escape '\\' or lower(coalesce(d.name,'')) like ? escape '\\')");
+            where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\' or exists (select 1 from training_job_assignment_roles sr join training_job_roles sj on sj.id = sr.job_role_id where sr.assignment_id = j.id and lower(sj.name) like ? escape '\\') or lower(coalesce(d.name,'')) like ? escape '\\')");
             args.add(like); args.add(like); args.add(like); args.add(like);
         }
-        TrainingListFilter extra = new TrainingListFilter().equal("j.person_user_id", uuid(more.get("personId"))).equal("j.case_type", more.get("caseType")).equal("j.department_id", uuid(more.get("departmentId"))).equal("j.position_id", uuid(more.get("positionId")))
+        TrainingListFilter extra = new TrainingListFilter().equal("j.person_user_id", uuid(more.get("personId"))).equal("j.case_type", more.get("caseType")).equal("j.department_id", uuid(more.get("departmentId"))).raw(uuid(more.get("positionId")) == null ? "true" : "exists (select 1 from training_job_assignment_roles fr where fr.assignment_id = j.id and fr.job_role_id = ?)", uuid(more.get("positionId")) == null ? new Object[0] : new Object[]{uuid(more.get("positionId"))})
                 .timeRange("j.effective_at", more.get("effectiveFrom"), more.get("effectiveTo")).timeRange("j.created_at", more.get("createdFrom"), more.get("createdTo"));
         where.append(extra.and());
         args.addAll(extra.args());
@@ -95,12 +95,17 @@ public class TrainingJobAssignmentService {
         Long total = jdbc.queryForObject("select count(*)" + from + where, Long.class, args.toArray());
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
         args.add(safeLimit); args.add((safePage - 1) * safeLimit);
-        List<Map<String, Object>> rows = jdbc.queryForList("select j.id, j.issue_no, j.case_type, j.status, j.created_at, j.effective_at, j.department_id, j.person_user_id, u.full_name, u.employee_code, u.avatar, p.name as position_name, d.name as department_name"
+        List<Map<String, Object>> rows = jdbc.queryForList("select j.id, j.issue_no, j.case_type, j.status, j.created_at, j.effective_at, j.department_id, j.person_user_id, u.full_name, u.employee_code, u.avatar, (select string_agg(r.name, ', ' order by ar.sort_order) from training_job_assignment_roles ar join training_job_roles r on r.id = ar.job_role_id where ar.assignment_id = j.id) as position_name, (select coalesce(json_agg(json_build_object('id', p.id, 'name', p.name, 'carried', p.carried) order by p.sort_order, p.id), '[]'::json)::text from (select r.id, r.name, ar.carried, ar.sort_order from training_job_assignment_roles ar join training_job_roles r on r.id = ar.job_role_id where ar.assignment_id = j.id order by ar.sort_order, r.id limit 2) p) as positions_json, (select count(*) from training_job_assignment_roles ar where ar.assignment_id = j.id) as positions_count, d.name as department_name"
                 + from + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("employee", "u.full_name", "employeeCode", "u.employee_code", "position", "p.name", "department", "d.name", "type", "j.case_type", "issue", "j.issue_no", "status", "j.status", "effective", "j.effective_at", "createdAt", "j.created_at"),
                 "j.created_at desc") + " limit ? offset ?", args.toArray());
         // what the menu of a row may offer, decided here: the permission and the department for the draft, the person herself or himself for the acceptance
         boolean manage = access.has(actor, "training.job_assignment.manage");
         for (Map<String, Object> row : rows) {
+            try {
+                row.put("positions", json.readValue((String) row.remove("positions_json"), List.class));
+            } catch (JsonProcessingException e) {
+                throw new IllegalStateException("Invalid job assignment positions", e);
+            }
             UUID rowDepartment = (UUID) row.remove("department_id");
             UUID rowPerson = (UUID) row.remove("person_user_id");
             Map<String, Object> actions = new LinkedHashMap<>();
@@ -114,6 +119,28 @@ public class TrainingJobAssignmentService {
         long count = total == null ? 0 : total;
         result.put("pagination", Map.of("page", safePage, "limit", safeLimit, "total", count, "totalPages", Math.max(1, (count + safeLimit - 1) / safeLimit)));
         return result;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> positions(UserAccount actor, UUID id, String search, int page, int limit) {
+        visible(actor, id);
+        String like = "%" + (search == null ? "" : search.trim().toLowerCase(Locale.ROOT)).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+        int safePage = Math.max(1, page);
+        int safeLimit = Math.min(100, Math.max(1, limit));
+        Long count = jdbc.queryForObject("""
+            select count(*) from training_job_assignment_roles ar join training_job_roles r on r.id = ar.job_role_id
+             where ar.assignment_id = ? and lower(r.name) like ? escape '\\'
+            """, Long.class, id, like);
+        long total = count == null ? 0 : count;
+        List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList("""
+            select r.id::text as id, r.name, coalesce(d.name, '') as department, ar.carried
+              from training_job_assignment_roles ar join training_job_roles r on r.id = ar.job_role_id
+              left join departments d on d.id = r.department_id
+             where ar.assignment_id = ? and lower(r.name) like ? escape '\\' order by ar.sort_order, r.id
+             limit ? offset ?
+            """, id, like, safeLimit, (long) (safePage - 1) * safeLimit));
+        return Map.of("data", rows, "pagination", Map.of("page", safePage, "limit", safeLimit, "total", total,
+                "totalPages", Math.max(1, (total + safeLimit - 1) / safeLimit)));
     }
 
     private static UUID uuid(String value) {
@@ -154,8 +181,15 @@ public class TrainingJobAssignmentService {
         Map<String, Object> j = visible(actor, id);
         Map<String, Object> out = TrainingRows.camel(j);
         out.put("personName", jdbc.queryForObject("select full_name from app_users where id=?", String.class, j.get("person_user_id")));
-        out.put("positionName", jdbc.queryForObject("select name from training_job_roles where id=?", String.class, j.get("position_id")));
+        List<Map<String, Object>> roleRows = jdbc.queryForList("""
+            select r.id::text as id, r.name as name, coalesce(d.name, '') as department, ar.carried as carried
+              from training_job_assignment_roles ar join training_job_roles r on r.id = ar.job_role_id left join departments d on d.id = r.department_id
+             where ar.assignment_id = ? order by ar.sort_order
+            """, id);
+        out.put("roles", roleRows);
+        out.put("positionName", roleRows.stream().map(r -> String.valueOf(r.get("name"))).collect(java.util.stream.Collectors.joining(", ")));
         out.put("departmentName", jdbc.queryForObject("select name from departments where id=?", String.class, j.get("department_id")));
+        out.put("departmentNames", roleRows.stream().map(r -> String.valueOf(r.get("department"))).filter(x -> !x.isBlank()).distinct().collect(java.util.stream.Collectors.joining(", ")));
         out.put("previousPositionName", j.get("previous_position_id") == null ? null : jdbc.queryForObject("select name from training_job_roles where id=?", String.class, j.get("previous_position_id")));
         putRoleLists(out, j);
         out.remove("heldBefore");
@@ -164,15 +198,15 @@ public class TrainingJobAssignmentService {
         // Who signed and when, as the Signatures tab shows it (the signature itself is kept by the signature service; this only reads it).
         out.put("signatures", TrainingRows.camel(jdbc.queryForList("select meaning, full_name, signed_at from electronic_signatures where entity_type=? and entity_id=? and status='SIGNED' order by signed_at", TYPE, id)));
         out.put("requiredItems", TrainingRows.camel(jdbc.queryForList("""
-            select i.topic_id, i.document_id, coalesce(t.name, d.document_name) as title, coalesce(t.code, d.document_number) as code
-              from training_job_required_items i left join training_topics t on t.id = i.topic_id left join documents d on d.id = i.document_id where i.assignment_id = ? order by i.sort_order
+            select i.topic_text, i.document_id, coalesce(i.topic_text, d.document_name) as title, d.document_number as code
+              from training_job_required_items i left join documents d on d.id = i.document_id where i.assignment_id = ? order by i.sort_order
             """, id)));
-        if ("DRAFT".equals(j.get("status"))) out.put("eligibility", eligibilityFor((UUID) j.get("person_user_id"), (UUID) j.get("position_id"), (UUID) j.get("department_id"), requiredOf(id)));
+        if ("DRAFT".equals(j.get("status"))) out.put("eligibility", eligibilityForRoles((UUID) j.get("person_user_id"), newRolesOf(id), requiredOf(id)));
         out.put("capabilities", capabilities(actor, j));
         return out;
     }
 
-    /** The Job Roles the person holds now, as the form of a change or an additional assignment lists them (id, name, department). */
+    /** The Work Positions the person holds now, as the form of a change or an additional assignment lists them (id, name, department). */
     private String heldRolesJson(UUID personId) {
         List<Map<String, Object>> held = jdbc.queryForList("""
             select r.id::text as id, r.name as name, coalesce(d.name, '') as department
@@ -185,14 +219,11 @@ public class TrainingJobAssignmentService {
     /** The roles listed on the form: held before, and held after (before, without the one that is replaced, with the one that is given). */
     @SuppressWarnings("unchecked")
     private void putRoleLists(Map<String, Object> out, Map<String, Object> j) {
+        out.put("rolesAfter", out.get("roles"));
         if (j.get("held_before") == null) return;
         try {
             List<Map<String, Object>> before = json.readValue(String.valueOf(j.get("held_before")), List.class);
-            List<Map<String, Object>> after = new ArrayList<>();
-            for (Map<String, Object> role : before) if (!String.valueOf(role.get("id")).equals(String.valueOf(j.get("previous_position_id")))) after.add(role);
-            after.add(Map.of("id", String.valueOf(j.get("position_id")), "name", out.get("positionName"), "department", out.get("departmentName")));
             out.put("rolesBefore", before);
-            out.put("rolesAfter", after);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException(e);
         }
@@ -216,28 +247,88 @@ public class TrainingJobAssignmentService {
 
     /** What the person still has to be trained on before taking the position, from the effective matrix of the department. */
     @Transactional(readOnly = true)
-    public Map<String, Object> eligibility(UserAccount actor, UUID personId, UUID positionId, List<UUID> topicIds, List<UUID> documentIds) {
+    public Map<String, Object> eligibility(UserAccount actor, UUID personId, List<UUID> positionIds, List<String> topics, List<UUID> documentIds) {
         access.require(actor, "training.job_assignment.manage", "training.job_assignment.view");
-        UUID department = positionDepartment(positionId);
-        access.requireScope(actor, department);
-        List<UUID[]> extra = new ArrayList<>();
-        for (UUID t : topicIds == null ? List.<UUID>of() : topicIds) extra.add(new UUID[]{t, null});
-        for (UUID d : documentIds == null ? List.<UUID>of() : documentIds) extra.add(new UUID[]{null, d});
-        return eligibilityFor(personId, positionId, department, extra);
+        if (positionIds == null || positionIds.isEmpty()) throw new IllegalArgumentException("TRAINING_JOB_INVALID");
+        for (UUID role : positionIds) access.requireScope(actor, positionDepartment(role));
+        List<Object[]> extra = new ArrayList<>();
+        for (String t : topics == null ? List.<String>of() : topics) if (t != null && !t.isBlank()) extra.add(new Object[]{t.trim(), null});
+        for (UUID d : documentIds == null ? List.<UUID>of() : documentIds) extra.add(new Object[]{null, d});
+        return eligibilityForRoles(personId, positionIds, extra);
     }
 
-    /** The trainings that were ticked for an assignment: {topic, document}, one of them is null. */
-    private List<UUID[]> requiredOf(UUID assignmentId) {
-        List<UUID[]> out = new ArrayList<>();
-        for (Map<String, Object> r : jdbc.queryForList("select topic_id, document_id from training_job_required_items where assignment_id = ? order by sort_order", assignmentId)) out.add(new UUID[]{(UUID) r.get("topic_id"), (UUID) r.get("document_id")});
+    /** The Work Positions that an assignment gives now (not the ones carried over from the earlier issuance, which were checked when they were given). */
+    private List<UUID> newRolesOf(UUID assignmentId) {
+        return jdbc.queryForList("select job_role_id from training_job_assignment_roles where assignment_id = ? and not carried order by sort_order", UUID.class, assignmentId);
+    }
+
+    /** The check for every Work Position that is given: the matrix of the department of each one, and the trainings that were ticked, once. */
+    private Map<String, Object> eligibilityForRoles(UUID personId, List<UUID> roleIds, List<Object[]> chosen) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("openSuspensions", jdbc.queryForObject("select count(*) from training_work_suspensions where person_user_id = ? and status = 'OPEN'", Integer.class, personId));
+        List<Map<String, Object>> items = new ArrayList<>();
+        boolean matrixMissing = false;
+        Object matrixVersionId = null;
+        for (UUID role : roleIds) {
+            Map<String, Object> one = eligibilityFor(personId, role, positionDepartment(role), List.of());
+            if (Boolean.TRUE.equals(one.get("matrixMissing"))) { matrixMissing = true; continue; }
+            if (matrixVersionId == null) matrixVersionId = one.get("matrixVersionId");
+            String roleName = jdbc.queryForObject("select name from training_job_roles where id = ?", String.class, role);
+            for (Map<String, Object> item : (List<Map<String, Object>>) one.get("items")) {
+                // a topic that two roles require is listed once
+                Map<String, Object> same = items.stream().filter(i -> java.util.Objects.equals(i.get("code"), item.get("code")) && java.util.Objects.equals(i.get("title"), item.get("title"))).findFirst().orElse(null);
+                if (same != null) { same.put("jobRoleName", same.get("jobRoleName") + ", " + roleName); continue; }
+                Map<String, Object> copy = new LinkedHashMap<>(item);
+                copy.put("jobRoleName", roleName);
+                items.add(copy);
+            }
+        }
+        // the rows "All employees" of the effective matrix of the department of the person (the factory-wide ones locked by Quality Assurance, the department-wide ones ticked by the head of
+        // department): they apply whatever Work Position the person holds
+        for (Map<String, Object> r : jdbc.queryForList("""
+            select coalesce(r.topic_text, d.document_name) as title, d.document_number as code, r.annual_required, r.topic_text as match_name, d.document_number as match_number
+              from app_users u join departments dp on lower(trim(dp.name)) = lower(trim(u.department))
+              join training_matrices m on m.department_id = dp.id join training_matrix_versions v on v.matrix_id = m.id and v.status = 'EFFECTIVE'
+              join training_matrix_rows r on r.version_id = v.id and r.all_employees left join documents d on d.id = r.document_id
+             where u.id = ? order by r.row_no
+            """, personId)) {
+            if (items.stream().anyMatch(i -> java.util.Objects.equals(i.get("title"), r.get("title")) && java.util.Objects.equals(i.get("code"), r.get("code")))) continue;
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("title", r.get("title"));
+            item.put("code", r.get("code"));
+            item.put("annualRequired", Boolean.TRUE.equals(r.get("annual_required")));
+            java.sql.Date done = lastDone(personId, (String) r.get("match_name"), (String) r.get("match_number"));
+            item.put("lastDone", done == null ? null : done.toLocalDate().toString());
+            item.put("source", "ALL_EMPLOYEES");
+            item.put("jobRoleName", "All employees");
+            items.add(item);
+        }
+        addChosen(personId, items, chosen);
+        List<Map<String, Object>> missing = items.stream().filter(i -> i.get("lastDone") == null).toList();
+        out.put("matrixMissing", matrixMissing);
+        out.put("matrixVersionId", matrixVersionId);
+        out.put("items", items);
+        out.put("complete", !matrixMissing && missing.isEmpty());
+        out.put("missingCount", missing.size());
         return out;
     }
 
-    private void writeRequired(UUID id, List<UUID> topics, List<UUID> documents) {
+    /** The trainings that were ticked for an assignment: {topic, document}, one of them is null. */
+    private List<Object[]> requiredOf(UUID assignmentId) {
+        List<Object[]> out = new ArrayList<>();
+        for (Map<String, Object> r : jdbc.queryForList("select topic_text, document_id from training_job_required_items where assignment_id = ? order by sort_order", assignmentId)) out.add(new Object[]{r.get("topic_text"), r.get("document_id")});
+        return out;
+    }
+
+    private void writeRequired(UUID id, List<String> topics, List<UUID> documents) {
         int order = 0;
-        for (UUID t : topics == null ? List.<UUID>of() : new java.util.LinkedHashSet<>(topics)) {
-            if (jdbc.queryForObject("select count(*) from training_topics where id = ? and active", Integer.class, t) == 0) throw new IllegalArgumentException("TRAINING_JOB_REQUIRED_INVALID");
-            jdbc.update("insert into training_job_required_items(assignment_id, sort_order, topic_id) values (?,?,?)", id, ++order, t);
+        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        for (String raw : topics == null ? List.<String>of() : topics) {
+            String t = raw == null ? "" : raw.trim().replaceAll("\\s+", " ");
+            if (t.isEmpty()) continue;
+            if (t.length() > 500) throw new IllegalArgumentException("TRAINING_JOB_REQUIRED_INVALID");
+            if (!seen.add(t.toLowerCase(java.util.Locale.ROOT))) continue;
+            jdbc.update("insert into training_job_required_items(assignment_id, sort_order, topic_text) values (?,?,?)", id, ++order, t);
         }
         for (UUID d : documents == null ? List.<UUID>of() : new java.util.LinkedHashSet<>(documents)) {
             if (jdbc.queryForObject("select count(*) from documents where id = ?", Integer.class, d) == 0) throw new IllegalArgumentException("TRAINING_JOB_REQUIRED_INVALID");
@@ -249,11 +340,11 @@ public class TrainingJobAssignmentService {
     private java.sql.Date lastDone(UUID personId, String topicName, String documentNumber) {
         return jdbc.queryForObject("""
             select max(rec.completed_on) from training_records rec left join training_record_voids v2 on v2.record_id = rec.id
-             where rec.person_user_id = ? and v2.id is null and ((?::text is not null and rec.document_number = ?) or (?::text is not null and lower(rec.topic_text) = lower(?)))
+             where rec.person_user_id = ? and v2.id is null and ((?::text is not null and rec.document_number = ?) or (?::text is not null and training_topic_key(rec.topic_text) = training_topic_key(?)))
             """, java.sql.Date.class, personId, documentNumber, documentNumber, topicName, topicName);
     }
 
-    private Map<String, Object> eligibilityFor(UUID personId, UUID positionId, UUID department, List<UUID[]> chosen) {
+    private Map<String, Object> eligibilityFor(UUID personId, UUID positionId, UUID department, List<Object[]> chosen) {
         List<UUID> effective = jdbc.queryForList("select v.id from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and v.status = 'EFFECTIVE'", UUID.class, department);
         Map<String, Object> out = new LinkedHashMap<>();
         // D-12: work suspended after a failed assessment is only shown here; it does not block the assignment.
@@ -267,21 +358,31 @@ public class TrainingJobAssignmentService {
         }
         List<Map<String, Object>> items = TrainingRows.camel(jdbc.queryForList("""
             select * from (
-              select coalesce(t.name, d.document_name) as title, coalesce(t.code, d.document_number) as code, r.annual_required,
+              select coalesce(r.topic_text, d.document_name) as title, d.document_number as code, r.annual_required,
                      (select max(rec.completed_on) from training_records rec left join training_record_voids v2 on v2.record_id = rec.id
                        where rec.person_user_id = ? and v2.id is null
-                         and ((d.document_number is not null and rec.document_number = d.document_number) or (t.name is not null and lower(rec.topic_text) = lower(t.name)))) as last_done
+                         and ((d.document_number is not null and rec.document_number = d.document_number) or (r.topic_text is not null and training_topic_key(rec.topic_text) = training_topic_key(r.topic_text)))) as last_done
                 from training_matrix_rows r join training_matrix_cells c on c.row_id = r.id and c.position_id = ?
-                left join training_topics t on t.id = r.topic_id left join documents d on d.id = r.document_id
+                left join documents d on d.id = r.document_id
                where r.version_id = ?) x
             """, personId, positionId, effective.getFirst()));
         for (Map<String, Object> i : items) i.put("source", "MATRIX");
-        // the trainings ticked for this assignment: the same check, whatever the matrix says (one that the matrix has already is not listed twice)
-        for (UUID[] pick : chosen) {
+        addChosen(personId, items, chosen);
+        List<Map<String, Object>> missing = items.stream().filter(i -> i.get("lastDone") == null).toList();
+        out.put("matrixVersionId", effective.getFirst());
+        out.put("items", items);
+        out.put("complete", missing.isEmpty());
+        out.put("missingCount", missing.size());
+        return out;
+    }
+
+    /** The trainings ticked for this assignment: the same check, whatever the matrix says (one that the matrix has already is not listed twice). */
+    private void addChosen(UUID personId, List<Map<String, Object>> items, List<Object[]> chosen) {
+        for (Object[] pick : chosen) {
             Map<String, Object> row = pick[0] != null
-                    ? jdbc.queryForList("select name as title, code, name as match_name, null::text as match_number from training_topics where id = ?", pick[0]).stream().findFirst().orElse(null)
+                    ? Map.of("title", pick[0], "match_name", pick[0])
                     : jdbc.queryForList("select document_name as title, document_number as code, null::text as match_name, document_number as match_number from documents where id = ?", pick[1]).stream().findFirst().orElse(null);
-            if (row == null || items.stream().anyMatch(i -> java.util.Objects.equals(i.get("code"), row.get("code")))) continue;
+            if (row == null || items.stream().anyMatch(i -> java.util.Objects.equals(i.get("title"), row.get("title")) && java.util.Objects.equals(i.get("code"), row.get("code")))) continue;
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("title", row.get("title"));
             item.put("code", row.get("code"));
@@ -291,12 +392,6 @@ public class TrainingJobAssignmentService {
             item.put("source", "CHOSEN");
             items.add(item);
         }
-        List<Map<String, Object>> missing = items.stream().filter(i -> i.get("lastDone") == null).toList();
-        out.put("matrixVersionId", effective.getFirst());
-        out.put("items", items);
-        out.put("complete", missing.isEmpty());
-        out.put("missingCount", missing.size());
-        return out;
     }
 
     // ----------------------------------------------------------------------------------------------------------------------------- writing
@@ -304,16 +399,22 @@ public class TrainingJobAssignmentService {
     @Transactional
     public Map<String, Object> create(UserAccount actor, SaveRequest request) {
         access.require(actor, "training.job_assignment.manage");
-        if (request == null || request.personUserId() == null || request.positionId() == null) throw new IllegalArgumentException("TRAINING_JOB_INVALID");
-        UUID department = positionDepartment(request.positionId());
-        access.requireScope(actor, department);
+        // the Work Positions that this assignment gives: one or several, each in a department the person who assigns may act in
+        List<UUID> given = new ArrayList<>(new java.util.LinkedHashSet<>(request == null ? List.<UUID>of() : request.positionIds() != null && !request.positionIds().isEmpty() ? request.positionIds() : request.positionId() == null ? List.<UUID>of() : List.of(request.positionId())));
+        if (request == null || request.personUserId() == null || given.isEmpty() || given.size() > 10) throw new IllegalArgumentException("TRAINING_JOB_INVALID");
+        UUID department = positionDepartment(given.getFirst());
+        for (UUID role : given) access.requireScope(actor, positionDepartment(role));
         UserAccount person = users.findById(request.personUserId()).orElseThrow(() -> new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE"));
         if (person.getStatus() != UserStatus.Active) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");
         Integer open = jdbc.queryForObject("select count(*) from training_job_assignments where person_user_id=? and status in ('DRAFT','PENDING_RECEIVER')", Integer.class, person.getId());
         if (open != null && open > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_JOB_OPEN_EXISTS");
-        // A person can hold several Job Roles. The first one is an initial assignment; a later one either replaces a role the person holds (change) or is added to them (additional).
-        List<Map<String, Object>> current = jdbc.queryForList("select position_id, department_id from training_job_assignments where person_user_id=? and status='EFFECTIVE'", person.getId());
-        if (current.stream().anyMatch(c -> c.get("position_id").equals(request.positionId()))) throw new IllegalArgumentException("TRAINING_JOB_SAME_POSITION");
+        // A person can hold several Work Positions. The first one is an initial assignment; a later one either replaces a role the person holds (change) or is added to them (additional).
+        // the person has one effective assignment: the latest issuance, with the whole set of roles; its roles are the ones held
+        List<Map<String, Object>> current = jdbc.queryForList("""
+            select ar.job_role_id as position_id, r.department_id as department_id from training_job_assignments j join training_job_assignment_roles ar on ar.assignment_id = j.id
+              join training_job_roles r on r.id = ar.job_role_id where j.person_user_id = ? and j.status = 'EFFECTIVE' order by ar.sort_order
+            """, person.getId());
+        if (current.stream().anyMatch(c -> given.contains((UUID) c.get("position_id")))) throw new IllegalArgumentException("TRAINING_JOB_SAME_POSITION");
         String caseType = "INITIAL";
         Map<String, Object> replaced = null;
         if (!current.isEmpty()) {
@@ -329,18 +430,26 @@ public class TrainingJobAssignmentService {
         if (!"INITIAL".equals(caseType) && (request.changeReason() == null || request.changeReason().isBlank())) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         String heldBefore = "INITIAL".equals(caseType) ? null : heldRolesJson(person.getId());
         validateDuties(request.duties());
-        // the jurisdiction starts as the one written for the Job Role (Training Administration), and can be changed in the draft
+        // the jurisdiction starts as the one written for the Work Position (Training Administration), and can be changed in the draft
         String jurisdiction = blank(request.jurisdiction());
-        if (jurisdiction == null) jurisdiction = jdbc.queryForList("select jurisdiction from training_job_roles where id = ?", String.class, request.positionId()).stream().filter(x -> x != null && !x.isBlank()).findFirst().orElse(null);
+        if (jurisdiction == null) jurisdiction = String.join("\n", jdbc.queryForList("select jurisdiction from training_job_roles where id in (" + String.join(",", java.util.Collections.nCopies(given.size(), "?")) + ")", String.class, given.toArray()).stream().filter(x -> x != null && !x.isBlank()).toList());
+        if (jurisdiction != null && jurisdiction.isBlank()) jurisdiction = null;
         int issue = ((Number) jdbc.queryForObject("select coalesce(max(issue_no),0)+1 from training_job_assignments where person_user_id=?", Number.class, person.getId())).intValue();
         UUID id = UUID.randomUUID();
         jdbc.update("""
             insert into training_job_assignments(id, person_user_id, issue_no, case_type, department_id, position_id, direct_superior_title, subordinate_titles, substitute_title,
               previous_department_id, previous_position_id, change_reason, jurisdiction, created_by, held_before) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb)
-            """, id, person.getId(), issue, caseType, department, request.positionId(), blank(request.directSuperiorTitle()), blank(request.subordinateTitles()), blank(request.substituteTitle()),
+            """, id, person.getId(), issue, caseType, department, given.getFirst(), blank(request.directSuperiorTitle()), blank(request.subordinateTitles()), blank(request.substituteTitle()),
                 replaced != null ? replaced.get("department_id") : null, replaced != null ? replaced.get("position_id") : null, blank(request.changeReason()), jurisdiction, actor.getId(), heldBefore);
+        // this issuance lists the whole set the person holds after it: the roles held (carried over, not replaced) and the roles given
+        int order = 0;
+        for (Map<String, Object> held : current) {
+            if (replaced != null && held.get("position_id").equals(replaced.get("position_id"))) continue;
+            jdbc.update("insert into training_job_assignment_roles(assignment_id, job_role_id, sort_order, carried) values (?,?,?,true)", id, held.get("position_id"), ++order);
+        }
+        for (UUID role : given) jdbc.update("insert into training_job_assignment_roles(assignment_id, job_role_id, sort_order, carried) values (?,?,?,false)", id, role, ++order);
         writeDuties(id, request.duties());
-        writeRequired(id, request.requiredTopicIds(), request.requiredDocumentIds());
+        writeRequired(id, request.requiredTopics(), request.requiredDocumentIds());
         audit.logAs(actor, TYPE, label(id), id, "TRAINING_JOB_ASSIGNMENT_CREATED", null, "DRAFT", "Draft for " + person.getFullName());
         return get(actor, id);
     }
@@ -356,9 +465,9 @@ public class TrainingJobAssignmentService {
                 blank(request.directSuperiorTitle()), blank(request.subordinateTitles()), blank(request.substituteTitle()), blank(request.changeReason()), blank(request.jurisdiction()), id);
         jdbc.update("delete from training_job_assignment_duties where assignment_id=?", id);
         writeDuties(id, request.duties());
-        if (request.requiredTopicIds() != null || request.requiredDocumentIds() != null) {
+        if (request.requiredTopics() != null || request.requiredDocumentIds() != null) {
             jdbc.update("delete from training_job_required_items where assignment_id=?", id);
-            writeRequired(id, request.requiredTopicIds(), request.requiredDocumentIds());
+            writeRequired(id, request.requiredTopics(), request.requiredDocumentIds());
         }
         audit.logAs(actor, TYPE, label(id), id, "TRAINING_JOB_ASSIGNMENT_UPDATED", null, null, "Draft changed");
         return get(actor, id);
@@ -407,7 +516,7 @@ public class TrainingJobAssignmentService {
         if (actor.getId().equals(j.get("person_user_id"))) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
         Integer duties = jdbc.queryForObject("select count(*) from training_job_assignment_duties where assignment_id=?", Integer.class, id);
         if (duties == null || duties == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_JOB_DUTIES_REQUIRED");
-        Map<String, Object> eligibility = eligibilityFor((UUID) j.get("person_user_id"), (UUID) j.get("position_id"), (UUID) j.get("department_id"), requiredOf(id));
+        Map<String, Object> eligibility = eligibilityForRoles((UUID) j.get("person_user_id"), newRolesOf(id), requiredOf(id));
         boolean complete = Boolean.TRUE.equals(eligibility.get("complete"));
         if (!complete && j.get("exception_approved_by") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_MATRIX_INCOMPLETE");
         UUID signature = sign(actor, j, "TRAINING_JOB_ASSIGNED", request == null ? null : request.signatureToken());
@@ -421,7 +530,7 @@ public class TrainingJobAssignmentService {
         return get(actor, id);
     }
 
-    /** The employee accepts with a signature: the assignment is effective (a change replaces the role it names), and the Job Role of the person is recorded for the matrix. */
+    /** The employee accepts with a signature: the assignment is effective (a change replaces the role it names), and the Work Position of the person is recorded for the matrix. */
     @Transactional
     public Map<String, Object> accept(UserAccount actor, UUID id, SignRequest request) {
         Map<String, Object> j = lock(id);
@@ -430,14 +539,16 @@ public class TrainingJobAssignmentService {
         if (!actor.getId().equals(j.get("person_user_id"))) throw new SecurityException(TrainingAccess.DENIED);
         access.require(actor, "training.self.view");
         UUID signature = sign(actor, j, "TRAINING_JOB_ACCEPTED", request == null ? null : request.signatureToken());
-        // only a change replaces a role (the one it names); an initial or additional assignment leaves the other roles of the person as they are
+        // the earlier issuance is replaced by this one, which lists the whole set; a role that is replaced stops being held, the roles given start, the roles carried over stay as they are
+        jdbc.update("update training_job_assignments set status='OBSOLETED', version=version+1, updated_at=now() where person_user_id=? and status='EFFECTIVE' and id <> ?", actor.getId(), id);
+        jdbc.update("update training_job_assignments set status='EFFECTIVE', receiver_signature_id=?, effective_at=now(), version=version+1, updated_at=now() where id=?", signature, id);
         if ("CHANGE".equals(j.get("case_type")) && j.get("previous_position_id") != null) {
-            jdbc.update("update training_job_assignments set status='OBSOLETED', version=version+1, updated_at=now() where person_user_id=? and position_id=? and status='EFFECTIVE'", actor.getId(), j.get("previous_position_id"));
             jdbc.update("update training_person_positions set valid_to=current_date where person_user_id=? and position_id=? and valid_to is null", actor.getId(), j.get("previous_position_id"));
         }
-        jdbc.update("update training_job_assignments set status='EFFECTIVE', receiver_signature_id=?, effective_at=now(), version=version+1, updated_at=now() where id=?", signature, id);
-        jdbc.update("update training_person_positions set valid_to=current_date where person_user_id=? and position_id=? and valid_to is null", actor.getId(), j.get("position_id"));
-        jdbc.update("insert into training_person_positions(id, person_user_id, position_id, department_id, source, created_by) values (?,?,?,?, 'JOB_ASSIGNMENT', ?)", UUID.randomUUID(), actor.getId(), j.get("position_id"), j.get("department_id"), actor.getId());
+        for (Map<String, Object> role : jdbc.queryForList("select ar.job_role_id, r.department_id from training_job_assignment_roles ar join training_job_roles r on r.id = ar.job_role_id where ar.assignment_id = ? and not ar.carried", id)) {
+            jdbc.update("update training_person_positions set valid_to=current_date where person_user_id=? and position_id=? and valid_to is null", actor.getId(), role.get("job_role_id"));
+            jdbc.update("insert into training_person_positions(id, person_user_id, position_id, department_id, source, created_by) values (?,?,?,?, 'JOB_ASSIGNMENT', ?)", UUID.randomUUID(), actor.getId(), role.get("job_role_id"), role.get("department_id"), actor.getId());
+        }
         audit.logAs(actor, TYPE, label(id), id, "TRAINING_JOB_ACCEPTED", "PENDING_RECEIVER", "EFFECTIVE", "Assignment accepted");
         if (j.get("assignor_user_id") != null) {
             users.findById((UUID) j.get("assignor_user_id")).ifPresent(assignor -> notifier.send("TRAINING_JOB_ACCEPTED", assignor, actor, "Training: job assignment accepted",

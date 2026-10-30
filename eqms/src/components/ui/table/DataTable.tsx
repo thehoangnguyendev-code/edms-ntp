@@ -302,6 +302,7 @@ function DataTableBase<T>({
           {...dragProps}
         >
           <TableMarkup.Root
+            data-record-table="true"
             className={cn(
               "w-full min-w-max border-spacing-0 text-left",
               tableClassName,
@@ -374,6 +375,7 @@ function DataTableBase<T>({
                 rows.map((row, index) => (
                   <React.Fragment key={getRowKey(row, index)}>
                     <TableMarkup.Row
+                      data-record-stripe={index % 2 === 1 ? "true" : "false"}
                       onClick={() => onRowClick?.(row, index)}
                       onKeyDown={(event) => onRowKeyDown?.(event, row, index)}
                       tabIndex={onRowClick ? rowTabIndex : undefined}
@@ -405,6 +407,7 @@ function DataTableBase<T>({
                       ))}
                       {action && (
                         <TableMarkup.Cell
+                          data-record-action="true"
                           onClick={(event) => event.stopPropagation()}
                           className={cn(ACTION_CELL_CLASS, action.cellClassName)}
                         >

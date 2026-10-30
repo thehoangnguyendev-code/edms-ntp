@@ -114,6 +114,9 @@ public class UserManagementService {
     @org.springframework.beans.factory.annotation.Autowired
     private com.eqms.repository.RevisionWorkflowParticipantRepository revisionWorkflowParticipantRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private EmergencyAccountChangeGuard emergencyAccountChangeGuard;
+
     /**
      * Suspending/terminating a user is deliberately never blocked by their open workflow work
      * (a leaver must be cut off immediately), but a Revision waiting on a Reviewer/Approver who
@@ -162,8 +165,34 @@ public class UserManagementService {
             variables.put("actionUrl", "/documents/revisions/" + revision.getId());
             variables.put("relatedEntityType", "revision");
             variables.put("relatedEntityId", String.valueOf(revision.getId()));
-            notificationDispatcher.dispatch("document.participant_unavailable", coordinators, variables);
+            dispatchAfterCommit("document.participant_unavailable", coordinators, variables);
         }
+    }
+
+    /**
+     * Messages about an account or its access are sent after the transaction committed: a database guard (the emergency account of the network policy) is checked at commit and may still
+     * roll the change back, and no one must be told about a change that did not happen. A failure to send is logged; it does not undo the change.
+     */
+    private void dispatchAfterCommit(String eventCode, List<UserAccount> recipients, Map<String, String> variables) {
+        List<UserAccount> to = List.copyOf(recipients);
+        Map<String, String> values = new java.util.HashMap<>(variables);
+        Runnable send = () -> {
+            try {
+                notificationDispatcher.dispatchIndependently(eventCode, to, values);
+            } catch (RuntimeException ex) {
+                log.warn("Notification '{}' could not be sent after the change was committed", eventCode);
+            }
+        };
+        if (!org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            send.run();
+            return;
+        }
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                send.run();
+            }
+        });
     }
 
     public UserManagementService(
@@ -451,6 +480,7 @@ public class UserManagementService {
      * this method is what makes that enforcement actually bite the moment status changes.
      */
     void changeUserStatus(UserAccount user, UserStatus newStatus) {
+        if (newStatus != UserStatus.Active) emergencyAccountChangeGuard.requireMayDeactivate(user.getId());
         UserStatus oldStatus = user.getStatus();
         user.setStatus(newStatus);
         if (oldStatus == UserStatus.Active && newStatus != UserStatus.Active) {
@@ -549,6 +579,7 @@ public class UserManagementService {
     public void deleteUser(UUID id, String signatureToken, HttpServletRequest httpRequest) {
         UserAccount actor = currentUserService.requireCurrentUser();
         UserAccount user = requireUser(id);
+        emergencyAccountChangeGuard.requireMayDeactivate(id);
         requireValidActionSignature(actor, signatureToken);
         requireUserActionAllowed(id, "DELETE");
         auditService.log("user_deleted", user, auditDetails(
@@ -608,7 +639,7 @@ public class UserManagementService {
                 esig == null ? null : esig.getId()
         );
         recordStrandedWorkflowAssignments(actor, user, "suspended");
-        notificationDispatcher.dispatch("user.account_suspended", List.of(user), Map.of());
+        dispatchAfterCommit("user.account_suspended", List.of(user), Map.of());
 
         return toResponse(user, true);
     }
@@ -647,7 +678,7 @@ public class UserManagementService {
                 esig == null ? null : esig.getId()
         );
         recordStrandedWorkflowAssignments(actor, user, "terminated");
-        notificationDispatcher.dispatch("user.account_terminated", List.of(user), Map.of());
+        dispatchAfterCommit("user.account_terminated", List.of(user), Map.of());
 
         return toResponse(user, true);
     }
@@ -2100,6 +2131,8 @@ public class UserManagementService {
     }
 
     private void applyUpdate(UserAccount user, UpdateUserRequest request) {
+        if (request.status() != null && requireStatus(request.status()) != UserStatus.Active)
+            emergencyAccountChangeGuard.requireMayDeactivate(user.getId());
         if (request.employeeCode() != null) user.setEmployeeCode(normalizeRequired(request.employeeCode(), "Employee ID"));
         if (request.username() != null) user.setUsername(normalizeRequired(request.username(), "Username"));
         if (request.fullName() != null) user.setFullName(normalizeRequired(request.fullName(), "Full Name"));

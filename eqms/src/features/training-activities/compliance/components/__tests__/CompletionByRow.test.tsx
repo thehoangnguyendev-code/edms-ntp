@@ -22,7 +22,7 @@ describe("CompletionByRow (APD.0011 layout)", () => {
     render(<CompletionByRow columns={columns} summary={summary} />);
 
     expect(screen.getAllByText("General training of the whole factory").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("SOP for each Job Role").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("SOP for each Work Position").length).toBeGreaterThan(0);
     expect(screen.getAllByText("GMP overview").length).toBeGreaterThan(0);
     expect(screen.getAllByText("SOP.0003").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Yes").length).toBeGreaterThan(0);

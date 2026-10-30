@@ -1,0 +1,72 @@
+# Full Training Management run, DEV, 2026-10-29
+
+Scripts `e51_p0` to `e51_p5` (API as the screens call it, Edge for the screens). Logs `c0..c5.log`. Forms as Word and PDF in `exports/e51/`; screenshots in `shots/e51/`.
+Result of the last run of each phase: p0 18/18, p1 12/12, p2 30/30, p3 28/28, p5 19/19, p4 39/39. APD.0009 (e2e34): 50/50.
+Open: APD.0108 for several departments (one list and one head confirmation per department); the picture of a question in "Test in the system"; no Microsoft Word was used.
+
+Screenshots:
+ - p0_01_annex_list.png
+ - p0_02_annex_view_apd0117.png
+ - p0_03_annex_edit_apd0117.png
+ - p1_01_requirements_list.png
+ - p1_02_requirement_detail.png
+ - p1_03_APD0118_approved-p1.png
+ - p1_03_APD0118_approved-p2.png
+ - p1_03_APD0118_approved-p3.png
+ - p2_01_activity_planned.png
+ - p2_02_APD0117_M1_list_prepared-p1.png
+ - p2_02_APD0117_M1_list_prepared-p2.png
+ - p2_03_activity_content_approved.png
+ - p2_04_trainee_my_training.png
+ - p2_06_APD0117_M2_attended-p1.png
+ - p2_06_APD0117_M2_attended-p2.png
+ - p2_06a_trainee_after_check_in.png
+ - p2_07_conduct_attendance.png
+ - p2_08_APD0117_M2b_trainer_sent-p1.png
+ - p2_08_APD0117_M2b_trainer_sent-p2.png
+ - p2_09_APD0117_M3_results-p1.png
+ - p2_09_APD0117_M3_results-p2.png
+ - p2_10_activity_pending_qa.png
+ - p2_11_APD0117_M4_completed-p1.png
+ - p2_11_APD0117_M4_completed-p2.png
+ - p2_12_activity_completed.png
+ - p2b_APD0009_776_test_p1.png
+ - p2b_APD0009_776_test_p2.png
+ - p2b_APD0009_777_checklist_p1.png
+ - p3_01_activity_from_document.png
+ - p3_02_APD0108_M1_before_reading-p1.png
+ - p3_03_trainee_my_training.png
+ - p3_04_APD0108_M2_after_reading-p1.png
+ - p3_05_activity_read.png
+ - p3_06_APD0108_M3_head_verified-p1.png
+ - p3_06_APD0108_M3_head_verified-p2.png
+ - p3_07_activity_completed.png
+ - p4_01_APD0011_matrix-p1.png
+ - p4_01_APD0011_matrix-p2.png
+ - p4_01_APD0011_matrix-p3.png
+ - p4_02_matrices_list.png
+ - p4_04_APD0024_trainee.test1-p1.png
+ - p4_04_APD0024_trainee.test1-p2.png
+ - p4_04_APD0024_trainee.test1-p3.png
+ - p4_04_APD0024_trainee.test1-p4.png
+ - p4_04_APD0024_trainee.test1-p5.png
+ - p4_04_APD0024_trainee.test1-p6.png
+ - p4_05_job_assignments_list.png
+ - p4_06_job_assignment_detail.png
+ - p4_07_APD0014_trainee.test1-p1.png
+ - p4_07_APD0014_trainee.test1-p2.png
+ - p4_07_APD0014_trainee.test1-p3.png
+ - p4_08_record_exports.png
+ - p5_01_APD0117_after_retraining-p1.png
+ - p5_01_APD0117_after_retraining-p2.png
+ - p5_02_retraining_completed.png
+ - p5_03_APD0118_after_training-p1.png
+ - p5_03_APD0118_after_training-p2.png
+ - p5_03_APD0118_after_training-p3.png
+ - p5_04_requirement_lines.png
+ - p5_05_specimen_list.png
+ - p5_06_number_register.png
+ - p5_07_compliance.png
+ - p5_08_activities_list.png
+ - p5_09_trainee_my_training.png
+ - p5_10_personnel_reviews.png

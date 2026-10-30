@@ -73,6 +73,7 @@ class UserManagementServiceGuardMethodsTest {
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(userManagementService, "emergencyAccountChangeGuard", org.mockito.Mockito.mock(EmergencyAccountChangeGuard.class));
         targetId = UUID.randomUUID();
         target = new UserAccount();
         target.setId(targetId);

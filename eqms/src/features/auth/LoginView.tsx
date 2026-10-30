@@ -5,6 +5,7 @@ import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { cn } from "@/components/ui/utils";
 import { resetViewportZoom, blurActiveInput } from "@/utils/viewport";
 import { BrandLogo } from "@/components/branding/BrandLogo";
+import { captureLoginLogo, startLoginLogoTransition } from "@/components/branding/loginLogoTransition";
 import { IconArrowBigUpFilled } from "@tabler/icons-react";
 import { AUTH_UI } from "./auth-ui";
 import { AuthField, AuthLayout } from "./components";
@@ -233,6 +234,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
       }
 
       try {
+        const logo = captureLoginLogo();
         const result = await onLogin(formData.username, formData.password);
         setIsLoading(false);
 
@@ -241,6 +243,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
           // recognize a confirmed sign-in and offer to save the credential. MFA challenges
           // are intentionally excluded because the sign-in is not complete yet.
           if (result.passwordManagerEligible) {
+            startLoginLogoTransition(logo);
             setIsSignInAccepted(true);
           }
           blurActiveInput();
@@ -285,7 +288,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
         left={
           <div className={AUTH_UI.formColumn}>
             <div className="mb-6 flex items-center gap-3 text-slate-900 sm:mb-10 lg:mb-12">
-              <BrandLogo className="h-8 w-auto object-contain sm:h-9" />
+              <div data-login-logo><BrandLogo className="h-8 w-auto object-contain sm:h-9" /></div>
             </div>
 
             <div className={AUTH_UI.headerArea}>

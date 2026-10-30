@@ -125,7 +125,7 @@ class TrainingMatrixAuditDetailTest {
     void aSaveRecordsTheRowThatWasRemovedWithItsPositionsAndYearlyRule() {
         version("DRAFT", 3);
         UUID rowId = UUID.randomUUID();
-        when(jdbc.queryForList(contains("from training_matrix_rows r left join training_topics"), eq(versionId)))
+        when(jdbc.queryForList(contains("from training_matrix_rows r left join documents"), eq(versionId)))
                 .thenReturn(List.of(Map.of("id", rowId, "annual_required", true, "title", "GMP overview")), List.of());
         when(jdbc.queryForList(contains("from training_matrix_cells c join training_job_roles p"), eq(String.class), any())).thenReturn(List.of("Operator"));
 

@@ -1,0 +1,24 @@
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { afterEach, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({ query: vi.fn(), toast: vi.fn() }));
+vi.mock("@/services/api/settings", () => ({ settingsApi: { queryUserAuthorizationSummary: mocks.query } }));
+vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermission: () => true }) }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "actor" } }) }));
+vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ showToast: mocks.toast }) }));
+vi.mock("../../components/EditAccessProfilesModal", () => ({ EditAccessProfilesModal: ({ isOpen, currentProfileIds }: { isOpen: boolean; currentProfileIds: string[] }) => isOpen ? <div>Assigned: {currentProfileIds.join(",")}</div> : null }));
+import { SecurityAuthorizationTab } from "../SecurityAuthorizationTab";
+import type { User } from "../../../types";
+afterEach(() => { cleanup(); mocks.query.mockReset(); });
+it("delegates search/paging and keeps off-page assignment IDs for editing", async () => {
+  mocks.query.mockResolvedValue({ userId: "target", accessProfiles: [{ id: "one", name: "Server selected row", code: "P1", active: true }], assignedProfileIds: ["one", "two"], effectivePermissionCount: 12, pagination: { total: 11, totalPages: 2 } });
+  render(<MemoryRouter><SecurityAuthorizationTab user={{ id: "target", fullName: "Target" } as User} canEdit mfaRequiredByAdmin={false} isEditingProfile onMfaRequiredByAdminChange={vi.fn()} /></MemoryRouter>);
+  await screen.findByText("Server selected row");
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  await waitFor(() => expect(mocks.query).toHaveBeenLastCalledWith("target", { search: undefined, page: 2, limit: 10 }));
+  fireEvent.change(screen.getByPlaceholderText("Search access profiles..."), { target: { value: "not-a-local-match" } });
+  await waitFor(() => expect(mocks.query).toHaveBeenLastCalledWith("target", { search: "not-a-local-match", page: 1, limit: 10 }));
+  expect(screen.getByText("Server selected row")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Edit Access Profile" }));
+  expect(screen.getByText("Assigned: one,two")).toBeTruthy();
+});

@@ -34,14 +34,14 @@ export function MyTrainingSignaturesTab({ onTotal }: { onTotal: (total: number) 
   const columns: DataTableColumn<TrainingMyApproval>[] = [
     { id: "no", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
     { id: "number", header: "Training Number", sort: sorted("trainingNumber"), cell: (a) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => open(a)}>{a.trainingNumber}</button> },
-    { id: "title", header: "Training Title", sort: sorted("trainingTitle"), cell: (a) => <div className="max-w-80 whitespace-normal">{a.trainingTitle}</div> },
+    { id: "title", header: "Subject", sort: sorted("subject"), cell: (a) => <div className="max-w-80 whitespace-normal">{a.subject}</div> },
     { id: "step", header: "Step", sort: sorted("stepCode"), cell: (a) => SIGNATURE_STEPS[a.stepCode] ?? a.stepCode },
     { id: "status", header: "Status", sort: sorted("status"), cell: (a) => STATUS_LABEL[a.status] ?? a.status.replace(/_/g, " ").toLowerCase() },
     { id: "since", header: "Waiting since", sort: sorted("assignedAt"), cell: (a) => day(a.assignedAt) },
   ];
   const { layout, control } = useCustomColumnLayout("training.mine.signatures", columns);
   return <ReportListToolbar
-    searchPlaceholder="Search reference number or Training Title…" search={table.searchQuery}
+    searchPlaceholder="Search reference number or subject…" search={table.searchQuery}
     onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
     filters={[
       { id: "objectType", label: "Type", value: objectType, options: [{ label: "All", value: "" }, ...Object.entries(OBJECT_LABEL).map(([value, label]) => ({ value, label }))], onChange: (v) => { setObjectType(v); table.setCurrentPage(1); } },

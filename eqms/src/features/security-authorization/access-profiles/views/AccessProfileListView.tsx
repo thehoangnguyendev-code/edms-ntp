@@ -257,6 +257,8 @@ export const AccessProfileListView: React.FC = () => {
         createdTo: createdToDate || undefined,
         updatedFrom: updatedFromDate || undefined,
         updatedTo: updatedToDate || undefined,
+        sortBy: sortConfig.key,
+        sortDir: sortConfig.direction,
       });
       setProfiles(res.content ?? []);
       setTotalItems(res.totalElements ?? 0);
@@ -266,7 +268,7 @@ export const AccessProfileListView: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, itemsPerPage, debouncedSearch, typeFilter, statusFilter, createdFromDate, createdToDate, updatedFromDate, updatedToDate, showToast]);
+  }, [currentPage, itemsPerPage, debouncedSearch, typeFilter, statusFilter, createdFromDate, createdToDate, updatedFromDate, updatedToDate, sortConfig, showToast]);
 
   useEffect(() => { void fetchProfiles(); }, [fetchProfiles]);
   useEffect(() => {
@@ -277,24 +279,14 @@ export const AccessProfileListView: React.FC = () => {
   }, []);
 
   const handleSort = (key: SortKey) => {
+    setCurrentPage(1);
     setSortConfig(prev => ({
       key,
       direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
     }));
   };
 
-  const sortedProfiles = [...profiles].sort((a, b) => {
-    const dir = sortConfig.direction === "asc" ? 1 : -1;
-    switch (sortConfig.key) {
-      case "name":               return a.name.localeCompare(b.name) * dir;
-      case "type":               return a.type.localeCompare(b.type) * dir;
-      case "permissionSetCount": return (a.permissionSetCount - b.permissionSetCount) * dir;
-      case "assignedUserCount":  return (a.assignedUserCount - b.assignedUserCount) * dir;
-      case "createdAt":          return (a.createdAt ?? "").localeCompare(b.createdAt ?? "") * dir;
-      case "updatedAt":          return (a.updatedAt ?? "").localeCompare(b.updatedAt ?? "") * dir;
-      default: return 0;
-    }
-  });
+  const sortedProfiles = profiles;
 
   const handleDelete = async () => {
     if (!deleteModal.profile) return;

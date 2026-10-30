@@ -17,8 +17,8 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Job Roles of Training (SOP.0003 5.2 and 5.3.8): a duty under a department, for example "QC - Microbiology", under the title (Position of the Dictionaries) that the person has. The training
- * matrix has one column for each Job Role and a job assignment (APD.0024) gives a Job Role to a person. The code and the department of a Job Role never change; a Job Role that a person
+ * Work Positions of Training (SOP.0003 5.2 and 5.3.8): a duty under a department, for example "QC - Microbiology", under the title (Position of the Dictionaries) that the person has. The training
+ * matrix has one column for each Work Position and a job assignment (APD.0024) gives a Work Position to a person. The code and the department of a Work Position never change; a Work Position that a person
  * holds now cannot be deactivated.
  */
 @Service
@@ -35,13 +35,13 @@ public class TrainingJobRoleService {
         this.audit = audit;
     }
 
-    public record SaveRequest(String code, String name, UUID departmentId, UUID titlePositionId, String description, String jurisdiction, Boolean active, Integer version) {}
+    public record SaveRequest(String code, String name, UUID departmentId, UUID titlePositionId, String description, String jurisdiction, Boolean active, Integer version, Boolean seniorManagement) {}
 
     private static final String SELECT = """
-        select r.id, r.code, r.name, r.department_id, d.name as department_name, r.title_position_id, tp.name as title_position_name, r.description, r.jurisdiction, r.is_active as active, r.version,
+        select r.id, r.code, r.name, r.department_id, d.name as department_name, r.title_position_id, tp.name as title_position_name, r.description, r.jurisdiction, r.is_active as active, r.version, r.senior_management,
                (select count(*) from training_person_positions pp where pp.position_id = r.id and pp.valid_to is null) as holders,
-               (select count(distinct c.row_id) from training_matrix_cells c join training_matrix_rows mr on mr.id = c.row_id join training_matrix_versions v on v.id = mr.version_id
-                 where c.position_id = r.id and v.status = 'EFFECTIVE') as effective_topics
+               (select count(*) from training_matrix_rows mr join training_matrix_versions v on v.id = mr.version_id and v.status = 'EFFECTIVE' join training_matrices mm on mm.id = v.matrix_id
+                 where mm.department_id = r.department_id and (mr.all_employees or exists (select 1 from training_matrix_cells c where c.row_id = mr.id and c.position_id = r.id))) as effective_topics
           from training_job_roles r join departments d on d.id = r.department_id left join positions tp on tp.id = r.title_position_id
         """;
 
@@ -68,7 +68,7 @@ public class TrainingJobRoleService {
         return result;
     }
 
-    /** The active Job Roles of a department (or of all), for the matrix, the job assignment and the filters. */
+    /** The active Work Positions of a department (or of all), for the matrix, the job assignment and the filters. */
     @Transactional(readOnly = true)
     public List<Map<String, Object>> options(UserAccount actor, UUID departmentId) {
         access.require(actor, READERS);
@@ -81,6 +81,37 @@ public class TrainingJobRoleService {
     public Map<String, Object> get(UserAccount actor, UUID id) {
         access.require(actor, READERS);
         return TrainingRows.camel(jdbc.queryForList(SELECT + " where r.id = ?", id).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED)));
+    }
+
+    /**
+     * The training that a Work Position requires: the rows of the effective training matrix of its department (APD.0011) that are ticked for this Work Position. The matrix is where this is
+     * written and approved (a new version, signed); this only reads it. {@code draftVersionId} is the version being prepared, if there is one.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> requirements(UserAccount actor, UUID id) {
+        access.require(actor, READERS);
+        Map<String, Object> role = jdbc.queryForList("select id, department_id from training_job_roles where id = ?", id).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        UUID department = (UUID) role.get("department_id");
+        if (!access.inScope(actor, department)) throw new SecurityException(TrainingAccess.DENIED);
+        Map<String, Object> out = new LinkedHashMap<>();
+        List<Map<String, Object>> effective = jdbc.queryForList("select v.id, v.version_no, m.code from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and v.status = 'EFFECTIVE'", department);
+        List<Map<String, Object>> draft = jdbc.queryForList("select v.id from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and v.status in ('DRAFT','PENDING_APPROVAL') order by v.version_no desc", department);
+        out.put("draftVersionId", draft.isEmpty() ? null : draft.getFirst().get("id"));
+        if (effective.isEmpty()) {
+            out.put("effectiveVersionId", null);
+            out.put("items", List.of());
+            return out;
+        }
+        out.put("effectiveVersionId", effective.getFirst().get("id"));
+        out.put("matrixCode", effective.getFirst().get("code"));
+        out.put("versionNo", effective.getFirst().get("version_no"));
+        out.put("items", TrainingRows.camel(jdbc.queryForList("""
+            select r.row_no, r.row_group, r.annual_required, coalesce(r.topic_text, d.document_name) as title, d.document_number as code, (r.document_id is not null) as is_document
+              from training_matrix_rows r left join training_matrix_cells c on c.row_id = r.id and c.position_id = ?
+              left join documents d on d.id = r.document_id
+             where r.version_id = ? and (c.row_id is not null or r.all_employees) order by r.row_no
+            """, id, effective.getFirst().get("id"))));
+        return out;
     }
 
     @Transactional
@@ -96,8 +127,8 @@ public class TrainingJobRoleService {
             if (jdbc.queryForObject("select count(*) from training_job_roles where lower(code) = lower(?)", Integer.class, request.code().trim()) > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_JOB_ROLE_CODE_USED");
             if (jdbc.queryForObject("select count(*) from training_job_roles where department_id = ? and lower(name) = lower(?)", Integer.class, request.departmentId(), request.name().trim()) > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_JOB_ROLE_NAME_USED");
             roleId = UUID.randomUUID();
-            jdbc.update("insert into training_job_roles(id, department_id, title_position_id, code, name, description, jurisdiction, created_by, updated_by) values (?,?,?,?,?,?,?,?,?)", roleId, request.departmentId(), request.titlePositionId(),
-                    request.code().trim().toUpperCase(Locale.ROOT), request.name().trim(), blank(request.description()), blank(request.jurisdiction()), actor.getId(), actor.getId());
+            jdbc.update("insert into training_job_roles(id, department_id, title_position_id, code, name, description, jurisdiction, created_by, updated_by, senior_management) values (?,?,?,?,?,?,?,?,?,?)", roleId, request.departmentId(), request.titlePositionId(),
+                    request.code().trim().toUpperCase(Locale.ROOT), request.name().trim(), blank(request.description()), blank(request.jurisdiction()), actor.getId(), actor.getId(), Boolean.TRUE.equals(request.seniorManagement()));
         } else {
             Map<String, Object> current = jdbc.queryForList("select * from training_job_roles where id = ? for update", id).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
             if (request.version() == null || request.version() != ((Number) current.get("version")).intValue()) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_JOB_ROLE_VERSION_CHANGED");
@@ -107,8 +138,11 @@ public class TrainingJobRoleService {
             if (jdbc.queryForObject("select count(*) from training_job_roles where department_id = ? and lower(name) = lower(?) and id <> ?", Integer.class, current.get("department_id"), request.name().trim(), id) > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_JOB_ROLE_NAME_USED");
             if (!request.name().trim().equals(current.get("name"))) changes.add(new AuditTrailChangeResponse("Name", String.valueOf(current.get("name")), request.name().trim()));
             if (active != wasActive) changes.add(new AuditTrailChangeResponse("Status", wasActive ? "Active" : "Inactive", active ? "Active" : "Inactive"));
-            jdbc.update("update training_job_roles set name=?, title_position_id=?, description=?, jurisdiction=?, is_active=?, version=version+1, updated_by=?, updated_at=now() where id=?", request.name().trim(), request.titlePositionId(),
-                    blank(request.description()), blank(request.jurisdiction()), active, actor.getId(), id);
+            // a request that does not send the flag (Activate and Deactivate) keeps it
+            boolean senior = request.seniorManagement() == null ? Boolean.TRUE.equals(current.get("senior_management")) : request.seniorManagement();
+            if (senior != Boolean.TRUE.equals(current.get("senior_management"))) changes.add(new AuditTrailChangeResponse("Senior management", Boolean.TRUE.equals(current.get("senior_management")) ? "yes" : "no", senior ? "yes" : "no"));
+            jdbc.update("update training_job_roles set name=?, title_position_id=?, description=?, jurisdiction=?, is_active=?, senior_management=?, version=version+1, updated_by=?, updated_at=now() where id=?", request.name().trim(), request.titlePositionId(),
+                    blank(request.description()), blank(request.jurisdiction()), active, senior, actor.getId(), id);
         }
         audit.logAs(actor, TYPE, request.name().trim(), roleId, id == null ? "TRAINING_JOB_ROLE_CREATED" : "TRAINING_JOB_ROLE_UPDATED", null, null, request.name().trim(), changes);
         return TrainingRows.camel(jdbc.queryForList(SELECT + " where r.id = ?", roleId).getFirst());

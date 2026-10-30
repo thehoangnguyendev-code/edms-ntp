@@ -30,7 +30,7 @@ public class MyTrainingQueryService {
         """;
 
     private static final String TASKS = """
-        select p.id as participant_id, a.id as activity_id, a.training_number, a.training_title, a.status, a.due_date,
+        select p.id as participant_id, a.id as activity_id, a.training_number, a.status, a.due_date,
                s.method, s.scheduled_on, p.state,
                (select string_agg(t.topic_text, '; ' order by t.topic_text) from training_session_topics t where t.session_id = s.id) as topics,
                (
@@ -55,13 +55,13 @@ public class MyTrainingQueryService {
                  when 'TRAINING_SPECIMEN_SIGNATURE' then 'Specimen #' || sp.version_no when 'TRAINING_RECORD_EXPORT' then 'Export' when 'TRAINING_RECORD_EXPORT_BATCH' then 'Batch export'
                  when 'TRAINING_REQUIREMENT' then rq.request_no when 'TRAINING_LEGACY_EVIDENCE' then 'Legacy evidence'
                  when 'TRAINING_TRAINER_EXCEPTION' then 'Trainer exception' else m.code || ' v' || mv.version_no end as training_number,
-               case a.object_type when 'TRAINING_ACTIVITY' then t.training_title when 'TRAINING_JOB_ASSIGNMENT' then 'Job assignment of ' || jau.full_name
+               case a.object_type when 'TRAINING_ACTIVITY' then training_activity_topics(t.id) when 'TRAINING_JOB_ASSIGNMENT' then 'Job assignment of ' || jau.full_name
                  when 'TRAINING_SPECIMEN_SIGNATURE' then 'Specimen signature of ' || spu.full_name
                  when 'TRAINING_RECORD_EXPORT' then 'Training record export of ' || exu.full_name
                  when 'TRAINING_RECORD_EXPORT_BATCH' then 'Batch export of training records, ' || bxd.name || ' ' || bx.year
                  when 'TRAINING_REQUIREMENT' then 'Training requirement ' || rq.request_no
                  when 'TRAINING_LEGACY_EVIDENCE' then 'Legacy training evidence of ' || lev.document_number
-                 when 'TRAINING_TRAINER_EXCEPTION' then 'Trainer exception for ' || tea.training_number else 'Training matrix' end as training_title,
+                 when 'TRAINING_TRAINER_EXCEPTION' then 'Trainer exception for ' || tea.training_number else 'Training matrix' end as subject,
                case a.object_type when 'TRAINING_ACTIVITY' then t.status when 'TRAINING_JOB_ASSIGNMENT' then ja.status
                  when 'TRAINING_SPECIMEN_SIGNATURE' then sp.status when 'TRAINING_RECORD_EXPORT' then ex.status when 'TRAINING_RECORD_EXPORT_BATCH' then bx.status
                  when 'TRAINING_REQUIREMENT' then rq.status when 'TRAINING_LEGACY_EVIDENCE' then lev.status
@@ -86,8 +86,8 @@ public class MyTrainingQueryService {
          where a.assignee_user_id = ? and a.status = 'PENDING'
         union all
         select 'job-' || j.id, 'RECEIVER_ACCEPT', 'TRAINING_JOB_ASSIGNMENT', j.id, 'JA #' || j.issue_no,
-               'Job assignment: ' || pos.name, j.status, j.created_at, null::uuid
-          from training_job_assignments j join training_job_roles pos on pos.id = j.position_id
+               'Job assignment: ' || (select string_agg(r.name, ', ' order by ar.sort_order) from training_job_assignment_roles ar join training_job_roles r on r.id = ar.job_role_id where ar.assignment_id = j.id), j.status, j.created_at, null::uuid
+          from training_job_assignments j
          where j.person_user_id = ? and j.status = 'PENDING_RECEIVER'
         """;
 
@@ -103,7 +103,7 @@ public class MyTrainingQueryService {
         String search = params.get("search");
         if (search != null && !search.isBlank()) {
             String[] columns = records ? new String[]{"training_number", "topic_text", "document_number"}
-                    : tasks ? new String[]{"training_number", "training_title", "topics"} : new String[]{"training_number", "training_title"};
+                    : tasks ? new String[]{"training_number", "topics"} : new String[]{"training_number", "subject"};
             where.append(" and (");
             for (int i = 0; i < columns.length; i++) {
                 if (i > 0) where.append(" or ");
@@ -127,8 +127,8 @@ public class MyTrainingQueryService {
         if (from != null) { where.append(" and ").append(dateColumn).append(" >= ?"); args.add(java.sql.Date.valueOf(from)); }
         if (to != null) { where.append(" and ").append(dateColumn).append(" <= ?"); args.add(java.sql.Date.valueOf(to)); }
         Map<String, String> sorts = records ? Map.of("trainingNumber", "training_number", "topicText", "topic_text", "documentNumber", "document_number", "completedOn", "completed_on", "result", "result", "recordState", "record_state")
-                : tasks ? Map.of("trainingNumber", "training_number", "trainingTitle", "training_title", "topics", "topics", "method", "method", "scheduledOn", "scheduled_on", "dueDate", "due_date", "status", "status")
-                : Map.of("trainingNumber", "training_number", "trainingTitle", "training_title", "stepCode", "step_code", "status", "status", "assignedAt", "assigned_at");
+                : tasks ? Map.of("trainingNumber", "training_number", "topics", "topics", "method", "method", "scheduledOn", "scheduled_on", "dueDate", "due_date", "status", "status")
+                : Map.of("trainingNumber", "training_number", "subject", "subject", "stepCode", "step_code", "status", "status", "assignedAt", "assigned_at");
         String sort = sorts.get(params.getOrDefault("sortBy", records ? "completedOn" : tasks ? "dueDate" : "assignedAt"));
         if (sort == null) throw new IllegalArgumentException("TRAINING_SORT_NOT_ALLOWED");
         String direction = params.getOrDefault("sortDirection", "asc");

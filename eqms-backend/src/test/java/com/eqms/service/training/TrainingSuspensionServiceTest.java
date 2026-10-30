@@ -66,7 +66,7 @@ class TrainingSuspensionServiceTest {
         Map<String, Object> a = new HashMap<>();
         a.put("id", activityId);
         a.put("training_number", "TRN/QA/26-001");
-        a.put("training_title", "GMP basics");
+        a.put("training_topics", "GMP basics");
         return a;
     }
 

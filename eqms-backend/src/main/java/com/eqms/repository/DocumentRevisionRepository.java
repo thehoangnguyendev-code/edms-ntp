@@ -64,6 +64,20 @@ public interface DocumentRevisionRepository extends JpaRepository<DocumentRevisi
             @Param("participantTypes") Collection<String> participantTypes
     );
 
+    @Query("""
+            SELECT r FROM DocumentRevisionRecord r
+            WHERE r.status.code IN :statusCodes
+            AND EXISTS (SELECT p FROM DocumentWorkflowParticipant p WHERE p.document.id = r.document.id
+                AND p.user.id = :userId AND p.participantType IN :participantTypes)
+            AND (:search = '' OR LOWER(r.document.documentName) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!'
+                OR LOWER(r.document.documentNumber) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!')
+            ORDER BY r.createdAt DESC, r.id ASC
+            """)
+    List<DocumentRevisionRecord> findMyPendingTasksMatching(@Param("userId") UUID userId,
+            @Param("statusCodes") Collection<String> statusCodes,
+            @Param("participantTypes") Collection<String> participantTypes,
+            @Param("search") String search, org.springframework.data.domain.Pageable pageable);
+
     /**
      * The async snapshot workers must not write through a stale managed entity: the multi-second
      * conversion overlaps with workflow actions that bump the revision's lock version, and a plain

@@ -6,8 +6,12 @@ export interface ElectronicSignatureMeaning {
   displayName: string;
 }
 
+/** One row of the table of meanings: the meaning, its module (the first word of the code) and when it was last updated. */
+export interface ElectronicSignatureMeaningRow { id: string; code: string; displayName: string; module: string; updatedAt?: string | null }
+export interface ElectronicSignatureMeaningPage { data: ElectronicSignatureMeaningRow[]; pagination: { page: number; limit: number; total: number; totalPages: number }; modules: string[] }
+
 export interface ElectronicSignatureSettings {
-  signatureTimestampFormat: 'dd/MM/uuuu HH:mm:ss';
+  signatureTimestampFormat: 'dd/MM/uuuu HH:mm';
   signatureTimezone: string;
   timestampFormatEffectiveFrom?: string;
   meanings: ElectronicSignatureMeaning[];
@@ -47,9 +51,7 @@ export interface ElectronicSignatureRecord {
   createdAt?: string;
 }
 
-export interface ElectronicSignatureTimestampPreview {
-  previewBlock: string;
-}
+export interface ElectronicSignatureDisplayStyle { style: 'COMPACT' | 'STANDARD' | 'DETAILED'; label: string; frame: string; text: string }
 
 export const electronicSignatureSettingsApi = {
   getSettings: async () => {
@@ -60,20 +62,14 @@ export const electronicSignatureSettingsApi = {
     const response = await api.get<ElectronicSignatureMeaning>(`/electronic-signature/meanings/${encodeURIComponent(code)}`);
     return response.data;
   },
-  searchMeanings: async (search: string) => {
-    const response = await api.get<ElectronicSignatureMeaning[]>('/settings/electronic-signature/meanings', {
-      params: search ? { search } : undefined,
-    });
-    return response.data;
-  },
+  /** The meanings as a table, searched, filtered, sorted and paged by the server. */
+  meaningsPage: async (params: Record<string, string | number | boolean | undefined>) => (await api.get<ElectronicSignatureMeaningPage>('/settings/electronic-signature/meanings/page', { params })).data,
   saveSettings: async (payload: ElectronicSignatureSettings, sig?: { signatureToken: string; reason?: string }) => {
     const response = await api.put<ElectronicSignatureSettings>('/settings/electronic-signature', { ...payload, ...sig });
     return response.data;
   },
-  previewTimestamp: async (payload: Pick<ElectronicSignatureSettings, 'signatureTimestampFormat' | 'signatureTimezone'>) => {
-    const response = await api.post<ElectronicSignatureTimestampPreview>('/settings/electronic-signature/timestamp-preview', payload);
-    return response.data;
-  },
+  /** The three display styles of a signed signature, drawn by the server from one sample record. */
+  getDisplayStyles: async () => (await api.get<ElectronicSignatureDisplayStyle[]>('/settings/electronic-signature/display-styles')).data,
   generatePdfPreview: async () => {
     const response = await api.get<Blob>('/settings/electronic-signature/pdf-preview', { responseType: 'blob' });
     return response.data;

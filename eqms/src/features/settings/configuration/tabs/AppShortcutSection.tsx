@@ -7,7 +7,7 @@ import type { GeneralConfig } from "../types";
 
 export const APP_ICON_MIN_SIDE = 512;
 export const APP_ICON_MAX_BYTES = 3 * 1024 * 1024;
-export const APP_SHORT_NAME_MAX = 12;
+export const APP_SHORT_NAME_MAX = 64;
 const DEFAULT_BACKGROUND = "#FFFFFF";
 const BUILT_IN_ICON = "/icons/apple-touch-icon.png";
 
@@ -159,10 +159,10 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="outline-emerald"
                   onClick={() => input.current?.click()}
                 >
-                  Upload icon
+                  Upload Icon
                 </Button>
                 {icon && (
                   <Button

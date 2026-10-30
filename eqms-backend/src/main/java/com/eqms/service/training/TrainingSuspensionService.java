@@ -56,7 +56,7 @@ public class TrainingSuspensionService {
         int raised = jdbc.update("""
             insert into training_work_suspensions(id, person_user_id, activity_id, participant_id, topic_text, percent, raised_by) values (?,?,?,?,?,?,?)
             on conflict (participant_id) where status = 'OPEN' do nothing
-            """, id, person, activity.get("id"), participant.get("id"), topic == null ? String.valueOf(activity.get("training_title")) : (topic.length() > 500 ? topic.substring(0, 500) : topic), percent, actor == null ? null : actor.getId());
+            """, id, person, activity.get("id"), participant.get("id"), topic == null ? String.valueOf(activity.get("training_topics")) : (topic.length() > 500 ? topic.substring(0, 500) : topic), percent, actor == null ? null : actor.getId());
         if (raised == 0) return;
         UUID activityId = (UUID) activity.get("id");
         String name = String.valueOf(participant.get("full_name"));
@@ -66,12 +66,12 @@ public class TrainingSuspensionService {
         UserAccount trainee = users.findById(person).orElse(null);
         String title = "Training: retraining required";
         if (trainee != null) {
-            notifier.send("TRAINING_WORK_SUSPENDED", trainee, actor, title, "You did not pass the assessment of " + activity.get("training_title") + " (" + activity.get("training_number")
+            notifier.send("TRAINING_WORK_SUSPENDED", trainee, actor, title, "You did not pass the assessment of " + activity.get("training_topics") + " (" + activity.get("training_number")
                     + "). Retraining is arranged; the work that depends on this training is suspended until you pass.", TrainingStore.OBJECT_ACTIVITY, activityId, "suspension:" + id + ":person");
             for (UserAccount head : recipients.holders("training.job_assignment.manage", access.departmentOf(trainee))) {
                 if (head.getId().equals(person)) continue;
                 notifier.send("TRAINING_WORK_SUSPENDED", head, actor, "Training: work suspended after a failed assessment",
-                        name + " did not pass the assessment of " + activity.get("training_title") + " (" + activity.get("training_number") + "). The work that depends on this training is suspended until the retraining is passed.",
+                        name + " did not pass the assessment of " + activity.get("training_topics") + " (" + activity.get("training_number") + "). The work that depends on this training is suspended until the retraining is passed.",
                         "TRAINING_COMPLIANCE_SUSPENSIONS", access.departmentOf(trainee), "suspension:" + id + ":" + head.getId());
             }
         }
@@ -157,7 +157,7 @@ public class TrainingSuspensionService {
         String name = users.findById(person).map(UserAccount::getFullName).orElse(String.valueOf(person));
         store.auditActivity(actor, activity, "TRAINING_WORK_SUSPENSION_CLEARED", "OPEN", "CLEARED", name + ": work resumed by " + actor.getFullName() + ". Reason: " + request.reason().trim());
         users.findById(person).ifPresent(p -> notifier.send("TRAINING_WORK_RESUMED", p, actor, "Training: work resumed", "The head of your unit decided that the work suspended after the assessment of "
-                + activity.get("training_title") + " may resume.", TrainingStore.OBJECT_ACTIVITY, (UUID) activity.get("id"), "resume:" + id));
+                + activity.get("training_topics") + " may resume.", TrainingStore.OBJECT_ACTIVITY, (UUID) activity.get("id"), "resume:" + id));
         return Map.of("id", id, "status", "CLEARED");
     }
 }

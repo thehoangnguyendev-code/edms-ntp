@@ -18,13 +18,12 @@ print('users', admin.user['username'], approver.user['username'], trainee.user['
 step('create activity')
 a = admin.call('POST', '/training/activities', {'kind': 'UNPLANNED', 'kindReason': 'OTHER', 'trainingTitle': 'E2E paper training'})
 aid = a['id']
-print(a['trainingNumber'], a['status'], a['trainingTitle'])
-assert a['trainingTitle'] == 'E2E paper training'
+print(a['trainingNumber'], a['status'], a.get('trainingTopics'))
 
 step('list shows trainingTitle and actions')
-lst = admin.call('GET', '/training/activities?limit=5&search=E2E')
+lst = admin.call('GET', '/training/activities?limit=5&search=' + a['trainingNumber'])  # an activity has no title of its own: its Training Number finds it
 row = [r for r in lst['data'] if r['id'] == aid][0]
-print(row['trainingTitle'], row.get('actions'))
+print(row.get('trainingTopics'), row.get('actions'))
 
 step('session + participants')
 today = datetime.date.today().isoformat()

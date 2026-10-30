@@ -26,12 +26,14 @@ public class UserUiPreferenceService {
 
     /** The menu entries the user starred in the sidebar: {@code {"ids": ["menu-id", ...]}}, in the order they were starred. */
     public static final String SIDEBAR_FAVORITES = "sidebar-favorites";
+    public static final String DASHBOARD_LAYOUT = "dashboard-layout";
     static final int MAX_FAVORITES = 200;
     static final int MAX_FAVORITE_ID_LENGTH = 100;
 
     private static final Map<String, Consumer<JsonNode>> VALIDATORS = Map.of(
             NOTIFICATION_DOCK, UserUiPreferenceService::validateNotificationDock,
-            SIDEBAR_FAVORITES, UserUiPreferenceService::validateSidebarFavorites
+            SIDEBAR_FAVORITES, UserUiPreferenceService::validateSidebarFavorites,
+            DASHBOARD_LAYOUT, UserUiPreferenceService::validateDashboardLayout
     );
 
     private final UserUiPreferenceRepository repository;
@@ -105,6 +107,27 @@ public class UserUiPreferenceService {
             if (!id.isTextual() || id.asText().isBlank() || id.asText().length() > MAX_FAVORITE_ID_LENGTH || !seen.add(id.asText())) {
                 throw new IllegalArgumentException("Each sidebar favourite must be a distinct, non-blank menu id of at most " + MAX_FAVORITE_ID_LENGTH + " characters");
             }
+        }
+    }
+
+    /** Layout preferences never grant access to a widget or its data. */
+    static void validateDashboardLayout(JsonNode value) {
+        if (value == null || !value.isObject()) throw new IllegalArgumentException("Dashboard layout must be an object");
+        value.fieldNames().forEachRemaining(field -> {
+            if (!"widgets".equals(field)) throw new IllegalArgumentException("Unknown dashboard layout setting: " + field);
+        });
+        JsonNode widgets = value.get("widgets");
+        if (widgets == null || !widgets.isArray() || widgets.size() > 30) throw new IllegalArgumentException("Dashboard widgets must be a list of at most 30 items");
+        var seen = new java.util.HashSet<String>();
+        for (JsonNode widget : widgets) {
+            if (!widget.isObject()) throw new IllegalArgumentException("Invalid dashboard widget");
+            widget.fieldNames().forEachRemaining(field -> {
+                if (!java.util.Set.of("id", "visible", "width").contains(field)) throw new IllegalArgumentException("Unknown widget setting: " + field);
+            });
+            JsonNode id = widget.get("id"), visible = widget.get("visible"), width = widget.get("width");
+            if (id == null || !id.isTextual() || !java.util.Set.of("user-kpis", "admin-kpis", "audit-activity", "revision-pipeline", "effective-by-type", "documents-by-status", "system-monitoring", "pending-work", "document-activity", "workflow-pipeline", "my-documents").contains(id.asText()) || !seen.add(id.asText())) throw new IllegalArgumentException("Invalid or duplicate widget ID");
+            if (visible == null || !visible.isBoolean()) throw new IllegalArgumentException("Widget visibility must be true or false");
+            if (width == null || !width.isTextual() || !java.util.Set.of("half", "full").contains(width.asText())) throw new IllegalArgumentException("Invalid widget width");
         }
     }
 

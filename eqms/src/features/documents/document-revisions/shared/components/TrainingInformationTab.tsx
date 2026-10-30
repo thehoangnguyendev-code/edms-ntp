@@ -229,6 +229,10 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
         />
       </div>
 
+      <p className="text-xs text-slate-500">
+        Training Planned Date is the start of the training period (the day the document is approved), not the day the training is held; the period ends after the Training Period (Days). The Training Completion Date is the day the training was held.
+      </p>
+
       {!isReadOnly && (
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] sm:text-xs text-slate-600 leading-relaxed space-y-1.5">
           <p>

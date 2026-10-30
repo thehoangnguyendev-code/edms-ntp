@@ -58,6 +58,25 @@ class AccessProfileServiceSecurityTest {
     private AccessProfileService service;
     private UserAccount actor;
 
+    @Test
+    void assignedUserPageRejectsUnauthorizedActorBeforeReadingUsers() {
+        when(currentUserService.requireCurrentUser()).thenReturn(actor);
+        UUID profileId = UUID.randomUUID();
+        assertThatThrownBy(() -> service.queryAssignedUsers(profileId, 1, 10))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        verify(uapRepo, never()).findByAccessProfileId(any());
+        verify(roleRepo, never()).findById(any());
+    }
+
+    @Test
+    void editorSummaryRejectsUnauthorizedActorBeforeReadingUsers() {
+        when(currentUserService.requireCurrentUser()).thenReturn(actor);
+        assertThatThrownBy(() -> service.getProfileForEditor(UUID.randomUUID()))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        verify(uapRepo, never()).findByAccessProfileId(any());
+        verify(roleRepo, never()).findById(any());
+    }
+
     @BeforeEach
     void setUp() {
         service = new AccessProfileService(

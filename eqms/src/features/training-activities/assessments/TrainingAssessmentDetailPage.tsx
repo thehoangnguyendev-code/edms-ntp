@@ -16,6 +16,7 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
 import { AssessmentPreviewModal } from "./AssessmentPreviewModal";
+import { QuestionImageField } from "./QuestionImageField";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
 import {
   trainingAssessmentsApi,
@@ -23,29 +24,91 @@ import {
   trainingError,
   type AssessmentItemKind,
   type AssessmentKind,
+  type EssayNumbering,
   type TrainingAssessmentDetail,
   type TrainingAssessmentSave,
 } from "@/services/api/trainingActivities";
 import { Input, Textarea } from "../shared/TrainingFields";
-import { statusChange, trainingBreadcrumbs, when } from "../shared/trainingLabels";
-import { ReadonlyField, ReadonlyGrid, TrainingDetailLayout } from "../shared/TrainingDetailLayout";
+import {
+  statusChange,
+  trainingBreadcrumbs,
+  when,
+} from "../shared/trainingLabels";
+import {
+  ReadonlyField,
+  ReadonlyGrid,
+  TrainingDetailLayout,
+} from "../shared/TrainingDetailLayout";
 import { useTrainingBack } from "../shared/useTrainingBack";
 import { AssessmentRevisionsCard } from "./AssessmentRevisionsCard";
-import { ASSESSMENT_KIND_LABEL, ASSESSMENT_STATUS_LABEL } from "./TrainingAssessmentListView";
+import {
+  ASSESSMENT_KIND_LABEL,
+  ASSESSMENT_STATUS_LABEL,
+} from "./TrainingAssessmentListView";
 
 const LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
-const QUESTION_KIND_LABEL: Record<string, string> = { SINGLE: "One right answer", MULTI: "Several right answers", TRUE_FALSE: "True or false", ESSAY: "Essay (marked by hand)" };
+const QUESTION_KIND_LABEL: Record<string, string> = {
+  SINGLE: "One right answer",
+  MULTI: "Several right answers",
+  TRUE_FALSE: "True or false",
+  ESSAY: "Essay (marked by hand)",
+};
 
 /** A question or a line, and an answer, carry a key of their own so that dragging them in the list keeps each one's content and ticks. */
-export interface Opt { key: string; text: string }
-export interface Draft { id: string; kind: AssessmentItemKind; prompt: string; options: Opt[]; correct: string[]; points: string; modelAnswer: string }
+export interface Opt {
+  key: string;
+  text: string;
+}
+/** How the answers of a question are laid out in the form: one under the other, or in two columns. */
+export type OptionLayout = "VERTICAL" | "TWO_COLUMNS";
+/** The ruled lines an essay question gets in the form when its author does not choose a number. */
+export const DEFAULT_ANSWER_LINES = 8;
+export interface Draft {
+  id: string;
+  kind: AssessmentItemKind;
+  prompt: string;
+  options: Opt[];
+  correct: string[];
+  points: string;
+  modelAnswer: string;
+  optionLayout: OptionLayout;
+  answerLines: string;
+  /** A picture under the question (a data URL); a test only. */
+  image?: string;
+}
 let keySeed = 0;
 const newKey = () => `k${++keySeed}`;
-const opts = (texts: string[]): Opt[] => texts.map((text) => ({ key: newKey(), text }));
+const opts = (texts: string[]): Opt[] =>
+  texts.map((text) => ({ key: newKey(), text }));
+/** A new test is out of 10 points (the scale of APD.0009: "7 of 10"): the questions share it equally until the person sets the points or the total by hand. */
+export const DEFAULT_TOTAL_SCORE = 10;
+
 const blank = (kind: AssessmentKind): Draft =>
   kind === "CHECKLIST"
-    ? { id: newKey(), kind: "CHECK", prompt: "", options: [], correct: ["CORRECT"], points: "1", modelAnswer: "" }
-    : { id: newKey(), kind: "SINGLE", prompt: "", options: opts(["", ""]), correct: [], points: "1", modelAnswer: "" };
+    ? {
+        id: newKey(),
+        kind: "CHECK",
+        prompt: "",
+        options: [],
+        correct: ["CORRECT"],
+        points: "1",
+        modelAnswer: "",
+        optionLayout: "VERTICAL",
+        answerLines: "",
+        image: "",
+      }
+    : {
+        id: newKey(),
+        kind: "SINGLE",
+        prompt: "",
+        options: opts(["", ""]),
+        correct: [],
+        points: "1",
+        modelAnswer: "",
+        optionLayout: "VERTICAL",
+        answerLines: "",
+        image: "",
+      };
 
 /** The answers of a question after a drag. The ticks follow their answers: the letters are those of the new order. */
 export function reorderAnswers(d: Draft, next: Opt[]): Draft {
@@ -65,11 +128,31 @@ export const itemValid = (d: Draft) => {
     if (!(points > 0) || points > 100) return false;
   }
   switch (d.kind) {
-    case "SINGLE": return d.options.length >= 2 && d.options.every((o) => o.text.trim()) && d.correct.length === 1;
-    case "MULTI": return d.options.length >= 2 && d.options.every((o) => o.text.trim()) && d.correct.length >= 1;
-    case "TRUE_FALSE": return d.correct.length === 1;
-    case "CHECK": return d.correct.length === 1;
-    default: return true;
+    case "SINGLE":
+      return (
+        d.options.length >= 2 &&
+        d.options.every((o) => o.text.trim()) &&
+        d.correct.length === 1
+      );
+    case "MULTI":
+      return (
+        d.options.length >= 2 &&
+        d.options.every((o) => o.text.trim()) &&
+        d.correct.length >= 1
+      );
+    case "TRUE_FALSE":
+      return d.correct.length === 1;
+    case "ESSAY":
+      return (
+        d.answerLines.trim() === "" ||
+        (Number.isInteger(Number(d.answerLines)) &&
+          Number(d.answerLines) >= 1 &&
+          Number(d.answerLines) <= 30)
+      );
+    case "CHECK":
+      return d.correct.length === 1;
+    default:
+      return true;
   }
 };
 
@@ -77,7 +160,10 @@ export const itemValid = (d: Draft) => {
  * Sets the total score of a test and shares it among the questions in proportion to the points they have now (equally when they have none), in hundredths, so that the points add up to the total
  * exactly. Null when the total is too small to give every question at least one hundredth.
  */
-export function distributePoints(items: Draft[], total: number): string[] | null {
+export function distributePoints(
+  items: Draft[],
+  total: number,
+): string[] | null {
   const cents = Math.round(total * 100);
   const n = items.length;
   if (!Number.isFinite(cents) || n === 0 || cents < n) return null;
@@ -85,21 +171,40 @@ export function distributePoints(items: Draft[], total: number): string[] | null
   const sum = old.reduce((a, b) => a + b, 0);
   const weights = sum > 0 ? old : old.map(() => 1);
   const weightSum = weights.reduce((a, b) => a + b, 0);
-  const alloc = weights.map((w) => Math.max(1, Math.floor((cents * w) / weightSum)));
+  const alloc = weights.map((w) =>
+    Math.max(1, Math.floor((cents * w) / weightSum)),
+  );
   let diff = cents - alloc.reduce((a, b) => a + b, 0);
-  const order = weights.map((_w, i) => i).sort((a, b) => weights[b] - weights[a]);
+  const order = weights
+    .map((_w, i) => i)
+    .sort((a, b) => weights[b] - weights[a]);
   for (let guard = 0; diff !== 0 && guard < cents + n; guard++) {
     const i = order[guard % n];
-    if (diff > 0) { alloc[i]++; diff--; } else if (alloc[i] > 1) { alloc[i]--; diff++; }
+    if (diff > 0) {
+      alloc[i]++;
+      diff--;
+    } else if (alloc[i] > 1) {
+      alloc[i]--;
+      diff++;
+    }
   }
   return diff === 0 ? alloc.map((c) => String(c / 100)) : null;
 }
 
 const STEPS = ["Draft", "Pending Approval", "Effective", "Obsoleted"];
-const STEP_OF: Record<string, number> = { DRAFT: 0, PENDING_APPROVAL: 1, EFFECTIVE: 2, OBSOLETED: 3 };
+const STEP_OF: Record<string, number> = {
+  DRAFT: 0,
+  PENDING_APPROVAL: 1,
+  EFFECTIVE: 2,
+  OBSOLETED: 3,
+};
 
 /** One Training Assessment of the library (APD.0009): a test of questions or a checklist. A draft is written here and sent for approval; another person signs it into Effective; a change is a new version. */
-export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolean }) {
+export function TrainingAssessmentDetailPage({
+  isNew = false,
+}: {
+  isNew?: boolean;
+}) {
   const { assessmentId = "" } = useParams();
   const navigate = useNavigate();
   const goBack = useTrainingBack("/training-management/assessments");
@@ -107,8 +212,16 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
   const [detail, setDetail] = useState<TrainingAssessmentDetail>();
   const [error, setError] = useState("");
   const [tab, setTab] = useState("overview");
-  const [head, setHead] = useState<{ name: string; kind: AssessmentKind; duration: string }>({ name: "", kind: "QUESTIONS", duration: "" });
-  const [items, setItems] = useState<Draft[]>([blank("QUESTIONS")]);
+  const [head, setHead] = useState<{
+    name: string;
+    kind: AssessmentKind;
+    duration: string;
+    essayNumbering: EssayNumbering;
+  }>({ name: "", kind: "QUESTIONS", duration: "", essayNumbering: "CONTINUE" });
+  const [items, setItems] = useState<Draft[]>([{ ...blank("QUESTIONS"), points: String(DEFAULT_TOTAL_SCORE) }]);
+  // while it is true (a new test, not set by hand) adding or taking out a question shares the total again, equally
+  const [autoTotal, setAutoTotal] = useState(true);
+  const [wantedTotal, setWantedTotal] = useState(DEFAULT_TOTAL_SCORE);
   const [dirty, setDirty] = useState(isNew);
   const [busy, setBusy] = useState(false);
   const [asking, setAsking] = useState<"delete" | "return">();
@@ -121,72 +234,169 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
 
   const apply = useCallback((d: TrainingAssessmentDetail) => {
     setDetail(d);
-    setHead({ name: d.name, kind: d.kind, duration: d.durationMinutes ? String(d.durationMinutes) : "" });
-    setItems(d.items.map((i) => ({ id: newKey(), kind: i.kind, prompt: i.prompt, options: i.kind === "TRUE_FALSE" ? [] : opts(i.options.map((o) => o.text)), correct: i.correct, points: String(i.points), modelAnswer: i.modelAnswer ?? "" })));
+    setHead({
+      name: d.name,
+      kind: d.kind,
+      duration: d.durationMinutes ? String(d.durationMinutes) : "",
+      essayNumbering: d.essayNumbering === "RESTART" ? "RESTART" : "CONTINUE",
+    });
+    setItems(
+      d.items.map((i) => ({
+        id: newKey(),
+        kind: i.kind,
+        prompt: i.prompt,
+        options:
+          i.kind === "TRUE_FALSE" ? [] : opts(i.options.map((o) => o.text)),
+        correct: i.correct,
+        points: String(i.points),
+        modelAnswer: i.modelAnswer ?? "",
+        optionLayout:
+          i.optionLayout === "TWO_COLUMNS" ? "TWO_COLUMNS" : "VERTICAL",
+        answerLines: i.answerLines ? String(i.answerLines) : "",
+        image: i.image ?? "",
+      })),
+    );
     setDirty(false);
     setTotalText(null);
   }, []);
-  const refetch = useCallback(() => { trainingAssessmentsApi.get(assessmentId).then(apply).catch((e) => setError(trainingError(e))); }, [assessmentId, apply]);
-  useEffect(() => { if (!isNew) refetch(); }, [isNew, refetch]);
+  const refetch = useCallback(() => {
+    trainingAssessmentsApi
+      .get(assessmentId)
+      .then(apply)
+      .catch((e) => setError(trainingError(e)));
+  }, [assessmentId, apply]);
+  useEffect(() => {
+    if (!isNew) refetch();
+  }, [isNew, refetch]);
   // A change made by someone else refreshes the page, but never over what is being typed.
   const typing = useRef(false);
   typing.current = dirty;
-  useEntityChanged(["TRAINING"], () => { if (!typing.current && !isNew) refetch(); });
+  useEntityChanged(["TRAINING"], () => {
+    if (!typing.current && !isNew) refetch();
+  });
 
   const caps = detail?.capabilities;
   const editable = isNew || Boolean(caps?.edit);
   const checklist = head.kind === "CHECKLIST";
-  const title = isNew ? "New Training Assessment" : "Training Assessment Details";
+  const title = isNew
+    ? "New Training Assessment"
+    : "Training Assessment Details";
   const crumbs = trainingBreadcrumbs(navigate, "assessments", title);
 
   if (!isNew && !detail) {
     return (
       <div className="flex min-w-0 flex-col gap-4">
         <PageHeader title={title} breadcrumbItems={crumbs} />
-        {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : <SectionLoading text="Loading…" />}
+        {error ? (
+          <p role="alert" className="text-sm text-red-700">
+            {error}
+          </p>
+        ) : (
+          <SectionLoading text="Loading…" />
+        )}
       </div>
     );
   }
 
-  const setItem = (i: number, patch: Partial<Draft>) => { setItems((list) => list.map((d, k) => (k === i ? { ...d, ...patch } : d))); setDirty(true); };
+  const setItem = (i: number, patch: Partial<Draft>) => {
+    setItems((list) => list.map((d, k) => (k === i ? { ...d, ...patch } : d)));
+    if (patch.points !== undefined) setAutoTotal(false);
+    setDirty(true);
+  };
+  /** The questions of a new test share the total equally (nothing is changed when the points were set by hand, in a saved test or in a checklist). */
+  const shareEqually = (list: Draft[]) => {
+    if (!isNew || !autoTotal || head.kind === "CHECKLIST") return list;
+    const shared = distributePoints(list.map((d) => ({ ...d, points: "1" })), wantedTotal);
+    return shared ? list.map((d, k) => ({ ...d, points: shared[k] })) : list;
+  };
   /** A drag of the questions or the lines: the list comes back in its new order (the rows are told apart by their key). */
-  const dragItems = (next: { id: string }[]) => setItems(next.map((n) => items.find((d) => d.id === n.id) as Draft));
+  const dragItems = (next: { id: string }[]) =>
+    setItems(next.map((n) => items.find((d) => d.id === n.id) as Draft));
   const dragAnswers = (i: number, next: { id: string }[]) => {
     const d = items[i];
-    setItem(i, reorderAnswers(d, next.map((n) => d.options.find((o) => o.key === n.id) as Opt)));
+    setItem(
+      i,
+      reorderAnswers(
+        d,
+        next.map((n) => d.options.find((o) => o.key === n.id) as Opt),
+      ),
+    );
   };
-  const total = items.reduce((sum, d) => sum + (Number(d.points) > 0 ? Number(d.points) : 0), 0);
+  const total = items.reduce(
+    (sum, d) => sum + (Number(d.points) > 0 ? Number(d.points) : 0),
+    0,
+  );
   const totalShown = totalText ?? String(Math.round(total * 100) / 100);
   const applyTotal = () => {
     const wanted = Number(totalText);
     setTotalText(null);
     if (totalText == null || !Number.isFinite(wanted) || wanted <= 0) return;
     const shared = distributePoints(items, wanted);
-    if (!shared) { showToast({ type: "error", title: "The total score was not changed", message: "Every question needs at least 0.01 point." }); return; }
+    if (!shared) {
+      showToast({
+        type: "error",
+        title: "The total score was not changed",
+        message: "Every question needs at least 0.01 point.",
+      });
+      return;
+    }
     setItems(items.map((d, k) => ({ ...d, points: shared[k] })));
+    setWantedTotal(wanted);
     setDirty(true);
   };
-  const durationValid = head.duration.trim() === "" || (Number.isInteger(Number(head.duration)) && Number(head.duration) >= 1 && Number(head.duration) <= 480);
-  const valid = head.name.trim().length > 0 && items.length > 0 && items.every(itemValid) && durationValid;
+  const durationValid =
+    head.duration.trim() === "" ||
+    (Number.isInteger(Number(head.duration)) &&
+      Number(head.duration) >= 1 &&
+      Number(head.duration) <= 480);
+  const valid =
+    head.name.trim().length > 0 &&
+    items.length > 0 &&
+    items.every(itemValid) &&
+    durationValid;
   const body = (): TrainingAssessmentSave => ({
     version: detail?.version,
     name: head.name.trim(),
     kind: head.kind,
     durationMinutes: head.duration.trim() ? Number(head.duration) : undefined,
+    essayNumbering: head.essayNumbering,
     items: items.map((d) => ({
       kind: d.kind,
       prompt: d.prompt.trim(),
-      options: d.kind === "SINGLE" || d.kind === "MULTI" ? d.options.map((o) => ({ text: o.text.trim() })) : [],
+      options:
+        d.kind === "SINGLE" || d.kind === "MULTI"
+          ? d.options.map((o) => ({ text: o.text.trim() }))
+          : [],
       correct: d.kind === "ESSAY" ? [] : d.correct,
       points: d.kind === "CHECK" ? 1 : Number(d.points),
-      modelAnswer: d.kind === "ESSAY" && d.modelAnswer.trim() ? d.modelAnswer.trim() : undefined,
+      modelAnswer:
+        d.kind === "ESSAY" && d.modelAnswer.trim()
+          ? d.modelAnswer.trim()
+          : undefined,
+      optionLayout:
+        d.kind === "SINGLE" || d.kind === "MULTI" ? d.optionLayout : undefined,
+      answerLines:
+        d.kind === "ESSAY" && d.answerLines.trim()
+          ? Number(d.answerLines)
+          : undefined,
+      image: d.kind !== "CHECK" && d.image ? d.image : undefined,
     })),
   });
 
   /** The paper drawn from what is in the editor now (saved or not), in the project PDF viewer; with the key it is the paper of the trainer. Nothing is stored. */
   const makePaper = async (paper: "test" | "key" | "both") => {
-    const { items: previewItems, durationMinutes } = body();
-    const blob = await trainingAssessmentsApi.preview({ name: head.name.trim(), kind: head.kind, durationMinutes, items: previewItems, key: paper === "key", sideBySide: paper === "both" || undefined, code: detail?.code, revisionNumber: detail?.revisionNumber });
+    const { items: previewItems, durationMinutes, essayNumbering } = body();
+    const blob = await trainingAssessmentsApi.preview({
+      name: head.name.trim(),
+      kind: head.kind,
+      durationMinutes,
+      essayNumbering,
+      items: previewItems,
+      key: paper === "key",
+      sideBySide: paper === "both" || undefined,
+      code: detail?.code,
+      revisionNumber: detail?.revisionNumber,
+    });
     return URL.createObjectURL(blob);
   };
   const openPreview = async () => {
@@ -194,21 +404,39 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
     try {
       setPreview({ url: await makePaper("test") });
     } catch (e) {
-      showToast({ type: "error", title: "The preview could not be made", message: trainingError(e) });
+      showToast({
+        type: "error",
+        title: "The preview could not be made",
+        message: trainingError(e),
+      });
     } finally {
       setPreviewing(false);
     }
   };
-  const run = async (action: () => Promise<TrainingAssessmentDetail>, done: string) => {
+  const run = async (
+    action: () => Promise<TrainingAssessmentDetail>,
+    done: string,
+  ) => {
     setBusy(true);
     try {
       const next = await action();
-      showToast({ type: "success", title: done, message: `${next.code} ${next.revisionNumber}` });
-      if (isNew) navigate(`/training-management/assessments/${next.id}`, { replace: true });
+      showToast({
+        type: "success",
+        title: done,
+        message: `${next.code} ${next.revisionNumber}`,
+      });
+      if (isNew)
+        navigate(`/training-management/assessments/${next.id}`, {
+          replace: true,
+        });
       else apply(next);
       return true;
     } catch (e) {
-      showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
+      showToast({
+        type: "error",
+        title: "The action was not done",
+        message: trainingError(e),
+      });
       return false;
     } finally {
       setBusy(false);
@@ -217,16 +445,30 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
   const answerReason = async () => {
     if (!detail || !asking) return;
     if (asking === "return") {
-      if (await run(() => trainingAssessmentsApi.returnToDraft(detail.id, reason.trim()), "Returned to draft")) setAsking(undefined);
+      if (
+        await run(
+          () => trainingAssessmentsApi.returnToDraft(detail.id, reason.trim()),
+          "Returned to draft",
+        )
+      )
+        setAsking(undefined);
       return;
     }
     setBusy(true);
     try {
       await trainingAssessmentsApi.remove(detail.id, reason.trim());
-      showToast({ type: "success", title: "Draft deleted", message: detail.code });
+      showToast({
+        type: "success",
+        title: "Draft deleted",
+        message: detail.code,
+      });
       navigate("/training-management/assessments", { replace: true });
     } catch (e) {
-      showToast({ type: "error", title: "The draft was not deleted", message: trainingError(e) });
+      showToast({
+        type: "error",
+        title: "The draft was not deleted",
+        message: trainingError(e),
+      });
     } finally {
       setBusy(false);
     }
@@ -234,36 +476,121 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
 
   /** One question or line, with its answers; the answers are dragged in their own list. */
   const renderItem = (d: Draft, i: number) => (
-    <section className="space-y-3" aria-label={`${checklist ? "Line" : "Question"} ${i + 1}`}>
+    <section
+      className="space-y-3"
+      aria-label={`${checklist ? "Line" : "Question"} ${i + 1}`}
+    >
       <div className="flex h-9 items-center justify-between gap-2">
-        <h4 className="text-sm font-semibold text-slate-900">{checklist ? "Line" : "Question"} {i + 1}</h4>
-        {editable && items.length > 1 && <Button size="sm" variant="outline" onClick={() => { setItems(items.filter((_x, k) => k !== i)); setDirty(true); }}><IconTrash className="mr-1 h-4 w-4" />Remove</Button>}
+        <h4 className="text-sm font-semibold text-slate-900">
+          {checklist ? "Line" : "Question"} {i + 1}
+        </h4>
+        {editable && items.length > 1 && (
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => {
+              setItems(shareEqually(items.filter((_x, k) => k !== i)));
+              setDirty(true);
+            }}
+          >
+            <IconTrash className="mr-1 h-4 w-4" />
+            Remove
+          </Button>
+        )}
       </div>
       {!checklist && (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="md:col-span-2">
-            <Select label="Kind" value={d.kind} enableSearch={false} disabled={!editable}
-              onChange={(v) => setItem(i, { kind: v, correct: [], options: v === "SINGLE" || v === "MULTI" ? (d.options.length >= 2 ? d.options : opts(["", ""])) : [] })}
-              options={Object.entries(QUESTION_KIND_LABEL).map(([value, label]) => ({ value: value as AssessmentItemKind, label }))} />
+            <Select
+              label="Kind"
+              value={d.kind}
+              enableSearch={false}
+              disabled={!editable}
+              onChange={(v) =>
+                setItem(i, {
+                  kind: v,
+                  correct: [],
+                  options:
+                    v === "SINGLE" || v === "MULTI"
+                      ? d.options.length >= 2
+                        ? d.options
+                        : opts(["", ""])
+                      : [],
+                })
+              }
+              options={Object.entries(QUESTION_KIND_LABEL).map(
+                ([value, label]) => ({
+                  value: value as AssessmentItemKind,
+                  label,
+                }),
+              )}
+            />
           </div>
-          <FormField label="Points"><Input type="number" min={0.01} step="0.5" max={100} value={d.points} disabled={!editable} onChange={(e) => setItem(i, { points: e.target.value })} /></FormField>
+          <FormField label="Points">
+            <Input
+              type="number"
+              min={0.01}
+              step="0.5"
+              max={100}
+              value={d.points}
+              disabled={!editable}
+              onChange={(e) => setItem(i, { points: e.target.value })}
+            />
+          </FormField>
         </div>
       )}
-      <FormField label={checklist ? "Line to check" : "Question"} required><Textarea rows={2} maxLength={2000} value={d.prompt} disabled={!editable} onChange={(e) => setItem(i, { prompt: e.target.value })} /></FormField>
+      <FormField label={checklist ? "Line to check" : "Question"} required>
+        <Textarea
+          rows={2}
+          maxLength={2000}
+          value={d.prompt}
+          disabled={!editable}
+          onChange={(e) => setItem(i, { prompt: e.target.value })}
+        />
+      </FormField>
+      {d.kind !== "CHECK" && (
+        <QuestionImageField value={d.image ?? ""} disabled={!editable} onChange={(image) => setItem(i, { image })} />
+      )}
       {d.kind === "CHECK" && (
-        <RadioGroup label="The key: what the person must tick" name={`check-${i}`} layout="horizontal" value={d.correct[0] ?? ""} disabled={!editable} onChange={(v) => setItem(i, { correct: [String(v)] })}
-          options={[{ label: "Correct (Đúng)", value: "CORRECT" }, { label: "Incorrect (Không đúng)", value: "INCORRECT" }]} />
+        <RadioGroup
+          label="The key: what the person must tick"
+          name={`check-${i}`}
+          layout="horizontal"
+          value={d.correct[0] ?? ""}
+          disabled={!editable}
+          onChange={(v) => setItem(i, { correct: [String(v)] })}
+          options={[
+            { label: "Correct (Đúng)", value: "CORRECT" },
+            { label: "Incorrect (Không đúng)", value: "INCORRECT" },
+          ]}
+        />
       )}
       {d.kind === "TRUE_FALSE" && (
-        <RadioGroup label="The right answer" name={`tf-${i}`} layout="horizontal" value={d.correct[0] ?? ""} disabled={!editable} onChange={(v) => setItem(i, { correct: [String(v)] })} options={[{ label: "True", value: "A" }, { label: "False", value: "B" }]} />
+        <RadioGroup
+          label="The right answer"
+          name={`tf-${i}`}
+          layout="horizontal"
+          value={d.correct[0] ?? ""}
+          disabled={!editable}
+          onChange={(v) => setItem(i, { correct: [String(v)] })}
+          options={[
+            { label: "True", value: "A" },
+            { label: "False", value: "B" },
+          ]}
+        />
       )}
       {(d.kind === "SINGLE" || d.kind === "MULTI") && (
         <div className="space-y-2">
-          <div className="text-xs font-medium text-slate-700">Answers (tick the right {d.kind === "SINGLE" ? "one" : "ones"})</div>
+          <div className="text-xs font-medium text-slate-700">
+            Answers (tick the right {d.kind === "SINGLE" ? "one" : "ones"})
+          </div>
           {editable ? (
             <DraggableReorderList
               plain
-              items={d.options.map((o, k) => ({ id: o.key, label: `answer ${LETTERS[k]}` }))}
+              items={d.options.map((o, k) => ({
+                id: o.key,
+                label: `answer ${LETTERS[k]}`,
+              }))}
               onReorder={(next) => dragAnswers(i, next)}
               renderItem={(row) => {
                 const k = d.options.findIndex((o) => o.key === row.id);
@@ -271,127 +598,498 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
               }}
             />
           ) : (
-            <div className="space-y-2">{d.options.map((o, k) => <div key={o.key}>{answerRow(d, i, k)}</div>)}</div>
+            <div className="space-y-2">
+              {d.options.map((o, k) => (
+                <div key={o.key}>{answerRow(d, i, k)}</div>
+              ))}
+            </div>
           )}
-          {editable && d.options.length < LETTERS.length && <Button size="sm" variant="default" onClick={() => setItem(i, { options: [...d.options, { key: newKey(), text: "" }] })}><IconPlus className="mr-1 h-4 w-4" />Add an answer</Button>}
+          {editable && d.options.length < LETTERS.length && (
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() =>
+                setItem(i, {
+                  options: [...d.options, { key: newKey(), text: "" }],
+                })
+              }
+            >
+              <IconPlus className="mr-1 h-4 w-4" />
+              Add an Answer
+            </Button>
+          )}
+          <RadioGroup
+            label="Answers in the form"
+            name={`layout-${i}`}
+            layout="horizontal"
+            value={d.optionLayout}
+            disabled={!editable}
+            onChange={(v) =>
+              setItem(i, {
+                optionLayout: v === "TWO_COLUMNS" ? "TWO_COLUMNS" : "VERTICAL",
+              })
+            }
+            options={[
+              { label: "One under the other", value: "VERTICAL" },
+              { label: "Two columns", value: "TWO_COLUMNS" },
+            ]}
+          />
         </div>
       )}
       {d.kind === "ESSAY" && (
-        <FormField label="Model answer or marking guide (for the trainer only, never printed for the trainees)"><Textarea rows={3} maxLength={4000} value={d.modelAnswer} disabled={!editable} onChange={(e) => setItem(i, { modelAnswer: e.target.value })} /></FormField>
+        <FormField
+          label={`Lines to write on (1 to 30, empty: ${DEFAULT_ANSWER_LINES})`}
+          hint="The form is ruled with this number of light lines under the question."
+          error={
+            d.answerLines.trim() !== "" &&
+            !(Number(d.answerLines) >= 1 && Number(d.answerLines) <= 30)
+              ? `Enter a whole number from 1 to 30, or leave it empty for ${DEFAULT_ANSWER_LINES} lines.`
+              : undefined
+          }
+        >
+          <Input
+            type="text"
+            inputMode="numeric"
+            maxLength={2}
+            value={d.answerLines}
+            disabled={!editable}
+            placeholder={String(DEFAULT_ANSWER_LINES)}
+            aria-label="Lines to write on"
+            onChange={(e) =>
+              setItem(i, { answerLines: e.target.value.replace(/\D/g, "") })
+            }
+          />
+        </FormField>
       )}
-      {editable && !itemValid(d) && <div><Badge color="amber">Not complete</Badge></div>}
+      {d.kind === "ESSAY" && (
+        <FormField label="Model answer or marking guide (for the trainer only, never printed for the trainees)">
+          <Textarea
+            rows={3}
+            maxLength={4000}
+            value={d.modelAnswer}
+            disabled={!editable}
+            onChange={(e) => setItem(i, { modelAnswer: e.target.value })}
+          />
+        </FormField>
+      )}
+      {editable && !itemValid(d) && (
+        <div>
+          <Badge color="amber">Not complete</Badge>
+        </div>
+      )}
     </section>
   );
   const answerRow = (d: Draft, i: number, k: number) => (
     <div className="flex items-center gap-2">
-      <Checkbox checked={d.correct.includes(LETTERS[k])} disabled={!editable} aria-label={`Answer ${LETTERS[k]} is right`}
-        onChange={(c) => setItem(i, { correct: d.kind === "SINGLE" ? (c ? [LETTERS[k]] : []) : c ? [...d.correct, LETTERS[k]] : d.correct.filter((x) => x !== LETTERS[k]) })} />
+      <Checkbox
+        checked={d.correct.includes(LETTERS[k])}
+        disabled={!editable}
+        aria-label={`Answer ${LETTERS[k]} is right`}
+        onChange={(c) =>
+          setItem(i, {
+            correct:
+              d.kind === "SINGLE"
+                ? c
+                  ? [LETTERS[k]]
+                  : []
+                : c
+                  ? [...d.correct, LETTERS[k]]
+                  : d.correct.filter((x) => x !== LETTERS[k]),
+          })
+        }
+      />
       <span className="w-5 text-sm text-slate-500">{LETTERS[k]}.</span>
-      <Input value={d.options[k].text} maxLength={500} aria-label={`Answer ${LETTERS[k]}`} disabled={!editable} onChange={(e) => setItem(i, { options: d.options.map((o, m) => (m === k ? { ...o, text: e.target.value } : o)) })} />
+      <Input
+        value={d.options[k].text}
+        maxLength={500}
+        aria-label={`Answer ${LETTERS[k]}`}
+        disabled={!editable}
+        onChange={(e) =>
+          setItem(i, {
+            options: d.options.map((o, m) =>
+              m === k ? { ...o, text: e.target.value } : o,
+            ),
+          })
+        }
+      />
       {editable && d.options.length > 2 && (
-        <button type="button" aria-label={`Remove answer ${LETTERS[k]}`} className="rounded p-1 text-slate-400 hover:text-red-600"
-          onClick={() => setItem(i, { options: d.options.filter((_o, m) => m !== k), correct: d.correct.filter((x) => x !== LETTERS[k]).map((x) => (LETTERS.indexOf(x) > k ? LETTERS[LETTERS.indexOf(x) - 1] : x)) })}>
+        <button
+          type="button"
+          aria-label={`Remove answer ${LETTERS[k]}`}
+          className="rounded p-1 text-slate-400 hover:text-red-600"
+          onClick={() =>
+            setItem(i, {
+              options: d.options.filter((_o, m) => m !== k),
+              correct: d.correct
+                .filter((x) => x !== LETTERS[k])
+                .map((x) =>
+                  LETTERS.indexOf(x) > k ? LETTERS[LETTERS.indexOf(x) - 1] : x,
+                ),
+            })
+          }
+        >
           <IconTrash className="h-4 w-4" />
         </button>
       )}
     </div>
   );
 
-  const tabs: TabItem[] = [{ id: "overview", label: "General Information" }, { id: "items", label: checklist ? "Checklist Lines" : "Questions", count: items.length }, ...(isNew ? [] : [{ id: "audit", label: "Audit Trail" }])];
+  const tabs: TabItem[] = [
+    { id: "overview", label: "General Information" },
+    {
+      id: "items",
+      label: checklist ? "Checklist Lines" : "Questions",
+      count: items.length,
+    },
+    ...(isNew ? [] : [{ id: "audit", label: "Audit Trail" }]),
+  ];
   const obsoleted = detail?.status === "OBSOLETED";
   const steps = STEPS;
   const stepIndex = detail ? (STEP_OF[detail.status] ?? 0) : 0;
   const previewButton = (
-    <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" loading={previewing} disabled={!valid || busy} title={!valid ? "Complete the assessment name and every question or line to see the preview." : "See the paper as it is printed"} onClick={() => void openPreview()}>Preview</Button>
+    <Button
+      size="sm"
+      variant="outline-emerald"
+      className="whitespace-nowrap"
+      loading={previewing}
+      disabled={!valid || busy}
+      title={
+        !valid
+          ? "Complete the assessment name and every question or line to see the preview."
+          : "See the paper as it is printed"
+      }
+      onClick={() => void openPreview()}
+    >
+      Preview
+    </Button>
   );
-  const newVersionButton = caps?.newVersion ? (
-    <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" loading={busy} disabled={previewing} onClick={() => void run(() => trainingAssessmentsApi.newVersion(detail!.id), "New version created")}>New Version</Button>
+  const upgradeRevisionButton = caps?.upgradeRevision ? (
+    <Button
+      size="sm"
+      variant="outline-emerald"
+      className="whitespace-nowrap"
+      loading={busy}
+      disabled={previewing}
+      onClick={() =>
+        void run(
+          () => trainingAssessmentsApi.upgradeRevision(detail!.id),
+          "Revision upgraded",
+        )
+      }
+    >
+      Upgrade Revision
+    </Button>
   ) : null;
-  const headerExtra = (<>{previewButton}{newVersionButton}</>);
+  const headerExtra = (
+    <>
+      {previewButton}
+      {upgradeRevisionButton}
+    </>
+  );
   const footer = (
     <>
       {previewButton}
       {editable && (
-        <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" loading={busy} disabled={!dirty || !valid}
-          title={!valid ? "Every question or line needs its text and its answers; a question needs points above zero." : undefined}
-          onClick={() => void run(() => (isNew ? trainingAssessmentsApi.create(body()) : trainingAssessmentsApi.update(detail!.id, body())), isNew ? "Draft created" : "Draft saved")}>
-          {isNew ? "Create draft" : "Save draft"}
+        <Button
+          size="sm"
+          variant="outline-emerald"
+          className="whitespace-nowrap"
+          loading={busy}
+          disabled={!dirty || !valid}
+          title={
+            !valid
+              ? "Every question or line needs its text and its answers; a question needs points above zero."
+              : undefined
+          }
+          onClick={() =>
+            void run(
+              () =>
+                isNew
+                  ? trainingAssessmentsApi.create(body())
+                  : trainingAssessmentsApi.update(detail!.id, body()),
+              isNew ? "Draft created" : "Draft saved",
+            )
+          }
+        >
+          {isNew ? "Create Draft" : "Save Draft"}
         </Button>
       )}
-      {caps?.submit && <Button size="sm" className="whitespace-nowrap" loading={busy} disabled={dirty} title={dirty ? "Save the draft first." : undefined} onClick={() => void run(() => trainingAssessmentsApi.submit(detail!.id), "Sent for approval")}>Submit for Approval</Button>}
-      {caps?.approve && <Button size="sm" className="whitespace-nowrap" onClick={() => setSigning(true)}>Approve</Button>}
-      {caps?.returnToDraft && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => { setReason(""); setAsking("return"); }}>Return to Draft</Button>}
-      {newVersionButton}
-      {caps?.delete && <Button size="sm" variant="destructive" className="whitespace-nowrap" onClick={() => { setReason(""); setAsking("delete"); }}>Delete Draft</Button>}
+      {caps?.submit && (
+        <Button
+          size="sm"
+          className="whitespace-nowrap"
+          loading={busy}
+          disabled={dirty}
+          title={dirty ? "Save the draft first." : undefined}
+          onClick={() =>
+            void run(
+              () => trainingAssessmentsApi.submit(detail!.id),
+              "Sent for approval",
+            )
+          }
+        >
+          Submit for Approval
+        </Button>
+      )}
+      {caps?.approve && (
+        <Button
+          size="sm"
+          className="whitespace-nowrap"
+          onClick={() => setSigning(true)}
+        >
+          Complete Approval
+        </Button>
+      )}
+      {caps?.returnToDraft && (
+        <Button
+          size="sm"
+          variant="outline-emerald"
+          className="whitespace-nowrap"
+          onClick={() => {
+            setReason("");
+            setAsking("return");
+          }}
+        >
+          Return to Draft
+        </Button>
+      )}
+      {upgradeRevisionButton}
+      {caps?.delete && (
+        <Button
+          size="sm"
+          variant="destructive"
+          className="whitespace-nowrap"
+          onClick={() => {
+            setReason("");
+            setAsking("delete");
+          }}
+        >
+          Delete Draft
+        </Button>
+      )}
     </>
   );
 
   return (
     <>
-      <TrainingDetailLayout title={title} breadcrumbItems={crumbs} onBack={goBack} steps={steps} currentStepIndex={stepIndex} terminalProgressStep={obsoleted ? "Effective" : "Draft"} tabs={tabs} activeTab={tab} onTab={setTab} tabLayoutId="training-assessment-detail-tab" footer={footer} headerExtra={headerExtra}
-        afterFooter={tab === "overview" && !isNew && detail ? <AssessmentRevisionsCard assessmentId={detail.id} signature={`${detail.status}:${detail.revisionNumber}:${detail.updatedAt}`} /> : undefined}>
+      <TrainingDetailLayout
+        title={title}
+        breadcrumbItems={crumbs}
+        onBack={goBack}
+        steps={steps}
+        currentStepIndex={stepIndex}
+        terminalProgressStep={obsoleted ? "Effective" : "Draft"}
+        tabs={tabs}
+        activeTab={tab}
+        onTab={setTab}
+        tabLayoutId="training-assessment-detail-tab"
+        footer={footer}
+        headerExtra={headerExtra}
+        afterFooter={
+          tab === "overview" && !isNew && detail ? (
+            <AssessmentRevisionsCard
+              assessmentId={detail.id}
+              signature={`${detail.status}:${detail.revisionNumber}:${detail.updatedAt}`}
+            />
+          ) : undefined
+        }
+      >
         {tab === "overview" && (
           <div className="space-y-6">
             {!isNew && detail?.approveBlocker && (
-              <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">You cannot approve this assessment: {trainingCodeText(detail.approveBlocker)}</p>
+              <p
+                role="status"
+                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+              >
+                You cannot approve this assessment:{" "}
+                {trainingCodeText(detail.approveBlocker)}
+              </p>
             )}
             {!isNew && detail && (
-            <ReadonlyGrid>
+              <ReadonlyGrid>
                 <>
-                  <ReadonlyField label="Assessment Number" value={detail.code} />
-                  <ReadonlyField label="Assessment Revision" value={detail.revisionNumber} />
-                  <ReadonlyField label="Status" value={ASSESSMENT_STATUS_LABEL[detail.status] ?? detail.status} />
-                  <ReadonlyField label="Created By" value={detail.createdByName} />
-                  <ReadonlyField label="Last Changed By" value={`${detail.updatedByName}, ${when(detail.updatedAt)}`} />
-                  {detail.submittedByName && detail.status !== "DRAFT" && <ReadonlyField label="Submitted By" value={detail.submittedByName} />}
-                  {detail.approvedAt && <ReadonlyField label="Approved By" value={`${detail.approvedByName}, ${when(detail.approvedAt)}`} />}
-                  <ReadonlyField label="Used By Activities" value={String(detail.usedByActivities)} />
+                  <ReadonlyField
+                    label="Assessment Number"
+                    value={detail.code}
+                  />
+                  <ReadonlyField
+                    label="Assessment Revision"
+                    value={detail.revisionNumber}
+                  />
+                  <ReadonlyField
+                    label="Status"
+                    value={
+                      ASSESSMENT_STATUS_LABEL[detail.status] ?? detail.status
+                    }
+                  />
+                  <ReadonlyField
+                    label="Created By"
+                    value={detail.createdByName}
+                  />
+                  <ReadonlyField
+                    label="Last Changed By"
+                    value={`${detail.updatedByName}, ${when(detail.updatedAt)}`}
+                  />
+                  {detail.submittedByName && detail.status !== "DRAFT" && (
+                    <ReadonlyField
+                      label="Submitted By"
+                      value={detail.submittedByName}
+                    />
+                  )}
+                  {detail.approvedAt && (
+                    <ReadonlyField
+                      label="Approved By"
+                      value={`${detail.approvedByName}, ${when(detail.approvedAt)}`}
+                    />
+                  )}
+                  <ReadonlyField
+                    label="Used By Activities"
+                    value={String(detail.usedByActivities)}
+                  />
                 </>
-            </ReadonlyGrid>
+              </ReadonlyGrid>
             )}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
               <div className="md:col-span-2">
-                <FormField label="Assessment Name" required hint="Only to recognise the assessment in the library. It is not written in the form."><Input value={head.name} maxLength={255} disabled={!editable} placeholder="Kiểm tra đào tạo SOP.0006" onChange={(e) => { setHead({ ...head, name: e.target.value }); setDirty(true); }} /></FormField>
+                <FormField
+                  label="Assessment Name"
+                  required
+                  hint="Only to recognise the assessment in the library. It is not written in the form."
+                >
+                  <Input
+                    value={head.name}
+                    maxLength={255}
+                    disabled={!editable}
+                    placeholder="Kiểm tra đào tạo SOP.0006"
+                    onChange={(e) => {
+                      setHead({ ...head, name: e.target.value });
+                      setDirty(true);
+                    }}
+                  />
+                </FormField>
               </div>
               <FormField label="Type" required>
                 <Select
                   value={head.kind}
                   enableSearch={false}
                   disabled={!isNew}
-                  onChange={(v) => { setHead({ ...head, kind: v }); setItems([blank(v)]); setTotalText(null); setDirty(true); }}
-                  options={Object.entries(ASSESSMENT_KIND_LABEL).map(([value, label]) => ({ value: value as AssessmentKind, label }))}
+                  onChange={(v) => {
+                    setHead({ ...head, kind: v });
+                    setItems([v === "CHECKLIST" ? blank(v) : { ...blank(v), points: String(wantedTotal) }]);
+                    setAutoTotal(true);
+                    setTotalText(null);
+                    setDirty(true);
+                  }}
+                  options={Object.entries(ASSESSMENT_KIND_LABEL).map(
+                    ([value, label]) => ({
+                      value: value as AssessmentKind,
+                      label,
+                    }),
+                  )}
                 />
               </FormField>
-              <FormField label="Test duration (minutes)" hint="Written in the form as the test duration. Leave empty to write it by hand.">
-                <Input type="number" min={1} max={480} step={1} value={head.duration} disabled={!editable} aria-label="Test duration" onChange={(e) => { setHead({ ...head, duration: e.target.value }); setDirty(true); }} />
+              <FormField
+                label="Test duration (minutes)"
+                hint="Written in the form as the test duration. Leave empty to write it by hand."
+              >
+                <Input
+                  type="number"
+                  min={1}
+                  max={480}
+                  step={1}
+                  value={head.duration}
+                  disabled={!editable}
+                  aria-label="Test duration"
+                  onChange={(e) => {
+                    setHead({ ...head, duration: e.target.value });
+                    setDirty(true);
+                  }}
+                />
               </FormField>
               {!checklist && (
+                <FormField
+                  label="Numbering of the essay questions"
+                  hint="In the form, Part II can go on after the last multiple-choice question or start again at question 1."
+                >
+                  <RadioGroup
+                    label=""
+                    name="essay-numbering"
+                    layout="horizontal"
+                    value={head.essayNumbering}
+                    disabled={!editable}
+                    onChange={(v) => {
+                      setHead({
+                        ...head,
+                        essayNumbering:
+                          v === "RESTART" ? "RESTART" : "CONTINUE",
+                      });
+                      setDirty(true);
+                    }}
+                    options={[
+                      { label: "Continue the numbers", value: "CONTINUE" },
+                      { label: "Start again at 1", value: "RESTART" },
+                    ]}
+                  />
+                </FormField>
+              )}
+              {!checklist && (
                 <FormField label="Total Score">
-                  <Input type="number" min={0.01} step="0.5" value={totalShown} disabled={!editable} aria-label="Total Score"
-                    onChange={(e) => setTotalText(e.target.value)} onBlur={applyTotal} onKeyDown={(e) => { if (e.key === "Enter") applyTotal(); }} />
+                  <Input
+                    type="number"
+                    min={0.01}
+                    step="0.5"
+                    value={totalShown}
+                    disabled={!editable}
+                    aria-label="Total Score"
+                    onChange={(e) => setTotalText(e.target.value)}
+                    onBlur={applyTotal}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") applyTotal();
+                    }}
+                  />
                 </FormField>
               )}
             </div>
             <p className="text-xs text-slate-500">
               {checklist
                 ? "A checklist has no score: each line is ticked Correct or Incorrect, and the person passes only when every line is as the key says."
-                : "Changing the Total Score shares it among the questions, in proportion to their points (see the tab Questions); changing the points of a question changes the total. An essay is marked by hand on the paper and the total score is typed in the Results step."}
-              {" "}An effective version never changes: a change is a new version. An activity that uses it keeps its own copy.
+                : "Changing the Total Score shares it among the questions, in proportion to their points (see the tab Questions); changing the points of a question changes the total. An essay is marked by hand on the paper and the total score is typed in the Results step."}{" "}
+              An effective version never changes: a change is a new version. An
+              activity that uses it keeps its own copy.
             </p>
           </div>
         )}
 
         {tab === "items" && (
           <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-800">{checklist ? `Checklist lines (${items.length})` : `Questions (${items.length}, total ${Math.round(total * 100) / 100} point${total === 1 ? "" : "s"})`}</h3>
-            {editable && items.length < 200 ? <Button size="sm" variant="default" onClick={() => { setItems([...items, blank(head.kind)]); setDirty(true); }}><IconPlus className="mr-1 h-4 w-4" />{checklist ? "Add a line" : "Add a question"}</Button> : undefined}
-          </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-slate-800">
+                {checklist
+                  ? `Checklist lines (${items.length})`
+                  : `Questions (${items.length}, total ${Math.round(total * 100) / 100} point${total === 1 ? "" : "s"})`}
+              </h3>
+              {editable && items.length < 200 ? (
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => {
+                    setItems(shareEqually([...items, blank(head.kind)]));
+                    setDirty(true);
+                  }}
+                >
+                  <IconPlus className="mr-1 h-4 w-4" />
+                  {checklist ? "Add a Line" : "Add a Question"}
+                </Button>
+              ) : undefined}
+            </div>
             <div>
               {editable ? (
                 <DraggableReorderList
                   alignTop
-                  items={items.map((d, i) => ({ id: d.id, label: `${checklist ? "Line" : "Question"} ${i + 1}` }))}
+                  items={items.map((d, i) => ({
+                    id: d.id,
+                    label: `${checklist ? "Line" : "Question"} ${i + 1}`,
+                  }))}
                   onReorder={dragItems}
                   renderItem={(row) => {
                     const i = items.findIndex((d) => d.id === row.id);
@@ -399,19 +1097,37 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
                   }}
                 />
               ) : (
-                <div className="space-y-2">{items.map((d, i) => <div key={d.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">{renderItem(d, i)}</div>)}</div>
+                <div className="space-y-2">
+                  {items.map((d, i) => (
+                    <div
+                      key={d.id}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2.5"
+                    >
+                      {renderItem(d, i)}
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
         )}
 
-        {tab === "audit" && detail && <AuditTrailTab entityId={detail.id} entityType="TRAINING_ASSESSMENT" />}
+        {tab === "audit" && detail && (
+          <AuditTrailTab
+            entityId={detail.id}
+            entityType="TRAINING_ASSESSMENT"
+          />
+        )}
       </TrainingDetailLayout>
 
       {preview && (
         <AssessmentPreviewModal
           title={`Preview: ${head.name.trim() || "Training Assessment"}`}
-          description={checklist ? "The checklist in the enabled form APD.0009, as an activity gets it; the answer key is for the trainer only and is never handed out." : "The test in the enabled form APD.0009, as an activity gets it; the answer key is for the trainer only and is never handed out. The training topic is a sample line here; the name of each trainee, the Training Number and the date are written when it is printed for a session."}
+          description={
+            checklist
+              ? "The checklist in the enabled form APD.0009, as an activity gets it; the answer key is for the trainer only and is never handed out."
+              : "The test in the enabled form APD.0009, as an activity gets it; the answer key is for the trainer only and is never handed out. The training topic is a sample line here; the name of each trainee, the Training Number and the date are written when it is printed for a session."
+          }
           firstUrl={preview.url}
           load={(paper) => makePaper(paper)}
           onClose={() => setPreview(undefined)}
@@ -422,27 +1138,49 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
         onClose={() => setAsking(undefined)}
         onConfirm={() => void answerReason()}
         title={asking === "return" ? "Return to Draft" : "Delete Draft"}
-        description={asking === "return" ? "The assessment goes back to the designer, who can change it and send it again. The reason stays in the Audit Trail." : "Only a draft can be deleted. The reason stays in the Audit Trail."}
+        description={
+          asking === "return"
+            ? "The assessment goes back to the designer, who can change it and send it again. The reason stays in the Audit Trail."
+            : "Only a draft can be deleted. The reason stays in the Audit Trail."
+        }
         confirmText={asking === "return" ? "Return" : "Delete"}
         confirmVariant={asking === "return" ? "default" : "destructive"}
         isLoading={busy}
         confirmDisabled={!reason.trim()}
         size="md"
       >
-        <FormField label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
+        <FormField label="Reason" required>
+          <Textarea
+            rows={3}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </FormField>
       </FormModal>
       <ESignatureModal
         isOpen={signing}
         onClose={() => setSigning(false)}
         onConfirm={async (data: { signatureToken: string }) => {
-          const ok = await run(() => trainingAssessmentsApi.approve(detail!.id, data.signatureToken), "Assessment approved");
+          const ok = await run(
+            () =>
+              trainingAssessmentsApi.approve(detail!.id, data.signatureToken),
+            "Assessment approved",
+          );
           if (ok) setSigning(false);
         }}
         actionTitle="Approve the training assessment"
-        changes={statusChange("Pending Approval", "Effective", "Training assessment")}
+        changes={statusChange(
+          "Pending Approval",
+          "Effective",
+          "Training assessment",
+        )}
         meaningDisplayName="Training Assessment Approved"
         meaningCode="TRAINING_ASSESSMENT_APPROVED"
-        targetDetails={{ code: detail?.code ?? "", title: head.name, revision: detail?.revisionNumber ?? "" }}
+        targetDetails={{
+          code: detail?.code ?? "",
+          title: head.name,
+          revision: detail?.revisionNumber ?? "",
+        }}
       />
     </>
   );

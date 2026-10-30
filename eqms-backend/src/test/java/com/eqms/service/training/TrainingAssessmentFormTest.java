@@ -95,9 +95,9 @@ class TrainingAssessmentFormTest {
         assertTrue(text.contains("Training number: TRN/QA/26-001"));
         assertTrue(text.contains("Test duration 45 phút/ minutes"), "the duration goes where the dots were");
         // the third line of dots of the topics was not needed
-        assertEquals(0, bodyLines(out).stream().filter(l -> l.trim().matches("…{20,}")).count(), "a line to write on is a tab with a dotted leader, not a run of dots that can wrap");
+        assertEquals(0, bodyLines(out).stream().filter(l -> l.trim().matches("…{20,}")).count(), "a line to write on is a paragraph with a light border, not a run of dots that can wrap");
         try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(out))) {
-            long lines = doc.getParagraphs().stream().filter(p -> p.getCTP().isSetPPr() && p.getCTP().getPPr().isSetTabs() && p.getCTP().getPPr().getTabs().getTabArray(0).getLeader() != null).count();
+            long lines = doc.getParagraphs().stream().filter(p -> p.getCTP().isSetPPr() && p.getCTP().getPPr().isSetPBdr() && p.getCTP().getPPr().getPBdr().isSetBottom()).count();
             assertEquals(8, lines, "the eight lines of the essay question");
         }
         // the fields of the trainee stay as dots until the copy is made for a person
@@ -131,7 +131,7 @@ class TrainingAssessmentFormTest {
         String text = all(out);
         assertTrue(text.contains("Phần I: Câu hỏi trắc nghiệm / Part I: Multiple-choice questions"));
         assertTrue(text.contains("Câu 1: Hệ thống được phân loại thành mấy nhóm?  (2 điểm/ points)"));
-        assertTrue(text.contains("A. 4 nhóm"));
+        assertTrue(text.contains("\u2610  4 nhóm"));
         assertTrue(text.contains("Chọn tất cả các đáp án đúng/ Choose all the right answers"));
         assertTrue(text.contains("Phần II: Câu hỏi tự luận / Part II: Essay questions"));
         assertTrue(text.contains("Câu 3: Liệt kê các bước thẩm định nồi hấp.  (6 điểm/ points)"));
@@ -139,6 +139,37 @@ class TrainingAssessmentFormTest {
         assertFalse(text.contains("URS, IQ"), "the trainee's copy has no model answer");
         assertEquals(0, new XWPFDocument(new ByteArrayInputStream(out)).getTables().stream().filter(t -> t.getRows().size() > 0 && tableOf(t).contains("Contents of the steps")).count());
         assertTrue(text.indexOf("Phần I") < text.indexOf("Phần II") && text.indexOf("Phần II") < text.indexOf("Bài làm gồm"));
+    }
+
+    @Test
+    void theAnswersOfAQuestionAreInTwoColumnsWhenTheAuthorChoseThat() throws IOException {
+        List<Map<String, Object>> items = new ArrayList<>(questions());
+        items.get(0).put("optionLayout", "TWO_COLUMNS");
+        items.get(0).put("options", List.of(Map.of("id", "A", "text", "4 nhóm"), Map.of("id", "B", "text", "3 nhóm"), Map.of("id", "C", "text", "2 nhóm"), Map.of("id", "D", "text", "1 nhóm")));
+        byte[] out = TrainingAssessmentForm.build(template(), content(items, false, false));
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(out))) {
+            XWPFTable columns = doc.getTables().stream().filter(t -> t.getRows().size() == 2 && t.getRow(0).getTableCells().size() == 2 && tableOf(t).contains("4 nhóm")).findFirst().orElseThrow();
+            assertEquals("\u2610  4 nhóm", columns.getRow(0).getCell(0).getText());
+            assertEquals("\u2610  3 nhóm", columns.getRow(0).getCell(1).getText());
+            assertEquals("\u2610  2 nhóm", columns.getRow(1).getCell(0).getText());
+            assertEquals("\u2610  1 nhóm", columns.getRow(1).getCell(1).getText());
+        }
+        // the other question keeps the answers one under the other
+        assertTrue(all(out).contains("\u2610  Kiểm tra chứng chỉ vật liệu"));
+    }
+
+    @Test
+    void anEssayQuestionHasAsManyLightRuledLinesAsTheAuthorChose() throws IOException {
+        List<Map<String, Object>> items = new ArrayList<>(questions());
+        items.get(2).put("answerLines", 3);
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(TrainingAssessmentForm.build(template(), content(items, false, false))))) {
+            long ruled = doc.getParagraphs().stream().filter(p -> p.getCTP().isSetPPr() && p.getCTP().getPPr().isSetPBdr() && p.getCTP().getPPr().getPBdr().isSetBottom() && p.getCTP().getPPr().getPBdr().getBottom().xgetColor().getStringValue().equals("BFBFBF")).count();
+            assertEquals(3, ruled);
+        }
+        items.get(2).put("answerLines", null);
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(TrainingAssessmentForm.build(template(), content(items, false, false))))) {
+            assertEquals(8, doc.getParagraphs().stream().filter(p -> p.getCTP().isSetPPr() && p.getCTP().getPPr().isSetPBdr() && p.getCTP().getPPr().getPBdr().isSetBottom()).count(), "the default is eight lines");
+        }
     }
 
     private static String tableOf(XWPFTable t) {
@@ -153,9 +184,9 @@ class TrainingAssessmentFormTest {
         assertTrue(text.contains("ANSWER KEY"));
         assertTrue(text.contains("Đáp án mẫu/ Model answer: URS, IQ, OQ, PQ, báo cáo"));
         try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(TrainingAssessmentForm.build(template(), content(questions(), false, true))))) {
-            int marks = 0;
-            for (XWPFParagraph p : doc.getParagraphs()) for (XWPFRun r : p.getRuns()) for (var sym : r.getCTR().getSymArray()) if ("Wingdings".equals(sym.getFont())) marks++;
-            assertEquals(3, marks, "B for question 1, A and C for question 2");
+            int crossed = 0;
+            for (XWPFParagraph p : doc.getParagraphs()) if (p.getText().startsWith("\u2612")) crossed++;
+            assertEquals(3, crossed, "the box of B for question 1, of A and C for question 2 has a cross; the others are empty");
         }
         assertFalse(all(TrainingAssessmentForm.build(template(), content(questions(), false, false))).contains("ANSWER KEY"));
     }
@@ -198,7 +229,7 @@ class TrainingAssessmentFormTest {
             assertTrue(xml.contains("TRAINING ASSESSMENT"));
             assertTrue(xml.contains("PAGE") && xml.contains("NUMPAGES"), "the page numbers are fields");
             assertEquals(1, header.getAllPictures().size(), "the logo is in the header");
-            assertEquals(2, doc.getFooterList().size(), "the footer of the pages and the empty footer of the last page");
+            assertEquals(1, doc.getFooterList().size(), "one footer for all the pages");
             String f = doc.getFooterList().stream().map(x -> x._getHdrFtr().xmlText()).filter(x -> x.contains("Sign:")).findFirst().orElseThrow();
             assertFalse(f.contains("Training number") || f.contains("Trainee:"), "the footer has no line of the training number and the trainee");
             assertTrue(f.contains("Sign:") && f.contains("Date:"));
@@ -210,28 +241,43 @@ class TrainingAssessmentFormTest {
     }
 
     @Test
-    void theLastPageHasTheEndOfTheTestAtTheBottomAndNoFooter() throws IOException {
+    void theEndOfTheTestFollowsTheLastQuestionAndLeavesDotsForTheDate() throws IOException {
         byte[] out = TrainingAssessmentForm.build(template(), content(questions(), false, false));
         try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(out))) {
-            // the first section ends with a paragraph that carries the section; the last section is the end of the test
-            long breaks = doc.getParagraphs().stream().filter(p -> p.getCTP().isSetPPr() && p.getCTP().getPPr().isSetSectPr()).count();
-            assertEquals(1, breaks);
-            var last = doc.getDocument().getBody().getSectPr();
-            var first = doc.getParagraphs().stream().filter(p -> p.getCTP().isSetPPr() && p.getCTP().getPPr().isSetSectPr()).findFirst().orElseThrow().getCTP().getPPr().getSectPr();
-            assertEquals(1, first.sizeOfFooterReferenceArray());
-            assertEquals(1, last.sizeOfFooterReferenceArray());
-            assertFalse(first.getFooterReferenceArray(0).getId().equals(last.getFooterReferenceArray(0).getId()), "another footer for the last page");
-            // the end of the test is in a table on that page, with its text at the bottom
-            XWPFTable end = doc.getTables().getLast();
-            assertTrue(tableOf(end).contains("Bài làm gồm 3 câu hỏi") || tableOf(end).replaceAll("\\s+", " ").contains("Bài làm gồm 3 câu hỏi"));
-            assertTrue(tableOf(end).contains("Chữ ký học viên"));
-            assertEquals(XWPFTableCell.XWPFVertAlign.BOTTOM, end.getRow(0).getCell(0).getVerticalAlignment());
-            // and nowhere else
-            assertEquals(1, doc.getBodyElements().stream().filter(e -> e instanceof XWPFParagraph p && p.getText().contains("Chữ ký học viên")).count() + doc.getTables().stream().filter(t -> tableOf(t).contains("Chữ ký học viên")).count());
+            assertEquals(0, doc.getParagraphs().stream().filter(p -> p.getCTP().isSetPPr() && p.getCTP().getPPr().isSetSectPr()).count(), "one section: the end of the test is not on a page of its own");
+            List<String> lines = doc.getParagraphs().stream().map(XWPFParagraph::getText).filter(t -> !t.isBlank()).toList();
+            int count = -1, signature = -1, lastQuestion = -1;
+            for (int i = 0; i < lines.size(); i++) {
+                if (lines.get(i).contains("Bài làm gồm 3 câu hỏi")) count = i;
+                if (lines.get(i).contains("Chữ ký học viên")) signature = i;
+                if (lines.get(i).startsWith("Câu ")) lastQuestion = i;
+            }
+            assertTrue(lastQuestion >= 0 && count > lastQuestion && signature == count + 1, "the end of the test comes right after the questions");
+            XWPFParagraph counted = doc.getParagraphs().stream().filter(p -> p.getText().contains("there are")).findFirst().orElseThrow();
+            var runs = counted.getRuns();
+            int words = 0;
+            while (!runs.get(words).text().equals("there are")) words++;
+            assertTrue(runs.get(words).isItalic() && runs.get(words + 1).text().contains("3") && runs.get(words + 1).isItalic(), "the number of the English words is in italic");
+            XWPFParagraph line = doc.getParagraphs().stream().filter(p -> p.getText().contains("Chữ ký học viên")).findFirst().orElseThrow();
+            var stops = line.getCTP().getPPr().getTabs().getTabArray();
+            assertEquals(2, stops.length, "two dotted leaders: for the signature and for the date, on one line");
+            assertTrue(java.util.Arrays.stream(stops).allMatch(t -> t.getLeader() == org.openxmlformats.schemas.wordprocessingml.x2006.main.STTabTlc.DOT));
+            assertEquals(2, line.getRuns().stream().filter(r -> r.getCTR().sizeOfTabArray() > 0).count(), "a tab after each label");
+            assertTrue(line.getRuns().stream().anyMatch(r -> r.isItalic() && r.text().equals("Assessment date")), "the English label is in italic");
         }
-        // the header is the same on both sections: the last one has none of its own
-        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(out))) {
-            assertEquals(1, doc.getHeaderList().size());
+    }
+
+    @Test
+    void theEssayQuestionsContinueTheNumbersOrStartAgainAtOneAndTheAnswersAreNotIndented() throws IOException {
+        TrainingAssessmentForm.Content c = content(questions(), false, false);
+        for (boolean restart : new boolean[] {false, true}) {
+            byte[] out = TrainingAssessmentForm.build(template(), new TrainingAssessmentForm.Content(c.items(), false, false, c.topics(), c.trainingNumber(), c.trainingType(), c.durationMinutes(), restart));
+            try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(out))) {
+                String all = doc.getParagraphs().stream().map(XWPFParagraph::getText).reduce("", (x, y) -> x + "|" + y);
+                assertEquals(restart, all.contains("Câu 1: Liệt kê"), "the essay is question 1 again when asked");
+                assertEquals(!restart, all.contains("Câu 3: Liệt kê"), "or goes on after the last multiple-choice question");
+                assertTrue(doc.getParagraphs().stream().filter(p -> p.getText().startsWith("☐")).allMatch(p -> p.getIndentationLeft() <= 0), "the answers are in line with the question");
+            }
         }
     }
 

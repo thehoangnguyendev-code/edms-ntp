@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Droplets, QrCode, Stamp } from "lucide-react";
+import { FormSection } from "@/components/ui/form/FormSection";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch/Switch";
 import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput";
@@ -91,6 +92,17 @@ const NumberField: React.FC<{
 /** An accordion card: clicking the header expands/collapses the body, animated with a pure-CSS
  *  grid-rows trick (no JS height measuring, no layout thrash). Independent of the on/off switch,
  *  which only enables/disables the mark itself -- collapsing the card never touches that. */
+const MARK_ICONS: Record<string, React.ReactNode> = {
+  stamp: <Stamp className="h-4 w-4" />,
+  watermark: <Droplets className="h-4 w-4" />,
+  qr: <QrCode className="h-4 w-4" />,
+};
+const markIcon = (title: string) => {
+  const t = title.toLowerCase();
+  return t.includes("stamp") ? MARK_ICONS.stamp : t.includes("watermark") ? MARK_ICONS.watermark : t.includes("qr") ? MARK_ICONS.qr : undefined;
+};
+
+/** One marking (stamp, watermark, QR code) as a section of the left column, the same card as the other administration screens, with its on/off switch and a fold. */
 export const MarkCard: React.FC<{
   title: string;
   icon?: React.ReactNode;
@@ -102,33 +114,20 @@ export const MarkCard: React.FC<{
 }> = ({ title, icon, enabled, onToggle, disabled, defaultExpanded = true, children }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
   return (
-    <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/60 overflow-hidden">
-      <div className="flex items-center gap-3 pr-3 sm:pr-4">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-        className="flex min-w-0 flex-1 items-center gap-3 p-3 sm:p-4 text-left hover:bg-slate-100/60 transition-colors"
-      >
-        <div className="flex min-w-0 items-center gap-2">
-          <ChevronDown
-            className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-300 ${expanded ? "rotate-0" : "-rotate-90"}`}
-          />
-          {icon && <span className="text-emerald-600">{icon}</span>}
-          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+    <FormSection
+      title={title}
+      icon={icon ?? markIcon(title)}
+      headerRight={
+        <div className="flex items-center gap-2">
+          <Switch checked={enabled} onChange={onToggle} size="sm" disabled={disabled} />
+          <button type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${title}`} aria-expanded={expanded} onClick={() => setExpanded((v) => !v)} className="rounded p-1 text-slate-500 hover:bg-slate-100">
+            <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          </button>
         </div>
-      </button>
-      <Switch checked={enabled} onChange={onToggle} size="sm" disabled={disabled} />
-      </div>
-      <div
-        className="grid transition-[grid-template-rows] duration-300 ease-in-out"
-        style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}
-      >
-        <div className="overflow-hidden">
-          <div className="space-y-4 border-t border-slate-200 p-3 pt-4 sm:p-4 sm:pt-4">{children}</div>
-        </div>
-      </div>
-    </div>
+      }
+    >
+      {expanded ? <div className="space-y-4">{children}</div> : null}
+    </FormSection>
   );
 };
 

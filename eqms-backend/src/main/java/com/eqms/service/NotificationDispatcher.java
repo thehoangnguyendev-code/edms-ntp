@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -97,6 +98,15 @@ public class NotificationDispatcher {
      *                   "recipientName" only if it varies per recipient; it is auto-filled
      *                   from each recipient's full name otherwise
      */
+    /**
+     * The same dispatch in a transaction of its own. A caller whose own transaction may still be rolled back (a deferred database guard checks at commit) registers it to run after the commit,
+     * when the outcome the message reports is certain; called from another bean, so that the proxy starts the new transaction.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void dispatchIndependently(String eventCode, List<UserAccount> recipients, Map<String, String> variables) {
+        dispatch(eventCode, recipients, variables);
+    }
+
     @Transactional
     public void dispatch(String eventCode, List<UserAccount> recipients, Map<String, String> variables) {
         NotificationEventDefinition event = eventRepository.findByCode(eventCode).orElse(null);

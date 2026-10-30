@@ -67,7 +67,7 @@ describe("My Training server tables", () => {
     fireEvent.change(screen.getByLabelText("Result"), { target: { value: "READ" } });
     fireEvent.change(screen.getByLabelText("Record"), { target: { value: "VALID" } });
     await waitFor(() => expect(api.records).toHaveBeenLastCalledWith(expect.objectContaining({ result: "READ", recordState: "VALID", limit: 10 })));
-    fireEvent.click(screen.getByRole("button", { name: "Topic" }));
+    fireEvent.click(screen.getByRole("button", { name: "Training Topic" }));
     await waitFor(() => expect(api.records).toHaveBeenLastCalledWith(expect.objectContaining({ sortBy: "topicText" })));
   });
 });

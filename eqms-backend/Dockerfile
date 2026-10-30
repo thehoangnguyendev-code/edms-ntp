@@ -20,6 +20,7 @@ ENV TZ=Asia/Ho_Chi_Minh
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         curl \
+        ffmpeg \
         fontconfig \
         fonts-dejavu-core \
         tzdata \

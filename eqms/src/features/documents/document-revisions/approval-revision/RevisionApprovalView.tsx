@@ -651,7 +651,7 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
                     isOpen={showesignModal}
                     onClose={() => setshowesignModal(false)}
                     onConfirm={handleESignConfirm}
-                    actionTitle={eSignAction === 'approve' ? 'Complete Approve' : 'Reject'}
+                    actionTitle={eSignAction === 'approve' ? 'Complete Approval' : 'Reject'}
                     meaningDisplayName={eSignAction === 'approve' ? 'Approved' : 'Rejected'}
                     meaningCode={eSignAction === 'approve' ? 'APPROVED' : 'REJECTED'}
                     changes={[{

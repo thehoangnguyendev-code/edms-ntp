@@ -1,12 +1,21 @@
 import { api } from './client';
+import type { PageBackground } from '@/config/page-background';
 
 /** Shown in the Dashboard top bar when the administrator has not set a header title. */
 export const DEFAULT_SYSTEM_HEADER_TITLE = 'Electronic Quality Management Software';
 
 export interface PublicBranding {
   compactDesktopFilters?: boolean;
+  alternatingRecordColors?: boolean;
+  alternatingRecordColor?: string;
+  mainBackground?: PageBackground | null;
+  authBackground?: PageBackground | null;
   /** Machine value: center | top-right | top-left | bottom-right | bottom-left. */
   toastPosition?: 'center' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
+  /** How long a system message stays on screen, in seconds (2 to 60). */
+  toastDurationSeconds?: number;
+  /** How the materials of a training are drawn: TABLE (default) or TILES. Chosen by the administrator. */
+  trainingMaterialsLayout?: 'TABLE' | 'TILES';
   systemDisplayName: string;
   systemLogo: string;
   systemSidebarCollapsedLogo?: string;

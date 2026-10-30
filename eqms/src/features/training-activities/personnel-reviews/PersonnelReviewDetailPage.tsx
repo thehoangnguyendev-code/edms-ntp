@@ -195,7 +195,7 @@ export function PersonnelReviewDetailPage() {
             ) : (
               <>
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-                  <span className="text-slate-600">Position: <span className="font-medium text-slate-900">{gaps.positionName ?? "—"}</span></span>
+                  <span className="text-slate-600">Work Position: <span className="font-medium text-slate-900">{gaps.positionName ?? "—"}</span></span>
                   <span className="text-slate-600">Trained: <span className="font-semibold text-slate-900">{gaps.done}</span> of {gaps.required}</span>
                   <span className="text-slate-600">Not trained: <span className="font-semibold text-red-700">{gaps.missing}</span></span>
                   <span className="text-slate-600">Annual training due: <span className="font-semibold text-amber-700">{gaps.due}</span></span>
@@ -249,10 +249,10 @@ function ItemDialog({ item, personName, busy, onClose, onSave }: { item: Trainin
   const [status, setStatus] = useState<string>(item.status);
   const [note, setNote] = useState(item.note ?? "");
   const [activityId, setActivityId] = useState(item.activityId ?? "");
-  const [options, setOptions] = useState<{ label: string; value: string }[]>(item.activityId && item.trainingNumber ? [{ label: `${item.trainingNumber} — ${item.trainingTitle ?? ""}`, value: item.activityId }] : []);
+  const [options, setOptions] = useState<{ label: string; value: string }[]>(item.activityId && item.trainingNumber ? [{ label: `${item.trainingNumber} — ${item.trainingTopics ?? ""}`, value: item.activityId }] : []);
   const search = useCallback(async (query: string) => {
     const page = await trainingActivitiesApi.list({ search: query, limit: 20, page: 1 }).catch(() => ({ data: [] }));
-    const mapped = page.data.map((a) => ({ label: `${a.trainingNumber} — ${a.trainingTitle}`, value: a.id }));
+    const mapped = page.data.map((a) => ({ label: `${a.trainingNumber} — ${a.trainingTopics}`, value: a.id }));
     setOptions(mapped);
     return mapped;
   }, []);

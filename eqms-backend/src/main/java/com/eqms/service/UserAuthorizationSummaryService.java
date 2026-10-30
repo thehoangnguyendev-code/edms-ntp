@@ -2,6 +2,8 @@ package com.eqms.service;
 
 import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.user.UserAuthorizationSummaryResponse;
+import com.eqms.dto.user.UserAuthorizationPageResponse;
+import com.eqms.dto.user.PaginationResponse;
 import com.eqms.entity.PermissionSet;
 import com.eqms.entity.RoleDefinition;
 import com.eqms.entity.UserAccount;
@@ -29,6 +31,7 @@ public class UserAuthorizationSummaryService {
     private final AccessProfilePermissionSetRepository profilePermissionSetRepository;
     private final AccessProfileWorkflowRoleRepository profileWorkflowRoleRepository;
     private final PermissionSetRepository permissionSetRepository;
+    private final com.eqms.repository.WorkflowRoleRepository workflowRoleRepository;
 
     public UserAuthorizationSummaryService(
             CurrentUserService currentUserService,
@@ -38,7 +41,8 @@ public class UserAuthorizationSummaryService {
             UserAccessProfileRepository userAccessProfileRepository,
             AccessProfilePermissionSetRepository profilePermissionSetRepository,
             AccessProfileWorkflowRoleRepository profileWorkflowRoleRepository,
-            PermissionSetRepository permissionSetRepository) {
+            PermissionSetRepository permissionSetRepository,
+            com.eqms.repository.WorkflowRoleRepository workflowRoleRepository) {
         this.currentUserService = currentUserService;
         this.permissionEvaluationService = permissionEvaluationService;
         this.effectivePermissionService = effectivePermissionService;
@@ -47,6 +51,7 @@ public class UserAuthorizationSummaryService {
         this.profilePermissionSetRepository = profilePermissionSetRepository;
         this.profileWorkflowRoleRepository = profileWorkflowRoleRepository;
         this.permissionSetRepository = permissionSetRepository;
+        this.workflowRoleRepository = workflowRoleRepository;
     }
 
     public UserAuthorizationSummaryResponse getSummary(UUID userId) {
@@ -69,6 +74,27 @@ public class UserAuthorizationSummaryService {
                 user.getId(),
                 profiles,
                 effectivePermissionService.getEffectivePermissionCodes(user).size());
+    }
+
+    public UserAuthorizationPageResponse querySummary(UUID userId, String search, int page, int limit) {
+        // The legacy explanation enforces self/user-view access before any query or count.
+        var summary = getSummary(userId);
+        String needle = search == null ? "" : search.trim().toLowerCase(java.util.Locale.ROOT);
+        var labels = workflowRoleRepository.findAllByOrderByDisplayOrderAscLabelAsc().stream()
+                .collect(java.util.stream.Collectors.toMap(r -> r.getCode(), r -> r.getLabel(), (a, b) -> a));
+        var matching = summary.accessProfiles().stream().filter(p -> needle.isEmpty()
+                || matches(p.name(), needle) || matches(p.code(), needle)
+                || p.permissionSets().stream().anyMatch(s -> matches(s.name(), needle))
+                || p.workflowRoles().stream().anyMatch(r -> matches(labels.getOrDefault(r, r), needle))).toList();
+        int safePage = Math.max(1, page), safeLimit = Math.max(1, Math.min(100, limit));
+        int start = (int) Math.min((long) (safePage - 1) * safeLimit, matching.size());
+        return new UserAuthorizationPageResponse(summary.userId(), matching.subList(start, Math.min(start + safeLimit, matching.size())),
+                summary.effectivePermissionCount(), summary.accessProfiles().stream().map(p -> p.id()).toList(),
+                new PaginationResponse(safePage, safeLimit, matching.size(), (int) Math.ceil((double) matching.size() / safeLimit)));
+    }
+
+    private static boolean matches(String value, String needle) {
+        return value != null && value.toLowerCase(java.util.Locale.ROOT).contains(needle);
     }
 
     private UserAuthorizationSummaryResponse.AccessProfile toProfile(RoleDefinition profile) {

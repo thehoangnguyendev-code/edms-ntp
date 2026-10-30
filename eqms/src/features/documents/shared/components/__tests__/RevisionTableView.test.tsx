@@ -16,7 +16,7 @@ const mount = (shouldShowExpandIcon?: () => boolean) => {
     columns={[{ id: "no", label: "No.", visible: true, order: 0 }]}
     expandedRowId={null}
     sortConfig={{ key: "no", direction: "asc" }}
-    currentPage={1} itemsPerPage={10} isTableLoading={false}
+    currentPage={1} itemsPerPage={10} isTableLoading={false} totalItems={3} totalPages={1}
     onExpandRow={onExpandRow} onSort={vi.fn()} onPageChange={vi.fn()} onMenuAction={vi.fn()}
     renderCell={(_column, _item, index) => index + 1}
     getMenuActions={() => []} shouldShowExpandIcon={shouldShowExpandIcon}

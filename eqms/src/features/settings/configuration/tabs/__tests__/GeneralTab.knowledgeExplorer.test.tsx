@@ -32,6 +32,24 @@ const baseConfig = {
 } as unknown as GeneralConfig;
 
 describe("GeneralTab Knowledge Base setting", () => {
+  it("enables alternating records and allows a saved color to be changed", () => {
+    const onChange = vi.fn();
+    const view = render(<GeneralTab config={baseConfig} onChange={onChange} />);
+    fireEvent.click(screen.getByLabelText('Use alternating record colors'));
+    const enabled = onChange.mock.calls[0][0] as GeneralConfig;
+    expect(enabled.appearance.alternatingRecordColors).toBe(true);
+    view.rerender(<GeneralTab config={enabled} onChange={onChange} />);
+    fireEvent.click(screen.getByRole('button', { name: '#F8FAFC' }));
+    fireEvent.change(screen.getByDisplayValue('#F8FAFC'), { target: { value: '#E5F1F2' } });
+    expect(onChange.mock.calls.at(-1)?.[0].appearance).toEqual(expect.objectContaining({ alternatingRecordColors: true, alternatingRecordColor: '#E5F1F2' }));
+  });
+  it("keeps the chosen record color when another appearance setting changes", () => {
+    const onChange = vi.fn();
+    const configured = { ...baseConfig, appearance: { ...baseConfig.appearance, alternatingRecordColors: true, alternatingRecordColor: '#E5F1F2' } } as GeneralConfig;
+    render(<GeneralTab config={configured} onChange={onChange} />);
+    fireEvent.click(screen.getByLabelText('Use compact desktop filters'));
+    expect(onChange.mock.calls[0][0].appearance).toEqual(expect.objectContaining({ alternatingRecordColors: true, alternatingRecordColor: '#E5F1F2' }));
+  });
   it("groups the interface options together and organizes branding/localization like SecurityTab", () => {
     render(<GeneralTab config={baseConfig} onChange={vi.fn()} />);
     const section = screen.getByRole('heading', { name: 'User Interface' }).closest('.rounded-xl');

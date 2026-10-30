@@ -64,7 +64,7 @@ export const AUTH_UI = {
   formStack: "space-y-4 sm:space-y-6",
   fieldBlock: "space-y-1.5 sm:space-y-2.5",
   inputBase:
-    "h-11 w-full rounded-xl border bg-white/92 px-3.5 text-sm text-slate-700 transition-all sm:h-12 sm:px-4",
+    "auth-input h-11 w-full rounded-xl border bg-white/92 px-3.5 text-sm text-slate-700 transition-all sm:h-12 sm:px-4",
   inputFocus:
     "placeholder:text-slate-400 focus:outline-none focus:ring-1",
   inputDefault:

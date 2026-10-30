@@ -286,7 +286,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
             disabled={busy}
             onClick={() => void runAction(copy, "approve")}
           >
-            <IconThumbUp className="h-4 w-4" /> Complete Approve
+            <IconThumbUp className="h-4 w-4" /> Complete Approval
           </Button>
         )}
         {caps.canReject && (

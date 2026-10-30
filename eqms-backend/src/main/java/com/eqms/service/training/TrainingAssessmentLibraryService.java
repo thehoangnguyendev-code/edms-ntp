@@ -40,13 +40,45 @@ public class TrainingAssessmentLibraryService {
     private static final String[] LETTERS = {"A", "B", "C", "D", "E", "F", "G", "H"};
 
     public record OptionDto(String text) {}
-    public record ItemDto(String kind, String prompt, List<OptionDto> options, List<String> correct, BigDecimal points, String modelAnswer) {}
-    public record SaveRequest(Integer version, String name, String kind, Integer durationMinutes, List<ItemDto> items) {}
+    /** {@code image}: a picture under the text of the question, as a data URL (PNG or JPEG); only a question of a test has one. */
+    public record ItemDto(String kind, String prompt, List<OptionDto> options, List<String> correct, BigDecimal points, String modelAnswer, String optionLayout, Integer answerLines, String image) {
+        public ItemDto(String kind, String prompt, List<OptionDto> options, List<String> correct, BigDecimal points, String modelAnswer, String optionLayout, Integer answerLines) {
+            this(kind, prompt, options, correct, points, modelAnswer, optionLayout, answerLines, null);
+        }
+
+        public ItemDto(String kind, String prompt, List<OptionDto> options, List<String> correct, BigDecimal points, String modelAnswer) {
+            this(kind, prompt, options, correct, points, modelAnswer, null, null, null);
+        }
+    }
+
+    private static final int MAX_IMAGE_BYTES = 1_500_000;
+    private static final java.util.regex.Pattern IMAGE = java.util.regex.Pattern.compile("^data:image/(png|jpeg);base64,([A-Za-z0-9+/]+=*)$");
+
+    /** The picture of a question, checked by its content and not by its name: a PNG or a JPEG, not bigger than 1.5 MB. Null when there is none. */
+    static String checkedImage(String kind, String image) {
+        if (image == null || image.isBlank()) return null;
+        if ("CHECK".equals(kind) || image.length() > MAX_IMAGE_BYTES * 4 / 3 + 64) throw new IllegalArgumentException("TRAINING_ASSESSMENT_IMAGE_INVALID");
+        java.util.regex.Matcher m = IMAGE.matcher(image.trim());
+        if (!m.matches()) throw new IllegalArgumentException("TRAINING_ASSESSMENT_IMAGE_INVALID");
+        byte[] bytes;
+        try {
+            bytes = java.util.Base64.getDecoder().decode(m.group(2));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("TRAINING_ASSESSMENT_IMAGE_INVALID");
+        }
+        boolean png = bytes.length > 8 && (bytes[0] & 0xFF) == 0x89 && bytes[1] == 'P' && bytes[2] == 'N' && bytes[3] == 'G';
+        boolean jpeg = bytes.length > 3 && (bytes[0] & 0xFF) == 0xFF && (bytes[1] & 0xFF) == 0xD8;
+        if (bytes.length > MAX_IMAGE_BYTES || !(m.group(1).equals("png") ? png : jpeg)) throw new IllegalArgumentException("TRAINING_ASSESSMENT_IMAGE_INVALID");
+        return image.trim();
+    }
+    public record SaveRequest(Integer version, String name, String kind, Integer durationMinutes, List<ItemDto> items, String essayNumbering) {
+        public SaveRequest(Integer version, String name, String kind, Integer durationMinutes, List<ItemDto> items) { this(version, name, kind, durationMinutes, items, null); }
+    }
     public record ApproveRequest(String signatureToken, String reason) {}
     public record ReasonRequest(String reason) {}
     public record ChooseRequest(UUID assessmentId) {}
     /** What the editor shows now, saved or not: the paper is drawn from it. {@code key} draws the paper of the trainer, with the answers. */
-    public record PreviewRequest(String name, String kind, Integer durationMinutes, List<ItemDto> items, boolean key, String code, String revisionNumber, Boolean sideBySide) {}
+    public record PreviewRequest(String name, String kind, Integer durationMinutes, List<ItemDto> items, boolean key, String code, String revisionNumber, Boolean sideBySide, String essayNumbering) {}
 
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;
@@ -57,6 +89,10 @@ public class TrainingAssessmentLibraryService {
     private final TrainingFileService files;
     private final com.eqms.service.OnlyOfficeDocumentEditService onlyOffice;
     private final TrainingPreviewMarking marking;
+
+    /** The code of a record is made by the rule of Training Administration (Code Rules). */
+    @org.springframework.beans.factory.annotation.Autowired
+    private TrainingCodeService codes;
 
     public TrainingAssessmentLibraryService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, ElectronicSignatureService signatures, AuditTrailService audit, ObjectMapper json, TrainingFileService files, com.eqms.service.OnlyOfficeDocumentEditService onlyOffice, TrainingPreviewMarking marking) {
         this.files = files;
@@ -215,6 +251,7 @@ public class TrainingAssessmentLibraryService {
         out.put("updatedByName", name(def.get("updated_by")));
         out.put("submittedByName", name(def.get("submitted_by")));
         out.put("durationMinutes", def.get("duration_minutes"));
+        out.put("essayNumbering", def.get("essay_numbering"));
         out.put("approvedByName", name(def.get("approved_by")));
         Integer used = jdbc.queryForObject("select count(*) from training_activities where assessment_def_id = ?", Integer.class, id);
         out.put("usedByActivities", used == null ? 0 : used);
@@ -229,7 +266,7 @@ public class TrainingAssessmentLibraryService {
         caps.put("submit", designer(actor) && draft && !items.isEmpty());
         caps.put("returnToDraft", (designer(actor) || approver(actor)) && pending);
         caps.put("approve", approver(actor) && pending && apart);
-        caps.put("newVersion", designer(actor) && "EFFECTIVE".equals(status) && !open);
+        caps.put("upgradeRevision", designer(actor) && "EFFECTIVE".equals(status) && !open);
         out.put("capabilities", caps);
         // Why the approval is not offered to a person who may approve in general (shown instead of hiding the button without a word).
         out.put("approveBlocker", approver(actor) && pending && !apart ? TrainingApprovalService.SEGREGATION : null);
@@ -242,15 +279,18 @@ public class TrainingAssessmentLibraryService {
 
     private List<Map<String, Object>> items(UUID defId) {
         List<Map<String, Object>> out = new ArrayList<>();
-        for (Map<String, Object> r : jdbc.queryForList("select item_no, kind, prompt, options::text as options, correct::text as correct, points, model_answer from training_assessment_def_items where def_id = ? order by item_no", defId)) {
+        for (Map<String, Object> r : jdbc.queryForList("select item_no, kind, prompt, options::text as options, correct::text as correct, points, model_answer, option_layout, answer_lines, image from training_assessment_def_items where def_id = ? order by item_no", defId)) {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("no", r.get("item_no"));
             m.put("kind", r.get("kind"));
             m.put("prompt", r.get("prompt"));
+            if (r.get("image") != null) m.put("image", r.get("image"));
             m.put("options", read(r.get("options")));
             m.put("correct", read(r.get("correct")));
             m.put("points", r.get("points"));
             m.put("modelAnswer", r.get("model_answer"));
+            m.put("optionLayout", r.get("option_layout"));
+            m.put("answerLines", r.get("answer_lines"));
             out.add(m);
         }
         return out;
@@ -319,11 +359,11 @@ public class TrainingAssessmentLibraryService {
         // a view: it carries the watermark of the preview settings
         if (Boolean.TRUE.equals(request.sideBySide())) {
             // the test paper and the paper with the answer key in one file, page beside page: the viewer scrolls and zooms them together
-            byte[] paper = toPdf(TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, false, List.of(), null, null, request.durationMinutes())));
-            byte[] key = toPdf(TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, true, List.of(), null, null, request.durationMinutes())));
+            byte[] paper = toPdf(TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, false, List.of(), null, null, request.durationMinutes(), restart(request.essayNumbering()))));
+            byte[] key = toPdf(TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, true, List.of(), null, null, request.durationMinutes(), restart(request.essayNumbering()))));
             return marking.mark(TrainingPdfSideBySide.join(paper, key), actor);
         }
-        return marking.mark(toPdf(TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, request.key(), List.of(), null, null, request.durationMinutes()))), actor);
+        return marking.mark(toPdf(TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, request.key(), List.of(), null, null, request.durationMinutes(), restart(request.essayNumbering())))), actor);
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ design
@@ -344,6 +384,9 @@ public class TrainingAssessmentLibraryService {
             List<Map<String, String>> options = new ArrayList<>();
             List<String> correct = new ArrayList<>();
             String model = null;
+            Integer lines = null;
+            // How the answers are laid out in the form: one under the other, or in two columns (only for the questions with answers to choose from).
+            String layout = "TWO_COLUMNS".equals(it.optionLayout()) && Set.of("SINGLE", "MULTI", "TRUE_FALSE").contains(it.kind()) ? "TWO_COLUMNS" : "VERTICAL";
             switch (it.kind()) {
                 case "SINGLE", "MULTI" -> {
                     List<OptionDto> given = it.options() == null ? List.of() : it.options();
@@ -368,6 +411,9 @@ public class TrainingAssessmentLibraryService {
                 case "ESSAY" -> {
                     if (it.modelAnswer() != null && it.modelAnswer().length() > 4000) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
                     model = it.modelAnswer() == null || it.modelAnswer().isBlank() ? null : it.modelAnswer().trim();
+                    // The ruled lines the trainee writes on: the number is chosen by the author of the question.
+                    if (it.answerLines() != null && (it.answerLines() < 1 || it.answerLines() > 30)) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
+                    lines = it.answerLines();
                 }
                 default -> { // CHECK
                     if (it.correct() == null || it.correct().size() != 1 || !Set.of("CORRECT", "INCORRECT").contains(it.correct().getFirst())) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
@@ -382,6 +428,9 @@ public class TrainingAssessmentLibraryService {
             m.put("correct", correct);
             m.put("points", points);
             m.put("modelAnswer", model);
+            m.put("optionLayout", layout);
+            m.put("answerLines", lines);
+            m.put("image", checkedImage(it.kind(), it.image()));
             out.add(m);
         }
         return out;
@@ -391,13 +440,16 @@ public class TrainingAssessmentLibraryService {
         if (request == null || request.name() == null || request.name().isBlank() || request.name().length() > 255) throw new IllegalArgumentException("TRAINING_ASSESSMENT_TITLE_REQUIRED");
         if (request.durationMinutes() != null && (request.durationMinutes() < 1 || request.durationMinutes() > 480)) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
         if (request.kind() == null || !Set.of("QUESTIONS", "CHECKLIST").contains(request.kind())) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
+        if (request.essayNumbering() != null && !Set.of("CONTINUE", "RESTART").contains(request.essayNumbering())) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
     }
+
+    private static boolean restart(String essayNumbering) { return "RESTART".equals(essayNumbering); }
 
     private void writeItems(UUID defId, List<Map<String, Object>> items) {
         for (Map<String, Object> m : items) {
             try {
-                jdbc.update("insert into training_assessment_def_items(id, def_id, item_no, kind, prompt, options, correct, points, model_answer) values (?,?,?,?,?,?::jsonb,?::jsonb,?,?)",
-                        UUID.randomUUID(), defId, m.get("no"), m.get("kind"), m.get("prompt"), json.writeValueAsString(m.get("options")), json.writeValueAsString(m.get("correct")), m.get("points"), m.get("modelAnswer"));
+                jdbc.update("insert into training_assessment_def_items(id, def_id, item_no, kind, prompt, options, correct, points, model_answer, option_layout, answer_lines, image) values (?,?,?,?,?,?::jsonb,?::jsonb,?,?,?,?,?)",
+                        UUID.randomUUID(), defId, m.get("no"), m.get("kind"), m.get("prompt"), json.writeValueAsString(m.get("options")), json.writeValueAsString(m.get("correct")), m.get("points"), m.get("modelAnswer"), m.get("optionLayout"), m.get("answerLines"), m.get("image"));
             } catch (JsonProcessingException e) {
                 throw new IllegalStateException("TRAINING_ASSESSMENT_INVALID", e);
             }
@@ -410,10 +462,10 @@ public class TrainingAssessmentLibraryService {
         checkHeader(request);
         List<Map<String, Object>> items = normalize(request.kind(), request.items());
         UUID id = UUID.randomUUID();
-        Long seq = jdbc.queryForObject("select nextval('training_assessment_code_seq')", Long.class);
-        String code = String.format("TAS-%04d", seq == null ? 0 : seq);
-        jdbc.update("insert into training_assessment_defs(id, code, version_no, revision_number, name, kind, duration_minutes, created_by, updated_by) values (?,?,1,'0.0.1',?,?,?,?,?)",
-                id, code, request.name().trim(), request.kind(), request.durationMinutes(), actor.getId(), actor.getId());
+        String code = codes.next(TrainingCodeService.ASSESSMENT, null, java.time.LocalDate.now().getYear(),
+                candidate -> Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from training_assessment_defs where code = ?)", Boolean.class, candidate)));
+        jdbc.update("insert into training_assessment_defs(id, code, version_no, revision_number, name, kind, duration_minutes, essay_numbering, created_by, updated_by) values (?,?,1,'0.0.1',?,?,?,?,?,?)",
+                id, code, request.name().trim(), request.kind(), request.durationMinutes(), restart(request.essayNumbering()) ? "RESTART" : "CONTINUE", actor.getId(), actor.getId());
         writeItems(id, items);
         audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_CREATED", null, "DRAFT", code + " 0.0.1: " + request.name().trim() + " (" + items.size() + " item(s))");
         return detail(actor, row(id));
@@ -428,8 +480,8 @@ public class TrainingAssessmentLibraryService {
         checkHeader(request);
         if (!request.kind().equals(def.get("kind"))) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
         List<Map<String, Object>> items = normalize(request.kind(), request.items());
-        jdbc.update("update training_assessment_defs set name = ?, duration_minutes = ?, updated_by = ?, updated_at = now(), version = version + 1 where id = ?",
-                request.name().trim(), request.durationMinutes(), actor.getId(), id);
+        jdbc.update("update training_assessment_defs set name = ?, duration_minutes = ?, essay_numbering = ?, updated_by = ?, updated_at = now(), version = version + 1 where id = ?",
+                request.name().trim(), request.durationMinutes(), restart(request.essayNumbering()) ? "RESTART" : "CONTINUE", actor.getId(), id);
         jdbc.update("delete from training_assessment_def_items where def_id = ?", id);
         writeItems(id, items);
         audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_UPDATED", "DRAFT", "DRAFT", def.get("code") + " " + def.get("revision_number") + ": " + items.size() + " item(s), total " + total(items) + " point(s)");
@@ -493,7 +545,7 @@ public class TrainingAssessmentLibraryService {
 
     /** A change to an effective assessment is a new draft version of the same code. */
     @Transactional
-    public Map<String, Object> newVersion(UserAccount actor, UUID id) {
+    public Map<String, Object> upgradeRevision(UserAccount actor, UUID id) {
         access.require(actor, "training.assessment.design");
         Map<String, Object> def = lock(id);
         if (!"EFFECTIVE".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_APPROVED");
@@ -501,11 +553,11 @@ public class TrainingAssessmentLibraryService {
         if (drafts != null && drafts > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_DRAFT_EXISTS");
         Integer next = jdbc.queryForObject("select max(version_no) + 1 from training_assessment_defs where code = ?", Integer.class, def.get("code"));
         UUID created = UUID.randomUUID();
-        jdbc.update("insert into training_assessment_defs(id, code, version_no, revision_number, name, kind, duration_minutes, created_by, updated_by) values (?,?,?,?,?,?,?,?,?)",
-                created, def.get("code"), next, nextDraftRevision(String.valueOf(def.get("revision_number"))), def.get("name"), def.get("kind"), def.get("duration_minutes"), actor.getId(), actor.getId());
+        jdbc.update("insert into training_assessment_defs(id, code, version_no, revision_number, name, kind, duration_minutes, essay_numbering, created_by, updated_by) values (?,?,?,?,?,?,?,?,?,?)",
+                created, def.get("code"), next, nextDraftRevision(String.valueOf(def.get("revision_number"))), def.get("name"), def.get("kind"), def.get("duration_minutes"), def.get("essay_numbering"), actor.getId(), actor.getId());
         jdbc.update("""
-            insert into training_assessment_def_items(id, def_id, item_no, kind, prompt, options, correct, points, model_answer)
-            select gen_random_uuid(), ?, item_no, kind, prompt, options, correct, points, model_answer from training_assessment_def_items where def_id = ?
+            insert into training_assessment_def_items(id, def_id, item_no, kind, prompt, options, correct, points, model_answer, option_layout, answer_lines, image)
+            select gen_random_uuid(), ?, item_no, kind, prompt, options, correct, points, model_answer, option_layout, answer_lines, image from training_assessment_def_items where def_id = ?
             """, created, id);
         audit.logAs(actor, TYPE, TYPE, created, "TRAINING_ASSESSMENT_NEW_VERSION", "EFFECTIVE", "DRAFT", def.get("code") + " " + nextDraftRevision(String.valueOf(def.get("revision_number"))) + " from " + def.get("revision_number"));
         return detail(actor, row(created));
@@ -535,7 +587,7 @@ public class TrainingAssessmentLibraryService {
             select distinct coalesce(nullif(trim(st.topic_text), ''), st.document_number) from training_session_topics st join training_sessions s on s.id = st.session_id
              where s.activity_id = ? and s.status <> 'CANCELLED'
             """, String.class, activity.get("id")).stream().filter(t -> t != null && !t.isBlank()).sorted().toList();
-        return topics.isEmpty() ? List.of(String.valueOf(activity.get("training_title"))) : topics;
+        return topics.isEmpty() ? List.of(String.valueOf(activity.get("training_topics"))) : topics;
     }
 
     /** Which box of "Training type" is ticked: a training that supplements another is a re-training; otherwise the kind of the activity. */
@@ -582,8 +634,8 @@ public class TrainingAssessmentLibraryService {
         List<String> topics = topicsOf(activity);
         String number = String.valueOf(activity.get("training_number"));
         String type = trainingTypeOf(activity);
-        byte[] exam = TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, false, topics, number, type, minutes));
-        byte[] key = TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, true, topics, number, type, minutes));
+        byte[] exam = TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, false, topics, number, type, minutes, restart((String) def.get("essay_numbering"))));
+        byte[] key = TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, true, topics, number, type, minutes, restart((String) def.get("essay_numbering"))));
         String label = def.get("code") + " " + def.get("revision_number");
         String fileNumber = safe(number);
         putMaterial(actor, activityId, "EXAM", "APD.0009 - " + fileNumber + ".docx", exam, "Replaced by the assessment " + label + " of the library");

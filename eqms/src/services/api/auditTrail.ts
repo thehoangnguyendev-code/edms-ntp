@@ -93,6 +93,17 @@ export type GetAuditTrailParams = Omit<Partial<AuditTrailFilters>, 'module'> & {
 };
 
 export const auditTrailApi = {
+  /** Paged object history, using the same object authorization as getByEntity. */
+  getEntityPage: async (module: string, entityId: string, params: GetAuditTrailParams & { includeChildren?: boolean } = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== '' && value !== 'All') query.set(key === 'searchQuery' ? 'search' : key, String(value));
+    });
+    const response = await api.get<PaginatedResponse<AuditTrailRecordDto>>(
+      `${ENDPOINT}/entity/${encodeURIComponent(module)}/${encodeURIComponent(entityId)}/paged?${query}`,
+    );
+    return { ...response.data, data: (response.data.data || []).map(normalizeAuditTrailRecord) };
+  },
   /** GET /audit-trail — paginated, filterable list (read-only) */
   getAuditTrail: async (params?: GetAuditTrailParams) => {
     const query = new URLSearchParams();

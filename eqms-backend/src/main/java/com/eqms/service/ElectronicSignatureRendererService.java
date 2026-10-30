@@ -20,12 +20,16 @@ import java.util.regex.Pattern;
 @Service
 public class ElectronicSignatureRendererService {
 
-    private static final DateTimeFormatter DISPLAY_TIME_PATTERN = DateTimeFormatter.ofPattern(DateTimeFormatUtils.DATETIME_PATTERN_STRICT, Locale.ROOT);
+    /** The one format of the time of a signature: date and time to the minute, as the three display styles write it. The record itself keeps the second (signedAt). */
+    public static final String SIGNATURE_TIMESTAMP_PATTERN = "dd/MM/uuuu HH:mm";
+
+    private static final DateTimeFormatter DISPLAY_TIME_PATTERN = DateTimeFormatter.ofPattern(SIGNATURE_TIMESTAMP_PATTERN, Locale.ROOT);
+
 
     private static final Pattern UTC_OFFSET_PATTERN = Pattern.compile("^UTC([+-]\\d{1,2})(?::?(\\d{2}))?$", Pattern.CASE_INSENSITIVE);
 
     /** Controlled catalog of timestamp patterns permitted for the active signature configuration. */
-    private static final Set<String> ALLOWED_TIMESTAMP_FORMATS = Set.of(DateTimeFormatUtils.DATETIME_PATTERN_STRICT);
+    private static final Set<String> ALLOWED_TIMESTAMP_FORMATS = Set.of(SIGNATURE_TIMESTAMP_PATTERN);
 
     private final ElectronicSignatureMeaningRepository meaningRepository;
 
@@ -52,6 +56,58 @@ public class ElectronicSignatureRendererService {
             return renderRejected(s);
         }
         return renderSigned(s);
+    }
+
+    /**
+     * A signed signature written in one of the three display styles. They are drawn from the same record and differ only in how much of it is written. What 21 CFR 11.50 requires of a
+     * signed record is in every one of them: the printed name of the signer, the date and time of the signing, and the meaning of the signature. The reason and the rest stay on the record.
+     * A signature that is not signed (pending, rejected) and a signed one that lacks the name, the time or the meaning is written in full as {@link #renderTextBlock}, never shortened.
+     */
+    public String renderStyled(ElectronicSignature signature, SignatureDisplayStyle style) {
+        ElectronicSignature s = signature == null ? new ElectronicSignature() : signature;
+        if (style == null || !"SIGNED".equals(normalizeStatus(s.getStatus()))) return renderTextBlock(s, null);
+        String name = StringUtils.hasText(s.getFullName()) ? s.getFullName().trim() : null;
+        if (name == null || s.getSignedAt() == null || !StringUtils.hasText(s.getMeaning())) return renderTextBlock(s, null);
+        String meaning = displayMeaning(s.getMeaning());
+        ZoneId zone = resolveZoneId(s.getTimezone());
+        String offset = "(" + paddedOffsetLabel(zone, s.getSignedAt()) + ")";
+        String minutes = DISPLAY_TIME_PATTERN.withZone(zone).format(s.getSignedAt()) + " " + offset;
+        StringBuilder b = new StringBuilder();
+        appendLine(b, name);
+        switch (style) {
+            case COMPACT -> appendLine(b, meaning + " · " + minutes);
+            case STANDARD -> {
+                appendLine(b, "Electronically " + meaning.toLowerCase(Locale.ROOT));
+                appendLine(b, minutes);
+            }
+            case DETAILED -> {
+                appendLine(b, meaning + " · " + minutes);
+                appendLine(b, s.getSignatureId());
+            }
+        }
+        return b.toString();
+    }
+
+    /** The three styles of the sample signature, for the settings screen: the same record drawn three times. */
+    public java.util.List<StylePreview> renderStylePreviews() {
+        ElectronicSignature sample = sampleSignature();
+        sample.setSignedAt(Instant.now());
+        java.util.List<StylePreview> previews = new java.util.ArrayList<>();
+        for (SignatureDisplayStyle style : SignatureDisplayStyle.values()) {
+            previews.add(new StylePreview(style.name(), style.label(), style.frame(), renderStyled(sample, style)));
+        }
+        return previews;
+    }
+
+    public record StylePreview(String style, String label, String frame, String text) {
+    }
+
+    private String paddedOffsetLabel(ZoneId zone, Instant instant) {
+        int totalSeconds = zone.getRules().getOffset(instant).getTotalSeconds();
+        int hours = totalSeconds / 3600;
+        int minutes = Math.abs((totalSeconds % 3600) / 60);
+        String sign = totalSeconds < 0 ? "-" : "+";
+        return "UTC" + sign + String.format("%02d", Math.abs(hours)) + (minutes == 0 ? "" : ":" + String.format("%02d", minutes));
     }
 
     private String renderSigned(ElectronicSignature s) {
@@ -113,7 +169,7 @@ public class ElectronicSignatureRendererService {
         }
         String pattern = setting != null && StringUtils.hasText(setting.getSignatureTimestampFormat())
                 ? setting.getSignatureTimestampFormat()
-                : DateTimeFormatUtils.DATETIME_PATTERN_STRICT;
+                : SIGNATURE_TIMESTAMP_PATTERN;
         // A new signature is always written in the zone of the site.
         ZoneId zone = DateTimeFormatUtils.ZONE;
         String formatted = DateTimeFormatter.ofPattern(pattern, Locale.ROOT).withZone(zone).format(instant);

@@ -20,7 +20,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SearchDropdown } from "../header/SearchDropdown";
 import { NavigationGuardModal } from "@/components/ui/modal/NavigationGuardModal";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
-import { BrandLogo, useBranding } from "@/components/branding/BrandLogo";
+import { useBranding } from "@/components/branding/BrandLogo";
+import { SidebarLoginLogo } from "@/components/branding/SidebarLoginLogo";
 import { KNOWLEDGE_BASE_NAV_ID, openKnowledgeExplorer } from "@/features/self-service/knowledge/explorer/openExplorer";
 import { Avatar } from "@/components/ui/avatar";
 import { TabNav, type TabItem } from "@/components/ui/tabs";
@@ -684,7 +685,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
             : NESTED_PADDING;
 
         return (
-          <>
+          <React.Fragment key={item.id}>
             {/* Divider before item if specified */}
             {level === 0 && item.showDividerBefore && (
               <div className={cn("my-0.5 md:my-1", isCollapsed ? "mx-3" : "mx-3 md:mx-4")}>
@@ -876,7 +877,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                   className={cn(
                     "absolute top-1/2 z-20 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md transition-colors",
                     "outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
-                    starred ? "text-amber-500 hover:bg-amber-50" : "text-slate-300 hover:bg-slate-100 hover:text-amber-500",
+                    starred ? "text-amber-500" : "text-slate-300 hover:text-amber-500",
                   )}
                   style={{ right: level === 0 ? 10 : 8 }}
                 >
@@ -917,7 +918,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 <div className="h-px bg-slate-200" />
               </div>
             )}
-          </>
+          </React.Fragment>
         );
       },
       [
@@ -1093,7 +1094,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
               className={cn(
                 "absolute right-2 top-1/2 z-20 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md transition-colors",
                 "outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
-                starred ? "text-amber-500 hover:bg-amber-50" : "text-slate-300 hover:bg-slate-100 hover:text-amber-500",
+                starred ? "text-amber-500" : "text-slate-300 hover:text-amber-500",
               )}
             >
               <Star className={cn("h-4 w-4", starred && "fill-amber-400")} />
@@ -1319,7 +1320,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                   isCollapsed ? "h-10 w-10" : "h-9 w-auto",
                 )}
               >
-                <BrandLogo
+                <SidebarLoginLogo
                   className="h-full w-full object-contain"
                   variant={isCollapsed ? "collapsedSidebar" : "default"}
                 />

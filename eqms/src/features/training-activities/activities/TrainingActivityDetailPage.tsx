@@ -1,12 +1,14 @@
 import { sessionStarted, sessionNotStarted } from "@/services/api/trainingActivities";
 import { SessionEditDialog } from "./components/SessionEditDialog";
 import { SessionDetails } from "./components/SessionDetails";
+import { TrainingParticipantTable } from "./components/TrainingParticipantTable";
 import { ContentRulesPanel, assessmentFormKind, contentRuleNote } from "./components/ContentRulesPanel";
 import { TrainingPersonName } from "../shared/TrainingPersonName";
 import { Avatar } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
+import { RadioGroup } from "@/components/ui/radio";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -26,10 +28,6 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
-import {
-  SignatureFields,
-  type SignatureRecord,
-} from "@/features/documents/shared/components/SignatureFields";
 import {
   IconBook2,
   IconCalendar,
@@ -67,7 +65,7 @@ import {
   DELIVERY_LABEL,
 } from "./components/TrainingPaperBlock";
 import { TrainingActivityFilesTab } from "./components/TrainingActivityFilesTab";
-import { TrainingDateField } from "../shared/TrainingDateField";
+import { TrainingDateField, DATE_HINT } from "../shared/TrainingDateField";
 import {
   ParticipantsPanel,
   SessionPanel,
@@ -87,6 +85,7 @@ import {
   type TrainingActivityDetail,
   type TrainingApprovalStep,
   type TrainingCapabilities,
+  type ParticipationRole,
   type TrainingParticipant,
   type TrainingPerson,
   type TrainingSession,
@@ -98,6 +97,8 @@ import {
   KIND_REASON_LABEL,
   METHOD_LABEL,
   PARTICIPANT_STATE_LABEL,
+  PARTICIPATION_ROLE_HELP,
+  PARTICIPATION_ROLE_LABEL,
   STATUS_LABEL,
   STEP_LABEL,
   day,
@@ -109,10 +110,11 @@ const ACTIVITY_STEPS = [
   { status: "RESERVED", label: "Pending Document Approval" },
   { status: "PLANNED", label: "Planned" },
   { status: "NOTIFIED", label: "Notified" },
-  { status: "IN_PROGRESS", label: "In progress" },
+  { status: "IN_PROGRESS", label: "In Progress" },
   { status: "PENDING_QA_CONFIRMATION", label: "Pending QA Confirmation" },
   { status: "COMPLETED", label: "Completed" },
 ];
+const EMPTY_PARTICIPANT_STATS = { total: 0, pending: 0, attendancePending: 0, eligible: 0, unscored: 0, present: 0, absent: 0, actualAbsent: 0, passed: 0, failed: 0, readPending: 0 };
 
 /** One screen for each thing a person does with an activity; the Details screen only looks (like Document Details and the Review, Approval and Training screens of a revision). */
 export type ActivityMode =
@@ -168,7 +170,6 @@ const MODE_CAPS: Record<ActivityMode, string[]> = {
     "hold",
     "recordAttendance",
     "recordAssessment",
-    "submitForConfirmation",
     "finishTraining",
     "sendAttendanceList",
     "addSupplementary",
@@ -199,6 +200,7 @@ type Dialog =
   | { type: "postpone"; session: TrainingSession }
   | { type: "attendance"; participant: TrainingParticipant }
   | { type: "correctAttendance"; participant: TrainingParticipant }
+  | { type: "participation"; participant: TrainingParticipant }
   | { type: "assessment"; participant: TrainingParticipant }
   | { type: "designate"; step: TrainingApprovalStep }
   | { type: "supplementary" }
@@ -297,21 +299,25 @@ export function TrainingActivityDetailPage({
   // Lines of the Prepare step still to be ticked; the steps after it wait for them while the session is not held.
   const [prepPending, setPrepPending] = useState(0);
   const [draft, setDraft] = useState<{
-    trainingTitle: string;
     dueDate: string;
     remarks: string;
     trainingUnitName: string;
     vendorRef: string;
   }>();
 
+  const loadGeneration = useRef(0);
+  const overviewQuery = useRef({ activityId, sessionId: workspaceSessionId || pSession || undefined, participantContext: false });
+  overviewQuery.current = { activityId, sessionId: workspaceSessionId || pSession || undefined,
+    participantContext: !["overview", "participants", "audit", "signatures", "ws-prepare"].includes(tab) || dialog?.type === "supplementary" };
   const load = useCallback(() => {
+    const generation = ++loadGeneration.current;
     setError("");
-    trainingActivitiesApi
-      .get(activityId)
-      .then(setActivity)
-      .catch((e) => setError(trainingError(e)));
-  }, [activityId]);
-  useEffect(load, [load]);
+    const { activityId: currentId, ...params } = overviewQuery.current;
+    return trainingActivitiesApi.overview(currentId, params)
+      .then((result) => { if (generation === loadGeneration.current) setActivity(result); })
+      .catch((e) => { if (generation === loadGeneration.current) setError(trainingError(e)); });
+  }, [activityId, workspaceSessionId, pSession, tab, dialog?.type]);
+  useEffect(() => { void load(); return () => { loadGeneration.current++; }; }, [load]);
   useEntityChanged(["TRAINING"], load);
 
   /** Runs a command; the answer is the new state of the activity. */
@@ -321,7 +327,8 @@ export function TrainingActivityDetailPage({
   ) => {
     setBusy(true);
     try {
-      setActivity(await action());
+      await action();
+      await load();
       showToast({
         type: "success",
         title: done,
@@ -348,21 +355,16 @@ export function TrainingActivityDetailPage({
       [
         { id: "overview", label: "General Information" },
         {
-          id: "sessions",
-          label: "Sessions",
-          count: activity?.sessions.length,
-        },
-        {
           id: "participants",
           label: "Participants",
           count: activity?.participants.length,
         },
         { id: "materials", label: "Training Materials" },
         { id: "assessment", label: "Assessment" },
-        { id: "approvals", label: "Approvers" },
+        { id: "signatures", label: "Signatures" },
         { id: "audit", label: "Audit Trail" },
       ],
-    [activity?.sessions.length, activity?.participants.length],
+    [activity?.participants.length],
   );
   // The step is kept in the address and in this browser: a closed tab opens again on the step it was left on.
   useEffect(() => {
@@ -408,6 +410,7 @@ export function TrainingActivityDetailPage({
   const iAmAssigned = (step: TrainingApprovalStep) =>
     stepAssignment(step)?.assigneeId === user?.id;
   const canClose = hasPermission("training.activity.close");
+  const allParticipantStats = activity.participantSummary?.all ?? EMPTY_PARTICIPANT_STATS;
   const hasSelfReading = activity.sessions.some(
     (s) => s.method === "SELF_READING",
   );
@@ -496,7 +499,7 @@ export function TrainingActivityDetailPage({
                         )
                       }
                     >
-                      Complete Approve
+                      Complete Approval
                     </Button>
                     <Button
                       size="sm"
@@ -614,6 +617,23 @@ export function TrainingActivityDetailPage({
           </Button>
         )}
       {scope !== "results" &&
+        mode === "edit" &&
+        caps?.setParticipation &&
+        sessionOf(p.sessionId)?.method !== "SELF_READING" &&
+        p.state !== "READ_CONFIRMED" &&
+        p.personUserId !== user?.id &&
+        p.result !== "FAILED" &&
+        !p.attempts &&
+        !p.examState?.match(/OPEN|USED|DONE/) && (
+          <Button
+            size="sm"
+            variant="outline-emerald"
+            onClick={() => setDialog({ type: "participation", participant: p })}
+          >
+            Set Participation
+          </Button>
+        )}
+      {scope !== "results" &&
         caps?.recordAttendance &&
         p.state === "INVITED" &&
         sessionStarted(sessionOf(p.sessionId) ?? { status: "" }) && (
@@ -627,6 +647,7 @@ export function TrainingActivityDetailPage({
         )}
       {scope !== "attendance" &&
         caps?.recordAssessment &&
+        (p.participationRole ?? "TRAINEE") === "TRAINEE" &&
         (p.state === "ATTENDED" || p.state === "ONLINE") &&
         !!sessionOf(p.sessionId)?.assessmentMethod &&
         sessionOf(p.sessionId)?.assessmentMethod !==
@@ -728,6 +749,18 @@ export function TrainingActivityDetailPage({
       cell: (p) => sessionOf(p.sessionId)?.sessionNo ?? "—",
     },
     {
+      id: "participation",
+      header: "Participation",
+      cell: (p) => (
+        <div className="max-w-64 whitespace-normal">
+          <div>{PARTICIPATION_ROLE_LABEL[p.participationRole ?? "TRAINEE"]}</div>
+          {p.participationReason ? (
+            <div className="text-xs text-slate-500">{p.participationReason}</div>
+          ) : null}
+        </div>
+      ),
+    },
+    {
       id: "state",
       header: "Attendance",
       cell: (p) => (
@@ -747,7 +780,9 @@ export function TrainingActivityDetailPage({
                 : "slate"
           }
         >
-          {p.result.toLowerCase()}
+          {p.result === "PASSED" && (p.participationRole ?? "TRAINEE") !== "TRAINEE"
+            ? "attended"
+            : p.result.toLowerCase()}
           {p.lastPercent != null ? ` (${p.lastPercent}%)` : ""}
         </Badge>
       ),
@@ -762,7 +797,7 @@ export function TrainingActivityDetailPage({
   ];
   const attendanceColumns: DataTableColumn<TrainingParticipant>[] = [
     ...participantColumns.filter((c) =>
-      ["rowNo", "code", "name", "department", "session", "state"].includes(
+      ["rowNo", "code", "name", "department", "session", "participation", "state"].includes(
         c.id,
       ) && !(singleSession && c.id === "session"),
     ),
@@ -780,7 +815,7 @@ export function TrainingActivityDetailPage({
   const columnsShown: DataTableColumn<TrainingParticipant>[] = selfReading
     ? [
         ...participantColumns.filter((c) =>
-          ["rowNo", "code", "name"].includes(c.id),
+          ["rowNo", "code", "name", "department"].includes(c.id),
         ),
         {
           id: "trn",
@@ -805,29 +840,10 @@ export function TrainingActivityDetailPage({
         ...participantColumns.filter((c) => c.id === "actions"),
       ]
     : participantColumns;
-  const isAway = (p: TrainingParticipant) =>
-    !!p.personUserId &&
-    (p.state === "ABSENT" || (p.state === "INVITED" && !!p.plannedAbsence));
   const groups = [
-    {
-      id: "employees",
-      title: "Employees",
-      rows: activity.participants.filter(
-        (p) => inSession(p) && p.personUserId && !isAway(p),
-      ),
-    },
-    {
-      id: "absent",
-      title: "Absent (stay on the list)",
-      rows: activity.participants.filter((p) => inSession(p) && isAway(p)),
-    },
-    {
-      id: "outside",
-      title: "Outside persons",
-      rows: activity.participants.filter(
-        (p) => inSession(p) && !p.personUserId,
-      ),
-    },
+    { id: "EMPLOYEES", title: "Employees" },
+    { id: "ABSENT", title: "Absent (stay on the list)" },
+    { id: "OUTSIDE", title: "Outside persons" },
   ];
   const targetSession =
     activity.sessions.find((x) => x.id === pSession) ?? activity.sessions[0];
@@ -838,12 +854,12 @@ export function TrainingActivityDetailPage({
         Session
       </span>
       {[
-        { id: "", label: `All (${activity.participants.length})` },
+        { id: "", label: `All (${allParticipantStats.total})` },
         ...activity.sessions.map((x) => ({
           id: x.id,
           label:
             `S${x.sessionNo} ${x.topics[0]?.topicText ?? ""}`.trim() +
-            ` (${activity.participants.filter((p) => p.sessionId === x.id).length})`,
+            ` (${activity.participantSummary?.sessions[x.id]?.total ?? 0})`,
         })),
       ].map((chip) => (
         <button
@@ -858,6 +874,8 @@ export function TrainingActivityDetailPage({
     </div>
   );
 
+  /** The paper pack and the preparation are shown where the organiser works: planning, and before the first session is held. */
+  const paperShown = mode === "edit" || (mode === "conduct" && activity.status === "NOTIFIED");
   const paperBlocks = (
     <>
       <TrainingPaperBlock
@@ -875,20 +893,10 @@ export function TrainingActivityDetailPage({
     </>
   );
   const groupTables = (columns: DataTableColumn<TrainingParticipant>[]) =>
-    groups
-      .filter((g) => g.rows.length > 0 || g.id === "employees")
-      .map((g) => (
-        <TabBlock key={g.id} title={`${g.title} (${g.rows.length})`}>
-          <DataTable
-            rows={g.rows}
-            getRowKey={(p) => p.id}
-            columns={columns}
-            emptyState={
-              <p className="p-4 text-sm text-slate-500">No participant yet.</p>
-            }
-          />
-        </TabBlock>
-      ));
+    groups.map((group) => (
+      <TrainingParticipantTable key={group.id} activityId={activity.id} sessionId={workspaceSessionId || pSession || undefined}
+        group={group.id} title={group.title} columns={columns} refreshToken={activity} />
+    ));
   const signAction = (
     title: string,
     meaningCode: string,
@@ -901,17 +909,6 @@ export function TrainingActivityDetailPage({
   const open = !["COMPLETED", "CANCELLED"].includes(activity.status);
   const qa = activity.qaList;
   const results = activity.resultsToQa;
-  // The days to send the results to QA (SOP.0003 5.3.7), counted in calendar days from the day the last session was held.
-  const resultsNotice = open && results && ["DUE", "DUE_TODAY", "OVERDUE"].includes(results.state) ? (
-    <p
-      role="status"
-      className={`rounded-lg border px-3 py-2 text-sm ${results.state === "OVERDUE" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
-    >
-      {results.state === "DUE" && `Send the results to QA by ${day(results.dueOn)}: ${results.days} days after the training was held (SOP.0003 5.3.7).`}
-      {results.state === "DUE_TODAY" && "Today is the last day to send the results to QA (SOP.0003 5.3.7)."}
-      {results.state === "OVERDUE" && `The results were due to QA on ${day(results.dueOn)} and have not been sent. Send them now; the delay is recorded.`}
-    </p>
-  ) : null;
   // Two notices that guide the manual part of the procedure: the day the list goes to QA (SOP.0003 5.3.6) and the approved vendor list for an outside trainer (SOP.0025).
   const notices = open ? (
     <div className="mb-4 space-y-2 empty:hidden">
@@ -942,17 +939,24 @@ export function TrainingActivityDetailPage({
       )}
     </div>
   ) : null;
+  // What the training is about: the topics of its sessions, or its document (SOP.0003 5.3.5). It has no title of its own.
+  const activityTopics = activity.trainingTopics ?? activity.topics ?? "";
   const form = draft ?? {
-    trainingTitle: activity.trainingTitle,
     dueDate: activity.dueDate?.slice(0, 10) ?? "",
     remarks: activity.remarks ?? "",
     trainingUnitName: activity.trainingUnitName ?? "",
     vendorRef: activity.vendorRef ?? "",
   };
+  const dueDateField = caps?.edit ? (
+    <TrainingDateField label="Due Date" hint={DATE_HINT.due} value={form.dueDate} onChange={(v) => setDraft({ ...form, dueDate: v })} />
+  ) : (
+    <ReadonlyField label="Due Date" value={day(activity.dueDate)} hint={DATE_HINT.due} />
+  );
+  // On the row of the Scheduled date of the session when there is a session, or a form to add one
+  const dueDateWithSession = activity.sessions.length > 0 || Boolean(caps?.planSessions);
   const formDirty =
     !!draft &&
-    (draft.trainingTitle !== activity.trainingTitle ||
-      draft.dueDate !== (activity.dueDate?.slice(0, 10) ?? "") ||
+    (draft.dueDate !== (activity.dueDate?.slice(0, 10) ?? "") ||
       draft.remarks !== (activity.remarks ?? "") ||
       draft.trainingUnitName !== (activity.trainingUnitName ?? "") ||
       draft.vendorRef !== (activity.vendorRef ?? ""));
@@ -961,12 +965,12 @@ export function TrainingActivityDetailPage({
     {
       done: activity.sessions.length > 0,
       text: external
-        ? "Add the session: topic, date and place (tab Sessions)"
-        : "Add the session: topic, method, trainer and date (tab Sessions)",
-      tab: "sessions",
+        ? "Add the session: topic, date and place (General Information)"
+        : "Add the session: topic, method, trainer and date (General Information)",
+      tab: "overview",
     },
     {
-      done: activity.participants.length > 0,
+      done: allParticipantStats.total > 0,
       text: "Add the participants of each session (tab Participants)",
       tab: "participants",
     },
@@ -999,8 +1003,8 @@ export function TrainingActivityDetailPage({
             : []),
           {
             done: stepDone("CONTENT_REVIEWED") && stepDone("CONTENT_APPROVED"),
-            text: "Designate who reviews and approves the content (tab Approvers)",
-            tab: "approvals",
+            text: "Designate who reviews and approves the content (tab Signatures)",
+            tab: "signatures",
           },
         ]),
     {
@@ -1046,49 +1050,42 @@ export function TrainingActivityDetailPage({
       </div>
     ) : null;
 
-  const confirmation = (label: string, kind: string): SignatureRecord => {
-    const c = activity.confirmations.find((x) => x.kind === kind);
-    return {
-      actionBy: `${label} By`,
-      actionByName: c?.confirmedByName ?? "-",
-      actionOn: `${label} On (Date - Time)`,
-      actionOnValue: c?.confirmedAt ?? "-",
-    };
-  };
-  const signatureRecords: SignatureRecord[] = [
-    confirmation("Attendee List Confirmed", "ATTENDEE_LIST_PREPARED"),
-    confirmation("Content Reviewed", "CONTENT_REVIEWED"),
-    confirmation("Content Approved", "CONTENT_APPROVED"),
-    ...(activity.confirmations.some((c) => c.kind === "HEAD_SELF_READING")
-      ? [confirmation("Self-reading Verified", "HEAD_SELF_READING")]
-      : []),
-    confirmation("Completion Confirmed", "QA_COMPLETION"),
+  // APD.0108: the head of a department confirms the people of that department only; the button is for the departments of which the person is the head and that have people waiting.
+  const listDepartments = (activity.selfReadingDepartments ?? []).filter((d) => d.departmentId);
+  const myWaitingDepartments = (activity.selfReadingDepartments ?? []).filter((d) => d.mine && d.waiting > 0);
+
+  // The signatures that matter, in the order of the flow: the person on the left, the time on the right. A step that does not apply to this training is not shown (a document, a content to review,
+  // a self-reading); the others show "-" until they are done, so the person sees how far the flow has come. Preparatory and routine steps (the list prepared, the notice sent) stay in the Audit Trail.
+  const confirmed = (kind: string) => activity.confirmations.find((x) => x.kind === kind);
+  const signatureSteps: { key: string; label: string; by?: string | null; on?: string | null }[] = [
+    ...(activity.documentNumber ? [{ key: "docApproved", label: "Document Approved", by: activity.documentApprovedByName, on: activity.documentApprovedAt ?? day(activity.approvedOn) }] : []),
+    ...(external ? [] : [
+      { key: "reviewed", label: "Content Reviewed", by: confirmed("CONTENT_REVIEWED")?.confirmedByName, on: when(confirmed("CONTENT_REVIEWED")?.confirmedAt) },
+      { key: "approved", label: "Content Approved", by: confirmed("CONTENT_APPROVED")?.confirmedByName, on: when(confirmed("CONTENT_APPROVED")?.confirmedAt) },
+    ]),
+    ...activity.confirmations
+      .filter((c) => c.kind === "HEAD_SELF_READING")
+      .map((c) => ({ key: `read-${c.id}`, label: `Self-reading Verified${c.departmentName ? ` (${c.departmentName})` : ""}`, by: c.confirmedByName, on: when(c.confirmedAt) })),
+    ...(hasSelfReading && !activity.confirmations.some((c) => c.kind === "HEAD_SELF_READING") ? [{ key: "read", label: "Self-reading Verified", by: null, on: null }] : []),
+    { key: "sent", label: "Attendance List Sent to QA", by: activity.attendanceSentByName, on: activity.attendanceSentAt },
+    { key: "finished", label: "Training Finished and Results Sent to QA", by: activity.resultsFinishedByName, on: activity.resultsFinishedAt },
+    { key: "completion", label: "Completion Confirmed by QA", by: confirmed("QA_COMPLETION")?.confirmedByName, on: when(confirmed("QA_COMPLETION")?.confirmedAt) },
   ];
 
   // ---- the workspace of one session
   const wsSession = workspace
     ? activity.sessions.find((x) => x.id === workspaceSessionId)
     : undefined;
-  const wsPeople = workspace
-    ? activity.participants.filter((p) => p.sessionId === workspaceSessionId)
-    : [];
+  const wsPeople = workspace ? activity.sessionParticipants ?? [] : [];
+  const wsStatsData = activity.participantSummary?.sessions[workspaceSessionId ?? ""] ?? EMPTY_PARTICIPANT_STATS;
   const wsHeld = !!wsSession && sessionStarted(wsSession);
-  const wsPending = wsPeople.filter(
-    (p) => p.state === "INVITED" && !p.plannedAbsence,
-  ).length;
-  const wsEligible = wsPeople.filter(
-    (p) => p.personUserId && ["ATTENDED", "ONLINE"].includes(p.state),
-  );
-  const wsUnscored = wsEligible.filter((p) => p.result === "PENDING").length;
-  const wsPresent = wsPeople.filter((p) =>
-    ["ATTENDED", "ONLINE", "READ_CONFIRMED"].includes(p.state),
-  ).length;
-  const wsAbsent = wsPeople.filter(
-    (p) =>
-      p.state === "ABSENT" || (p.state === "INVITED" && !!p.plannedAbsence),
-  ).length;
-  const wsPassed = wsPeople.filter((p) => p.result === "PASSED").length;
-  const wsFailed = wsPeople.filter((p) => p.result === "FAILED").length;
+  const wsPending = wsStatsData.attendancePending;
+  const wsEligible = wsStatsData.eligible;
+  const wsUnscored = wsStatsData.unscored;
+  const wsPresent = wsStatsData.present;
+  const wsAbsent = wsStatsData.absent;
+  const wsPassed = wsStatsData.passed;
+  const wsFailed = wsStatsData.failed;
   const wsScoped: TrainingActivityDetail = {
     ...activity,
     sessions: wsSession ? [wsSession] : [],
@@ -1100,7 +1097,7 @@ export function TrainingActivityDetailPage({
     OBSERVATION: "Observation",
     SELF_READING_CONFIRMATION: "Self-reading",
   };
-  const wsAttendanceDone = wsHeld && wsPending === 0 && wsPeople.length > 0;
+  const wsAttendanceDone = wsHeld && wsPending === 0 && wsStatsData.total > 0;
   const wsSteps: WorkspaceStep[] = [
     {
       id: "ws-prepare",
@@ -1114,7 +1111,7 @@ export function TrainingActivityDetailPage({
     {
       id: "ws-attendance",
       label: "Attendance",
-      subtitle: `${wsPresent} of ${wsPeople.length} present`,
+      subtitle: `${wsPresent} of ${wsStatsData.total} present`,
       description:
         "Record who came: with the code or the QR, with the quick roll-call, or one by one; an absence needs its reason. When everyone is recorded, the trainer sends the attendance list to QA with an electronic signature. A mistake is corrected with a reason.",
       done: wsAttendanceDone,
@@ -1137,7 +1134,7 @@ export function TrainingActivityDetailPage({
         : "—",
       description:
         "Give the test or the checklist. A paper test is printed here and typed in with its scan; a checked file is uploaded as evidence.",
-      done: wsEligible.length > 0 && wsUnscored === 0,
+      done: wsEligible > 0 && wsUnscored === 0,
       icon: IconChecklist,
     },
     {
@@ -1153,7 +1150,7 @@ export function TrainingActivityDetailPage({
   // What still stops the attendance list from going to QA (the same two rules as the server): a session still to be held, a person not recorded yet.
   const attendanceBlockers = [
     [activity.sessions.filter((x) => x.status === "POSTPONED" || sessionNotStarted(x)).length, "session(s) still to be held"],
-    [activity.participants.filter((x) => x.state === "INVITED").length, "person(s) still to be marked present or absent"],
+    [allParticipantStats.pending, "person(s) still to be marked present or absent"],
   ]
     .filter(([n]) => (n as number) > 0)
     .map(([n, text]) => `${n} ${text}`);
@@ -1187,9 +1184,11 @@ export function TrainingActivityDetailPage({
           icon: IconMapPin,
           label: "Venue",
           value:
-            wsSession.locationType === "ONLINE"
-              ? `${wsSession.onlinePlatform ?? "Online"}`
-              : (wsSession.venue ?? ""),
+            wsSession.locationType === "HYBRID"
+              ? `${wsSession.venue ?? ""} + ${wsSession.onlinePlatform ?? "Online"}`
+              : wsSession.locationType === "ONLINE"
+                ? `${wsSession.onlinePlatform ?? "Online"}`
+                : (wsSession.venue ?? ""),
         },
         {
           icon: IconPresentation,
@@ -1214,16 +1213,16 @@ export function TrainingActivityDetailPage({
       ]
     : [];
   const wsStats: WorkspaceStat[] = [
-    { label: "on the list", value: wsPeople.length, icon: IconUsers, tone: "slate" },
+    { label: "on the list", value: wsStatsData.total, icon: IconUsers, tone: "slate" },
     { label: "absent", value: wsAbsent, icon: IconUserX, tone: "amber" },
   ];
   const wsRates: WorkspaceRate[] = [
     {
       label: "Attendance",
-      percent: wsPeople.length
-        ? Math.round((wsPresent / wsPeople.length) * 100)
+      percent: wsStatsData.total
+        ? Math.round((wsPresent / wsStatsData.total) * 100)
         : null,
-      detail: `${wsPresent} of ${wsPeople.length} present`,
+      detail: `${wsPresent} of ${wsStatsData.total} present`,
       tone: "emerald",
     },
     {
@@ -1240,7 +1239,6 @@ export function TrainingActivityDetailPage({
     </p>
   ) : (
     <>
-      {tab === "ws-results" && resultsNotice}
       {tab === "ws-prepare" && (
         <WorkspacePrepareStep
           activityId={activity.id}
@@ -1253,7 +1251,7 @@ export function TrainingActivityDetailPage({
         />
       )}
       {tab === "ws-attendance" && (
-        <WorkspaceAttendanceStep scoped={wsScoped} caps={caps} onActivity={setActivity} table={groupTables(attendanceColumns)} />
+        <WorkspaceAttendanceStep scoped={wsScoped} caps={caps} onActivity={() => void load()} table={groupTables(attendanceColumns)} />
       )}
       {tab === "ws-training" && (
         <WorkspaceTrainingStep activityId={activity.id} mode={mode} external={external} participants={activity.participants} />
@@ -1283,10 +1281,10 @@ export function TrainingActivityDetailPage({
               canRelease={Boolean(caps?.recordAttendance)}
               onRelease={(participant) => setDialog({ type: "releaseExam", participant })}
               assessmentMethod={wsSession.assessmentMethod}
-              onActivity={setActivity}
+              onActivity={() => void load()}
             />
           }
-          absent={wsPeople.filter((p) => p.state === "ABSENT").length}
+          absent={wsStatsData.actualAbsent}
           failed={wsFailed}
           canArrange={Boolean(caps?.addSupplementary)}
           onArrange={() => setDialog({ type: "supplementary" })}
@@ -1295,7 +1293,8 @@ export function TrainingActivityDetailPage({
     </>
   );
 
-  // The end of the training, one button at a time, each shown by the server when its turn comes (capabilities): Finish Training once every result is in, then Send results to QA.
+  // The end of the training, in the Session Workspace only: Finish Training is shown by the server once the list is sent, every result is in and every scan is uploaded. One electronic signature finishes the
+  // training and sends the results to QA, who is told; there is no other step to send them.
   const endButtons = (
     <>
       {caps?.finishTraining && (
@@ -1305,33 +1304,15 @@ export function TrainingActivityDetailPage({
           className="whitespace-nowrap"
           onClick={() =>
             signAction(
-              "Finish the training",
+              "Finish the training and send the results to QA",
               "TRAINING_RESULTS_FINISHED",
-              "Training Finished by Trainer",
+              "Training Finished and Results Sent to QA",
               (t) => trainingActivitiesApi.finishTraining(activity.id, activity.version, t),
-              statusChange("Results recorded", "Training finished", "Training"),
+              statusChange("In Progress", "Pending QA Confirmation", "Training activity"),
             )
           }
         >
           Finish Training
-        </Button>
-      )}
-      {caps?.submitForConfirmation && (
-        <Button
-          size="sm"
-          loading={busy}
-          className="whitespace-nowrap"
-          onClick={() =>
-            signAction(
-              "Send results to QA",
-              "TRAINING_SUBMITTED_FOR_CONFIRMATION",
-              "Results Sent to QA",
-              (t) => trainingActivitiesApi.submitForConfirmation(activity.id, activity.version, t),
-              statusChange("In progress", "Pending QA Confirmation", "Training activity"),
-            )
-          }
-        >
-          Send results to QA
         </Button>
       )}
     </>
@@ -1384,16 +1365,12 @@ export function TrainingActivityDetailPage({
           variant="outline-emerald"
           className="whitespace-nowrap"
           loading={busy}
-          disabled={
-            !form.trainingTitle.trim() ||
-            (external && !form.trainingUnitName.trim())
-          }
+          disabled={(external && !form.trainingUnitName.trim()) || !form.remarks.trim()}
           onClick={() =>
             void run(
               () =>
                 trainingActivitiesApi.update(activity.id, {
                   version: activity.version,
-                  trainingTitle: form.trainingTitle.trim(),
                   dueDate: form.dueDate || null,
                   remarks: form.remarks.trim() || null,
                   trainingUnitName: external
@@ -1459,11 +1436,7 @@ export function TrainingActivityDetailPage({
           Notify participants
         </Button>
       )}
-      {hasSelfReading &&
-        caps?.hold &&
-        activity.participants.some(
-          (p) => p.state === "READ_CONFIRMED" && p.result === "PENDING",
-        ) && (
+      {hasSelfReading && myWaitingDepartments.length > 0 && (
           <Button
             size="sm"
             variant="outline-emerald"
@@ -1474,14 +1447,16 @@ export function TrainingActivityDetailPage({
                 "TRAINING_READ_VERIFIED",
                 "Self-reading Verified",
                 (t) => trainingActivitiesApi.verifySelfReading(activity.id, t),
-                statusChange("Read and understood", "Verified", "Self-reading"),
+                statusChange("Read and understood", "Verified", `Self-reading of ${myWaitingDepartments.map((d) => d.departmentName).join(", ")}`),
               )
             }
           >
             Verify self-reading
           </Button>
         )}
-      {endButtons}
+      {hasSelfReading && myWaitingDepartments.some((d) => d.substitute) && (
+        <p className="text-xs text-slate-500">{myWaitingDepartments.filter((d) => d.substitute).map((d) => d.departmentName).join(", ")}: no Department Head is set in the master data. You confirm in place of the head, and the record says so.</p>
+      )}
       {caps?.confirmCompletion && (
         <Button
           size="sm"
@@ -1545,8 +1520,8 @@ export function TrainingActivityDetailPage({
           trainingNumber={activity.trainingNumber}
           heading={
             wsSession
-              ? `S${wsSession.sessionNo}: ${wsSession.topics.map((tp) => tp.topicText).join("; ") || activity.trainingTitle}`
-              : activity.trainingTitle
+              ? `S${wsSession.sessionNo}: ${wsSession.topics.map((tp) => tp.topicText).join("; ") || activityTopics}`
+              : activityTopics
           }
           badges={
             wsSession
@@ -1586,7 +1561,7 @@ export function TrainingActivityDetailPage({
                       setTab(id);
                       return started;
                     },
-                    statusChange("Notified", "In progress", "Training activity"),
+                    statusChange("Notified", "In Progress", "Training activity"),
                   );
                 else void run(async () => { const started = await trainingActivitiesApi.holdSession(wsSession.id); setTab(id); return started; }, "Training started");
                 return;
@@ -1597,28 +1572,34 @@ export function TrainingActivityDetailPage({
           headerActions={(
             <>
               <AttendanceListExport activityId={activity.id} trainingNumber={activity.trainingNumber} />
-              {activity.sessions.filter((x) => x.method === "SELF_READING").map((x) => (
-                <PaperPrintButton
-                  key={`paper-${x.id}`}
-                  label="Print self-reading list for signing"
-                  load={(format, reason) => trainingFormsApi.selfReadingPaper(x.id, format, reason)}
-                  fileName={(format) => `${activity.trainingNumber.replace(/\//g, "-")}-S${x.sessionNo}-APD.0108-paper.${format}`}
-                />
-              ))}
-              {activity.sessions.filter((x) => x.method === "SELF_READING").map((x) => (
-                <FormDownloadButtons
-                  key={x.id}
-                  label="The self-reading list"
-                  load={(format) => trainingFormsApi.selfReading(x.id, format)}
-                  fileName={(format) => `${activity.trainingNumber.replace(/\//g, "-")}-S${x.sessionNo}-APD.0108.${format}`}
-                />
-              ))}
-              {caps?.sendAttendanceList && (
+              {/* APD.0108 is one list for one department: with people of several departments, one list (and one confirmation of the head) for each */}
+              {activity.sessions.filter((x) => x.method === "SELF_READING").flatMap((x) => {
+                const many = listDepartments.length > 1;
+                return (many ? listDepartments : [undefined]).flatMap((d) => {
+                  const suffix = d ? ` · ${d.departmentName}` : "";
+                  const part = d ? `-${d.departmentName.replace(/[^\w]+/g, "")}` : "";
+                  const base = `${activity.trainingNumber.replace(/\//g, "-")}-S${x.sessionNo}-APD.0108${part}`;
+                  return [
+                    <PaperPrintButton
+                      key={`paper-${x.id}-${d?.departmentId ?? ""}`}
+                      label={`Print self-reading list for signing${suffix}`}
+                      load={(format, reason) => trainingFormsApi.selfReadingPaper(x.id, format, reason, d?.departmentId)}
+                      fileName={(format) => `${base}-paper.${format}`}
+                    />,
+                    <FormDownloadButtons
+                      key={`list-${x.id}-${d?.departmentId ?? ""}`}
+                      label={`The self-reading list${suffix}`}
+                      buttonText={d ? `Export${suffix}` : "Export"}
+                      load={(format) => trainingFormsApi.selfReading(x.id, format, d?.departmentId)}
+                      fileName={(format) => `${base}.${format}`}
+                    />,
+                  ];
+                });
+              })}
+              {caps?.sendAttendanceList && attendanceBlockers.length === 0 && (
                 <Button
                   size="sm"
                   loading={busy}
-                  disabled={attendanceBlockers.length > 0}
-                  title={attendanceBlockers.length > 0 ? `Not ready to send the attendance list: ${attendanceBlockers.join("; ")}.` : undefined}
                   onClick={sendAttendanceList}
                 >
                   Send attendance list to QA
@@ -1649,20 +1630,25 @@ export function TrainingActivityDetailPage({
         >
           {notices}
           {tab === "overview" && (
-            <div className="space-y-6">
-              {resultsNotice}
+            <div className="space-y-4">
               {mode === "edit" && nextSteps}
+              {/* The same fields in the same order as New Training Activity: the activity (with who opened it, the document and the days), then the session, then the description. */}
               <ReadonlyGrid>
                 <ReadonlyField
                   label="Training Number"
                   value={activity.trainingNumber}
                 />
                 <ReadonlyField
+                  label="Department"
+                  value={activity.departmentName}
+                />
+                <ReadonlyField label="Opened By" value={activity.createdByName} />
+                <ReadonlyField label="Training Completed On" value={day(activity.completedOn)} />
+                <ReadonlyField label="Created Time" value={when(activity.createdAt)} />
+                <ReadonlyField
                   label="Type"
                   value={KIND_LABEL[activity.kind] ?? activity.kind}
                 />
-                <ReadonlyField label="Created Time" value={when(activity.createdAt)} />
-                <ReadonlyField label="Opened By" value={activity.createdByName} />
                 <ReadonlyField
                   label="Reason"
                   value={
@@ -1674,7 +1660,7 @@ export function TrainingActivityDetailPage({
                 />
                 {external && (
                   <ReadonlyField
-                    label="External Training"
+                    label="External training"
                     value={
                       activity.externalType
                         ? EXTERNAL_TYPE_LABEL[activity.externalType]
@@ -1697,7 +1683,7 @@ export function TrainingActivityDetailPage({
                           }
                         />
                       </FormField>
-                      <FormField label="Vendor Reference (SOP.0025)">
+                      <FormField label="Vendor reference (SOP.0025)">
                         <Input
                           value={form.vendorRef}
                           maxLength={120}
@@ -1719,37 +1705,14 @@ export function TrainingActivityDetailPage({
                       />
                     </>
                   ))}
-                {caps?.edit ? (
-                  <div className="md:col-span-2">
-                    <FormField label="Training Title" required>
-                      <Input
-                        value={form.trainingTitle}
-                        maxLength={255}
-                        onChange={(e) =>
-                          setDraft({ ...form, trainingTitle: e.target.value })
-                        }
-                      />
-                    </FormField>
-                  </div>
-                ) : (
-                  <ReadonlyField
-                    label="Training Title"
-                    value={activity.trainingTitle}
-                    wide
-                  />
+                {activity.documentNumber && (
+                  <>
+                    <ReadonlyField
+                      label="Document"
+                      value={`${activity.documentNumber}${activity.revisionNumber ? ` Rev ${activity.revisionNumber}` : ""}`}
+                    />
+                  </>
                 )}
-                <ReadonlyField
-                  label="Department"
-                  value={activity.departmentName}
-                />
-                <ReadonlyField
-                  label="Document"
-                  value={
-                    activity.documentNumber
-                      ? `${activity.documentNumber}${activity.revisionNumber ? ` Rev ${activity.revisionNumber}` : ""}`
-                      : ""
-                  }
-                />
                 {(activity.groupRevisions ?? []).filter((r) => !r.isMain).length > 0 && (
                   <ReadonlyField
                     label="Related documents (same Training Number)"
@@ -1757,31 +1720,66 @@ export function TrainingActivityDetailPage({
                     wide
                   />
                 )}
-                {activity.attendanceSentAt && (
-                  <ReadonlyField label="Attendance list sent to QA" value={`${activity.attendanceSentAt}${activity.attendanceSentByName ? ` by ${activity.attendanceSentByName}` : ""}`} />
-                )}
-                <ReadonlyField
-                  label="Document Approved On"
-                  value={day(activity.approvedOn)}
-                />
-                {caps?.edit ? (
-                  <TrainingDateField
-                    label="Due"
-                    value={form.dueDate}
-                    onChange={(v) => setDraft({ ...form, dueDate: v })}
+                {/* The Due Date is on the row of the Scheduled date of the session; it is here only when the activity has no session and none can be added. */}
+                {!dueDateWithSession && dueDateField}
+                {/* With a session, the topic is the topic of the session (below): it is not said twice. */}
+                {activity.sessions.length === 0 && (
+                  <ReadonlyField
+                    label="Training Topic"
+                    value={activityTopics || "—"}
+                    wide
                   />
-                ) : (
-                  <ReadonlyField label="Due" value={day(activity.dueDate)} />
                 )}
-                <ReadonlyField
-                  label="Training Completed On"
-                  value={day(activity.completedOn)}
-                />
+              </ReadonlyGrid>
+              {/* The session: what the training is, then when, where and with whom it is held (the fields of the Session of New Training Activity). */}
+              <div className="space-y-4">
+                <div className="space-y-4">
+                  {caps?.planSessions && (
+                    <SessionPanel
+                      external={external}
+                      busy={busy}
+                      dueDate={activity.sessions.length === 0 ? dueDateField : undefined}
+                      initialTopic={activity.documentNumber ? `${activity.documentNumber} ${activity.documentName ?? ""}`.trim() : undefined}
+                      documentRevisionId={activity.documentNumber ? (activity.revisionId ?? undefined) : undefined}
+                      onSave={(body) =>
+                        void run(
+                          () => trainingActivitiesApi.addSession(activity.id, body),
+                          "Session added",
+                        )
+                      }
+                    />
+                  )}
+                  {/* The paper pack and the preparation are tools of the person who organises: they are shown where that person works (planning, and before the first session is held);
+                      elsewhere they would only be read, and the prints are in the Audit Trail. */}
+                  {paperShown && paperBlocks}
+                  {activity.sessions.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50">
+                      <p className="p-4 text-sm text-slate-500">
+                        No session yet. Fill in the form above to add the first
+                        one.
+                        {(activity.proposedParticipantCount ?? 0) > 0 &&
+                          ` ${activity.proposedParticipantCount} participant${activity.proposedParticipantCount === 1 ? " was" : "s were"} proposed when the document was prepared; they are put on the list of the first session, and you confirm the list.`}
+                      </p>
+                    </div>
+                  ) : (
+                    <SessionDetails
+                      dueDate={dueDateField}
+                      sessions={activity.sessions}
+                      external={external}
+                      trainerOf={trainerOf}
+                      trainerCheck={renderTrainerCheck}
+                      actions={renderSessionActions}
+                      showDelivery={!paperShown}
+                    />
+                  )}
+                </div>
+              </div>
+              <ReadonlyGrid>
                 {caps?.edit || caps?.editRemarks ? (
                   <div className="md:col-span-2">
-                    <FormField label="Remarks">
+                    <FormField label="Description" required>
                       <Textarea
-                        rows={2}
+                        rows={3}
                         value={form.remarks}
                         onChange={(e) =>
                           setDraft({ ...form, remarks: e.target.value })
@@ -1791,9 +1789,10 @@ export function TrainingActivityDetailPage({
                   </div>
                 ) : (
                   <ReadonlyField
-                    label="Remarks"
+                    label="Description"
                     value={activity.remarks}
                     wide
+                    multiline
                   />
                 )}
                 {activity.cancelReason && (
@@ -1804,44 +1803,6 @@ export function TrainingActivityDetailPage({
                   />
                 )}
               </ReadonlyGrid>
-            </div>
-          )}
-
-          {tab === "sessions" && (
-            <div className="space-y-4">
-              {caps?.planSessions && (
-                <SessionPanel
-                  external={external}
-                  busy={busy}
-                  onSave={(body) =>
-                    void run(
-                      () => trainingActivitiesApi.addSession(activity.id, body),
-                      "Session added",
-                    )
-                  }
-                />
-              )}
-              {/* The paper pack and the preparation are tools of the person who organises: they are shown where that person works (planning, and before the first session is held);
-                  elsewhere they would only be read, and the prints are in the Audit Trail. */}
-              {(mode === "edit" || (mode === "conduct" && activity.status === "NOTIFIED")) && paperBlocks}
-              {activity.sessions.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50">
-                  <p className="p-4 text-sm text-slate-500">
-                      No session yet. Fill in the form above to add the first
-                      one.
-                      {(activity.proposedParticipantCount ?? 0) > 0 &&
-                        ` ${activity.proposedParticipantCount} participant${activity.proposedParticipantCount === 1 ? " was" : "s were"} proposed when the document was prepared; they are put on the list of the first session, and you confirm the list.`}
-                    </p>
-                </div>
-              ) : (
-                <SessionDetails
-                  sessions={activity.sessions}
-                  external={external}
-                  trainerOf={trainerOf}
-                  trainerCheck={renderTrainerCheck}
-                  actions={renderSessionActions}
-                />
-              )}
             </div>
           )}
 
@@ -1868,7 +1829,7 @@ export function TrainingActivityDetailPage({
                   />
                 ) : (
                   <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-4 text-sm text-slate-600">
-                    Add a session first (tab Sessions): the people are added to
+                    Add a session first (General Information): the people are added to
                     a session.
                   </p>
                 ))}
@@ -1887,31 +1848,23 @@ export function TrainingActivityDetailPage({
                   }
                 />
               )}
-              {groups
-                .filter((g) => g.rows.length > 0 || g.id === "employees")
-                .map((g) => (
-                  <TabBlock key={g.id} title={`${g.title} (${g.rows.length})`}>
-                    <DataTable
-                      rows={g.rows}
-                      getRowKey={(p) => p.id}
-                      columns={(monitoring ? columnsShown.filter((c) => c.id !== "actions") : columnsShown).filter((c) => !(singleSession && c.id === "session"))}
-                      emptyState={
-                        <p className="p-4 text-sm text-slate-500">
-                          No participant yet.
-                        </p>
-                      }
-                    />
-                  </TabBlock>
-                ))}
+              {groupTables((monitoring ? columnsShown.filter((c) => c.id !== "actions") : columnsShown).filter((c) => !(singleSession && c.id === "session")))}
             </div>
           )}
 
-          {tab === "approvals" &&
+          {tab === "signatures" &&
             !["edit", "review", "approve"].includes(mode) && (
-              <SignatureFields records={signatureRecords} />
+              <ReadonlyGrid>
+                {signatureSteps.map((x) => (
+                  <Fragment key={x.key}>
+                    <ReadonlyField label={`${x.label} By`} value={x.by} />
+                    <ReadonlyField label={`${x.label} On (Date - Time)`} value={x.on} />
+                  </Fragment>
+                ))}
+              </ReadonlyGrid>
             )}
 
-          {tab === "approvals" &&
+          {tab === "signatures" &&
             ["edit", "review", "approve"].includes(mode) && (
               <div className="space-y-4">
                 <p className="text-sm text-slate-600">
@@ -2072,7 +2025,7 @@ export function TrainingActivityDetailPage({
             />
           )}
           {tab === "assessment" && !external && (
-            <TrainingAssessmentChoiceBlock activity={activity} editable={mode === "edit" && Boolean(caps?.chooseAssessment)} onChanged={setActivity} />
+            <TrainingAssessmentChoiceBlock activity={activity} editable={mode === "edit" && Boolean(caps?.chooseAssessment)} onChanged={() => void load()} />
           )}
           {tab === "assessment" && !external && (
             <TrainingExamBlock
@@ -2135,7 +2088,7 @@ export function TrainingActivityDetailPage({
       {dialog?.type === "returnForCorrection" && (
         <ReasonDialog
           title="Return the Results for Correction"
-          help="Nothing has been written to a personal record yet. The activity goes back to In progress, the organizer corrects and sends it to QA again."
+          help="Nothing has been written to a personal record yet. The activity goes back to In Progress, the organizer corrects and sends it to QA again."
           confirmText="Continue"
           busy={busy}
           onClose={() => setDialog(undefined)}
@@ -2146,7 +2099,7 @@ export function TrainingActivityDetailPage({
               "TRAINING_RETURNED_FOR_CORRECTION",
               "Training Returned for Correction",
               (t) => trainingActivitiesApi.returnForCorrection(activity.id, activity.version, reason, t),
-              statusChange("Pending QA Confirmation", "In progress"),
+              statusChange("Pending QA Confirmation", "In Progress"),
             );
           }}
         />
@@ -2189,14 +2142,16 @@ export function TrainingActivityDetailPage({
       {dialog?.type === "postpone" && (
         <PostponeDialog
           busy={busy}
+          dueDate={activity.dueDate?.slice(0, 10) ?? ""}
           onClose={() => setDialog(undefined)}
-          onSave={(date, reason) =>
+          onSave={(date, reason, moveDueDate) =>
             run(
               () =>
                 trainingActivitiesApi.postponeSession(
                   dialog.session.id,
                   date,
                   reason,
+                  moveDueDate,
                 ),
               "Session postponed",
             )
@@ -2333,6 +2288,24 @@ export function TrainingActivityDetailPage({
           }
         />
       )}
+      {dialog?.type === "participation" && (
+        <ParticipationDialog
+          participant={dialog.participant}
+          busy={busy}
+          onClose={() => setDialog(undefined)}
+          onSave={(role, reason) =>
+            run(
+              () =>
+                trainingActivitiesApi.setParticipation(
+                  dialog.participant.id,
+                  role,
+                  reason,
+                ),
+              "Participation saved",
+            )
+          }
+        />
+      )}
       {dialog?.type === "plannedAbsence" && (
         <ReasonDialog
           title={`Mark ${dialog.participant.fullName} Absent`}
@@ -2354,9 +2327,7 @@ export function TrainingActivityDetailPage({
       )}
       {dialog?.type === "supplementary" && (
         <SupplementaryDialog
-          participants={activity.participants.filter(
-            (p) => p.state === "ABSENT" || p.result === "FAILED",
-          )}
+          participants={activity.supplementaryCandidates ?? []}
           busy={busy}
           onClose={() => setDialog(undefined)}
           onSave={(ids, reason) =>
@@ -2386,7 +2357,7 @@ export function TrainingActivityDetailPage({
         meaningCode={sign?.meaningCode}
         targetDetails={{
           code: activity.trainingNumber,
-          title: activity.trainingTitle,
+          title: activityTopics,
           revision: "",
         }}
       />
@@ -2438,22 +2409,98 @@ function ReasonDialog({
   );
 }
 
-function PostponeDialog({
+/** Quick reasons for a person who takes no assessment; the organizer may type any other reason. */
+const PARTICIPATION_QUICK_REASONS = ["Senior management attending", "Attends for information"];
+
+function ParticipationDialog({
+  participant,
   busy,
   onClose,
   onSave,
 }: {
+  participant: TrainingParticipant;
   busy: boolean;
   onClose: () => void;
-  onSave: (date: string, reason: string) => void;
+  onSave: (role: ParticipationRole, reason?: string) => void;
 }) {
-  const [date, setDate] = useState("");
-  const [reason, setReason] = useState("");
+  const current = participant.participationRole ?? "TRAINEE";
+  const [role, setRole] = useState<ParticipationRole>(current);
+  const [reason, setReason] = useState(participant.participationReason ?? "");
+  const trainee = role === "TRAINEE";
+  const choose = (value: ParticipationRole) => {
+    setRole(value);
+    // A trainee has no reason.
+    if (value === "TRAINEE") setReason("");
+  };
   return (
     <FormModal
       isOpen
       onClose={onClose}
-      onConfirm={() => onSave(date, reason.trim())}
+      title={`Participation: ${participant.fullName}`}
+      description="How the person takes part decides whether they take the assessment. The role, the reason and who set it stay in the Audit Trail. It cannot be changed once the person has a score."
+      confirmText="Save"
+      isLoading={busy}
+      confirmDisabled={(role === current && reason.trim() === (participant.participationReason ?? "")) || (!trainee && !reason.trim())}
+      size="md"
+      onConfirm={() => onSave(role, trainee ? undefined : reason.trim())}
+    >
+      <div className="grid gap-4">
+        <FormField label="Participation" required>
+          <Select
+            value={role}
+            enableSearch={false}
+            onChange={(v) => choose(v as ParticipationRole)}
+            options={Object.entries(PARTICIPATION_ROLE_LABEL).map(([value, label]) => ({ label, value }))}
+          />
+        </FormField>
+        <p className="text-xs text-slate-500">{PARTICIPATION_ROLE_HELP[role]}</p>
+        {!trainee && (
+          <>
+            <FormField label="Reason" required>
+              <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
+            </FormField>
+            <div className="flex flex-wrap gap-2">
+              {PARTICIPATION_QUICK_REASONS.map((text) => (
+                <Button key={text} size="sm" variant="outline-emerald" type="button" onClick={() => setReason(text)}>
+                  {text}
+                </Button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </FormModal>
+  );
+}
+
+/** The last day of the month of an ISO date (yyyy-MM-dd): the Due Date a postponement into a later month asks for. */
+function endOfMonth(iso: string): string {
+  const [y, m] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+}
+
+function PostponeDialog({
+  busy,
+  dueDate,
+  onClose,
+  onSave,
+}: {
+  busy: boolean;
+  dueDate: string;
+  onClose: () => void;
+  onSave: (date: string, reason: string, moveDueDate: boolean) => void;
+}) {
+  const [date, setDate] = useState("");
+  const [reason, setReason] = useState("");
+  const [moveDue, setMoveDue] = useState("MOVE");
+  // The new date falls after the Due Date: SOP.0003 5.3.6 moves the training to the following month, so the user is told and decides.
+  const afterDue = Boolean(dueDate && date && date > dueDate);
+  const newDue = afterDue ? endOfMonth(date) : "";
+  return (
+    <FormModal
+      isOpen
+      onClose={onClose}
+      onConfirm={() => onSave(date, reason.trim(), afterDue && moveDue === "MOVE")}
       title="Postpone Session"
       description="The Training Number stays. The old date, the new date and the reason are recorded."
       confirmText="Postpone"
@@ -2463,6 +2510,13 @@ function PostponeDialog({
     >
       <div className="grid gap-4">
         <TrainingDateField label="New date" value={date} onChange={setDate} />
+        {afterDue && (
+          <div role="alert" className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <p>The new date is after the Due Date ({day(dueDate)}). SOP.0003 5.3.6: a training that cannot be completed in its month is conducted in the following month. If it comes from a training requirement, the line of the requirement moves to that month too; the month it was approved for stays on the line.</p>
+            <RadioGroup name="postpone-due" value={moveDue} onChange={(v) => setMoveDue(String(v))}
+              options={[{ label: `Move the Due Date to ${day(newDue)}`, value: "MOVE" }, { label: `Keep the Due Date ${day(dueDate)} (the session is then after it)`, value: "KEEP" }]} />
+          </div>
+        )}
         <FormField label="Reason" required>
           <Textarea
             rows={3}

@@ -79,6 +79,7 @@ export interface NotificationDeliveryFailure {
   recipient: string;
   notificationType: string;
   eventDomain?: string | null;
+  channel?: string | null;
   errorMessage?: string | null;
   attempts: number;
   createdAt: string;
@@ -121,10 +122,14 @@ export const notificationApi = {
     return summaryRequest;
   },
 
-  getDeliveryFailures: async (page = 1, limit = 20) => {
-    const response = await api.get<PaginatedResponse<NotificationDeliveryFailure>>(
-      `${ENDPOINT}/delivery-failures?page=${page}&limit=${limit}`,
-    );
+  /** Failed deliveries, searched, filtered, sorted and paged by the server. */
+  getDeliveryFailures: async (params: Record<string, string | number | boolean | undefined> = { page: 1, limit: 20 }) => {
+    const response = await api.get<PaginatedResponse<NotificationDeliveryFailure>>(`${ENDPOINT}/delivery-failures`, { params });
+    return response.data;
+  },
+
+  getDeliveryFailureEventDomains: async () => {
+    const response = await api.get<string[]>(`${ENDPOINT}/delivery-failures/event-domains`);
     return response.data;
   },
 

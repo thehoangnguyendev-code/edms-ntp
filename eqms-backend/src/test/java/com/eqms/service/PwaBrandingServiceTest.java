@@ -57,7 +57,9 @@ class PwaBrandingServiceTest {
 
     @Test
     void theShortNameAndTheColourAreChecked() {
-        assertThatThrownBy(() -> PwaBrandingService.validate(general(null, "A name that is much too long", null))).hasMessageContaining("at most 12");
+        PwaBrandingService.validate(general(null, "Ngoc Thien Quality Management System", null));
+        PwaBrandingService.validate(general(null, "A".repeat(64), null));
+        assertThatThrownBy(() -> PwaBrandingService.validate(general(null, "A".repeat(65), null))).hasMessageContaining("at most 64");
         assertThatThrownBy(() -> PwaBrandingService.validate(general(null, "Line\nbreak", null))).hasMessageContaining("control");
         assertThatThrownBy(() -> PwaBrandingService.validate(general(null, null, "red"))).hasMessageContaining("colour");
     }
@@ -99,12 +101,12 @@ class PwaBrandingServiceTest {
 
     @Test
     void theManifestKeepsTheSameIdAndStartAddressAndPointsToTheVersionedIcons() throws Exception {
-        Source custom = new Source(png(512, 512, Color.RED), "EQMS QA", "#112233", "Quality Management System", "#059669");
+        Source custom = new Source(png(512, 512, Color.RED), "Ngoc Thien Quality Management", "#112233", "Quality Management System", "#059669");
         JsonNode m = mapper.readTree(service.manifest(custom));
 
         assertThat(m.get("id").asText()).isEqualTo("/");
         assertThat(m.get("start_url").asText()).isEqualTo("/");
-        assertThat(m.get("short_name").asText()).isEqualTo("EQMS QA");
+        assertThat(m.get("short_name").asText()).isEqualTo("Ngoc Thien Quality Management");
         assertThat(m.get("name").asText()).isEqualTo("Quality Management System");
         assertThat(m.get("background_color").asText()).isEqualTo("#112233");
         assertThat(m.get("icons")).hasSize(3);
@@ -117,7 +119,7 @@ class PwaBrandingServiceTest {
         JsonNode m = mapper.readTree(service.manifest(new Source(null, null, null, "Quality Management System", null)));
 
         assertThat(m.get("icons").get(0).get("src").asText()).isEqualTo("/icons/apple-touch-icon.png");
-        assertThat(m.get("short_name").asText().length()).isLessThanOrEqualTo(12);
+        assertThat(m.get("short_name").asText()).isEqualTo("Quality Management System");
         assertThat(m.get("theme_color").asText()).isEqualTo("#059669");
     }
 }

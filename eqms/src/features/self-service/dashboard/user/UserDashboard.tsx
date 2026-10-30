@@ -1,4 +1,6 @@
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useDebounce } from '@/hooks';
 import { Plus, Workflow } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDocumentPermissions } from '@/features/documents/shared/useDocumentPermissions';
@@ -11,6 +13,7 @@ import { PanelError } from '../shared/dashboardParts';
 import { Card, CardHeader, GrowthColumns, KpiStrip, OutlineButton, PrimaryButton } from '../shared/dashboardUi';
 import { DocumentActivityPanel } from './DocumentActivityPanel';
 import { useDashboardResource } from '../shared/useDashboardResource';
+import { DashboardWidgets } from '../shared/DashboardWidgets';
 
 function greeting() {
   const hour = new Date().getHours();
@@ -26,7 +29,9 @@ export function UserDashboard() {
   const { user } = useAuth();
   const { canCreateDocumentShell } = useDocumentPermissions();
   const summary = useDashboardResource(() => dashboardApi.getSummary(), []);
-  const tasks = useDashboardResource(() => dashboardApi.getPendingWorkflowActions(), []);
+  const [taskQuery, setTaskQuery] = useState('');
+  const taskSearch = useDebounce(taskQuery, 300);
+  const tasks = useDashboardResource(() => dashboardApi.getPendingWorkflowActions(taskSearch), [taskSearch]);
 
   const s = summary.data;
   const work = s ? describeMyWork(s.myPendingTasks, tasks.data ?? []) : null;
@@ -52,7 +57,8 @@ export function UserDashboard() {
         </div>
       </header>
 
-      <KpiStrip
+      <DashboardWidgets widgets={[
+      { id: 'user-kpis', label: 'Overview', width: 'full', content: <><KpiStrip
         label="Workflow and library totals"
         cells={[
           {
@@ -77,11 +83,10 @@ export function UserDashboard() {
       />
       {summary.error && (
         <PanelError message="Totals could not be loaded." onRetry={summary.reload} />
-      )}
+      )}</> },
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <DocumentActivityPanel />
-        <Card aria-label="Workflow pipeline">
+      { id: 'document-activity', label: 'Document activity', width: 'half', content: <DocumentActivityPanel /> },
+      { id: 'workflow-pipeline', label: 'Workflow pipeline', width: 'half', content: <Card aria-label="Workflow pipeline">
           <CardHeader title="Workflow pipeline" subtitle={s ? `${openItems.toLocaleString()} revisions in review, approval or training` : 'Revisions waiting in each stage'} />
           {s ? (
             <GrowthColumns
@@ -94,21 +99,21 @@ export function UserDashboard() {
           ) : (
             <p className="flex h-[250px] items-center justify-center text-sm text-slate-400">{summary.loading ? 'Loading…' : 'Unavailable'}</p>
           )}
-        </Card>
-      </div>
+        </Card> },
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <MyDocumentsPanel />
-        <EffectiveByTypePanel />
-      </div>
+      { id: 'my-documents', label: 'My documents', width: 'half', content: <MyDocumentsPanel /> },
+      { id: 'effective-by-type', label: 'Effective documents by type', width: 'half', content: <EffectiveByTypePanel /> },
 
-      <PendingWorkPanel
+      { id: 'pending-work', label: 'Pending work', width: 'full', content: <PendingWorkPanel
+        query={taskQuery}
+        onQueryChange={setTaskQuery}
         tasks={tasks}
         work={work}
         awaitingAction={awaitingAction}
         onOpenTask={(task) => navigate(`/documents/${task.documentId}/revisions/${task.revisionId}`)}
         onOpenAll={() => navigate('/documents/revisions')}
-      />
+      /> },
+      ]} />
     </div>
   );
 }

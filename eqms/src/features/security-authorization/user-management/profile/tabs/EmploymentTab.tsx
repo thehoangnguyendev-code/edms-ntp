@@ -80,7 +80,7 @@ export const EmploymentTab: React.FC<EmploymentTabProps> = ({
           error={fieldErrors.position}
         />
         {workPosition.positionName && (
-          <InfoField label="Job Roles (Training)" value={workPosition.positionName} />
+          <InfoField label="Work Position (Training)" value={workPosition.positionName} />
         )}
         <EditableField
           label="Direct Manager" value={user.managerName} draftValue={draft.managerName}

@@ -4,8 +4,6 @@ import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.esignature.ElectronicSignatureRecordResponse;
 import com.eqms.dto.esignature.ElectronicSignatureSettingsRequest;
 import com.eqms.dto.esignature.ElectronicSignatureSettingsResponse;
-import com.eqms.dto.esignature.ElectronicSignatureTimestampPreviewRequest;
-import com.eqms.dto.esignature.ElectronicSignatureTimestampPreviewResponse;
 import com.eqms.dto.esignature.ElectronicSignatureMeaningResponse;
 import com.eqms.service.ElectronicSignaturePdfPreviewService;
 import com.eqms.service.ElectronicSignatureService;
@@ -32,14 +30,17 @@ public class ElectronicSignatureSettingsController {
     private final ElectronicSignatureService electronicSignatureService;
     private final ElectronicSignaturePdfPreviewService pdfPreviewService;
     private final CurrentUserService currentUserService;
+    private final com.eqms.service.ElectronicSignatureMeaningQueryService meaningQueries;
     private final PermissionEvaluationService permissionEvaluationService;
 
     public ElectronicSignatureSettingsController(
             ElectronicSignatureService electronicSignatureService,
             ElectronicSignaturePdfPreviewService pdfPreviewService,
             CurrentUserService currentUserService,
-            PermissionEvaluationService permissionEvaluationService
+            PermissionEvaluationService permissionEvaluationService,
+            com.eqms.service.ElectronicSignatureMeaningQueryService meaningQueries
     ) {
+        this.meaningQueries = meaningQueries;
         this.electronicSignatureService = electronicSignatureService;
         this.pdfPreviewService = pdfPreviewService;
         this.currentUserService = currentUserService;
@@ -58,12 +59,16 @@ public class ElectronicSignatureSettingsController {
         return ResponseEntity.ok(electronicSignatureService.saveSettings(request));
     }
 
-    @GetMapping("/settings/electronic-signature/meanings")
-    public ResponseEntity<List<ElectronicSignatureMeaningResponse>> searchMeanings(
-            @RequestParam(required = false) String search
+    /** The meanings as a table: searched, filtered by module and by the date they were last updated, sorted and paged by the server. */
+    @GetMapping("/settings/electronic-signature/meanings/page")
+    public ResponseEntity<java.util.Map<String, Object>> meaningsPage(
+            @RequestParam(required = false) String search, @RequestParam(required = false) String module,
+            @RequestParam(required = false) String updatedFrom, @RequestParam(required = false) String updatedTo,
+            @RequestParam(required = false) String sortBy, @RequestParam(defaultValue = "asc") String sortDirection,
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit
     ) {
         requireAdminView();
-        return ResponseEntity.ok(electronicSignatureService.searchMeanings(search));
+        return ResponseEntity.ok(meaningQueries.page(search, module, updatedFrom, updatedTo, sortBy, sortDirection, page, limit));
     }
 
     @GetMapping("/electronic-signature/meanings/{code}")
@@ -75,12 +80,11 @@ public class ElectronicSignatureSettingsController {
         return policy == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(policy);
     }
 
-    @PostMapping("/settings/electronic-signature/timestamp-preview")
-    public ResponseEntity<ElectronicSignatureTimestampPreviewResponse> previewTimestamp(@RequestBody ElectronicSignatureTimestampPreviewRequest request) {
+    /** The three display styles of a signed electronic signature, drawn from one sample record. */
+    @GetMapping("/settings/electronic-signature/display-styles")
+    public ResponseEntity<List<com.eqms.service.ElectronicSignatureRendererService.StylePreview>> displayStyles() {
         requireAdminView();
-        return ResponseEntity.ok(new ElectronicSignatureTimestampPreviewResponse(electronicSignatureService.previewTimestamp(
-                request == null ? null : request.signatureTimestampFormat(),
-                request == null ? null : request.signatureTimezone())));
+        return ResponseEntity.ok(electronicSignatureService.displayStyles());
     }
 
     @GetMapping("/settings/electronic-signature/pdf-preview")

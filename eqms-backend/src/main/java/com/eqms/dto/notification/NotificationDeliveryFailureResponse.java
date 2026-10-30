@@ -10,6 +10,7 @@ public record NotificationDeliveryFailureResponse(
         String recipient,
         String notificationType,
         String eventDomain,
+        String channel,
         String errorMessage,
         int attempts,
         Instant createdAt,
@@ -19,7 +20,7 @@ public record NotificationDeliveryFailureResponse(
     public static NotificationDeliveryFailureResponse from(NotificationDeliveryFailure failure) {
         return new NotificationDeliveryFailureResponse(
                 failure.getId(), failure.getRecipient(), failure.getNotificationType(),
-                failure.getEventDomain(), failure.getErrorMessage(), failure.getAttempts(),
+                failure.getEventDomain(), failure.getChannel(), failure.getErrorMessage(), failure.getAttempts(),
                 failure.getCreatedAt(), failure.getLastAttemptAt(), failure.getStatus()
         );
     }

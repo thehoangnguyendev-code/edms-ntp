@@ -90,11 +90,11 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
       },
     ]),
     { id: "number", header: "Training Number", sort: sorted("trainingNumber"), cell: (r) => r.trainingNumber },
-    { id: "topic", header: "Topic", sort: sorted("topicText"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.topicText}</div> },
+    { id: "topic", header: "Training Topic", sort: sorted("topicText"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.topicText}</div> },
     { id: "document", header: "Document", sort: sorted("documentNumber"), cell: (r) => (r.documentNumber ? `${r.documentNumber}${r.documentRevision ? ` Rev ${r.documentRevision}` : ""}` : "—") },
     { id: "completed", header: "Completed On", sort: sorted("completedOn"), cell: (r) => day(r.completedOn) },
     ...(mine ? [] : [{ id: "recordedOn", header: "Recorded On", sort: sorted("recordedAt"), cell: (r: TrainingRecord) => day(r.recordedAt) }]),
-    { id: "result", header: "Result", sort: sorted("result"), cell: (r) => (r.result === "READ" ? "Read and understood" : r.result === "ATTENDED" ? "Attended" : "Passed") },
+    { id: "result", header: "Result", sort: sorted("result"), cell: (r) => (r.result === "READ" ? "Read and understood" : r.result === "ATTENDED" ? "Attended" : r.result === "TRAINER" ? "Trainer" : "Passed") },
     {
       id: "state",
       header: "Record",
@@ -116,12 +116,12 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
   const filters: ReportSelectFilter[] = mine
     ? [
         { id: "method", label: "Mode", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))], onChange: (v) => { setMethod(v); table.setCurrentPage(1); } },
-        { id: "result", label: "Result", value: result, options: [{ label: "All", value: "" }, { label: "Read and understood", value: "READ" }, { label: "Passed", value: "PASSED" }, { label: "Attended", value: "ATTENDED" }], onChange: (v) => { setResult(v); table.setCurrentPage(1); } },
+        { id: "result", label: "Result", value: result, options: [{ label: "All", value: "" }, { label: "Read and understood", value: "READ" }, { label: "Passed", value: "PASSED" }, { label: "Attended", value: "ATTENDED" }, { label: "Trainer", value: "TRAINER" }], onChange: (v) => { setResult(v); table.setCurrentPage(1); } },
         { id: "recordState", label: "Record", value: recordState, options: [{ label: "All", value: "" }, { label: "Valid", value: "VALID" }, { label: "Voided", value: "VOIDED" }], onChange: (v) => { setRecordState(v); table.setCurrentPage(1); } },
       ]
     : [
         { id: "method", label: "Mode", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))], onChange: (v) => { setMethod(v); table.setCurrentPage(1); } },
-        { id: "result", label: "Result", value: result, options: [{ label: "All", value: "" }, { label: "Read and understood", value: "READ" }, { label: "Passed", value: "PASSED" }, { label: "Attended", value: "ATTENDED" }], onChange: (v) => { setResult(v); table.setCurrentPage(1); } },
+        { id: "result", label: "Result", value: result, options: [{ label: "All", value: "" }, { label: "Read and understood", value: "READ" }, { label: "Passed", value: "PASSED" }, { label: "Attended", value: "ATTENDED" }, { label: "Trainer", value: "TRAINER" }], onChange: (v) => { setResult(v); table.setCurrentPage(1); } },
         { id: "department", label: "Department", value: departmentFilter, options: [{ label: "All", value: "" }, ...departments], onChange: (v) => { setDepartmentFilter(v); table.setCurrentPage(1); } },
         { id: "voided", label: "Voided records", value: voided, options: [{ label: "Hide voided", value: "" }, { label: "Show voided", value: "yes" }], onChange: (v) => { setVoided(v); table.setCurrentPage(1); } },
       ];
@@ -145,7 +145,7 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
     <>
       {error && <p role="alert" className="mb-2 text-sm text-red-700">{error}</p>}
       <ReportListToolbar
-        searchPlaceholder="Search employee, topic, Training Number or document…"
+        searchPlaceholder="Search employee, Training Topic, Training Number or document…"
         search={table.searchQuery}
         onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
         filters={filters}

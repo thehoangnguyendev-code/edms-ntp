@@ -10,6 +10,4 @@ import java.util.UUID;
 public interface ElectronicSignatureMeaningRepository extends JpaRepository<ElectronicSignatureMeaning, UUID> {
     List<ElectronicSignatureMeaning> findAllByOrderByCodeAsc();
     Optional<ElectronicSignatureMeaning> findByCodeIgnoreCase(String code);
-    List<ElectronicSignatureMeaning> findByCodeContainingIgnoreCaseOrDisplayNameContainingIgnoreCaseOrderByCodeAsc(
-            String codeSearch, String displayNameSearch);
 }

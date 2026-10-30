@@ -514,7 +514,7 @@ class DocumentObsoleteNotificationTest {
 
         // GET /notifications/delivery-failures via the real controller/service path.
         UUID failureId = failure.getId();
-        var listResult = runAsActorReturning(operator, () -> notificationController.deliveryFailures(1, 50));
+        var listResult = runAsActorReturning(operator, () -> notificationController.deliveryFailures(null, null, null, null, null, null, "lastAttemptAt", "desc", 1, 50));
         PageResponse<NotificationDeliveryFailureResponse> page = listResult.getBody();
         assertNotNull(page);
         assertTrue(page.data().stream().anyMatch(r -> r.id().equals(failureId)),

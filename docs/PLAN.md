@@ -28,8 +28,8 @@ Pending Review
   └─ Reject → Draft
 
 Pending Approval
-  ├─ Complete Approve → Pending Training (nếu Requires Training)
-  ├─ Complete Approve → Ready for Publishing (nếu không Requires Training)
+  ├─ Complete Approval → Pending Training (nếu Requires Training)
+  ├─ Complete Approval → Ready for Publishing (nếu không Requires Training)
   └─ Reject → Draft
 
 Pending Training

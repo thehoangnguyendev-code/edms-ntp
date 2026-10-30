@@ -7,8 +7,7 @@ import com.eqms.dto.notification.NotificationDeliveryFailureResponse;
 import com.eqms.dto.user.PageResponse;
 import com.eqms.dto.user.PaginationResponse;
 import com.eqms.entity.UserAccount;
-import com.eqms.entity.NotificationDeliveryFailure;
-import com.eqms.repository.NotificationDeliveryFailureRepository;
+import com.eqms.service.NotificationDeliveryFailureQueryService;
 import com.eqms.service.AuthorizationService;
 import com.eqms.service.EmailNotificationService;
 import com.eqms.service.NotificationRealtimeService;
@@ -27,8 +26,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 
 import java.util.UUID;
 import java.util.Map;
@@ -40,7 +37,7 @@ public class NotificationController {
     private final NotificationService notificationService;
     private final NotificationRealtimeService notificationRealtimeService;
     private final CurrentUserService currentUserService;
-    private final NotificationDeliveryFailureRepository deliveryFailureRepository;
+    private final NotificationDeliveryFailureQueryService deliveryFailures;
     private final AuthorizationService authorizationService;
     private final EmailNotificationService emailNotificationService;
 
@@ -48,14 +45,14 @@ public class NotificationController {
             NotificationService notificationService,
             NotificationRealtimeService notificationRealtimeService,
             CurrentUserService currentUserService,
-            NotificationDeliveryFailureRepository deliveryFailureRepository,
+            NotificationDeliveryFailureQueryService deliveryFailures,
             AuthorizationService authorizationService,
             EmailNotificationService emailNotificationService
     ) {
         this.notificationService = notificationService;
         this.notificationRealtimeService = notificationRealtimeService;
         this.currentUserService = currentUserService;
-        this.deliveryFailureRepository = deliveryFailureRepository;
+        this.deliveryFailures = deliveryFailures;
         this.authorizationService = authorizationService;
         this.emailNotificationService = emailNotificationService;
     }
@@ -91,22 +88,36 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.getPreferences());
     }
 
-    /** Administrative, paginated view of failed email deliveries. Payloads and secrets are never exposed. */
+    /** Administrative view of failed deliveries, searched, filtered, sorted and paged here. Payloads and secrets are never exposed. */
     @GetMapping("/delivery-failures")
     public ResponseEntity<PageResponse<NotificationDeliveryFailureResponse>> deliveryFailures(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String channel,
+            @RequestParam(required = false) String eventDomain,
+            @RequestParam(required = false) String lastAttemptFrom,
+            @RequestParam(required = false) String lastAttemptTo,
+            @RequestParam(defaultValue = "lastAttemptAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit
     ) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         authorizationService.require(currentUser, "settings.notification_policy.manage");
-        int safePage = Math.max(1, page);
-        int safeLimit = Math.min(100, Math.max(1, limit));
-        Page<NotificationDeliveryFailure> result = deliveryFailureRepository.findAllByOrderByLastAttemptAtDesc(
-                PageRequest.of(safePage - 1, safeLimit, Sort.by(Sort.Direction.DESC, "lastAttemptAt")));
+        Page<com.eqms.entity.NotificationDeliveryFailure> result = deliveryFailures.page(search, status, channel, eventDomain, lastAttemptFrom, lastAttemptTo, sortBy, sortDirection, page, limit);
+        int safePage = Math.max(1, page), safeLimit = Math.min(100, Math.max(1, limit));
         return ResponseEntity.ok(new PageResponse<>(
                 result.getContent().stream().map(NotificationDeliveryFailureResponse::from).toList(),
                 new PaginationResponse(safePage, safeLimit, result.getTotalElements(), result.getTotalPages())
         ));
+    }
+
+    /** The event domains that have failures, for the filter of the list. */
+    @GetMapping("/delivery-failures/event-domains")
+    public ResponseEntity<java.util.List<String>> deliveryFailureEventDomains() {
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        authorizationService.require(currentUser, "settings.notification_policy.manage");
+        return ResponseEntity.ok(deliveryFailures.eventDomains());
     }
 
     @PostMapping("/delivery-failures/{id}/retry")

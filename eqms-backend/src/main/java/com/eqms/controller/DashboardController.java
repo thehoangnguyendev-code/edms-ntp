@@ -63,10 +63,10 @@ public class DashboardController {
     }
 
     @GetMapping("/my-tasks")
-    public ResponseEntity<List<DashboardMyTaskResponse>> getMyTasks() {
+    public ResponseEntity<List<DashboardMyTaskResponse>> getMyTasks(@org.springframework.web.bind.annotation.RequestParam(required = false) String search) {
         requireDashboardView();
         var user = currentUserService.requireAuthenticatedPrincipal();
-        return ResponseEntity.ok(dashboardService.getMyTasks(user));
+        return ResponseEntity.ok(dashboardService.getMyTasks(user, search));
     }
 
     @GetMapping("/recent-activity")

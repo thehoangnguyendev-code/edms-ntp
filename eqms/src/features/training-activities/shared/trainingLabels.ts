@@ -6,7 +6,7 @@ export const STATUS_LABEL: Record<string, string> = {
   RESERVED: "Pending Document Approval",
   PLANNED: "Planned",
   NOTIFIED: "Notified",
-  IN_PROGRESS: "In progress",
+  IN_PROGRESS: "In Progress",
   PENDING_QA_CONFIRMATION: "Pending QA Confirmation",
   COMPLETED: "Completed",
   CANCELLED: "Closed - Cancelled",
@@ -62,6 +62,15 @@ export const ASSESSMENT_BY_METHOD: Record<string, string[]> = {
 };
 export const PARTICIPANT_STATE_LABEL: Record<string, string> = {
   INVITED: "Invited", ATTENDED: "Attended", ONLINE: "Online", ABSENT: "Absent", READ_CONFIRMED: "Read and confirmed",
+};
+/** How a person takes part in a training (V695): only a trainee takes the assessment. */
+export const PARTICIPATION_ROLE_LABEL: Record<string, string> = {
+  TRAINEE: "Trainee", ATTENDEE: "Attends, no assessment", NAME_ONLY: "Listed only, does not sign",
+};
+export const PARTICIPATION_ROLE_HELP: Record<string, string> = {
+  TRAINEE: "Takes part and takes the assessment.",
+  ATTENDEE: "Takes part and signs the attendance, but takes no assessment (for example a manager who attends). Written as attended.",
+  NAME_ONLY: "Only listed and informed. Does not take the assessment and is not asked to sign. Written as attended.",
 };
 export const STEP_LABEL: Record<string, string> = {
   CONTENT_REVIEW: "Review of content and test",

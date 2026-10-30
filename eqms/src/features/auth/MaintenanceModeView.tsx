@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { BrandLogo } from '@/components/branding/BrandLogo';
 import { ROUTES } from '@/app/routes.constants';
 import { fetchMaintenanceStatus } from '@/features/maintenance/maintenanceStatus';
+import { AuthVideoBackground } from '@/components/branding/AuthVideoBackground';
 
 /**
  * Shown only when the administrator switches maintenance mode on (System Administration > Configuration > General), or when a
@@ -36,9 +37,11 @@ export const MaintenanceModeView: React.FC = () => {
   }, [navigate]);
 
   return (
-    <div className="relative isolate flex min-h-screen min-h-dvh w-full flex-col items-center justify-center overflow-hidden bg-[#fefcff] px-6 py-12">
+    <div data-auth-layout data-auth-maintenance className="relative isolate flex min-h-screen min-h-dvh w-full flex-col items-center justify-center overflow-hidden bg-[#fefcff] px-6 py-12">
+      <AuthVideoBackground />
       {/* Background radial gradients matching AuthLayout */}
       <div
+        data-auth-glow
         className="pointer-events-none absolute inset-0 -z-10"
         style={{
           backgroundImage: `

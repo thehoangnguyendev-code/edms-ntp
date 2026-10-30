@@ -235,7 +235,7 @@ const pendingGetSystemConfigurationRequests = new Map<string, Promise<{
   integrations: Record<string, any>;
   features: Record<string, any>[];
 }>>();
-const pendingGetSecurityConfigurationRequests = new Map<string, Promise<{ sessionTimeoutMinutes: number }>>();
+const pendingGetSecurityConfigurationRequests = new Map<string, Promise<{ sessionTimeoutMinutes: number; sessionTimeoutEnabled: boolean }>>();
 export type DocumentAdministrationRule = {
   code: string;
   label: string;
@@ -852,7 +852,7 @@ export const settingsApi = {
       return cachedRequest;
     }
 
-    const request = api.get<{ sessionTimeoutMinutes: number }>('/configurations/security')
+    const request = api.get<{ sessionTimeoutMinutes: number; sessionTimeoutEnabled: boolean }>('/configurations/security')
       .then((response) => response.data)
       .finally(() => {
         pendingGetSecurityConfigurationRequests.delete(cacheKey);
@@ -864,7 +864,7 @@ export const settingsApi = {
 
   /** PUT /configurations/security */
   updateSecurityConfiguration: async (payload: { sessionTimeoutMinutes: number }) => {
-    const response = await api.put<{ sessionTimeoutMinutes: number }>('/configurations/security', payload);
+    const response = await api.put<{ sessionTimeoutMinutes: number; sessionTimeoutEnabled: boolean }>('/configurations/security', payload);
     return response.data;
   },
 
@@ -1101,7 +1101,7 @@ export const settingsApi = {
 
   // ─── Access Profiles (new RBAC model) ────────────────────────────────────────
 
-  listAccessProfiles: async (params?: { page?: number; size?: number; search?: string; type?: string; status?: string; createdFrom?: string; createdTo?: string; updatedFrom?: string; updatedTo?: string }) => {
+  listAccessProfiles: async (params?: { page?: number; size?: number; search?: string; type?: string; status?: string; createdFrom?: string; createdTo?: string; updatedFrom?: string; updatedTo?: string; sortBy?: string; sortDir?: "asc" | "desc" }) => {
     const r = await api.get<{ content: AccessProfileResponse[]; totalElements: number; totalPages: number; number: number }>('/security/access-profiles', { params });
     return r.data;
   },
@@ -1111,6 +1111,10 @@ export const settingsApi = {
   },
   getAccessProfile: async (id: string): Promise<AccessProfileDetailResponse> => {
     const r = await api.get<AccessProfileDetailResponse>(`/security/access-profiles/${id}`);
+    return r.data;
+  },
+  getAccessProfileEditorSummary: async (id: string) => {
+    const r = await api.get<{ profile: AccessProfileDetailResponse; assignedUserIds: string[] }>(`/security/access-profiles/${id}/editor-summary`);
     return r.data;
   },
   getAccessProfileCapabilities: async (id: string): Promise<AccessProfileCapabilitiesResponse> => {
@@ -1198,6 +1202,10 @@ export const settingsApi = {
     const r = await api.get<AssignedUserSummary[]>(`/security/access-profiles/${id}/users`);
     return r.data;
   },
+  getAccessProfileUsersPage: async (id: string, page: number, limit: number) => {
+    const r = await api.get<{ data: AssignedUserSummary[]; assignedIds: string[]; pagination: { total: number; totalPages: number } }>(`/security/access-profiles/${id}/users/paged`, { params: { page, limit } });
+    return r.data;
+  },
   assignUserToAccessProfile: async (id: string, userId: string, sig?: SecuritySignaturePayload): Promise<void> => {
     await api.post(`/security/access-profiles/${id}/users/${userId}`, sig ?? {});
   },
@@ -1262,6 +1270,10 @@ export const settingsApi = {
   },
   getUserAuthorizationSummary: async (id: string): Promise<UserAuthorizationSummary> => {
     const r = await api.get<UserAuthorizationSummary>(`/settings/users/${id}/authorization-summary`);
+    return r.data;
+  },
+  queryUserAuthorizationSummary: async (id: string, params: { search?: string; page: number; limit: number }) => {
+    const r = await api.get<UserAuthorizationSummary & { assignedProfileIds: string[]; pagination: { total: number; totalPages: number } }>(`/settings/users/${id}/authorization-summary/paged`, { params });
     return r.data;
   },
 };

@@ -103,7 +103,7 @@ d = news(b3, b4)
 show('notify the participants', d)
 for who in ('trainee', 'other'):
     texts = [r['description'] or '' for r in d[who]]
-    check(f'3.{who}: the trainee is invited with the Training Number, the title, the day and the place', any(number in t and 'E2E-TEST notices' in t and TODAY.replace('-', '/') [:0] == '' for t in texts), texts)
+    check(f'3.{who}: the trainee is invited with the Training Number, the title, the day and the place', any(number in t and 'E2E-TEST topic' in t and TODAY.replace('-', '/') [:0] == '' for t in texts), texts)
 check('3.3 the organizer is not told of its own notify', not d['admin'], d['admin'])
 
 tick_all(admin, sid)

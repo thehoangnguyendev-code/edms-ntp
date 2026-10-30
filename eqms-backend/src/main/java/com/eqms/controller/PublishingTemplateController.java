@@ -204,6 +204,21 @@ public class PublishingTemplateController {
                 .body(previewService.getComponentPreviewPdf(id, componentType, layout, revisionId, previewPlaceholder, previewText, previewFontSize, exactPreview));
     }
 
+    @GetMapping("/{id}/components/{componentType}/download")
+    public ResponseEntity<byte[]> downloadComponent(
+            @PathVariable UUID id,
+            @PathVariable String componentType,
+            @RequestParam(required = false) String layout
+    ) throws Exception {
+        requireViewPermission();
+        var file = previewService.getComponentSourceFile(id, componentType, layout);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(file.contentType()))
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        org.springframework.http.ContentDisposition.attachment().filename(file.fileName(), java.nio.charset.StandardCharsets.UTF_8).build().toString())
+                .body(file.bytes());
+    }
+
     @GetMapping("/{id}/components/{componentType}/inspection")
     public ResponseEntity<PublishingTemplateComponentInspectionResponse> inspectComponent(
             @PathVariable UUID id,

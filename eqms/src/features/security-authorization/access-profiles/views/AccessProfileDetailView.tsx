@@ -64,6 +64,7 @@ export const AccessProfileDetailView: React.FC = () => {
   const isEditRoute = location.pathname.endsWith("/edit");
   const [activeTab, setActiveTab] = useState<TabId>("general");
   const [profile, setProfile] = useState<AccessProfileDetailResponse | null>(null);
+  const [assignedUserIds, setAssignedUserIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(isNew || isEditRoute);
@@ -91,11 +92,13 @@ export const AccessProfileDetailView: React.FC = () => {
   useEffect(() => {
     if (isNew) return;
     Promise.all([
-      settingsApi.getAccessProfile(id!),
+      settingsApi.getAccessProfileEditorSummary(id!),
       settingsApi.getAccessProfileCapabilities(id!),
     ])
-      .then(([p, caps]) => {
+      .then(([summary, caps]) => {
+        const p = summary.profile;
         setProfile(p);
+        setAssignedUserIds(summary.assignedUserIds);
         setCapabilities(caps);
         setDraft({
           name: p.name,
@@ -157,12 +160,12 @@ export const AccessProfileDetailView: React.FC = () => {
     if (changes.users.added.length || changes.users.removed.length) {
       items.push(`${changes.users.added.length} user(s) added; ${changes.users.removed.length} removed.`);
     }
-    if (items.length > 0 && (profile?.assignedUsers.length ?? 0) > 0
+    if (items.length > 0 && assignedUserIds.length > 0
       && (generalDirty || managedDirty || changes.permissionSets.added.length || changes.permissionSets.removed.length)) {
-      items.push(`Effective access may change for ${profile!.assignedUsers.length} currently assigned user(s).`);
+      items.push(`Effective access may change for ${assignedUserIds.length} currently assigned user(s).`);
     }
     return items;
-  }, [changes, generalDirty, managedDirty, managedDraft, profile]);
+  }, [changes, generalDirty, managedDirty, managedDraft, assignedUserIds]);
 
   const performSave = async () => {
     if (!draft.name.trim()) {
@@ -211,13 +214,14 @@ export const AccessProfileDetailView: React.FC = () => {
           managedPermissionCodes: managedDirty ? managedDraft!.codes : undefined,
           sharedPermissionSetIds: psDirty ? applyDiff(currentSharedIds, changes.permissionSets) : undefined,
           workflowRoles: wfDirty ? applyDiff(profile?.workflowRoles ?? [], changes.workflowRoles) : undefined,
-          userIds: usersDirty ? applyDiff((profile?.assignedUsers ?? []).map((u) => u.id), changes.users) : undefined,
+          userIds: usersDirty ? applyDiff(assignedUserIds, changes.users) : undefined,
         },
         sig,
       );
 
       const caps = await settingsApi.getAccessProfileCapabilities(id!);
       setProfile(updated);
+      setAssignedUserIds(updated.assignedUsers.map((u) => u.id));
       setCapabilities(caps);
       setChanges(EMPTY_CHANGES);
       setManagedDraft(null);
@@ -251,17 +255,18 @@ export const AccessProfileDetailView: React.FC = () => {
     setConflictModal(false);
     try {
       const [p, caps] = await Promise.all([
-        settingsApi.getAccessProfile(id!),
+        settingsApi.getAccessProfileEditorSummary(id!),
         settingsApi.getAccessProfileCapabilities(id!),
       ]);
-      setProfile(p);
+      setProfile(p.profile);
+      setAssignedUserIds(p.assignedUserIds);
       setCapabilities(caps);
       setDraft({
-        name: p.name,
-        description: p.description ?? "",
-        businessUnitScope: p.businessUnitScope ?? "",
-        departmentScope: p.departmentScope ?? "",
-        active: p.active,
+        name: p.profile.name,
+        description: p.profile.description ?? "",
+        businessUnitScope: p.profile.businessUnitScope ?? "",
+        departmentScope: p.profile.departmentScope ?? "",
+        active: p.profile.active,
       });
       setChanges(EMPTY_CHANGES);
       setManagedDraft(null);
@@ -311,7 +316,7 @@ export const AccessProfileDetailView: React.FC = () => {
     return [
       { icon: <KeyRound className="h-4 w-4 text-emerald-600" />, value: profile.permissionSets.length, label: "Permission Sets" },
       { icon: <IconArrowsShuffle className="h-4 w-4 text-emerald-600" />, value: profile.workflowRoles.length, label: "Workflow Eligibility" },
-      { icon: <Users className="h-4 w-4 text-emerald-600" />, value: profile.assignedUsers.length, label: "Assigned Users" },
+      { icon: <Users className="h-4 w-4 text-emerald-600" />, value: assignedUserIds.length, label: "Assigned Users" },
       { icon: <Building2 className="h-4 w-4 text-emerald-600" />, value: parseScopeCount(profile.businessUnitScope), label: "Business Units" },
       { icon: <Factory className="h-4 w-4 text-emerald-600" />, value: parseScopeCount(profile.departmentScope), label: "Departments" },
     ];

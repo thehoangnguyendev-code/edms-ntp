@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 
-const api = vi.hoisted(() => ({ get: vi.fn(), revisions: vi.fn(), image: vi.fn(), confirm: vi.fn(), reject: vi.fn() }));
+const api = vi.hoisted(() => ({ get: vi.fn(), revisions: vi.fn(), image: vi.fn() }));
 vi.mock("@/services/api/trainingActivities", async (importOriginal) => ({ ...(await importOriginal<object>()), trainingSpecimenApi: api }));
 vi.mock("@/features/realtime/useEntityChanged", () => ({ useEntityChanged: () => undefined }));
 vi.mock("@/components/ui/toast/Toast", () => ({ useToast: () => ({ showToast: vi.fn() }) }));
@@ -12,13 +12,13 @@ vi.mock("@/features/documents/shared/components/AuditTrailTab", () => ({ AuditTr
 import { TrainingSpecimenDetailPage } from "../TrainingSpecimenDetailPage";
 
 const specimen = (over: Record<string, unknown> = {}) => ({
-  id: "s2", personUserId: "u1", fullName: "Nguyen Van An", employeeCode: "NTP.0005", department: "Quality Assurance", versionNo: 2, status: "PENDING_CONFIRMATION", effectiveDate: null,
+  id: "s2", personUserId: "u1", fullName: "Nguyen Van An", employeeCode: "NTP.0005", department: "Quality Assurance", versionNo: 2, status: "APPROVED", effectiveDate: "2026-10-24",
   contentType: "image/png", sizeBytes: 100, createdAt: "2026-10-24T08:00:00Z", uploadedByName: "An", confirmedByName: null, hasSecond: true,
-  capabilities: { viewImage: true, confirm: true, reject: true, reupload: false }, ...over,
+  capabilities: { viewImage: true }, ...over,
 });
 const revisionPage = {
   data: [
-    { id: "s2", versionNo: 2, status: "PENDING_CONFIRMATION", effectiveDate: null, createdAt: "2026-10-24T08:00:00Z", uploadedByName: "An", confirmedByName: null, current: true },
+    { id: "s2", versionNo: 2, status: "APPROVED", effectiveDate: "2026-10-24", createdAt: "2026-10-24T08:00:00Z", uploadedByName: "An", confirmedByName: null, current: true },
     { id: "s1", versionNo: 1, status: "OBSOLETED", effectiveDate: "2026-10-18", createdAt: "2026-10-18T08:00:00Z", uploadedByName: "An", confirmedByName: "Binh", current: false },
   ],
   pagination: { page: 1, limit: 10, total: 2, totalPages: 1 },
@@ -44,35 +44,27 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("TrainingSpecimenDetailPage", () => {
-  it("shows the facts of the version, and the footer offers what the server says the person may do", async () => {
+  it("shows the facts of the version as a record to look up, with no step to confirm", async () => {
     renderPage();
 
     expect(await screen.findByDisplayValue("Nguyen Van An")).toBeTruthy();
-    expect(screen.getByDisplayValue("Pending Confirmation")).toBeTruthy();
+    expect(screen.getByDisplayValue("Current")).toBeTruthy();
     expect(screen.getByRole("button", { name: /View Image/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Confirm/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Reject/ })).toBeTruthy();
-  });
-
-  it("keeps a rejected signature in Pending Confirmation, shows the reason and offers Upload Again instead of Confirm or Reject", async () => {
-    api.get.mockResolvedValue(specimen({ rejectReason: "Only the name", capabilities: { viewImage: true, confirm: false, reject: false, reupload: true } }));
-    renderPage();
-
-    expect(await screen.findByDisplayValue("Only the name")).toBeTruthy();
-    expect(screen.getByDisplayValue("Pending Confirmation")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Upload Again/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Confirm/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Reject/ })).toBeNull();
-  });
-
-  it("offers no Confirm or Reject to a person who may not, and no form download for a version that is not approved yet", async () => {
-    api.get.mockResolvedValue(specimen({ capabilities: { viewImage: true, confirm: false, reject: false, reupload: false } }));
-    renderPage();
-
-    await screen.findByDisplayValue("Nguyen Van An");
-    expect(screen.queryByRole("button", { name: /Confirm/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Reject/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Upload Again/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /FRM.0007/ })).toBeNull();
+  });
+
+  it("shows an earlier version as Superseded and a scan left unconfirmed by the earlier workflow as such", async () => {
+    api.get.mockResolvedValue(specimen({ status: "OBSOLETED" }));
+    const { unmount } = renderPage();
+    expect(await screen.findByDisplayValue("Superseded")).toBeTruthy();
+    unmount();
+
+    api.get.mockResolvedValue(specimen({ status: "PENDING_CONFIRMATION", effectiveDate: null }));
+    renderPage();
+    expect(await screen.findByDisplayValue("Not confirmed (earlier workflow)")).toBeTruthy();
   });
 
   it("lists every version of the person in the sub-tab under the footer, newest first, and marks the one that is open", async () => {

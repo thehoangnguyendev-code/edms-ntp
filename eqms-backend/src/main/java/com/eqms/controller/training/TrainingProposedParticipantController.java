@@ -28,9 +28,22 @@ public class TrainingProposedParticipantController {
     @PutMapping("/documents/{documentId}/proposed-participants")
     public ResponseEntity<?> replace(@PathVariable UUID documentId, @RequestBody ReplaceRequest request) { return ResponseEntity.ok(proposals.replace(users.requireCurrentUser(), documentId, request)); }
 
+    @GetMapping("/documents/{documentId}/proposed-participants/paged")
+    public ResponseEntity<?> getPage(@PathVariable UUID documentId, @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(proposals.forDocumentPage(users.requireCurrentUser(), documentId, page, limit));
+    }
+
     @GetMapping("/proposal-people")
     public ResponseEntity<?> people(@RequestParam(required = false) String search, @RequestParam(defaultValue = "20") int limit) {
         return ResponseEntity.ok(Map.of("data", proposals.people(users.requireCurrentUser(), search, limit)));
+    }
+
+    @GetMapping("/proposal-people/paged")
+    public ResponseEntity<?> queryPeople(@RequestParam(required = false) String search,
+            @RequestParam(required = false) String businessUnit, @RequestParam(required = false) String department,
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {
+        return ResponseEntity.ok(proposals.queryPeople(users.requireCurrentUser(), search, businessUnit, department, page, limit));
     }
 
     @GetMapping("/proposal-people/groups")

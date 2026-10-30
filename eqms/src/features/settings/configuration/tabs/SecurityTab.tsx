@@ -4,6 +4,7 @@ import { SecurityConfig } from '../types';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
 import { Clock, Shield } from 'lucide-react';
 import { IconKey } from '@tabler/icons-react';
+import { PasswordPolicyTester } from './PasswordPolicyTester';
 
 interface SecurityTabProps {
   config: SecurityConfig;
@@ -151,6 +152,8 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
           </div>
             </div>
           </div>
+
+          <PasswordPolicyTester config={config} />
         </div>
       </FormSection>
 
@@ -233,8 +236,12 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
       {/* Session & Account Security */}
       <FormSection title="Session & Account Security" icon={<Shield className="h-4 w-4" />}>
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
+            <Checkbox id="sessionTimeoutEnabled" label="Enable Session Timeout" checked={config.sessionTimeoutEnabled ?? true} onChange={(checked) => handleChange('sessionTimeoutEnabled', checked)} />
+            <p className="ml-7 text-xs text-slate-500">Lock inactive sessions for all users. Existing locked sessions still require reauthentication.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {(config.sessionTimeoutEnabled ?? true) && <div>
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
               Session Timeout (Minutes)
             </label>
@@ -250,7 +257,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
             <p className="text-xs text-slate-500 mt-1">
               Minimum: 1 minute. Maximum: 1440 minutes.
             </p>
-          </div>
+          </div>}
           </div>
 
           <div>

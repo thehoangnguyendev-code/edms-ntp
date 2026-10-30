@@ -110,6 +110,21 @@ public class TrainingProposedParticipantService {
     }
 
     /** Replaces the proposal by the given people. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> forDocumentPage(UserAccount actor, UUID documentId, int page, int limit) {
+        Map<String, Object> result = new LinkedHashMap<>(forDocument(actor, documentId));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> people = (List<Map<String, Object>>) result.getOrDefault("people", List.of());
+        int size = Math.max(1, Math.min(50, limit));
+        int safePage = Math.max(1, page);
+        int from = (int) Math.min((long) (safePage - 1) * size, people.size());
+        result.put("personIds", people.stream().map(p -> p.get("personId")).toList());
+        result.put("people", people.subList(from, Math.min(people.size(), from + size)));
+        result.put("pagination", new com.eqms.dto.user.PaginationResponse(safePage, size, people.size(), (int) Math.ceil((double) people.size() / size)));
+        return result;
+    }
+
+    /** Replaces the proposal by the given people. */
     @Transactional
     public Map<String, Object> replace(UserAccount actor, UUID documentId, ReplaceRequest request) {
         Map<String, Object> activity = openActivity(documentId);
@@ -174,6 +189,26 @@ public class TrainingProposedParticipantService {
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ choosing people
+
+    @Transactional(readOnly = true)
+    public com.eqms.dto.user.PageResponse<Map<String, Object>> queryPeople(UserAccount actor, String search,
+            String businessUnit, String department, int page, int limit) {
+        requireCanChoose(actor);
+        String like = "%" + escapeLike((search == null ? "" : search.trim()).toLowerCase(Locale.ROOT)) + "%";
+        String where = " where u.status='Active' and (lower(u.full_name) like ? escape '\\' or lower(u.username) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\')";
+        List<Object> args = new ArrayList<>(List.of(like, like, like));
+        if (businessUnit != null && !businessUnit.isBlank()) { where += " and u.business_unit=?"; args.add(businessUnit); }
+        if (department != null && !department.isBlank()) { where += " and u.department=?"; args.add(department); }
+        Long total = jdbc.queryForObject("select count(*) from app_users u" + where, Long.class, args.toArray());
+        int safePage = Math.max(1, page);
+        int size = Math.min(50, Math.max(1, limit));
+        args.add(size);
+        args.add((long) (safePage - 1) * size);
+        var data = TrainingRows.camel(jdbc.queryForList("select u.id, u.full_name, u.username, u.email, u.employee_code, u.department, u.position, u.business_unit, u.avatar from app_users u"
+                + where + " order by lower(u.full_name), u.id limit ? offset ?", args.toArray()));
+        return new com.eqms.dto.user.PageResponse<>(data, new com.eqms.dto.user.PaginationResponse(safePage, size,
+                total == null ? 0 : total, total == null ? 0 : (int) Math.ceil((double) total / size)));
+    }
 
     private void requireCanChoose(UserAccount actor) {
         if (!(documents.canManageDocumentWorkspace(actor) || documents.canCreateDocument(actor) || access.has(actor, "training.activity.organize"))) throw new SecurityException(TrainingAccess.DENIED);

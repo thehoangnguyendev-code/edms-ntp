@@ -76,7 +76,7 @@ public class TrainingReminderScheduler {
     private int dueSoon(LocalDate today) {
         int count = 0;
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select distinct a.id, a.training_number, a.training_title, a.due_date, p.person_user_id
+            select distinct a.id, a.training_number, training_activity_topics(a.id) as training_topics, a.due_date, p.person_user_id
               from training_activities a join training_participants p on p.activity_id = a.id
              where a.status in ('NOTIFIED','IN_PROGRESS') and a.due_date between ? and ? and p.person_user_id is not null and p.state = 'INVITED'
             """, today, today.plusDays(3));
@@ -84,7 +84,7 @@ public class TrainingReminderScheduler {
             UserAccount person = users.findById((UUID) row.get("person_user_id")).orElse(null);
             if (person == null) continue;
             notifier.send("TRAINING_DUE_SOON", person, null, "Training: due soon",
-                    "The training " + row.get("training_number") + " (" + row.get("training_title") + ") is due on " + com.eqms.util.DateTimeFormatUtils.display(row.get("due_date")) + ".", "TRAINING_ACTIVITY", (UUID) row.get("id"), "due-soon:" + today);
+                    "The training " + row.get("training_number") + " (" + row.get("training_topics") + ") is due on " + com.eqms.util.DateTimeFormatUtils.display(row.get("due_date")) + ".", "TRAINING_ACTIVITY", (UUID) row.get("id"), "due-soon:" + today);
             count++;
         }
         return count;
@@ -94,14 +94,14 @@ public class TrainingReminderScheduler {
         int count = 0;
         String week = today.get(IsoFields.WEEK_BASED_YEAR) + "-W" + today.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select id, training_number, training_title, due_date, created_by from training_activities
+            select id, training_number, training_activity_topics(id) as training_topics, due_date, created_by from training_activities
              where status in ('PLANNED','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION') and due_date < ? and created_by is not null
             """, today);
         for (Map<String, Object> row : rows) {
             UserAccount organizer = users.findById((UUID) row.get("created_by")).orElse(null);
             if (organizer == null) continue;
             notifier.send("TRAINING_OVERDUE", organizer, null, "Training: overdue",
-                    "The training " + row.get("training_number") + " (" + row.get("training_title") + ") was due on " + com.eqms.util.DateTimeFormatUtils.display(row.get("due_date")) + " and is not completed.", "TRAINING_ACTIVITY", (UUID) row.get("id"), "overdue:" + week);
+                    "The training " + row.get("training_number") + " (" + row.get("training_topics") + ") was due on " + com.eqms.util.DateTimeFormatUtils.display(row.get("due_date")) + " and is not completed.", "TRAINING_ACTIVITY", (UUID) row.get("id"), "overdue:" + week);
             count++;
         }
         return count;
@@ -115,25 +115,25 @@ public class TrainingReminderScheduler {
         int count = 0;
         String week = today.get(IsoFields.WEEK_BASED_YEAR) + "-W" + today.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
         for (Map<String, Object> row : jdbc.queryForList("""
-            select distinct a.id, a.training_number, a.training_title, a.created_by from training_activities a join training_sessions s on s.activity_id = a.id
+            select distinct a.id, a.training_number, training_activity_topics(a.id) as training_topics, a.created_by from training_activities a join training_sessions s on s.activity_id = a.id
              where a.status in ('NOTIFIED','IN_PROGRESS') and a.document_id is not null and a.kind_reason in ('NEW_SOP','SOP_VERSION') and a.created_by is not null
                and s.status = 'PLANNED' and s.held_on is null and s.scheduled_on = ?
             """, today)) {
             UserAccount organizer = users.findById((UUID) row.get("created_by")).orElse(null);
             if (organizer == null) continue;
             notifier.send("TRAINING_QA_LIST_TODAY", organizer, null, "Training today: send the list to QA today",
-                    "Today is the training " + row.get("training_number") + " (" + row.get("training_title") + ") on a new or revised document. Send the attendance list to QA today (SOP.0003 5.3.6).", "TRAINING_ACTIVITY", (UUID) row.get("id"), "qa-list-today:" + today);
+                    "Today is the training " + row.get("training_number") + " (" + row.get("training_topics") + ") on a new or revised document. Send the attendance list to QA today (SOP.0003 5.3.6).", "TRAINING_ACTIVITY", (UUID) row.get("id"), "qa-list-today:" + today);
             count++;
         }
         for (Map<String, Object> row : jdbc.queryForList("""
-            select a.id, a.training_number, a.training_title, a.created_by, max(s.held_on) as held_on from training_activities a join training_sessions s on s.activity_id = a.id and s.status = 'PLANNED' and s.held_on is not null
+            select a.id, a.training_number, training_activity_topics(a.id) as training_topics, a.created_by, max(s.held_on) as held_on from training_activities a join training_sessions s on s.activity_id = a.id and s.status = 'PLANNED' and s.held_on is not null
              where a.status = 'IN_PROGRESS' and a.attendance_sent_at is null and a.document_id is not null and a.kind_reason in ('NEW_SOP','SOP_VERSION') and a.created_by is not null
-             group by a.id, a.training_number, a.training_title, a.created_by having max(s.held_on) < ?
+             group by a.id, a.training_number, training_activity_topics(a.id), a.created_by having max(s.held_on) < ?
             """, java.sql.Date.valueOf(today))) {
             UserAccount organizer = users.findById((UUID) row.get("created_by")).orElse(null);
             if (organizer == null) continue;
             notifier.send("TRAINING_QA_LIST_LATE", organizer, null, "Training: the list for QA is late",
-                    "The attendance list of " + row.get("training_number") + " (" + row.get("training_title") + ") was due to QA on " + com.eqms.util.DateTimeFormatUtils.display(row.get("held_on")) + " and has not been sent.", "TRAINING_ACTIVITY", (UUID) row.get("id"), "qa-list-late:" + week);
+                    "The attendance list of " + row.get("training_number") + " (" + row.get("training_topics") + ") was due to QA on " + com.eqms.util.DateTimeFormatUtils.display(row.get("held_on")) + " and has not been sent.", "TRAINING_ACTIVITY", (UUID) row.get("id"), "qa-list-late:" + week);
             count++;
         }
         return count;
@@ -281,22 +281,27 @@ public class TrainingReminderScheduler {
      * after it, once a week while the results have not been sent.
      */
     private int resultsReminders(LocalDate today) {
-        int days = jdbc.queryForObject("select results_due_days from training_settings where id = 1", Integer.class);
+        Map<String, Object> limit = jdbc.queryForMap("select results_due_days, results_due_day_type from training_settings where id = 1");
+        int days = ((Number) limit.get("results_due_days")).intValue();
+        String dayType = String.valueOf(limit.get("results_due_day_type"));
         String week = today.get(IsoFields.WEEK_BASED_YEAR) + "-W" + today.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
         int count = 0;
         for (Map<String, Object> row : jdbc.queryForList("""
-            select a.id, a.training_number, a.training_title, a.created_by, max(s.held_on) + ? as due_on
+            select a.id, a.training_number, training_activity_topics(a.id) as training_topics, a.created_by, max(s.held_on) as held_on
               from training_activities a join training_sessions s on s.activity_id = a.id and s.status = 'PLANNED' and s.held_on is not null
              where a.status = 'IN_PROGRESS' and a.created_by is not null
-             group by a.id, a.training_number, a.training_title, a.created_by
-            having max(s.held_on) + ? <= ?
-            """, days, days, java.sql.Date.valueOf(today))) {
+             group by a.id, a.training_number, training_activity_topics(a.id), a.created_by
+            """)) {
+            // the due day counts only the working days of the setting (SOP.0003 5.3.7)
+            LocalDate dueOn = TrainingWorkingDays.add(((java.sql.Date) row.get("held_on")).toLocalDate(), days, dayType);
+            if (dueOn.isAfter(today)) continue;
+            row.put("due_on", java.sql.Date.valueOf(dueOn));
             UserAccount organizer = users.findById((UUID) row.get("created_by")).orElse(null);
             if (organizer == null) continue;
-            boolean dueToday = today.equals(((java.sql.Date) row.get("due_on")).toLocalDate());
+            boolean dueToday = today.equals(dueOn);
             notifier.send(dueToday ? "TRAINING_RESULTS_DUE_TODAY" : "TRAINING_RESULTS_LATE", organizer, null,
                     dueToday ? "Training: send the results to QA today" : "Training: the results for QA are late",
-                    "The results of " + row.get("training_number") + " (" + row.get("training_title") + ") " + (dueToday ? "are due to QA today" : "were due to QA on " + com.eqms.util.DateTimeFormatUtils.display(row.get("due_on")) + " and have not been sent")
+                    "The results of " + row.get("training_number") + " (" + row.get("training_topics") + ") " + (dueToday ? "are due to QA today" : "were due to QA on " + com.eqms.util.DateTimeFormatUtils.display(row.get("due_on")) + " and have not been sent")
                             + " (SOP.0003 5.3.7).",
                     "TRAINING_ACTIVITY", (UUID) row.get("id"), dueToday ? "results-due:" + row.get("id") + ":" + today : "results-late:" + row.get("id") + ":" + week);
             count++;
@@ -308,7 +313,7 @@ public class TrainingReminderScheduler {
     private int confirmationReminders(LocalDate today) {
         int count = 0;
         for (Map<String, Object> row : jdbc.queryForList("""
-            select a.id, a.training_number, a.training_title, a.organizer_department_id, a.list_prepared_by
+            select a.id, a.training_number, training_activity_topics(a.id) as training_topics, a.organizer_department_id, a.list_prepared_by
               from training_activities a
              where a.status = 'PENDING_QA_CONFIRMATION'
                and (select max(e.occurred_at) from training_events e where e.activity_id = a.id and e.event_type = 'PENDING_QA_CONFIRMATION') < now() - interval '3 days'
@@ -316,7 +321,7 @@ public class TrainingReminderScheduler {
             Set<UUID> apart = row.get("list_prepared_by") == null ? Set.of() : Set.of((UUID) row.get("list_prepared_by"));
             for (UserAccount confirmer : approvals.eligibleUsers("ACTIVITY_COMPLETE", (UUID) row.get("organizer_department_id"), apart)) {
                 notifier.send("TRAINING_QA_CONFIRM_WAITING", confirmer, null, "Training: results are waiting for QA",
-                        "The results of " + row.get("training_number") + " (" + row.get("training_title") + ") have been waiting for QA to confirm for more than three days.",
+                        "The results of " + row.get("training_number") + " (" + row.get("training_topics") + ") have been waiting for QA to confirm for more than three days.",
                         "TRAINING_ACTIVITY", (UUID) row.get("id"), "qa-confirm-waiting:" + row.get("id") + ":" + confirmer.getId() + ":" + weekOf(today));
                 count++;
             }

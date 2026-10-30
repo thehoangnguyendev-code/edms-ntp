@@ -26,7 +26,7 @@ describe("assessmentFormKind", () => {
 describe("ContentRulesPanel", () => {
   it("asks for a file or a link when a training that is not on a document has no material", () => {
     show(activity({}, { missing: ["TRAINING_MATERIALS_REQUIRED"] }), "materials");
-    expect(screen.getByText(/Training Materials are required before the content can be reviewed/)).toBeTruthy();
+    expect(screen.getByText(/Required before the content is reviewed: a file or a link/)).toBeTruthy();
   });
 
   it("says that the approved document is the material when the training comes from a document", () => {
@@ -39,7 +39,7 @@ describe("ContentRulesPanel", () => {
 
   it("asks for the test of a session assessed by a test, and for no file when the sessions are observed or read", () => {
     show(activity({}, { testRequired: true, missing: ["TRAINING_TEST_REQUIRED"] }), "assessment");
-    expect(screen.getByText(/the test \(APD\.0009\) is required/)).toBeTruthy();
+    expect(screen.getByText(/the test \(APD\.0009\)/)).toBeTruthy();
     cleanup();
     const observed = activity({}, {}, ["SELF_READING_CONFIRMATION"]);
     show(observed, "assessment");

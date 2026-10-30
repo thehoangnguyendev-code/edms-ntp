@@ -135,6 +135,14 @@ export const publishingTemplatesApi = {
     return response.data;
   },
 
+  downloadComponent: async (id: string, componentType: "cover" | "body" | "header" | "footer" | "logo", layout?: "portrait" | "landscape") => {
+    const response = await api.get<Blob>(`/documents/administration/publishing-templates/${id}/components/${componentType}/download`, {
+      responseType: "blob",
+      params: layout ? { layout } : undefined,
+    });
+    return response.data;
+  },
+
   getComponentPreview: async (
     id: string,
     componentType: "cover" | "body" | "header" | "footer" | "logo",

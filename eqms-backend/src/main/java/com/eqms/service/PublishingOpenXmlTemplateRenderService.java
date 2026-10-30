@@ -518,7 +518,11 @@ public class PublishingOpenXmlTemplateRenderService {
             }
             String replacementValue = values.getOrDefault(key, "-");
             CTRPr replacementStyle = styleAt(sourceRuns, matcher.start(), matcher.end());
-            if (isSignatureKey(key) && insertSignatureBlocks(paragraph, replacementValue, transform, effectivePreviewFontSize, exactPreview, styleConfig)) {
+            SignatureDisplayStyle signatureStyle = isSignatureKey(key) && token != null ? SignatureDisplayStyle.ofName(token.name()) : null;
+            if (signatureStyle != null && StringUtils.hasText(replacementValue) && !"-".equals(replacementValue.trim())) {
+                // {{approvedSignatureCompact}} and the like: lines of text in the paragraph (also inside a table cell), not a table of their own
+                appendStyledSignature(paragraph, replacementValue, replacementStyle, effectivePreviewFontSize, exactPreview, transform, styleConfig);
+            } else if (isSignatureKey(key) && insertSignatureBlocks(paragraph, replacementValue, transform, effectivePreviewFontSize, exactPreview, styleConfig)) {
                 // Signature placeholders render as Word tables so Graph/PDF output is the visual source of truth.
             } else {
                 String textValue = isSignatureKey(key) ? stripSignatureMeaningLine(replacementValue) : replacementValue;
@@ -537,6 +541,36 @@ public class PublishingOpenXmlTemplateRenderService {
         }
         appendOriginalRange(paragraph, sourceRuns, cursor, paragraphText == null ? 0 : paragraphText.length());
         return true;
+    }
+
+    private static final java.util.regex.Pattern SIGNATURE_ID_LINE = java.util.regex.Pattern.compile("^SIG-[A-Za-z0-9-]+$");
+
+    /**
+     * A signature written in one of the display styles (see {@link SignatureDisplayStyle}): the signer's name in bold, then the lines of the style; the signature ID, when the style has
+     * one, small and grey. A blank line separates the signatures of a placeholder that stands for several (all the reviewers).
+     */
+    private void appendStyledSignature(XWPFParagraph paragraph, String value, CTRPr style, Double previewFontSize, boolean exactPreview, String transform, PublishingPlaceholderStyleConfig styleConfig) {
+        String[] lines = value.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1);
+        boolean first = true;
+        for (int i = 0; i < lines.length; i++) {
+            if (i > 0) {
+                appendStyledBreak(paragraph, style, transform, previewFontSize, exactPreview, styleConfig);
+            }
+            String line = lines[i].strip();
+            if (line.isEmpty()) {
+                first = true;
+                continue;
+            }
+            XWPFRun run = createStyledRun(paragraph, style);
+            applyRunStyleOverrides(run, paragraph, styleConfig, transform);
+            run.setText(line);
+            Double size = resolveFontSize(previewFontSize, exactPreview, styleConfig, transform, line);
+            boolean idLine = SIGNATURE_ID_LINE.matcher(line).matches();
+            if (size != null) run.setFontSize(idLine ? Math.max(6.0, size - 1.5) : size);
+            if (first) run.setBold(true);
+            if (idLine) run.setColor("6B7280");
+            first = false;
+        }
     }
 
     private boolean isSignatureKey(String key) {

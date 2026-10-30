@@ -83,14 +83,16 @@ public class TrainingLinkService {
         result.put("trainingPeriodDays", activity.get("training_period_days"));
         result.put("approvedOn", activity.get("approved_on"));
         result.put("dueDate", activity.get("due_date"));
-        // Once the attendance list is sent to QA the revision may be completed; the day of the training is then the completion day (the results come later).
+        // Once the trainer has finished the training the revision may be completed; the day of the training is then the completion day.
         Object completedOn = activity.get("completed_on");
-        if (completedOn == null && activity.get("attendance_sent_at") != null) {
+        if (completedOn == null && activity.get("results_finished_at") != null) {
             completedOn = jdbc.queryForObject("select max(held_on) from training_sessions where activity_id = ? and status = 'PLANNED'", java.sql.Date.class, activity.get("id"));
         }
         result.put("completedOn", completedOn);
         java.sql.Timestamp attendanceSentAt = (java.sql.Timestamp) activity.get("attendance_sent_at");
         result.put("attendanceSentOn", attendanceSentAt == null ? null : attendanceSentAt.toInstant().atZone(DateTimeFormatUtils.ZONE).toLocalDate());
+        java.sql.Timestamp finishedAt = (java.sql.Timestamp) activity.get("results_finished_at");
+        result.put("finishedOn", finishedAt == null ? null : finishedAt.toInstant().atZone(DateTimeFormatUtils.ZONE).toLocalDate());
         return result;
     }
 }

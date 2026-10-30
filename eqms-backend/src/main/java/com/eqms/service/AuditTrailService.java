@@ -212,6 +212,8 @@ public class AuditTrailService {
      * workflow policy -> AuditTrailService).
      */
     private final ObjectProvider<DocumentAuthorizationService> documentAuthorizationServiceProvider;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ObjectProvider<com.eqms.service.training.TrainingAuditAccess> trainingAuditAccess;
 
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager entityManager;
@@ -304,7 +306,17 @@ public class AuditTrailService {
             int page,
             int limit
     ) {
-        AuditTrailDateRange resolvedDateRange = resolveAuditTrailDateRange(dateFrom, dateTo);
+        return listQuery(search, module, action, user, severity, documentNumber, entityId, status, ipAddress,
+                eSignatureOnly, dateFrom, dateTo, sortBy, sortDirection, page, limit, null);
+    }
+
+    private PageResponse<AuditTrailRecordResponse> listQuery(
+            String search, String module, String action, String user, String severity, String documentNumber,
+            String entityId, String status, String ipAddress, Boolean eSignatureOnly, String dateFrom, String dateTo,
+            String sortBy, String sortDirection, int page, int limit, Specification<AuditLog> scope
+    ) {
+        AuditTrailDateRange resolvedDateRange = scope != null && !StringUtils.hasText(dateFrom) && !StringUtils.hasText(dateTo)
+                ? new AuditTrailDateRange(null, null) : resolveAuditTrailDateRange(dateFrom, dateTo);
         String sortProperty;
         String key = StringUtils.hasText(sortBy) ? sortBy.trim().toLowerCase(Locale.ROOT) : "timestamp";
         switch (key) {
@@ -618,7 +630,7 @@ public class AuditTrailService {
             return builder.and(predicates.toArray(new Predicate[0]));
         };
 
-        Page<AuditLog> pageResult = auditLogRepository.findAll(spec, pageable);
+        Page<AuditLog> pageResult = auditLogRepository.findAll(scope == null ? spec : spec.and(scope), pageable);
         List<AuditTrailRecordResponse> data = mapRows(pageResult.getContent());
 
         return new PageResponse<>(
@@ -639,6 +651,31 @@ public class AuditTrailService {
     public List<AuditTrailRecordResponse> getByEntity(String module, UUID entityId) {
         requireEntityAuditView(module, entityId);
         return getByEntityForAuthorizedDocument(module, entityId);
+    }
+
+    /** Same object authorization as the detail endpoint, with filtering/counting/paging in the database. */
+    @Transactional(readOnly = true)
+    public PageResponse<AuditTrailRecordResponse> getEntityPage(String module, UUID entityId, boolean includeChildren,
+            String search, String action, String user, Boolean eSignatureOnly, String dateFrom, String dateTo,
+            String sortBy, String sortDirection, int page, int limit) {
+        requireEntityAuditView(module, entityId);
+        String normalized = module.trim().toUpperCase(Locale.ROOT).replace('_', ' ');
+        java.util.Set<UUID> childIds = new java.util.HashSet<>();
+        if (includeChildren && "CONTROLLED COPY DISTRIBUTION BATCH".equals(normalized)) {
+            UserAccount actor = currentUserService.requireCurrentUser();
+            controlledCopyRepository.findAllByDistributionBatch_IdOrderByCopyNumberAsc(entityId).stream()
+                    .filter(copy -> documentAuthorizationServiceProvider.getObject().canViewControlledCopy(actor, copy))
+                    .map(ControlledCopyRecord::getId).forEach(childIds::add);
+        }
+        Specification<AuditLog> scope = (root, query, cb) -> {
+            var canonicalType = cb.function("replace", String.class, cb.function("replace", String.class,
+                    cb.upper(root.get("entityType")), cb.literal(" "), cb.literal("")), cb.literal("_"), cb.literal(""));
+            var own = cb.and(cb.equal(canonicalType, stripEntityTypeKey(module)), cb.equal(root.get("entityId"), entityId));
+            if (childIds.isEmpty()) return own;
+            return cb.or(own, cb.and(cb.equal(canonicalType, "CONTROLLEDCOPY"), root.get("entityId").in(childIds)));
+        };
+        return listQuery(search, null, action, user, null, null, null, null, null,
+                eSignatureOnly, dateFrom, dateTo, sortBy, sortDirection, page, limit, scope);
     }
 
     /**
@@ -666,6 +703,10 @@ public class AuditTrailService {
                     throw new AccessDeniedException("Controlled copy batch audit access denied");
                 }
             }
+            return;
+        }
+        // Training records: the Audit Trail tab is part of the detail screen, so whoever may open the record may read its audit trail (no separate permission)
+        if (normalized.startsWith("TRAINING ") && trainingAuditAccess.getObject().require(actor, module, entityId)) {
             return;
         }
         // GMP decision: the Audit Trail tab is folded into Document/Revision detail access --

@@ -26,7 +26,7 @@ describe('readonly controls share Document General Information styling', () => {
   });
 
   it('keeps both native readonly and disabled flags without the forbidden cursor on reference-only data', () => {
-    render(<Input aria-label="Training Status" value="In progress" disabled readOnly />);
+    render(<Input aria-label="Training Status" value="In Progress" disabled readOnly />);
     const input = screen.getByRole('textbox');
     expect(input).toBeDisabled();
     expect(input).toHaveAttribute('readonly');

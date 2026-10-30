@@ -1,4 +1,6 @@
+import { PersonTitlePicker } from "./PersonTitlePicker";
 import { TrainingPersonName } from "../shared/TrainingPersonName";
+import { WorkPositionsPreview } from "./WorkPositionsPreview";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useNavigate, useParams } from "react-router-dom";
@@ -50,6 +52,7 @@ import {
 } from "@/features/documents/shared/components/SignatureFields";
 import { useTrainingBack } from "../shared/useTrainingBack";
 
+import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 const JOB_STEPS = [
   { status: "DRAFT", label: "Draft" },
   { status: "PENDING_RECEIVER", label: "Pending Employee Acceptance" },
@@ -75,22 +78,22 @@ function DutiesTable({ duties }: { duties: TrainingJobDuty[] }) {
   );
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="bg-slate-50 text-left">
-            <th className="w-1/2 border border-slate-200 px-3 py-2 font-semibold">Trách nhiệm / <span className="italic">Responsibility</span></th>
-            <th className="w-1/2 border border-slate-200 px-3 py-2 font-semibold">Mô tả công việc / <span className="italic">Job description</span></th>
-          </tr>
-        </thead>
-        <tbody>
+      <TableMarkup.Root className="w-full border-collapse text-sm">
+        <TableMarkup.Head>
+          <TableMarkup.Row className="bg-slate-50 text-left">
+            <TableMarkup.HeaderCell className="w-1/2 border border-slate-200 px-3 py-2 font-semibold">Trách nhiệm / <span className="italic">Responsibility</span></TableMarkup.HeaderCell>
+            <TableMarkup.HeaderCell className="w-1/2 border border-slate-200 px-3 py-2 font-semibold">Mô tả công việc / <span className="italic">Job description</span></TableMarkup.HeaderCell>
+          </TableMarkup.Row>
+        </TableMarkup.Head>
+        <TableMarkup.Body>
           {duties.map((d, i) => (
-            <tr key={i} className="align-top">
-              <td className="space-y-1 border border-slate-200 px-3 py-2">{cell(d.responsibility, d.responsibilityEn)}</td>
-              <td className="space-y-1 border border-slate-200 px-3 py-2">{cell(d.description, d.descriptionEn)}</td>
-            </tr>
+            <TableMarkup.Row key={i} className="align-top">
+              <TableMarkup.Cell className="space-y-1 border border-slate-200 px-3 py-2">{cell(d.responsibility, d.responsibilityEn)}</TableMarkup.Cell>
+              <TableMarkup.Cell className="space-y-1 border border-slate-200 px-3 py-2">{cell(d.description, d.descriptionEn)}</TableMarkup.Cell>
+            </TableMarkup.Row>
           ))}
-        </tbody>
-      </table>
+        </TableMarkup.Body>
+      </TableMarkup.Root>
     </div>
   );
 }
@@ -128,7 +131,7 @@ export function TrainingJobDetailPage() {
       jurisdiction: j.jurisdiction ?? "",
     });
     setDuties(j.duties);
-    setRequired((j.requiredItems ?? []).map((r) => ({ kind: r.topicId ? "TOPIC" as const : "DOCUMENT" as const, id: (r.topicId ?? r.documentId) as string, code: r.code ?? "", title: r.title })));
+    setRequired((j.requiredItems ?? []).map((r) => ({ kind: r.topicText ? "TOPIC" as const : "DOCUMENT" as const, id: (r.topicText ?? r.documentId) as string, code: r.code ?? "", title: r.title })));
     setDirty(false);
   }, []);
   const refetch = useCallback(() => {
@@ -183,12 +186,12 @@ export function TrainingJobDetailPage() {
     );
   }
   const caps = job.capabilities;
-  const body = () => ({ ...form, duties, version: job.version, requiredTopicIds: pickedIds(required).topicIds, requiredDocumentIds: pickedIds(required).documentIds });
+  const body = () => ({ ...form, duties, version: job.version, requiredTopics: pickedIds(required).topics, requiredDocumentIds: pickedIds(required).documentIds });
   const tabs: TabItem[] = [
     { id: "overview", label: "General Information" },
     { id: "duties", label: "Duties", count: duties.length },
     { id: "matrix", label: "Matrix Check" },
-    { id: "approvals", label: "Signatures" },
+    { id: "signatures", label: "Signatures" },
     { id: "audit", label: "Audit Trail" },
   ];
   const eligibility = job.eligibility;
@@ -238,7 +241,8 @@ export function TrainingJobDetailPage() {
       header: "Annual",
       cell: (i) => (i.annualRequired ? "Yes" : "No"),
     },
-    { id: "source", header: "Required by", cell: (i) => (i.source === "CHOSEN" ? "Ticked for this assignment" : "Matrix") },
+    { id: "role", header: "Work Position", cell: (i) => i.jobRoleName ?? "—" },
+    { id: "source", header: "Required by", cell: (i) => (i.source === "CHOSEN" ? "Ticked for this assignment" : i.source === "FACTORY" ? "All employees (Quality Assurance)" : "Matrix") },
     { id: "last", header: "Last trained", cell: (i) => day(i.lastDone) },
     {
       id: "status",
@@ -426,7 +430,9 @@ export function TrainingJobDetailPage() {
           <div className="space-y-6">
             <ReadonlyGrid>
               <ReadonlyField label="Employee" value={job.personName} />
-              <ReadonlyField label="Job Role" value={job.positionName} />
+              <ReadonlyField label={(job.roles?.length ?? 0) > 1 ? "Work Positions" : "Work Position"} wide>
+                <div className="min-h-9 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2"><WorkPositionsPreview assignmentId={job.id} personName={job.personName} positions={job.roles} fallback={job.positionName} limit={4} /></div>
+              </ReadonlyField>
               <ReadonlyField label="Department" value={job.departmentName} />
               <ReadonlyField
                 label="Type"
@@ -456,23 +462,34 @@ export function TrainingJobDetailPage() {
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
               {(
                 [
-                  ["directSuperiorTitle", "Direct Superior"],
-                  ["subordinateTitles", "Subordinates"],
-                  ["substituteTitle", "Substitute"],
-                  ["jurisdiction", "Jurisdiction"],
+                  ["directSuperiorTitle", "Job title of direct superior", false],
+                  ["subordinateTitles", "Job title of subordinates", true],
+                  ["substituteTitle", "Substitute in absence", false],
                 ] as const
-              ).map(([key, label]) => (
+              ).map(([key, label, multiple]) => (
                 <FormField key={key} label={label}>
-                  <Input
+                  <PersonTitlePicker
+                    label={label}
                     value={form[key]}
+                    multiple={multiple}
                     disabled={!editable}
-                    onChange={(e) => {
-                      setForm({ ...form, [key]: e.target.value });
+                    onChange={(v) => {
+                      setForm({ ...form, [key]: v });
                       setDirty(true);
                     }}
                   />
                 </FormField>
               ))}
+              <FormField label="Jurisdiction">
+                <Input
+                  value={form.jurisdiction}
+                  disabled={!editable}
+                  onChange={(e) => {
+                    setForm({ ...form, jurisdiction: e.target.value });
+                    setDirty(true);
+                  }}
+                />
+              </FormField>
               {(job.caseType === "CHANGE" || form.changeReason) && (
                 <div className="md:col-span-2">
                   <FormField
@@ -547,7 +564,7 @@ export function TrainingJobDetailPage() {
 
         {tab === "matrix" && (
           <div className="space-y-4">
-            <TabBlock title="Other trainings required before the Job Role is given">
+            <TabBlock title="Other trainings required before the Work Position is given">
               <div className="p-3">
                 <RequiredTrainingsField value={required} disabled={!editable} onChange={(next) => { setRequired(next); setDirty(true); }} />
                 {editable && <p className="mt-2 text-xs text-slate-600">Save the draft to check them against the training records of the person.</p>}
@@ -588,7 +605,7 @@ export function TrainingJobDetailPage() {
                     columns={itemColumns}
                     emptyState={
                       <p className="p-4 text-sm text-slate-500">
-                        The matrix requires no training for this Job Role.
+                        The matrix requires no training for this Work Position.
                       </p>
                     }
                   />
@@ -625,7 +642,7 @@ export function TrainingJobDetailPage() {
           </div>
         )}
 
-        {tab === "approvals" && <SignatureFields records={signatureRecords} />}
+        {tab === "signatures" && <SignatureFields records={signatureRecords} />}
 
         {tab === "audit" && (
           <AuditTrailTab

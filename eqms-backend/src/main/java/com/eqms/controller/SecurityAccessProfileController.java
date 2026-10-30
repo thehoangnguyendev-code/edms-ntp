@@ -30,11 +30,13 @@ public class SecurityAccessProfileController {
     }
 
     @GetMapping("/{id}/effective-access")
-    public EffectiveAccessResponse getEffectiveAccess(
+    public com.eqms.dto.security.EffectiveAccessQueryResponse getEffectiveAccess(
             @PathVariable UUID id,
-            @RequestParam(required = false) UUID documentTypeId
+            @RequestParam(required = false) UUID documentTypeId,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "ALL") String outcome
     ) {
-        return accessEffectiveService.getEffectiveAccess(id, documentTypeId);
+        return accessEffectiveService.queryEffectiveAccess(id, documentTypeId, search, outcome);
     }
 
     @GetMapping
@@ -47,8 +49,10 @@ public class SecurityAccessProfileController {
             @RequestParam(required = false) String createdFrom,
             @RequestParam(required = false) String createdTo,
             @RequestParam(required = false) String updatedFrom,
-            @RequestParam(required = false) String updatedTo) {
-        return service.listProfiles(page, size, search, type, status, createdFrom, createdTo, updatedFrom, updatedTo);
+            @RequestParam(required = false) String updatedTo,
+            @RequestParam(defaultValue = "name") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir) {
+        return service.listProfiles(page, size, search, type, status, createdFrom, createdTo, updatedFrom, updatedTo, sortBy, sortDir);
     }
 
     @GetMapping("/all")
@@ -94,6 +98,11 @@ public class SecurityAccessProfileController {
     @GetMapping("/{id}")
     public AccessProfileDetailResponse get(@PathVariable UUID id) {
         return service.getProfile(id);
+    }
+
+    @GetMapping("/{id}/editor-summary")
+    public Map<String, Object> getEditorSummary(@PathVariable UUID id) {
+        return service.getProfileForEditor(id);
     }
 
     @GetMapping("/{id}/capabilities")
@@ -180,6 +189,12 @@ public class SecurityAccessProfileController {
     @GetMapping("/{id}/users")
     public List<AccessProfileDetailResponse.AssignedUserSummary> getUsers(@PathVariable UUID id) {
         return service.getAssignedUsers(id);
+    }
+
+    @GetMapping("/{id}/users/paged")
+    public Map<String, Object> getUsersPage(@PathVariable UUID id,
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
+        return service.queryAssignedUsers(id, page, limit);
     }
 
     @PostMapping("/{id}/users/{userId}")

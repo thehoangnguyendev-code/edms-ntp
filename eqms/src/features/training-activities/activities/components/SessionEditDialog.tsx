@@ -10,7 +10,7 @@ import { PersonPicker } from "./TrainingActivityPlanning";
 
 export interface SessionChange {
   trainerUserId?: string; externalTrainerName?: string; scheduledOn?: string;
-  locationType: "ONSITE" | "ONLINE"; venue?: string; onlinePlatform?: string; meetingLink?: string; reason: string;
+  locationType: "ONSITE" | "ONLINE" | "HYBRID"; venue?: string; onlinePlatform?: string; meetingLink?: string; reason: string;
 }
 
 const PLATFORMS = ["Zoom", "Microsoft Teams", "Google Meet", "Other"].map((p) => ({ label: p, value: p }));
@@ -26,14 +26,15 @@ export function SessionEditDialog({ session, external, busy, onClose, onSave }: 
   const [trainerUserId, setTrainerUserId] = useState(session.trainerUserId ?? "");
   const [externalName, setExternalName] = useState(session.externalTrainerName ?? "");
   const [scheduledOn, setScheduledOn] = useState(session.scheduledOn ?? "");
-  const [locationType, setLocationType] = useState<"ONSITE" | "ONLINE">(session.locationType ?? "ONSITE");
+  const [locationType, setLocationType] = useState<"ONSITE" | "ONLINE" | "HYBRID">(session.locationType ?? "ONSITE");
   const [venue, setVenue] = useState(session.venue ?? "");
   const [platform, setPlatform] = useState(session.onlinePlatform ?? "Zoom");
   const [link, setLink] = useState(session.meetingLink ?? "");
   const [reason, setReason] = useState("");
 
   const trainerOk = external || (instructor === "INTERNAL" ? !!trainerUserId : !!externalName.trim());
-  const placeOk = locationType === "ONSITE" ? !!venue.trim() : !!platform && /^https:\/\/\S+$/i.test(link.trim());
+  const linkOk = !!platform && /^https:\/\/\S+$/i.test(link.trim());
+  const placeOk = locationType === "ONSITE" ? !!venue.trim() : locationType === "HYBRID" ? !!venue.trim() && linkOk : linkOk;
   const ready = trainerOk && placeOk && !!reason.trim();
 
   return (
@@ -45,9 +46,9 @@ export function SessionEditDialog({ session, external, busy, onClose, onSave }: 
         externalTrainerName: external || instructor === "EXTERNAL" ? externalName.trim() || undefined : undefined,
         scheduledOn: scheduledOn || undefined,
         locationType,
-        venue: locationType === "ONSITE" ? venue.trim() : undefined,
-        onlinePlatform: locationType === "ONLINE" ? platform : undefined,
-        meetingLink: locationType === "ONLINE" ? link.trim() : undefined,
+        venue: locationType !== "ONLINE" ? venue.trim() : undefined,
+        onlinePlatform: locationType !== "ONSITE" ? platform : undefined,
+        meetingLink: locationType !== "ONSITE" ? link.trim() : undefined,
         reason: reason.trim(),
       })}
     >
@@ -65,11 +66,12 @@ export function SessionEditDialog({ session, external, busy, onClose, onSave }: 
         )}
         <TrainingDateField label="Scheduled date" value={scheduledOn} onChange={setScheduledOn} />
         <div className="space-y-3">
-          <RadioGroup label="Location Type" required name="session-edit-location" layout="horizontal" value={locationType} onChange={(v) => setLocationType(String(v) as "ONSITE" | "ONLINE")}
-            options={[{ label: "On-site (Physical)", value: "ONSITE" }, { label: "Online (Virtual)", value: "ONLINE" }]} />
-          {locationType === "ONSITE" ? (
+          <RadioGroup label="Location Type" required name="session-edit-location" layout="horizontal" value={locationType} onChange={(v) => setLocationType(String(v) as "ONSITE" | "ONLINE" | "HYBRID")}
+            options={[{ label: "On-site (Physical)", value: "ONSITE" }, { label: "Online (Virtual)", value: "ONLINE" }, { label: "Hybrid (On-site and Online)", value: "HYBRID" }]} />
+          {locationType !== "ONLINE" && (
             <FormField label="Physical Location" required><Input value={venue} maxLength={255} onChange={(e) => setVenue(e.target.value)} /></FormField>
-          ) : (
+          )}
+          {locationType !== "ONSITE" && (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-4">
               <Select label="Platform" value={platform} enableSearch={false} onChange={setPlatform} options={PLATFORMS} />
               <FormField label="Meeting Link" required><Input value={link} placeholder="https://zoom.us/j/..." onChange={(e) => setLink(e.target.value)} /></FormField>

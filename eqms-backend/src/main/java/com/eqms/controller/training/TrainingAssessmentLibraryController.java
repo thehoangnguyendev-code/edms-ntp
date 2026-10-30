@@ -68,8 +68,8 @@ public class TrainingAssessmentLibraryController {
     @PostMapping("/assessments/{id}/approve")
     public ResponseEntity<?> approve(@PathVariable UUID id, @RequestBody TrainingAssessmentLibraryService.ApproveRequest request) { return ResponseEntity.ok(library.approve(users.requireCurrentUser(), id, request)); }
 
-    @PostMapping("/assessments/{id}/new-version")
-    public ResponseEntity<?> newVersion(@PathVariable UUID id) { return ResponseEntity.ok(library.newVersion(users.requireCurrentUser(), id)); }
+    @PostMapping("/assessments/{id}/upgrade-revision")
+    public ResponseEntity<?> upgradeRevision(@PathVariable UUID id) { return ResponseEntity.ok(library.upgradeRevision(users.requireCurrentUser(), id)); }
 
     @PutMapping("/activities/{id}/assessment")
     public ResponseEntity<?> choose(@PathVariable UUID id, @RequestBody TrainingAssessmentLibraryService.ChooseRequest request) {

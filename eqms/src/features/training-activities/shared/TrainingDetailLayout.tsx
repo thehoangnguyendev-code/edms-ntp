@@ -62,11 +62,18 @@ export function TrainingDetailLayout({ title, breadcrumbItems, onBack, steps, cu
 }
 
 /** A label with a read-only box, as in the General Information tab of Document Details. */
-export function ReadonlyField({ label, value, wide, children }: { label: string; value?: string | null; wide?: boolean; children?: ReactNode }) {
+/** `multiline` shows a long text in a box of its own size (a read-only text area), not squeezed into one line. */
+/**
+ * `placeholder` explains an empty field ("Auto-generated after Save"): it is shown in the light placeholder colour with an empty value, never as the value, so it is not mistaken for data.
+ */
+export function ReadonlyField({ label, value, wide, multiline, placeholder = "—", hint, children }: { label: string; value?: string | null; wide?: boolean; multiline?: boolean; placeholder?: string; hint?: string; children?: ReactNode }) {
   return (
     <div className={`flex flex-col gap-1.5${wide ? " md:col-span-2" : ""}`}>
       <label className="text-xs font-medium text-slate-700 sm:text-sm">{label}</label>
-      {children ?? <input type="text" value={value ?? ""} readOnly className={CONTROL_STATE_CLASSES.readonlyField} placeholder="—" />}
+      {children ?? (multiline
+        ? <textarea value={value ?? ""} readOnly rows={3} className={CONTROL_STATE_CLASSES.readonlyTextarea} placeholder={placeholder} />
+        : <input type="text" value={value ?? ""} readOnly className={CONTROL_STATE_CLASSES.readonlyField} placeholder={placeholder} />)}
+      {hint && <p className="text-xs text-slate-500">{hint}</p>}
     </div>
   );
 }

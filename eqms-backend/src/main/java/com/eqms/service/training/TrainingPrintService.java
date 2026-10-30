@@ -45,7 +45,7 @@ public class TrainingPrintService {
         this.audit = audit;
     }
 
-    private static final Map<String, String> STATE = Map.of("NOT_REQUIRED", "Not required", "REQUIRED", "Required", "IN_PROGRESS", "In progress", "QUALIFIED", "Qualified", "UPDATE_NEEDED", "Update needed", "DUE", "Annual training due");
+    private static final Map<String, String> STATE = Map.of("NOT_REQUIRED", "Not required", "REQUIRED", "Required", "IN_PROGRESS", "In Progress", "QUALIFIED", "Qualified", "UPDATE_NEEDED", "Update needed", "DUE", "Annual training due");
 
     /**
      * The completion of one position as a list: each person, how many requirements are met, and what is still open. It is a working print, not an approved record, so it carries
@@ -75,7 +75,9 @@ public class TrainingPrintService {
             Map<String, Object> pg = (Map<String, Object>) r.get("pagination");
             if (page >= ((Number) pg.get("totalPages")).intValue()) break;
         }
-        String position = jdbc.queryForObject("select name from training_job_roles where id = ?", String.class, positionId);
+        // "All employees" is not a job role: the screen offers it first and the completion view handles it, so the print must too.
+        String position = TrainingMatrixCompletionService.ALL_EMPLOYEES.equals(positionId) ? "All employees"
+                : jdbc.queryForObject("select name from training_job_roles where id = ?", String.class, positionId);
         String department = jdbc.queryForList("select d.name from departments d where d.id = coalesce(?, d.id) limit 1", String.class, departmentId).stream().findFirst().orElse("");
         List<String> head = List.of("Position: " + position + (departmentId == null ? "" : "    Department: " + department) + "    Matrix version " + first.get("matrixVersionNo"),
                 "Printed " + DateTimeFormatUtils.formatDateTime(java.time.Instant.now()) + " by " + actor.getFullName() + (gapsOnly ? "    Only people with a gap" : "") + (status == null || status.isBlank() ? "" : "    State: " + STATE.get(status)));

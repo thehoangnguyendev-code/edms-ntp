@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch/Switch";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { FormSection } from "@/components/ui/form/FormSection";
+import { IconFileTypePdf } from "@tabler/icons-react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { useToast } from "@/components/ui/toast/Toast";
 import { controlledCopiesPolicy as controlledCopiesPolicyBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs/settings";
@@ -1214,8 +1215,8 @@ export const ControlledCopiesPolicyView: React.FC = () => {
 
           {activeTab === "markings" && (
             <div>
-              <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
-                <div className="min-w-0 space-y-4 lg:col-span-4">
+              <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[420px_minmax(0,1fr)] xl:gap-6">
+                <div className="min-w-0 space-y-4">
                   <div
                     role="tablist"
                     aria-label="Marking scenario"
@@ -1498,7 +1499,8 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                 </div>
 
                 {/* The picture comes first on narrow screens (so it's seen before the settings) and to the right on wide ones. */}
-                <div className="order-first min-w-0 lg:order-last lg:col-span-8 lg:sticky lg:top-4">
+                <div className="order-first min-w-0 xl:order-last xl:sticky xl:top-4 xl:self-start">
+                  <FormSection title="PDF Preview" icon={<IconFileTypePdf className="h-4 w-4" />}>
                   <MarkingPreviewPane
                     scenario={markingTab}
                     draft={{
@@ -1523,6 +1525,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                             )
                     }
                   />
+                  </FormSection>
                 </div>
               </div>
             </div>

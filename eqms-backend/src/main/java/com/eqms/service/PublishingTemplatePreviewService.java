@@ -120,6 +120,24 @@ public class PublishingTemplatePreviewService {
         return new FilePreviewResult(Files.readAllBytes(materialized), resolveContentType(descriptor.fileName()));
     }
 
+    /** The uploaded Word file of one component, exactly as it was uploaded, so that it can be completed and uploaded again. */
+    public NamedFile getComponentSourceFile(UUID templateId, String componentType, String layout) throws IOException {
+        PublishingTemplate template = templateRepository.findById(templateId)
+                .orElseThrow(() -> new IllegalArgumentException("Publishing template not found"));
+        ComponentFileDescriptor descriptor = resolveDescriptor(template, normalizeComponentType(componentType), normalizeLayout(layout));
+        if (descriptor == null || !StringUtils.hasText(descriptor.storedPath())) {
+            throw new IllegalStateException("This template file has not been uploaded yet");
+        }
+        Path materialized = fileStorageService.materializeStoredFile(descriptor.storedPath());
+        if (materialized == null || !Files.exists(materialized)) {
+            throw new IllegalStateException("This template file is not available");
+        }
+        String name = StringUtils.hasText(descriptor.fileName()) ? descriptor.fileName() : componentType + ".docx";
+        return new NamedFile(Files.readAllBytes(materialized), name, resolveContentType(name));
+    }
+
+    public record NamedFile(byte[] bytes, String fileName, String contentType) {}
+
     private String normalizeComponentType(String value) {
         String normalized = StringUtils.hasText(value) ? value.trim().toLowerCase() : "";
         if (!List.of("cover", "body", "header", "footer", "logo").contains(normalized)) {

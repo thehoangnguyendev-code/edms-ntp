@@ -1,6 +1,7 @@
 import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AUTH_UI } from "../auth-ui";
+import { AuthVideoBackground } from '@/components/branding/AuthVideoBackground';
 
 interface AuthLayoutProps {
   left: React.ReactNode;
@@ -27,9 +28,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ left, right: _right }) =
       };
 
   return (
-    <div className={AUTH_UI.pageWrapper} role="main">
+    <div className={AUTH_UI.pageWrapper} role="main" data-auth-layout>
+      <AuthVideoBackground />
       {/* Option 1: Dreamy Sky Pink (active) */}
       <div
+        data-auth-glow
         className={AUTH_UI.pageBgGlow}
         style={{
           backgroundImage: `
@@ -72,6 +75,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ left, right: _right }) =
       */}
 
       <motion.div
+        data-auth-card
         initial={cardVariants.initial}
         animate={cardVariants.animate}
         exit={cardVariants.exit}

@@ -41,10 +41,13 @@ describe("AppShortcutSection", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it("limits the label to 12 characters, offers Reset only when an icon is set, and says how a change reaches phones", () => {
+  it("accepts labels longer than 12 characters up to 64, offers Reset only when an icon is set, and says how a change reaches phones", () => {
     const onChange = renderIt();
     fireEvent.change(screen.getByLabelText("Shortcut Label"), { target: { value: "A very long shortcut label" } });
-    expect(onChange.mock.calls[0][0].appShortName).toHaveLength(12);
+    expect(onChange.mock.calls[0][0].appShortName).toBe("A very long shortcut label");
+    expect(screen.getByLabelText("Shortcut Label")).toHaveAttribute("maxlength", "64");
+    fireEvent.change(screen.getByLabelText("Shortcut Label"), { target: { value: "A".repeat(65) } });
+    expect(onChange.mock.calls[1][0].appShortName).toHaveLength(64);
     expect(screen.queryByRole("button", { name: "Reset" })).toBeNull();
     expect(screen.getByText(/iPhone keeps the old icon/)).toBeTruthy();
 

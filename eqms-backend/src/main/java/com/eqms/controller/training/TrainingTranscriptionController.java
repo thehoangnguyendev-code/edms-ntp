@@ -25,6 +25,11 @@ public class TrainingTranscriptionController {
     @GetMapping("/activities/{id}/transcriptions")
     public ResponseEntity<?> list(@PathVariable UUID id) { return ResponseEntity.ok(transcriptions.list(users.requireCurrentUser(), id)); }
 
+    @GetMapping("/activities/{id}/transcriptions/paged")
+    public ResponseEntity<?> listPage(@PathVariable UUID id, @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(transcriptions.listPage(users.requireCurrentUser(), id, page, limit));
+    }
+
     @PostMapping("/sessions/{id}/transcriptions")
     public ResponseEntity<?> enter(@PathVariable UUID id, @RequestBody TrainingTranscriptionService.EnterRequest request) { return ResponseEntity.ok(transcriptions.enter(users.requireCurrentUser(), id, request)); }
 

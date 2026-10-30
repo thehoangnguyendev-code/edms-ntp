@@ -46,6 +46,8 @@ export interface ExecutedRecordListParams {
   controlledCopyId?: string;
   filledFrom?: string;
   filledTo?: string;
+  recordedFrom?: string;
+  recordedTo?: string;
   sortBy?: 'created' | 'number' | 'document' | 'copy' | 'recipient' | 'filled' | 'scan';
   sortDirection?: 'asc' | 'desc';
 }

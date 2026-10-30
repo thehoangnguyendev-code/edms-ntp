@@ -59,7 +59,7 @@ public class TrainingExamPackService {
         boolean wordOut = "docx".equalsIgnoreCase(format);
         if (format != null && !format.isBlank() && !wordOut && !"pdf".equalsIgnoreCase(format)) throw new IllegalArgumentException("TRAINING_FORMAT_INVALID");
         Map<String, Object> session = jdbc.queryForList("""
-            select s.*, a.training_number, a.training_title, a.organizer_department_id, a.kind, a.kind_reason from training_sessions s join training_activities a on a.id = s.activity_id where s.id = ?
+            select s.*, a.training_number, training_activity_topics(a.id) as training_topics, a.organizer_department_id, a.kind, a.kind_reason from training_sessions s join training_activities a on a.id = s.activity_id where s.id = ?
             """, sessionId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         UUID activityId = (UUID) session.get("activity_id");
         access.requireScope(actor, (UUID) session.get("organizer_department_id"));
@@ -90,7 +90,7 @@ public class TrainingExamPackService {
         if (why != null && why.length() > 1000) throw new IllegalArgumentException("TRAINING_REASON_TOO_LONG");
 
         List<Map<String, Object>> trainees = jdbc.queryForList("""
-            select p.full_name, p.employee_code, p.department from training_participants p where p.session_id = ? and p.state <> 'ABSENT' and p.planned_absence is null order by p.full_name
+            select p.full_name, p.employee_code, p.department from training_participants p where p.session_id = ? and p.state <> 'ABSENT' and p.planned_absence is null and p.participation_role = 'TRAINEE' order by p.full_name
             """, sessionId);
         if (trainees.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PARTICIPANT_REQUIRED");
         if (trainees.size() > MAX_TRAINEES) throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "TRAINING_PAPER_TOO_LARGE");

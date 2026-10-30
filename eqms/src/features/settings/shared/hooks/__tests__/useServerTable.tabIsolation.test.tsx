@@ -24,6 +24,19 @@ it("ignores another table's URL query when URL synchronization is disabled", asy
   await waitFor(() => expect(fetcher).toHaveBeenCalledWith(expect.objectContaining({ search: undefined, page: 1, limit: 10, sortBy: "assignedAt" })));
 });
 
+it("keeps a tab search stable while the parent table owns the URL", async () => {
+  const fetcher = vi.fn(async (params: any) => ({ data: [], pagination: { page: params.page, limit: params.limit, total: 0, totalPages: 1 } }));
+  const { result } = renderHook(() => ({
+    parent: useServerTable({ fetcher, defaultSortBy: "createdAt" }),
+    child: useServerTable({ fetcher, defaultSortBy: "fullName", syncToUrl: false }),
+  }), { wrapper: ({ children }) => <MemoryRouter initialEntries={["/"]}>{children}</MemoryRouter> });
+  await waitFor(() => expect(result.current.child.isLoading).toBe(false));
+  act(() => result.current.child.setSearchQuery("Trainee"));
+  await waitFor(() => expect(fetcher).toHaveBeenCalledWith(expect.objectContaining({ search: "Trainee", sortBy: "fullName" })));
+  expect(result.current.child.searchQuery).toBe("Trainee");
+  expect(result.current.parent.searchQuery).toBe("");
+});
+
 it("sorts ascending on the first click of a list that sorts descending by default, and stays ascending", async () => {
   const fetcher = vi.fn(async (params: any) => ({ data: [], pagination: { page: params.page, limit: params.limit, total: 0, totalPages: 1 } }));
   const { result } = renderHook(() => useServerTable({ fetcher, defaultSortBy: "completedOn", defaultSortDirection: "desc" }), {

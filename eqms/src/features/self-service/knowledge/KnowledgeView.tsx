@@ -20,6 +20,9 @@ import {
     type KnowledgePortalOverview,
 } from "@/services/api/knowledge";
 import { FolderDocumentsList } from "./FolderDocumentsList";
+import { TablePagination } from "@/components/ui/table/TablePagination";
+import { formatDateTime } from "@/utils/format";
+import { formatFileSize } from "./explorer/explorerModel";
 
 // Static, literal Tailwind classes so the CDN JIT scanner can detect them.
 const KB_COLORS = ["text-emerald-600", "text-blue-600", "text-amber-600", "text-purple-600", "text-cyan-600", "text-orange-600", "text-indigo-600", "text-teal-600"];
@@ -57,6 +60,11 @@ export const KnowledgeView: React.FC = () => {
     const [selection, setSelection] = useState<Selection | null>(null);
     const [browse, setBrowse] = useState<KnowledgeBrowseResult | null>(null);
     const [browseLoading, setBrowseLoading] = useState(false);
+    const [folderSearch, setFolderSearch] = useState("");
+    const folderNeedle = useDebounce(folderSearch, 350);
+    const [folderPage, setFolderPage] = useState(1);
+    const [folderSort, setFolderSort] = useState<{ key: "name" | "fileType" | "lastOpened" | "fileSize"; direction: "asc" | "desc" }>({ key: "name", direction: "asc" });
+    useEffect(() => { setFolderSearch(""); setFolderPage(1); }, [selection]);
 
     const loadOverview = useCallback(async () => {
         try {
@@ -82,12 +90,15 @@ export const KnowledgeView: React.FC = () => {
         if (!selection) { setBrowse(null); return; }
         let alive = true;
         setBrowseLoading(true);
-        knowledgeApi.browse(overview?.selectedHierarchyId ?? hierarchyId, selection.kb.key, selection.path)
+        knowledgeApi.browse(overview?.selectedHierarchyId ?? hierarchyId, selection.kb.key, selection.path, {
+            page: folderPage, limit: 20, search: folderNeedle || undefined,
+            sortBy: { name: "name", fileType: "type", lastOpened: "lastOpened", fileSize: "size" }[folderSort.key], sortDirection: folderSort.direction,
+        })
             .then((result) => { if (alive) setBrowse(result); })
             .catch((error) => showToast({ type: "error", title: "Failed to load", message: errorMessage(error, "Unable to open this folder.") }))
             .finally(() => { if (alive) setBrowseLoading(false); });
         return () => { alive = false; };
-    }, [selection, overview?.selectedHierarchyId, hierarchyId, showToast]);
+    }, [selection, overview?.selectedHierarchyId, hierarchyId, showToast, folderPage, folderNeedle, folderSort]);
 
     const toggleSubscribe = async (card: { key: string; label: string; subscribed: boolean }) => {
         if (!overview?.determinatorField) return;
@@ -268,7 +279,7 @@ export const KnowledgeView: React.FC = () => {
                         </>
                     )}
                 </>
-            ) : browseLoading || !browse ? (
+            ) : !browse ? (
                 <div className="flex-1 min-h-0"><FullPageLoading text="Loading..." /></div>
             ) : browse.nextFieldLabel ? (
                 <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 md:p-5">
@@ -295,6 +306,11 @@ export const KnowledgeView: React.FC = () => {
             ) : (
                 <div className="flex-1 min-h-0">
                     <FolderDocumentsList
+                        searchQuery={folderSearch}
+                        onSearch={(value) => { setFolderSearch(value); setFolderPage(1); }}
+                        sortField={folderSort.key}
+                        sortOrder={folderSort.direction}
+                        onSort={(key, direction) => { setFolderSort({ key, direction }); setFolderPage(1); }}
                         departmentName={browse.path[browse.path.length - 1]?.label ?? selection.kb.label}
                         documents={browse.documents.map((item) => ({
                             id: item.document.id,
@@ -302,12 +318,14 @@ export const KnowledgeView: React.FC = () => {
                             documentNumber: item.document.documentNumber || "",
                             revisionNumber: item.document.revisionNumber || "",
                             fileType: item.document.documentType || "Document",
-                            lastOpened: item.document.effectiveDate || item.document.created || "",
-                            fileSize: "N/A",
+                            lastOpened: item.myLastOpenedAt ? formatDateTime(item.myLastOpenedAt) : "—",
+                            fileSize: formatFileSize(item.sizeBytes),
                         }))}
                         onBack={goUp}
                         onOpenDocument={(id) => void knowledgeApi.recordView(id).catch(() => undefined)}
                     />
+                    <TablePagination currentPage={folderPage} totalPages={Math.max(1, Math.ceil(browse.totalDocuments / 20))}
+                        totalItems={browse.totalDocuments} itemsPerPage={20} onPageChange={setFolderPage} />
                 </div>
             )}
         </div>

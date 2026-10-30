@@ -29,7 +29,7 @@ export const WorkflowTab: React.FC<{
     let active = true;
     setLoading(true);
     Promise.all([
-      settingsApi.getAccessProfile(profileId),
+      settingsApi.getAccessProfileEditorSummary(profileId).then((result) => result.profile),
       api.get<WorkflowRolePreview[]>("/security/workflow-roles"),
     ])
       .then(([profile, workflowRoles]) => {

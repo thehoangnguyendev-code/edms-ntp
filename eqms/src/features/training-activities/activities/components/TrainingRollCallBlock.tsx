@@ -83,7 +83,7 @@ export function TrainingRollCallBlock({ activity, onChanged }: { activity: Train
         changes={statusChange("Not attested", "Attested by the trainer", "Roll-call")}
         meaningDisplayName="Attendance Confirmed by Trainer"
         meaningCode="TRAINING_ATTENDANCE_CONFIRMED"
-        targetDetails={{ code: activity.trainingNumber, title: activity.trainingTitle, revision: "" }}
+        targetDetails={{ code: activity.trainingNumber, title: (activity.trainingTopics ?? ""), revision: "" }}
       />
     </>
   );

@@ -24,10 +24,10 @@ class ElectronicSignatureRendererServiceTest {
 
     @Test
     void formatsNewSignatureTimestampWithTheActiveConfiguration() {
-        ElectronicSignatureSetting setting = setting("dd/MM/uuuu HH:mm:ss", "Asia/Ho_Chi_Minh");
+        ElectronicSignatureSetting setting = setting("dd/MM/uuuu HH:mm", "Asia/Ho_Chi_Minh");
 
         assertEquals(
-                "17/07/2026 15:30:00 (UTC+7)",
+                "17/07/2026 15:30 (UTC+7)",
                 renderer.formatTimestampSnapshot(Instant.parse("2026-07-17T08:30:00Z"), setting)
         );
     }
@@ -44,9 +44,9 @@ class ElectronicSignatureRendererServiceTest {
         old.setTimezone("Asia/Ho_Chi_Minh");
         old.setTimestampDisplay("11-Aug-2026 13:11:40 (UTC+7)");
 
-        String block = renderer.renderTextBlock(old, setting("dd/MM/uuuu HH:mm:ss", "Asia/Ho_Chi_Minh"));
+        String block = renderer.renderTextBlock(old, setting("dd/MM/uuuu HH:mm", "Asia/Ho_Chi_Minh"));
 
-        assertTrue(block.contains("11/08/2026 13:11:40 (UTC+7)"));
+        assertTrue(block.contains("11/08/2026 13:11 (UTC+7)"));
         assertFalse(block.contains("11-Aug-2026"));
         // the stored text is evidence and is not rewritten
         assertEquals("11-Aug-2026 13:11:40 (UTC+7)", old.getTimestampDisplay());
@@ -66,7 +66,7 @@ class ElectronicSignatureRendererServiceTest {
         String block = renderer.renderTextBlock(legacy, setting("uuuu-MM-dd HH:mm", "UTC"));
 
         // A legacy record with no stored text is shown in the display format of the system, still with the zone written on it.
-        assertTrue(block.contains("17/07/2026 15:30:00 (UTC+7)"));
+        assertTrue(block.contains("17/07/2026 15:30 (UTC+7)"));
     }
 
     @Test

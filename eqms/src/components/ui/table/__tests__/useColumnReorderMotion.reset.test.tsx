@@ -43,7 +43,7 @@ describe("Reset to default", () => {
     await wait(40);
 
     fireEvent.click(screen.getByRole("button", { name: /Custom Column/ }));
-    fireEvent.click(await screen.findByRole("button", { name: "Reset to default" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Reset to Default" }));
 
     await waitFor(() => expect(screen.getAllByRole("columnheader").map((h) => h.textContent?.trim())).toEqual(["No.", "Alpha", "Bravo", "Charlie"]));
     expect(animate).toHaveBeenCalled();
@@ -57,7 +57,7 @@ describe("Custom Column drawer", () => {
     await waitFor(() => expect(screen.getAllByRole("columnheader").length).toBeGreaterThan(3));
 
     fireEvent.click(screen.getByRole("button", { name: /Custom Column/ }));
-    await screen.findByRole("button", { name: "Reset to default" });
+    await screen.findByRole("button", { name: "Reset to Default" });
 
     expect(screen.getAllByText("No.").length).toBeGreaterThan(0);
     expect(screen.queryByText("Expand")).toBeNull();

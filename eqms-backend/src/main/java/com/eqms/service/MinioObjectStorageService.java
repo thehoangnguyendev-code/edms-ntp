@@ -352,6 +352,31 @@ public class MinioObjectStorageService {
         }
     }
 
+    /** Measures all object versions from the configured buckets; an incomplete scan is never returned. */
+    public StorageUsageAccumulator.Usage measureObjectUsage() throws IOException {
+        if (!enabled) throw new IOException("MinIO is disabled");
+        JsonNode integrations = systemConfigurationService.requireConfiguration().getIntegrationsConfig();
+        JsonNode storage = integrations == null ? null : integrations.get("storage");
+        MinioConfig config = resolveConfig(storage);
+        MinioClient client = buildClient(config);
+        Map<String, String> prefixes = new java.util.LinkedHashMap<>();
+        for (StorageDomain domain : StorageDomain.values()) {
+            prefixes.put(domain.prefix(), domain.prefix());
+        }
+        var accumulator = new StorageUsageAccumulator(prefixes);
+        try {
+            for (String bucket : new java.util.LinkedHashSet<>(java.util.List.of(config.bucket(), config.templatesBucket()))) {
+                for (Result<Item> result : client.listObjects(ListObjectsArgs.builder().bucket(bucket).recursive(true).includeVersions(true).build())) {
+                    Item item = result.get();
+                    if (!item.isDir()) accumulator.add(item.objectName(), item.size(), item.isDeleteMarker());
+                }
+            }
+            return accumulator.snapshot();
+        } catch (Exception ex) {
+            throw storageException("Unable to measure all MinIO object versions", ex);
+        }
+    }
+
     public boolean isMinioUri(String value) {
         return StringUtils.hasText(value) && value.trim().toLowerCase().startsWith(URI_PREFIX);
     }

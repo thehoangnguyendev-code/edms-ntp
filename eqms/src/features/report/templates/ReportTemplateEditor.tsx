@@ -115,17 +115,17 @@ function ApprovalPanel({
         <div className="flex flex-wrap gap-2">
           {status === "DRAFT" && canSubmit && (
             <Button size="sm" variant="outline-emerald" disabled={busy || dirty} onClick={onSubmit}>
-              Submit for approval
+              Submit for Approval
             </Button>
           )}
           {status === "PENDING_APPROVAL" && canDecide && (
             <Button size="sm" variant="outline" disabled={busy} onClick={onReject}>
-              Return to draft
+              Return to Draft
             </Button>
           )}
           {status === "PENDING_APPROVAL" && canDecide && (
             <Button size="sm" variant="outline-emerald" disabled={busy} onClick={onApprove}>
-              Approve
+              Complete Approval
             </Button>
           )}
         </div>

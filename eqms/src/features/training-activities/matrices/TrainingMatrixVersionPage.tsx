@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
+import { RadioGroup } from "@/components/ui/radio";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { Input, Textarea } from "../shared/TrainingFields";
 import { FormModal } from "@/components/ui/modal/FormModal";
@@ -21,7 +22,6 @@ import {
   type TrainingMatrixRow,
   type TrainingMatrixVersion,
   type TrainingPerson,
-  type TrainingTopic,
 } from "@/services/api/trainingActivities";
 import { day, trainingBreadcrumbs, statusChange } from "../shared/trainingLabels";
 import {
@@ -45,7 +45,7 @@ const STATUS_LABEL: Record<string, string> = {
 const NEXT_STEP: Record<string, string> = {
   DRAFT: "This version is a draft. Edit the matrix, save it, then submit it for approval with an electronic signature.",
   PENDING_APPROVAL: "This version is waiting for the approver. It cannot be changed until it is approved or sent back.",
-  EFFECTIVE: "This version is in use: it tells who must be trained on what. To change the matrix, start a new version.",
+  EFFECTIVE: "This version is in use: it tells who must be trained on what. To change the matrix, upgrade the revision.",
   OBSOLETED: "This version was replaced by a newer one and stays as history. It cannot be changed.",
 };
 
@@ -61,9 +61,10 @@ type Dialog =
   | "submit"
   | "reject"
   | "upgrade"
+  | "applyLocked"
   | undefined;
 
-/** One version of a department matrix: rows are topics or documents, columns are Job Roles. A version is edited only as a draft; after approval it never changes. */
+/** One version of a department matrix: rows are topics or documents, columns are Work Positions. A version is edited only as a draft; after approval it never changes. */
 export function TrainingMatrixVersionPage() {
   const { versionId = "" } = useParams();
   const navigate = useNavigate();
@@ -134,6 +135,28 @@ export function TrainingMatrixVersionPage() {
     }
   };
 
+  // Quality Assurance sends the rows it locked to the matrices of all the other departments; the answer says what happened to each matrix
+  const applyLockedRows = async () => {
+    if (!version) return;
+    setBusy(true);
+    try {
+      const result = await trainingMatrixApi.applyLockedRows(version.id);
+      const count = (outcome: string) => result.matrices.filter((m) => m.outcome === outcome).length;
+      const changed = count("ADDED_TO_DRAFT") + count("NEW_DRAFT");
+      const waiting = result.matrices.filter((m) => m.outcome.startsWith("SKIPPED")).map((m) => m.code);
+      showToast({
+        type: waiting.length ? "warning" : "success",
+        title: "Locked rows applied",
+        message: `${changed} matrices changed (${count("NEW_DRAFT")} with a new draft), ${count("ALREADY_THERE")} already had them.${waiting.length ? ` Not applied (a version waits for approval, or none is effective): ${waiting.join(", ")}.` : ""}`,
+      });
+      setDialog(undefined);
+    } catch (e) {
+      showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // A version being prepared or waiting for approval is shown against the version before it, so that what changed stands out.
   const versionNo = version?.versionNo;
   const status = version?.status;
@@ -196,16 +219,27 @@ export function TrainingMatrixVersionPage() {
     );
     setDirty(true);
   };
+  // The column All employees: a row for every employee of the department (it is also ticked for every Work Position, so the form and the grid show it).
+  const setAllEmployees = (rowIndex: number, value: boolean) => {
+    setRows(rows.map((r, i) => (i !== rowIndex ? r : { ...r, allEmployees: value, positionIds: value ? positions.map((p) => p.id) : r.positionIds })));
+    setDirty(true);
+  };
+  const setLocked = (rowIndex: number, value: boolean) => {
+    setRows(rows.map((r, i) => (i !== rowIndex ? r : { ...r, locked: value })));
+    setDirty(true);
+  };
   const body = () => ({
     version: version.version,
     changeReason: reason.trim() || undefined,
     rows: rows.map((r) => ({
       group: r.rowGroup,
-      topicId: r.topicId ?? null,
+      topicText: r.topicText ?? null,
       documentId: r.documentId ?? null,
       annualRequired: r.annualRequired,
       note: r.note ?? null,
       positionIds: r.positionIds,
+      allEmployees: Boolean(r.allEmployees),
+      locked: Boolean(r.locked),
     })),
   });
 
@@ -290,7 +324,7 @@ export function TrainingMatrixVersionPage() {
           className="whitespace-nowrap"
           onClick={() => setDialog("upgrade")}
         >
-          New version
+          Upgrade Revision
         </Button>
       )}
     </>
@@ -413,8 +447,10 @@ export function TrainingMatrixVersionPage() {
               <div className="flex flex-wrap gap-2">
                 {hasPermission("training.admin.manage") && (
                   <>
-                    <Button size="sm" variant="outline-emerald" onClick={() => navigate(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.TOPICS)}>Manage topics</Button>
-                    <Button size="sm" variant="outline-emerald" onClick={() => navigate(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.JOB_ROLES)}>Manage Job Roles</Button>
+                    <Button size="sm" variant="outline-emerald" onClick={() => navigate(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.JOB_ROLES)}>Manage Work Positions</Button>
+                    {!dirty && version.rows.some((r) => r.locked) && (
+                      <Button size="sm" variant="outline-emerald" onClick={() => setDialog("applyLocked")}>Apply Locked Rows to All Departments</Button>
+                    )}
                   </>
                 )}
               {editing ? (
@@ -424,7 +460,7 @@ export function TrainingMatrixVersionPage() {
                     variant="outline-emerald"
                     onClick={() => setDialog("addTopic")}
                   >
-                    Add topic
+                    Add Training Topic
                   </Button>
                   <Button
                     size="sm"
@@ -439,8 +475,8 @@ export function TrainingMatrixVersionPage() {
             </div>
             {positions.length === 0 ? (
               <p className="p-4 text-sm text-amber-700">
-                This department has no Job Role yet. A Training Administrator creates them under
-                Training Administration, Job Roles.
+                This department has no Work Position yet. A Training Administrator creates them under
+                Training Administration, Work Positions.
               </p>
             ) : rows.length === 0 ? (
               <p className="p-4 text-sm text-slate-500">No row yet.</p>
@@ -452,6 +488,10 @@ export function TrainingMatrixVersionPage() {
                 baseline={baseline?.rows}
                 baselineNo={baseline?.versionNo}
                 onToggle={toggle}
+                onAllEmployees={setAllEmployees}
+                onLock={setLocked}
+                canLock={hasPermission("training.admin.manage")}
+                lockedPositionIds={hasPermission("training.admin.manage") ? [] : positions.filter((p) => p.seniorManagement).map((p) => p.id)}
                 onAnnual={(index, annual) => {
                   setRows(
                     rows.map((r, k) =>
@@ -475,16 +515,14 @@ export function TrainingMatrixVersionPage() {
 
       {dialog === "addTopic" && (
         <AddTopicDialog
-          department={version.departmentId}
+          existing={rows}
           onClose={() => setDialog(undefined)}
-          onAdd={(t, group) => {
+          onAdd={(text, group) => {
             setRows([
               ...rows,
               {
                 rowGroup: group,
-                topicId: t.id,
-                topicCode: t.code,
-                topicName: t.name,
+                topicText: text,
                 annualRequired: false,
                 positionIds: [],
               },
@@ -492,7 +530,6 @@ export function TrainingMatrixVersionPage() {
             setDirty(true);
             setDialog(undefined);
           }}
-          existing={rows}
         />
       )}
       {dialog === "addDocument" && (
@@ -554,7 +591,7 @@ export function TrainingMatrixVersionPage() {
       <FormModal
         isOpen={dialog === "upgrade"}
         onClose={() => setDialog(undefined)}
-        title="Start a New Version"
+        title="Upgrade Revision"
         description="A copy of this version is opened as a draft. This version stays effective until the new one is approved."
         confirmText="Start"
         isLoading={busy}
@@ -562,7 +599,7 @@ export function TrainingMatrixVersionPage() {
         onConfirm={() =>
           void run(
             () => trainingMatrixApi.upgrade(version.matrixId),
-            "New version started",
+            "Revision upgraded",
             (v) => navigate(`/training-management/matrix/${v.id}`),
           )
         }
@@ -570,6 +607,22 @@ export function TrainingMatrixVersionPage() {
         <p className="text-sm text-slate-600">
           Only one version can be prepared at a time.
         </p>
+      </FormModal>
+      <FormModal
+        isOpen={dialog === "applyLocked"}
+        onClose={() => setDialog(undefined)}
+        title="Apply Locked Rows to All Departments"
+        description="The rows locked in this version are added, locked, to the matrices of all the other departments."
+        confirmText="Apply"
+        isLoading={busy}
+        size="md"
+        onConfirm={() => void applyLockedRows()}
+      >
+        <ul className="list-disc space-y-1 pl-5 text-sm text-slate-600">
+          <li>A matrix with a draft open gets the rows in that draft.</li>
+          <li>A matrix with only an effective version gets a new draft; the head of the department approves it as usual.</li>
+          <li>A matrix whose version waits for approval is left as it is; apply again once that version is decided.</li>
+        </ul>
       </FormModal>
       <ESignatureModal
         isOpen={!!sign}
@@ -598,63 +651,45 @@ export function TrainingMatrixVersionPage() {
 }
 
 function AddTopicDialog({
-  department,
   existing,
   onClose,
   onAdd,
 }: {
-  department: string;
   existing: TrainingMatrixRow[];
   onClose: () => void;
-  onAdd: (
-    t: TrainingTopic,
-    group: "FACTORY_GENERAL" | "DEPARTMENT_GENERAL",
-  ) => void;
+  onAdd: (text: string, group: "FACTORY_GENERAL" | "DEPARTMENT_GENERAL") => void;
 }) {
-  const [topics, setTopics] = useState<TrainingTopic[]>([]);
-  const [id, setId] = useState("");
-  useEffect(() => {
-    trainingMatrixApi
-      .topics(undefined, true)
-      .then(setTopics)
-      .catch(() => setTopics([]));
-  }, []);
-  const usable = topics.filter(
-    (t) =>
-      !existing.some((r) => r.topicId === t.id) &&
-      (t.scope !== "DEPARTMENT_GENERAL" || t.departmentId === department),
-  );
-  const chosen = usable.find((t) => t.id === id);
+  const [text, setText] = useState("");
+  const [group, setGroup] = useState<"FACTORY_GENERAL" | "DEPARTMENT_GENERAL">("DEPARTMENT_GENERAL");
+  const clean = text.trim().replace(/\s+/g, " ");
+  const duplicate = existing.some((r) => r.topicText && r.topicText.trim().replace(/\s+/g, " ").toLowerCase() === clean.toLowerCase());
   return (
     <FormModal
       isOpen
       onClose={onClose}
-      title="Add a Topic"
-      description="Standard topics are kept in Training Administration. A SOP is added with Add SOP."
+      title="Add a Training Topic"
+      description="Write the training topic. A SOP is added with Add SOP."
       confirmText="Add"
-      confirmDisabled={!chosen}
+      confirmDisabled={!clean || duplicate}
       size="md"
-      onConfirm={() =>
-        chosen &&
-        onAdd(
-          chosen,
-          chosen.scope === "FACTORY_GENERAL"
-            ? "FACTORY_GENERAL"
-            : "DEPARTMENT_GENERAL",
-        )
-      }
+      onConfirm={() => onAdd(clean, group)}
     >
-      <FormField label="Topic" required>
-        <Select
-          value={id}
-          onChange={setId}
-          options={usable.map((t) => ({
-            label: `${t.code} — ${t.name}`,
-            value: t.id,
-          }))}
-          placeholder="Choose a topic"
+      <div className="grid gap-4">
+        <FormField label="Training Topic" required hint={duplicate ? "This Training Topic is already in the matrix." : "For example: Occupational safety"}>
+          <Input value={text} maxLength={500} onChange={(e) => setText(e.target.value)} />
+        </FormField>
+        <RadioGroup
+          label="Group"
+          name="matrix-topic-group"
+          layout="horizontal"
+          value={group}
+          onChange={(v) => setGroup(v === "FACTORY_GENERAL" ? "FACTORY_GENERAL" : "DEPARTMENT_GENERAL")}
+          options={[
+            { label: "General training of the department", value: "DEPARTMENT_GENERAL" },
+            { label: "General training of the whole factory", value: "FACTORY_GENERAL" },
+          ]}
         />
-      </FormField>
+      </div>
     </FormModal>
   );
 }

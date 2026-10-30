@@ -150,6 +150,17 @@ class UserUiPreferenceServiceTest {
     }
 
     @Test
+    void dashboardLayoutAcceptsKnownDistinctWidgetsAndRejectsInvalidSettings() throws Exception {
+        String key = UserUiPreferenceService.DASHBOARD_LAYOUT;
+        when(repository.findByUserIdAndPrefKey(ADA, key)).thenReturn(Optional.empty());
+        var result = service().save(ADA, key, mapper.readTree("{\"widgets\":[{\"id\":\"my-documents\",\"visible\":true,\"width\":\"half\"}]}"));
+        assertThat(result.path("widgets").size()).isEqualTo(1);
+        for (String invalid : new String[]{"{}", "{\"widgets\":[{\"id\":\"not-real\",\"visible\":true,\"width\":\"full\"}]}", "{\"widgets\":[{\"id\":\"my-documents\",\"visible\":true,\"width\":\"bad\"}]}", "{\"widgets\":[{\"id\":\"my-documents\",\"visible\":true,\"width\":\"half\"},{\"id\":\"my-documents\",\"visible\":false,\"width\":\"full\"}]}"}) {
+            assertThatThrownBy(() -> service().save(ADA, key, mapper.readTree(invalid))).isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    @Test
     void theControllerAlwaysActsOnTheSignedInUserAndTakesNoUserIdFromTheRequest() throws Exception {
         UUID signedIn = UUID.randomUUID();
         when(currentUserService.requireCurrentUser()).thenReturn(currentUser);

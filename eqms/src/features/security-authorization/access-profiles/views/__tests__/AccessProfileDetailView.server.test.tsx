@@ -1,0 +1,27 @@
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { afterEach, expect, it, vi } from "vitest";
+const m = vi.hoisted(() => ({ summary: vi.fn(), capabilities: vi.fn(), update: vi.fn(), sign: vi.fn(), toast: vi.fn() }));
+vi.mock("@/services/api/settings", () => ({ settingsApi: { getAccessProfileEditorSummary: m.summary, getAccessProfileCapabilities: m.capabilities, updateAccessProfileConfiguration: m.update } }));
+vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ showToast: m.toast }) }));
+vi.mock("@/features/security-authorization/shared/useSecurityESign", () => ({ useSecurityESign: () => ({ requestSignature: m.sign, signatureModal: null }) }));
+vi.mock("@/components/ui/page/PageHeader", () => ({ PageHeader: ({ actions }: { actions: React.ReactNode }) => <div>{actions}</div> }));
+vi.mock("@/components/ui/modal/AlertModal", () => ({ AlertModal: ({ isOpen, title, onConfirm, confirmText }: { isOpen: boolean; title: string; onConfirm: () => void; confirmText: string }) => isOpen ? <div><span>{title}</span><button onClick={onConfirm}>{confirmText}</button></div> : null }));
+vi.mock("../tabs/AccessProfileGeneralTab", () => ({ GeneralTab: () => <div>General information</div>, NewProfileForm: () => null }));
+vi.mock("../tabs/AccessProfileAssignedUsersTab", () => ({ AccessProfileAssignedUsersTab: ({ onChangesChange }: { onChangesChange: (d: { added: string[]; removed: string[] }) => void }) => <button onClick={() => onChangesChange({ added: ["new"], removed: ["old"] })}>Change assignment</button> }));
+import { AccessProfileDetailView } from "../AccessProfileDetailView";
+afterEach(cleanup);
+it("submits the complete server assignment IDs with the pending diff and one signature", async () => {
+  const profile = { id: "p1", code: "P1", name: "Profile", active: true, system: false, permissionSets: [], workflowRoles: [], assignedUsers: [], updatedAt: "version" };
+  m.summary.mockResolvedValue({ profile, assignedUserIds: ["old", "off-page"] });
+  m.capabilities.mockResolvedValue({ actions: { edit: { allowed: true }, assignUsers: { allowed: true } } });
+  m.sign.mockResolvedValue({ signatureToken: "signed" });
+  m.update.mockResolvedValue({ ...profile, assignedUsers: [{ id: "off-page" }, { id: "new" }] });
+  render(<MemoryRouter initialEntries={["/profiles/p1/edit"]}><Routes><Route path="/profiles/:id/edit" element={<AccessProfileDetailView />} /></Routes></MemoryRouter>);
+  fireEvent.click(await screen.findByRole("tab", { name: "Assigned Users" }));
+  fireEvent.click(screen.getByRole("button", { name: "Change assignment" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continue to E-Sign" }));
+  await waitFor(() => expect(m.update).toHaveBeenCalledWith("p1", expect.objectContaining({ expectedUpdatedAt: "version", userIds: ["off-page", "new"] }), { signatureToken: "signed" }));
+  expect(m.sign).toHaveBeenCalledTimes(1);
+});

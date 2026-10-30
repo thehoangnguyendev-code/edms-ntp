@@ -18,12 +18,55 @@ import org.junit.jupiter.api.Test;
 class SystemConfigurationServiceBrandingTest {
 
     @Test
+    void pageBackgroundsArePublicAndInvalidLegacyValuesFallBack() throws Exception {
+        assertNull(serviceWithGeneral("{}").getPublicBranding().mainBackground());
+        var branding = serviceWithGeneral("{\"appearance\":{\"authBackground\":{\"mode\":\"linear\",\"colors\":[\"#FFFFFF\",\"#123456\"],\"angle\":45,\"extra\":\"not public\"}}}").getPublicBranding();
+        assertEquals("linear", branding.authBackground().path("mode").asText());
+        assertFalse(branding.authBackground().has("extra"));
+        assertNull(serviceWithGeneral("{\"appearance\":{\"authBackground\":{\"mode\":\"url(evil)\"}}}").getPublicBranding().authBackground());
+    }
+
+    @Test
+    void publicBrandingContainsVideoReferenceAndRepeatOnly() throws Exception {
+        var branding = serviceWithGeneral("{\"appearance\":{\"authBackground\":{\"mode\":\"video\",\"colors\":[\"#FFFFFF\",\"#123456\"],\"angle\":45,\"videoId\":\"00000000-0000-0000-0000-000000000001\",\"videoLoop\":false,\"private\":\"secret\"}}}").getPublicBranding();
+        assertEquals("00000000-0000-0000-0000-000000000001", branding.authBackground().path("videoId").asText());
+        assertFalse(branding.authBackground().path("videoLoop").asBoolean());
+        assertFalse(branding.authBackground().has("private"));
+    }
+
+    @Test
+    void alternatingRecordsAreOptInAndColorIsSanitizedForPublicBranding() throws Exception {
+        var defaults = serviceWithGeneral("{}").getPublicBranding();
+        assertFalse(defaults.alternatingRecordColors());
+        assertEquals("#F8FAFC", defaults.alternatingRecordColor());
+        var enabled = serviceWithGeneral("{\"appearance\":{\"alternatingRecordColors\":true,\"alternatingRecordColor\":\"#E5F1F2\"}}").getPublicBranding();
+        assertTrue(enabled.alternatingRecordColors());
+        assertEquals("#E5F1F2", enabled.alternatingRecordColor());
+        assertEquals("#F8FAFC", serviceWithGeneral("{\"appearance\":{\"alternatingRecordColor\":\"red;display:none\"}}").getPublicBranding().alternatingRecordColor());
+    }
+
+    @Test
     void compactFiltersAreOptInAndIncludedInUserBranding() throws Exception {
         assertFalse(serviceWithGeneral("{}").getPublicBranding().compactDesktopFilters());
         assertTrue(serviceWithGeneral("{\"appearance\":{\"compactDesktopFilters\":true}}")
                 .getPublicBranding().compactDesktopFilters());
         assertFalse(serviceWithGeneral("{\"appearance\":{\"compactDesktopFilters\":false}}")
                 .getPublicBranding().compactDesktopFilters());
+    }
+
+    @Test
+    void trainingMaterialsLayoutIsATableUnlessTheAdministratorChoosesTilesAndOnlyKnownValuesAreSaved() throws Exception {
+        assertEquals("TABLE", serviceWithGeneral("{}").getPublicBranding().trainingMaterialsLayout());
+        assertEquals("TILES", serviceWithGeneral("{\"appearance\":{\"trainingMaterialsLayout\":\"TILES\"}}").getPublicBranding().trainingMaterialsLayout());
+        assertEquals("TABLE", serviceWithGeneral("{\"appearance\":{\"trainingMaterialsLayout\":\"grid\"}}").getPublicBranding().trainingMaterialsLayout());
+        for (String ok : new String[] {"\"TABLE\"", "\"TILES\"", "null"}) {
+            var general = mapper.readTree("{\"appearance\":{\"trainingMaterialsLayout\":" + ok + "}}");
+            assertDoesNotThrow(() -> SystemConfigurationService.validateTrainingMaterialsLayout(general), ok);
+        }
+        for (String bad : new String[] {"\"grid\"", "\"tiles\"", "1", "true"}) {
+            var general = mapper.readTree("{\"appearance\":{\"trainingMaterialsLayout\":" + bad + "}}");
+            assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validateTrainingMaterialsLayout(general), bad);
+        }
     }
 
     private final ObjectMapper mapper = new ObjectMapper();

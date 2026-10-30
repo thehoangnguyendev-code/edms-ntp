@@ -74,7 +74,10 @@ public final class TrainingAssessmentForm {
     private static final int PART_TWO = 2;
 
     /** What is known for the whole activity, and the content. {@code topics} may be empty and {@code trainingType} null: the template keeps its dots and boxes. */
-    public record Content(List<Map<String, Object>> items, boolean checklist, boolean key, List<String> topics, String trainingNumber, String trainingType, Integer durationMinutes) {
+    public record Content(List<Map<String, Object>> items, boolean checklist, boolean key, List<String> topics, String trainingNumber, String trainingType, Integer durationMinutes, boolean essayRestart) {
+        public Content(List<Map<String, Object>> items, boolean checklist, boolean key, List<String> topics, String trainingNumber, String trainingType, Integer durationMinutes) {
+            this(items, checklist, key, topics, trainingNumber, trainingType, durationMinutes, false);
+        }
     }
 
     /** What is known for one trainee. */
@@ -148,7 +151,7 @@ public final class TrainingAssessmentForm {
                 fillChecklist(checklistTable, c.items(), c.key());
                 setCount(count, c.items().size());
             } else {
-                insertQuestions(doc, count, c.items(), c.key());
+                insertQuestions(doc, count, c.items(), c.key(), c.essayRestart());
                 setCount(count, c.items().size());
             }
 
@@ -208,65 +211,38 @@ public final class TrainingAssessmentForm {
         else ct.addNewP();
     }
 
-    /**
-     * The last page of the form has no footer (the form says the footer does not apply to it): it holds the end of the test, the number of questions and the signature of the trainee, at the
-     * bottom of the page. Word cannot take a footer off one page, so the end of the test is a section of its own, on a page of its own, with an empty footer; the block is a table whose row is
-     * as high as the page and whose text sits at the bottom.
-     */
+    /** The end of the test (the number of questions, the signature of the trainee and the date to write by hand) follows the last question on the same page. */
     private static void lastPage(XWPFDocument doc, XWPFParagraph count, XWPFParagraph signature) {
-        lastPageBody(doc, count, signature);
+        count.setSpacingBefore(360);
+        count.setKeepNext(true);
+        if (signature != null) signatureLine(doc, signature);
     }
 
-    /** A footer part with one empty paragraph, made by hand because the library gives one default footer only; the section is pointed at it. */
-    private static void emptyFooter(XWPFDocument doc, CTSectPr section) {
-        try {
-            org.apache.poi.openxml4j.opc.PackagePartName name = org.apache.poi.openxml4j.opc.PackagingURIHelper.createPartName("/word/footerLastPage.xml");
-            org.apache.poi.openxml4j.opc.PackagePart part = doc.getPackage().createPart(name, "application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml");
-            try (java.io.OutputStream os = part.getOutputStream()) {
-                os.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><w:ftr xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:p/></w:ftr>".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            }
-            org.apache.poi.openxml4j.opc.PackageRelationship rel = doc.getPackagePart().addRelationship(name, org.apache.poi.openxml4j.opc.TargetMode.INTERNAL,
-                    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer");
-            org.openxmlformats.schemas.wordprocessingml.x2006.main.CTHdrFtrRef ref = section.addNewFooterReference();
-            ref.setType(org.openxmlformats.schemas.wordprocessingml.x2006.main.STHdrFtr.DEFAULT);
-            ref.setId(rel.getId());
-        } catch (org.apache.poi.openxml4j.exceptions.InvalidFormatException | IOException e) {
-            throw new IllegalStateException("TRAINING_PRINT_FAILED", e);
-        }
-    }
-
-    private static void lastPageBody(XWPFDocument doc, XWPFParagraph count, XWPFParagraph signature) {
-        CTSectPr body = doc.getDocument().getBody().getSectPr();
-        CTSectPr first = (CTSectPr) body.copy();
-        XWPFParagraph brk = before(doc, count);
-        brk.getCTP().addNewPPr().addNewSectPr().set(first);
-        while (body.sizeOfFooterReferenceArray() > 0) body.removeFooterReference(0);
-        emptyFooter(doc, body);
-        XWPFTable table = doc.createTable(1, 1);
-        table.setTopBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, "auto");
-        table.setBottomBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, "auto");
-        table.setLeftBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, "auto");
-        table.setRightBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, "auto");
-        table.setInsideHBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, "auto");
-        table.setInsideVBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, "auto");
-        table.setWidth("100%");
-        XWPFTableRow row = table.getRow(0);
-        CTTrPr trPr = row.getCtRow().isSetTrPr() ? row.getCtRow().getTrPr() : row.getCtRow().addNewTrPr();
-        CTHeight height = trPr.addNewTrHeight();
-        height.setVal(BigInteger.valueOf(12800));
-        height.setHRule(STHeightRule.EXACT);
-        XWPFTableCell cell = row.getCell(0);
-        cell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.BOTTOM);
-        cell.removeParagraph(0);
-        cell.getCTTc().addNewP().set(count.getCTP().copy());
-        if (signature != null) cell.getCTTc().addNewP().set(signature.getCTP().copy());
-        removeParagraph(doc, count);
-        if (signature != null) removeParagraph(doc, signature);
-        // a table cannot be the last thing of a Word file: a paragraph of the smallest size follows
-        XWPFParagraph tail = doc.createParagraph();
-        tail.setSpacingBefore(0);
-        tail.setSpacingAfter(0);
-        tail.createRun().setFontSize(1);
+    /** One line, never wrapped: the label of the signature, a dotted leader to the middle of the line, the label of the date and a dotted leader to the right margin (the trainee writes on the dots). */
+    private static void signatureLine(XWPFDocument doc, XWPFParagraph p) {
+        CTRPr look = lookOf(p);
+        while (!p.getRuns().isEmpty()) p.removeRun(0);
+        p.setAlignment(org.apache.poi.xwpf.usermodel.ParagraphAlignment.LEFT);
+        text(p, "Chữ ký học viên/", false, look);
+        text(p, "Signature of trainee", false, look).setItalic(true);
+        text(p, ":", false, look);
+        p.createRun().addTab();
+        text(p, " Ngày kiểm tra/", false, look);
+        text(p, "Assessment date", false, look).setItalic(true);
+        text(p, ":", false, look);
+        p.createRun().addTab();
+        CTSectPr sect = doc.getDocument().getBody().getSectPr();
+        long width = 9000;
+        if (sect != null && sect.isSetPgSz() && sect.isSetPgMar()) width = Long.parseLong(String.valueOf(sect.getPgSz().getW())) - Long.parseLong(String.valueOf(sect.getPgMar().getLeft())) - Long.parseLong(String.valueOf(sect.getPgMar().getRight()));
+        var tabs = (p.getCTP().isSetPPr() ? p.getCTP().getPPr() : p.getCTP().addNewPPr()).addNewTabs();
+        var middle = tabs.addNewTab();
+        middle.setVal(org.openxmlformats.schemas.wordprocessingml.x2006.main.STTabJc.LEFT);
+        middle.setLeader(org.openxmlformats.schemas.wordprocessingml.x2006.main.STTabTlc.DOT);
+        middle.setPos(BigInteger.valueOf(width * 11 / 20));
+        var end = tabs.addNewTab();
+        end.setVal(org.openxmlformats.schemas.wordprocessingml.x2006.main.STTabJc.RIGHT);
+        end.setLeader(org.openxmlformats.schemas.wordprocessingml.x2006.main.STTabTlc.DOT);
+        end.setPos(BigInteger.valueOf(width));
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ the facts of the training
@@ -424,14 +400,20 @@ public final class TrainingAssessmentForm {
 
     /** An empty line to write on: a tab that is filled with dots up to the right margin. */
     private static void writingLine(XWPFParagraph p, CTRPr look) {
+        // A ruled line in a light colour for the trainee to write on. The lines of one answer are paragraphs with the same border: Word draws the line between them with "between" and under the last one with "bottom".
         CTPPr ppr = p.getCTP().isSetPPr() ? p.getCTP().getPPr() : p.getCTP().addNewPPr();
-        CTTabStop stop = ppr.addNewTabs().addNewTab();
-        stop.setVal(STTabJc.RIGHT);
-        stop.setLeader(STTabTlc.DOT);
-        stop.setPos(BigInteger.valueOf(9500));
+        org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPBdr bdr = ppr.addNewPBdr();
+        for (org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBorder b : new org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBorder[] {bdr.addNewBetween(), bdr.addNewBottom()}) {
+            b.setVal(org.openxmlformats.schemas.wordprocessingml.x2006.main.STBorder.SINGLE);
+            b.setSz(BigInteger.valueOf(4));
+            b.setSpace(BigInteger.ONE);
+            b.setColor("BFBFBF");
+        }
+        org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSpacing spacing = ppr.isSetSpacing() ? ppr.getSpacing() : ppr.addNewSpacing();
+        spacing.setLine(BigInteger.valueOf(440));
+        spacing.setLineRule(org.openxmlformats.schemas.wordprocessingml.x2006.main.STLineSpacingRule.EXACT);
         XWPFRun r = p.createRun();
         if (look != null) r.getCTR().setRPr((CTRPr) look.copy());
-        r.addTab();
     }
 
     private static void tickMark(XWPFParagraph p, CTRPr look) {
@@ -450,43 +432,64 @@ public final class TrainingAssessmentForm {
     }
 
     /** Case 1: Part I the questions with answers to choose from, Part II the essay questions; numbered through, with the points of each. */
-    private static void insertQuestions(XWPFDocument doc, XWPFParagraph anchor, List<Map<String, Object>> items, boolean key) {
+    private static void insertQuestions(XWPFDocument doc, XWPFParagraph anchor, List<Map<String, Object>> items, boolean key, boolean essayRestart) {
         CTRPr look = lookOf(anchor);
         List<Map<String, Object>> choice = new ArrayList<>(), essay = new ArrayList<>();
         for (Map<String, Object> q : items) (text(q.get("kind")).equals("ESSAY") ? essay : choice).add(q);
         if (!choice.isEmpty()) {
             XWPFParagraph part = before(doc, anchor);
             text(part, "Phần I: Câu hỏi trắc nghiệm / Part I: Multiple-choice questions", true, look);
-            for (Map<String, Object> q : choice) question(doc, anchor, q, key, look, PART_ONE);
+            for (Map<String, Object> q : choice) question(doc, anchor, q, q.get("no"), key, look, PART_ONE);
         }
         if (!essay.isEmpty()) {
             XWPFParagraph part = before(doc, anchor);
             part.setSpacingBefore(200);
             text(part, "Phần II: Câu hỏi tự luận / Part II: Essay questions", true, look);
-            for (Map<String, Object> q : essay) question(doc, anchor, q, key, look, PART_TWO);
+            int n = 0;
+            for (Map<String, Object> q : essay) question(doc, anchor, q, essayRestart ? (Object) (++n) : q.get("no"), key, look, PART_TWO);
         }
     }
 
-    private static void question(XWPFDocument doc, XWPFParagraph anchor, Map<String, Object> q, boolean key, CTRPr look, int part) {
+    /** The picture of a question (a data URL, PNG or JPEG), under its text, at most 12 cm wide and 8 cm high. */
+    private static void picture(XWPFDocument doc, XWPFParagraph anchor, Object image) {
+        if (!(image instanceof String data) || !data.startsWith("data:image/")) return;
+        try {
+            boolean png = data.startsWith("data:image/png");
+            byte[] bytes = java.util.Base64.getDecoder().decode(data.substring(data.indexOf(',') + 1));
+            java.awt.image.BufferedImage read = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(bytes));
+            double w = read == null ? 400 : read.getWidth(), h = read == null ? 300 : read.getHeight();
+            double scale = Math.min(Math.min(12.0 / 2.54 * 72 / w, 8.0 / 2.54 * 72 / h), 1.0);
+            XWPFParagraph p = before(doc, anchor);
+            p.setAlignment(ParagraphAlignment.LEFT);
+            p.createRun().addPicture(new java.io.ByteArrayInputStream(bytes), png ? XWPFDocument.PICTURE_TYPE_PNG : XWPFDocument.PICTURE_TYPE_JPEG, "question",
+                    org.apache.poi.util.Units.toEMU(w * scale), org.apache.poi.util.Units.toEMU(h * scale));
+        } catch (Exception e) {
+            // a picture that cannot be drawn is left out; it was checked when the question was saved
+        }
+    }
+
+    private static void question(XWPFDocument doc, XWPFParagraph anchor, Map<String, Object> q, Object number, boolean key, CTRPr look, int part) {
         String kind = text(q.get("kind"));
         XWPFParagraph head = before(doc, anchor);
         head.setSpacingBefore(120);
-        text(head, "Câu " + q.get("no") + ": ", true, look);
+        text(head, "Câu " + number + ": ", true, look);
         text(head, text(q.get("prompt")), false, look);
         text(head, "  (" + points(q.get("points")) + " điểm/ " + (new BigDecimal(String.valueOf(q.get("points"))).compareTo(BigDecimal.ONE) == 0 ? "point" : "points") + ")", false, look).setItalic(true);
+        picture(doc, anchor, q.get("image"));
         if ("MULTI".equals(kind)) {
             XWPFParagraph hint = before(doc, anchor);
-            hint.setIndentationLeft(360);
+            hint.setIndentationLeft(0);
             text(hint, "Chọn tất cả các đáp án đúng/ Choose all the right answers", false, look).setItalic(true);
         }
         if (part == PART_TWO) {
             if (key) {
                 XWPFParagraph model = before(doc, anchor);
-                model.setIndentationLeft(360);
+                model.setIndentationLeft(0);
                 text(model, "Đáp án mẫu/ Model answer: ", true, look);
                 text(model, text(q.get("modelAnswer")).isEmpty() ? "-" : text(q.get("modelAnswer")), false, look);
             } else {
-                for (int i = 0; i < ESSAY_LINES; i++) writingLine(before(doc, anchor), look);
+                int lines = q.get("answerLines") instanceof Number n && n.intValue() >= 1 ? Math.min(n.intValue(), 30) : ESSAY_LINES;
+                for (int i = 0; i < lines; i++) writingLine(before(doc, anchor), look);
             }
             return;
         }
@@ -495,13 +498,55 @@ public final class TrainingAssessmentForm {
         @SuppressWarnings("unchecked")
         List<String> correct = (List<String>) q.get("correct");
         if (options == null) return;
+        if ("TWO_COLUMNS".equals(text(q.get("optionLayout"))) && options.size() > 1) {
+            optionsInTwoColumns(doc, anchor, options, correct, key, look);
+            return;
+        }
         for (Map<String, Object> o : options) {
             boolean right = key && correct != null && correct.contains(text(o.get("id")));
             XWPFParagraph line = before(doc, anchor);
-            line.setIndentationLeft(720);
-            text(line, text(o.get("id")) + ". " + text(o.get("text")) + (right ? "  " : ""), right, look);
-            if (right) tickMark(line, look);
+            line.setIndentationLeft(0);
+            answer(line, right, text(o.get("text")), look);
         }
+    }
+
+    /** An answer to choose from: a box in front of it for the trainee to tick (no letter); in the key the box of a right answer has a cross and the answer is in bold. */
+    private static void answer(XWPFParagraph p, boolean right, String answer, CTRPr look) {
+        XWPFRun box = text(p, right ? "☒" : "☐", false, look);
+        box.setFontFamily("MS Gothic");
+        text(p, "  " + answer, right, look);
+    }
+
+    /** The answers of a question in two columns, in the order of the answers: 1st 2nd / 3rd 4th / ... (a table without borders, half of the width for each answer). */
+    private static void optionsInTwoColumns(XWPFDocument doc, XWPFParagraph anchor, List<Map<String, Object>> options, List<String> correct, boolean key, CTRPr look) {
+        XWPFTable table;
+        try (XmlCursor cursor = anchor.getCTP().newCursor()) {
+            table = doc.insertNewTbl(cursor);
+        }
+        table.setCellMargins(0, 0, 0, 0);
+        table.setWidth("100%");
+        table.setInsideHBorder(org.apache.poi.xwpf.usermodel.XWPFTable.XWPFBorderType.NONE, 0, 0, "auto");
+        table.setInsideVBorder(org.apache.poi.xwpf.usermodel.XWPFTable.XWPFBorderType.NONE, 0, 0, "auto");
+        table.setTopBorder(org.apache.poi.xwpf.usermodel.XWPFTable.XWPFBorderType.NONE, 0, 0, "auto");
+        table.setBottomBorder(org.apache.poi.xwpf.usermodel.XWPFTable.XWPFBorderType.NONE, 0, 0, "auto");
+        table.setLeftBorder(org.apache.poi.xwpf.usermodel.XWPFTable.XWPFBorderType.NONE, 0, 0, "auto");
+        table.setRightBorder(org.apache.poi.xwpf.usermodel.XWPFTable.XWPFBorderType.NONE, 0, 0, "auto");
+        XWPFTableRow row = table.getRow(0);
+        while (row.getTableCells().size() < 2) row.addNewTableCell();
+        for (int i = 0; i < options.size(); i++) {
+            if (i > 0 && i % 2 == 0) {
+                row = table.createRow();
+                while (row.getTableCells().size() < 2) row.addNewTableCell();
+            }
+            Map<String, Object> o = options.get(i);
+            boolean right = key && correct != null && correct.contains(text(o.get("id")));
+            XWPFTableCell cell = row.getCell(i % 2);
+            XWPFParagraph p = cell.getParagraphs().isEmpty() ? cell.addParagraph() : cell.getParagraphs().getFirst();
+            p.setIndentationLeft(i % 2 == 0 ? 0 : 120);
+            answer(p, right, text(o.get("text")), look);
+        }
+        for (XWPFTableRow r : table.getRows()) for (XWPFTableCell c : r.getTableCells()) c.setWidth("50%");
+        // The table has to be followed by a paragraph that is not the next question: the anchor is that paragraph.
     }
 
     /** Case 2: the checklist table of the form takes one row for each line (the last row of the template is the model of a line). */
@@ -551,6 +596,8 @@ public final class TrainingAssessmentForm {
                 String head = old.substring(0, Math.max(m.start(), rs) - rs);
                 String number = written ? "" : (!head.isEmpty() && Character.isLetter(head.charAt(head.length() - 1)) ? " " : "") + n;
                 runs.get(i).setText(head + number + old.substring(Math.min(m.end(), re) - rs), 0);
+                // the number is written like the words before it ("there are 4 questions" is in italic)
+                if (!written && i > 0) runs.get(i).setItalic(runs.get(i - 1).isItalic());
                 written = true;
             }
         }

@@ -19,7 +19,7 @@ import { day } from "../shared/trainingLabels";
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "Draft", PENDING_APPROVAL: "Pending Approval", EFFECTIVE: "Effective", OBSOLETED: "Obsoleted" };
 const STATUS_OPTIONS = [{ label: "All", value: "" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ label, value }))];
-const rowName = (r: TrainingMatrixRow) => (r.topicId ? `${r.topicCode} — ${r.topicName}` : `${r.documentNumber} — ${r.documentName}`);
+const rowName = (r: TrainingMatrixRow) => (r.topicText ? r.topicText : `${r.documentNumber} — ${r.documentName}`);
 type Diff = Awaited<ReturnType<typeof trainingMatrixApi.compare>>;
 
 /**
@@ -121,23 +121,23 @@ function CompareModal({ diff, onClose }: { diff: Diff; onClose: () => void }) {
         </p>
         <section>
           <h4 className="font-semibold text-slate-900">Added in version {diff.to}</h4>
-          <p className="mb-2 text-xs text-slate-500">Topics or documents that were not in version {diff.from}. The Job Roles are the ones that must be trained.</p>
+          <p className="mb-2 text-xs text-slate-500">Training Topics or documents that were not in version {diff.from}. The Work Positions are the ones that must be trained.</p>
           {diff.added.length === 0 ? none : <ul className="space-y-2">{diff.added.map((r, i) => <li key={i} className="rounded-lg border border-slate-200 p-3"><div className="font-medium">{rowName(r)}</div><div className="text-xs text-slate-600">For: {list(r.positionIds)}{r.annualRequired ? " · every year" : ""}</div></li>)}</ul>}
         </section>
         <section>
           <h4 className="font-semibold text-slate-900">Removed in version {diff.to}</h4>
-          <p className="mb-2 text-xs text-slate-500">Topics or documents that were in version {diff.from} and are no longer required.</p>
+          <p className="mb-2 text-xs text-slate-500">Training Topics or documents that were in version {diff.from} and are no longer required.</p>
           {diff.removed.length === 0 ? none : <ul className="space-y-2">{diff.removed.map((r, i) => <li key={i} className="rounded-lg border border-slate-200 p-3"><div className="font-medium">{rowName(r)}</div><div className="text-xs text-slate-600">Was for: {list(r.positionIds)}{r.annualRequired ? " · every year" : ""}</div></li>)}</ul>}
         </section>
         <section>
-          <h4 className="font-semibold text-slate-900">Same topic, different Job Roles or yearly rule</h4>
-          <p className="mb-2 text-xs text-slate-500">The topic or document is in both versions, but who must be trained, or the yearly repeat, is not the same.</p>
+          <h4 className="font-semibold text-slate-900">Same Training Topic, different Work Positions or yearly rule</h4>
+          <p className="mb-2 text-xs text-slate-500">The Training Topic or document is in both versions, but who must be trained, or the yearly repeat, is not the same.</p>
           {diff.changed.length === 0 ? none : (
             <ul className="space-y-2">
               {diff.changed.map((r, i) => (
                 <li key={i} className="rounded-lg border border-slate-200 p-3">
                   <div className="font-medium">{rowName(r)}</div>
-                  <div className="text-xs text-slate-600">Job Roles: {list(r.previousPositionIds)} → {list(r.positionIds)}</div>
+                  <div className="text-xs text-slate-600">Work Positions: {list(r.previousPositionIds)} → {list(r.positionIds)}</div>
                   {r.previousAnnualRequired !== r.annualRequired && <div className="text-xs text-slate-600">Every year: {r.previousAnnualRequired ? "yes" : "no"} → {r.annualRequired ? "yes" : "no"}</div>}
                 </li>
               ))}

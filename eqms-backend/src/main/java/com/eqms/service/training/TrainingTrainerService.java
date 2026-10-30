@@ -63,7 +63,7 @@ public class TrainingTrainerService {
         }
         boolean gmp = jdbc.queryForObject("""
             select count(*) from training_records r left join training_record_voids v on v.record_id = r.id
-             where r.person_user_id=? and v.id is null and lower(r.topic_text) like '%gmp%'
+             where r.person_user_id=? and v.id is null and r.result <> 'TRAINER' and lower(r.topic_text) like '%gmp%'
             """, Integer.class, trainer) > 0;
         boolean grantedByQa = users.findById(trainer).map(u -> access.has(u, QUALIFIED)).orElse(false);
         List<Map<String, Object>> topics = new ArrayList<>();
@@ -72,7 +72,7 @@ public class TrainingTrainerService {
         for (Map<String, Object> topic : jdbc.queryForList("select topic_text, document_id, document_number from training_session_topics where session_id=?", sessionId)) {
             boolean trained = jdbc.queryForObject("""
                 select count(*) from training_records r left join training_record_voids v on v.record_id = r.id
-                 where r.person_user_id=? and v.id is null and ((cast(? as varchar) is not null and r.document_number = cast(? as varchar)) or lower(r.topic_text) = lower(?))
+                 where r.person_user_id=? and v.id is null and r.result <> 'TRAINER' and ((cast(? as varchar) is not null and r.document_number = cast(? as varchar)) or training_topic_key(r.topic_text) = training_topic_key(?))
                 """, Integer.class, trainer, topic.get("document_number"), topic.get("document_number"), topic.get("topic_text")) > 0;
             boolean involved = topic.get("document_id") != null && jdbc.queryForObject("""
                 select (select count(*) from documents d where d.id=? and d.author_user_id=?) + (select count(*) from document_workflow_participants p where p.document_id=? and p.user_id=?)

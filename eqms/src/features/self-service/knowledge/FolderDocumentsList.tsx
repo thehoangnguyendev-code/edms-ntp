@@ -28,6 +28,11 @@ interface DocumentItem {
 }
 
 interface FolderDocumentsListProps {
+    searchQuery: string;
+    onSearch: (query: string) => void;
+    sortField: SortField;
+    sortOrder: "asc" | "desc";
+    onSort: (field: SortField, direction: "asc" | "desc") => void;
     departmentName: string;
     documents: DocumentItem[];
     onBack: () => void;
@@ -47,12 +52,10 @@ export const FolderDocumentsList: React.FC<FolderDocumentsListProps> = ({
     departmentName,
     documents,
     onBack,
-    onOpenDocument
+    onOpenDocument,
+    searchQuery, onSearch, sortField, sortOrder, onSort,
 }) => {
     const [viewMode, setViewMode] = useState<"grid" | "list">("list");
-    const [searchQuery, setSearchQuery] = useState("");
-    const [sortField, setSortField] = useState<SortField>("name");
-    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
     const handleViewDetails = (doc: DocumentItem) => {
         onOpenDocument?.(doc.id);
         const params = new URLSearchParams({ name: doc.name });
@@ -62,45 +65,8 @@ export const FolderDocumentsList: React.FC<FolderDocumentsListProps> = ({
         window.open(`${ROUTES.DOCUMENTS.KNOWLEDGE_PREVIEW(doc.id)}?${params.toString()}`, "_blank", "noopener,noreferrer");
     };
 
-    const filteredAndSortedDocs = useMemo(() => {
-        let result = documents.filter(doc =>
-            doc.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-
-        result.sort((a, b) => {
-            let comparison = 0;
-            if (sortField === "name") comparison = a.name.localeCompare(b.name);
-            else if (sortField === "fileType") comparison = a.fileType.localeCompare(b.fileType);
-            else if (sortField === "lastOpened") {
-                const dateA = new Date(a.lastOpened.split('/').reverse().join('-'));
-                const dateB = new Date(b.lastOpened.split('/').reverse().join('-'));
-                comparison = dateA.getTime() - dateB.getTime();
-            }
-            else if (sortField === "fileSize") {
-                const getBytes = (size: string) => {
-                    if (!size || size === "N/A" || size === "--") return 0;
-                    const value = parseFloat(size);
-                    if (size.includes("KB")) return value * 1024;
-                    if (size.includes("MB")) return value * 1024 * 1024;
-                    return value;
-                };
-                comparison = getBytes(a.fileSize) - getBytes(b.fileSize);
-            }
-
-            return sortOrder === "asc" ? comparison : -comparison;
-        });
-
-        return result;
-    }, [documents, searchQuery, sortField, sortOrder]);
-
-    const handleSort = (field: SortField) => {
-        if (sortField === field) {
-            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-        } else {
-            setSortField(field);
-            setSortOrder("asc");
-        }
-    };
+    const filteredAndSortedDocs = documents;
+    const handleSort = (field: SortField) => onSort(field, field === sortField && sortOrder === "asc" ? "desc" : "asc");
 
     const SortIcon = ({ field }: { field: SortField }) => {
         if (sortField !== field) return null;
@@ -142,7 +108,7 @@ export const FolderDocumentsList: React.FC<FolderDocumentsListProps> = ({
                                     type="text"
                                     placeholder="Search in this folder..."
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(e) => onSearch(e.target.value)}
                                     className="block w-full pl-10 pr-10 h-9 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-all placeholder:text-slate-400 shadow-sm"
                                 />
                             </div>

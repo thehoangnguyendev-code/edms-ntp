@@ -223,10 +223,13 @@ export const ROUTES = {
     },
     TRAINING_ADMINISTRATION: {
       PROPERTIES: '/settings/administration/training/properties',
-      TOPICS: '/settings/administration/training/topics',
+      CODE_RULES: '/settings/administration/training/code-rules',
       VENDORS: '/settings/administration/training/vendors',
       JOB_ROLES: '/settings/administration/training/job-roles',
       NOTIFICATIONS: '/settings/administration/training/notifications',
+      ANNEX: '/settings/administration/training/annex',
+      ANNEX_DETAIL: (code: string) => `/settings/administration/training/annex/${code}`,
+      ANNEX_EDIT: (code: string) => `/settings/administration/training/annex/${code}/edit`,
     },
   },
 

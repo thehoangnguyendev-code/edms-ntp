@@ -22,4 +22,12 @@ public class UserAuthorizationSummaryController {
     public UserAuthorizationSummaryResponse getSummary(@PathVariable UUID id) {
         return service.getSummary(id);
     }
+
+    @GetMapping("/{id}/authorization-summary/paged")
+    public com.eqms.dto.user.UserAuthorizationPageResponse querySummary(@PathVariable UUID id,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String search,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "1") int page,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "10") int limit) {
+        return service.querySummary(id, search, page, limit);
+    }
 }

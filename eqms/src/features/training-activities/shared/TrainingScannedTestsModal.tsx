@@ -30,7 +30,7 @@ const canShow = (e: TrainingPaperEvidence) => e.contentType === "application/pdf
  */
 export function TrainingScannedTestsModal({ personId, activityId, onClose }: { personId: string; activityId: string; onClose: () => void }) {
   const { showToast } = useToast();
-  const [heading, setHeading] = useState<{ trainingNumber: string; trainingTitle: string }>();
+  const [heading, setHeading] = useState<{ trainingNumber: string; trainingTopics: string }>();
   const [showing, setShowing] = useState<{ evidence: TrainingPaperEvidence; url?: string }>();
   const [busy, setBusy] = useState(false);
   const menu = usePortalDropdown();
@@ -38,7 +38,7 @@ export function TrainingScannedTestsModal({ personId, activityId, onClose }: { p
   const fetcher = useCallback(
     async (params: Record<string, string | number | boolean | undefined>) => {
       const page = await trainingFilesApi.personEvidence(personId, activityId, params);
-      setHeading({ trainingNumber: page.trainingNumber, trainingTitle: page.trainingTitle });
+      setHeading({ trainingNumber: page.trainingNumber, trainingTopics: page.trainingTopics });
       return page;
     },
     [personId, activityId],

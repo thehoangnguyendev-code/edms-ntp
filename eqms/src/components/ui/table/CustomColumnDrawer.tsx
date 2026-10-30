@@ -143,7 +143,7 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
           footer={
             <div className="flex items-center justify-between gap-2">
               <Button type="button" variant="ghost" size="sm" onClick={reset} disabled={saving}>
-                Reset to default
+                Reset to Default
               </Button>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)} disabled={saving}>

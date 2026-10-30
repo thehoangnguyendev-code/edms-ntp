@@ -36,11 +36,28 @@ class TrainingTrainerServiceTest {
         when(jdbc.queryForList(contains("from training_sessions s join"), eq(sessionId))).thenReturn(List.of(Map.of("trainer_user_id", trainerId, "organizer_department_id", UUID.randomUUID())));
         when(jdbc.queryForObject(contains("lower(r.topic_text) like '%gmp%'"), eq(Integer.class), eq(trainerId))).thenReturn(1);
         when(jdbc.queryForList(contains("from training_session_topics"), eq(sessionId))).thenReturn(List.of(Map.of("topic_text", "Gowning")));
-        when(jdbc.queryForObject(contains("lower(r.topic_text) = lower(?)"), eq(Integer.class), any(), any(), any(), any())).thenReturn(0);
+        when(jdbc.queryForObject(contains("training_topic_key(r.topic_text) = training_topic_key(?)"), eq(Integer.class), any(), any(), any(), any())).thenReturn(0);
         when(jdbc.queryForList(contains("training_trainer_exceptions"), eq(sessionId))).thenReturn(List.of());
         when(users.findById(trainerId)).thenReturn(Optional.of(trainer));
         when(access.has(trainer, "training.trainer.qualified")).thenReturn(holdsPermission);
         return new TrainingTrainerService(jdbc, access, null, null, null, null, users).qualification(sessionId);
+    }
+
+    /** Owner decision 2026-10-28: the record "Trainer" (written when the person gave a training) counts for the matrix, not as proof that the trainer was trained on the topic (SOP.0003 5.1). */
+    @Test
+    void theRecordWrittenForATrainerIsNotCountedAsTrainingOfTheTrainer() {
+        when(jdbc.queryForList(contains("from training_sessions s join"), eq(sessionId))).thenReturn(List.of(Map.of("trainer_user_id", trainerId, "organizer_department_id", UUID.randomUUID())));
+        // both queries only answer when they leave the Trainer records out; a query that does not would get the default (null) and fail
+        when(jdbc.queryForObject(contains("r.result <> 'TRAINER' and lower(r.topic_text) like '%gmp%'"), eq(Integer.class), eq(trainerId))).thenReturn(1);
+        when(jdbc.queryForList(contains("from training_session_topics"), eq(sessionId))).thenReturn(List.of(Map.of("topic_text", "Gowning")));
+        when(jdbc.queryForObject(contains("r.result <> 'TRAINER' and ((cast(? as varchar)"), eq(Integer.class), any(), any(), any(), any())).thenReturn(0);
+        when(jdbc.queryForList(contains("training_trainer_exceptions"), eq(sessionId))).thenReturn(List.of());
+        when(users.findById(trainerId)).thenReturn(Optional.of(trainer));
+        when(access.has(trainer, "training.trainer.qualified")).thenReturn(false);
+
+        Map<String, Object> q = new TrainingTrainerService(jdbc, access, null, null, null, null, users).qualification(sessionId);
+
+        assertThat(q).containsEntry("gmpTrained", true).containsEntry("qualified", false);
     }
 
     @Test

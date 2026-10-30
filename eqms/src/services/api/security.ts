@@ -317,10 +317,11 @@ export const securityApi = {
   getEffectiveAccess: async (
     accessProfileId: string,
     documentTypeId?: string,
+    filters?: { search?: string; outcome?: string },
   ): Promise<EffectiveAccessResponse> => {
     const response = await api.get<EffectiveAccessResponse>(
       `/security/access-profiles/${accessProfileId}/effective-access`,
-      { params: documentTypeId ? { documentTypeId } : undefined },
+      { params: { documentTypeId, ...filters } },
     );
     return response.data;
   },
@@ -346,6 +347,7 @@ export interface EffectiveAccessRow {
 }
 
 export interface EffectiveAccessResponse {
+  summary?: { total: number; allowed: number; denied: number };
   accessProfileId: string;
   accessProfileName: string;
   documentTypeId: string | null;

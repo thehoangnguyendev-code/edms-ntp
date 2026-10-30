@@ -340,6 +340,15 @@ public class ExecutedRecordService {
             Integer page, Integer limit, String search,
             String formDocumentId, String controlledCopyId, String filledFrom, String filledTo, String sortBy, String sortDirection
     ) {
+        return list(page, limit, search, formDocumentId, controlledCopyId, filledFrom, filledTo, null, null, sortBy, sortDirection);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ExecutedRecordResponse> list(
+            Integer page, Integer limit, String search,
+            String formDocumentId, String controlledCopyId, String filledFrom, String filledTo,
+            String recordedFrom, String recordedTo, String sortBy, String sortDirection
+    ) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         requirePermission(currentUser, P_VIEW, "Not permitted to view Executed Records");
         int safePage = page == null || page < 1 ? 1 : page;
@@ -383,6 +392,14 @@ public class ExecutedRecordService {
             java.time.LocalDate to = parseDate(filledTo);
             if (to != null) {
                 predicates.add(cb.lessThan(root.<Instant>get("filledAt"), to.plusDays(1).atStartOfDay(SYSTEM_ZONE).toInstant()));
+            }
+            java.time.LocalDate recordedStart = parseDate(recordedFrom);
+            if (recordedStart != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.<Instant>get("createdAt"), recordedStart.atStartOfDay(SYSTEM_ZONE).toInstant()));
+            }
+            java.time.LocalDate recordedEnd = parseDate(recordedTo);
+            if (recordedEnd != null) {
+                predicates.add(cb.lessThan(root.<Instant>get("createdAt"), recordedEnd.plusDays(1).atStartOfDay(SYSTEM_ZONE).toInstant()));
             }
             return cb.and(predicates.toArray(Predicate[]::new));
         };

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DashboardAdminStats, DashboardPendingWorkflowAction, DashboardSummary } from '@/services/api/dashboard';
@@ -15,6 +15,8 @@ const api = vi.hoisted(() => ({
 const documents = vi.hoisted(() => ({ getDocumentsPage: vi.fn() }));
 
 vi.mock('@/services/api/dashboard', () => ({ dashboardApi: api }));
+vi.mock('@/services/api/userUiPreferences', () => ({ DASHBOARD_LAYOUT_PREFERENCE: 'dashboard-layout', userUiPreferencesApi: { get: vi.fn().mockResolvedValue({}), save: vi.fn() } }));
+vi.mock('@/components/ui/toast/Toast', () => ({ useToast: () => ({ showToast: vi.fn() }) }));
 vi.mock('@/services/api/documents', () => ({ documentApi: documents }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { firstName: 'Ada', lastName: 'Lovelace', username: 'ada' } }) }));
 vi.mock('@/features/documents/shared/useDocumentPermissions', () => ({ useDocumentPermissions: () => ({ canCreateDocumentShell: true }) }));
@@ -81,16 +83,17 @@ describe('UserDashboard figures', () => {
     expect(screen.getByRole('img', { name: 'Review: 40, Share of open items' })).toBeInTheDocument();
   });
 
-  it('filters loaded actions by search and says so when nothing matches', async () => {
+  it('sends pending-work search to the server and renders its response without filtering locally', async () => {
     api.getSummary.mockResolvedValue({ ...summary, myPendingTasks: 2 });
-    api.getPendingWorkflowActions.mockResolvedValue([task(1), task(2)]);
+    api.getPendingWorkflowActions.mockImplementation(async (query = '') => query === 'sop-2' ? [task(2)] : query === 'zzz' ? [] : [task(1), task(2)]);
     renderInRouter(<UserDashboard />);
     await screen.findByText('Procedure 1');
     fireEvent.change(screen.getByLabelText('Search pending work'), { target: { value: 'sop-2' } });
-    expect(screen.queryByText('Procedure 1')).toBeNull();
+    await waitFor(() => expect(api.getPendingWorkflowActions).toHaveBeenLastCalledWith('sop-2'));
+    await waitFor(() => expect(screen.queryByText('Procedure 1')).toBeNull());
     expect(screen.getByText('Procedure 2')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Search pending work'), { target: { value: 'zzz' } });
-    expect(screen.getByText('No document matches your search')).toBeInTheDocument();
+    expect(await screen.findByText('Nothing is waiting for you')).toBeInTheDocument();
   });
 
   it('shows a dash and an error instead of zeros when the summary cannot be loaded', async () => {

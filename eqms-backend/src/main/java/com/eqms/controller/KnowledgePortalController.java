@@ -40,8 +40,20 @@ public class KnowledgePortalController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "name") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDirection,
+            @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(service.browse(hierarchyId, kb, path, page, limit, sortBy, sortDirection, search));
+    }
+
+    @GetMapping("/documents")
+    public ResponseEntity<BrowseResult> queryDocuments(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "search") String collection,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "name") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDirection) {
-        return ResponseEntity.ok(service.browse(hierarchyId, kb, path, page, limit, sortBy, sortDirection));
+        return ResponseEntity.ok(service.queryDocuments(search, collection, page, limit, sortBy, sortDirection));
     }
 
     @GetMapping("/search")

@@ -841,3 +841,21 @@ select:-webkit-autofill {
   letter-spacing: inherit !important;
   -webkit-text-fill-color: currentColor;
 }
+
+/* Chrome paints an unfocused saved-login preview through its first-line style.
+   Match the actual input typography there too, rather than waiting for focus.
+   Keep the size inherited from the input so mobile/OTP sizing stays intact. */
+input.auth-input,
+input.auth-input:-webkit-autofill {
+  font-family: var(--font-sans) !important;
+  font-weight: 400 !important;
+  letter-spacing: normal !important;
+}
+
+input.auth-input::first-line,
+input.auth-input:-webkit-autofill::first-line {
+  font-family: var(--font-sans) !important;
+  font-size: inherit !important;
+  font-weight: 400 !important;
+  letter-spacing: normal !important;
+}

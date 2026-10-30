@@ -45,7 +45,7 @@ const asPerson = (s: TrainingSuggestedParticipant): TrainingPerson => ({ id: s.p
  * outside (a visitor or a temporary contractor). The people come from the server, in the scope the person may act on. `onChange` gets what is chosen in the tab that is open.
  * `matrix` is given only when the activity and the session exist; without it the Matrix tab is not shown.
  */
-export function TrainingAssigneePicker({ onChange, matrix }: { onChange: (selection: AssigneeSelection) => void; matrix?: TrainingSuggestedParticipant[] }) {
+export function TrainingAssigneePicker({ onChange, matrix, initialPeople }: { onChange: (selection: AssigneeSelection) => void; matrix?: TrainingSuggestedParticipant[]; /** People that are already chosen when the screen opens (for example from the initial training of a new employee). */ initialPeople?: TrainingPerson[] }) {
   const matrixPeople = useMemo(() => Array.from(new Map((matrix ?? []).map((m) => [m.personId, m])).values()), [matrix]);
   const hasMatrix = matrix !== undefined;
   const [scope, setScope] = useState<Scope>("individual");
@@ -56,7 +56,7 @@ export function TrainingAssigneePicker({ onChange, matrix }: { onChange: (select
   const [chosenMatrix, setChosenMatrix] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [found, setFound] = useState<TrainingPerson[]>([]);
-  const [picked, setPicked] = useState<Record<string, TrainingPerson>>({});
+  const [picked, setPicked] = useState<Record<string, TrainingPerson>>(() => Object.fromEntries((initialPeople ?? []).map((p) => [p.id, p])));
   const [inUnits, setInUnits] = useState<TrainingPerson[]>([]);
   const [inDepartments, setInDepartments] = useState<TrainingPerson[]>([]);
   const [outsiders, setOutsiders] = useState<Outsider[]>([{ name: "", org: "" }]);

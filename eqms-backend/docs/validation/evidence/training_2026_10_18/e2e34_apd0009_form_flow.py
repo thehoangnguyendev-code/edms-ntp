@@ -57,13 +57,13 @@ QUESTIONS = [
 CHECK = [{'kind': 'CHECK', 'prompt': p, 'options': [], 'correct': [c], 'points': 1} for p, c in (
     ('Rửa tay và sát khuẩn trước khi mặc trang phục vô trùng', 'CORRECT'), ('Mang găng tay đã khử trùng khi lấy mẫu', 'CORRECT'), ('Có thể dùng lại dụng cụ lấy mẫu mà không cần tiệt trùng', 'INCORRECT'),
     ('Ghi nhãn mẫu ngay sau khi lấy', 'CORRECT'), ('Để mẫu ở khu vực chung chờ bàn giao', 'INCORRECT'), ('Ghi nhật ký lấy mẫu đầy đủ, ký và ghi ngày', 'CORRECT'))]
-code, a, text = attempt(designer, 'POST', '/training/assessments', {'title': 'E2E-TEST Kiểm tra đào tạo SOP.0009', 'kind': 'QUESTIONS', 'durationMinutes': 45, 'items': QUESTIONS})
+code, a, text = attempt(designer, 'POST', '/training/assessments', {'name': 'E2E-TEST Kiểm tra đào tạo SOP.0009', 'kind': 'QUESTIONS', 'durationMinutes': 45, 'items': QUESTIONS})
 check('2.1 the test is created (total 10 points, 45 minutes)', code == 200 and float(a['maxScore']) == 10 and a['durationMinutes'] == 45, (code, text))
 designer.call('POST', f"/training/assessments/{a['id']}/submit")
 code, a, text = attempt(approver, 'POST', f"/training/assessments/{a['id']}/approve", {'signatureToken': sign(approver)})
 check('2.2 approved by another person: Effective', code == 200 and a['status'] == 'EFFECTIVE', (code, text))
 exam_def = a
-code, c, text = attempt(designer, 'POST', '/training/assessments', {'title': 'E2E-TEST Checklist lấy mẫu vô trùng', 'kind': 'CHECKLIST', 'items': CHECK})
+code, c, text = attempt(designer, 'POST', '/training/assessments', {'name': 'E2E-TEST Checklist lấy mẫu vô trùng', 'kind': 'CHECKLIST', 'items': CHECK})
 designer.call('POST', f"/training/assessments/{c['id']}/submit")
 code, c, text = attempt(approver, 'POST', f"/training/assessments/{c['id']}/approve", {'signatureToken': sign(approver)})
 check('2.3 the checklist is created and approved (no score)', code == 200 and c['status'] == 'EFFECTIVE' and c['maxScore'] is None, (code, text))

@@ -62,7 +62,7 @@ export function TrainingFileDropzone({ label, description, accept, hint, maxMb, 
               <p className="truncate text-sm font-medium text-slate-900">{existing.name}</p>
               <p className="mt-0.5 text-xs text-slate-500">{formatSize(existing.size)}{existing.note ? ` · ${existing.note}` : ""}</p>
             </div>
-            {existing.onPreview && <button type="button" onClick={existing.onPreview} className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-slate-200" title="Preview in a new tab" aria-label="Preview in a new tab"><Eye className="h-4 w-4 text-slate-500 hover:text-emerald-600" /></button>}
+            {existing.onPreview && <button type="button" onClick={existing.onPreview} className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-slate-200" title="Preview" aria-label="Preview"><Eye className="h-4 w-4 text-slate-500 hover:text-emerald-600" /></button>}
             <button type="button" onClick={existing.onDownload} className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-slate-200" title="Download" aria-label="Download"><Download className="h-4 w-4 text-slate-500 hover:text-emerald-600" /></button>
             {existing.onRemove && <button type="button" onClick={existing.onRemove} className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-slate-200" title="Remove file" aria-label="Remove file"><Trash2 className="h-4 w-4 text-slate-500 hover:text-red-600" /></button>}
           </div>

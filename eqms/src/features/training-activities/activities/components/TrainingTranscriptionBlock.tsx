@@ -1,5 +1,5 @@
 import { sessionStarted } from "@/services/api/trainingActivities";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
@@ -9,6 +9,7 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { Select } from "@/components/ui/select/Select";
 import { useToast } from "@/components/ui/toast/Toast";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
+import { TablePagination } from "@/components/ui/table/TablePagination";
 import { trainingError, type TrainingTranscriptionLine, trainingFilesApi, trainingTranscriptionApi, type TrainingActivityDetail, type TrainingPaperEvidence, type TrainingSession, type TrainingTranscription } from "@/services/api/trainingActivities";
 import { Input, Textarea } from "../../shared/TrainingFields";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
@@ -34,6 +35,13 @@ type Row = { state: string; got: string; max: string; reason: string };
 export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVerify, onChanged }: { activity: TrainingActivityDetail; userId?: string; canEnter: boolean; canVerify: boolean; onChanged: () => void }) {
   const { showToast } = useToast();
   const [items, setItems] = useState<TrainingTranscription[]>([]);
+  const [pendingSessions, setPendingSessions] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(1);
+  const [queryState, setQueryState] = useState<"loading" | "ready" | "error">("loading");
+  const generation = useRef(0);
   const [evidence, setEvidence] = useState<TrainingPaperEvidence[]>([]);
   const [entering, setEntering] = useState<TrainingSession>();
   const [viewing, setViewing] = useState<TrainingTranscription>();
@@ -42,21 +50,29 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
-    trainingTranscriptionApi.list(activity.id).then(setItems).catch(() => setItems([]));
+    const request = ++generation.current;
+    setQueryState("loading");
+    trainingTranscriptionApi.listPage(activity.id, page, limit).then((result) => {
+      if (request !== generation.current) return;
+      setItems(result.data); setPendingSessions(result.pendingSessionIds); setTotal(result.pagination.total);
+      setQueryState("ready");
+      const nextPages = Math.max(1, result.pagination.totalPages); setPages(nextPages);
+      if (page > nextPages) setPage(nextPages);
+    }).catch(() => { if (request === generation.current) { setItems([]); setPendingSessions([]); setTotal(0); setQueryState("error"); } });
     if (canEnter) trainingFilesApi.list(activity.id).then((f) => setEvidence(f.evidence.filter((e) => e.kind === "ATTENDANCE_SHEET" || e.kind === "ASSESSMENT"))).catch(() => setEvidence([]));
-  }, [activity.id, canEnter]);
-  useEffect(load, [load]);
+  }, [activity.id, canEnter, page, limit]);
+  useEffect(() => { load(); return () => { generation.current++; }; }, [load]);
   useEntityChanged(["TRAINING"], load);
 
   const fail = (e: unknown) => showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
   const done = (title: string) => { showToast({ type: "success", title, message: activity.trainingNumber }); load(); onChanged(); };
 
   const sessions = activity.sessions.filter((s) => sessionStarted(s) && (s.deliveryMode ?? "ELECTRONIC") !== "ELECTRONIC");
-  const waiting = (sessionId: string) => items.some((t) => t.sessionId === sessionId && t.status === "ENTERED");
+  const waiting = (sessionId: string) => pendingSessions.includes(sessionId);
   const open = (sessionId: string) => activity.participants.filter((p) => p.sessionId === sessionId && p.state === "INVITED");
 
   const columns: DataTableColumn<TrainingTranscription>[] = [
-    { id: "rowNo", header: "No.", locked: true, cell: (_t, i) => i + 1 },
+    { id: "rowNo", header: "No.", locked: true, cell: (_t, i) => (page - 1) * limit + i + 1 },
     { id: "session", header: "Session", cell: (t) => `S${t.sessionNo}` },
     { id: "status", header: "Status", cell: (t) => <Badge color={STATUS_COLOR[t.status]}>{STATUS_LABEL[t.status]}</Badge> },
     { id: "lines", header: "Lines", cell: (t) => t.lines.length },
@@ -77,7 +93,7 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
     },
   ];
 
-  if (sessions.length === 0 && items.length === 0) return null;
+  if (queryState === "ready" && sessions.length === 0 && total === 0) return null;
   return (
     <>
       <TabBlock title="Results from paper">
@@ -85,22 +101,24 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
           Type what the signed paper says, with the scan attached. A different person then checks the lines against the scan and signs; only then are attendance and scores recorded.
           {canEnter && sessions.length > 0 && " Use the button of the session."}
         </p>
+        {queryState === "error" && <p role="alert" className="px-4 text-sm text-red-700">Unable to load transcription status. Try again.</p>}
         {canEnter && sessions.length > 0 && (
           <div className="flex flex-wrap gap-2 px-4 pb-3">
             {sessions.map((s) => (
-              <Button key={s.id} size="sm" variant="outline-emerald" disabled={waiting(s.id) || open(s.id).length === 0} onClick={() => setEntering(s)}>
-                Type results of session {s.sessionNo}{waiting(s.id) ? " (waiting to be checked)" : open(s.id).length === 0 ? " (nobody left)" : ""}
+              <Button key={s.id} size="sm" variant="outline-emerald" disabled={queryState !== "ready" || waiting(s.id) || open(s.id).length === 0} onClick={() => setEntering(s)}>
+                Type results of session {s.sessionNo}{queryState === "loading" ? " (loading)" : waiting(s.id) ? " (waiting to be checked)" : open(s.id).length === 0 ? " (nobody left)" : ""}
               </Button>
             ))}
           </div>
         )}
-        <DataTable rows={items} getRowKey={(t) => t.id} columns={columns} emptyState={<p className="p-4 text-sm text-slate-500">Nothing typed from paper yet.</p>} />
+        <DataTable rows={items} getRowKey={(t) => t.id} columns={columns} emptyState={<p className="p-4 text-sm text-slate-500">Nothing typed from paper yet.</p>}
+          pagination={total > 0 ? <TablePagination currentPage={page} totalPages={pages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} /> : undefined} />
       </TabBlock>
 
       {entering && (
         <EnterDialog
           session={entering}
-          people={open(entering.id).map((p) => ({ id: p.id, name: p.fullName }))}
+          people={open(entering.id).map((p) => ({ id: p.id, name: p.fullName, noAssessment: (p.participationRole ?? "TRAINEE") !== "TRAINEE" }))}
           evidence={evidence}
           busy={busy}
           onClose={() => setEntering(undefined)}
@@ -145,7 +163,7 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
         changes={statusChange("Entered", "Verified", "Typed results")}
         meaningDisplayName="Transcription Verified"
         meaningCode="TRAINING_TRANSCRIPTION_VERIFIED"
-        targetDetails={{ code: activity.trainingNumber, title: activity.trainingTitle, revision: "" }}
+        targetDetails={{ code: activity.trainingNumber, title: (activity.trainingTopics ?? ""), revision: "" }}
       />
     </>
   );
@@ -161,7 +179,7 @@ function RejectDialog({ busy, onClose, onSave }: { busy: boolean; onClose: () =>
 }
 
 function EnterDialog({ session, people, evidence, busy, onClose, onSave }: {
-  session: TrainingSession; people: { id: string; name: string }[]; evidence: TrainingPaperEvidence[]; busy: boolean; onClose: () => void;
+  session: TrainingSession; people: { id: string; name: string; /** A trainer, a person who only attends or is only listed: no score is typed for them. */ noAssessment?: boolean }[]; evidence: TrainingPaperEvidence[]; busy: boolean; onClose: () => void;
   onSave: (body: { evidenceId: string; idempotencyKey: string; lateReason?: string; lines: { participantId: string; state: string; absenceReason?: string; scoreObtained?: number; scoreMax?: number }[] }) => void;
 }) {
   const scored = Boolean(session.assessmentMethod) && session.assessmentMethod !== "SELF_READING_CONFIRMATION";
@@ -175,7 +193,7 @@ function EnterDialog({ session, people, evidence, busy, onClose, onSave }: {
   const valid = evidenceId && people.every((p) => {
     const r = rows[p.id];
     if (r.state === "ABSENT") return r.reason.trim().length > 0;
-    if (!scored) return true;
+    if (!scored || p.noAssessment) return true;
     const got = num(r.got), max = num(r.max);
     return Number.isFinite(got) && Number.isFinite(max) && max > 0 && got >= 0 && got <= max;
   });
@@ -189,7 +207,7 @@ function EnterDialog({ session, people, evidence, busy, onClose, onSave }: {
         lateReason: late.trim() || undefined,
         lines: people.map((p) => {
           const r = rows[p.id];
-          return r.state === "ABSENT" ? { participantId: p.id, state: "ABSENT", absenceReason: r.reason.trim() } : { participantId: p.id, state: "ATTENDED", ...(scored ? { scoreObtained: num(r.got), scoreMax: num(r.max) } : {}) };
+          return r.state === "ABSENT" ? { participantId: p.id, state: "ABSENT", absenceReason: r.reason.trim() } : { participantId: p.id, state: "ATTENDED", ...(scored && !p.noAssessment ? { scoreObtained: num(r.got), scoreMax: num(r.max) } : {}) };
         }),
       })}
       title={`Type the Results of Session ${session.sessionNo}`}
@@ -217,7 +235,9 @@ function EnterDialog({ session, people, evidence, busy, onClose, onSave }: {
                 <div className="md:col-span-3"><Select value={r.state} options={[{ value: "ATTENDED", label: "Attended" }, { value: "ABSENT", label: "Absent" }]} aria-label={`Attendance of ${p.name}`} onChange={(v) => set(p.id, { state: v })} /></div>
                 {r.state === "ABSENT"
                   ? <div className="md:col-span-6"><Input placeholder="Reason for the absence" aria-label={`Reason of ${p.name}`} value={r.reason} onChange={(e) => set(p.id, { reason: e.target.value })} /></div>
-                  : scored && (
+                  : scored && p.noAssessment
+                    ? <div className="text-sm text-slate-500 md:col-span-6">Takes no assessment</div>
+                    : scored && (
                     <div className="flex items-center gap-2 md:col-span-6">
                       <Input type="number" inputMode="decimal" min={0} step="0.01" placeholder="Score" aria-label={`Score of ${p.name}`} value={r.got} onChange={(e) => set(p.id, { got: e.target.value })} />
                       <span className="text-slate-400">/</span>

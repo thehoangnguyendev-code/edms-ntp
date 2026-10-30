@@ -50,7 +50,7 @@ public class TrainingImpactService {
         """;
 
     private static final String BASE = """
-        select a.id, a.training_number, a.training_title, a.status as activity_status, a.document_id, a.document_number, a.document_name, a.revision_number, a.kind_reason, a.organizer_department_id,
+        select a.id, a.training_number, training_activity_topics(a.id) as training_topics, a.status as activity_status, a.document_id, a.document_number, a.document_name, a.revision_number, a.kind_reason, a.organizer_department_id,
                d.name as department_name, a.created_at, x.outcome, x.assessed_at, ux.full_name as assessed_by_name, x.reason as assessment_reason,
                case when x.id is null then 'PENDING'
                     when x.outcome = 'MATRIX_UPDATE_NEEDED' and not %s then 'MATRIX_UPDATE_PENDING'
@@ -93,7 +93,7 @@ public class TrainingImpactService {
         }
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (lower(x.training_number) like ? escape '\\' or lower(coalesce(x.document_number,'')) like ? escape '\\' or lower(coalesce(x.document_name,'')) like ? escape '\\' or lower(x.training_title) like ? escape '\\')");
+            where.append(" and (lower(x.training_number) like ? escape '\\' or lower(coalesce(x.document_number,'')) like ? escape '\\' or lower(coalesce(x.document_name,'')) like ? escape '\\' or lower(training_activity_topics(x.id)) like ? escape '\\')");
             for (int i = 0; i < 4; i++) args.add(like);
         }
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
@@ -138,7 +138,7 @@ public class TrainingImpactService {
     }
 
     private Map<String, Object> row(UUID activityId) {
-        List<Map<String, Object>> rows = jdbc.queryForList("select * from training_activities where id = ?", activityId);
+        List<Map<String, Object>> rows = jdbc.queryForList("select a.*, training_activity_topics(a.id) as training_topics from training_activities a where id = ?", activityId);
         if (rows.isEmpty()) throw new SecurityException(TrainingAccess.DENIED);
         return rows.getFirst();
     }

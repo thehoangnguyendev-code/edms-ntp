@@ -115,6 +115,7 @@ export function TrainingExamPage() {
             {attempt.questions.map((q) => (
               <li key={q.id} className="rounded-xl border border-slate-200 bg-white p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2"><p className="text-sm font-medium text-slate-900">{q.qNo}. {q.prompt}</p><Badge color="slate">{q.points} pt{q.kind === "MULTI" ? " · tick all that apply" : ""}</Badge></div>
+                {q.image && <img src={q.image} alt={`Picture of question ${q.qNo}`} className="max-h-72 max-w-full rounded border border-slate-200 bg-white object-contain" />}
                 <div className="mt-3">
                   {q.kind === "MULTI" ? (
                     <div className="space-y-2">
@@ -130,7 +131,7 @@ export function TrainingExamPage() {
             ))}
           </ol>
           <div className="flex justify-end"><Button onClick={() => setSigning(true)} disabled={busy}>Finish and sign</Button></div>
-          <ESignatureModal isOpen={signing} onClose={() => setSigning(false)} onConfirm={async (d: { signatureToken: string }) => submit(d.signatureToken)} actionTitle="Sign the Completed Test" changes={statusChange("In progress", "Submitted", "Test attempt")}
+          <ESignatureModal isOpen={signing} onClose={() => setSigning(false)} onConfirm={async (d: { signatureToken: string }) => submit(d.signatureToken)} actionTitle="Sign the Completed Test" changes={statusChange("In Progress", "Submitted", "Test attempt")}
             meaningDisplayName="Assessment Signed" meaningCode="TRAINING_ASSESSMENT_SIGNED" targetDetails={{ code: `Attempt ${attempt.attemptNo}`, title: "Training test", revision: "" }} />
         </>
       )}

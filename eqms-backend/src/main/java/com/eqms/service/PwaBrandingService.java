@@ -41,7 +41,7 @@ public class PwaBrandingService {
     public static final String ICON_FIELD = "appIcon";
     public static final String SHORT_NAME_FIELD = "appShortName";
     public static final String BACKGROUND_FIELD = "appIconBackground";
-    public static final int SHORT_NAME_MAX = 12;
+    public static final int SHORT_NAME_MAX = 64;
     public static final int MAX_ENCODED_BYTES = 4 * 1024 * 1024;
     public static final int MIN_SIDE = 512;
     public static final int MAX_SIDE = 4096;

@@ -158,7 +158,7 @@ class Sprint10AuthorizationHardcodeRegressionTest {
         when(electronicSignatureService.getSettings()).thenReturn(null);
 
         var controller = new ElectronicSignatureSettingsController(
-                electronicSignatureService, electronicSignaturePdfPreviewService, currentUserService, permissionEvaluationService);
+                electronicSignatureService, electronicSignaturePdfPreviewService, currentUserService, permissionEvaluationService, null);
         assertThat(controller.getSettings().getStatusCode().value()).isEqualTo(200);
     }
 
@@ -169,7 +169,7 @@ class Sprint10AuthorizationHardcodeRegressionTest {
         when(permissionEvaluationService.hasPermission(superAdminUser, "settings.configuration.manage")).thenReturn(false);
 
         var controller = new ElectronicSignatureSettingsController(
-                electronicSignatureService, electronicSignaturePdfPreviewService, currentUserService, permissionEvaluationService);
+                electronicSignatureService, electronicSignaturePdfPreviewService, currentUserService, permissionEvaluationService, null);
         assertThatThrownBy(controller::getSettings).isInstanceOf(AccessDeniedException.class);
     }
 
@@ -180,7 +180,7 @@ class Sprint10AuthorizationHardcodeRegressionTest {
         when(permissionEvaluationService.hasPermission(nonSuperAdminWithOldRoleName, "settings.configuration.manage")).thenReturn(false);
 
         var controller = new ElectronicSignatureSettingsController(
-                electronicSignatureService, electronicSignaturePdfPreviewService, currentUserService, permissionEvaluationService);
+                electronicSignatureService, electronicSignaturePdfPreviewService, currentUserService, permissionEvaluationService, null);
         assertThatThrownBy(controller::getSettings).isInstanceOf(AccessDeniedException.class);
     }
 

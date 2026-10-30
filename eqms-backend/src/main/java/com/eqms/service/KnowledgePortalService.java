@@ -132,6 +132,11 @@ public class KnowledgePortalService {
 
     @Transactional(readOnly = true)
     public BrowseResult browse(UUID hierarchyId, String kb, List<String> path, int page, int limit, String sortBy, String sortDirection) {
+        return browse(hierarchyId, kb, path, page, limit, sortBy, sortDirection, null);
+    }
+
+    @Transactional(readOnly = true)
+    public BrowseResult browse(UUID hierarchyId, String kb, List<String> path, int page, int limit, String sortBy, String sortDirection, String search) {
         UserAccount user = currentUserService.requireCurrentUser();
         int pageSize = Math.max(1, Math.min(limit, MAX_PAGE_SIZE));
         int pageNumber = Math.max(1, page);
@@ -182,6 +187,8 @@ public class KnowledgePortalService {
         Map<UUID, KnowledgeEntry> byId = matching.stream().collect(Collectors.toMap(e -> e.document().getId(), e -> e, (a, b) -> a));
         Map<UUID, long[]> stats = stats(byId.keySet(), user);
         List<PortalDocument> sorted = matching.stream()
+                .filter(e -> !StringUtils.hasText(search) || Objects.toString(e.document().getDocumentName(), "").toLowerCase(Locale.ROOT).contains(search.trim().toLowerCase(Locale.ROOT))
+                        || Objects.toString(e.document().getDocumentNumber(), "").toLowerCase(Locale.ROOT).contains(search.trim().toLowerCase(Locale.ROOT)))
                 .map(e -> new SortRow(e, portalDocument(e, stats.get(e.document().getId()))))
                 .sorted(documentOrder(sortBy, sortDirection))
                 .map(SortRow::doc)
@@ -213,6 +220,33 @@ public class KnowledgePortalService {
     }
 
     // ---- search ---------------------------------------------------------------------------
+
+    /** Full authorized result set is filtered/sorted before one bounded page is returned. */
+    @Transactional(readOnly = true)
+    public BrowseResult queryDocuments(String search, String collection, int page, int limit, String sortBy, String sortDirection) {
+        UserAccount user = currentUserService.requireCurrentUser();
+        String needle = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
+        if (!needle.isEmpty() && needle.length() < 3) throw new IllegalArgumentException("Enter at least 3 characters to search");
+        if (collection != null && !java.util.Set.of("search", "featured", "viewed", "useful").contains(collection)) throw new IllegalArgumentException("Unknown knowledge collection");
+        List<KnowledgeEntry> entries = documentService.visibleKnowledgeEntries().stream()
+                .filter(e -> needle.isEmpty() || Objects.toString(e.document().getDocumentName(), "").toLowerCase(Locale.ROOT).contains(needle)
+                        || Objects.toString(e.document().getDocumentNumber(), "").toLowerCase(Locale.ROOT).contains(needle)).toList();
+        Map<UUID, long[]> counts = stats(entries.stream().map(e -> e.document().getId()).collect(Collectors.toSet()), user);
+        List<PortalDocument> sorted = entries.stream()
+                .filter(e -> switch (collection == null ? "search" : collection) {
+                    case "featured" -> counts.get(e.document().getId())[2] == 1;
+                    case "viewed" -> counts.get(e.document().getId())[0] > 0;
+                    case "useful" -> counts.get(e.document().getId())[1] > 0;
+                    default -> true;
+                })
+                .map(e -> new SortRow(e, portalDocument(e, counts.get(e.document().getId()))))
+                .sorted(documentOrder(sortBy, sortDirection).thenComparing(r -> r.entry().document().getId()))
+                .map(SortRow::doc).toList();
+        int size = Math.max(1, Math.min(limit, MAX_PAGE_SIZE));
+        int safePage = Math.max(1, page);
+        int from = (int) Math.min((long) (safePage - 1) * size, sorted.size());
+        return new BrowseResult(List.of(), null, List.of(), sorted.subList(from, Math.min(sorted.size(), from + size)), sorted.size(), safePage, size);
+    }
 
     @Transactional(readOnly = true)
     public List<PortalDocument> search(String query) {

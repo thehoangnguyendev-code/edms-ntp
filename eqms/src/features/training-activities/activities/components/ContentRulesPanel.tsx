@@ -49,14 +49,14 @@ function describe(activity: TrainingActivityDetail, part: "materials" | "assessm
     else if (visitor) text = "A visitor is instructed by the department: no material is needed; add one if it helps.";
     else if (exempt) text = "Training Materials are not required for this training.";
     else if (rules.materialsSource === "DOCUMENT") text = `This training is on ${activity.documentNumber ?? "a document"}${activity.revisionNumber ? ` Rev ${activity.revisionNumber}` : ""}: the approved document is the material. Add slides or other material below if you want.`;
-    else if (missingHere && canExempt) { text = "Training Materials are required before the content can be reviewed: add a file or a link."; tone = WARN; }
+    else if (missingHere && canExempt) { text = "Required before the content is reviewed: a file or a link."; tone = WARN; }
   } else if (supplementary) text = "This is a supplementary training: it uses the test of the training it supplements.";
   else if (external) text = "An external training has no test of its own; keep the certificate or the proof of attendance as evidence.";
   else if (visitor) text = "A visitor needs no test.";
   else if (exempt) text = "No test or checklist is required for this training.";
   else if (kind === "NONE") text = "No test or checklist is required: no session of this training is assessed by one (observation or reading confirmation).";
   else if (rules.onlineTest && (kind === "TEST" || kind === "BOTH")) text = "The test is written in the system (Test in the system), so no test file is needed; a file can still be added.";
-  else if (missingHere && required && canExempt) { text = `A session is assessed by ${kind === "CHECKLIST" ? "a checklist" : kind === "TEST" ? "a test" : "a test or a checklist"}: the ${FORM_NAME[kind]} (APD.0009) is required before the content can be reviewed.`; tone = WARN; }
+  else if (missingHere && required && canExempt) { text = `Required before the content is reviewed: the ${FORM_NAME[kind]} (APD.0009).`; tone = WARN; }
   return { text, tone, kind, isMaterials, exempt, exemptReason, freeByRule };
 }
 

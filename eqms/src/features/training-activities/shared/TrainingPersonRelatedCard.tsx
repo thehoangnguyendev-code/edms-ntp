@@ -19,7 +19,7 @@ import { METHOD_LABEL, day, when } from "./trainingLabels";
 type Kind = string;
 /** A tab of the screen itself (the copies sent to departments of a job assignment) that sits first in the same card. */
 export interface ExtraRelatedTab { id: string; label: string; node: ReactNode }
-const SPECIMEN_LABEL: Record<string, string> = { PENDING_CONFIRMATION: "Pending Confirmation", APPROVED: "Approved", OBSOLETED: "Obsoleted" };
+const SPECIMEN_LABEL: Record<string, string> = { PENDING_CONFIRMATION: "Not confirmed (earlier workflow)", APPROVED: "Current", OBSOLETED: "Superseded" };
 const RESULT_LABEL: Record<string, string> = { PASSED: "Passed", READ: "Read and understood", ATTENDED: "Attended" };
 
 /** A small server table of what the training module holds about one person: 10 rows a page, newest first. `current` is the kind of the screen the card sits on. */
@@ -82,7 +82,16 @@ export function TrainingPersonRelatedCard({ personId, extraTabs = [] }: { person
             columns={(offset) => [
               no(offset),
               { id: "issue", header: "Issue", cell: (j) => link(`Issue ${j.issueNo}`, `/training-management/job-assignments/${j.id}`) },
-              { id: "position", header: "Position", cell: (j) => j.positionName },
+              {
+                id: "position",
+                header: "Work Positions",
+                // an issuance lists the whole set of roles: the first ones are written, the rest are a number, and the full list is the tooltip
+                cell: (j) => {
+                  const names = (j.positionName ?? "").split(", ").filter(Boolean);
+                  const shown = names.slice(0, 3).join(", ");
+                  return <span title={names.join("\n")}>{shown}{names.length > 3 ? ` +${names.length - 3} more` : ""}</span>;
+                },
+              },
               { id: "type", header: "Type", cell: (j) => (j.caseType === "INITIAL" ? "Initial" : "Change") },
               { id: "status", header: "Status", cell: (j) => <Badge color={JOB_STATUS_COLOR[j.status]}>{JOB_STATUS_LABEL[j.status]}</Badge> },
               { id: "effective", header: "Effective", cell: (j) => day(j.effectiveAt) },

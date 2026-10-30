@@ -5,6 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { cn } from "@/components/ui/utils";
 import { resetViewportZoom, blurActiveInput } from "@/utils/viewport";
 import { BrandLogo } from "@/components/branding/BrandLogo";
+import { captureLoginLogo, startLoginLogoTransition } from "@/components/branding/loginLogoTransition";
 import { IconMailOpened, IconQrcode, IconRefresh } from "@tabler/icons-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { AUTH_UI } from "./auth-ui";
@@ -231,6 +232,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
       setError("");
 
       // Submit the OTP to the backend for verification
+      const logo = captureLoginLogo();
       const result = await onVerify({
         code,
         method,
@@ -240,6 +242,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
       setIsLoading(false);
 
       if (result.success) {
+        startLoginLogoTransition(logo);
         setIsSuccess(true);
         blurActiveInput();
         resetViewportZoom();
@@ -278,7 +281,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
           <div className={AUTH_UI.formColumn}>
             <AuthTopBackButton onClick={onBackToLogin} label="Back to Sign In" disabled={isLoading} />
             <div className="mb-6 flex items-center gap-3 text-slate-900 sm:mb-10 lg:mb-12">
-              <BrandLogo className="h-8 w-auto object-contain sm:h-9" />
+              <div data-login-logo><BrandLogo className="h-8 w-auto object-contain sm:h-9" /></div>
             </div>
 
             <div className="flex flex-col justify-start">

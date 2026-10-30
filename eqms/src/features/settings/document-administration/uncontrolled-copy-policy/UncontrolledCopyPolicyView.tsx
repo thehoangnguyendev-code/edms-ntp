@@ -16,6 +16,7 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { FullPageLoading, SectionLoading } from "@/components/ui/loading/Loading";
 import { FormSection } from "@/components/ui/form/FormSection";
+import { IconFileTypePdf } from "@tabler/icons-react";
 import { useToast } from "@/components/ui/toast/Toast";
 import { cn } from "@/components/ui/utils";
 import { uncontrolledCopiesPolicy as uncontrolledCopiesPolicyBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs/settings";
@@ -493,8 +494,8 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
           )}
 
           {activeTab === "markings" && (
-            <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
-              <div className="min-w-0 space-y-4 lg:col-span-5">
+            <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[420px_minmax(0,1fr)] xl:gap-6">
+              <div className="min-w-0 space-y-4">
                 <MarkCard title="Watermark (mandatory)" enabled onToggle={() => undefined} disabled>
                   <WatermarkFields
                     value={policy.marking}
@@ -565,15 +566,15 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                   )}
                 </MarkCard>
               </div>
-              <div className="order-first min-w-0 space-y-2 lg:order-last lg:col-span-7 lg:sticky lg:top-4">
+              <div className="order-first min-w-0 space-y-2 xl:order-last xl:sticky xl:top-4 xl:self-start">
                 {canManagePolicy ? (
-                  <>
+                  <FormSection title="PDF Preview" icon={<IconFileTypePdf className="h-4 w-4" />}>
                     <MarkingPreviewPane
                       copyType="UNCONTROLLED"
                       marking={{ ...policy.marking, watermarkEnabled: true }}
                       onPlacementChange={handlePlacementChange}
                     />
-                  </>
+                  </FormSection>
                 ) : (
                   <UncontrolledCopyMarkingPreview marking={policy.marking} />
                 )}

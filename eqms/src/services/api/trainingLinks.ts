@@ -20,8 +20,10 @@ export interface TrainingLink {
   approvedOn?: string | null;
   dueDate?: string | null;
   completedOn?: string | null;
-  /** The day the attendance list was sent to QA: from then on the revision can be completed. */
+  /** The day the attendance list was sent to QA. */
   attendanceSentOn?: string | null;
+  /** The day the trainer finished the training (Finish Training): from then on the revision can be completed. */
+  finishedOn?: string | null;
 }
 
 export type TrainingActivityStatus = "RESERVED" | "PLANNED" | "NOTIFIED" | "IN_PROGRESS" | "PENDING_QA_CONFIRMATION" | "COMPLETED" | "CANCELLED";

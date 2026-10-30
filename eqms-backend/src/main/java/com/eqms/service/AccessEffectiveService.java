@@ -176,6 +176,21 @@ public class AccessEffectiveService {
     }
 
     // ── Document Revision (Phu luc A.2) ──────────────────────────────────────
+    @Transactional(readOnly = true)
+    public com.eqms.dto.security.EffectiveAccessQueryResponse queryEffectiveAccess(UUID profileId, UUID documentTypeId, String search, String outcome) {
+        EffectiveAccessResponse full = getEffectiveAccess(profileId, documentTypeId);
+        String filter = outcome == null ? "ALL" : outcome.toUpperCase(java.util.Locale.ROOT);
+        if (!java.util.Set.of("ALL", "ALLOWED", "DENIED").contains(filter)) throw new IllegalArgumentException("Unknown access result filter");
+        String needle = search == null ? "" : search.trim().toLowerCase(java.util.Locale.ROOT);
+        long allowed = full.rows().stream().filter(EffectiveAccessRowResponse::allowed).count();
+        var rows = full.rows().stream().filter(row -> filter.equals("ALL") || row.allowed() == filter.equals("ALLOWED"))
+                .filter(row -> needle.isEmpty() || java.util.stream.Stream.of(row.actionLabel(), row.actionCode(), row.statusLabel(), row.requiredPermissionCode())
+                        .anyMatch(value -> value != null && value.toLowerCase(java.util.Locale.ROOT).contains(needle))).toList();
+        return new com.eqms.dto.security.EffectiveAccessQueryResponse(full.accessProfileId(), full.accessProfileName(), full.documentTypeId(),
+                full.objectAccessRulesApplicable(), full.objectAccessRulesNote(), rows,
+                new com.eqms.dto.security.EffectiveAccessQueryResponse.Summary(full.rows().size(), allowed, full.rows().size() - allowed));
+    }
+
 
     private EffectiveAccessRowResponse evaluateRevisionAction(
             RoleDefinition profile, Set<String> grantedPermissions,

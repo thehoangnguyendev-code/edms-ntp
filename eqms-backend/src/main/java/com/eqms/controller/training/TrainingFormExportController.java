@@ -36,16 +36,16 @@ public class TrainingFormExportController {
     }
 
     @GetMapping("/sessions/{id}/self-reading-list")
-    public ResponseEntity<byte[]> selfReading(@PathVariable UUID id, @RequestParam(defaultValue = "docx") String format) {
-        return file(forms.selfReading(users.requireCurrentUser(), id, format));
+    public ResponseEntity<byte[]> selfReading(@PathVariable UUID id, @RequestParam(defaultValue = "docx") String format, @RequestParam(required = false) UUID department) {
+        return file(forms.selfReading(users.requireCurrentUser(), id, format, department));
     }
 
-    public record PaperRequest(String format, String reason) {}
+    public record PaperRequest(String format, String reason, UUID departmentId) {}
 
     /** The paper print of the self-reading list (APD.0108) of a session: the people are written, the signatures are for the hand; a numbered copy. */
     @PostMapping("/sessions/{id}/self-reading-list/paper")
     public ResponseEntity<byte[]> selfReadingPaper(@PathVariable UUID id, @RequestBody(required = false) PaperRequest request) {
-        return file(forms.selfReadingPaper(users.requireCurrentUser(), id, request == null || request.format() == null ? "pdf" : request.format(), request == null ? null : request.reason()));
+        return file(forms.selfReadingPaper(users.requireCurrentUser(), id, request == null || request.format() == null ? "pdf" : request.format(), request == null ? null : request.reason(), request == null ? null : request.departmentId()));
     }
 
     /** The paper print of the job assignment (APD.0024), to be signed by hand: a numbered copy. */
@@ -54,19 +54,9 @@ public class TrainingFormExportController {
         return file(forms.jobAssignmentPaper(users.requireCurrentUser(), id, request == null || request.format() == null ? "pdf" : request.format(), request == null ? null : request.reason()));
     }
 
-    @GetMapping("/number-log/export")
-    public ResponseEntity<byte[]> numberLog(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) Integer year, @RequestParam(defaultValue = "docx") String format) {
-        return file(forms.numberLog(users.requireCurrentUser(), departmentId, year, format));
-    }
-
     @GetMapping("/job-assignments/{id}/export")
     public ResponseEntity<byte[]> jobAssignment(@PathVariable UUID id, @RequestParam(defaultValue = "docx") String format) {
         return file(forms.jobAssignment(users.requireCurrentUser(), id, format));
-    }
-
-    @GetMapping("/specimen-signatures/person/{personId}/export")
-    public ResponseEntity<byte[]> specimen(@PathVariable UUID personId, @RequestParam(defaultValue = "docx") String format) {
-        return file(forms.specimen(users.requireCurrentUser(), personId, format));
     }
 
     private static ResponseEntity<byte[]> file(Map<String, Object> file) {

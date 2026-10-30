@@ -43,7 +43,7 @@ class MyTrainingQueryServiceTest {
     }
 
     @Test void signatureUnionScopesAssignmentsAndReceiverJobsBeforeFilteringAndPaging() {
-        service.list(actor, "approvals", Map.of("stepCode", "RECEIVER_ACCEPT", "sortBy", "trainingTitle", "sortDirection", "desc"));
+        service.list(actor, "approvals", Map.of("stepCode", "RECEIVER_ACCEPT", "sortBy", "subject", "sortDirection", "desc"));
         var sql = ArgumentCaptor.forClass(String.class);
         var args = ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).queryForList(sql.capture(), args.capture());
@@ -69,7 +69,7 @@ class MyTrainingQueryServiceTest {
     }
 
     @Test void rejectsSortInjectionAndReversedDatesWithoutReadingData() {
-        assertThrows(IllegalArgumentException.class, () -> service.list(actor, "tasks", Map.of("sortBy", "trainingTitle; drop table training_records")));
+        assertThrows(IllegalArgumentException.class, () -> service.list(actor, "tasks", Map.of("sortBy", "subject; drop table training_records")));
         assertThrows(IllegalArgumentException.class, () -> service.list(actor, "tasks", Map.of("sortDirection", "desc; --")));
         assertThrows(IllegalArgumentException.class, () -> service.list(actor, "records", Map.of("fromDate", "2026-10-16", "toDate", "2026-10-01")));
         assertThrows(IllegalArgumentException.class, () -> service.list(actor, "unknown", Map.of()));

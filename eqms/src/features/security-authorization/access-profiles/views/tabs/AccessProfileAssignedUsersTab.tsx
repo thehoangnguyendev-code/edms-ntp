@@ -5,16 +5,14 @@ import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { SectionLoading } from "@/components/ui/loading/Loading";
+import { TablePagination } from "@/components/ui/table/TablePagination";
 import { useToast } from "@/components/ui/toast";
 import { useDebounce } from "@/hooks";
 import { settingsApi } from "@/services/api/settings";
 import { metadataApi } from "@/services/api/metadata";
 import type { AssignDiff } from "../AccessProfileDetailView";
 
-/** Display row shape shared by both the always-visible "currently assigned" set (from
- *  getAccessProfile's assignedUsers, bounded by this profile's own assignment count) and the
- *  server-searched "add more users" results (from getUsers({search}), bounded by SEARCH_LIMIT) --
- *  deliberately narrower than the full `User` type since neither source needs to carry it. */
+/** Row shared by the paged assignment list and the paged active-user search. */
 interface UserRow {
   id: string;
   fullName: string;
@@ -22,8 +20,6 @@ interface UserRow {
   department: string | null;
   status: string | null;
 }
-
-const SEARCH_LIMIT = 50;
 
 export const AccessProfileAssignedUsersTab: React.FC<{
   profileId: string;
@@ -41,15 +37,20 @@ export const AccessProfileAssignedUsersTab: React.FC<{
   const debouncedSearch = useDebounce(search, 400);
   const [searchResults, setSearchResults] = useState<UserRow[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [rowsPage, setRowsPage] = useState<UserRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [pendingRemove, setPendingRemove] = useState<{ id: string; fullName: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const detail = await settingsApi.getAccessProfile(profileId);
+      const detail = await settingsApi.getAccessProfileUsersPage(profileId, 1, limit);
       const meta = new Map<string, UserRow>();
-      detail.assignedUsers.forEach(u => meta.set(u.id, { id: u.id, fullName: u.fullName, email: u.email, department: u.department, status: u.status }));
+      detail.data.forEach(u => meta.set(u.id, { id: u.id, fullName: u.fullName, email: u.email, department: u.department, status: u.status }));
       setAssignedMeta(meta);
-      const ids = detail.assignedUsers.map(u => u.id);
+      const ids = detail.assignedIds;
       setOriginal(ids);
       setAssignedIds(ids);
       onChangesChange?.({ added: [], removed: [] });
@@ -75,15 +76,36 @@ export const AccessProfileAssignedUsersTab: React.FC<{
     let cancelled = false;
     setSearchLoading(true);
     // Assignment picker: the metadata lookup returns Active users only.
-    metadataApi.getUsersLookup({ search: q })
-      .then((users) => {
+    metadataApi.getUsersLookupPaged({ search: q, page, limit, sortBy: "fullName", sortDir: "asc" })
+      .then((result) => {
         if (cancelled) return;
-        setSearchResults(users.slice(0, SEARCH_LIMIT).map(u => ({ id: u.id, fullName: u.fullName, email: u.email, department: u.department, status: "Active" })));
+        const users = result.data.map(u => ({ id: u.id, fullName: u.fullName, email: u.email ?? null, department: u.department ?? null, status: "Active" }));
+        setSearchResults(users);
+        setAssignedMeta(previous => new Map([...previous, ...users.map(u => [u.id, u] as const)]));
+        setTotal(result.pagination.total);
+        const pages = Math.max(1, result.pagination.totalPages); setTotalPages(pages);
+        if (page > pages) setPage(pages);
       })
-      .catch(() => { if (!cancelled) setSearchResults([]); })
+      .catch(() => { if (!cancelled) { setSearchResults([]); setTotal(0); setTotalPages(1); } })
       .finally(() => { if (!cancelled) setSearchLoading(false); });
     return () => { cancelled = true; };
-  }, [debouncedSearch]);
+  }, [debouncedSearch, page, limit]);
+
+  useEffect(() => {
+    if (debouncedSearch.trim()) return;
+    let cancelled = false;
+    setSearchLoading(true);
+    settingsApi.getAccessProfileUsersPage(profileId, page, limit).then((result) => {
+      if (cancelled) return;
+      setRowsPage(result.data);
+      setAssignedMeta(previous => new Map([...previous, ...result.data.map(u => [u.id, u] as const)]));
+      setTotal(result.pagination.total);
+      const pages = Math.max(1, result.pagination.totalPages); setTotalPages(pages);
+      if (page > pages) setPage(pages);
+    }).catch(() => { if (!cancelled) { setRowsPage([]); setTotal(0); setTotalPages(1); showToast({ type: "error", message: "Failed to load users" }); } })
+      .finally(() => { if (!cancelled) setSearchLoading(false); });
+    return () => { cancelled = true; };
+  }, [profileId, page, limit, debouncedSearch, reloadKey, showToast]);
 
   if (loading) return <SectionLoading />;
 
@@ -128,7 +150,8 @@ export const AccessProfileAssignedUsersTab: React.FC<{
   // already-assigned rows the search also matched so their checked state stays visible.
   const rows: UserRow[] = q
     ? searchResults
-    : assignedIds.map(id => assignedMeta.get(id)).filter((r): r is UserRow => Boolean(r));
+    : rowsPage;
+  const pendingAdded = q ? [] : assignedIds.filter(id => !original.includes(id)).map(id => assignedMeta.get(id)).filter((r): r is UserRow => Boolean(r));
 
   return (
     <div className="space-y-4">
@@ -152,21 +175,21 @@ export const AccessProfileAssignedUsersTab: React.FC<{
         <input
           className="w-full h-9 pl-9 pr-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           placeholder="Search all users to assign…"
         />
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Badge color="emerald" size="sm">{assignedIds.length} assigned</Badge>
-        {q && <span className="text-xs text-slate-500">{searchLoading ? "Searching…" : `${searchResults.length} match(es)`}</span>}
+        {q && <span className="text-xs text-slate-500">{searchLoading ? "Searching…" : `${total} match(es)`}</span>}
       </div>
       <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
-        {rows.length === 0 && (
+        {rows.length === 0 && pendingAdded.length === 0 && (
           <p className="p-4 text-sm text-slate-400">
             {q ? (searchLoading ? "Searching…" : "No users match your search.") : "No users assigned yet — search above to add some."}
           </p>
         )}
-        {rows.map((u) => (
+        {[...pendingAdded, ...rows].map((u) => (
           <label key={u.id} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer">
             <Checkbox
               id={`profile-user-${u.id}`}
@@ -188,6 +211,7 @@ export const AccessProfileAssignedUsersTab: React.FC<{
           </label>
         ))}
       </div>
+      {total > 0 && <TablePagination currentPage={page} totalPages={totalPages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} />}
       <AlertModal
         isOpen={Boolean(pendingRemove)}
         onClose={() => setPendingRemove(null)}

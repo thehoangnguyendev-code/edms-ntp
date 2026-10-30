@@ -104,7 +104,8 @@ public class TrainingAssessmentEditService {
                 if (!"EXAM".equals(purpose) || request.templateId() == null) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
                 Map<String, Object> t = jdbc.queryForList("select * from training_form_templates where id = ? and status = 'ENABLED'", request.templateId()).stream().findFirst()
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_TEMPLATE_NOT_ENABLED"));
-                bytes = files.readStored(String.valueOf(t.get("provider")), String.valueOf(t.get("stored_path")), String.valueOf(t.get("sha256")));
+                // the working copy of the test is in the font of the forms; the template itself is never changed
+                bytes = TrainingAnnexEngine.withFont(files.readStored(String.valueOf(t.get("provider")), String.valueOf(t.get("stored_path")), String.valueOf(t.get("sha256"))));
                 name = safeName(t.get("code") + " - " + number) + ".docx";
                 kind = "TEMPLATE";
                 ref = (UUID) t.get("id");

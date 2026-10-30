@@ -37,6 +37,12 @@ const table = (expandedId: string | null, asRow: boolean) => (
 );
 
 describe("DataTable detail row motion", () => {
+  it("keeps the record stripe order when an expanded row is inserted", () => {
+    render(table("r1", true));
+    expect(screen.getByText("First").closest("tr")).toHaveAttribute("data-record-stripe", "false");
+    expect(screen.getByText("Second").closest("tr")).toHaveAttribute("data-record-stripe", "true");
+    expect(screen.getByText("detail of First").closest("tr")).not.toHaveAttribute("data-record-stripe");
+  });
   it.each([[true, "detail of First"], [false, "raw detail of First"]])(
     "opens at once and, when closed, stays for its closing motion before it is removed (content-only detail: %s; the row owns its motion otherwise, as the expand rows do)",
     async (asRow, text) => {

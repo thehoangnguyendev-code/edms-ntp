@@ -557,6 +557,27 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     group: "training_admin",
   },
   {
+    code: "training.annex.view",
+    label: "View Training Annex",
+    description: "See the Training Annex: the forms of Training (APD annexes), their templates, tokens, signature slots and previews.",
+    module: "training",
+    group: "training_admin",
+  },
+  {
+    code: "training.annex.manage",
+    label: "Manage Training Annex",
+    description: "Upload templates of the Training Annex, disable a template, and choose how the electronic signature of each slot is shown.",
+    module: "training",
+    group: "training_admin",
+  },
+  {
+    code: "training.annex.enable",
+    label: "Enable Training Annex Template",
+    description: "Put a template of the Training Annex in force with an electronic signature.",
+    module: "training",
+    group: "training_admin",
+  },
+  {
     code: "training.admin.view",
     label: "View Training Administration",
     description: "View the Training Administration section under System Administration.",

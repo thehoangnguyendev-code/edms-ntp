@@ -1,18 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import {
-  CalendarClock,
-  ClipboardList,
-  Clock3,
-  Eye,
-  FilePenLine,
   MousePointerClick,
-  PenTool,
-  Search,
 } from "lucide-react";
 import { useNavigateWithLoading } from "@/hooks/useNavigateWithLoading";
-import { useTableDragScroll } from "@/hooks/useTableDragScroll";
-import { useDebounce } from "@/hooks";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { electronicSignatureSettings as electronicSignatureSettingsBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { FormSection } from "@/components/ui/form/FormSection";
@@ -29,17 +20,25 @@ import {
   electronicSignatureSettingsApi,
 } from "@/services/api/electronicSignatureSettings";
 import { usePermissions } from "@/hooks/usePermissions";
+import { TabNav } from "@/components/ui/tabs/TabNav";
+import { SignatureDisplayStyles } from "./SignatureDisplayStyles";
+import { SignatureMeaningsTable } from "./SignatureMeaningsTable";
 import { IconCalendarTime } from "@tabler/icons-react";
-import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 import { displayDateTime } from "@/utils/format";
 
 const defaultSettings: ElectronicSignatureSettings = {
-  signatureTimestampFormat: "dd/MM/uuuu HH:mm:ss",
+  signatureTimestampFormat: "dd/MM/uuuu HH:mm",
   signatureTimezone: "Asia/Ho_Chi_Minh",
   meanings: [],
 };
 
-const TIMESTAMP_FORMAT_OPTIONS = [{ value: "dd/MM/uuuu HH:mm:ss", label: "17/07/2026 15:30:45 (dd/MM/yyyy HH:mm:ss)" }];
+const ESIGN_TABS = [
+  { id: "timestamp", label: "Signature Timestamp" },
+  { id: "styles", label: "Signature Styles" },
+  { id: "meanings", label: "Signature Meanings" },
+];
+
+const TIMESTAMP_FORMAT_OPTIONS = [{ value: "dd/MM/uuuu HH:mm", label: "17/07/2026 15:30 (dd/MM/yyyy HH:mm)" }];
 
 export const ElectronicSignatureSettingsView: React.FC = () => {
   const { navigateTo } = useNavigateWithLoading();
@@ -56,15 +55,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showTimestampWarning, setShowTimestampWarning] = useState(false);
-  const [timestampPreview, setTimestampPreview] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
-  const [meaningSearch, setMeaningSearch] = useState("");
-  const debouncedMeaningSearch = useDebounce(meaningSearch, 400);
-  const [meaningSearchResults, setMeaningSearchResults] = useState<
-    ElectronicSignatureMeaning[] | null
-  >(null);
-  const [meaningSearchLoading, setMeaningSearchLoading] = useState(false);
+  const [tab, setTab] = useState<"timestamp" | "styles" | "meanings">("timestamp");
 
   const breadcrumbItems = useMemo(
     () => electronicSignatureSettingsBreadcrumbs(navigateTo),
@@ -98,41 +89,6 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
     };
   }, [showToast]);
 
-  useEffect(() => {
-    const trimmed = debouncedMeaningSearch.trim();
-    if (!trimmed) {
-      setMeaningSearchResults(null);
-      setMeaningSearchLoading(false);
-      return;
-    }
-    let active = true;
-    setMeaningSearchLoading(true);
-    electronicSignatureSettingsApi
-      .searchMeanings(trimmed)
-      .then((results) => {
-        if (active) setMeaningSearchResults(results);
-      })
-      .catch(() => {
-        if (active) setMeaningSearchResults([]);
-      })
-      .finally(() => {
-        if (active) setMeaningSearchLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [debouncedMeaningSearch]);
-
-  // Server-side search result rows still reflect the last-saved displayName; overlay any
-  // unsaved local edit (keyed by code, stable across search/no-search) so typing in a row and
-  // then searching doesn't visually discard what the admin just typed but hasn't saved yet.
-  const displayedMeanings = useMemo(() => {
-    const base =
-      meaningSearchResults === null ? settings.meanings : meaningSearchResults;
-    const localByCode = new Map(settings.meanings.map((m) => [m.code, m]));
-    return base.map((m) => localByCode.get(m.code) ?? m);
-  }, [meaningSearchResults, settings.meanings]);
-
   const updateMeaning = (
     code: string,
     patch: Partial<ElectronicSignatureMeaning>,
@@ -154,43 +110,6 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
     settings.signatureTimestampFormat !==
       savedSettings.signatureTimestampFormat ||
     settings.signatureTimezone !== savedSettings.signatureTimezone;
-
-  useEffect(() => {
-    if (!timestampConfigurationChanged) {
-      setTimestampPreview(settings.previewBlock || null);
-      setPreviewLoading(false);
-      return;
-    }
-
-    let active = true;
-    const timer = window.setTimeout(() => {
-      setPreviewLoading(true);
-      electronicSignatureSettingsApi
-        .previewTimestamp({
-          signatureTimestampFormat: settings.signatureTimestampFormat,
-          signatureTimezone: settings.signatureTimezone,
-        })
-        .then((response) => {
-          if (active) setTimestampPreview(response.previewBlock);
-        })
-        .catch(() => {
-          if (active) setTimestampPreview(null);
-        })
-        .finally(() => {
-          if (active) setPreviewLoading(false);
-        });
-    }, 250);
-
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-    };
-  }, [
-    settings.previewBlock,
-    settings.signatureTimestampFormat,
-    settings.signatureTimezone,
-    timestampConfigurationChanged,
-  ]);
 
   const save = async () => {
     const sig = await requestSignature(
@@ -279,8 +198,8 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
                   1
                 </span>
                 <span>
-                  Edit the <strong>Signature Meaning Configuration</strong>{" "}
-                  table to rename the label shown for each system-defined
+                  Open the <strong>Signature Meanings</strong>{" "}
+                  tab to rename the label shown for each system-defined
                   signing action.
                 </span>
               </div>
@@ -313,7 +232,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
                 ["PREPARED", "Complete Editing"],
                 ["SUBMITTED_FOR_REVIEW", "Submit for Review"],
                 ["REVIEWED", "Complete Review"],
-                ["APPROVED", "Complete Approve"],
+                ["APPROVED", "Complete Approval"],
                 ["TRAINING_CONFIRMED", "Complete Training"],
                 ["PUBLISHED", "Publish"],
                 ["OBSOLETED", "Obsolete"],
@@ -332,8 +251,11 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
         </div>
       </FormSection>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[70%_30%]">
-        <div className="space-y-4">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <TabNav tabs={ESIGN_TABS} activeTab={tab} onChange={(id) => setTab(id as "timestamp" | "styles" | "meanings")} ariaLabel="Electronic signature configuration" />
+        <div className="space-y-4 p-4 md:p-5">
+          {tab === "timestamp" && (
+            <>
           <FormSection
             title="Signature Timestamp"
             icon={<IconCalendarTime className="h-4 w-4" />}
@@ -378,163 +300,17 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
               </p>
             )}
           </FormSection>
-          <FormSection
-            title="Signature Meaning Configuration"
-            icon={<FilePenLine className="h-4 w-4" />}
-          >
-            <p className="mb-3 text-xs sm:text-sm text-slate-600">
-              One row per system-defined signing action. <strong>Code</strong>{" "}
-              is fixed by the application and cannot be changed;{" "}
-              <strong>Display Name</strong> is the only editable field and
-              controls the label shown to the signer in the signing modal.
-            </p>
-            <div className="relative mb-3">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={meaningSearch}
-                onChange={(e) => setMeaningSearch(e.target.value)}
-                placeholder="Search by code or display name..."
-                className="w-full h-9 rounded-lg border border-slate-200 pl-9 pr-3 text-xs sm:text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-            </div>
-            {settings.meanings.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                No signature meanings configured.
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                {/* Header lives in its own non-scrolling table, so the scrollbar below applies
-                    only to the body rows, not the header row. Fixed layout + matching colgroup
-                    widths keep the two tables' columns aligned. */}
-                <TableMarkup.Root className="w-full table-fixed">
-                  <TableMarkup.ColumnGroup>
-                    <TableMarkup.Column className="w-2/5" />
-                    <TableMarkup.Column className="w-3/5" />
-                  </TableMarkup.ColumnGroup>
-                  <TableMarkup.Head>
-                    <TableMarkup.Row>
-                      {[
-                        {
-                          label: "Code",
-                          hint: "System-defined code the workflow reads (e.g. PREPARED). Not shown to the signer, cannot be edited.",
-                        },
-                        {
-                          label: "Display Name",
-                          hint: "Readable label shown in the signing modal (e.g. Prepared).",
-                        },
-                      ].map((col) => (
-                        <TableMarkup.HeaderCell
-                          key={col.label}
-                          title={col.hint}
-                          className="bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap cursor-help text-left"
-                        >
-                          {col.label}
-                        </TableMarkup.HeaderCell>
-                      ))}
-                    </TableMarkup.Row>
-                  </TableMarkup.Head>
-                </TableMarkup.Root>
-                <div
-                  ref={scrollerRef as React.RefObject<HTMLDivElement>}
-                  className={cn(
-                    "max-h-[380px] overflow-y-auto overflow-x-auto",
-                    isDragging ? "cursor-grabbing select-none" : "cursor-grab",
-                  )}
-                  {...dragEvents}
-                >
-                  <TableMarkup.Root className="w-full table-fixed">
-                    <TableMarkup.ColumnGroup>
-                      <TableMarkup.Column className="w-2/5" />
-                      <TableMarkup.Column className="w-3/5" />
-                    </TableMarkup.ColumnGroup>
-                    <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                      {meaningSearchLoading ? (
-                        <TableMarkup.Row>
-                          <TableMarkup.Cell
-                            colSpan={2}
-                            className="px-4 py-6 text-center text-sm text-slate-400"
-                          >
-                            Searching...
-                          </TableMarkup.Cell>
-                        </TableMarkup.Row>
-                      ) : displayedMeanings.length === 0 ? (
-                        <TableMarkup.Row>
-                          <TableMarkup.Cell
-                            colSpan={2}
-                            className="px-4 py-6 text-center text-sm text-slate-400"
-                          >
-                            No signature meanings match "{meaningSearch}".
-                          </TableMarkup.Cell>
-                        </TableMarkup.Row>
-                      ) : (
-                        displayedMeanings.map((meaning) => (
-                          <TableMarkup.Row
-                            key={meaning.code}
-                            className="hover:bg-slate-50/80 transition-colors"
-                          >
-                            <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-900 align-middle truncate">
-                              {meaning.code}
-                            </TableMarkup.Cell>
-                            <TableMarkup.Cell className="py-3 px-4 align-middle">
-                              <input
-                                className="w-full min-w-[100px] h-9 rounded-lg border border-slate-200 px-2.5 text-xs sm:text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                value={meaning.displayName}
-                                onChange={(e) =>
-                                  updateMeaning(meaning.code, {
-                                    displayName: e.target.value,
-                                  })
-                                }
-                              />
-                            </TableMarkup.Cell>
-                          </TableMarkup.Row>
-                        ))
-                      )}
-                    </TableMarkup.Body>
-                  </TableMarkup.Root>
-                </div>
-              </div>
-            )}
-          </FormSection>
-        </div>
-
-        <div className="space-y-4 xl:sticky xl:top-4 xl:self-start">
-          <FormSection
-            title="Signature Block Format"
-            icon={<PenTool className="h-4 w-4 -rotate-[90deg]" />}
-          >
-            <p className="mb-3 text-xs text-slate-500">
-              {timestampConfigurationChanged
-                ? "Previewing the unsaved timestamp configuration. It will not change any record until you complete Sign & Save."
-                : "This is the active electronic signature display format used in new DOCX and PDF outputs."}
-            </p>
-            <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-              <pre className="whitespace-pre-wrap text-sm leading-6 text-slate-800">
-                {(() => {
-                  return (
-                    timestampPreview ||
-                    settings.previewBlock ||
-                    "Nguyen Van A\nElectronically Signed\n29-Jul-2026 13:22:09 (UTC+7)\nMeaning: Approved\nReason: Document Approval\nSignature ID: SIG-2026-8F3A9B"
-                  );
-                })()}
-              </pre>
-            </div>
-            {timestampConfigurationChanged && (
-              <p className="mt-2 text-xs font-medium text-amber-700">
-                {previewLoading ? "Updating preview..." : "Unsaved preview"}
-              </p>
-            )}
-            <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs leading-5 text-emerald-800 space-y-1">
-              <p className="font-semibold">
-                21 CFR Part 11 & EU-GMP Annex 11 Compliance
-              </p>
-              <p>
-                Signature ID (Unique Electronic Signature Reference) is
-                permanently embedded in all signature blocks and Audit Trail
-                logs for full GxP traceability.
-              </p>
-            </div>
-          </FormSection>
+            </>
+          )}
+          {tab === "styles" && <SignatureDisplayStyles />}
+          {tab === "meanings" && (
+            <SignatureMeaningsTable
+              meanings={settings.meanings}
+              canEdit={canManageConfiguration}
+              onRename={(code, displayName) => updateMeaning(code, { displayName })}
+              savedVersion={savedSettings.meanings.map((m) => `${m.code}:${m.displayName}`).join("|")}
+            />
+          )}
         </div>
       </div>
       <AlertModal

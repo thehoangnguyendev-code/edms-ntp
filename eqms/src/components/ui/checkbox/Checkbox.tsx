@@ -81,8 +81,8 @@ export const Checkbox: React.FC<CheckboxProps> = ({
             checked || showDash
               ? 'bg-emerald-600 border-emerald-600'
               : 'bg-white border-slate-200 hover:border-emerald-400',
-            disabled && 'cursor-not-allowed pointer-events-none hover:border-slate-200',
-            disabled && !(checked || showDash) && 'bg-slate-100 border-slate-200'
+            disabled && 'cursor-default pointer-events-none hover:border-slate-200',
+            disabled && !(checked || showDash) && 'bg-white border-slate-300'
           )}
         >
           {checked ? (
@@ -98,7 +98,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
           className={cn(
             'text-xs sm:text-sm font-medium text-slate-700 cursor-pointer',
             labelClassName,
-            disabled && 'cursor-not-allowed text-slate-600'
+            disabled && 'cursor-default'
           )}
         >
           {label}

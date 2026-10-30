@@ -64,6 +64,9 @@ public class TrainingMatrixController {
     @PutMapping("/matrix-versions/{id}")
     public ResponseEntity<?> save(@PathVariable UUID id, @RequestBody SaveRequest request) { return ResponseEntity.ok(matrices.save(users.requireCurrentUser(), id, request)); }
 
+    @PostMapping("/matrix-versions/{id}/apply-locked-rows")
+    public ResponseEntity<?> applyLockedRows(@PathVariable UUID id) { return ResponseEntity.ok(matrices.applyLockedRows(users.requireCurrentUser(), id)); }
+
     @GetMapping("/matrix-versions/{id}/eligible-approvers")
     public ResponseEntity<?> eligible(@PathVariable UUID id, @RequestParam(required = false) String search, @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {
         return ResponseEntity.ok(matrices.eligibleApprovers(users.requireCurrentUser(), id, search, page, limit));
@@ -89,27 +92,6 @@ public class TrainingMatrixController {
     @GetMapping("/matrix-versions/{a}/compare/{b}")
     public ResponseEntity<?> compare(@PathVariable UUID a, @PathVariable UUID b) { return ResponseEntity.ok(matrices.compare(users.requireCurrentUser(), a, b)); }
 
-    @GetMapping("/topics")
-    public ResponseEntity<?> topics(@RequestParam(required = false) String search, @RequestParam(defaultValue = "false") boolean activeOnly) {
-        return ResponseEntity.ok(Map.of("data", matrices.topics(users.requireCurrentUser(), search, activeOnly)));
-    }
-
-    @GetMapping("/topics/page")
-    public ResponseEntity<?> topicsPage(@RequestParam(required = false) String search,
-                                        @RequestParam(required = false) String scope,
-                                        @RequestParam(required = false) String status,
-                                        @RequestParam(required = false) String sortBy,
-                                        @RequestParam(defaultValue = "asc") String sortDirection,
-                                        @RequestParam(defaultValue = "1") int page,
-                                        @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(matrices.topicsPage(users.requireCurrentUser(), search, scope, status, sortBy, sortDirection, page, limit));
-    }
-
-    @PostMapping("/topics")
-    public ResponseEntity<?> createTopic(@RequestBody TopicRequest request) { return ResponseEntity.ok(matrices.saveTopic(users.requireCurrentUser(), null, request)); }
-
-    @PutMapping("/topics/{id}")
-    public ResponseEntity<?> updateTopic(@PathVariable UUID id, @RequestBody TopicRequest request) { return ResponseEntity.ok(matrices.saveTopic(users.requireCurrentUser(), id, request)); }
 
     @GetMapping("/positions")
     public ResponseEntity<?> positions() { return ResponseEntity.ok(Map.of("data", matrices.allPositions(users.requireCurrentUser()))); }
@@ -120,6 +102,12 @@ public class TrainingMatrixController {
                                              @RequestParam(required = false) String suggested, @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
                                   @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {
         return ResponseEntity.ok(matrices.personPositions(users.requireCurrentUser(), search, unmatchedOnly, department, positionId, mapped, suggested, sortBy, sortDirection, page, limit));
+    }
+
+    @GetMapping("/person-positions/{personId}")
+    public ResponseEntity<?> personPositionDetails(@PathVariable UUID personId, @RequestParam(required = false) String search,
+                                                   @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {
+        return ResponseEntity.ok(matrices.personPositionDetails(users.requireCurrentUser(), personId, search, page, limit));
     }
 
 }

@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const api = vi.hoisted(() => ({ get: vi.fn() }));
+const api = vi.hoisted(() => ({ get: vi.fn(), overview: vi.fn(), participantPage: vi.fn() }));
 vi.mock("@/services/api/trainingActivities", async (importOriginal) => ({ ...(await importOriginal<object>()), trainingActivitiesApi: api }));
 vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermission: () => true, hasPermissionAlias: () => true }) }));
 vi.mock("@/features/realtime/useEntityChanged", () => ({ useEntityChanged: () => undefined }));
@@ -14,6 +14,17 @@ vi.mock("../components/TrainingPreparationBlock", () => ({ TrainingPreparationBl
 vi.mock("../components/TrainingTranscriptionBlock", () => ({ TrainingTranscriptionBlock: () => <div>TRANSCRIPTION BLOCK</div> }));
 vi.mock("../components/TrainingExamBlock", () => ({ TrainingExamBlock: () => <div>EXAM BLOCK</div> }));
 vi.mock("../components/TrainingActivityFilesTab", () => ({ TrainingActivityFilesTab: ({ mode }: { mode: string }) => <div>FILES TAB mode={mode}</div> }));
+
+import { withParticipantSummary } from "./trainingQueryFixture";
+
+const installQueryMocks = () => {
+  api.overview.mockImplementation(async () => withParticipantSummary(await api.get()));
+  api.participantPage.mockImplementation(async (_id, query) => {
+    const a = await api.get();
+    const rows = a.participants.filter((p: { sessionId: string; personUserId?: string; state: string; plannedAbsence?: string }) => (!query.sessionId || p.sessionId === query.sessionId) && (query.group === "EMPLOYEES" ? p.personUserId && p.state !== "ABSENT" && !(p.state === "INVITED" && p.plannedAbsence) : query.group === "ABSENT" ? p.personUserId && (p.state === "ABSENT" || (p.state === "INVITED" && p.plannedAbsence)) : !p.personUserId));
+    return { data: rows, pagination: { total: rows.length, totalPages: 1 } };
+  });
+};
 
 import { TrainingActivityDetailPage } from "../TrainingActivityDetailPage";
 
@@ -27,12 +38,12 @@ const person = (n: number, sessionId: string, state: string, result: string) => 
 });
 
 const activity = (status: string) => ({
-  id: "a1", trainingNumber: "TRN/QA/26-070", trainingTitle: "Self check-in screen", status, kind: "UNPLANNED", kindReason: "OTHER", version: 3,
+  id: "a1", trainingNumber: "TRN/QA/26-070", trainingTopics: "Self check-in screen", status, kind: "UNPLANNED", kindReason: "OTHER", version: 3,
   departmentName: "Quality Assurance", createdAt: "2026-10-20T07:35:46Z", createdByName: "Admin", dueDate: null, approvedOn: null, completedOn: null,
   sessions: [session(1), session(2, "PLANNED")],
   participants: [person(1, "s1", "ATTENDED", "PASSED"), person(2, "s1", "ABSENT", "PENDING")],
   confirmations: [], approvers: [], qaList: null, resultsToQa: null, proposedParticipantCount: 0, cancelledFromStatus: null,
-  capabilities: { hold: true, adjustPlan: true, rollCall: true, printPaper: true, transcribe: true, submitForConfirmation: true, addSupplementary: true },
+  capabilities: { hold: true, adjustPlan: true, rollCall: true, printPaper: true, transcribe: true, addSupplementary: true },
 });
 
 const renderPage = (status: string) => {
@@ -52,14 +63,15 @@ const openTab = async (name: RegExp) => fireEvent.click(await screen.findByRole(
 beforeEach(() => {
   window.matchMedia = window.matchMedia ?? ((query: string) => ({ matches: false, media: query, onchange: null, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false }) as MediaQueryList);
   (globalThis as { ResizeObserver?: unknown }).ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
-  api.get.mockReset();
+  Object.values(api).forEach(f => f.mockReset());
+  installQueryMocks();
 });
 afterEach(cleanup);
 
 describe("Conduct Training of a training in progress", () => {
   it("shows the sessions without the paper pack and the preparation, and without extra lines (the buttons of the workspace are in the foot of the page)", async () => {
     renderPage("IN_PROGRESS");
-    await openTab(/^Sessions/);
+    await openTab(/^General Information/);
 
     expect(await screen.findByDisplayValue("Topic 1")).toBeTruthy();
     expect(screen.queryByText(/The work of a session is done in its Session Workspace/)).toBeNull();
@@ -88,9 +100,9 @@ describe("Conduct Training of a training in progress", () => {
 });
 
 describe("Conduct Training before the training is in progress", () => {
-  it("keeps the paper pack and the preparation of the sessions on the Sessions tab", async () => {
+  it("keeps the paper pack and the preparation of the sessions in the General Information tab", async () => {
     renderPage("NOTIFIED");
-    await openTab(/^Sessions/);
+    await openTab(/^General Information/);
 
     await waitFor(() => expect(screen.getByText("PAPER BLOCK")).toBeTruthy());
     expect(screen.getByText("PREPARATION BLOCK")).toBeTruthy();
@@ -98,14 +110,17 @@ describe("Conduct Training before the training is in progress", () => {
   });
 });
 
-describe("Sessions tab", () => {
+describe("Sessions (General Information tab)", () => {
   it("shows each session as the form that created it, read only, and not as a table", async () => {
     renderPage("NOTIFIED");
-    await openTab(/^Sessions/);
+    await openTab(/^General Information/);
 
     expect(await screen.findByDisplayValue("Topic 1")).toBeTruthy();
     expect(screen.getAllByDisplayValue("Room 3").length).toBe(2);
-    expect(screen.getAllByDisplayValue("Tina Trainer (Internal expert)").length).toBe(2);
+    // the choices are shown as the radio buttons of New Training Activity, with the name beneath
+    expect(screen.getAllByDisplayValue("Tina Trainer").length).toBe(2);
+    expect(screen.getAllByRole("radio", { name: "Internal expert" }).filter((r) => (r as HTMLInputElement).checked).length).toBe(2);
+    expect(screen.getAllByRole("radio", { name: "On-site (Physical)" }).filter((r) => (r as HTMLInputElement).checked).length).toBe(2);
     expect(screen.getAllByText("Mode").length).toBe(2);
     expect(screen.getByRole("region", { name: "Session 2" })).toBeTruthy();
     expect(screen.queryAllByRole("columnheader").length).toBe(0);
@@ -124,7 +139,7 @@ describe("Training Activity Details (view)", () => {
         </MemoryRouter>
       </BreadcrumbProvider>,
     );
-    await openTab(/^Sessions/);
+    await openTab(/^General Information/);
 
     expect(await screen.findByDisplayValue("Topic 1")).toBeTruthy();
     expect(screen.queryByText("PAPER BLOCK")).toBeNull();
@@ -148,7 +163,7 @@ describe("Training Activity Details of an activity with one session", () => {
 
   it("shows the session without a status badge, and the participants without the choice of a session, the Session column or the paper results", async () => {
     renderView();
-    await openTab(/^Sessions/);
+    await openTab(/^General Information/);
     expect(await screen.findByDisplayValue("Topic 1")).toBeTruthy();
     expect(screen.queryByText("held")).toBeNull();
 
@@ -174,7 +189,7 @@ describe("Training Activity in Planned (edit)", () => {
     );
     await openTab(/^Training Materials/);
 
-    expect(await screen.findByText(/Training Materials are required before the content can be reviewed/)).toBeTruthy();
+    expect(await screen.findByText(/Required before the content is reviewed: a file or a link/)).toBeTruthy();
     expect(screen.getByRole("button", { name: /Training Materials are not required/ })).toBeTruthy();
   });
 });

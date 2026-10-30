@@ -44,6 +44,10 @@ public class TrainingRequirementService {
     private final TrainingNotifier notifier;
     private final com.eqms.repository.UserAccountRepository users;
 
+    /** The code of a record is made by the rule of Training Administration (Code Rules). */
+    @org.springframework.beans.factory.annotation.Autowired
+    private TrainingCodeService codes;
+
     public TrainingRequirementService(JdbcTemplate jdbc, TrainingAccess access, TrainingApprovalService approvals, ElectronicSignatureService signatures, AuditTrailService audit,
                                       TrainingActivityService activities, TrainingNotifier notifier, com.eqms.repository.UserAccountRepository users) {
         this.jdbc = jdbc;
@@ -56,8 +60,8 @@ public class TrainingRequirementService {
         this.users = users;
     }
 
-    public record CreateRequest(Integer year, String kind, UUID departmentId, LocalDate dueBy) {}
-    public record LineRequest(LocalDate plannedMonth, UUID topicId, UUID documentId) {}
+    public record CreateRequest(Integer year, String kind, UUID departmentId, LocalDate dueBy, LocalDate reviewCompletedOn) {}
+    public record LineRequest(LocalDate plannedMonth, String topicText, UUID documentId) {}
     public record SaveRequest(Integer version, LocalDate dueBy, List<LineRequest> lines) {}
     public record SubmitRequest(Integer version, String signatureToken, UUID nextApproverUserId) {}
     public record SignRequest(Integer version, String signatureToken) {}
@@ -127,15 +131,16 @@ public class TrainingRequirementService {
             out.put(column.replace("_by", "ByName").replaceAll("_(\\w)", "$1"), r.get(column) == null ? null : jdbc.queryForObject("select full_name from app_users where id=?", String.class, r.get(column)));
         }
         out.put("lines", TrainingRows.camel(jdbc.queryForList("""
-            select l.id, l.line_no, l.planned_month, l.topic_id, l.document_id, l.activity_id, l.postponed_from, l.postpone_reason, l.qa_comment, l.qa_signed_at, l.qa_signature_id,
-                   coalesce(t.name, d.document_name) as title, coalesce(t.code, d.document_number) as code,
+            select l.id, l.line_no, l.planned_month, l.topic_text, l.document_id, l.activity_id, l.postponed_from, l.postpone_reason, l.qa_comment, l.qa_signed_at, l.qa_signature_id,
+                   coalesce(l.topic_text, d.document_name) as title, d.document_number as code,
                    a.training_number, a.status as activity_status, a.completed_on as executed_on, qu.full_name as qa_signed_by_name,
                    case when a.status = 'COMPLETED' then 'DONE'
                         when a.id is not null and a.status <> 'CANCELLED' then 'IN_PROGRESS'
                         when l.planned_month + interval '1 month' <= current_date then 'OVERDUE'
                         when l.postponed_from is not null then 'POSTPONED'
-                        else 'PLANNED' end as line_status
-              from training_requirement_lines l left join training_topics t on t.id = l.topic_id left join documents d on d.id = l.document_id
+                        else 'PLANNED' end as line_status,
+                   (l.postponed_from is not null and l.planned_month > l.postponed_from + interval '1 month') as beyond_sop_window
+              from training_requirement_lines l left join documents d on d.id = l.document_id
               left join training_activities a on a.id = l.activity_id left join app_users qu on qu.id = l.qa_signed_by
              where l.requirement_id = ? order by l.line_no
             """, id)));
@@ -176,12 +181,12 @@ public class TrainingRequirementService {
         access.requireScope(actor, department);
         int y = year == null ? LocalDate.now(TrainingNumberService.ZONE).getYear() : year;
         return TrainingRows.camel(jdbc.queryForList("""
-            select r.topic_id, r.document_id, coalesce(t.name, d.document_name) as title, coalesce(t.code, d.document_number) as code
+            select r.topic_text, r.document_id, coalesce(r.topic_text, d.document_name) as title, d.document_number as code
               from training_matrix_versions v join training_matrices m on m.id = v.matrix_id join training_matrix_rows r on r.version_id = v.id
-              left join training_topics t on t.id = r.topic_id left join documents d on d.id = r.document_id
+              left join documents d on d.id = r.document_id
              where m.department_id = ? and v.status = 'EFFECTIVE' and r.annual_required
                and not exists (select 1 from training_requirement_lines l join training_requirements q on q.id = l.requirement_id
-                                where q.department_id = m.department_id and q.year = ? and (l.topic_id = r.topic_id or l.document_id = r.document_id))
+                                where q.department_id = m.department_id and q.year = ? and (training_topic_key(l.topic_text) = training_topic_key(r.topic_text) or l.document_id = r.document_id))
              order by r.row_no
             """, department, y));
     }
@@ -198,12 +203,20 @@ public class TrainingRequirementService {
         if (department == null) throw new IllegalArgumentException("TRAINING_DEPARTMENT_REQUIRED");
         access.requireScope(actor, department);
         jdbc.queryForObject("select pg_advisory_xact_lock(hashtext(?))", Object.class, "training-requirement-" + request.year());
-        int serial = ((Number) jdbc.queryForObject("select count(*) + 1 from training_requirements where year = ?", Number.class, request.year())).intValue();
-        String number = String.format("REQ/%d-%03d", request.year(), serial);
+        String departmentCode = jdbc.queryForList("select code from departments where id = ?", String.class, department).stream().findFirst().orElse(null);
+        String number = codes.next(TrainingCodeService.REQUIREMENT, departmentCode, request.year(),
+                candidate -> Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from training_requirements where request_no = ?)", Boolean.class, candidate)));
         LocalDate dueBy = request.dueBy() != null ? request.dueBy() : annualDue(request.year());
+        LocalDate reviewDone = null;
+        if ("SOP_PERIODIC".equals(kind)) {
+            // SOP.0003 5.3.2: the requirement is prepared and approved at the latest on the last day of the month in which the review of the SOPs was completed
+            if (request.reviewCompletedOn() == null) throw new IllegalArgumentException("TRAINING_REVIEW_DATE_REQUIRED");
+            reviewDone = request.reviewCompletedOn();
+            dueBy = java.time.YearMonth.from(reviewDone).atEndOfMonth();
+        }
         UUID id = UUID.randomUUID();
-        jdbc.update("insert into training_requirements(id, request_no, year, kind, department_id, due_by, created_by, prepared_by) values (?,?,?,?,?,?,?,?)",
-                id, number, request.year(), kind, department, dueBy, actor.getId(), actor.getId());
+        jdbc.update("insert into training_requirements(id, request_no, year, kind, department_id, due_by, created_by, prepared_by, review_completed_on) values (?,?,?,?,?,?,?,?,?)",
+                id, number, request.year(), kind, department, dueBy, actor.getId(), actor.getId(), reviewDone);
         audit.logAs(actor, TYPE, number, id, "TRAINING_REQUIREMENT_CREATED", null, "DRAFT", "Requirement " + number + " for " + request.year());
         return get(actor, id);
     }
@@ -228,12 +241,12 @@ public class TrainingRequirementService {
         int no = 0;
         for (LineRequest line : request.lines()) {
             if (line.plannedMonth() == null || line.plannedMonth().getDayOfMonth() != 1 || line.plannedMonth().getYear() != year) throw new IllegalArgumentException("TRAINING_REQUIREMENT_LINE_INVALID");
-            if ((line.topicId() == null) == (line.documentId() == null)) throw new IllegalArgumentException("TRAINING_REQUIREMENT_LINE_INVALID");
-            if (!seen.add(line.plannedMonth() + "|" + (line.topicId() != null ? "T" + line.topicId() : "D" + line.documentId()))) throw new IllegalArgumentException("TRAINING_REQUIREMENT_LINE_DUPLICATE");
-            if (line.topicId() != null && jdbc.queryForObject("select count(*) from training_topics where id=? and active", Integer.class, line.topicId()) == 0) throw new IllegalArgumentException("TRAINING_REQUIREMENT_LINE_INVALID");
+            String topicText = line.topicText() == null || line.topicText().isBlank() ? null : line.topicText().trim().replaceAll("\\s+", " ");
+            if ((topicText == null) == (line.documentId() == null) || (topicText != null && topicText.length() > 500)) throw new IllegalArgumentException("TRAINING_REQUIREMENT_LINE_INVALID");
+            if (!seen.add(line.plannedMonth() + "|" + (topicText != null ? "T" + topicText.toLowerCase(java.util.Locale.ROOT) : "D" + line.documentId()))) throw new IllegalArgumentException("TRAINING_REQUIREMENT_LINE_DUPLICATE");
             if (line.documentId() != null && jdbc.queryForObject("select count(*) from documents where id=?", Integer.class, line.documentId()) == 0) throw new IllegalArgumentException("TRAINING_REQUIREMENT_LINE_INVALID");
-            jdbc.update("insert into training_requirement_lines(id, requirement_id, line_no, planned_month, topic_id, document_id) values (?,?,?,?,?,?)",
-                    UUID.randomUUID(), id, ++no, line.plannedMonth(), line.topicId(), line.documentId());
+            jdbc.update("insert into training_requirement_lines(id, requirement_id, line_no, planned_month, topic_text, document_id) values (?,?,?,?,?,?)",
+                    UUID.randomUUID(), id, ++no, line.plannedMonth(), topicText, line.documentId());
         }
         if (request.dueBy() != null) jdbc.update("update training_requirements set due_by=? where id=?", request.dueBy(), id);
         jdbc.update("update training_requirements set version=version+1, updated_at=now() where id=?", id);
@@ -351,11 +364,13 @@ public class TrainingRequirementService {
         if (line.get("activity_id") != null && !"CANCELLED".equals(jdbc.queryForObject("select status from training_activities where id=?", String.class, line.get("activity_id")))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_REQUIREMENT_LINE_HAS_ACTIVITY");
         }
-        String title = line.get("topic_id") != null ? jdbc.queryForObject("select name from training_topics where id=?", String.class, line.get("topic_id"))
+        String title = line.get("topic_text") != null ? String.valueOf(line.get("topic_text"))
                 : jdbc.queryForObject("select document_number || ' ' || document_name from documents where id=?", String.class, line.get("document_id"));
         LocalDate month = ((java.sql.Date) line.get("planned_month")).toLocalDate();
+        // Due at the end of the planned month (SOP.0003 5.3: the training is done in the month of the requirement, or postponed to the next one).
+        LocalDate due = month.withDayOfMonth(month.lengthOfMonth());
         Map<String, Object> created = activities.create(actor, new TrainingActivityService.CreateRequest((UUID) r.get("department_id"), "PERIODIC", "OTHER", null,
-                title.length() > 255 ? title.substring(0, 255) : title, month.withDayOfMonth(month.lengthOfMonth()), "From " + r.get("request_no"), null, null));
+                due, "From " + r.get("request_no"), null, null));
         jdbc.update("update training_activities set requirement_line_id=? where id=?", lineId, created.get("id"));
         jdbc.update("update training_requirement_lines set activity_id=? where id=?", created.get("id"), lineId);
         audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), (UUID) r.get("id"), "TRAINING_REQUIREMENT_ACTIVITY_OPENED", null, String.valueOf(created.get("trainingNumber")), title);

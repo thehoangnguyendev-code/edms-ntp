@@ -5,6 +5,12 @@ export const NOTIFICATION_DOCK_PREFERENCE = 'notification-dock';
 
 export const SIDEBAR_FAVORITES_PREFERENCE = 'sidebar-favorites';
 
+/** Ordered widget visibility and width, scoped to the signed-in user. */
+export const DASHBOARD_LAYOUT_PREFERENCE = 'dashboard-layout';
+export interface DashboardLayoutPreference {
+  widgets: Array<{ id: string; visible: boolean; width: 'half' | 'full' }>;
+}
+
 /** The menu entries the user starred, in the order they were starred. Absent until the user has starred or unstarred one. */
 export interface SidebarFavoritesPreference {
   ids?: string[];
