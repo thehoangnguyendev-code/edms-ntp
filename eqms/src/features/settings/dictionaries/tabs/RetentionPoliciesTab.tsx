@@ -238,7 +238,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
     <div className="compact-filter-stack flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
       <div className="bg-white w-full">
         <div className="flex md:hidden flex-col gap-1.5 w-full">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -321,7 +321,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
 <div className="hidden md:flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-4 items-end">
             <div className="w-full">
-              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Search</label>
+              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
@@ -625,7 +625,7 @@ const RetentionPolicyModal: React.FC<RetentionPolicyModalProps> = ({ isOpen, onC
     <FormModal isOpen={isOpen} onClose={onClose} onConfirm={handleSubmit} title={`${isEdit ? "Edit" : "New"} Retention Policy`} isLoading={isSaving} size="lg">
       <div className="space-y-4">
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
             Retention Policy Name<span className="text-red-500 ml-1">*</span>
           </label>
           <input
@@ -640,7 +640,7 @@ const RetentionPolicyModal: React.FC<RetentionPolicyModalProps> = ({ isOpen, onC
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Retention period (days)</label>
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Retention period (days)</label>
           <input
             type="number"
             min={1}
@@ -654,7 +654,7 @@ const RetentionPolicyModal: React.FC<RetentionPolicyModalProps> = ({ isOpen, onC
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Description</label>
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Description</label>
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}

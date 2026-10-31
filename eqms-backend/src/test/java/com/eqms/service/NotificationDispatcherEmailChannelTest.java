@@ -44,7 +44,7 @@ class NotificationDispatcherEmailChannelTest {
     @Mock private NotificationService notificationService;
     @Mock private UserAccountRepository userAccountRepository;
     @Mock private PermissionEvaluationService permissionEvaluationService;
-    @Mock private EmailNotificationService emailNotificationService;
+    @Mock private NotificationEmailOutbox emailOutbox;
     @Mock private com.eqms.repository.NotificationDispatchQueueRepository dispatchQueueRepository;
 
     private NotificationDispatcher dispatcher;
@@ -55,7 +55,7 @@ class NotificationDispatcherEmailChannelTest {
     void setUp() {
         dispatcher = new NotificationDispatcher(
                 eventRepository, policyRepository, templateVersionRepository, notificationService,
-                userAccountRepository, permissionEvaluationService, new ObjectMapper(), emailNotificationService,
+                userAccountRepository, permissionEvaluationService, new ObjectMapper(), emailOutbox,
                 dispatchQueueRepository);
 
         recipient = new UserAccount();
@@ -111,9 +111,9 @@ class NotificationDispatcherEmailChannelTest {
 
         dispatcher.dispatch("test.event", List.of(recipient), Map.of());
 
-        verify(emailNotificationService).sendRenderedEmailWithTracking(
+        verify(emailOutbox).enqueue(
                 eq("a@example.local"), eq("Hello Nguyen Van A"), eq("<p>Body for Nguyen Van A</p>"),
-                eq("test.event"), eq("Security"), any());
+                eq("test.event"), eq("Security"), any(),eq(false));
     }
 
     @Test
@@ -125,8 +125,8 @@ class NotificationDispatcherEmailChannelTest {
 
         dispatcher.dispatch("test.event", List.of(recipient), Map.of());
 
-        verify(emailNotificationService, never()).sendRenderedEmailWithTracking(
-                anyString(), anyString(), anyString(), anyString(), anyString(), any());
+        verify(emailOutbox, never()).enqueue(
+                anyString(), anyString(), anyString(), anyString(), anyString(), any(),org.mockito.ArgumentMatchers.anyBoolean());
     }
 
     @Test
@@ -138,8 +138,8 @@ class NotificationDispatcherEmailChannelTest {
 
         dispatcher.dispatch("test.event", List.of(recipient), Map.of());
 
-        verify(emailNotificationService).sendRenderedEmailWithTracking(
-                eq("a@example.local"), anyString(), anyString(), eq("test.event"), anyString(), any());
+        verify(emailOutbox).enqueue(
+                eq("a@example.local"), anyString(), anyString(), eq("test.event"), anyString(), any(),eq(true));
     }
 
     @Test
@@ -150,8 +150,8 @@ class NotificationDispatcherEmailChannelTest {
 
         dispatcher.dispatch("test.event", List.of(recipient), Map.of());
 
-        verify(emailNotificationService, never()).sendRenderedEmailWithTracking(
-                anyString(), anyString(), anyString(), anyString(), anyString(), any());
+        verify(emailOutbox, never()).enqueue(
+                anyString(), anyString(), anyString(), anyString(), anyString(), any(),org.mockito.ArgumentMatchers.anyBoolean());
     }
 
     @Test
@@ -162,7 +162,7 @@ class NotificationDispatcherEmailChannelTest {
 
         dispatcher.dispatch("test.event", List.of(recipient), Map.of());
 
-        verify(emailNotificationService, never()).sendRenderedEmailWithTracking(
-                anyString(), anyString(), anyString(), anyString(), anyString(), any());
+        verify(emailOutbox, never()).enqueue(
+                anyString(), anyString(), anyString(), anyString(), anyString(), any(),org.mockito.ArgumentMatchers.anyBoolean());
     }
 }

@@ -32,12 +32,12 @@ export const RequestInformationTab: React.FC<{ request: RestoreRequestRecord }> 
         <ReadonlyField label="E-signature" value={request.approvalSignatureRef} />
       </div>
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs sm:text-sm font-medium text-slate-700">Reason</label>
+        <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Reason</label>
         <textarea rows={3} value={request.reason} readOnly className={TEXTAREA_CLASS} />
       </div>
       {request.decisionReason && (
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Decision reason</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Decision reason</label>
           <textarea rows={3} value={request.decisionReason} readOnly className={TEXTAREA_CLASS} />
         </div>
       )}

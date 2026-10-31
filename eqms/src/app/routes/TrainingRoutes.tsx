@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { Route, Navigate, Outlet } from 'react-router-dom';
+import { Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ROUTES } from '../routes.constants';
 import { LoadingFallback } from './LoadingFallback';
 import { ProtectedRoute } from '@/middleware/ProtectedRoute';
@@ -13,7 +13,7 @@ const TrainingAssessmentListView = lazy(() => import('@/features/training-activi
 const TrainingAssessmentDetailPage = lazy(() => import('@/features/training-activities/assessments/TrainingAssessmentDetailPage').then(m => ({ default: m.TrainingAssessmentDetailPage })));
 const TrainingMatrixLandingPage = lazy(() => import('@/features/training-activities/matrices/TrainingMatrixLandingPage').then(m => ({ default: m.TrainingMatrixLandingPage })));
 const TrainingMatrixVersionPage = lazy(() => import('@/features/training-activities/matrices/TrainingMatrixVersionPage').then(m => ({ default: m.TrainingMatrixVersionPage })));
-const DocumentTrainingsView = lazy(() => import('@/features/training-activities/matrices/DocumentTrainingsView').then(m => ({ default: m.DocumentTrainingsView })));
+const DocumentImpactAssessmentView = lazy(() => import('@/features/training-activities/matrices/DocumentImpactAssessmentView').then(m => ({ default: m.DocumentImpactAssessmentView })));
 const TrainingRecordsView = lazy(() => import('@/features/training-activities/records/TrainingRecordsView').then(m => ({ default: m.TrainingRecordsView })));
 const TrainingNumberLogView = lazy(() => import('@/features/training-activities/records/TrainingNumberLogView').then(m => ({ default: m.TrainingNumberLogView })));
 const TrainingComplianceView = lazy(() => import('@/features/training-activities/compliance/ComplianceView').then(m => ({ default: m.TrainingComplianceView })));
@@ -23,6 +23,7 @@ const TrainingJobDetailPage = lazy(() => import('@/features/training-activities/
 const PersonnelReviewListView = lazy(() => import('@/features/training-activities/personnel-reviews/PersonnelReviewListView').then(m => ({ default: m.PersonnelReviewListView })));
 const PersonnelReviewDetailPage = lazy(() => import('@/features/training-activities/personnel-reviews/PersonnelReviewDetailPage').then(m => ({ default: m.PersonnelReviewDetailPage })));
 const TrainingExamPage = lazy(() => import('@/features/training-activities/activities/TrainingExamPage').then(m => ({ default: m.TrainingExamPage })));
+const TrainingMyParticipationPage = lazy(() => import('@/features/training-activities/activities/TrainingMyParticipationPage').then(m => ({ default: m.TrainingMyParticipationPage })));
 const TrainingSpecimenDetailPage = lazy(() => import('@/features/training-activities/specimens/TrainingSpecimenDetailPage').then(m => ({ default: m.TrainingSpecimenDetailPage })));
 const TrainingSpecimenView = lazy(() => import('@/features/training-activities/specimens/TrainingSpecimenView').then(m => ({ default: m.TrainingSpecimenView })));
 const TrainingRecordExportsView = lazy(() => import('@/features/training-activities/records/TrainingRecordExportsView').then(m => ({ default: m.TrainingRecordExportsView })));
@@ -31,11 +32,22 @@ const TrainingRequirementDetailPage = lazy(() => import('@/features/training-act
 const TrainingLegacyEvidenceView = lazy(() => import('@/features/training-activities/records/TrainingLegacyEvidenceView').then(m => ({ default: m.TrainingLegacyEvidenceView })));
 const MyTrainingView = lazy(() => import('@/features/training-activities/my-training/MyTrainingView').then(m => ({ default: m.MyTrainingView })));
 
-const guardedTrainingElement = (permission: string, element: React.ReactNode) => (
-  <ProtectedRoute requiredPermissions={[permission]}>
+/** The earlier address of My Training (one page, four tabs) and the links that carry ?tab=: they go to My Tasks or My Records. */
+function MyTrainingRedirect() {
+  const { search } = useLocation();
+  const tab = new URLSearchParams(search).get('tab');
+  if (tab === 'records' || tab === 'copies') return <Navigate to={`${ROUTES.TRAINING.MY_RECORDS}${tab === 'copies' ? '?tab=copies' : ''}`} replace />;
+  return <Navigate to={`${ROUTES.TRAINING.MY_TASKS}${tab === 'sign' ? '?tab=sign' : ''}`} replace />;
+}
+
+const guardedTrainingElement = (permission: string | string[], element: React.ReactNode) => (
+  <ProtectedRoute requiredPermissions={Array.isArray(permission) ? permission : [permission]}>
     <Suspense fallback={<LoadingFallback />}>{element}</Suspense>
   </ProtectedRoute>
 );
+
+/** The library of assessments is for the people who design or approve them (the same rights as the menu entry and the server). */
+const ASSESSMENT_PERMISSIONS = ["training.assessment.design", "training.assessment.approve"];
 
 // ==================== TRAINING ROUTES ====================
 export function trainingRoutes() {
@@ -58,14 +70,17 @@ export function trainingRoutes() {
       <Route path="activities/:activityId/approve" element={guardedTrainingElement("training.module.view", <TrainingActivityDetailPage mode="approve" />)} />
       <Route path="activities/:activityId/confirm" element={guardedTrainingElement("training.activity.close", <TrainingActivityDetailPage mode="confirm" />)} />
       <Route path="activities/:activityId/participate" element={guardedTrainingElement("training.module.view", <TrainingActivityDetailPage mode="participate" />)} />
+      <Route path="participations/:participantId" element={guardedTrainingElement("training.self.view", <TrainingMyParticipationPage />)} />
       <Route path="participations/:participantId/test" element={guardedTrainingElement("training.self.view", <TrainingExamPage />)} />
-      <Route path="check-in" element={guardedTrainingElement("training.self.view", <MyTrainingView openCheckIn />)} />
-      <Route path="assessments" element={<Suspense fallback={<LoadingFallback />}><TrainingAssessmentListView /></Suspense>} />
-      <Route path="assessments/new" element={<Suspense fallback={<LoadingFallback />}><TrainingAssessmentDetailPage isNew /></Suspense>} />
-      <Route path="assessments/:assessmentId" element={<Suspense fallback={<LoadingFallback />}><TrainingAssessmentDetailPage /></Suspense>} />
+      <Route path="check-in" element={guardedTrainingElement("training.self.view", <MyTrainingView section="tasks" openCheckIn />)} />
+      <Route path="assessments" element={guardedTrainingElement(ASSESSMENT_PERMISSIONS, <TrainingAssessmentListView />)} />
+      <Route path="assessments/new" element={guardedTrainingElement("training.assessment.design", <TrainingAssessmentDetailPage isNew />)} />
+      <Route path="assessments/:assessmentId" element={guardedTrainingElement(ASSESSMENT_PERMISSIONS, <TrainingAssessmentDetailPage />)} />
       <Route path="matrix" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixLandingPage />)} />
       <Route path="matrix/:versionId" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixVersionPage />)} />
-      <Route path="document-trainings" element={guardedTrainingElement("training.matrix.view", <DocumentTrainingsView />)} />
+      <Route path="document-impact-assessment" element={guardedTrainingElement("training.matrix.view", <DocumentImpactAssessmentView />)} />
+      {/* The screen was called Document Trainings: the address in notifications already sent, in bookmarks and in the last route of a person still works. */}
+      <Route path="document-trainings" element={<Navigate to={ROUTES.TRAINING.DOCUMENT_IMPACT_ASSESSMENT} replace />} />
       <Route path="records" element={guardedTrainingElement("training.record.view", <TrainingRecordsView />)} />
       <Route path="job-assignments" element={guardedTrainingElement("training.job_assignment.view", <TrainingJobListView />)} />
       <Route path="job-assignments/new" element={guardedTrainingElement("training.job_assignment.manage", <TrainingJobCreatePage />)} />
@@ -84,7 +99,9 @@ export function trainingRoutes() {
       <Route path="legacy-evidence" element={guardedTrainingElement("training.activity.view", <TrainingLegacyEvidenceView />)} />
       <Route path="compliance" element={guardedTrainingElement("training.compliance.view", <TrainingComplianceView />)} />
       <Route path="number-log" element={guardedTrainingElement("training.compliance.view", <TrainingNumberLogView />)} />
-      <Route path="my-training" element={guardedTrainingElement("training.self.view", <MyTrainingView />)} />
+      <Route path="my-training" element={<MyTrainingRedirect />} />
+      <Route path="my-training/tasks" element={guardedTrainingElement("training.self.view", <MyTrainingView section="tasks" />)} />
+      <Route path="my-training/records" element={guardedTrainingElement("training.self.view", <MyTrainingView section="records" />)} />
 
       {/* Default redirect */}
       <Route index element={<Navigate to={ROUTES.TRAINING.ACTIVITIES} replace />} />

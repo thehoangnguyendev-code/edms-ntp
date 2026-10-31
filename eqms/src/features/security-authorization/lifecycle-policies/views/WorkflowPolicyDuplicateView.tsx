@@ -21,7 +21,7 @@ const MANAGE_PERM = "security.workflow_authorization.manage";
 
 const readOnlyField = (label: string, value: string) => (
   <div>
-    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">{label}</label>
+    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{label}</label>
     <div className="h-9 flex items-center px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 truncate">
       {value || "(none)"}
     </div>
@@ -150,7 +150,7 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
           {readOnlyField("Priority", String(policy.priority))}
         </div>
         <div className="mt-4">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Actors</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Actors</label>
           <div className="flex flex-wrap gap-1.5">
             {policy.actors.length === 0 ? (
               <span className="text-sm text-slate-400">(none)</span>
@@ -168,7 +168,7 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
 
       <FormSection title="New Policy" icon={<FilePlus className="h-4 w-4" />} contentClassName="p-4 md:p-5">
         <div>
-          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Change Reason</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Change Reason</label>
           <input
             type="text"
             value={changeReason}

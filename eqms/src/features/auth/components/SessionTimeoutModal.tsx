@@ -249,7 +249,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
 
               <div className="space-y-4">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                  <label className="mb-2 block text-sm font-medium text-slate-700 capitalize">
                     Password
                   </label>
                   <div className="relative">

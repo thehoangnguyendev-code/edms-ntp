@@ -142,7 +142,7 @@ export const PermissionSplitExplorer: React.FC<
       <div className="border-b border-slate-200 p-3 sm:p-4">
         <div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Search</label>
+            <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">Search</label>
             <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input

@@ -1,3 +1,4 @@
+import { observeOverlayPosition } from "@/utils/scroll";
 import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
@@ -163,12 +164,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
       setPopoverStyle(style);
     };
     place();
-    window.addEventListener('resize', place);
-    window.addEventListener('scroll', place, true);
-    return () => {
-      window.removeEventListener('resize', place);
-      window.removeEventListener('scroll', place, true);
-    };
+    return observeOverlayPosition(() => triggerRef.current, place);
   }, [isOpen]);
 
   // Click outside and Escape close the panel.
@@ -213,7 +209,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
   return (
     <div className="relative w-full">
       {label && (
-        <label htmlFor={`${pickerId}-trigger`} className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">
+        <label htmlFor={`${pickerId}-trigger`} className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">
           {label}
         </label>
       )}

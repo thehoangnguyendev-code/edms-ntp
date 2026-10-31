@@ -30,6 +30,7 @@ import { APP_SIDEBAR_COLLAPSED_WIDTH, APP_SIDEBAR_WIDTH } from "./sidebarWidths"
 import "./Sidebar.module.css";
 import { resolvePermissionAliasCodes } from "@/features/settings/permissionCatalog";
 import { notificationApi } from "@/services/api/notifications";
+import { myTrainingApi } from "@/services/api/myTraining";
 import { subscribeNotificationsChanged } from "@/features/notifications/events";
 import { IconLogout, IconPointFilled, IconUser } from "@tabler/icons-react";
 
@@ -295,6 +296,27 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
       };
     }, [location.pathname]);
 
+    // My Tasks of Training Management: the trainings to do plus the signatures asked of the person. Read only when the menu has the item, so a person without the training module makes no call.
+    const hasMyTasks = authorizedNavigationIds === null || authorizedNavigationIds.has('my-tasks');
+    useEffect(() => {
+      if (!hasMyTasks) return;
+      let cancelled = false;
+      const loadMyTasks = () => {
+        void myTrainingApi.counts().then((c) => {
+          if (!cancelled) setNavCounts((prev) => (prev['my-tasks'] === c.total && prev['my-training'] === c.total ? prev : { ...prev, 'my-tasks': c.total, 'my-training': c.total }));
+        }).catch(() => undefined);
+      };
+      loadMyTasks();
+      const interval = window.setInterval(() => { if (!document.hidden) loadMyTasks(); }, 60000);
+      const handleVisibility = () => { if (!document.hidden) loadMyTasks(); };
+      document.addEventListener('visibilitychange', handleVisibility);
+      return () => {
+        cancelled = true;
+        window.clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibility);
+      };
+    }, [hasMyTasks, location.pathname]);
+
     useEffect(() => {
       let cancelled = false;
       const loadNotificationSummary = async () => {
@@ -472,7 +494,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
         document.body.style.width = "";
         document.body.style.overflow = "";
         if (scrollY) {
-          window.scrollTo(0, parseInt(scrollY || "0") * -1);
+          window.scrollTo({ top: parseInt(scrollY || "0") * -1, behavior: "instant" });
         }
       }
 

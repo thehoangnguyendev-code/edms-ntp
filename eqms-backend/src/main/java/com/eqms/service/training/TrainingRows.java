@@ -24,7 +24,19 @@ public final class TrainingRows {
     public static Map<String, Object> camel(Map<String, Object> row) {
         Map<String, Object> out = new LinkedHashMap<>();
         row.forEach((key, value) -> out.put(camelKey(key), plain(value)));
+        if (out.get("documentNumber") != null && !out.containsKey("documentLabel")) {
+            Object revision = out.containsKey("revisionNumber") ? out.get("revisionNumber") : out.get("documentRevision");
+            out.put("documentLabel", documentLabel(out.get("documentNumber"), revision));
+        }
         return out;
+    }
+
+    /** How a document and its revision are written on a training screen: "SOP.10405_0.0.1", or the number alone when the revision is not known. Null when there is no document. */
+    public static String documentLabel(Object documentNumber, Object revisionNumber) {
+        if (documentNumber == null || documentNumber.toString().isBlank()) return null;
+        String number = documentNumber.toString().trim();
+        if (revisionNumber == null || revisionNumber.toString().isBlank()) return number;
+        return number + "_" + revisionNumber.toString().trim();
     }
 
     public static List<Map<String, Object>> camel(List<Map<String, Object>> rows) {

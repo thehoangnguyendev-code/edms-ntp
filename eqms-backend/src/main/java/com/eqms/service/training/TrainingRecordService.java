@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -46,6 +47,31 @@ public class TrainingRecordService {
     public Map<String, Object> myRecords(UserAccount actor, String search, String sortDirection, int page, int limit) {
         access.require(actor, "training.self.view");
         return page(" where r.person_user_id = ?", List.of(actor.getId()), search, "r.completed_on", sortDirection, page, limit);
+    }
+
+    /**
+     * One of my own invitations, for the screen where an employee reads the training and confirms the reading (self-reading, TRAINING-SELFREAD-MANDATORY-2026-10-31, owner choice "own screen for the employee",
+     * UAT 2026-10-31). Needs only {@code training.self.view} and is only for the person invited: the activity itself is not opened to the employee (it lists the other people and their results). The answer holds what the
+     * employee needs: the training, the document, the links to read, the due date and the person's own line. It changes nothing.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> myParticipation(UserAccount actor, UUID participantId) {
+        access.require(actor, "training.self.view");
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+            select p.id as participant_id, p.state, p.result, p.sign_mode, p.read_confirmed_at, a.id as activity_id, a.training_number, a.status, a.kind, a.due_date,
+                   a.document_number, a.document_name, a.revision_number, a.revision_id, training_activity_topics(a.id) as training_topics,
+                   s.id as session_id, s.method, s.scheduled_on, s.status as session_status
+              from training_participants p join training_activities a on a.id = p.activity_id join training_sessions s on s.id = p.session_id
+             where p.id = ? and p.person_user_id = ?
+            """, participantId, actor.getId());
+        if (rows.isEmpty()) throw new SecurityException(TrainingAccess.DENIED);
+        Map<String, Object> out = TrainingRows.camel(rows.getFirst());
+        out.put("materials", TrainingRows.camel(jdbc.queryForList("""
+            select m.id, m.title, m.link_url, m.original_name from training_materials m where m.activity_id = ? and m.purpose = 'CONTENT' and m.removed_at is null order by m.created_at
+            """, rows.getFirst().get("activity_id"))));
+        boolean open = Set.of("NOTIFIED", "IN_PROGRESS").contains(String.valueOf(rows.getFirst().get("status")));
+        out.put("canConfirmRead", open && "INVITED".equals(rows.getFirst().get("state")) && "SELF_READING".equals(rows.getFirst().get("method")) && "PLANNED".equals(rows.getFirst().get("session_status")));
+        return out;
     }
 
     /** Records of other people: the own department, or all departments with {@code training.scope.all}. */

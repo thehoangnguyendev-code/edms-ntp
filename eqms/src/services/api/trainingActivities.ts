@@ -19,7 +19,7 @@ export interface TrainingActivitySummary {
   vendorRef?: string | null;
   status: TrainingActivityStatus;
   dueDate?: string | null;
-  documentNumber?: string | null;
+  documentNumber?: string | null; documentLabel?: string | null;
   revisionNumber?: string | null;
   year: number;
   createdAt: string;
@@ -89,6 +89,11 @@ export interface TrainingParticipant {
   state: "INVITED" | "ATTENDED" | "ONLINE" | "ABSENT" | "READ_CONFIRMED";
   result: "PENDING" | "PASSED" | "FAILED";
   absenceReason?: string | null;
+  /** The state of the person's account (Active, Suspended, Terminated...). Only an Active person can sign or be put on a make-up training. */
+  accountStatus?: string | null;
+  /** Candidates of a supplementary training: false when the account is not Active (the person stays Absent until it is). */
+  canOfferSupplementary?: boolean;
+  hasSupplementary?: boolean;
   plannedAbsence?: string | null;
   /** How the person takes part: TRAINEE takes the assessment; the others do not (V695). Missing means TRAINEE. */
   participationRole?: ParticipationRole;
@@ -96,6 +101,8 @@ export interface TrainingParticipant {
   participationSetAt?: string | null;
   participationSetByName?: string | null;
   readConfirmedAt?: string | null;
+  /** The last time the trainer reminded this person to read and sign a self-reading. */
+  lastReadReminderAt?: string | null;
   signMode?: "ESIGN" | "PAPER_SCAN" | "ONLINE" | "NONE" | "TRAINER_ATTESTED" | "SELF";
   attempts?: number | null;
   lastPercent?: number | null;
@@ -130,6 +137,10 @@ export interface TrainingCapabilities {
   returnForCorrection?: boolean;
   removeParticipants?: boolean;
   printPaper?: boolean;
+  /** The trainer may remind a person who has not signed a self-reading. */
+  remindToRead?: boolean;
+  /** The trainer records a person who cannot read a self-reading as absent (reason and signature); the person is then offered a supplementary training. */
+  excuseReader?: boolean;
   rollCall?: boolean;
   transcribe?: boolean;
   verifyTranscription?: boolean;
@@ -168,7 +179,7 @@ export interface TrainingActivityDetail extends Omit<TrainingActivitySummary, "p
   /** The assessment of the library the activity uses (a frozen copy; never the key). */
   assessment?: { assessmentId: string; code: string; revision: string; name: string; kind: AssessmentKind; maxScore: number | null; chosenAt?: string | null; chosenByName?: string | null; itemCount: number } | null;
   /** The revisions that go with the Training Number: the document of the activity first, then the documents it lists as related. */
-  groupRevisions?: { revisionId: string; documentId: string; documentNumber: string; revisionNumber?: string | null; revisionName?: string | null; revisionStatus: string; isMain: boolean }[];
+  groupRevisions?: { revisionId: string; documentId: string; documentNumber: string; documentLabel?: string | null; revisionNumber?: string | null; revisionName?: string | null; revisionStatus: string; isMain: boolean }[];
   listPreparedBy?: string | null;
   documentName?: string | null;
   parentActivityId?: string | null;
@@ -176,10 +187,13 @@ export interface TrainingActivityDetail extends Omit<TrainingActivitySummary, "p
   participants: TrainingParticipant[];
   participantSummary?: { all: TrainingParticipantStats; sessions: Record<string, TrainingParticipantStats> };
   supplementaryCandidates?: TrainingParticipant[];
+  /** Absent or failed people with an Active account whom no supplementary training lists yet, and those who cannot be offered one now. */
+  supplementaryPending?: number;
+  supplementaryBlocked?: number;
   sessionParticipants?: TrainingParticipant[];
   confirmations: { id: string; kind: string; confirmedAt: string; confirmedByName: string; remark?: string | null; departmentId?: string | null; departmentName?: string | null }[];
   /** APD.0108: one list and one confirmation of the head for each department of the people who read on their own. `mine`: the person is the head of that department. */
-  selfReadingDepartments?: { departmentId: string; departmentName: string; people: number; waiting: number; verified: number; headName?: string | null; mine: boolean; substitute?: boolean }[];
+  selfReadingDepartments?: { departmentId: string; departmentName: string; people: number; waiting: number; verified: number; invited: number; headName?: string | null; signedByName?: string | null; signedAt?: string | null; mine: boolean; substitute?: boolean }[];
   approvers: TrainingApproverRow[];
   capabilities: TrainingCapabilities;
 }
@@ -238,6 +252,9 @@ export const trainingActivitiesApi = {
   rejectTrainerException: async (exceptionId: string, reason: string) => (await apiClient.post(`/training/trainer-exceptions/${exceptionId}/reject`, { reason })).data,
   holdSession: (sessionId: string, signatureToken?: string) => command(`/training/sessions/${sessionId}/hold`, { signatureToken }),
   postponeSession: (sessionId: string, newDate: string, reason: string, moveDueDate = false) => command(`/training/sessions/${sessionId}/postpone`, { newDate, reason, moveDueDate }),
+  /** The trainer reminds a person of a self-reading who has not signed yet (e-mail and notice). */
+  excuseReader: (participantId: string, signatureToken: string, reason?: string) => command(`/training/participants/${participantId}/cannot-read`, { signatureToken, reason }),
+  remindRead: (participantId: string) => command(`/training/participants/${participantId}/remind-read`, {}),
   attendance: (participantId: string, state: "ATTENDED" | "ONLINE" | "ABSENT", absenceReason?: string) =>
     command(`/training/participants/${participantId}/attendance`, { state, absenceReason }),
   setParticipation: (participantId: string, role: ParticipationRole, reason?: string) => command(`/training/participants/${participantId}/participation`, { role, reason }),
@@ -245,8 +262,8 @@ export const trainingActivitiesApi = {
     command(`/training/participants/${participantId}/attendance/correct`, { state, reason }),
   assessment: (participantId: string, scoreObtained: number, scoreMax: number, remarks?: string) =>
     command(`/training/participants/${participantId}/assessments`, { scoreObtained, scoreMax, remarks }),
-  verifySelfReading: (id: string, signatureToken: string) => command(`/training/activities/${id}/verify-self-reading`, { signatureToken }),
-  confirmRead: async (participantId: string, signatureToken: string) => (await apiClient.post(`/training/me/participations/${participantId}/confirm-read`, { signatureToken })).data,
+  verifySelfReading: (id: string, signatureToken: string, reason?: string) => command(`/training/activities/${id}/verify-self-reading`, { signatureToken, reason }),
+  confirmRead: async (participantId: string, signatureToken: string, reason?: string) => (await apiClient.post(`/training/me/participations/${participantId}/confirm-read`, { signatureToken, reason })).data,
   people: async (search: string, limit = 20) => (await apiClient.get<{ data: TrainingPerson[] }>("/training/people", { params: { search, limit } })).data.data,
   peopleGroups: async (by: "BUSINESS_UNIT" | "DEPARTMENT") => (await apiClient.get<{ data: TrainingGroup[] }>("/training/people/groups", { params: { by } })).data.data,
   peopleInGroups: async (by: "BUSINESS_UNIT" | "DEPARTMENT", names: string[]) => (await apiClient.get<{ data: TrainingPerson[] }>("/training/people/in-groups", { params: { by, names: names.join(",") } })).data.data,
@@ -255,20 +272,31 @@ export const trainingActivitiesApi = {
 
 export interface TrainingRecord {
   id: string; recordNo: number; personUserId: string; fullName: string; avatar?: string | null; employeeCode?: string | null; department?: string | null; position?: string | null;
-  trainingNumber: string; topicText: string; documentNumber?: string | null; documentRevision?: string | null; completedOn: string; recordedAt?: string | null; method: string;
+  trainingNumber: string; topicText: string; documentNumber?: string | null; documentLabel?: string | null; documentRevision?: string | null; completedOn: string; recordedAt?: string | null; method: string;
   result: "PASSED" | "READ" | "ATTENDED" | "TRAINER"; source: string; activityId: string; voidedAt?: string | null; voidReason?: string | null; voidedByName?: string | null;
 }
 export interface TrainingTask {
   participantId: string; activityId: string; trainingNumber: string; status: TrainingActivityStatus; dueDate?: string | null; method: string;
   scheduledOn?: string | null; state: string; topics?: string | null; examReady?: boolean;
 }
+/** One of my own invitations (the screen where the employee reads the training and signs the reading): only what the employee needs. */
+export interface TrainingMyParticipation {
+  participantId: string; activityId: string; trainingNumber: string; status: TrainingActivityStatus; kind?: string | null; dueDate?: string | null; scheduledOn?: string | null;
+  state: string; result?: string | null; signMode?: string | null; readConfirmedAt?: string | null; method: string; sessionStatus?: string | null; trainingTopics?: string | null;
+  documentNumber?: string | null; documentName?: string | null; revisionNumber?: string | null; revisionId?: string | null;
+  materials: { id: string; title: string; linkUrl?: string | null; originalName?: string | null }[]; canConfirmRead: boolean;
+}
 export interface TrainingNumberLogRow {
-  trainingNumber: string; createdAt: string; kind: TrainingKind; status: TrainingActivityStatus; trainingTopics: string; documentNumber?: string | null;
+  trainingNumber: string; createdAt: string; kind: TrainingKind; status: TrainingActivityStatus; trainingTopics: string; documentNumber?: string | null; documentLabel?: string | null;
   revisionNumber?: string | null; cancelReason?: string | null; sessions: number; postponements: number;
 }
+/** One form and the pattern of the name of its downloaded file; the variables say what each {NAME} means. */
+export interface TrainingFileNameForm { form: string; label: string; pattern: string; defaultPattern: string; variables: { name: string; meaning: string }[]; example: string }
 export interface TrainingSettings {
   passPercent: number; documentTrainingDaysDefault: number; annualRequirementDueMonth: number; annualRequirementDueDay: number;
-  absenceRetrainMonths: number; retentionYearsAfterLeaving: number; reviewReadyReminderDays: number; reviewOpenReminderDays: number; resultsDueDays: number; /** How the days to send the results to QA are counted (SOP.0003 5.3.7). */ resultsDueDayType: "WORKING_MON_FRI" | "WORKING_MON_SAT" | "CALENDAR"; /** The days after the start during which a person counts as a new employee in Training Compliance (SOP.0003 5.1, initial training). */ initialTrainingDays: number; /** Warn when a session is scheduled after the due date of its activity. */ warnScheduledAfterDue: boolean; version: number; updatedAt?: string;
+  absenceRetrainMonths: number; retentionYearsAfterLeaving: number; reviewReadyReminderDays: number; reviewOpenReminderDays: number; resultsDueDays: number; /** How the days to send the results to QA are counted (SOP.0003 5.3.7). */ resultsDueDayType: "WORKING_MON_FRI" | "WORKING_MON_SAT" | "CALENDAR"; /** The days after the start during which a person counts as a new employee in Training Compliance (SOP.0003 5.1, initial training). */ initialTrainingDays: number; /** Warn when a session is scheduled after the due date of its activity. */ warnScheduledAfterDue: boolean; /** Days before the due date of a self-reading when a person who has not signed is reminded (first, earlier; second, later). */ selfReadingReminderFirstDays: number; selfReadingReminderSecondDays: number; /** Days after the due date of a training before the organizer is reminded of a person still absent without a make-up training. */ makeupReminderDays: number; version: number; updatedAt?: string;
+  /** The pattern of the name of the file downloaded for each form (Training Properties, File Names). */
+  downloadFileNames: TrainingFileNameForm[];
 }
 
 export const trainingRecordsApi = {
@@ -300,7 +328,7 @@ export const trainingNotificationsApi = {
 
 export const trainingSettingsApi = {
   get: async () => (await apiClient.get<TrainingSettings>("/training/settings")).data,
-  update: async (body: Partial<TrainingSettings> & { version: number; reason?: string }) => (await apiClient.put<TrainingSettings>("/training/settings", body)).data,
+  update: async (body: Omit<Partial<TrainingSettings>, "downloadFileNames"> & { downloadFileNames?: Record<string, string>; version: number; reason?: string }) => (await apiClient.put<TrainingSettings>("/training/settings", body)).data,
 };
 
 /** The rule of the code of a Training Requirement, a Training Matrix or a Training Assessment (Training Administration, Code Rules). */
@@ -399,6 +427,13 @@ export interface TrainingComplianceSummary {
 export interface TrainingGap { pid: string; fullName: string; avatar?: string | null; employeeCode?: string | null; positionName?: string | null; title: string; code?: string | null; annualRequired: boolean; lastDone?: string | null; status: "MISSING" | "DUE" | "OK"; /** Started in the last days that Training Properties allows. */ isNew?: boolean; /** Holds no Work Position: only the rows for all employees apply. */ noRole?: boolean; allEmployees?: boolean; /** The Department that gives the training. */ unitName?: string | null; tname?: string | null; dnum?: string | null }
 /** A session of a planned training activity that covers a training. */
 export interface TrainingPlannedSession { activityId: string; trainingNumber: string; trainingTopics: string; kind: string; status: string; sessionId: string; sessionNo: number; scheduledOn?: string | null; canAdd: boolean; participants: number }
+export interface TrainingScanBatchResult {
+  totalPages: number;
+  stored: number;
+  files: { packCode: string; person: string | null; pagesFound: number; pagesExpected: number; duplicatePages: number; state: "STORED" | "STORED_INCOMPLETE" | "ALREADY_UPLOADED" }[];
+  unrecognisedPages: number[];
+}
+
 export interface TrainingPaperPack { id: string; sessionId: string; sessionNo: number; packKind: "ATTENDANCE" | "EXAM" | "SELFREAD"; packCode: string; copyNo: number; pageCount: number; peopleCount: number; sha256: string; reason?: string | null; printedAt: string; printedByName: string; scanCount: number; status: "ISSUED" | "RETURNED" | "LOST" | "VOIDED"; statusAt?: string | null; statusReason?: string | null; statusByName?: string | null }
 export interface TrainingCheckInStatus { open: boolean; code?: string; secondsLeft?: number; invited: number; checkedIn: number }
 export const trainingCheckInApi = {
@@ -454,11 +489,10 @@ export const trainingVendorsApi = {
 };
 export const trainingFormsApi = {
   /** The paper prints to be signed by hand: a numbered copy; a reprint needs a reason. */
-  selfReadingPaper: (sessionId: string, format: TrainingFormFormat, reason?: string, departmentId?: string) => trainingPaperForm(`/training/sessions/${sessionId}/self-reading-list/paper`, format, reason, departmentId),
+  /** One list for one department of the session; without a department, the list of the only department of the session. */
+  selfReading: (sessionId: string, format: TrainingFormFormat, departmentId?: string, departmentName?: string) => trainingForm(`/training/sessions/${sessionId}/self-reading-list`, format, { department: departmentId, departmentName }),
   jobAssignmentPaper: (id: string, format: TrainingFormFormat, reason?: string) => trainingPaperForm(`/training/job-assignments/${id}/paper`, format, reason),
   requirement: (id: string, format: TrainingFormFormat) => trainingForm(`/training/requirements/${id}/export`, format),
-  /** One list for one department of the session; without a department, the list of the only department of the session. */
-  selfReading: (sessionId: string, format: TrainingFormFormat, departmentId?: string) => trainingForm(`/training/sessions/${sessionId}/self-reading-list`, format, { department: departmentId }),
   jobAssignment: (id: string, format: TrainingFormFormat) => trainingForm(`/training/job-assignments/${id}/export`, format),
 };
 
@@ -476,7 +510,7 @@ export const trainingPaperApi = {
     }
   },
   /** Where a numbered paper copy is: returned and filed, lost, or voided (Lost and Voided need a reason). */
-  markCopy: async (packId: string, status: "RETURNED" | "LOST" | "VOIDED", reason?: string) => (await apiClient.post<TrainingPaperPack>(`/training/paper-packs/${packId}/status`, { status, reason })).data,
+  markCopy: async (packId: string, status: "LOST" | "VOIDED", reason?: string) => (await apiClient.post<TrainingPaperPack>(`/training/paper-packs/${packId}/status`, { status, reason })).data,
   packs: async (activityId: string) => (await apiClient.get<TrainingPaperPack[]>(`/training/activities/${activityId}/paper-packs`)).data,
   /** The test copies of a session: one file for each trainee in a ZIP, as PDF (ready to print) or as Word. */
   printExam: async (sessionId: string, reason?: string, format: "pdf" | "docx" = "pdf") => {
@@ -671,6 +705,7 @@ export interface TrainingImpactRow {
   departmentName: string; createdAt: string; outcome?: "MATRIX_UPDATE_NEEDED" | "MATRIX_ALREADY_COVERS" | "NO_TRAINING_IMPACT" | null; assessedAt?: string | null; assessedByName?: string | null;
   assessmentReason?: string | null; impactStatus: "PENDING" | "MATRIX_UPDATE_PENDING" | "DONE"; canAssess: boolean;
 }
+export interface TrainingImpactPosition { id: string; code?: string | null; name: string; inMatrix: boolean }
 export interface TrainingImpactContext {
   activityId: string; trainingNumber: string; documentNumber?: string | null; documentName?: string | null; revisionNumber?: string | null;
   effectiveMatrix?: { id: string; versionNo: number } | null; inEffectiveMatrix: boolean; positionsInMatrix: string[]; positions: { id: string; name: string }[];
@@ -680,9 +715,12 @@ export const trainingFollowUpApi = {
   suspensions: async (params: Record<string, string | number | undefined>) => (await apiClient.get<TrainingPage<TrainingSuspension>>("/training/compliance/suspensions", { params })).data,
   resume: async (id: string, reason: string, signatureToken: string) => (await apiClient.post(`/training/compliance/suspensions/${id}/resume`, { reason, signatureToken })).data,
   retention: async (params: Record<string, string | number | undefined>) => (await apiClient.get<TrainingPage<TrainingRetentionRow> & { retentionYears: number }>("/training/compliance/retention", { params })).data,
-  documentTrainings: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingImpactRow>>("/training/document-trainings", { params })).data,
-  documentTrainingsSummary: async (departmentId?: string) => (await apiClient.get<{ pending: number; matrixUpdatePending: number }>("/training/document-trainings/summary", { params: { departmentId } })).data,
+  documentImpactAssessments: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingImpactRow>>("/training/document-impact-assessments", { params })).data,
+  documentImpactAssessmentsSummary: async (departmentId?: string) => (await apiClient.get<{ pending: number; matrixUpdatePending: number }>("/training/document-impact-assessments/summary", { params: { departmentId } })).data,
   impactContext: async (activityId: string) => (await apiClient.get<TrainingImpactContext>(`/training/activities/${activityId}/impact-assessment`)).data,
+  /** The Work Positions of the department that the assessment can name, one page at a time: search, sort and paging by the server. */
+  impactPositions: async (activityId: string, params: Record<string, string | number | boolean | undefined>) =>
+    (await apiClient.get<TrainingPage<TrainingImpactPosition>>(`/training/activities/${activityId}/impact-assessment/positions`, { params })).data,
   assess: async (activityId: string, body: { outcome: string; reason: string; positionIds: string[]; signatureToken: string }) =>
     (await apiClient.post<TrainingImpactContext>(`/training/activities/${activityId}/impact-assessment`, body)).data,
 };
@@ -893,6 +931,12 @@ export const trainingFilesApi = {
     form.append("file", file);
     return (await apiClient.post<TrainingActivityFiles>(`/training/activities/${activityId}/paper-evidence`, form, { params: { kind, participantId, remark, formUsed, packId }, headers: { "Content-Type": "multipart/form-data" }, onUploadProgress: (e) => { if (e.total) onProgress?.(Math.round((e.loaded / e.total) * 100)); } })).data;
   },
+  /** One scanned PDF with the pages of many people in any order; the server sorts them by the QR code of each page. */
+  uploadScanBatch: async (activityId: string, file: File, onProgress?: (percent: number) => void) => {
+    const form = new FormData();
+    form.append("file", file);
+    return (await apiClient.post<TrainingScanBatchResult>(`/training/activities/${activityId}/paper-evidence/batch`, form, { headers: { "Content-Type": "multipart/form-data" }, onUploadProgress: (event) => onProgress?.(event.total ? Math.round((event.loaded / event.total) * 100) : 0) })).data;
+  },
   openEditor: async (activityId: string, body: AssessmentEditOpen) => (await apiClient.post<AssessmentEditOpened>(`/training/activities/${activityId}/assessment-editor`, body)).data,
   receiveEvidence: async (id: string) => (await apiClient.post<TrainingActivityFiles>(`/training/paper-evidence/${id}/receive`)).data,
   downloadEvidence: async (id: string) => (await apiClient.get<Blob>(`/training/paper-evidence/${id}/download`, { responseType: "blob" })).data,
@@ -906,7 +950,7 @@ export const trainingFilesApi = {
 };
 
 export interface TrainingLegacyRow {
-  revisionId: string; documentNumber: string; documentName: string; revisionNumber: string; completionDate?: string | null; paperTrainingNumber?: string | null;
+  revisionId: string; documentNumber: string; documentLabel?: string | null; documentName: string; revisionNumber: string; completionDate?: string | null; paperTrainingNumber?: string | null;
   evidenceId?: string | null; evidenceStatus?: "SUBMITTED" | "VERIFIED" | null; notEvidenced?: boolean | null; notEvidencedReason?: string | null; originalName?: string | null;
   submittedAt?: string | null; verifiedAt?: string | null; submittedByName?: string | null; verifiedByName?: string | null; pendingForMe: boolean;
 }
@@ -1158,6 +1202,15 @@ const ERROR_TEXT: Record<string, string> = {
   TRAINING_VENDOR_VALIDITY_PAST: "The approval cannot be valid until a day that has passed.",
   TRAINING_PAPER_COPY_CLOSED: "This copy was already returned, lost or voided. It does not change again.",
   TRAINING_PAPER_STATUS_INVALID: "The state of the copy is not valid.",
+  TRAINING_SCAN_BATCH_TOO_LARGE: "The scanned file has too many pages. Send it in parts.",
+  TRAINING_SELF_READING_NO_ATTENDANCE: "A self-reading has no attendance: the person signs the reading in the system.",
+  TRAINING_SELF_READING_ELECTRONIC_ONLY: "A self-reading is confirmed by the person's own electronic signature. The trainer records nothing for them: remind the person to sign.",
+  TRAINING_READ_REMINDER_NOT_NEEDED: "This person has already signed, or has no account to remind.",
+  TRAINING_READER_ACCOUNT_NOT_ACTIVE: "This person's account is not Active (left the company or suspended), so they cannot sign. Use Cannot Read to record them as absent.",
+  TRAINING_SUPPLEMENTARY_PERSON_NOT_ACTIVE: "A person whose account is not Active (left the company or suspended) cannot be put on a supplementary training. They stay Absent on the list until the account is Active again.",
+  TRAINING_CANNOT_READ_NOT_APPLICABLE: "Only a person who has not signed a self-reading yet can be recorded as unable to read.",
+  TRAINING_READ_REMINDER_TOO_SOON: "This person was reminded less than an hour ago.",
+  TRAINING_PAPER_RETURN_BY_SCAN: "A copy is returned by uploading its scan; record it as Lost or Voided here.",
   TRAINING_FORM_TEMPLATE_MISSING: "The template of the form (APD.0117 for the attendance list, APD.0011 for the matrix) is not enabled. Upload it and enable it in Training Properties (form templates).",
   TRAINING_FORM_TEMPLATE_STRUCTURE: "The enabled template APD.0117 does not have the parts of the form (header, general information, topics, list, confirmations). Upload the right file.",
   TRAINING_FORMAT_INVALID: "Choose Word or PDF.",

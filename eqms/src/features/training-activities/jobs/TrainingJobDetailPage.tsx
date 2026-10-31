@@ -347,12 +347,15 @@ export function TrainingJobDetailPage() {
       )}
       {caps.cancel && (
         <PaperPrintButton
-          load={(format, reason) =>
-            trainingFormsApi.jobAssignmentPaper(job.id, format, reason)
-          }
-          fileName={(format) =>
-            `APD.0024-${job.personName}-${job.issueNo}-paper.${format}`
-          }
+          items={[
+            {
+              key: job.id,
+              load: (format, reason) =>
+                trainingFormsApi.jobAssignmentPaper(job.id, format, reason),
+              fileName: (format) =>
+                `APD.0024-${job.personName}-${job.issueNo}-paper.${format}`,
+            },
+          ]}
         />
       )}
       {job.status !== "CANCELLED" && (
@@ -564,12 +567,11 @@ export function TrainingJobDetailPage() {
 
         {tab === "matrix" && (
           <div className="space-y-4">
-            <TabBlock title="Other trainings required before the Work Position is given">
-              <div className="p-3">
-                <RequiredTrainingsField value={required} disabled={!editable} onChange={(next) => { setRequired(next); setDirty(true); }} />
-                {editable && <p className="mt-2 text-xs text-slate-600">Save the draft to check them against the training records of the person.</p>}
-              </div>
-            </TabBlock>
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-slate-800">Other trainings required before the Work Position is given</h3>
+              <RequiredTrainingsField value={required} disabled={!editable} onChange={(next) => { setRequired(next); setDirty(true); }} />
+              {editable && <p className="text-xs text-slate-600">Save the draft to check them against the training records of the person.</p>}
+            </div>
             {(eligibility?.openSuspensions ?? 0) > 0 && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
                 The work of this person is suspended after a failed assessment (

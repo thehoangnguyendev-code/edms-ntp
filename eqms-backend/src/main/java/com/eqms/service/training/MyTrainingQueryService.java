@@ -146,5 +146,15 @@ public class MyTrainingQueryService {
         return Map.of("data", TrainingRows.camel(rows), "pagination", Map.of("page", page, "limit", limit, "total", total, "totalPages", pages));
     }
 
+    /** What waits for the person, for the badge of the menu: the trainings to do and the signatures asked of them. Two counts, nothing else is read. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> counts(UserAccount actor) {
+        access.require(actor, "training.self.view");
+        Long tasks = jdbc.queryForObject("select count(*) from (" + TASKS + ") q", Long.class, actor.getId());
+        Long signatures = jdbc.queryForObject("select count(*) from (" + APPROVALS + ") q", Long.class, actor.getId(), actor.getId());
+        long t = tasks == null ? 0 : tasks, s = signatures == null ? 0 : signatures;
+        return Map.of("tasks", t, "signatures", s, "total", t + s);
+    }
+
     private static LocalDate date(String value) { return value == null || value.isBlank() ? null : LocalDate.parse(value); }
 }

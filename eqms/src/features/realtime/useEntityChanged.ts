@@ -43,15 +43,24 @@ export const useEntityChanged = (
     const wantedTypes = new Set(typesKey ? (typesKey.split("|") as ChangedEntityType[]) : []);
     const wantedIds = new Set(idsKey ? idsKey.split("|") : []);
     const filtered = wantedIds.size > 0 || Boolean(documentId);
-    let pending: EntityChangedEvent[] = [];
+    const pending = new Map<string, EntityChangedEvent>();
     let timer: number | null = null;
 
     const flush = () => {
       timer = null;
-      const batch = pending;
-      pending = [];
+      if (document.visibilityState === "hidden" || !navigator.onLine) return;
+      const batch = [...pending.values()];
+      pending.clear();
       if (batch.length > 0) callbackRef.current(batch);
     };
+
+    const schedule = () => {
+      if (pending.size > 0 && timer === null && document.visibilityState !== "hidden" && navigator.onLine) {
+        timer = window.setTimeout(flush, debounceMs);
+      }
+    };
+    document.addEventListener("visibilitychange", schedule);
+    window.addEventListener("online", schedule);
 
     const unsubscribe = subscribeNotificationRealtime((event) => {
       if (event.type !== "entity-changed") return;
@@ -67,12 +76,14 @@ export const useEntityChanged = (
         const matchesDocument = Boolean(documentId) && payload.documentId === documentId;
         if (!matchesId && !matchesDocument) return;
       }
-      pending.push(payload);
-      if (timer === null) timer = window.setTimeout(flush, debounceMs);
+      pending.set(`${payload.entityType}:${payload.id}:${payload.documentId ?? ""}`, payload);
+      schedule();
     });
 
     return () => {
       unsubscribe();
+      document.removeEventListener("visibilitychange", schedule);
+      window.removeEventListener("online", schedule);
       if (timer !== null) window.clearTimeout(timer);
     };
   }, [typesKey, idsKey, documentId, debounceMs, enabled]);

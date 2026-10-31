@@ -8,7 +8,7 @@ vi.mock("@/features/maintenance/maintenanceStatus", async () => {
   const actual = await vi.importActual<typeof import("@/features/maintenance/maintenanceStatus")>("@/features/maintenance/maintenanceStatus");
   return { ...actual, fetchMaintenanceStatus: ctl.fetch };
 });
-vi.mock("@/components/branding/BrandLogo", () => ({ BrandLogo: () => null }));
+vi.mock("@/components/branding/BrandLogo", () => ({ BrandLogo: () => null, useBranding: () => ({ authBackground: null }) }));
 
 const renderAt = () =>
   render(

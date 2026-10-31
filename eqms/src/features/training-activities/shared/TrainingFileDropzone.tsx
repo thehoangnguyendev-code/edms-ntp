@@ -47,7 +47,7 @@ export function TrainingFileDropzone({ label, description, accept, hint, maxMb, 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <label className="text-xs font-medium text-slate-700 sm:text-sm">{label}{required && <span className="ml-0.5 text-red-500">*</span>}</label>
+        <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">{label}{required && <span className="ml-0.5 text-red-500">*</span>}</label>
         {badge}
       </div>
       {description && <p className="text-xs text-slate-500">{description}</p>}

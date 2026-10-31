@@ -520,7 +520,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
         confirmDisabled={!reason.trim()}
         size="md"
       >
-        <label className="block space-y-2 text-sm font-medium text-slate-700">
+        <label className="block space-y-2 text-sm font-medium text-slate-700 capitalize">
           <span>Reason for deletion</span>
           <Textarea
             value={reason}

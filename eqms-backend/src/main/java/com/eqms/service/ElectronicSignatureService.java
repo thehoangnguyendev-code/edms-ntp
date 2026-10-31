@@ -135,12 +135,33 @@ public class ElectronicSignatureService {
             String checksumBefore,
             String checksumAfter
     ) {
+        return createRevisionSignatureRecord(revision, user, signatureToken, meaning, reason, comment,
+                oldStatus, newStatus, checksumBefore, checksumAfter, null);
+    }
+
+    ElectronicSignature createConfirmedPublishSignature(DocumentRevisionRecord revision, UserAccount user,
+            String reason, String oldStatus, String checksum, ConfirmedPublishAuthorization confirmation) {
+        confirmation.require(user.getId(), revision.getId());
+        return createRevisionSignatureRecord(revision, user, null, "PUBLISHED", reason, reason,
+                oldStatus, "EFFECTIVE", checksum, checksum, confirmation);
+    }
+
+    private ElectronicSignature createRevisionSignatureRecord(DocumentRevisionRecord revision, UserAccount user,
+            String signatureToken, String meaning, String reason, String comment, String oldStatus, String newStatus,
+            String checksumBefore, String checksumAfter, ConfirmedPublishAuthorization confirmation) {
         if (revision == null || user == null) {
             throw new IllegalArgumentException("Revision and user are required for electronic signature");
         }
         ElectronicSignatureSetting setting = requireSetting();
         String normalizedMeaning = normalizeMeaning(meaning);
-        validateSigningRules(signatureToken, user, reason);
+        if (confirmation == null) {
+            validateSigningRules(signatureToken, user, reason);
+        } else {
+            confirmation.require(user.getId(), revision.getId());
+            if (!"PUBLISHED".equals(normalizedMeaning) || !StringUtils.hasText(reason)) {
+                throw new IllegalArgumentException("Confirmed Publish requires its original signing reason");
+            }
+        }
 
         ElectronicSignature signature = new ElectronicSignature();
         signature.setEntityType("revisions");
@@ -156,7 +177,7 @@ public class ElectronicSignatureService {
         signature.setMeaning(normalizedMeaning);
         signature.setReason(reason);
         signature.setComment(comment);
-        signature.setSignedAt(Instant.now());
+        signature.setSignedAt(confirmation == null ? Instant.now() : confirmation.confirmedAt);
         signature.setTimezone(displayTimezone(setting));
         signature.setTimestampDisplay(signatureRendererService.formatTimestampSnapshot(signature.getSignedAt(), setting));
         signature.setAuthenticationMethod(AUTHENTICATION_METHOD);
@@ -170,6 +191,15 @@ public class ElectronicSignatureService {
         signature.setReviewPdfVersionId(null);
         signature.setPublishedPdfVersionId(null);
         signature.setStatus("SIGNED");
+        if (confirmation != null) {
+            signature.setUsername(confirmation.context.get("username"));
+            signature.setFullName(confirmation.context.get("fullName"));
+            signature.setPosition(confirmation.context.get("position"));
+            signature.setEmail(confirmation.context.get("email"));
+            signature.setDepartment(confirmation.context.get("department"));
+            signature.setIpAddress(confirmation.context.get("ipAddress"));
+            signature.setUserAgent(confirmation.context.get("userAgent"));
+        }
         ElectronicSignature saved = signatureRepository.save(signature);
 
         // Deliberately NOT a separate "DOCUMENT_ELECTRONICALLY_SIGNED" audit trail row of its own.

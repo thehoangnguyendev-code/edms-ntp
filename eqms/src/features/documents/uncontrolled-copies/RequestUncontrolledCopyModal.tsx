@@ -172,7 +172,7 @@ export const RequestUncontrolledCopyModal: React.FC<{
           <div className="space-y-4 min-w-0">
             {!documentId && (
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Document number</label>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Document number</label>
                 <div className="flex items-center gap-2">
                   <input
                     className={FIELD_INPUT}
@@ -237,7 +237,7 @@ export const RequestUncontrolledCopyModal: React.FC<{
                 {context.canRequest && (
                   <>
                     <div>
-                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                         Reason / Purpose <span className="text-rose-500">*</span>
                       </label>
                       <textarea
@@ -276,7 +276,7 @@ export const RequestUncontrolledCopyModal: React.FC<{
                     {recipientMode === "EXTERNAL" && (
                       <>
                         <div>
-                          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">External recipient</label>
+                          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">External recipient</label>
                           <input
                             className={FIELD_INPUT}
                             value={externalLabel}

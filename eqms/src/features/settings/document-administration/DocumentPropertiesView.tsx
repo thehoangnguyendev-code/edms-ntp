@@ -126,7 +126,7 @@ const NumberField: React.FC<{
   onChange: (value: number) => void;
 }> = ({ label, hint, value, min, max, fallback, disabled, onChange }) => (
   <div className="min-w-0">
-    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{label}</label>
     <input
       type="number"
       min={min}

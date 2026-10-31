@@ -60,34 +60,34 @@ class TrainingNavigationTest {
     }
 
     @Test
-    void documentTrainingsMatchesTheFrontendIdRouteAndProgrammeGroup() {
+    void documentImpactAssessmentMatchesTheFrontendIdRouteAndProgrammeGroup() {
         List<NavigationItemResponse> menu = navigation.getNavigation(Set.of("training.module.view", "training.matrix.view"));
         NavigationItemResponse training = menu.stream().filter(item -> item.id().equals("training-management")).findFirst().orElseThrow();
         NavigationItemResponse programme = training.children().stream().filter(item -> item.id().equals("training-planning")).findFirst().orElseThrow();
-        NavigationItemResponse documents = programme.children().stream().filter(item -> item.id().equals("training-document-trainings")).findFirst().orElseThrow();
-        assertThat(documents.label()).isEqualTo("Document Trainings");
-        assertThat(documents.path()).isEqualTo("/training-management/document-trainings");
+        NavigationItemResponse documents = programme.children().stream().filter(item -> item.id().equals("training-document-impact-assessment")).findFirst().orElseThrow();
+        assertThat(documents.label()).isEqualTo("Document Impact Assessment");
+        assertThat(documents.path()).isEqualTo("/training-management/document-impact-assessment");
         assertThat(idsFor("training.module.view", "training.matrix.view")).contains("training-matrices");
     }
 
     @Test
-    void documentTrainingsIsNotListedWithoutMatrixView() {
-        assertThat(idsFor("training.module.view", "training.self.view")).doesNotContain("training-document-trainings");
+    void documentImpactAssessmentIsNotListedWithoutMatrixView() {
+        assertThat(idsFor("training.module.view", "training.self.view")).doesNotContain("training-document-impact-assessment");
     }
 
     @Test
-    void documentTrainingsStillRequiresTheModulePermission() {
-        assertThat(idsFor("training.matrix.view")).doesNotContain("training-document-trainings");
+    void documentImpactAssessmentStillRequiresTheModulePermission() {
+        assertThat(idsFor("training.matrix.view")).doesNotContain("training-document-impact-assessment");
     }
 
     @Test
-    void documentTrainingsIsHiddenWhenTrainingFeatureIsDisabled() {
+    void documentImpactAssessmentIsHiddenWhenTrainingFeatureIsDisabled() {
         when(systemConfigurationService.isFeatureEnabled("feat-tms")).thenReturn(false);
-        assertThat(idsFor("training.module.view", "training.matrix.view")).doesNotContain("training-document-trainings");
+        assertThat(idsFor("training.module.view", "training.matrix.view")).doesNotContain("training-document-impact-assessment");
     }
 
     @Test
-    void documentTrainingsIsListedForTheExistingWildcardGrant() {
-        assertThat(idsFor("*")).contains("training-document-trainings");
+    void documentImpactAssessmentIsListedForTheExistingWildcardGrant() {
+        assertThat(idsFor("*")).contains("training-document-impact-assessment");
     }
 }

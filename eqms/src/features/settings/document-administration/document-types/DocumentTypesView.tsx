@@ -248,7 +248,7 @@ export const DocumentTypesView: React.FC = () => {
     <div className="compact-filter-stack flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
       <div className="bg-white w-full">
         <div className="flex md:hidden flex-col gap-1.5 w-full">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -330,7 +330,7 @@ export const DocumentTypesView: React.FC = () => {
 >
 <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-end">
           <div className="sm:col-span-1 lg:col-span-4">
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Search</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
@@ -641,7 +641,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
     >
       <div className="space-y-4">
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
             Document Type Name<span className="text-red-500 ml-1">*</span>
           </label>
           <input
@@ -656,7 +656,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
             Short Code<span className="text-red-500 ml-1">*</span>
           </label>
           <input
@@ -683,7 +683,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
             {isEdit ? "Issued Sequence" : "Starting Sequence"}
             {!isEdit && <span className="text-red-500 ml-1">*</span>}
           </label>
@@ -707,7 +707,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Document Number Format</label>
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Document Number Format</label>
           <Select
             value={formData.nameFormatId ?? ""}
             onChange={(v) => setFormData({ ...formData, nameFormatId: v || null })}
@@ -721,7 +721,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Description</label>
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Description</label>
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}

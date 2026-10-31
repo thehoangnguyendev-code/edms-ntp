@@ -21,7 +21,14 @@ public record PublicBrandingResponse(
         /** How the materials of a training are drawn: TABLE or TILES (TABLE when the administrator set nothing). */
         String trainingMaterialsLayout,
         String systemFavicon,
-        String systemFooter,
+        /** Left footer text; null when the administrator never set one (the screen then uses its default). {year} is replaced by the screen. */
+        String systemFooterLeft,
+        /** Right footer text, always shown aligned to the right; null or empty means nothing. */
+        String systemFooterRight,
+        /** Footer on desktop and tablet (md and up). Shown when nothing was set. */
+        boolean footerShowOnDesktop,
+        /** Footer on mobile. Hidden when nothing was set, as before. */
+        boolean footerShowOnMobile,
         /** Text of the top bar on the Dashboard; null when the administrator left it empty (the screen then uses its default). */
         String systemHeaderTitle,
         Map<String, String> navigationLabelOverrides,

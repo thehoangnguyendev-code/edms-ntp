@@ -75,6 +75,7 @@ export const FormField: React.FC<FormFieldProps> = ({
       <label
         htmlFor={controlId}
         className={cn(
+          'capitalize',
           'block text-slate-700 font-medium mb-1.5',
           // Responsive font size
           'text-xs sm:text-sm',

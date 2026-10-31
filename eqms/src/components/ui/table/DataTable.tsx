@@ -273,6 +273,14 @@ function DataTableBase<T>({
   const dragging = screenOwnsDragScroll ? isDragging : ownDragScroll.isDragging;
   const dragProps = screenOwnsDragScroll ? scrollProps : ownDragScroll.dragEvents;
 
+  // Rows already on screen stay while the next search, sort or page is fetched: the table is dimmed (after a short delay, so a fast answer never flashes) instead of being replaced by the loading block.
+  // The loading block is for the first load only, when there is nothing to keep.
+  const settledRows = useRef<readonly T[] | null>(null);
+  if (!isLoading) settledRows.current = rows.length > 0 ? rows : null;
+  const staleRows = isLoading ? settledRows.current : null;
+  const showLoading = isLoading && !staleRows;
+  const shownRows = staleRows ?? rows;
+
   const [scrollerEl, setScrollerEl] = useState<HTMLDivElement | null>(null);
   const attachScroller = (node: HTMLDivElement | null) => {
     setScrollerEl(node);
@@ -289,14 +297,16 @@ function DataTableBase<T>({
         className,
       )}
     >
-      {!isLoading && toolbar}
-      {isLoading ? (
+      {!showLoading && toolbar}
+      {showLoading ? (
         loadingContent
       ) : (
         <div
           ref={attachScroller}
+          aria-busy={staleRows ? true : undefined}
           className={cn(
-            "flex-1 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 hover:scrollbar-thumb-slate-400",
+            "flex-1 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 hover:scrollbar-thumb-slate-400 transition-opacity duration-150",
+            staleRows && "pointer-events-none opacity-60 delay-150",
             dragging ? "cursor-grabbing select-none" : "cursor-grab",
           )}
           {...dragProps}
@@ -362,7 +372,7 @@ function DataTableBase<T>({
               </TableMarkup.Row>
             </TableMarkup.Head>
             <TableMarkup.Body className="bg-white [&>tr:last-child>td]:border-b-0">
-              {rows.length === 0 ? (
+              {shownRows.length === 0 ? (
                 <TableMarkup.Row>
                   <TableMarkup.Cell
                     colSpan={colSpan}
@@ -372,7 +382,7 @@ function DataTableBase<T>({
                   </TableMarkup.Cell>
                 </TableMarkup.Row>
               ) : (
-                rows.map((row, index) => (
+                shownRows.map((row, index) => (
                   <React.Fragment key={getRowKey(row, index)}>
                     <TableMarkup.Row
                       data-record-stripe={index % 2 === 1 ? "true" : "false"}
@@ -437,7 +447,7 @@ function DataTableBase<T>({
           </TableMarkup.Root>
         </div>
       )}
-      {!isLoading && rows.length > 0 && pagination}
+      {shownRows.length > 0 && (!isLoading || staleRows) && pagination}
     </div>
   );
 }

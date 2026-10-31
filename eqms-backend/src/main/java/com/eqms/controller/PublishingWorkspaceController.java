@@ -4,10 +4,7 @@ import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.publishing.PublishingWorkspaceRequest;
 import com.eqms.dto.publishing.PublishingWorkspaceResponse;
 import com.eqms.service.PermissionEvaluationService;
-import com.eqms.service.PublishingWorkspaceJobProcessorService;
-import com.eqms.service.PublishingWorkspaceJobService;
 import com.eqms.service.PublishingWorkspaceService;
-import com.eqms.service.SignatureTokenConsumptionService;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.CacheControl;
@@ -21,26 +18,20 @@ import java.util.UUID;
 public class PublishingWorkspaceController {
 
     private final PublishingWorkspaceService service;
-    private final PublishingWorkspaceJobService jobService;
-    private final PublishingWorkspaceJobProcessorService jobProcessorService;
     private final CurrentUserService currentUserService;
     private final PermissionEvaluationService permissionEvaluationService;
-    private final SignatureTokenConsumptionService signatureTokenConsumptionService;
+    private final com.eqms.service.PublishingCommandService commands;
 
     public PublishingWorkspaceController(
             PublishingWorkspaceService service,
-            PublishingWorkspaceJobService jobService,
-            PublishingWorkspaceJobProcessorService jobProcessorService,
             CurrentUserService currentUserService,
             PermissionEvaluationService permissionEvaluationService,
-            SignatureTokenConsumptionService signatureTokenConsumptionService
+            com.eqms.service.PublishingCommandService commands
     ) {
         this.service = service;
-        this.jobService = jobService;
-        this.jobProcessorService = jobProcessorService;
         this.currentUserService = currentUserService;
         this.permissionEvaluationService = permissionEvaluationService;
-        this.signatureTokenConsumptionService = signatureTokenConsumptionService;
+        this.commands = commands;
     }
 
     @GetMapping
@@ -55,6 +46,13 @@ public class PublishingWorkspaceController {
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(service.getPreviewPdf(id));
+    }
+
+    @GetMapping("/jobs/{jobId}")
+    public ResponseEntity<com.eqms.dto.publishing.PublishingJobStatusResponse> getJobStatus(
+            @PathVariable UUID id,@PathVariable UUID jobId) {
+        requirePublishPermission();
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.getJobStatus(id,jobId));
     }
 
     @GetMapping("/component-preview/{templateId}/{componentType}")
@@ -96,16 +94,10 @@ public class PublishingWorkspaceController {
     ) {
         requirePublishPermission();
         var currentUser = currentUserService.requireCurrentUser();
-        // DC-XF-84: the actual signature validation/consumption only happened deep inside the async
-        // worker (PublishingWorkspaceService.completePublish -> RevisionService.publishRevision),
-        // potentially minutes after this request was accepted if the queue is backed up. Reject an
-        // already-invalid/expired/replayed token immediately instead of only discovering it later,
-        // after the caller has already been told 202 Accepted. Does not consume the token here --
-        // the worker still performs the real, once-only consumption when it actually signs.
-        signatureTokenConsumptionService.requireValidWithoutConsuming(request == null ? null : request.signatureToken(), currentUser);
-        var job = jobService.createPublishJob(id, currentUser.getId(), request);
-        jobProcessorService.processPublishJob(job.getId(), id, request, currentUser.getId());
-        return ResponseEntity.accepted().body(service.getWorkspace(id));
+        // Consumes the JWT once, atomically with the immutable command and its content binding.
+        // The durable dispatcher, rather than an in-memory event, starts/resumes this job.
+        var job=commands.acceptPublish(id, currentUser.getId(), request);
+        return ResponseEntity.accepted().body(service.getAcceptedWorkspace(id,job.getId()));
     }
 
     private void requirePublishPermission() {

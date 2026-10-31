@@ -24,7 +24,7 @@ const FIELD_INPUT =
 
 const Field: React.FC<{ label: string; hint?: string; children: React.ReactNode }> = ({ label, hint, children }) => (
   <div className="min-w-0">
-    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{label}</label>
     {children}
     {hint && <p className="mt-1 text-2xs text-slate-400 break-words">{hint}</p>}
   </div>

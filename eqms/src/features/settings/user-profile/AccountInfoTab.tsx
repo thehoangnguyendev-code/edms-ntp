@@ -159,43 +159,43 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                     <FormSection title="Basic Information" icon={<UserIcon className="h-4 w-4" />}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Full Name</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Full Name</label>
                                 <input type="text" value={formData.fullName} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Username</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Username</label>
                                 <input type="text" value={formData.username} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Employee ID</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Employee ID</label>
                                 <input type="text" value={formData.employeeCode} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Nationality</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Nationality</label>
                                 <input type="text" value={formData.nationality} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Position</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Position</label>
                                 <input type="text" value={formData.position} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Department</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Department</label>
                                 <input type="text" value={formData.department} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Business Unit</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Business Unit</label>
                                 <input type="text" value={formData.businessUnit} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Employment Type</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Employment Type</label>
                                 <input type="text" value={formData.employmentType} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Start Date</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Start Date</label>
                                 <input type="text" value={formData.startDate} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Access Profiles</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Access Profiles</label>
                                 <input type="text" value={formData.accessProfiles} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                         </div>
@@ -205,7 +205,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                     <FormSection title="Contact Information" icon={<IconAddressBook className="h-4 w-4" />}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                                     Email Address <span className="text-red-500">*</span>
                                 </label>
                                 <div className="relative">
@@ -257,7 +257,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                                     Phone Number <span className="text-red-500">*</span>
                                 </label>
                                 <div className="relative">

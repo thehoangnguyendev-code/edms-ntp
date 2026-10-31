@@ -71,6 +71,39 @@ class SignatureTokenConsumptionServiceTest {
     }
 
     @Test
+    void transactionLocalConsumptionIsClearedAtCompletionSoAnotherTransactionCannotReplay() {
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            assertEquals(tokenId, service.requireAndConsume("raw-jwt", user));
+            assertEquals(tokenId, service.requireAndConsume("raw-jwt", user));
+            org.mockito.Mockito.verify(usedSignatureTokenRepository, org.mockito.Mockito.times(1)).save(any());
+            for (var hook : org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations()) {
+                hook.afterCompletion(org.springframework.transaction.support.TransactionSynchronization.STATUS_COMMITTED);
+            }
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+        when(usedSignatureTokenRepository.save(any())).thenThrow(new DataIntegrityViolationException("duplicate nonce"));
+        assertThrows(UnauthorizedException.class, () -> service.requireAndConsume("raw-jwt", user));
+    }
+
+    @Test
+    void requiresNewTransactionCannotInheritTheSuspendedTransactionsSignature() {
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.requireAndConsume("raw-jwt",user);
+            var hooks=org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations();
+            hooks.forEach(org.springframework.transaction.support.TransactionSynchronization::suspend);
+            try {
+                assertThrows(UnauthorizedException.class,()->service.requireAndConsume("raw-jwt",user));
+            } finally {hooks.forEach(org.springframework.transaction.support.TransactionSynchronization::resume);}
+            assertEquals(tokenId,service.requireAndConsume("raw-jwt",user));
+            org.mockito.Mockito.verify(usedSignatureTokenRepository,org.mockito.Mockito.times(1)).save(any());
+            hooks.forEach(hook->hook.afterCompletion(org.springframework.transaction.support.TransactionSynchronization.STATUS_COMMITTED));
+        } finally {org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();}
+    }
+
+    @Test
     void requireAndConsume_tokenBelongingToDifferentUser_isRejected() {
         UserAccount otherUser = new UserAccount();
         otherUser.setId(UUID.randomUUID());

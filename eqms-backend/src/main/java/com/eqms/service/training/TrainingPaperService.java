@@ -66,19 +66,21 @@ public class TrainingPaperService {
     }
 
     /**
-     * Where a numbered copy is (hybrid operation): Issued, then Returned (the signed paper came back and is filed with the record), or Lost, or Voided (not used, destroyed). A copy that is not
-     * Issued any more does not change again; Lost and Voided need a reason. Every change is in the Audit Trail with the code of the pack.
+     * Where a numbered copy is (hybrid operation): Issued, then Returned (by the upload of its scan: the signed paper is filed with the record), or Lost, or Voided (not used, destroyed). A copy that is not
+     * Issued any more does not change again; this method records only Lost and Voided, and both need a reason. Every change is in the Audit Trail with the code of the pack.
      */
     @Transactional
     public Map<String, Object> markPack(UserAccount actor, UUID packId, String status, String reason) {
-        access.require(actor, "training.paper.print");
+        access.require(actor, "training.activity.conduct", "training.activity.organize");
         if (status == null || !Set.of("RETURNED", "LOST", "VOIDED").contains(status)) throw new IllegalArgumentException("TRAINING_PAPER_STATUS_INVALID");
+        // A copy comes back only by its scan (TrainingFileService.uploadEvidence); the person can only record it as Lost or Voided.
+        if ("RETURNED".equals(status)) throw new IllegalArgumentException("TRAINING_PAPER_RETURN_BY_SCAN");
         Map<String, Object> pack = jdbc.queryForList("select p.*, a.organizer_department_id from training_paper_packs p join training_activities a on a.id = p.activity_id where p.id = ? for update of p", packId)
                 .stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         access.requireScope(actor, (UUID) pack.get("organizer_department_id"));
         if (jdbc.queryForObject("select count(*) from training_paper_pack_events where pack_id = ?", Integer.class, packId) > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_COPY_CLOSED");
         String why = reason == null ? "" : reason.trim();
-        if (!"RETURNED".equals(status) && why.isEmpty()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
+        if (why.isEmpty()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         if (why.length() > 1000) throw new IllegalArgumentException("TRAINING_REASON_TOO_LONG");
         jdbc.update("insert into training_paper_pack_events(id, pack_id, status, reason, by_user) values (?,?,?,?,?)", UUID.randomUUID(), packId, status, why.isEmpty() ? null : why, actor.getId());
         Map<String, Object> activity = store.activity((UUID) pack.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
@@ -88,7 +90,7 @@ public class TrainingPaperService {
 
     @Transactional
     public Map<String, Object> print(UserAccount actor, UUID sessionId, String reason) {
-        access.require(actor, "training.paper.print");
+        access.require(actor, "training.activity.conduct", "training.activity.organize");
         Map<String, Object> session = sessionOf(sessionId);
         UUID activityId = (UUID) session.get("activity_id");
         access.requireScope(actor, (UUID) session.get("organizer_department_id"));
@@ -117,7 +119,7 @@ public class TrainingPaperService {
         int pages;
         try {
             Rendered r = render(session, topics, people, code, copy, preparedBy);
-            bytes = r.bytes();
+            bytes = TrainingPaperQr.stamp(r.bytes(), code, null);
             pages = r.pages();
         } catch (IOException e) {
             throw new IllegalStateException("TRAINING_PRINT_FAILED", e);

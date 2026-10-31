@@ -86,7 +86,14 @@ export interface GeneralConfig {
   appShortName?: string;
   /** Colour behind the icon on the home screen (#RRGGBB); a transparent logo needs one. */
   appIconBackground?: string;
-  systemFooter: string;
+  /** Left footer text; the built-in copyright line when never set. {year} is the current year. */
+  systemFooterLeft?: string;
+  /** Right footer text, always aligned to the right. */
+  systemFooterRight?: string;
+  /** Footer on desktop and tablet (on when never set). */
+  footerShowOnDesktop?: boolean;
+  /** Footer on mobile (off when never set). */
+  footerShowOnMobile?: boolean;
   /** Text of the Dashboard top bar; empty means the built-in default. */
   systemHeaderTitle?: string;
   navigationLabelOverrides?: Record<string, string>;

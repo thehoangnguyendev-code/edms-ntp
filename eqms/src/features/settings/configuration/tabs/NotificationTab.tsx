@@ -176,7 +176,7 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
           {config.enableEmailNotifications && (
             <div className="ml-7 p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-4">
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                   Public App URL
                 </label>
                 <input
@@ -192,7 +192,7 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     SMTP Host
                   </label>
                   <input
@@ -204,7 +204,7 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
                   />
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     SMTP Port
                   </label>
                   <input
@@ -216,7 +216,7 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
                   />
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     SMTP Username
                   </label>
                   <input
@@ -228,7 +228,7 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
                   />
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     SMTP Password
                   </label>
                   <div className="relative">
@@ -249,7 +249,7 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Sender Email
                   </label>
                   <input
@@ -261,7 +261,7 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
                   />
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Sender Name
                   </label>
                   <input

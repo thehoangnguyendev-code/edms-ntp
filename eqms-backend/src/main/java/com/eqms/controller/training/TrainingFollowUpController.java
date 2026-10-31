@@ -44,18 +44,25 @@ public class TrainingFollowUpController {
         return ResponseEntity.ok(retention.list(users.requireCurrentUser(), departmentId, state, search, sortBy, sortDirection, page, limit));
     }
 
-    @GetMapping("/document-trainings")
-    public ResponseEntity<?> documentTrainings(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) String status, @RequestParam(required = false) String activityStatus, @RequestParam(required = false) String search,
+    @GetMapping("/document-impact-assessments")
+    public ResponseEntity<?> documentImpactAssessments(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) String status, @RequestParam(required = false) String activityStatus, @RequestParam(required = false) String search,
                                                @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
                                                @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(impacts.list(users.requireCurrentUser(), departmentId, status, activityStatus, search, sortBy, sortDirection, page, limit));
     }
 
-    @GetMapping("/document-trainings/summary")
-    public ResponseEntity<?> documentTrainingsSummary(@RequestParam(required = false) UUID departmentId) { return ResponseEntity.ok(impacts.summary(users.requireCurrentUser(), departmentId)); }
+    @GetMapping("/document-impact-assessments/summary")
+    public ResponseEntity<?> documentImpactAssessmentsSummary(@RequestParam(required = false) UUID departmentId) { return ResponseEntity.ok(impacts.summary(users.requireCurrentUser(), departmentId)); }
 
     @GetMapping("/activities/{id}/impact-assessment")
     public ResponseEntity<?> impactContext(@PathVariable UUID id) { return ResponseEntity.ok(impacts.context(users.requireCurrentUser(), id)); }
+
+    /** The Work Positions of the department that the assessment can name, one page at a time (search, sort and paging by the server). */
+    @GetMapping("/activities/{id}/impact-assessment/positions")
+    public ResponseEntity<?> impactPositions(@PathVariable UUID id, @RequestParam(required = false) String search, @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
+                                             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(impacts.positions(users.requireCurrentUser(), id, search, sortBy, sortDirection, page, limit));
+    }
 
     @PostMapping("/activities/{id}/impact-assessment")
     public ResponseEntity<?> assess(@PathVariable UUID id, @RequestBody AssessRequest request) { return ResponseEntity.ok(impacts.assess(users.requireCurrentUser(), id, request)); }

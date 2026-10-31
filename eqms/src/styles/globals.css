@@ -146,9 +146,20 @@
   zoom: 1.0;
 }
 
-/* Smooth scroll behavior for entire app */
-html {
+/* Shared scroll surfaces, including portals outside the main layout. Native wheel/touch/thumb
+   gestures stay browser-controlled; this animates keyboard/focus and programmatic navigation. */
+:where(html, body, .modal-content, [class*="overflow-auto"], [class*="overflow-x-auto"], [class*="overflow-y-auto"],
+  [class*="overflow-scroll"], [class*="overflow-x-scroll"], [class*="overflow-y-scroll"], textarea,
+  [data-scroll-smooth]) {
   scroll-behavior: smooth;
+}
+
+/* Virtual windows and deliberate resets cannot animate through intermediate records. */
+[data-scroll-immediate] {
+  scroll-behavior: auto;
+}
+
+html {
   /* IMPORTANT: Remove padding from html element - safe area handled per component */
   /* This prevents double padding issues */
 }
@@ -816,8 +827,8 @@ body {
 
 /* Accessibility: honor OS reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
+  * {
+    scroll-behavior: auto !important;
   }
 
   *,

@@ -7,7 +7,7 @@ afterEach(cleanup);
 
 const rules = { materialsRequired: true, materialsSatisfied: false, materialsSource: "NONE" as "DOCUMENT" | "FILES" | "NONE", testRequired: false, checklistRequired: false, assessmentFormSatisfied: false, onlineTest: false, inherited: false, missing: [] as string[] };
 const activity = (over: Partial<TrainingActivityDetail> = {}, ruleOver: Partial<typeof rules> = {}, assessments: string[] = ["TEST"]) =>
-  ({ id: "a1", kind: "PERIODIC", kindReason: "OTHER", documentNumber: "SOP.0012", revisionNumber: "3", contentRules: { ...rules, ...ruleOver },
+  ({ id: "a1", kind: "PERIODIC", kindReason: "OTHER", documentNumber: "SOP.0012", revisionNumber: "3", documentLabel: "SOP.0012_3", contentRules: { ...rules, ...ruleOver },
      sessions: assessments.map((a, i) => ({ id: `s${i}`, status: "PLANNED", assessmentMethod: a })), ...over }) as unknown as TrainingActivityDetail;
 const show = (a: TrainingActivityDetail, part: "materials" | "assessment", canExempt = true, onExempt = vi.fn().mockResolvedValue(true)) => {
   render(<ContentRulesPanel activity={a} part={part} canExempt={canExempt} onExempt={onExempt} />);
@@ -34,7 +34,7 @@ describe("ContentRulesPanel", () => {
     show(a, "materials");
     // what is not needed is said in the table, not above it
     expect(screen.queryByText(/the approved document is the material/)).toBeNull();
-    expect(contentRuleNote(a, "materials")).toMatch(/SOP\.0012 Rev 3: the approved document is the material/);
+    expect(contentRuleNote(a, "materials")).toMatch(/SOP\.0012_3: the approved document is the material/);
   });
 
   it("asks for the test of a session assessed by a test, and for no file when the sessions are observed or read", () => {

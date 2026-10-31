@@ -38,6 +38,7 @@ import {
 } from "@/services/api/trainingActivities";
 import { day, when } from "../../shared/trainingLabels";
 import { TrainingFileDropzone } from "../../shared/TrainingFileDropzone";
+import { TrainingScanBatchUpload } from "./TrainingScanBatchUpload";
 import { SpecimenViewModal } from "../../shared/SpecimenViewModal";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
 import type { ActivityMode } from "../TrainingActivityDetailPage";
@@ -90,6 +91,7 @@ export function TrainingActivityFilesTab({
   materialsNeeded = true,
   formNeeded = true,
   note = null,
+  materialsReadOnly = false,
 }: {
   activityId: string;
   participants: TrainingParticipant[];
@@ -104,6 +106,8 @@ export function TrainingActivityFilesTab({
   formNeeded?: boolean;
   /** Why the table has no line when nothing is needed (no test, no checklist, no material), with the reason of the organizer. */
   note?: string | null;
+  /** True in the Session Workspace: the test and the answer key that the plan holds are shown, never added, changed or removed there. */
+  materialsReadOnly?: boolean;
 }) {
   const { showToast } = useToast();
   const [files, setFiles] = useState<TrainingActivityFiles>();
@@ -134,7 +138,7 @@ export function TrainingActivityFilesTab({
   }, [activityId]);
   useEffect(load, [load]);
   useEntityChanged(["TRAINING"], load);
-  const canEditHere = mode === "edit" && !!files?.canUploadMaterial;
+  const canEditHere = !materialsReadOnly && mode === "edit" && !!files?.canUploadMaterial;
   useEffect(() => {
     if (canEditHere && part === "assessment")
       trainingFormTemplatesApi
@@ -231,7 +235,7 @@ export function TrainingActivityFilesTab({
       <SectionLoading text="Loading files…" />
     );
 
-  const canAddMaterial = mode === "edit" && files.canUploadMaterial && materialsNeeded;
+  const canAddMaterial = !materialsReadOnly && mode === "edit" && files.canUploadMaterial && materialsNeeded;
   const canAddEvidence = mode === "conduct" && files.canUploadEvidence;
   const canReceive = mode === "conduct" && files.canReceive;
   const toItem = (m: TrainingMaterial): MaterialItem => ({
@@ -350,10 +354,11 @@ export function TrainingActivityFilesTab({
           ))}
         </div>
       ) : null;
+    const zoneLabel = isKey ? "Answer Key (optional)" : formKind === "CHECKLIST" ? "Checklist Form" : formKind === "BOTH" ? "Test or Checklist Form" : "Exam";
     return (
       <div className="space-y-2">
         <TrainingFileDropzone
-          label={isKey ? "Answer Key (optional)" : formKind === "CHECKLIST" ? "Checklist Form" : formKind === "BOTH" ? "Test or Checklist Form" : "Exam"}
+          label={zoneLabel}
           accept=".pdf,.docx"
           maxMb={20}
           hint={isKey ? "Word or PDF, max 20 MB. Only organizers and reviewers see it." : "Word or PDF, max 20 MB. It is printed for the employees."}
@@ -458,7 +463,8 @@ export function TrainingActivityFilesTab({
             <h3 className="text-sm font-semibold text-slate-800">
               Scans and filled files
             </h3>
-            {canAddEvidence && (
+            {canAddEvidence && !external && <TrainingScanBatchUpload activityId={activityId} onDone={load} />}
+            {canAddEvidence && external && (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                   <div className="md:col-span-2">

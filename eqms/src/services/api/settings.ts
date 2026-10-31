@@ -572,11 +572,11 @@ export const settingsApi = {
    *  pagination/filter all happen server-side; this call just forwards whatever params the table
    *  hook builds. */
   getTimeLimitedUserGrants: async (
-    params: Record<string, string | number | undefined>
+    params: Record<string, string | number | undefined>, signal?: AbortSignal
   ): Promise<{ data: TimeLimitedUserGrant[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
     const response = await api.get<{ data: TimeLimitedUserGrant[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>(
       `${ENDPOINT}/time-limited-grants`,
-      { params }
+      { params, signal }
     );
     return response.data;
   },
@@ -616,11 +616,11 @@ export const settingsApi = {
    *  happen server-side (see UserManagementService#getLoggedInSessions); this call just forwards
    *  whatever params the table hook builds. */
   getLoggedInSessions: async (
-    params: Record<string, string | number | undefined>
+    params: Record<string, string | number | undefined>, signal?: AbortSignal
   ): Promise<{ data: LoggedInSession[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
     const response = await api.get<{ data: LoggedInSession[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>(
       `${ENDPOINT}/sessions`,
-      { params }
+      { params, signal }
     );
     return response.data;
   },

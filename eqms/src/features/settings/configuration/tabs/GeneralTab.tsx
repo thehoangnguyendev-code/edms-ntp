@@ -8,7 +8,8 @@ import { IconAddressBook } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
 import { settingsApi } from '@/services/api/settings';
-import { DEFAULT_SYSTEM_HEADER_TITLE } from '@/services/api/branding';
+import { DEFAULT_FOOTER_LEFT, DEFAULT_SYSTEM_HEADER_TITLE } from '@/services/api/branding';
+import { Switch } from '@/components/ui/switch';
 import { AppShortcutSection } from './AppShortcutSection';
 import { ColorPickerInput } from '@/components/ui/color-picker/ColorPickerInput';
 import { DEFAULT_ALTERNATING_RECORD_COLOR } from '@/config/record-stripes';
@@ -155,7 +156,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">System Identity</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                   System Name (Internal)
                 </label>
                 <input
@@ -170,7 +171,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                 </p>
               </div>
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                   Display Name (Browser Tab)
                 </label>
                 <input
@@ -188,7 +189,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
           </div>
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Header</p>
-            <label htmlFor="system-header-title" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Header Title (Dashboard)</label>
+            <label htmlFor="system-header-title" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Header Title (Dashboard)</label>
             <input
               id="system-header-title"
               type="text"
@@ -204,22 +205,50 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
           </div>
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Footer</p>
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">System Footer</label>
-            <input
-              type="text"
-              value={config.systemFooter??'© {year} Ngoc Thien Pharma. All rights reserved.'}
-              onChange={(e) => handleChange('systemFooter',e.target.value.replace(/[\r\n]+/g,' ').slice(0,500))}
-              maxLength={500}
-              className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-              placeholder="© {year} Your Company. All rights reserved."
-            />
-            <p className="mt-1 text-xs text-slate-500">Shown in the footer across the system. Use <code>{'{year}'}</code> to insert the current year.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="systemFooterLeft" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Left Footer</label>
+                <input
+                  id="systemFooterLeft"
+                  type="text"
+                  value={config.systemFooterLeft ?? DEFAULT_FOOTER_LEFT}
+                  onChange={(e) => handleChange('systemFooterLeft', e.target.value.replace(/[\r\n]+/g, ' ').slice(0, 500))}
+                  maxLength={500}
+                  className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="© {year} Your Company. All rights reserved."
+                />
+                <p className="mt-1 text-xs text-slate-500">Shown at the left of the footer. Use <code>{'{year}'}</code> to insert the current year.</p>
+              </div>
+              <div>
+                <label htmlFor="systemFooterRight" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Right Footer</label>
+                <input
+                  id="systemFooterRight"
+                  type="text"
+                  value={config.systemFooterRight ?? ''}
+                  onChange={(e) => handleChange('systemFooterRight', e.target.value.replace(/[\r\n]+/g, ' ').slice(0, 500))}
+                  maxLength={500}
+                  className="w-full h-9 px-3.5 text-sm text-right border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="e.g. Version, hotline or support e-mail"
+                />
+                <p className="mt-1 text-xs text-slate-500">Always shown at the right of the footer. Leave empty to show nothing there.</p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-x-8 gap-y-3">
+              <label className="flex items-center gap-2 text-xs sm:text-sm text-slate-700 cursor-pointer select-none">
+                <Switch checked={config.footerShowOnDesktop ?? true} onChange={(on) => handleChange('footerShowOnDesktop', on)} />
+                Show footer on Desktop and Tablet
+              </label>
+              <label className="flex items-center gap-2 text-xs sm:text-sm text-slate-700 cursor-pointer select-none">
+                <Switch checked={config.footerShowOnMobile ?? false} onChange={(on) => handleChange('footerShowOnMobile', on)} />
+                Show footer on Mobile
+              </label>
+            </div>
           </div>
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Logos & Browser Icon</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Application Logo</label>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Application Logo</label>
                 <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3">
                   <BrandImagePreview src={config.systemLogo} alt="Application logo preview" variant="logo" />
                   <div className="flex flex-wrap gap-2">
@@ -231,7 +260,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                 <p className="text-xs text-slate-500 mt-1">Used in the sidebar and all authentication screens. PNG, JPG, SVG or WebP; max 5 MB.</p>
               </div>
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Collapsed Sidebar Logo</label>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Collapsed Sidebar Logo</label>
                 <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3">
                   <BrandImagePreview src={collapsedSidebarLogo} alt="Collapsed sidebar logo preview" variant="sidebar" />
                   <div className="flex flex-wrap gap-2">
@@ -243,7 +272,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                 <p className="text-xs text-slate-500 mt-1">Used only when the sidebar is collapsed. Square PNG, JPG, SVG or WebP; max 5 MB. Falls back to Application Logo when not configured.</p>
               </div>
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Browser Tab Icon (Favicon)</label>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Browser Tab Icon (Favicon)</label>
                 <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3">
                   <BrandImagePreview src={config.systemFavicon} alt="Favicon preview" variant="favicon" />
                   <div className="flex flex-wrap gap-2">
@@ -338,7 +367,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
       <FormSection title="Contact Information" icon={<IconAddressBook className="h-4 w-4" />}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
               Admin Email
             </label>
             <input

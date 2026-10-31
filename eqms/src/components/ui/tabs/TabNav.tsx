@@ -230,13 +230,13 @@ function HorizontalTabs({
           const content = config.contentWrapperClassName ? (
             <span className={config.contentWrapperClassName}>
               {Icon && <Icon className={config.iconClassName} />}
-              <span className={config.labelClassName}>{tab.label}</span>
+              <span className={cn("capitalize", config.labelClassName)}>{tab.label}</span>
               {renderBadge(tab, isActive, config)}
             </span>
           ) : (
             <>
               {Icon && <Icon className={config.iconClassName} />}
-              <span className={config.labelClassName}>{tab.label}</span>
+              <span className={cn("capitalize", config.labelClassName)}>{tab.label}</span>
               {renderBadge(tab, isActive, config)}
             </>
           );
@@ -335,7 +335,7 @@ function VerticalTabs({
                 />
               )}
               <div className="flex-1 min-w-0">
-                <div className="text-xs sm:text-sm font-semibold">{tab.label}</div>
+                <div className="text-xs sm:text-sm font-semibold capitalize">{tab.label}</div>
                 {!compactVertical && tab.description && (
                   <div className="text-xs mt-1 opacity-70 leading-relaxed font-normal">
                     {tab.description}

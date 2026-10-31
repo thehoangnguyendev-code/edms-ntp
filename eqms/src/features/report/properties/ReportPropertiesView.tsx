@@ -42,7 +42,7 @@ const NumberField: React.FC<{
   onChange: (value: number) => void;
 }> = ({ label, hint, value, min, max, fallback, disabled, onChange }) => (
   <div className="min-w-0">
-    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{label}</label>
     <input
       type="number"
       min={min}
@@ -165,7 +165,7 @@ export const ReportPropertiesView: React.FC = () => {
               <Group title="Template number">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="min-w-0">
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Prefix</label>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Prefix</label>
                     <input
                       type="text"
                       maxLength={10}
@@ -186,11 +186,11 @@ export const ReportPropertiesView: React.FC = () => {
                     onChange={(v) => patch({ templateNumberDigits: v })}
                   />
                   <div className="min-w-0">
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Next template number</label>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Next template number</label>
                     <input type="text" readOnly value={nextNumber} className={CONTROL_STATE_CLASSES.readonlyField} />
                   </div>
                   <div className="min-w-0">
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Last serial issued</label>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Last serial issued</label>
                     <input type="text" readOnly value={properties.lastTemplateSerial} className={CONTROL_STATE_CLASSES.readonlyField} />
                   </div>
                 </div>

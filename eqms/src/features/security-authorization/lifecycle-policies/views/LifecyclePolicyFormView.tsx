@@ -83,7 +83,7 @@ const LifecyclePolicyCommonFields: React.FC<CommonFieldsProps> = ({
 }) => (
   <>
     <div>
-      <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+      <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
         Priority
       </label>
       <input
@@ -102,7 +102,7 @@ const LifecyclePolicyCommonFields: React.FC<CommonFieldsProps> = ({
     </div>
 
     <div>
-      <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+      <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
         Description
       </label>
       <textarea
@@ -116,7 +116,7 @@ const LifecyclePolicyCommonFields: React.FC<CommonFieldsProps> = ({
 
     {showChangeReason && (
       <div>
-        <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+        <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
           Change Reason
         </label>
         <input
@@ -193,7 +193,7 @@ function initTransitionForm(
 
 const readOnlyField = (label: string, value: string) => (
   <div>
-    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
       {label}
     </label>
     <div className="h-9 flex items-center px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700">
@@ -769,7 +769,7 @@ const TransitionPolicyForm: React.FC = () => {
             />
           ) : (
             <div>
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
                 From Status <span className="text-red-500">*</span>
               </label>
               <input
@@ -1055,7 +1055,7 @@ const RequiredPermissionPicker: React.FC<{
   return (
     <div>
       <div className="mb-1.5">
-        <label className="text-xs sm:text-sm font-medium text-slate-700">
+        <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
           {label}
           {required && <span className="ml-0.5 font-semibold text-red-500" aria-hidden="true">*</span>}
         </label>

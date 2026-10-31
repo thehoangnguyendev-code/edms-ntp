@@ -428,7 +428,7 @@ export const AnnouncementsView: React.FC = () => {
         <div className="flex flex-1 flex-col p-4 md:p-5">
           <div className="flex w-full flex-col">
             <div className="mb-4 flex w-full flex-col gap-1.5 md:hidden">
-              <label className="block text-xs font-medium text-slate-700 sm:text-sm">
+              <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">
                 Search
               </label>
               <div className="flex items-center gap-2">
@@ -507,7 +507,7 @@ export const AnnouncementsView: React.FC = () => {
             >
               <div className="hidden items-end gap-4 pb-4 md:grid md:grid-cols-2 md:pb-5 lg:grid-cols-3">
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">
+                  <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">
                     Search
                   </label>
                   <div className="relative">

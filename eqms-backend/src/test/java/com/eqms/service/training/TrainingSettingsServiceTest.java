@@ -30,11 +30,12 @@ class TrainingSettingsServiceTest {
         row.put("review_ready_reminder_days", 3); row.put("review_open_reminder_days", 14);
         row.put("results_due_days", 7); row.put("results_due_day_type", "WORKING_MON_FRI");
         row.put("warn_scheduled_after_due", true); row.put("initial_training_days", 90);
+        row.put("self_reading_reminder_first_days", 3); row.put("self_reading_reminder_second_days", 1); row.put("makeup_reminder_days", 14);
         return row;
     }
 
     private TrainingSettingsService.SettingsWrite request(int version, String reason) {
-        return new TrainingSettingsService.SettingsWrite(version, 80, null, null, null, null, null, null, null, null, reason, null, null, null);
+        return new TrainingSettingsService.SettingsWrite(version, 80, null, null, null, null, null, null, null, null, reason, null, null, null, null, null, null);
     }
 
     @Test void recordsOldAndNewValuesWithoutInventingAReason() {
@@ -47,7 +48,7 @@ class TrainingSettingsServiceTest {
     }
 
     private TrainingSettingsService.SettingsWrite onlyInitialDays(Integer days) {
-        return new TrainingSettingsService.SettingsWrite(1, null, null, null, null, null, null, null, null, null, null, null, days, null);
+        return new TrainingSettingsService.SettingsWrite(1, null, null, null, null, null, null, null, null, null, null, null, days, null, null, null, null);
     }
 
     @Test void theDaysAPersonCountsAsANewEmployeeAreSavedAndRecorded() {
@@ -69,7 +70,7 @@ class TrainingSettingsServiceTest {
     /** SOP.0003 5.3.10: training records are kept at least 10 years after the employee leaves, so a shorter time is refused and nothing is written. */
     @Test void refusesToKeepTheRecordsLessThanTenYearsAfterTheEmployeeLeaves() {
         when(jdbc.queryForMap(anyString())).thenReturn(settings());
-        assertThatThrownBy(() -> service.update(actor, new TrainingSettingsService.SettingsWrite(1, null, null, null, null, null, 9, null, null, null, null, null, null, null)))
+        assertThatThrownBy(() -> service.update(actor, new TrainingSettingsService.SettingsWrite(1, null, null, null, null, null, 9, null, null, null, null, null, null, null, null, null, null)))
                 .isInstanceOf(IllegalArgumentException.class).hasMessage("TRAINING_RETENTION_TOO_SHORT");
         verify(jdbc, never()).update(anyString(), any(Object[].class));
         verifyNoInteractions(audit);
@@ -95,5 +96,23 @@ class TrainingSettingsServiceTest {
         service.update(actor, request(1, "Existing client reason"));
         verify(audit).logAs(eq(actor), eq("TRAINING_SETTINGS"), eq("TRAINING_SETTINGS"), any(UUID.class),
                 eq("TRAINING_SETTINGS_UPDATED"), isNull(), isNull(), eq("Existing client reason | Pass mark (%): 70 -> 80"));
+    }
+
+    @Test void theTwoSelfReadingRemindersMustDifferAndFirstComesEarlier() {
+        when(jdbc.queryForMap(anyString())).thenReturn(settings());
+        assertThatThrownBy(() -> service.update(actor, new TrainingSettingsService.SettingsWrite(1, null, null, null, null, null, null, null, null, null, null, null, null, null, 2, 2, null)))
+                .hasMessage("TRAINING_SETTINGS_INVALID");
+        assertThatThrownBy(() -> service.update(actor, new TrainingSettingsService.SettingsWrite(1, null, null, null, null, null, null, null, null, null, null, null, null, null, 1, 3, null)))
+                .hasMessage("TRAINING_SETTINGS_INVALID");
+    }
+
+    /** D-SRM-6: the days to remind about a person still absent without a make-up training are limited to 1..365 and nothing is written when refused. */
+    @Test void theDaysToRemindAboutAMakeupAreLimited() {
+        when(jdbc.queryForMap(anyString())).thenReturn(settings());
+        assertThatThrownBy(() -> service.update(actor, new TrainingSettingsService.SettingsWrite(1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0)))
+                .hasMessage("TRAINING_SETTINGS_INVALID");
+        assertThatThrownBy(() -> service.update(actor, new TrainingSettingsService.SettingsWrite(1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 366)))
+                .hasMessage("TRAINING_SETTINGS_INVALID");
+        verify(jdbc, never()).update(anyString(), any(Object[].class));
     }
 }

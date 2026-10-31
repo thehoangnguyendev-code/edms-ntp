@@ -1,3 +1,4 @@
+import { observeOverlayPosition } from "@/utils/scroll";
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
@@ -175,12 +176,10 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
     updatePosition(false);
     const raf = requestAnimationFrame(() => updatePosition(true));
     const onReposition = () => updatePosition(true);
-    window.addEventListener('resize', onReposition);
-    window.addEventListener('scroll', onReposition, true);
+    const stopObserving = observeOverlayPosition(() => triggerRef.current, onReposition);
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener('resize', onReposition);
-      window.removeEventListener('scroll', onReposition, true);
+      stopObserving();
     };
   }, [isOpen, viewMode, viewDate]);
 
@@ -260,7 +259,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   const closeAndReturn = () => { setIsOpen(false); triggerRef.current?.focus(); };
 
   const navigateMonth = (dir: 'prev' | 'next') => {
-    setViewDate(d => { const nd = new Date(d); nd.setMonth(nd.getMonth() + (dir === 'next' ? 1 : -1)); return nd; });
+    setViewDate(d => { const nd = new Date(d); nd.setDate(1); nd.setMonth(nd.getMonth() + (dir === 'next' ? 1 : -1)); return nd; });
     setFocusedDay(1);
   };
 
@@ -275,7 +274,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   };
 
   const handleMonthSelect = (monthIndex: number) => {
-    setViewDate(d => { const nd = new Date(d); nd.setMonth(monthIndex); return nd; });
+    setViewDate(d => { const nd = new Date(d); nd.setDate(1); nd.setMonth(monthIndex); return nd; });
     setViewMode('calendar');
   };
 
@@ -660,7 +659,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
       {label && (
         <label
           htmlFor={`${pickerId}-trigger`}
-          className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block"
+          className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize"
         >
           {typeof label === "string" && /\*\s*$/.test(label) ? (
             <>

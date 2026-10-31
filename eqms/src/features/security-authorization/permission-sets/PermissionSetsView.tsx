@@ -466,7 +466,7 @@ export const PermissionSetsView: React.FC = () => {
 
           {/* Mobile: search + filter button */}
           <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
             <div className="flex items-center gap-2">
               <div className="flex-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -507,7 +507,7 @@ export const PermissionSetsView: React.FC = () => {
             ]} onApplied={() => setCurrentPage(1)} />}
           <div className={cn("hidden md:grid md:grid-cols-3 gap-4 items-end pb-4 md:pb-5", compactDesktopFilters && "md:!hidden")}>
             <div className="w-full">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                   <Search className="h-4 w-4 text-slate-400" />

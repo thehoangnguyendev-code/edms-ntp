@@ -1,3 +1,4 @@
+import { observeOverlayPosition, preferredScrollBehavior } from "@/utils/scroll";
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
@@ -259,7 +260,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
     if (focusedIndex >= 0 && optionRefs.current[focusedIndex]) {
       optionRefs.current[focusedIndex]?.scrollIntoView({
         block: 'nearest',
-        behavior: 'smooth'
+        behavior: preferredScrollBehavior()
       });
     }
   }, [focusedIndex]);
@@ -308,13 +309,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
       updatePosition();
     };
 
-    window.addEventListener('scroll', handleScrollOrResize, true);
-    window.addEventListener('resize', handleScrollOrResize);
-
-    return () => {
-      window.removeEventListener('scroll', handleScrollOrResize, true);
-      window.removeEventListener('resize', handleScrollOrResize);
-    };
+    return observeOverlayPosition(() => triggerRef.current, handleScrollOrResize);
   }, [isOpen]);
 
   // Close other dropdowns
@@ -344,7 +339,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
   return (
     <div ref={containerRef} className={cn("relative w-full", className)}>
       {label && (
-        <label htmlFor={`${selectId}-trigger`} className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+        <label htmlFor={`${selectId}-trigger`} className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
           {label}
         </label>
       )}

@@ -88,7 +88,7 @@ export const SimulatorTab: React.FC = () => {
         </p>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-medium text-slate-700 sm:text-sm">Actor <span className="text-red-500">*</span></label>
+          <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">Actor <span className="text-red-500">*</span></label>
           {actor ? (
             <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><UserRound className="h-4 w-4" /></div>
@@ -116,7 +116,7 @@ export const SimulatorTab: React.FC = () => {
         />
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Resource ID *</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Resource ID *</label>
           <input
             type="text"
             value={resourceId}

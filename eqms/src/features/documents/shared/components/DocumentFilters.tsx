@@ -245,7 +245,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
     <div className="flex flex-col w-full">
       {!hideSearch && (
         <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -285,7 +285,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
       <div className={cn("hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5", compactDesktopFilters && "md:!hidden")}>
         {!hideSearch && (
           <div className="w-full">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
               Search
             </label>
             <div className="relative">

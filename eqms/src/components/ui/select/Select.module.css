@@ -126,6 +126,7 @@
 .select-options {
   max-height: 18.75rem;
   overflow-y: auto;
+  scroll-behavior: smooth;
   padding: 0.25rem;
 }
 

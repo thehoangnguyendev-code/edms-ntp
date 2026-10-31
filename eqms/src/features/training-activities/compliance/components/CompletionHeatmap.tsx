@@ -84,7 +84,7 @@ export function CompletionHeatmap({ people, columns, firstNo, onPick, loading, l
   const shown = people.slice(first, last);
   const span = 3 + columns.length;
   return (
-    <div ref={box} onScroll={measure} className={`max-h-[70vh] overflow-auto rounded-xl border border-slate-200 bg-white transition-opacity ${loading ? "opacity-60" : ""}`} onMouseLeave={() => setHotCol(undefined)} aria-busy={loading}>
+    <div ref={box} data-scroll-immediate onScroll={measure} className={`max-h-[70vh] overflow-auto rounded-xl border border-slate-200 bg-white transition-opacity ${loading ? "opacity-60" : ""}`} onMouseLeave={() => setHotCol(undefined)} aria-busy={loading}>
       <TableMarkup.Root className="w-full min-w-max border-separate border-spacing-0 text-sm">
         <TableMarkup.Head ref={head} className="sticky top-0 z-30">
           <TableMarkup.Row>

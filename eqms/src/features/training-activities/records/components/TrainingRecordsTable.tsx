@@ -91,7 +91,7 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
     ]),
     { id: "number", header: "Training Number", sort: sorted("trainingNumber"), cell: (r) => r.trainingNumber },
     { id: "topic", header: "Training Topic", sort: sorted("topicText"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.topicText}</div> },
-    { id: "document", header: "Document", sort: sorted("documentNumber"), cell: (r) => (r.documentNumber ? `${r.documentNumber}${r.documentRevision ? ` Rev ${r.documentRevision}` : ""}` : "—") },
+    { id: "document", header: "Document", sort: sorted("documentNumber"), cell: (r) => (r.documentLabel ?? "—") },
     { id: "completed", header: "Completed On", sort: sorted("completedOn"), cell: (r) => day(r.completedOn) },
     ...(mine ? [] : [{ id: "recordedOn", header: "Recorded On", sort: sorted("recordedAt"), cell: (r: TrainingRecord) => day(r.recordedAt) }]),
     { id: "result", header: "Result", sort: sorted("result"), cell: (r) => (r.result === "READ" ? "Read and understood" : r.result === "ATTENDED" ? "Attended" : r.result === "TRAINER" ? "Trainer" : "Passed") },

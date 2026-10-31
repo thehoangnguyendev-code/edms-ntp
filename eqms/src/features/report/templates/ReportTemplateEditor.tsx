@@ -590,13 +590,13 @@ export function ReportTemplateEditor() {
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                     {/* Template Number (read-only, issued by the system) */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-700 sm:text-sm">Template Number</label>
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">Template Number</label>
                       <input type="text" readOnly value={create ? "" : code} className={CONTROL_STATE_CLASSES.readonlyField} placeholder="Assigned automatically when saved" />
                     </div>
 
                     {/* Revision (read-only) */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-700 sm:text-sm">Revision</label>
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">Revision</label>
                       <input
                         type="text"
                         readOnly
@@ -608,7 +608,7 @@ export function ReportTemplateEditor() {
 
                     {/* Created Time (read-only) */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-700 sm:text-sm">Created Time</label>
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">Created Time</label>
                       <input
                         type="text"
                         readOnly
@@ -620,7 +620,7 @@ export function ReportTemplateEditor() {
 
                     {/* Last Updated (read-only) */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-700 sm:text-sm">Last Updated</label>
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">Last Updated</label>
                       <input
                         type="text"
                         readOnly
@@ -632,7 +632,7 @@ export function ReportTemplateEditor() {
 
                     {/* Metadata source (Select) */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-700 sm:text-sm">
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">
                         Report Type<span className="ml-1 text-red-500">*</span>
                       </label>
                       <Select
@@ -671,7 +671,7 @@ export function ReportTemplateEditor() {
 
                     {/* Name format (read-only): the active Report Name Format names a new template; a template keeps the format that named it */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-700 sm:text-sm">Name Format</label>
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">Name Format</label>
                       <input
                         type="text"
                         readOnly
@@ -687,7 +687,7 @@ export function ReportTemplateEditor() {
                         .filter((part) => part.type === "INPUT")
                         .map((part) => (
                           <div key={part.order} className="flex flex-col gap-1.5">
-                            <label className="text-xs font-medium text-slate-700 sm:text-sm">
+                            <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">
                               {part.inputLabel}
                               <span className="ml-1 text-red-500">*</span>
                             </label>
@@ -706,7 +706,7 @@ export function ReportTemplateEditor() {
 
                     {/* Template Name - full width */}
                     <div className="flex flex-col gap-1.5 md:col-span-2">
-                      <label className="text-xs font-medium text-slate-700 sm:text-sm">
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">
                         Template Name<span className="ml-1 text-red-500">*</span>
                       </label>
                       <input
@@ -736,7 +736,7 @@ export function ReportTemplateEditor() {
 
                     {/* Allowed output formats */}
                     <div className="flex flex-col gap-1.5 md:col-span-2">
-                      <label className="text-xs font-medium text-slate-700 sm:text-sm">
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">
                         Allowed Output Formats<span className="ml-1 text-red-500">*</span>
                       </label>
                       <div className="flex flex-wrap gap-5">
@@ -755,7 +755,7 @@ export function ReportTemplateEditor() {
 
                     {/* Description */}
                     <div className="flex flex-col gap-1.5 md:col-span-2">
-                      <label className="text-xs font-medium text-slate-700 sm:text-sm">
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">
                         Description<span className="ml-1 text-red-500">*</span>
                       </label>
                       <textarea

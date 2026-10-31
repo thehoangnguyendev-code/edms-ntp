@@ -83,7 +83,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
         {/* Document Number (read-only, auto-generated) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Document Number</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Document Number</label>
           <input
             type="text"
             value={document.documentNumber}
@@ -95,7 +95,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Created (read-only, auto-generated) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Created Time</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Created Time</label>
           <input
             type="text"
             value={document.created}
@@ -109,7 +109,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
         <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
           {/* Opened By (read-only, auto-generated) */}
           <div className="flex flex-col gap-1.5 md:col-span-2">
-            <label className="text-xs sm:text-sm font-medium text-slate-700">Opened By</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Opened By</label>
             <input
               type="text"
               value={document.openedBy}
@@ -121,7 +121,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
           {/* Author */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs sm:text-sm font-medium text-slate-700">Author<span className="text-red-500 ml-1">*</span></label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Author<span className="text-red-500 ml-1">*</span></label>
             {canEditFields ? (
               <Select
                 value={document.authorId || ""}
@@ -143,7 +143,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
           {/* Co-Authors */}
           <div className="flex flex-col gap-1.5 font-sans">
-            <label className="text-xs sm:text-sm font-medium text-slate-700">Co-Author(s)</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Co-Author(s)</label>
             {canEditFields ? (
               <MultiSelect
                 value={coAuthorIds}
@@ -201,7 +201,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Business Unit */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Business Unit<span className="text-red-500 ml-1">*</span></label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Business Unit<span className="text-red-500 ml-1">*</span></label>
           <input
             type="text"
             value={document.businessUnit}
@@ -212,7 +212,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Department */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Department</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Department</label>
           <input
             type="text"
             value={document.department}
@@ -223,7 +223,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Document Name - Full width */}
         <div className="flex flex-col gap-1.5 md:col-span-2">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Document Name<span className="text-red-500 ml-1">*</span></label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Document Name<span className="text-red-500 ml-1">*</span></label>
           <input
             type="text"
             value={document.documentName}
@@ -234,7 +234,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Title in Local Language - Full width */}
         <div className="flex flex-col gap-1.5 md:col-span-2">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Title in Local Language
             <span className="text-slate-400 text-xs font-normal ml-1.5">(optional)</span>
           </label>
@@ -255,7 +255,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Knowledge Base */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Knowledge Base</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Knowledge Base</label>
           <input
             type="text"
             value={document.knowledgeBase}
@@ -266,7 +266,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Document Type */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Document Type<span className="text-red-500 ml-1">*</span></label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Document Type<span className="text-red-500 ml-1">*</span></label>
           <input
             type="text"
             value={document.type}
@@ -277,7 +277,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Sub-Type */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Sub-Type</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Sub-Type</label>
           <input
             type="text"
             value={document.subType || "-"}
@@ -288,7 +288,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Periodic Review Cycle */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Periodic Review Cycle (Months)<span className="text-red-500 ml-1">*</span></label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Periodic Review Cycle (Months)<span className="text-red-500 ml-1">*</span></label>
           <input
             type="number"
             min={1}
@@ -312,7 +312,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Periodic Review Notification */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Periodic Review Notification (Days)<span className="text-red-500 ml-1">*</span></label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Periodic Review Notification (Days)<span className="text-red-500 ml-1">*</span></label>
           <input
             type="number"
             min={1}
@@ -336,7 +336,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Effective Date (read-only, auto-generated) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Effective Date</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Effective Date</label>
           <input
             type="text"
             value={document.effectiveDate}
@@ -348,19 +348,19 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Valid Until (read-only, auto-generated) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Valid Until</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Valid Until</label>
           <input
             type="text"
             value={document.validUntil}
             readOnly
             className={CONTROL_STATE_CLASSES.readonlyField}
-            placeholder="Set when approved"
+            placeholder={document.effectiveDate ? "No review cycle" : "Set when approved"}
           />
         </div>
 
         {/* Review Date */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Review Date
             {/* Required while preparing an upgrade (Edit Revision for Upgrade unlocked the field). */}
             {canEditReviewDate && <span className="text-red-500 ml-1">*</span>}
@@ -379,7 +379,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Language */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Language</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Language</label>
           <input
             type="text"
             value={document.language}
@@ -390,7 +390,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Description - Full width */}
         <div className="flex flex-col gap-1.5 md:col-span-2">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Description <span className="text-red-500">*</span></label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Description <span className="text-red-500">*</span></label>
           <textarea
             value={document.description}
             rows={4}

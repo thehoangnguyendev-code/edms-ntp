@@ -1,34 +1,7 @@
+import { preferredScrollBehavior } from "@/utils/scroll";
 import React, { useEffect, useState } from "react";
 import { cn } from "@/components/ui/utils";
 import { IconChevronUp } from "@tabler/icons-react";
-
-// Easing function: easeInOutQuart
-const easeInOutQuart = (t: number): number =>
-  t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
-
-const smoothScrollTo = (el: HTMLElement | Window, targetY: number, duration = 500) => {
-  const start = el instanceof Window ? el.scrollY : el.scrollTop;
-  const distance = targetY - start;
-  if (distance === 0) return;
-  const startTime = performance.now();
-
-  const step = (currentTime: number) => {
-    const elapsed = currentTime - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    const eased = easeInOutQuart(progress);
-    const scrollTo = start + distance * eased;
-
-    if (el instanceof Window) {
-      el.scrollTo(0, scrollTo);
-    } else {
-      el.scrollTop = scrollTo;
-    }
-
-    if (progress < 1) requestAnimationFrame(step);
-  };
-
-  requestAnimationFrame(step);
-};
 
 interface ScrollToTopProps {
   /** Ref to the scrollable container element. Defaults to window if not provided. */
@@ -69,7 +42,7 @@ export const ScrollToTop: React.FC<ScrollToTopProps> = ({
 
   const scrollToTop = () => {
     const container = scrollContainerRef?.current ?? window;
-    smoothScrollTo(container, 0);
+    container.scrollTo({ top: 0, behavior: preferredScrollBehavior() });
   };
 
   return (

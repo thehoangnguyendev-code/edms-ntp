@@ -190,7 +190,7 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
 
                             {/* New Password */}
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                                     New Password <span className="text-red-500">*</span>
                                 </label>
                                 <div className="relative">
@@ -234,7 +234,7 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
 
                             {/* Confirm New Password */}
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                                     Confirm New Password <span className="text-red-500">*</span>
                                 </label>
                                 <div className="relative">

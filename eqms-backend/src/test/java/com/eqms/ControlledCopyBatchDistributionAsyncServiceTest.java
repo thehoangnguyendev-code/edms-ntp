@@ -52,6 +52,7 @@ class ControlledCopyBatchDistributionAsyncServiceTest {
         item.setStatus("PENDING");
 
         when(itemRepository.findAllByJob_IdOrderByIdAsc(jobId)).thenReturn(List.of(item));
+        when(jobRepository.claimPendingJob(jobId)).thenReturn(1);
         when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
         when(controlledCopyService.finalizeDistributedCopy(copyId, issuerId))
                 .thenReturn(ControlledCopyFinalizationOutcome.SKIPPED_TERMINAL);
@@ -63,5 +64,32 @@ class ControlledCopyBatchDistributionAsyncServiceTest {
         assertEquals(0, job.getFailedItems());
         assertEquals("COMPLETED_WITH_ERRORS", job.getStatus());
         verify(controlledCopyService, never()).sendDcoBatchZipEmail(eq(batchId), any(), eq(issuerId));
+    }
+
+    @Test void duplicateEventCannotProcessAJobAlreadyClaimedByAnotherWorker() {
+        UUID jobId=UUID.randomUUID();
+        when(jobRepository.claimPendingJob(jobId)).thenReturn(0);
+        asyncService.onBatchDistributed(new ControlledCopyBatchDistributedEvent(UUID.randomUUID(),jobId,List.of(UUID.randomUUID()),UUID.randomUUID()));
+        org.mockito.Mockito.verifyNoInteractions(controlledCopyService,itemRepository,notificationRealtimeService);
+    }
+
+    @Test void recoveryDispatchesToTheExecutorAndUsesTheSameClaimAsTheEvent() {
+        var executor=org.mockito.Mockito.mock(org.springframework.core.task.TaskExecutor.class);
+        asyncService.configureBatchExecutor(executor);
+        var job=new ControlledCopyDistributionJob();job.setId(UUID.randomUUID());job.setActionType("DISTRIBUTE");
+        var batch=new com.eqms.entity.ControlledCopyDistributionBatch();batch.setId(UUID.randomUUID());job.setBatch(batch);
+        var actor=new com.eqms.entity.UserAccount();actor.setId(UUID.randomUUID());job.setRequestedBy(actor);
+        var copy=new ControlledCopyRecord();copy.setId(UUID.randomUUID());
+        var item=new ControlledCopyDistributionJobItem();item.setControlledCopy(copy);item.setStatus("PENDING");
+        when(jobRepository.findTop10ByStatusOrderByCreatedAtAsc("PENDING")).thenReturn(List.of(job));
+        when(itemRepository.findAllByJob_IdOrderByIdAsc(job.getId())).thenReturn(List.of(item));
+        asyncService.resumePendingJobs();
+        var task=org.mockito.ArgumentCaptor.forClass(Runnable.class);
+        verify(executor).execute(task.capture());
+        verify(jobRepository,never()).claimPendingJob(any());
+        org.mockito.Mockito.verifyNoInteractions(controlledCopyService);
+        task.getValue().run();
+        verify(jobRepository).claimPendingJob(job.getId());
+        org.mockito.Mockito.verifyNoInteractions(controlledCopyService);
     }
 }

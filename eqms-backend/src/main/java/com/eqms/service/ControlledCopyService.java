@@ -4790,6 +4790,7 @@ public class ControlledCopyService {
                         "Delivery redirected to DCO (" + dco.getFullName() + ") per Controlled Copies Policy.", List.of(), null);
             }
         } catch (Exception ex) {
+            if(ControlledCopyDeliveryScope.active())throw new IllegalStateException("Could not queue controlled copy distribution notification",ex);
             log.warn("Failed to dispatch controlled copy distribution email for copy {}: {}", copy == null ? null : copy.getControlledCopyNumber(), ex.getMessage(), ex);
         }
     }

@@ -138,6 +138,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
                         <label
                           htmlFor={`feature-${rootFeature.id}`}
                           className={cn(
+                            'capitalize',
                             "block text-xs sm:text-sm font-medium cursor-pointer",
                             rootFeature.enabled ? "text-slate-900" : "text-slate-500"
                           )}
@@ -200,6 +201,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
                                   <label
                                     htmlFor={`feature-${childFeature.id}`}
                                     className={cn(
+                                      'capitalize',
                                       "block text-xs sm:text-sm font-medium cursor-pointer",
                                       parentDisabled
                                         ? "text-slate-400 cursor-not-allowed"

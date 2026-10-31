@@ -114,6 +114,7 @@
   color: #1e293b;
   outline: none;
   overflow-y: auto;
+  scroll-behavior: smooth;
 }
 
 .lexical-placeholder {
@@ -223,6 +224,7 @@
   line-height: 1.6;
   margin: 12px 0;
   overflow-x: auto;
+  scroll-behavior: smooth;
 }
 
 /* ── Alignment ───────────────────────────────────────────────── */

@@ -27,17 +27,17 @@ public final class TrainingAnnexSamples {
                         people.add(new Item().field("NO", String.valueOf(i)).field("CODE", "E00" + i).field("NAME", "Employee " + i).field("DEPARTMENT", "QA")
                                 .field("RESULT", i == 3 ? "Not passed" : "Passed").field("RETRAINING_RESULT", i == 3 ? "Passed" : "").signature("ATTENDANCE", SIGNED));
                     }
-                    sessions.add(new Item().field("LABEL", "SS0" + s).children("ATTENDEE", people));
+                    sessions.add(new Item().field("LABEL", "0" + s).children("ATTENDEE", people));
                 }
                 d.scalar("TRAINING_NUMBER", "TRN-2026-0001").scalar("ACTIVITY_CONTENT", "GMP refresher").scalar("DEPARTMENT", "QA").scalar("TRAINING_TYPE", "Periodic")
                         .scalar("LIST_PREPARER_NAME", "Tran Thi B").scalar("QA_CONFIRMER_NAME", "Le Van C")
-                        .group("TOPIC", List.of(new Item().field("SESSION_NO", "SS01").field("DOCUMENT_NUMBER", "SOP.0003").field("TITLE", "Training").field("MODE", "Classroom")
+                        .group("TOPIC", List.of(new Item().field("SESSION_NO", "01").field("DOCUMENT_NUMBER", "SOP.0003").field("TITLE", "Training").field("MODE", "Classroom")
                                 .field("TRAINER", "Pham D").field("EXECUTION_DATE", "2026-10-20"),
-                                new Item().field("SESSION_NO", "SS02").field("DOCUMENT_NUMBER", "SOP.0005").field("TITLE", "Deviation").field("MODE", "Online")
+                                new Item().field("SESSION_NO", "02").field("DOCUMENT_NUMBER", "SOP.0005").field("TITLE", "Deviation").field("MODE", "Online")
                                         .field("TRAINER", "Pham D").field("EXECUTION_DATE", "2026-10-21")))
                         .group("SESSION", sessions)
-                        .group("TRAINER", List.of(new Item().field("SESSION_NO", "SS01").field("NAME", "Pham D").signature("SENT", SIGNED),
-                                new Item().field("SESSION_NO", "SS02").field("NAME", "Pham D").signature("SENT", SIGNED)))
+                        .group("TRAINER", List.of(new Item().field("SESSION_NO", "01").field("NAME", "Pham D").signature("SENT", SIGNED),
+                                new Item().field("SESSION_NO", "02").field("NAME", "Pham D").signature("SENT", SIGNED)))
                         .caseOn("EXTERNAL", false).signature("LIST_PREPARED", SIGNED).signature("QA_COMPLETION", SIGNED);
             }
             case "APD.0108" -> d.scalar("DEPARTMENT", "Production").scalar("DOCUMENT_NAME_VERSION", "SOP.0010 Cleaning (2.0)").scalar("HEAD_NAME", "Hoang E")

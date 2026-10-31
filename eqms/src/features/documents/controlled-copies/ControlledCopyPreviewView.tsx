@@ -475,7 +475,7 @@ export const ControlledCopyPreviewView: React.FC = () => {
           <div className="space-y-1.5">
             {/* <label
               htmlFor="preview-password"
-              className="text-xs font-medium text-slate-700"
+              className="text-xs font-medium text-slate-700 capitalize"
             >
               Preview Password
             </label> */}

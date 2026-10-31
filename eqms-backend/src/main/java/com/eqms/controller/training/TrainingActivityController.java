@@ -145,6 +145,13 @@ public class TrainingActivityController {
     @PostMapping("/participants/{id}/attendance")
     public ResponseEntity<?> attendance(@PathVariable UUID id, @RequestBody AttendanceRequest request) { return ResponseEntity.ok(activities.recordAttendance(users.requireCurrentUser(), id, request)); }
 
+    /** The trainer reminds a person of a self-reading who has not signed yet. */
+    @PostMapping("/participants/{id}/cannot-read")
+    public ResponseEntity<?> excuseReader(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.excuseReader(users.requireCurrentUser(), id, request)); }
+
+    @PostMapping("/participants/{id}/remind-read")
+    public ResponseEntity<?> remindRead(@PathVariable UUID id) { return ResponseEntity.ok(activities.remindToRead(users.requireCurrentUser(), id)); }
+
     @PostMapping("/participants/{id}/assessments")
     public ResponseEntity<?> assessment(@PathVariable UUID id, @RequestBody AssessmentRequest request) { return ResponseEntity.ok(activities.recordAssessment(users.requireCurrentUser(), id, request)); }
 

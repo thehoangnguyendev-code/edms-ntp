@@ -2520,7 +2520,7 @@ export const NewDocumentView: React.FC = () => {
           <div className="space-y-2">
             <label
               htmlFor="activity-summary"
-              className="text-xs sm:text-sm font-medium text-slate-700 block"
+              className="text-xs sm:text-sm font-medium text-slate-700 block capitalize"
             >
               Activity Summary <span className="text-red-500">*</span>
             </label>

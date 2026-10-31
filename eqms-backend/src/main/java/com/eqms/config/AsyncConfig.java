@@ -31,6 +31,48 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @Configuration
 public class AsyncConfig {
 
+    @Bean(name = "notificationDeliveryExecutor")
+    public TaskExecutor notificationDeliveryExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(2);
+        executor.setQueueCapacity(0);
+        executor.setThreadNamePrefix("eqms-email-outbox-");
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "publishingCommandExecutor")
+    public TaskExecutor publishingCommandExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(2);
+        executor.setQueueCapacity(0);
+        executor.setThreadNamePrefix("eqms-publish-command-");
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "reportWorkerExecutor")
+    public TaskExecutor reportWorkerExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(1);
+        executor.setQueueCapacity(0);
+        executor.setThreadNamePrefix("eqms-report-worker-");
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "jobLeaseScheduler")
+    public org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler jobLeaseScheduler() {
+        var scheduler = new org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(2);
+        scheduler.setThreadNamePrefix("eqms-job-lease-");
+        scheduler.setRemoveOnCancelPolicy(true);
+        return scheduler;
+    }
+
     @Bean(name = "mfaEmailExecutor")
     public TaskExecutor mfaEmailExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

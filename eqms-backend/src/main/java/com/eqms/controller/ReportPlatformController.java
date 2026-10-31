@@ -20,10 +20,13 @@ public class ReportPlatformController {
     @GetMapping("/runs") public ResponseEntity<?> runs(@RequestParam(required=false) String search, @RequestParam(required=false) String status, @RequestParam(required=false) String definitionCode, @RequestParam(required=false) String queuedFrom, @RequestParam(required=false) String queuedTo, @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int limit, @RequestParam(defaultValue="queuedAt") String sortBy, @RequestParam(defaultValue="desc") String sortDirection) { return ResponseEntity.ok(reports.runs(currentUser.requireCurrentUser(), search, status, definitionCode, queuedFrom, queuedTo, page, limit, sortBy, sortDirection)); }
     @GetMapping("/runs/{runId}") public ResponseEntity<?> runDetail(@PathVariable UUID runId) { return ResponseEntity.ok(reports.runDetail(currentUser.requireCurrentUser(), runId)); }
     @GetMapping("/definitions/{code}/preview") public ResponseEntity<?> preview(@PathVariable String code, @RequestParam(required=false) List<String> fields) { return ResponseEntity.ok(reports.preview(currentUser.requireCurrentUser(), code, fields)); }
-    @PostMapping("/runs/{runId}/artifacts/{artifactId}/download") public ResponseEntity<byte[]> download(@PathVariable UUID runId, @PathVariable UUID artifactId) {
-        var artifact=reports.download(currentUser.requireCurrentUser(),runId,artifactId);
-        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=\""+artifact.filename().replace("\"", "")+"\"").contentType(MediaType.parseMediaType(artifact.mimeType())).body(artifact.bytes());
+    @PostMapping("/runs/{runId}/artifacts/{artifactId}/download") public ResponseEntity<org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody> download(
+            @PathVariable UUID runId,@PathVariable UUID artifactId,jakarta.servlet.http.HttpServletRequest request) throws java.io.IOException {
+        var artifact=reports.prepareDownload(currentUser.requireCurrentUser(),runId,artifactId);
+        return VerifiedDownloadResponses.attachment(request,artifact.file(),artifact.filename(),artifact.mimeType());
     }
+    @ExceptionHandler(com.eqms.service.VerifiedDownloadService.Busy.class)
+    public ResponseEntity<Map<String,String>> downloadBusy() {return ResponseEntity.status(503).header("Retry-After","2").body(Map.of("code","DOWNLOAD_CAPACITY_BUSY","message","Download capacity is busy. Please try again."));}
     @PostMapping("/runs/{runId}/artifacts/{artifactId}/legal-hold") public ResponseEntity<Void> legalHold(@PathVariable UUID runId, @PathVariable UUID artifactId, @RequestBody Map<String,Object> request) {
         Object token = request.get("signatureToken");
         reports.setArtifactLegalHold(currentUser.requireCurrentUser(), runId, artifactId, Boolean.TRUE.equals(request.get("legalHold")),

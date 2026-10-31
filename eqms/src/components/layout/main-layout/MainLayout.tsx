@@ -37,6 +37,18 @@ const MainLayoutContent: React.FC = () => {
   const HEARTBEAT_THROTTLE_MS = 30_000;
 
   // Page title in header (shown when scrolled past page h1)
+  // The width of the scroll bar of the page: the footer is outside the scrolling area, so it keeps the same gutter to stay on the same vertical line as the page content.
+  const [scrollbarWidth, setScrollbarWidth] = useState(0);
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') return;
+    const measure = () => setScrollbarWidth(Math.max(0, container.offsetWidth - container.clientWidth));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    if (container.firstElementChild) observer.observe(container.firstElementChild);
+    return () => observer.disconnect();
+  }, []);
   const [headerTitle, setHeaderTitle] = useState('');
   const [showHeaderTitle, setShowHeaderTitle] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -402,7 +414,9 @@ const MainLayoutContent: React.FC = () => {
               </main>
             </div>
 
-            <Footer />
+            <div style={scrollbarWidth ? { paddingRight: scrollbarWidth } : undefined}>
+              <Footer />
+            </div>
           </div>
 
           <NotificationDock />

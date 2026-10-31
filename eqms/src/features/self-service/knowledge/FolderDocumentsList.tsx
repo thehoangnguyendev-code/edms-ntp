@@ -99,7 +99,7 @@ export const FolderDocumentsList: React.FC<FolderDocumentsListProps> = ({
                 <div className="p-4 md:p-5 border-b border-slate-100 bg-slate-50/30">
                     <div className="flex flex-col sm:flex-row sm:items-end gap-3 md:gap-4">
                         <div className="flex-1">
-                            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+                            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
                                 Search
                             </label>
                             <div className="relative">

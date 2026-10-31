@@ -118,7 +118,7 @@ const AccessProfilesSection: React.FC<AccessProfilesSectionProps> = ({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-3">
         {totalCount > 0 ? (
           <div className="w-full sm:max-w-md">
-            <label htmlFor="access-profile-search" className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">
+            <label htmlFor="access-profile-search" className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">
               Search
             </label>
             <div className="relative">

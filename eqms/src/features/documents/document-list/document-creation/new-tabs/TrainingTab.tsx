@@ -102,7 +102,7 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <div className="flex flex-col gap-1.5">
-                                <label className="text-xs sm:text-sm font-medium text-slate-700">
+                                <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
                                     Training Period (Days) {!isReadOnly && <span className="text-red-500">*</span>}
                                 </label>
                                 <Input
@@ -135,7 +135,7 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                 <div className="space-y-4">
                     <div>
                         <div className="flex flex-col gap-1.5">
-                            <label className="text-xs sm:text-sm font-medium text-slate-700">
+                            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
                                 Reason for skipping training {!isReadOnly && <span className="text-red-500">*</span>}
                             </label>
                             <Textarea

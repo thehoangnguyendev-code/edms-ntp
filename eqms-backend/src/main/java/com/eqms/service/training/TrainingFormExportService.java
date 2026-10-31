@@ -98,9 +98,8 @@ public class TrainingFormExportService {
     private byte[] annexWrite(TrainingFormTemplates.Template template, TrainingAnnexData data, String control) {
         try {
             byte[] filled = TrainingAnnexEngine.render(template.bytes(), data);
-            if (control == null) return filled;
             try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(filled)); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-                controlLine(doc, control);
+                if (control != null) controlLine(doc, control);
                 doc.write(out);
                 return out.toByteArray();
             }
@@ -191,7 +190,7 @@ public class TrainingFormExportService {
             block(signers.getRow(1).getCell(2), r.get("approvedSignatureId"));
         });
         audit.logAs(actor, "TRAINING_REQUIREMENT", text(r.get("requestNo")), id, "TRAINING_REQUIREMENT_PRINTED", null, null, template.describe());
-        return templates.file(docx, format, text(r.get("requestNo")).replace('/', '-') + "-APD.0118");
+        return templates.file(docx, format, templates.fileName("APD.0118", "APD.0118", template.versionLabel(), Map.of("REQUEST_NO", text(r.get("requestNo")), "YEAR", text(r.get("year")))));
     }
 
     /** The tokens of APD.0118 (PLAN-TR-004, 8.4). The column of the signature of QA is narrow: it holds the name and the time, the whole block is in the electronic signature record. */
@@ -316,29 +315,28 @@ public class TrainingFormExportService {
         return selfReading(actor, sessionId, format, null);
     }
 
-    /** One list for one department ({@code departmentId}), or a ZIP with one list for each department of the session when none is chosen and there are several. */
-    @Transactional
-    public Map<String, Object> selfReading(UserAccount actor, UUID sessionId, String format, UUID departmentId) {
-        return selfReading(actor, sessionId, format, false, null, departmentId);
-    }
-
-    /** The paper print of the self-reading list: the people and the Training Number are written, the reading day and the signatures are left for the hand; the copy is numbered and recorded. */
-    @Transactional
-    public Map<String, Object> selfReadingPaper(UserAccount actor, UUID sessionId, String format, String reason) {
-        return selfReadingPaper(actor, sessionId, format, reason, null);
-    }
-
-    @Transactional
-    public Map<String, Object> selfReadingPaper(UserAccount actor, UUID sessionId, String format, String reason, UUID departmentId) {
-        return selfReading(actor, sessionId, format, true, reason, departmentId);
+    /** The reason the head typed in the electronic signature window, written in the box Remarks; the plain sentence the system writes when nothing was typed is not a remark. */
+    private String headRemarks(Object signatureId) {
+        String reason = signatureId instanceof UUID id ? blocks.reason(id) : null;
+        return reason == null || reason.isBlank() || reason.startsWith("Training Management:") ? "" : reason.trim();
     }
 
     /** The people of one department in a self-reading session; {@code id} is null when the department of the people is not in the master data. */
     private record DepartmentGroup(UUID id, String name, String code, List<Map<String, Object>> people) {}
 
-    private Map<String, Object> selfReading(UserAccount actor, UUID sessionId, String format, boolean paper, String reason, UUID departmentId) {
+    /**
+     * One list for one department ({@code departmentId}), or a ZIP with one list for each department of the session when none is chosen and there are several. The list is only the record of what was signed in the
+     * system (owner decision 2026-10-31: the self-reading is confirmed by electronic signature only), so it has no copy number and no paper print.
+     */
+    @Transactional
+    public Map<String, Object> selfReading(UserAccount actor, UUID sessionId, String format, UUID departmentId) {
+        return selfReading(actor, sessionId, format, departmentId, null);
+    }
+
+    /** The same, with a department that is not in the master data asked by its name (it has no id). */
+    @Transactional
+    public Map<String, Object> selfReading(UserAccount actor, UUID sessionId, String format, UUID departmentId, String departmentName) {
         TrainingFormTemplates.isPdf(format);
-        if (paper) access.require(actor, "training.paper.print");
         access.require(actor, "training.activity.view", "training.activity.organize", "training.activity.conduct");
         Map<String, Object> session = jdbc.queryForList("select * from training_sessions where id = ?", sessionId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         Map<String, Object> activity = store.activity((UUID) session.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
@@ -346,7 +344,7 @@ public class TrainingFormExportService {
         if (!"SELF_READING".equals(session.get("method"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_NOT_SELF_READING");
         Map<String, DepartmentGroup> groups = new LinkedHashMap<>();
         for (Map<String, Object> p : jdbc.queryForList("""
-            select p.employee_code, p.full_name, p.state, p.read_confirmed_at, d.id as department_id, coalesce(d.name, nullif(btrim(p.department), '')) as department_name, d.code as department_code
+            select p.employee_code, p.full_name, p.state, p.read_confirmed_at, p.attend_signature_id, d.id as department_id, coalesce(d.name, nullif(btrim(p.department), '')) as department_name, d.code as department_code
               from training_participants p left join departments d on lower(btrim(d.name)) = lower(btrim(p.department))
              where p.session_id = ? and p.external_name is null order by 6 nulls last, p.full_name
             """, sessionId)) {
@@ -357,16 +355,19 @@ public class TrainingFormExportService {
         if (departmentId != null) {
             chosen = chosen.stream().filter(g -> departmentId.equals(g.id())).toList();
             if (chosen.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TRAINING_SELF_READING_DEPARTMENT_NOT_FOUND");
+        } else if (departmentName != null && !departmentName.isBlank()) {
+            chosen = chosen.stream().filter(g -> g.id() == null && g.name().equalsIgnoreCase(departmentName.trim())).toList();
+            if (chosen.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TRAINING_SELF_READING_DEPARTMENT_NOT_FOUND");
         }
         if (chosen.isEmpty()) chosen = List.of(new DepartmentGroup(null, "", "", List.of()));
-        if (chosen.size() == 1) return selfReadingOne(actor, sessionId, format, paper, reason, chosen.get(0), groups.size() > 1);
+        if (chosen.size() == 1) return selfReadingOne(actor, sessionId, format, chosen.get(0), groups.size() > 1);
         // several departments: one list for each, in one ZIP
         java.io.ByteArrayOutputStream zip = new java.io.ByteArrayOutputStream();
         String base = text(activity.get("training_number")).replace('/', '-') + "-S" + session.get("session_no") + "-APD.0108";
         try (java.util.zip.ZipOutputStream out = new java.util.zip.ZipOutputStream(zip)) {
             Set<String> used = new HashSet<>();
             for (DepartmentGroup g : chosen) {
-                Map<String, Object> file = selfReadingOne(actor, sessionId, format, paper, reason, g, true);
+                Map<String, Object> file = selfReadingOne(actor, sessionId, format, g, true);
                 String name = String.valueOf(file.get("name"));
                 while (!used.add(name)) name = "x-" + name;
                 out.putNextEntry(new java.util.zip.ZipEntry(name));
@@ -376,26 +377,18 @@ public class TrainingFormExportService {
         } catch (java.io.IOException e) {
             throw new IllegalStateException(e);
         }
-        return Map.of("bytes", zip.toByteArray(), "name", base + (paper ? "-paper" : "") + ".zip", "contentType", "application/zip");
+        return Map.of("bytes", zip.toByteArray(), "name", base + ".zip", "contentType", "application/zip");
     }
 
-    private Map<String, Object> selfReadingOne(UserAccount actor, UUID sessionId, String format, boolean paper, String reason, DepartmentGroup group, boolean manyDepartments) {
+    /** SOP.0003 5.3.7: a person who did not take part stays on the original list, marked "Vắng mặt" in the signature column (never left blank, never removed). */
+    private static List<String> absentMark(Map<String, Object> p) {
+        return "ABSENT".equals(p.get("state")) ? List.of("Vắng mặt / Absent") : List.of();
+    }
+
+    private Map<String, Object> selfReadingOne(UserAccount actor, UUID sessionId, String format, DepartmentGroup group, boolean manyDepartments) {
         Map<String, Object> session = jdbc.queryForList("select * from training_sessions where id = ?", sessionId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         Map<String, Object> activity = store.activity((UUID) session.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         TrainingFormTemplates.Template template = templates.enabledFor("APD.0108", "SESSION", sessionId, actor, format, true);
-        String controlText = null;
-        int copy = 1;
-        String packCode = null;
-        if (paper) {
-            store.activityForUpdate((UUID) activity.get("id"));
-            if (!Set.of("NOTIFIED", "IN_PROGRESS").contains(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_STATUS");
-            Integer printed = jdbc.queryForObject("select count(*) from training_paper_packs where session_id = ? and pack_kind = 'SELFREAD' and department_id is not distinct from ?", Integer.class, sessionId, group.id());
-            copy = (printed == null ? 0 : printed) + 1;
-            if (copy > 1 && (reason == null || reason.isBlank())) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
-            packCode = activity.get("training_number") + "/S" + session.get("session_no") + (manyDepartments && !group.code().isBlank() ? "/" + group.code() : "") + "/L" + copy;
-            controlText = controlLineText(packCode, copy, actor);
-        }
-        final String control = controlText;
         // the department of the list is the department of its people (the organizing department only when the people have none)
         String department = group.name().isBlank() ? jdbc.queryForObject("select name from departments where id = ?", String.class, activity.get("organizer_department_id")) : group.name();
         List<Map<String, Object>> topics = jdbc.queryForList("""
@@ -416,16 +409,16 @@ public class TrainingFormExportService {
             List<TrainingAnnexData.Item> readers = new ArrayList<>();
             int row = 1;
             for (Map<String, Object> p : people) {
-                boolean read = !paper && "READ_CONFIRMED".equals(p.get("state"));
+                boolean read = "READ_CONFIRMED".equals(p.get("state"));
                 readers.add(new TrainingAnnexData.Item().field("NO", String.valueOf(row++)).field("CODE", text(p.get("employee_code"))).field("NAME", text(p.get("full_name")))
                         .field("TRAINING_NUMBER", text(activity.get("training_number"))).field("DATE", read ? day(p.get("read_confirmed_at")) : "")
-                        .signature("CONFIRMED", read ? List.of("Đã đọc, ký điện tử / Read, signed electronically") : List.of()));
+                        .signature("CONFIRMED", read ? signatureLines("APD.0108", "READER.CONFIRMED", p.get("attend_signature_id")) : absentMark(p)));
             }
-            boolean headSigned = !paper && !head.isEmpty();
+            boolean headSigned = !head.isEmpty();
             annexed = annexWrite(template, TrainingAnnexData.forForm("APD.0108", template.versionLabel()).scalar("DEPARTMENT", department)
                     .scalar("DOCUMENT_NAME_VERSION", String.join("; ", names).trim()).scalar("HEAD_NAME", headSigned ? text(head.get("full_name")) : "")
-                    .scalar("HEAD_POSITION", headSigned ? text(head.get("position")) : "").scalar("HEAD_DATE", headSigned ? day(head.get("confirmed_at")) : "").scalar("HEAD_REMARKS", "")
-                    .group("READER", readers).signature("HEAD", headSigned ? signatureLines("APD.0108", "HEAD", head.get("signature_id")) : List.of()), control);
+                    .scalar("HEAD_POSITION", headSigned ? text(head.get("position")) : "").scalar("HEAD_DATE", headSigned ? day(head.get("confirmed_at")) : "").scalar("HEAD_REMARKS", headSigned ? headRemarks(head.get("signature_id")) : "")
+                    .group("READER", readers).signature("HEAD", headSigned ? signatureLines("APD.0108", "HEAD", head.get("signature_id")) : List.of()), null);
         }
         byte[] docx = annexed != null ? annexed : write(template, true, doc -> {
             XWPFParagraph dep = findParagraph(doc, "Department");
@@ -437,15 +430,14 @@ public class TrainingFormExportService {
             List<List<String>> lines = new ArrayList<>();
             int no = 1;
             for (Map<String, Object> p : people) {
-                boolean read = !paper && "READ_CONFIRMED".equals(p.get("state"));
+                boolean read = "READ_CONFIRMED".equals(p.get("state"));
                 lines.add(List.of(String.valueOf(no++), text(p.get("employee_code")), text(p.get("full_name")), text(activity.get("training_number")), read ? day(p.get("read_confirmed_at")) : "",
-                        read ? "Đã đọc, ký điện tử / Read, signed electronically" : ""));
+                        read ? String.join(" ", signatureLines("APD.0108", "READER.CONFIRMED", p.get("attend_signature_id"))) : String.join(" ", absentMark(p))));
             }
             fillRows(find(doc, "Signature"), lines);
             XWPFTable confirm = find(doc, "CONFIRMED BY HEAD");
             if (confirm.getRows().size() < 2 || confirm.getRow(1).getTableCells().size() < 3) throw structure();
-            if (control != null) controlLine(doc, control);
-            if (!paper && !head.isEmpty()) {
+            if (!head.isEmpty()) {
                 for (XWPFParagraph p : confirm.getRow(1).getCell(0).getParagraphs()) {
                     TrainingAssessmentForm.fillAfter(p, "Full name\\s*:?", text(head.get("full_name")));
                     TrainingAssessmentForm.fillAfter(p, "Position\\s*:?", text(head.get("position")));
@@ -455,16 +447,10 @@ public class TrainingFormExportService {
                 block(signature, head.get("signature_id"));
             }
         });
-        if (paper) {
-            String sha = sha256(docx);
-            jdbc.update("insert into training_paper_packs(id, activity_id, session_id, pack_code, copy_no, page_count, people_count, sha256, reason, printed_by, pack_kind, department_id) values (?,?,?,?,?,?,?,?,?,?,'SELFREAD',?)",
-                    UUID.randomUUID(), activity.get("id"), sessionId, packCode, copy, 1, people.size(), sha, copy > 1 ? reason.trim() : null, actor.getId(), group.id());
-            audit.logAs(actor, "TRAINING_ACTIVITY", text(activity.get("training_number")), (UUID) activity.get("id"), "TRAINING_SELF_READING_LIST_PRINTED", null, packCode,
-                    "Copy " + copy + ", SHA-256 " + sha + (copy > 1 ? ". Reason: " + reason.trim() : ""));
-        } else {
-            audit.logAs(actor, "TRAINING_ACTIVITY", text(activity.get("training_number")), (UUID) activity.get("id"), "TRAINING_SELF_READING_LIST_EXPORTED", null, null, template.describe());
-        }
-        return templates.file(docx, format, text(activity.get("training_number")).replace('/', '-') + "-S" + session.get("session_no") + "-APD.0108" + (manyDepartments && !group.code().isBlank() ? "-" + group.code() : "") + (paper ? "-L" + copy : ""));
+        audit.logAs(actor, "TRAINING_ACTIVITY", text(activity.get("training_number")), (UUID) activity.get("id"), "TRAINING_SELF_READING_LIST_EXPORTED", null, null, template.describe());
+        Map<String, Object> made = templates.file(docx, format, templates.fileName("APD.0108", "APD.0108", template.versionLabel(),
+                Map.of("TRAINING_NUMBER", text(activity.get("training_number")), "SESSION_NO", String.format("%02d", ((Number) session.get("session_no")).intValue()), "DEPARTMENT", text(group.name()))));
+        return made;
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ APD.0024
@@ -486,6 +472,64 @@ public class TrainingFormExportService {
             lines.add(role.get("name") + (dept.isBlank() ? "" : " (" + dept + ")"));
         }
         return String.join("\n", lines);
+    }
+
+    /**
+     * What the cell "Assignor*" of APD.0024 says under the signature, as the note of the form asks: when the person who receives the job is the head of a department, the QM or the QP,
+     * the title of the assignor; when the receiver is a staff member, the head of the department of that employee.
+     */
+    private String assignorLine(Map<String, Object> j, Map<String, Object> person) {
+        String title = text(j.get("assignorTitle"));
+        Map<String, Object> who = jdbc.queryForList("select position, department from app_users where id = ?", j.get("personUserId")).stream().findFirst().orElse(Map.of());
+        boolean head = Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from departments where department_head_id = ?)", Boolean.class, j.get("personUserId")));
+        String position = text(who.get("position"));
+        boolean management = head || position.matches("(?i).*(\bQM\b|\bQP\b|quality manager|qualified person|trưởng\b|manager).*");
+        if (management) return title.isBlank() ? "" : "Chức danh người giao việc/ Title of the assignor: " + title;
+        Map<String, Object> dept = jdbc.queryForList("select h.full_name as head_name, d.name from departments d left join app_users h on h.id = d.department_head_id where lower(d.name) = lower(?)", text(who.get("department"))).stream().findFirst().orElse(Map.of());
+        if (dept.get("head_name") == null) return title.isBlank() ? "" : "Chức danh người giao việc/ Title of the assignor: " + title;
+        return "Trưởng đơn vị/ Head of department: " + dept.get("head_name") + " (" + dept.get("name") + ")";
+    }
+
+    /** The code in the header of APD.0024 is the code of the form with the revision in force (APD.0024.02), not the code of the employee. */
+    private static byte[] withHeaderCode(byte[] docx, String employeeCode, String formCode) {
+        if (employeeCode == null || employeeCode.isBlank()) return docx;
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(docx)); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            for (org.apache.poi.xwpf.usermodel.XWPFHeader h : doc.getHeaderList()) {
+                List<XWPFParagraph> all = new ArrayList<>(h.getParagraphs());
+                for (XWPFTable t : h.getTables()) for (var r : t.getRows()) for (var c : r.getTableCells()) all.addAll(c.getParagraphs());
+                for (XWPFParagraph p : all) {
+                    for (var run : p.getRuns()) {
+                        String t = run.text();
+                        if (t != null && t.contains(employeeCode)) run.setText(t.replace(employeeCode, formCode), 0);
+                    }
+                    if (p.getText().contains(employeeCode) && !p.getRuns().isEmpty()) setParagraph(p, p.getText().replace(employeeCode, formCode));
+                }
+            }
+            doc.write(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException("TRAINING_PRINT_FAILED", e);
+        }
+    }
+
+    /** When the jurisdiction is written, the dotted lines of the form under the heading "3. Quyền hạn" are not needed and are taken out. */
+    private static byte[] withoutJurisdictionDots(byte[] docx) {
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(docx)); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            // the dotted lines are empty paragraphs (a tab with a dotted leader) between the heading "3." and the heading "4."
+            List<XWPFParagraph> dots = new ArrayList<>();
+            boolean inside = false;
+            for (XWPFParagraph p : doc.getParagraphs()) {
+                String t = p.getText().trim();
+                if (t.startsWith("3.") && t.contains("Jurisdiction")) { inside = true; continue; }
+                if (inside && t.startsWith("4.")) break;
+                if (inside && (t.isEmpty() || t.matches("[.…\s]+"))) dots.add(p);
+            }
+            for (XWPFParagraph p : dots) doc.removeBodyElement(doc.getPosOfParagraph(p));
+            doc.write(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException("TRAINING_PRINT_FAILED", e);
+        }
     }
 
     /** The paper print of the job assignment, to be signed by hand: the data is written, the signatures are not; the copy is numbered and recorded, and a reprint needs a reason. */
@@ -531,7 +575,7 @@ public class TrainingFormExportService {
             annexed = annexWrite(template, TrainingAnnexData.forForm("APD.0024", template.versionLabel()).scalar("EMPLOYEE_CODE", text(person.get("employee_code")))
                     .scalar("EMPLOYEE_NAME", text(person.get("full_name"))).scalar("ISSUANCE_NO", text(j.get("issueNo")))
                     .scalar("MATRIX_CODE_VERSION", matrix.isEmpty() ? "" : text(matrix.get("code")) + " v" + matrix.get("version_no")).scalar("JURISDICTION", text(j.get("jurisdiction")))
-                    .scalar("ASSIGNOR_TITLE", paper ? "" : text(j.get("assignorTitle")))
+                    .scalar("ASSIGNOR_TITLE", paper ? "" : assignorLine(j, person))
                     .scalar("DEPARTMENT", text(j.get("departmentNames")).isBlank() ? text(j.get("departmentName")) : text(j.get("departmentNames")))
                     .scalar("POSITION", roleLines(j.get("rolesAfter"), text(j.get("positionName")))).scalar("SUPERIOR", text(j.get("directSuperiorTitle")))
                     .scalar("SUBORDINATES", text(j.get("subordinateTitles"))).scalar("SUBSTITUTE", text(j.get("substituteTitle")))
@@ -541,9 +585,12 @@ public class TrainingFormExportService {
                     .check("CASE_INITIAL", !change).check("CASE_CHANGE", change).caseOn("INITIAL", !change).caseOn("CHANGE", change).group("DUTY", dutyItems)
                     .signature("ASSIGNOR", paper ? List.of() : signatureLines("APD.0024", "ASSIGNOR", j.get("assignorSignatureId"))).signature("RECEIVER", paper ? List.of() : signatureLines("APD.0024", "RECEIVER", j.get("receiverSignatureId"))), control);
         }
+        if (annexed != null && !text(j.get("jurisdiction")).isBlank()) annexed = withoutJurisdictionDots(annexed);
+        final String formCode = TrainingAnnexContract.fullCode("APD.0024", template.versionLabel());
+        if (annexed != null) annexed = withHeaderCode(annexed, text(person.get("employee_code")), formCode);
         byte[] docx = annexed != null ? annexed : write(template, true, doc -> {
             XWPFTable header = find(doc, "Page:");
-            setText(header.getRow(header.getRows().size() - 1).getCell(header.getRow(header.getRows().size() - 1).getTableCells().size() - 1), "Code: " + text(person.get("employee_code")));
+            setText(header.getRow(header.getRows().size() - 1).getCell(header.getRow(header.getRows().size() - 1).getTableCells().size() - 1), "Code: " + formCode);
             XWPFTable who = find(doc, "Full name");
             setValueOf(who, "Full name", text(person.get("full_name")));
             setValueOf(who, "ID.No", text(person.get("employee_code")));
@@ -590,7 +637,7 @@ public class TrainingFormExportService {
             XWPFTable signers = find(doc, "Receiver");
             keepTogether(signers);
             if (!paper) {
-                appendLine(signers.getRow(0).getCell(0), text(j.get("assignorTitle")));
+                appendLine(signers.getRow(0).getCell(0), assignorLine(j, person));
                 block(signers.getRow(0).getCell(0), j.get("assignorSignatureId"));
                 block(signers.getRow(0).getCell(1), j.get("receiverSignatureId"));
             }
@@ -605,7 +652,9 @@ public class TrainingFormExportService {
         } else {
             audit.logAs(actor, "TRAINING_JOB_ASSIGNMENT", text(person.get("full_name")) + " #" + j.get("issueNo"), id, "TRAINING_JOB_ASSIGNMENT_PRINTED", null, null, template.describe());
         }
-        return templates.file(docx, format, "APD.0024-" + (person.get("employee_code") == null ? "" : person.get("employee_code") + "-") + j.get("issueNo") + (paper ? "-P" + copy : ""));
+        return templates.file(docx, format, templates.fileName("APD.0024", "APD.0024", template.versionLabel(),
+                Map.of("EMPLOYEE_CODE", text(person.get("employee_code")), "EMPLOYEE_NAME", text(person.get("full_name")), "ISSUE_NO", text(j.get("issueNo")),
+                        "DEPARTMENT", text(j.get("departmentName")))) + (paper ? "-P" + copy : ""));
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ APD.0014

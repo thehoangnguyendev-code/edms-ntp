@@ -472,7 +472,7 @@ export const DestroyControlledCopyView: React.FC = () => {
         <div className="space-y-3 lg:space-y-4">
           {/* Control Number */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0">Control Number</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Control Number</label>
             <p className="text-xs lg:text-sm text-slate-900 font-medium flex-1">
               {controlledCopy.controlNumber}
             </p>
@@ -480,7 +480,7 @@ export const DestroyControlledCopyView: React.FC = () => {
 
           {/* Copy Number */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0">Copy Number</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Copy Number</label>
             <p className="text-xs lg:text-sm text-slate-900 flex-1">
               {controlledCopy.copyNumber} of {controlledCopy.totalCopies}
             </p>
@@ -488,7 +488,7 @@ export const DestroyControlledCopyView: React.FC = () => {
 
           {/* Status */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0">Status</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Status</label>
             <div className="flex-1">
               <Badge color="emerald">
                 {controlledCopy.status}
@@ -498,7 +498,7 @@ export const DestroyControlledCopyView: React.FC = () => {
 
           {/* Document */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0">Document</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Document</label>
             <p className="text-xs lg:text-sm text-slate-900 flex-1">
               {formatDocumentLabel(controlledCopy)}
             </p>
@@ -506,19 +506,19 @@ export const DestroyControlledCopyView: React.FC = () => {
 
           {/* Location */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0">Location</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Location</label>
             <p className="text-xs lg:text-sm text-slate-900 flex-1">{controlledCopy.location}</p>
           </div>
 
           {/* Recipient */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0">Recipient</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Recipient</label>
             <p className="text-xs lg:text-sm text-slate-900 flex-1">{controlledCopy.recipientName}</p>
           </div>
 
           {/* Distributed Date */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0">Distributed Date</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Distributed Date</label>
             <p className="text-xs lg:text-sm text-slate-900 flex-1">
               {controlledCopy.distributedDate || "—"}
             </p>
@@ -550,7 +550,7 @@ export const DestroyControlledCopyView: React.FC = () => {
 
             {/* Destruction Method */}
             <div>
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
                 Destruction Method <span className="text-red-600">*</span>
               </label>
               <input
@@ -570,7 +570,7 @@ export const DestroyControlledCopyView: React.FC = () => {
 
             {/* Executor */}
             <div>
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
                 Executor (Person Performing) <span className="text-red-600">*</span>
               </label>
               <Select
@@ -587,7 +587,7 @@ export const DestroyControlledCopyView: React.FC = () => {
 
             {/* Supervisor */}
             <div>
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
                 Supervisor (Witness) <span className="text-red-600">*</span>
               </label>
               <Select
@@ -617,7 +617,7 @@ export const DestroyControlledCopyView: React.FC = () => {
               <>
                 {/* File Upload */}
                 <div>
-                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
                     Evidence Photos <span className="text-red-600">*</span>
                   </label>
 

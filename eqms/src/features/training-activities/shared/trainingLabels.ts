@@ -97,19 +97,20 @@ export const statusChange = (from: string, to: string, action = "Update Status")
 
 export const day = (value?: string | null) => (value ? displayDate(`${value.slice(0, 10)}T00:00:00`) : "—");
 
-export type TrainingPageKey = "myTraining" | "activities" | "assessments" | "matrices" | "requirements" | "jobs" | "reviews" | "specimen" | "records" | "compliance" | "documentTrainings" | "numberLog" | "exports" | "legacy";
+export type TrainingPageKey = "myTasks" | "myRecords" | "activities" | "assessments" | "matrices" | "requirements" | "jobs" | "reviews" | "specimen" | "records" | "compliance" | "documentImpactAssessment" | "numberLog" | "exports" | "legacy";
 
 /**
  * The name of every page of Training Management, exactly as the menu calls it, and the menu group it sits in. Page titles and breadcrumbs take their text from
  * here and never from a number or a code: the code of a record is shown in the page, not in the title.
  */
 export const TRAINING_PAGES: Record<TrainingPageKey, { title: string; group?: string; path: string }> = {
-  myTraining: { title: "My Training", path: "/training-management/my-training" },
+  myTasks: { title: "My Tasks", group: "My Training", path: "/training-management/my-training/tasks" },
+  myRecords: { title: "My Records", group: "My Training", path: "/training-management/my-training/records" },
   requirements: { title: "Training Requirements", group: "Training Programme", path: "/training-management/requirements" },
   activities: { title: "Training Activities", group: "Training Programme", path: "/training-management/activities" },
   assessments: { title: "Training Assessments", group: "Training Programme", path: "/training-management/assessments" },
   matrices: { title: "Training Matrix", group: "Training Programme", path: "/training-management/matrix" },
-  documentTrainings: { title: "Document Trainings", group: "Training Programme", path: "/training-management/document-trainings" },
+  documentImpactAssessment: { title: "Document Impact Assessment", group: "Training Programme", path: "/training-management/document-impact-assessment" },
   jobs: { title: "Job Assignments", group: "Personnel Qualification", path: "/training-management/job-assignments" },
   reviews: { title: "Training Reviews", group: "Personnel Qualification", path: "/training-management/personnel-reviews" },
   specimen: { title: "Specimen Signatures", group: "Personnel Qualification", path: "/training-management/specimen-signatures" },
@@ -134,6 +135,11 @@ export function trainingBreadcrumbs(navigate: (path: string) => void, page: Trai
       ? [{ label: entry.title, onClick: () => navigate(entry.path) }, { label: detailTitle, isActive: true }]
       : [{ label: entry.title, isActive: true }]),
   ];
+}
+
+/** A name written in a file name exactly as it is, only without the characters that a file name cannot hold (the department "Quản lý chất lượng" stays so). */
+export function fileSafe(name: string) {
+  return name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "").replace(/\s+/g, " ").trim();
 }
 
 /** Hands a downloaded file to the browser. */

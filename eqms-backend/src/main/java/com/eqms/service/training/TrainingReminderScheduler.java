@@ -61,6 +61,8 @@ public class TrainingReminderScheduler {
     public int sendAll(LocalDate today) {
         int sent = 0;
         sent += dueSoon(today);
+        sent += selfReadingReminders(today);
+        sent += makeupReminders(today);
         sent += overdue(today);
         sent += waitingSteps(today);
         sent += qaListReminders(today);
@@ -79,12 +81,70 @@ public class TrainingReminderScheduler {
             select distinct a.id, a.training_number, training_activity_topics(a.id) as training_topics, a.due_date, p.person_user_id
               from training_activities a join training_participants p on p.activity_id = a.id
              where a.status in ('NOTIFIED','IN_PROGRESS') and a.due_date between ? and ? and p.person_user_id is not null and p.state = 'INVITED'
+               and not exists (select 1 from training_sessions s where s.id = p.session_id and s.method = 'SELF_READING')
             """, today, today.plusDays(3));
         for (Map<String, Object> row : rows) {
             UserAccount person = users.findById((UUID) row.get("person_user_id")).orElse(null);
             if (person == null) continue;
             notifier.send("TRAINING_DUE_SOON", person, null, "Training: due soon",
                     "The training " + row.get("training_number") + " (" + row.get("training_topics") + ") is due on " + com.eqms.util.DateTimeFormatUtils.display(row.get("due_date")) + ".", "TRAINING_ACTIVITY", (UUID) row.get("id"), "due-soon:" + today);
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * Self-reading is read by every invited person (owner decision 2026-10-31). A person who has not signed the reading yet is reminded the number of days before the due date of the
+     * training that Training Properties says (two reminders, by default 3 days and 1 day); the trainer can also remind one person by hand. Each reminder is sent once.
+     */
+    private int selfReadingReminders(LocalDate today) {
+        Map<String, Object> s = jdbc.queryForMap("select self_reading_reminder_first_days as first, self_reading_reminder_second_days as second from training_settings where id = 1");
+        int first = ((Number) s.get("first")).intValue();
+        int second = ((Number) s.get("second")).intValue();
+        int count = 0;
+        for (Map<String, Object> row : jdbc.queryForList("""
+            select distinct a.id, a.training_number, a.due_date, p.id as participant_id, p.person_user_id
+              from training_activities a join training_participants p on p.activity_id = a.id join training_sessions s on s.id = p.session_id and s.method = 'SELF_READING' and s.status = 'PLANNED'
+                   join app_users u on u.id = p.person_user_id and u.status = 'Active'
+             where a.status in ('NOTIFIED','IN_PROGRESS') and a.due_date in (?, ?) and p.person_user_id is not null and p.state = 'INVITED'
+            """, java.sql.Date.valueOf(today.plusDays(first)), java.sql.Date.valueOf(today.plusDays(second)))) {
+            UserAccount person = users.findById((UUID) row.get("person_user_id")).orElse(null);
+            if (person == null) continue;
+            long left = java.time.temporal.ChronoUnit.DAYS.between(today, ((java.sql.Date) row.get("due_date")).toLocalDate());
+            notifier.send("TRAINING_READ_DUE_SOON", person, null, "Training: please read and sign (" + left + " day" + (left == 1 ? "" : "s") + " left)",
+                    "You have not yet confirmed that you have read and understood the training " + row.get("training_number") + ", due on " + com.eqms.util.DateTimeFormatUtils.display(row.get("due_date"))
+                            + " (" + left + " day" + (left == 1 ? "" : "s") + " left). Open My Training, read the document and sign electronically.",
+                    "TRAINING_ACTIVITY", (UUID) row.get("id"), "read-due:" + row.get("participant_id") + ":" + left);
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * SOP.0003 5.3.7 leaves the rescheduling of an absent person "as appropriate", so the system does not let it be forgotten (D-SRM-6): every week, from the set number of days after the due date of the
+     * training, the organizer is told of each person still Absent whose account is Active and whom no make-up training lists. A person who left the company or is suspended is not chased.
+     */
+    private int makeupReminders(LocalDate today) {
+        int days = ((Number) jdbc.queryForMap("select makeup_reminder_days as d from training_settings where id = 1").get("d")).intValue();
+        String week = today.get(IsoFields.WEEK_BASED_YEAR) + "-W" + today.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+        int count = 0;
+        for (Map<String, Object> row : jdbc.queryForList("""
+            select a.id, a.training_number, a.due_date, a.created_by, count(*) as people
+              from training_activities a join training_participants p on p.activity_id = a.id join app_users u on u.id = p.person_user_id and u.status = 'Active'
+             where a.parent_activity_id is null and a.status in ('IN_PROGRESS','PENDING_QA_CONFIRMATION','COMPLETED') and a.due_date is not null and a.due_date + (?::int) <= ?
+               and a.created_by is not null and p.state = 'ABSENT'
+               and not exists (select 1 from training_activities c where c.parent_activity_id = a.id and c.status <> 'CANCELLED'
+                                and (exists (select 1 from training_participants x where x.activity_id = c.id and x.person_user_id = p.person_user_id)
+                                  or exists (select 1 from training_proposed_participants q where q.activity_id = c.id and q.person_user_id = p.person_user_id)))
+             group by a.id, a.training_number, a.due_date, a.created_by
+            """, days, java.sql.Date.valueOf(today))) {
+            UserAccount organizer = users.findById((UUID) row.get("created_by")).orElse(null);
+            if (organizer == null) continue;
+            long people = ((Number) row.get("people")).longValue();
+            notifier.send("TRAINING_MAKEUP_PENDING", organizer, null, "Training: " + people + " absent person(s) without a make-up training",
+                    people + " person(s) were absent in the training " + row.get("training_number") + " (due " + com.eqms.util.DateTimeFormatUtils.display(row.get("due_date"))
+                            + ") and no make-up training lists them yet. Open the training and create the supplementary training.",
+                    "TRAINING_ACTIVITY", (UUID) row.get("id"), "makeup-pending:" + week);
             count++;
         }
         return count;
@@ -225,7 +285,7 @@ public class TrainingReminderScheduler {
             for (UserAccount person : recipients.holders("training.matrix.manage", (UUID) row.get("department_id"))) {
                 notifier.send("TRAINING_IMPACT_WAITING", person, null, "Training: documents wait for the matrix to be updated",
                         row.get("pending") + " new or revised document(s) of " + row.get("name") + " have no impact assessment and " + row.get("update_pending")
-                                + " need the matrix to be updated (SOP.0003 5.3.1).", "TRAINING_DOCUMENT_TRAININGS", (UUID) row.get("department_id"), "impact:" + row.get("department_id") + ":" + weekOf(today));
+                                + " need the matrix to be updated (SOP.0003 5.3.1).", "TRAINING_DOCUMENT_IMPACT_ASSESSMENT", (UUID) row.get("department_id"), "impact:" + row.get("department_id") + ":" + weekOf(today));
                 count++;
             }
         }

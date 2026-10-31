@@ -46,7 +46,7 @@ export function useDictionaryServerTable<T>({
   defaultSortBy,
   defaultSortDirection = "asc",
   extraParams = {},
-  searchDelayMs = 300,
+  searchDelayMs = 150,
   initialItemsPerPage = 10,
   persistKey,
   liveTypes,

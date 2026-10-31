@@ -101,7 +101,7 @@ export function ServerListPanel<T>({
       <div className={framed ? "flex flex-1 flex-col p-4 md:p-5" : "flex flex-1 flex-col"}>
         <div className="flex w-full flex-col">
           <div className="mb-4 flex w-full flex-col gap-1.5 md:hidden">
-            <label className="block text-xs font-medium text-slate-700 sm:text-sm">Search</label>
+            <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">Search</label>
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -135,7 +135,7 @@ export function ServerListPanel<T>({
           >
             <div className="hidden items-end gap-4 pb-4 md:grid md:grid-cols-2 md:pb-5 lg:grid-cols-3">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Search</label>
+                <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">Search</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-slate-400" />
                   <input

@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import fallbackLogo from '@/assets/images/logo_nobg.png';
-import { brandingApi, type PublicBranding } from '@/services/api/branding';
+import { brandingApi, DEFAULT_FOOTER_LEFT, type PublicBranding } from '@/services/api/branding';
 import { createSharedPollingResource } from '@/services/sharedPollingResource';
 import { subscribeNotificationRealtime } from '@/features/notifications/notificationRealtime';
 
 const BRANDING_UPDATED_EVENT = 'eqms:branding-updated';
 const BRANDING_REFRESH_INTERVAL_MS = 30_000;
 const BRANDING_CACHE_KEY = 'eqms:branding-cache';
-const FALLBACK: PublicBranding = { systemDisplayName: 'EQMS', systemLogo: '', systemFavicon: '', systemFooter: '© {year} Ngoc Thien Pharma. All rights reserved.' };
+const FALLBACK: PublicBranding = { systemDisplayName: 'EQMS', systemLogo: '', systemFavicon: '', systemFooterLeft: DEFAULT_FOOTER_LEFT, systemFooterRight: '', footerShowOnDesktop: true, footerShowOnMobile: false };
 
 // On a hard refresh, the shared polling resource always starts empty (it's an in-memory cache,
 // reset by the page reload) and only has real data once its first fetch resolves. Header and

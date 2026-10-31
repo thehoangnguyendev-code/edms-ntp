@@ -39,7 +39,16 @@ public class TrainingSettingsService {
                                 Integer annualRequirementDueMonth, Integer annualRequirementDueDay, Integer absenceRetrainMonths,
                                 Integer retentionYearsAfterLeaving, Integer reviewReadyReminderDays, Integer reviewOpenReminderDays,
                                 Integer resultsDueDays, String reason, String resultsDueDayType, Integer initialTrainingDays,
-                                Boolean warnScheduledAfterDue) {}
+                                Boolean warnScheduledAfterDue, Integer selfReadingReminderFirstDays, Integer selfReadingReminderSecondDays, Integer makeupReminderDays,
+                                Map<String, String> downloadFileNames) {
+        /** Without the patterns of the file names: they stay as they are. */
+        public SettingsWrite(Integer version, Integer passPercent, Integer documentTrainingDaysDefault, Integer annualRequirementDueMonth, Integer annualRequirementDueDay, Integer absenceRetrainMonths,
+                             Integer retentionYearsAfterLeaving, Integer reviewReadyReminderDays, Integer reviewOpenReminderDays, Integer resultsDueDays, String reason, String resultsDueDayType, Integer initialTrainingDays,
+                             Boolean warnScheduledAfterDue, Integer selfReadingReminderFirstDays, Integer selfReadingReminderSecondDays, Integer makeupReminderDays) {
+            this(version, passPercent, documentTrainingDaysDefault, annualRequirementDueMonth, annualRequirementDueDay, absenceRetrainMonths, retentionYearsAfterLeaving, reviewReadyReminderDays,
+                    reviewOpenReminderDays, resultsDueDays, reason, resultsDueDayType, initialTrainingDays, warnScheduledAfterDue, selfReadingReminderFirstDays, selfReadingReminderSecondDays, makeupReminderDays, null);
+        }
+    }
 
     // ---- values used by other services (no permission: they run for the person who triggered the work) ----
 
@@ -67,7 +76,7 @@ public class TrainingSettingsService {
     private Map<String, Object> read() {
         var row = jdbc.queryForMap("""
             select pass_percent, document_training_days_default, annual_requirement_due_month, annual_requirement_due_day,
-                   absence_retrain_months, retention_years_after_leaving, review_ready_reminder_days, review_open_reminder_days, results_due_days, results_due_day_type, initial_training_days, warn_scheduled_after_due, version, updated_at
+                   absence_retrain_months, retention_years_after_leaving, review_ready_reminder_days, review_open_reminder_days, results_due_days, results_due_day_type, initial_training_days, warn_scheduled_after_due, self_reading_reminder_first_days, self_reading_reminder_second_days, makeup_reminder_days, version, updated_at
               from training_settings where id=1
             """);
         Map<String, Object> result = new LinkedHashMap<>();
@@ -83,6 +92,10 @@ public class TrainingSettingsService {
         result.put("resultsDueDayType", row.get("results_due_day_type"));
         result.put("initialTrainingDays", row.get("initial_training_days"));
         result.put("warnScheduledAfterDue", row.get("warn_scheduled_after_due"));
+        result.put("selfReadingReminderFirstDays", row.get("self_reading_reminder_first_days"));
+        result.put("selfReadingReminderSecondDays", row.get("self_reading_reminder_second_days"));
+        result.put("makeupReminderDays", row.get("makeup_reminder_days"));
+        result.put("downloadFileNames", new TrainingFileNames(jdbc).describe());
         result.put("version", row.get("version"));
         result.put("updatedAt", row.get("updated_at"));
         return result;
@@ -106,6 +119,9 @@ public class TrainingSettingsService {
         int openDays = pick(request.reviewOpenReminderDays(), current, "review_open_reminder_days");
         int resultsDays = pick(request.resultsDueDays(), current, "results_due_days");
         int initialDays = pick(request.initialTrainingDays(), current, "initial_training_days");
+        int readFirst = pick(request.selfReadingReminderFirstDays(), current, "self_reading_reminder_first_days");
+        int readSecond = pick(request.selfReadingReminderSecondDays(), current, "self_reading_reminder_second_days");
+        int makeupDays = pick(request.makeupReminderDays(), current, "makeup_reminder_days");
         String dayType = request.resultsDueDayType() == null ? String.valueOf(current.get("results_due_day_type")) : request.resultsDueDayType();
         if (!TrainingWorkingDays.valid(dayType)) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
         boolean warnAfterDue = request.warnScheduledAfterDue() == null ? Boolean.TRUE.equals(current.get("warn_scheduled_after_due")) : request.warnScheduledAfterDue();
@@ -114,6 +130,9 @@ public class TrainingSettingsService {
         // the limits of the column (V674): a person counts as a new employee for 1 to 730 days after the start
         if (initialDays < 1 || initialDays > 730) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
         if (readyDays < 1 || readyDays > 60 || openDays < 1 || openDays > 365) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
+        // two different reminders before the due date of a self-reading: the first (more days) and the second (fewer days)
+        if (readFirst < 1 || readFirst > 30 || readSecond < 1 || readSecond > 30 || readSecond >= readFirst) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
+        if (makeupDays < 1 || makeupDays > 365) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
         if (month < 1 || month > 12 || day < 1 || day > 31 || day > LocalDate.of(2025, month, 1).lengthOfMonth()) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
         // The SOP keeps training records for at least ten years after the employee leaves: a shorter time is refused.
         if (retention < 10) throw new IllegalArgumentException("TRAINING_RETENTION_TOO_SHORT");
@@ -131,13 +150,31 @@ public class TrainingSettingsService {
         change(changes, "How the days to send the results to QA are counted", current.get("results_due_day_type"), dayType);
         change(changes, "Days a person counts as a new employee", current.get("initial_training_days"), initialDays);
         change(changes, "Warn when a session is scheduled after the due date", Boolean.TRUE.equals(current.get("warn_scheduled_after_due")) ? "on" : "off", warnAfterDue ? "on" : "off");
+        change(changes, "Days before the due date of a self-reading for the first reminder", current.get("self_reading_reminder_first_days"), readFirst);
+        change(changes, "Days before the due date of a self-reading for the second reminder", current.get("self_reading_reminder_second_days"), readSecond);
+        change(changes, "Days after the due date to remind about a person still absent without a make-up training", current.get("makeup_reminder_days"), makeupDays);
+        // the patterns of the names of the downloaded files: only the forms that were sent change; an empty pattern brings back the default
+        TrainingFileNames names = new TrainingFileNames(jdbc);
+        Map<String, String> patterns = new LinkedHashMap<>(names.saved());
+        if (request.downloadFileNames() != null) {
+            for (Map.Entry<String, String> e : request.downloadFileNames().entrySet()) {
+                String key = e.getKey();
+                String value = e.getValue() == null ? "" : e.getValue().trim();
+                List<String> problems = TrainingFileNames.problems(key, value);
+                if (!problems.isEmpty()) throw new IllegalArgumentException("TRAINING_FILE_NAME_PATTERN_INVALID: " + key + ": " + String.join("; ", problems));
+                String before = patterns.getOrDefault(key, TrainingFileNames.form(key).defaultPattern());
+                if (value.isEmpty()) patterns.remove(key); else patterns.put(key, value);
+                String after = patterns.getOrDefault(key, TrainingFileNames.form(key).defaultPattern());
+                change(changes, "File name of " + key, before, after);
+            }
+        }
         if (changes.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SETTINGS_UNCHANGED");
 
         jdbc.update("""
             update training_settings set pass_percent=?, document_training_days_default=?, annual_requirement_due_month=?,
               annual_requirement_due_day=?, absence_retrain_months=?, retention_years_after_leaving=?, review_ready_reminder_days=?, review_open_reminder_days=?, results_due_days=?,
-              results_due_day_type=?, initial_training_days=?, warn_scheduled_after_due=?, version=version+1, updated_by=?, updated_at=now() where id=1
-            """, pass, days, month, day, absence, retention, readyDays, openDays, resultsDays, dayType, initialDays, warnAfterDue, actor.getId());
+              results_due_day_type=?, initial_training_days=?, warn_scheduled_after_due=?, self_reading_reminder_first_days=?, self_reading_reminder_second_days=?, makeup_reminder_days=?, download_file_names=cast(? as jsonb), version=version+1, updated_by=?, updated_at=now() where id=1
+            """, pass, days, month, day, absence, retention, readyDays, openDays, resultsDays, dayType, initialDays, warnAfterDue, readFirst, readSecond, makeupDays, TrainingFileNames.toJson(patterns), actor.getId());
         String reason = request.reason() == null ? "" : request.reason().trim();
         audit.logAs(actor, "TRAINING_SETTINGS", "TRAINING_SETTINGS", AUDIT_ID, "TRAINING_SETTINGS_UPDATED", null, null,
                 (reason.isEmpty() ? "" : reason + " | ") + String.join("; ", changes));

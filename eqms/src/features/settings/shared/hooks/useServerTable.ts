@@ -16,8 +16,8 @@ type SavedTable = { search: string; page: number; limit: number; sort: SortConfi
 /** The direction written in the address; only a list that sorts ascending by default may leave it out, so "asc" must be read as asc and not as the default. */
 const readDirection = (value: string | null, fallback: "asc" | "desc"): "asc" | "desc" => (value === "asc" || value === "desc" ? value : fallback);
 
-export function useServerTable<T>({ fetcher, defaultSortBy, defaultSortDirection = "asc", extraParams = {}, searchDelayMs = 300, initialItemsPerPage = 10, syncToUrl = true, persistKey, liveTypes }: {
-  fetcher: (params: ServerQuery) => Promise<ServerPageResponse<T>>;
+export function useServerTable<T>({ fetcher, defaultSortBy, defaultSortDirection = "asc", extraParams = {}, searchDelayMs = 150, initialItemsPerPage = 10, syncToUrl = true, persistKey, liveTypes }: {
+  fetcher: (params: ServerQuery, signal?: AbortSignal) => Promise<ServerPageResponse<T>>;
   defaultSortBy: string; defaultSortDirection?: "asc" | "desc"; extraParams?: ServerQuery;
   searchDelayMs?: number; initialItemsPerPage?: number;
   /** Disable for independent tables inside tabs that share one route. */
@@ -42,6 +42,8 @@ export function useServerTable<T>({ fetcher, defaultSortBy, defaultSortDirection
     : saved?.sort ?? { key: defaultSortBy, direction: defaultSortDirection });
   const [items, setItems] = useState<T[]>([]); const [totalItems, setTotalItems] = useState(0); const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true); const [refreshToken, setRefreshToken] = useState(0);
+  const [isFetching, setIsFetching] = useState(false);
+  const hasLoaded = useRef(false);
   const debouncedSearch = useDebounce(searchQuery, searchDelayMs);
   const extraParamsSignature = useMemo(() => JSON.stringify(extraParams), [extraParams]);
   useLayoutEffect(() => {
@@ -82,10 +84,13 @@ export function useServerTable<T>({ fetcher, defaultSortBy, defaultSortDirection
   useEntityChanged(liveTypes ?? [], () => { silentRef.current = true; setRefreshToken((previous) => previous + 1); }, { enabled: Boolean(liveTypes?.length), debounceMs: 800 });
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     const load = async () => {
-      if (silentRef.current) silentRef.current = false; else setIsLoading(true);
+      if (silentRef.current) silentRef.current = false;
+      setIsLoading(!hasLoaded.current);
+      setIsFetching(true);
       try {
-        const response = await fetcher({ ...extraParams, search: debouncedSearch.trim() || undefined, page: currentPage, limit: itemsPerPage, sortBy: sortConfig.key || defaultSortBy, sortDirection: sortConfig.direction });
+        const response = await fetcher({ ...extraParams, search: debouncedSearch.trim() || undefined, page: currentPage, limit: itemsPerPage, sortBy: sortConfig.key || defaultSortBy, sortDirection: sortConfig.direction }, controller.signal);
         if (cancelled) return;
         setItems(response.data); setTotalItems(response.pagination.total); setTotalPages(response.pagination.totalPages || 1);
         if (response.pagination.page !== currentPage) setCurrentPage(response.pagination.page);
@@ -94,9 +99,9 @@ export function useServerTable<T>({ fetcher, defaultSortBy, defaultSortDirection
         if (import.meta.env.DEV) console.error("Failed to load settings table data", error);
         setItems([]); setTotalItems(0); setTotalPages(1);
         showToast({ type: "error", message: "Unable to load data. Please try again." });
-      } finally { if (!cancelled) setIsLoading(false); }
+      } finally { if (!cancelled) { hasLoaded.current = true; setIsLoading(false); setIsFetching(false); } }
     };
-    void load(); return () => { cancelled = true; };
+    void load(); return () => { cancelled = true; controller.abort(); };
   }, [debouncedSearch, currentPage, itemsPerPage, sortConfig.key, sortConfig.direction, defaultSortBy, extraParamsSignature, refreshToken, fetcher, showToast]);
-  return { searchQuery, setSearchQuery, currentPage, setCurrentPage, itemsPerPage, setItemsPerPage, totalPages, totalItems, items, isLoading, sortConfig, handleSort, reload };
+  return { searchQuery, setSearchQuery, currentPage, setCurrentPage, itemsPerPage, setItemsPerPage, totalPages, totalItems, items, isLoading, isFetching, sortConfig, handleSort, reload };
 }

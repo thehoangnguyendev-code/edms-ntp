@@ -44,7 +44,7 @@ class NotificationDispatcherAffectedUserTest {
     @Mock private NotificationService notificationService;
     @Mock private UserAccountRepository userAccountRepository;
     @Mock private PermissionEvaluationService permissionEvaluationService;
-    @Mock private EmailNotificationService emailNotificationService;
+    @Mock private NotificationEmailOutbox emailOutbox;
     @Mock private com.eqms.repository.NotificationDispatchQueueRepository dispatchQueueRepository;
 
     private NotificationDispatcher dispatcher;
@@ -53,7 +53,7 @@ class NotificationDispatcherAffectedUserTest {
     void setUp() {
         dispatcher = new NotificationDispatcher(
                 eventRepository, policyRepository, templateVersionRepository, notificationService,
-                userAccountRepository, permissionEvaluationService, new ObjectMapper(), emailNotificationService,
+                userAccountRepository, permissionEvaluationService, new ObjectMapper(), emailOutbox,
                 dispatchQueueRepository);
     }
 

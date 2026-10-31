@@ -98,8 +98,14 @@ public class DocumentController {
     }
 
     @GetMapping("/filters")
-    public ResponseEntity<DocumentFiltersResponse> getFilters() {
-        return ResponseEntity.ok(documentService.getFilters());
+    public ResponseEntity<DocumentFiltersResponse> getFilters(@RequestParam(required=false) List<UUID> selectedUsers) {
+        return ResponseEntity.ok(documentService.getFilters(selectedUsers));
+    }
+
+    @GetMapping("/filter-authors")
+    public ResponseEntity<List<com.eqms.dto.user.LookupItemResponse>> getFilterAuthors(
+            @RequestParam(required=false) String search) {
+        return ResponseEntity.ok(documentService.getFilterAuthors(search,List.of()));
     }
 
     @GetMapping("/knowledge-base")

@@ -121,6 +121,25 @@ class TrainingSuspensionServiceTest {
         verify(store).auditActivity(eq(actor), any(), eq("TRAINING_WORK_SUSPENSION_CLEARED"), eq("OPEN"), eq("CLEARED"), contains("retraining was passed"));
     }
 
+    @Test
+    void passingASecondRetrainingEndsTheFlagRaisedByTheFirstRetrainingToo() {
+        UUID root = UUID.randomUUID();
+        UUID firstRetraining = UUID.randomUUID();
+        UUID flagOfFirstRetraining = UUID.randomUUID();
+        Map<String, Object> secondRetraining = activity();
+        secondRetraining.put("parent_activity_id", root);
+        Map<String, Object> person = participant(personId);
+        when(jdbc.queryForList(contains("activity_id in (select id from training_activities where parent_activity_id = ?)"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("id", flagOfFirstRetraining, "activity_id", firstRetraining)));
+        when(jdbc.update(contains("update training_work_suspensions set status='CLEARED'"), any(), any(), eq(flagOfFirstRetraining))).thenReturn(1);
+        when(store.activity(firstRetraining)).thenReturn(Optional.of(activity()));
+
+        service.clearOnPass(actor, secondRetraining, person);
+
+        verify(jdbc).queryForList(contains("person_user_id = ? and (activity_id = ?"), eq(new Object[] {person.get("id"), personId, root, root}));
+        verify(store).auditActivity(eq(actor), any(), eq("TRAINING_WORK_SUSPENSION_CLEARED"), eq("OPEN"), eq("CLEARED"), contains("retraining was passed"));
+    }
+
     private Map<String, Object> open() {
         Map<String, Object> row = new HashMap<>();
         row.put("id", UUID.randomUUID());

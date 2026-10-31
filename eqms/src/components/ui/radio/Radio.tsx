@@ -225,7 +225,7 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
   return (
     <div className={cn('space-y-2', className)}>
       {label && (
-        <label className="text-xs sm:text-sm font-medium text-slate-700 block">
+        <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>

@@ -25,7 +25,7 @@ export const InfoFromDocumentTab: React.FC<InfoFromDocumentTabProps> = ({
     <div className="space-y-4 md:space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
         <div className="flex flex-col gap-1.5 md:col-span-2">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Document Name</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Document Name</label>
           <input
             type="text"
             value={displayValue(formattedName)}
@@ -36,7 +36,7 @@ export const InfoFromDocumentTab: React.FC<InfoFromDocumentTabProps> = ({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Document Number</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Document Number</label>
           <input
             type="text"
             value={displayValue(documentCode)}
@@ -47,7 +47,7 @@ export const InfoFromDocumentTab: React.FC<InfoFromDocumentTabProps> = ({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Document Created</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Document Created</label>
           <input
             type="text"
             value={displayValue(documentCreated)}

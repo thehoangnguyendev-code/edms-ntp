@@ -25,7 +25,7 @@ export const PasswordPolicyTester: React.FC<{ config: SecurityConfig }> = ({ con
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Test a Password</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="password-policy-test" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Password to Check</label>
+          <label htmlFor="password-policy-test" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Password to Check</label>
           <div className="relative">
             <input
               id="password-policy-test"
@@ -50,7 +50,7 @@ export const PasswordPolicyTester: React.FC<{ config: SecurityConfig }> = ({ con
         </div>
         {config.disallowUserInfo && (
           <div>
-            <label htmlFor="password-policy-test-user" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Username, E-mail or Name</label>
+            <label htmlFor="password-policy-test-user" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Username, E-mail or Name</label>
             <input
               id="password-policy-test-user"
               type="text"

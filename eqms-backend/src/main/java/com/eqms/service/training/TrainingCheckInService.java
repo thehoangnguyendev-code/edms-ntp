@@ -48,6 +48,8 @@ public class TrainingCheckInService {
         Map<String, Object> session = jdbc.queryForList("select s.*, a.organizer_department_id from training_sessions s join training_activities a on a.id = s.activity_id where s.id = ?", sessionId)
                 .stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         access.requireScope(actor, (UUID) session.get("organizer_department_id"));
+        // A self-reading has no attendance to record: the person signs the reading in the system (owner decision 2026-10-31)
+        if ("SELF_READING".equals(session.get("method"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SELF_READING_NO_ATTENDANCE");
         return session;
     }
 

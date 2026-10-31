@@ -19,7 +19,7 @@ import { documentApi } from "@/services/api/documents";
 import {
   trainingError, trainingFormsApi, trainingMatrixApi, trainingRequirementsApi, type TrainingPerson, type TrainingRequirementDetail, type TrainingRequirementLine, type TrainingSuggestion, type TrainingTopic,
 } from "@/services/api/trainingActivities";
-import { day, trainingBreadcrumbs, when, statusChange } from "../shared/trainingLabels";
+import { day, trainingBreadcrumbs, when, statusChange, STATUS_LABEL, STATUS_COLOR } from "../shared/trainingLabels";
 import { FormDownloadButtons } from "../shared/FormDownloadButtons";
 import { ReadonlyField, ReadonlyGrid, TabBlock, TrainingDetailLayout } from "../shared/TrainingDetailLayout";
 import { TrainingCopiesPanel } from "../shared/TrainingCopiesPanel";
@@ -28,6 +28,12 @@ import { useTrainingBack } from "../shared/useTrainingBack";
 
 const LINE_LABEL: Record<string, string> = { PLANNED: "Planned", POSTPONED: "Postponed", IN_PROGRESS: "In Progress", DONE: "Done", OVERDUE: "Overdue" };
 const LINE_COLOR: Record<string, "blue" | "amber" | "emerald" | "red"> = { PLANNED: "blue", POSTPONED: "amber", IN_PROGRESS: "amber", DONE: "emerald", OVERDUE: "red" };
+/** Once an activity is opened for the line, the line shows the status of that activity (the same words as its own page); before that, the status of the plan itself. */
+export function LineStatus({ line }: { line: { lineStatus: string; activityId?: string | null; activityStatus?: string | null } }) {
+  const activity = line.activityId && line.activityStatus && line.activityStatus !== "CANCELLED" ? line.activityStatus : null;
+  if (activity) return <Badge color={STATUS_COLOR[activity] ?? "slate"}>{STATUS_LABEL[activity] ?? activity}</Badge>;
+  return <Badge color={LINE_COLOR[line.lineStatus]}>{LINE_LABEL[line.lineStatus]}</Badge>;
+}
 /** A month as MM/yyyy (the planned month of a line). */
 const monthText = (value: string) => `${value.slice(5, 7)}/${value.slice(0, 4)}`;
 
@@ -113,7 +119,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
       ) },
       { id: "title", header: "Training Topic or SOP", cell: (l) => <div className="max-w-80 whitespace-normal">{l.code ? `${l.code} — ` : ""}{l.title}</div> },
       { id: "activity", header: "Training Number", cell: (l) => (l.activityId ? <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/activities/${l.activityId}`)}>{l.trainingNumber}</button> : "—") },
-      { id: "status", header: "Status", cell: (l) => <Badge color={LINE_COLOR[l.lineStatus]}>{LINE_LABEL[l.lineStatus]}</Badge> },
+      { id: "status", header: "Status", cell: (l) => <LineStatus line={l} /> },
       { id: "qa", header: "QA", cell: (l) => (l.qaSignedAt ? <div className="max-w-60 whitespace-normal">{l.qaSignedByName} ({day(l.qaSignedAt)}){l.qaComment ? `: ${l.qaComment}` : ""}</div> : "—") },
       {
         id: "actions",

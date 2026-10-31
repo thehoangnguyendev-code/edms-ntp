@@ -70,7 +70,7 @@ export const CertAddModal: React.FC<CertAddModalProps> = ({ isOpen, onClose, onS
       <div className="space-y-4">
         {/* Certificate Name */}
         <div>
-          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
             Certificate Name <span className="text-red-500">*</span>
           </label>
           <input
@@ -89,7 +89,7 @@ export const CertAddModal: React.FC<CertAddModalProps> = ({ isOpen, onClose, onS
 
         {/* Issuing Organization */}
         <div>
-          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
             Issuing Organization <span className="text-red-500">*</span>
           </label>
           <input
@@ -122,7 +122,7 @@ export const CertAddModal: React.FC<CertAddModalProps> = ({ isOpen, onClose, onS
 
         {/* File Upload */}
         <div>
-          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
             Certificate File
           </label>
           <div

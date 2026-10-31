@@ -25,7 +25,7 @@ const ReadonlyField: React.FC<{
   fullWidth?: boolean;
 }> = ({ label, value, fullWidth = false }) => (
   <div className={`flex flex-col gap-1.5 ${fullWidth ? "md:col-span-2" : ""}`}>
-    <label className="text-xs sm:text-sm font-medium text-slate-700">{label}</label>
+    <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{label}</label>
     <input
       type="text"
       value={value || ""}
@@ -112,7 +112,7 @@ export const DistributionInformationTab: React.FC<DistributionInformationTabProp
 
       {isBatchParent && (
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             {unitScopeLabel ? "Recipients" : "Distribution List"}{members && members.length > 0 ? ` (${members.length})` : ""}
           </label>
           {isLoadingMembers || !members ? (

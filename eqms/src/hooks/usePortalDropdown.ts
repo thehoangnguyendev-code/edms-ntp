@@ -1,3 +1,4 @@
+import { observeOverlayPosition } from "@/utils/scroll";
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { RefObject } from 'react';
 
@@ -180,12 +181,7 @@ export function usePortalDropdown(): UsePortalDropdownReturn {
       setPosition(computePosition(button.getBoundingClientRect(), menuHeight, menuWidth));
     };
 
-    window.addEventListener('scroll', reposition, { capture: true, passive: true });
-    window.addEventListener('resize', reposition);
-    return () => {
-      window.removeEventListener('scroll', reposition, { capture: true });
-      window.removeEventListener('resize', reposition);
-    };
+    return observeOverlayPosition(() => buttonRef?.current ?? null, reposition);
   }, [openId, computePosition]);
 
   return { openId, position, getRef, toggle, close };

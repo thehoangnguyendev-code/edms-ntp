@@ -145,7 +145,7 @@ export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onT
               <TableMarkup.HeaderCell rowSpan={2} title="Every employee of the department, with or without a Work Position (SOP.0003 5.3.1)" className="w-24 min-w-24 max-w-24 border-b border-r border-slate-200 bg-blue-50 px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-normal text-blue-900 md:text-xs">All<br />employees</TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell colSpan={Math.max(positions.length, 1)} className="border-b border-r border-slate-200 bg-emerald-600 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-white"><span className={`sticky left-0 block w-[min(100%,100cqw)] whitespace-nowrap text-center md:left-[428px] ${editing ? "md:w-[min(100%,calc(100cqw-580px))]" : "md:w-[min(100%,calc(100cqw-540px))]"}`}>Work Position</span></TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell rowSpan={2} style={stickyAnnual(editing)} className="w-16 min-w-16 md:w-[84px] md:min-w-[84px] md:sticky md:shadow-[inset_1px_0_0_0_#e2e8f0] z-40 border-b border-r border-slate-200 bg-slate-50 px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wide md:px-3 md:text-xs text-slate-600">Annual training<br />required</TableMarkup.HeaderCell>
-              {editing && <TableMarkup.HeaderCell rowSpan={2} style={STICKY_REMOVE} className="w-10 min-w-10 md:sticky z-40 border-b border-r border-slate-200 bg-slate-50 px-2"><span className="sr-only">Remove</span></TableMarkup.HeaderCell>}
+              {editing && <TableMarkup.HeaderCell rowSpan={2} style={STICKY_REMOVE} className="w-10 min-w-10 md:sticky md:shadow-[inset_1px_0_0_0_#e2e8f0] z-40 border-b border-r border-slate-200 bg-slate-50 px-2"><span className="sr-only">Remove</span></TableMarkup.HeaderCell>}
             </TableMarkup.Row>
             <TableMarkup.Row>
               {positions.map((p) => (
@@ -227,7 +227,7 @@ export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onT
                           <Badge color={x.row.annualRequired ? "emerald" : "slate"} className="min-w-10 justify-center">{x.row.annualRequired ? "Yes" : "No"}</Badge>
                         ))}
                       </TableMarkup.Cell>
-                      {editing && <TableMarkup.Cell style={STICKY_REMOVE} className="w-10 min-w-10 md:sticky z-20 border-b border-r border-slate-200 bg-white px-2 text-center group-hover:bg-emerald-50">{expandContent(<button type="button" aria-label={`Remove ${rowName(x.row)}`} onClick={() => onRemove(x.index)} disabled={x.row.locked && !canLock} title={x.row.locked && !canLock ? "Required of all employees by Quality Assurance: it cannot be taken out" : undefined} className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"><Trash2 className="h-4 w-4" /></button>)}</TableMarkup.Cell>}
+                      {editing && <TableMarkup.Cell style={STICKY_REMOVE} className="w-10 min-w-10 md:sticky md:shadow-[inset_1px_0_0_0_#e2e8f0] z-20 border-b border-r border-slate-200 bg-white px-2 text-center group-hover:bg-emerald-50">{expandContent(<button type="button" aria-label={`Remove ${rowName(x.row)}`} onClick={() => onRemove(x.index)} disabled={x.row.locked && !canLock} title={x.row.locked && !canLock ? "Required of all employees by Quality Assurance: it cannot be taken out" : undefined} className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"><Trash2 className="h-4 w-4" /></button>)}</TableMarkup.Cell>}
                     </MotionRow>
                     );
                   })}
@@ -242,7 +242,7 @@ export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onT
               <TableMarkup.Cell aria-hidden="true" className="border-r border-slate-200 bg-blue-50" />
               {positions.map((p) => <TableMarkup.Cell key={p.id} className={`border-r border-slate-200 py-2 text-center text-xs font-semibold tabular-nums text-emerald-800 ${hotCol === p.id ? "bg-emerald-100" : "bg-emerald-50"}`}>{perPosition[p.id]}</TableMarkup.Cell>)}
               <TableMarkup.Cell style={stickyAnnual(editing)} className="w-16 min-w-16 md:w-[84px] md:min-w-[84px] md:sticky md:shadow-[inset_1px_0_0_0_#e2e8f0] z-20 border-r border-slate-200 bg-slate-50 px-3 py-2 text-center text-xs font-semibold tabular-nums text-slate-600">{rows.filter((r) => r.annualRequired).length}</TableMarkup.Cell>
-              {editing && <TableMarkup.Cell style={STICKY_REMOVE} className="w-10 min-w-10 md:sticky z-20 border-r border-slate-200 bg-slate-50" />}
+              {editing && <TableMarkup.Cell style={STICKY_REMOVE} className="w-10 min-w-10 md:sticky md:shadow-[inset_1px_0_0_0_#e2e8f0] z-20 border-r border-slate-200 bg-slate-50" />}
             </TableMarkup.Row>
           </TableMarkup.Foot>
         </TableMarkup.Root>

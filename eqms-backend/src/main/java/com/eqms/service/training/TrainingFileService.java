@@ -262,7 +262,133 @@ public class TrainingFileService {
                 id, activityId, participantId, kind, checked.name(), stored.provider(), stored.storedPath(), checked.contentType(), checked.bytes().length, checked.sha256(),
                 remark == null || remark.isBlank() ? null : remark.trim(), formUsed == null || formUsed.isBlank() ? null : formUsed.trim(), actor.getId(), packId);
         store.auditActivity(actor, activity, "TRAINING_PAPER_EVIDENCE_UPLOADED", null, null, kind + ": " + checked.name() + (formUsed == null || formUsed.isBlank() ? "" : " [form " + formUsed.trim() + "]") + (packId == null ? "" : " [copy " + jdbc.queryForObject("select pack_code from training_paper_packs where id=?", String.class, packId) + "]") + " (SHA-256 " + checked.sha256().substring(0, 12) + ")");
+        if (packId != null) returnCopyByScan(actor, activity, packId, checked.name());
         return list(actor, activityId);
+    }
+
+    /**
+     * A numbered paper copy comes back only by its scan (owner decision 2026-10-30): the first scan uploaded for an Issued copy closes it as Returned. A copy that is already Returned, Lost or Voided is not
+     * changed again (one closing event for each copy). The change is in the Audit Trail with the code of the copy and the name of the scan.
+     */
+    private void returnCopyByScan(UserAccount actor, Map<String, Object> activity, UUID packId, String scanName) {
+        int closed = jdbc.update("insert into training_paper_pack_events(id, pack_id, status, reason, by_user) values (?,?,'RETURNED',null,?) on conflict (pack_id) do nothing", UUID.randomUUID(), packId, actor.getId());
+        if (closed == 0) return;
+        String code = jdbc.queryForObject("select pack_code from training_paper_packs where id=?", String.class, packId);
+        store.auditActivity(actor, activity, "TRAINING_PAPER_COPY_RETURNED", "ISSUED", "RETURNED", code + ". Returned by the scan " + scanName);
+    }
+
+    /** Most pages of one scanned batch (the reader of the codes stops there), so a hostile file cannot keep the server rendering. */
+    private static final int MAX_BATCH_PAGES = com.eqms.service.ControlledCopyScanCodeService.MAX_SCAN_PAGES;
+
+    /**
+     * One scanned file with the pages of many people, in any order (owner decision 2026-10-30). Every page carries the QR code of its copy (TrainingPaperQr): the server reads it, puts the pages of the same
+     * copy and person together in the order of their page numbers, stores one file for each person (kind by the copy: the test of a trainee, or the sheet of the session), and closes each copy as Returned by
+     * its scan. A page without a readable code, or with a code of another activity, is never guessed: it is listed in the answer so that it is scanned again. The same pages sent twice are not stored twice.
+     * The scans still have to be checked against the paper by a second person (receiveEvidence).
+     */
+    @Transactional
+    public Map<String, Object> uploadScanBatch(UserAccount actor, UUID activityId, MultipartFile file) {
+        Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        if (!conductor(actor, activity)) throw new SecurityException(TrainingAccess.DENIED);
+        if (!Set.of("NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION").contains(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
+        if (file == null || file.isEmpty() || file.getSize() > MAX_VIDEO_BYTES) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
+        String original = file.getOriginalFilename() == null ? "scan.pdf" : file.getOriginalFilename().replace('\\', '/');
+        String batchName = original.substring(original.lastIndexOf('/') + 1).replaceAll("[\\p{Cntrl}]", "").trim();
+        if (!batchName.toLowerCase(Locale.ROOT).endsWith(".pdf")) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
+        byte[] bytes;
+        try { bytes = file.getBytes(); } catch (IOException e) { throw new IllegalArgumentException("TRAINING_FILE_REJECTED"); }
+        Checked batch = verify(batchName, "pdf", bytes);
+
+        List<com.eqms.service.ControlledCopyScanCodeService.PageScan> scans;
+        int total;
+        try (org.apache.pdfbox.pdmodel.PDDocument source = org.apache.pdfbox.Loader.loadPDF(bytes)) {
+            total = source.getNumberOfPages();
+            if (total > MAX_BATCH_PAGES) throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "TRAINING_SCAN_BATCH_TOO_LARGE");
+            scans = com.eqms.service.ControlledCopyScanCodeService.decodePages(bytes);
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (IOException | RuntimeException e) {
+            throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
+        }
+
+        record Group(UUID packId, String packCode, String packKind, java.util.TreeMap<Integer, Integer> pages, int[] expected, int[] duplicates) {}
+        Map<String, Group> groups = new LinkedHashMap<>();
+        Map<String, Object[]> groupPeople = new LinkedHashMap<>();
+        List<Integer> unrecognised = new java.util.ArrayList<>();
+        for (var scan : scans) {
+            var code = TrainingPaperQr.parse(scan.rawValue());
+            if (!"FOREIGN".equals(scan.status()) || code.isEmpty()) { unrecognised.add(scan.index() + 1); continue; }
+            var pack = jdbc.queryForList("select id, pack_kind, session_id from training_paper_packs where pack_code = ? and activity_id = ?", code.get().packCode(), activityId).stream().findFirst();
+            if (pack.isEmpty()) { unrecognised.add(scan.index() + 1); continue; }
+            UUID participantId = null;
+            String participantName = null;
+            if (code.get().person() != null) {
+                var people = jdbc.queryForList("select id, full_name from training_participants where session_id = ? and replace(id::text, '-', '') like ?", pack.get().get("session_id"), code.get().person().replaceAll("[^0-9a-fA-F]", "") + "%");
+                if (people.size() != 1) { unrecognised.add(scan.index() + 1); continue; }
+                participantId = (UUID) people.get(0).get("id");
+                participantName = String.valueOf(people.get(0).get("full_name"));
+            }
+            String key = code.get().packCode() + "|" + participantId;
+            Group g = groups.computeIfAbsent(key, k -> new Group((UUID) pack.get().get("id"), code.get().packCode(), String.valueOf(pack.get().get("pack_kind")), new java.util.TreeMap<>(), new int[] {0}, new int[] {0}));
+            if (g.pages().containsKey(code.get().page())) { g.duplicates()[0]++; continue; }
+            g.pages().put(code.get().page(), scan.index());
+            g.expected()[0] = Math.max(g.expected()[0], code.get().pages());
+            if (participantId != null) groupPeople.put(key, new Object[] {participantId, participantName});
+        }
+
+        List<Map<String, Object>> report = new java.util.ArrayList<>();
+        int stored = 0;
+        try (org.apache.pdfbox.pdmodel.PDDocument source = org.apache.pdfbox.Loader.loadPDF(bytes)) {
+            for (Map.Entry<String, Group> entry : groups.entrySet()) {
+                Group g = entry.getValue();
+                Object[] who = groupPeople.get(entry.getKey());
+                byte[] part;
+                try (org.apache.pdfbox.pdmodel.PDDocument target = new org.apache.pdfbox.pdmodel.PDDocument(); java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+                    // the same pages always give the same bytes (no random document id), so the same batch sent twice is recognised by its SHA-256
+                    target.setDocumentId(1L);
+                    for (int index : g.pages().values()) target.importPage(source.getPage(index));
+                    target.save(out);
+                    part = out.toByteArray();
+                }
+                String personText = who == null ? "" : "-" + String.valueOf(who[1]).replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "-").trim();
+                String name = g.packCode().replace('/', '-') + personText + "-scan.pdf";
+                Checked checked = verify(name, "pdf", part);
+                boolean complete = g.pages().size() == g.expected()[0];
+                String state;
+                Integer same = jdbc.queryForObject("select count(*) from training_paper_evidence where activity_id = ? and sha256 = ?", Integer.class, activityId, checked.sha256());
+                if (same != null && same > 0) {
+                    state = "ALREADY_UPLOADED";
+                } else {
+                    UUID id = UUID.randomUUID();
+                    FileStorageService.StorageWriteResult saved = write("training/paper-evidence/" + activityId + "/" + id + ".pdf", checked);
+                    String kind = "EXAM".equals(g.packKind()) ? "ASSESSMENT" : "ATTENDANCE_SHEET";
+                    String remark = "Sorted from the scanned batch " + batch.name() + " by the QR code" + (complete ? "" : ": " + g.pages().size() + " of " + g.expected()[0] + " page(s) found");
+                    jdbc.update("insert into training_paper_evidence(id, activity_id, participant_id, kind, original_name, provider, stored_path, content_type, size_bytes, sha256, remark, form_used, uploaded_by, pack_id) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                            id, activityId, who == null ? null : who[0], kind, checked.name(), saved.provider(), saved.storedPath(), checked.contentType(), checked.bytes().length, checked.sha256(), remark, null, actor.getId(), g.packId());
+                    store.auditActivity(actor, activity, "TRAINING_PAPER_EVIDENCE_UPLOADED", null, null, kind + ": " + checked.name() + " [copy " + g.packCode() + "] (SHA-256 " + checked.sha256().substring(0, 12) + "). " + remark);
+                    returnCopyByScan(actor, activity, g.packId(), checked.name());
+                    stored++;
+                    state = complete ? "STORED" : "STORED_INCOMPLETE";
+                }
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("packCode", g.packCode());
+                row.put("person", who == null ? null : who[1]);
+                row.put("pagesFound", g.pages().size());
+                row.put("pagesExpected", g.expected()[0]);
+                row.put("duplicatePages", g.duplicates()[0]);
+                row.put("state", state);
+                report.add(row);
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("TRAINING_FILE_REJECTED", e);
+        }
+        store.auditActivity(actor, activity, "TRAINING_PAPER_SCAN_BATCH", null, null, "Batch " + batch.name() + " (SHA-256 " + batch.sha256().substring(0, 12) + "): " + total + " page(s), " + stored + " file(s) stored, " + unrecognised.size() + " page(s) not recognised" + (unrecognised.isEmpty() ? "" : " " + unrecognised));
+        Map<String, Object> answer = new LinkedHashMap<>();
+        answer.put("totalPages", total);
+        answer.put("stored", stored);
+        answer.put("files", report);
+        answer.put("unrecognisedPages", unrecognised);
+        return answer;
     }
 
     /** A second person checks the scan against the paper. Then the paper signature of the person it belongs to is recorded. */

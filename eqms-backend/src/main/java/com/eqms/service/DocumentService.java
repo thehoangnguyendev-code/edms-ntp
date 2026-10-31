@@ -2215,6 +2215,11 @@ public class DocumentService {
     // downgraded to "every filter dropdown shows only All" instead of surfacing the error.
     @Transactional(readOnly = true)
     public DocumentFiltersResponse getFilters() {
+        return getFilters(List.of());
+    }
+
+    @Transactional(readOnly = true)
+    public DocumentFiltersResponse getFilters(List<UUID> selectedUsers) {
         List<LookupItemResponse> statuses = statusRepository.findAllByOrderBySortOrderAsc().stream()
                 .map(status -> new LookupItemResponse(
                         status.getCode(),
@@ -2255,17 +2260,27 @@ public class DocumentService {
                 ))
                 .toList();
 
-        List<LookupItemResponse> authors = userAccountRepository.findAllByStatusOrderByFullNameAsc(UserStatus.Active).stream()
-                .map(user -> new LookupItemResponse(
-                        user.getId().toString(),
-                        user.getFullName(),
-                        user.getUsername(),
-                        user.getFullName(),
-                        user.getId().toString()
-                ))
-                .toList();
+        List<LookupItemResponse> authors = getFilterAuthors(null,selectedUsers);
 
         return new DocumentFiltersResponse(statuses, documentTypes, businessUnits, departments, authors);
+    }
+
+    /** Same active-person metadata scope as the existing filter, with bounded database search. */
+    @Transactional(readOnly = true)
+    public List<LookupItemResponse> getFilterAuthors(String search, List<UUID> selectedUsers) {
+        if (search != null && search.length()>200) throw new IllegalArgumentException("Author search is too long");
+        if (selectedUsers != null && selectedUsers.size()>10) throw new IllegalArgumentException("Too many selected users");
+        String query=search==null||search.isBlank()?null:search.trim();
+        var page=userAccountRepository.findParticipantCandidates(UserStatus.Active,query,
+                PageRequest.of(0,30,Sort.by("fullName").ascending().and(Sort.by("id").ascending())));
+        Map<UUID,UserAccount> users=new LinkedHashMap<>();
+        page.getContent().forEach(user->users.put(user.getId(),user));
+        if(query==null&&selectedUsers!=null&&!selectedUsers.isEmpty()) {
+            userAccountRepository.findAllById(selectedUsers).stream().filter(user->user.getStatus()==UserStatus.Active)
+                    .forEach(user->users.putIfAbsent(user.getId(),user));
+        }
+        return users.values().stream().map(user->new LookupItemResponse(user.getId().toString(),user.getFullName(),
+                user.getUsername(),user.getFullName(),user.getId().toString())).toList();
     }
 
     /** A visible Effective document together with the revision that is Effective now. */

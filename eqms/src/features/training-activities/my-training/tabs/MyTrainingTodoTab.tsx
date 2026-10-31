@@ -26,7 +26,7 @@ export function MyTrainingTodoTab({ onTotal }: { onTotal: (total: number) => voi
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
   const columns: DataTableColumn<TrainingTask>[] = [
     { id: "no", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "number", header: "Training Number", sort: sorted("trainingNumber"), cell: (t) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(t.examReady ? `/training-management/participations/${t.participantId}/test` : `/training-management/activities/${t.activityId}/participate`)}>{t.trainingNumber}</button> },
+    { id: "number", header: "Training Number", sort: sorted("trainingNumber"), cell: (t) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(t.examReady ? `/training-management/participations/${t.participantId}/test` : t.method === "SELF_READING" ? `/training-management/participations/${t.participantId}` : `/training-management/activities/${t.activityId}/participate`)}>{t.trainingNumber}</button> },
     { id: "topics", header: "Training Topic", sort: sorted("topics"), cell: (t) => <div className="max-w-80 whitespace-normal">{t.topics ?? "—"}</div> },
     { id: "method", header: "Mode", sort: sorted("method"), cell: (t) => METHOD_LABEL[t.method] ?? t.method },
     { id: "when", header: "Scheduled", sort: sorted("scheduledOn"), cell: (t) => day(t.scheduledOn) },

@@ -194,6 +194,7 @@ public class SystemConfigurationService {
         validateToastDuration(nextGeneral);
         validateTrainingMaterialsLayout(nextGeneral);
         validateSystemHeaderTitle(nextGeneral);
+        validateFooter(nextGeneral);
         PwaBrandingService.validate(nextGeneral);
         nextGeneral = withDisplayFormat(nextGeneral);
         config.setGeneralConfig(nextGeneral);
@@ -363,7 +364,10 @@ public class SystemConfigurationService {
                 toastDurationSeconds(appearance),
                 trainingMaterialsLayout(appearance),
                 textValue(general, "systemFavicon"),
-                appearance == null ? null : textValue(appearance, "systemFooter"),
+                textValue(general, "systemFooterLeft"),
+                textValue(general, "systemFooterRight"),
+                footerSwitch(general, "footerShowOnDesktop", true),
+                footerSwitch(general, "footerShowOnMobile", false),
                 systemHeaderTitle(general),
                 readStringMap(general == null ? null : general.get("navigationLabelOverrides")),
                 pwaBranding.hasCustomIcon(pwaSource(general)) ? pwaBranding.version(pwaSource(general)) : "",
@@ -416,6 +420,29 @@ public class SystemConfigurationService {
         }
         if (text.chars().anyMatch(Character::isISOControl)) {
             throw new IllegalArgumentException("systemHeaderTitle must not contain line breaks or control characters");
+        }
+    }
+
+    static final int SYSTEM_FOOTER_MAX_LENGTH = 500;
+
+    /** A footer switch the administrator never touched keeps the behaviour the screen had before the switches existed. */
+    private static boolean footerSwitch(JsonNode general, String field, boolean whenNotSet) {
+        JsonNode value = general == null ? null : general.get(field);
+        return value != null && value.isBoolean() ? value.asBoolean() : whenNotSet;
+    }
+
+    /** Each footer is one line of plain text (shown as text, never as markup); the two switches are true or false. */
+    static void validateFooter(JsonNode general) {
+        for (String field : new String[]{"systemFooterLeft", "systemFooterRight"}) {
+            JsonNode text = general == null ? null : general.get(field);
+            if (text == null || text.isNull()) continue;
+            if (!text.isTextual()) throw new IllegalArgumentException(field + " must be text");
+            if (text.asText().length() > SYSTEM_FOOTER_MAX_LENGTH) throw new IllegalArgumentException(field + " must be at most " + SYSTEM_FOOTER_MAX_LENGTH + " characters");
+            if (text.asText().chars().anyMatch(Character::isISOControl)) throw new IllegalArgumentException(field + " must not contain line breaks or control characters");
+        }
+        for (String field : new String[]{"footerShowOnDesktop", "footerShowOnMobile"}) {
+            JsonNode flag = general == null ? null : general.get(field);
+            if (flag != null && !flag.isNull() && !flag.isBoolean()) throw new IllegalArgumentException(field + " must be true or false");
         }
     }
 

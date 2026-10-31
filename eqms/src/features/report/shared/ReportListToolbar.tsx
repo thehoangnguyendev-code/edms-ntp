@@ -107,7 +107,7 @@ export function ReportListToolbar({
     <div className={flush ? "compact-filter-section flex flex-col pb-4" : "compact-filter-section flex flex-col px-4 pt-4 md:p-5"}>
       <div className="-mx-1.5 -mb-1.5 px-1.5 pb-1.5">
         <div className="mb-4 flex w-full flex-col gap-1.5 md:hidden">
-          <label className="block text-xs font-medium text-slate-700 sm:text-sm">Search</label>
+          <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">Search</label>
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
               <PlainSearch value={search} onChange={onSearch} placeholder={searchPlaceholder} height="h-10" />
@@ -140,7 +140,7 @@ export function ReportListToolbar({
         >
           <div className="hidden grid-cols-1 items-end gap-4 sm:grid-cols-2 md:grid lg:grid-cols-3">
             <div className="w-full">
-              <label className="mb-1.5 block text-xs font-medium text-slate-700 transition-colors sm:text-sm">Search</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-700 transition-colors sm:text-sm capitalize">Search</label>
               <PlainSearch value={search} onChange={onSearch} placeholder={searchPlaceholder} height="h-9" />
             </div>
             {filters.map((filter) => (

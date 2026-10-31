@@ -108,4 +108,13 @@ class TrainingVendorAndPaperCopyRulesTest {
         assertThatThrownBy(() -> paper.markPack(actor, pack, "ISSUED", null)).hasMessage("TRAINING_PAPER_STATUS_INVALID");
         assertThatThrownBy(() -> paper.markPack(actor, pack, null, null)).hasMessage("TRAINING_PAPER_STATUS_INVALID");
     }
+
+    @Test
+    void aPaperCopyCannotBeRecordedAsReturnedByHandBecauseOnlyItsScanReturnsIt() {
+        TrainingPaperService paper = new TrainingPaperService(jdbc, access, store);
+        UUID pack = UUID.randomUUID();
+        assertThatThrownBy(() -> paper.markPack(actor, pack, "RETURNED", null)).hasMessage("TRAINING_PAPER_RETURN_BY_SCAN");
+        assertThatThrownBy(() -> paper.markPack(actor, pack, "RETURNED", "the paper is here")).hasMessage("TRAINING_PAPER_RETURN_BY_SCAN");
+        verify(jdbc, never()).update(contains("training_paper_pack_events"), any(Object[].class));
+    }
 }

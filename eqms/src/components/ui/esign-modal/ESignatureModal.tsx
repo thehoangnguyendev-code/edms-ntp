@@ -416,7 +416,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                 <div className="space-y-3">
                   {/* Reason */}
                   <div className="space-y-1">
-                    <label htmlFor={`${modalId}-reason`} className="text-xs sm:text-sm font-medium text-slate-700">
+                    <label htmlFor={`${modalId}-reason`} className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
                       Reason for Electronic Signature
                       <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>
                     </label>
@@ -441,7 +441,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
 
                   {/* Both credentials are entered for every signing request. */}
                   <div className="space-y-1">
-                    <label htmlFor={`${modalId}-username`} className="text-xs sm:text-sm font-medium text-slate-700">
+                    <label htmlFor={`${modalId}-username`} className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
                       Username <span className="text-red-500" aria-hidden="true">*</span>
                     </label>
                     <input
@@ -467,7 +467,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
 
                   {/* Password */}
                   <div className="space-y-1">
-                    <label htmlFor={`${modalId}-password`} className="text-xs sm:text-sm font-medium text-slate-700">
+                    <label htmlFor={`${modalId}-password`} className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
                       Password <span className="text-red-500" aria-hidden="true">*</span>
                     </label>
                     <div className="relative">

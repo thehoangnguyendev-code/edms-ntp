@@ -640,7 +640,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
           <div className="hidden md:block pb-4 md:pb-5">
           <div className="grid grid-cols-3 gap-4 items-end">
             <div className="w-full min-w-0">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                 <input

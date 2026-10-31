@@ -69,7 +69,7 @@ export function TrainingDetailLayout({ title, breadcrumbItems, onBack, steps, cu
 export function ReadonlyField({ label, value, wide, multiline, placeholder = "—", hint, children }: { label: string; value?: string | null; wide?: boolean; multiline?: boolean; placeholder?: string; hint?: string; children?: ReactNode }) {
   return (
     <div className={`flex flex-col gap-1.5${wide ? " md:col-span-2" : ""}`}>
-      <label className="text-xs font-medium text-slate-700 sm:text-sm">{label}</label>
+      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">{label}</label>
       {children ?? (multiline
         ? <textarea value={value ?? ""} readOnly rows={3} className={CONTROL_STATE_CLASSES.readonlyTextarea} placeholder={placeholder} />
         : <input type="text" value={value ?? ""} readOnly className={CONTROL_STATE_CLASSES.readonlyField} placeholder={placeholder} />)}

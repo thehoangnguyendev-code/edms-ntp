@@ -344,7 +344,7 @@ export const PublishingTemplatesView: React.FC = () => {
           <div className="compact-filter-section mb-4">
             {/* Mobile: search + filter button */}
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-0">
-              <label className="text-xs font-medium text-slate-700 block sm:text-sm">Search</label>
+              <label className="text-xs font-medium text-slate-700 block sm:text-sm capitalize">Search</label>
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -391,7 +391,7 @@ export const PublishingTemplatesView: React.FC = () => {
             <div className={cn("hidden md:grid grid-cols-1 gap-4 items-end md:grid-cols-2 xl:grid-cols-3", compactDesktopFilters && "md:!hidden")}>
               {/* Search */}
               <div className="w-full">
-                <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Search</label>
+                <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">Search</label>
                 <div className="relative">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
                     <Search className="h-4 w-4 text-slate-400" />

@@ -5,7 +5,6 @@ import { TrainingParticipantTable } from "./components/TrainingParticipantTable"
 import { ContentRulesPanel, assessmentFormKind, contentRuleNote } from "./components/ContentRulesPanel";
 import { TrainingPersonName } from "../shared/TrainingPersonName";
 import { Avatar } from "@/components/ui/avatar";
-import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { RadioGroup } from "@/components/ui/radio";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -13,6 +12,8 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { Check } from "lucide-react";
+import { cn } from "@/components/ui/utils";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { Input, Textarea } from "../shared/TrainingFields";
 import { FormModal } from "@/components/ui/modal/FormModal";
@@ -52,16 +53,16 @@ import { WorkspaceAttendanceStep } from "./components/workspace/WorkspaceAttenda
 import { WorkspaceTrainingStep } from "./components/workspace/WorkspaceTrainingStep";
 import { WorkspaceAssessmentStep } from "./components/workspace/WorkspaceAssessmentStep";
 import { WorkspaceResultsStep } from "./components/workspace/WorkspaceResultsStep";
+import { WorkspaceReadingResultsStep } from "./components/workspace/WorkspaceReadingResultsStep";
 import { WorkspaceResultsTable } from "./components/workspace/WorkspaceResultsTable";
 import { TrainingExamBlock } from "./components/TrainingExamBlock";
 import { TrainingAssessmentChoiceBlock } from "./components/TrainingAssessmentChoiceBlock";
-import { AttendanceListExport } from "./components/AttendanceListExport";
 import { FormDownloadButtons } from "../shared/FormDownloadButtons";
-import { PaperPrintButton } from "../shared/PaperPrintButton";
+import { AttendanceListExport } from "./components/AttendanceListExport";
 import { TrainingPreparationBlock } from "./components/TrainingPreparationBlock";
 import { TrainingTranscriptionBlock } from "./components/TrainingTranscriptionBlock";
 import {
-  TrainingPaperBlock,
+  TrainingPrintedPacks,
   DELIVERY_LABEL,
 } from "./components/TrainingPaperBlock";
 import { TrainingActivityFilesTab } from "./components/TrainingActivityFilesTab";
@@ -103,7 +104,7 @@ import {
   STEP_LABEL,
   day,
   trainingBreadcrumbs,
-  when, statusChange } from "../shared/trainingLabels";
+  fileSafe, when, statusChange } from "../shared/trainingLabels";
 import { useTrainingBack } from "../shared/useTrainingBack";
 
 const ACTIVITY_STEPS = [
@@ -163,6 +164,8 @@ const MODE_CAPS: Record<ActivityMode, string[]> = {
   ],
   conduct: [
     "adjustPlan",
+    "remindToRead",
+    "excuseReader",
     "printPaper",
     "rollCall",
     "transcribe",
@@ -213,6 +216,7 @@ type Dialog =
 /** What the toast says once a signed action is done (the title of the signing window says what is about to be done). */
 const SIGNED_DONE: Record<string, string> = {
   TRAINING_LIST_VERIFIED: "Attendee list confirmed",
+  TRAINING_READER_EXCUSED: "Recorded as unable to read. Offer a supplementary training from the activity.",
   TRAINING_CONTENT_REVIEWED: "Training content reviewed",
   TRAINING_CONTENT_APPROVED: "Training content approved",
   TRAINING_TRAINER_EXCEPTION_APPROVED: "Trainer exception approved",
@@ -234,7 +238,8 @@ interface SignRequest {
   meaningCode: string;
   meaningName: string;
   changes?: ReturnType<typeof statusChange>;
-  run: (signatureToken: string) => Promise<TrainingActivityDetail>;
+  /** The reason is what the signer typed in the electronic signature window; only the actions that write it on a form use it. */
+  run: (signatureToken: string, reason?: string) => Promise<TrainingActivityDetail>;
 }
 
 /** One training activity: its facts, sessions, people, approval steps and Audit Trail. The server decides what is allowed; the buttons follow `capabilities`. */
@@ -306,9 +311,11 @@ export function TrainingActivityDetailPage({
   }>();
 
   const loadGeneration = useRef(0);
+  // Whether the overview carries the people. It is a value, not the tab: moving between the tabs that do not need the people (General Information, Participants, Signatures, Audit Trail) asks the
+  // server for exactly the same thing, so it must not load again (a second load made the participant tables load twice and flicker).
+  const participantContext = !["overview", "participants", "audit", "signatures", "ws-prepare"].includes(tab) || dialog?.type === "supplementary";
   const overviewQuery = useRef({ activityId, sessionId: workspaceSessionId || pSession || undefined, participantContext: false });
-  overviewQuery.current = { activityId, sessionId: workspaceSessionId || pSession || undefined,
-    participantContext: !["overview", "participants", "audit", "signatures", "ws-prepare"].includes(tab) || dialog?.type === "supplementary" };
+  overviewQuery.current = { activityId, sessionId: workspaceSessionId || pSession || undefined, participantContext };
   const load = useCallback(() => {
     const generation = ++loadGeneration.current;
     setError("");
@@ -316,7 +323,7 @@ export function TrainingActivityDetailPage({
     return trainingActivitiesApi.overview(currentId, params)
       .then((result) => { if (generation === loadGeneration.current) setActivity(result); })
       .catch((e) => { if (generation === loadGeneration.current) setError(trainingError(e)); });
-  }, [activityId, workspaceSessionId, pSession, tab, dialog?.type]);
+  }, [activityId, workspaceSessionId, pSession, participantContext]);
   useEffect(() => { void load(); return () => { loadGeneration.current++; }; }, [load]);
   useEntityChanged(["TRAINING"], load);
 
@@ -357,14 +364,15 @@ export function TrainingActivityDetailPage({
         {
           id: "participants",
           label: "Participants",
-          count: activity?.participants.length,
+          // The total comes from the summary, which the server always sends; the list itself is empty on the tabs that do not need the people, which made this number jump between 0 and the real one.
+          count: activity?.participantSummary?.all?.total ?? activity?.participants.length,
         },
         { id: "materials", label: "Training Materials" },
         { id: "assessment", label: "Assessment" },
         { id: "signatures", label: "Signatures" },
         { id: "audit", label: "Audit Trail" },
       ],
-    [activity?.participants.length],
+    [activity?.participantSummary?.all?.total, activity?.participants.length],
   );
   // The step is kept in the address and in this browser: a closed tab opens again on the step it was left on.
   useEffect(() => {
@@ -542,6 +550,11 @@ export function TrainingActivityDetailPage({
         ) : null;
 
   const sessionOf = (id: string) => activity.sessions.find((s) => s.id === id);
+  // a person whose account is not Active (left the company, suspended) cannot sign: the note is a second line so that the column keeps its width
+  const accountNote = (p: TrainingParticipant) =>
+    p.state === "INVITED" && p.accountStatus && p.accountStatus !== "Active" ? (
+      <div className="text-xs text-red-600">{`Account ${p.accountStatus.toLowerCase()}: cannot sign`}</div>
+    ) : null;
   const labelOfState = (p: TrainingParticipant) =>
     p.plannedAbsence && p.state === "INVITED"
       ? `Absent (planned): ${p.plannedAbsence}`
@@ -557,7 +570,7 @@ export function TrainingActivityDetailPage({
     p: TrainingParticipant,
     scope: "all" | "attendance" | "results",
   ) => (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex max-w-[11rem] flex-wrap gap-2">
       {scope !== "results" &&
         mode === "edit" &&
         p.state === "INVITED" &&
@@ -602,6 +615,7 @@ export function TrainingActivityDetailPage({
         )}
       {scope === "attendance" &&
         caps?.recordAttendance &&
+        sessionOf(p.sessionId)?.method !== "SELF_READING" &&
         ["ATTENDED", "ONLINE", "ABSENT"].includes(p.state) &&
         p.result === "PENDING" &&
         !p.lastPercent &&
@@ -636,6 +650,7 @@ export function TrainingActivityDetailPage({
       {scope !== "results" &&
         caps?.recordAttendance &&
         p.state === "INVITED" &&
+        sessionOf(p.sessionId)?.method !== "SELF_READING" &&
         sessionStarted(sessionOf(p.sessionId) ?? { status: "" }) && (
           <Button
             size="sm"
@@ -643,6 +658,45 @@ export function TrainingActivityDetailPage({
             onClick={() => setDialog({ type: "attendance", participant: p })}
           >
             Mark Attendance
+          </Button>
+        )}
+      {scope !== "results" &&
+        caps?.remindToRead &&
+        p.state === "INVITED" &&
+        !!p.personUserId &&
+        (p.accountStatus ?? "Active") === "Active" &&
+        sessionOf(p.sessionId)?.method === "SELF_READING" && (
+          <Button
+            size="sm"
+            variant="outline-emerald"
+            disabled={busy}
+            title={p.lastReadReminderAt ? `Last reminded ${when(p.lastReadReminderAt)}` : "Send an e-mail and a notice asking this person to read and sign"}
+            onClick={() => run(() => trainingActivitiesApi.remindRead(p.id), `Reminder sent to ${p.fullName}`)}
+          >
+            Send Reminder
+          </Button>
+        )}
+      {scope !== "results" &&
+        caps?.excuseReader &&
+        p.state === "INVITED" &&
+        !!p.personUserId &&
+        sessionOf(p.sessionId)?.method === "SELF_READING" && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            title="This person cannot read within this training (left, long leave, illness): they stay on the list as absent and are trained later in a supplementary training"
+            onClick={() =>
+              signAction(
+                `Record ${p.fullName} as unable to read`,
+                "TRAINING_READER_EXCUSED",
+                "Reader Excused from Self-reading",
+                (t, reason) => trainingActivitiesApi.excuseReader(p.id, t, reason),
+                statusChange("Invited", "Absent", p.fullName),
+              )
+            }
+          >
+            Cannot Read
           </Button>
         )}
       {scope !== "attendance" &&
@@ -702,8 +756,8 @@ export function TrainingActivityDetailPage({
                 meaningCode: "TRAINING_READ_CONFIRMED",
                 meaningName: "Self-reading Confirmed",
                 changes: statusChange("Invited", "Read and understood", "Self-reading"),
-                run: async (token) => {
-                  await trainingActivitiesApi.confirmRead(p.id, token);
+                run: async (token, reason) => {
+                  await trainingActivitiesApi.confirmRead(p.id, token, reason);
                   return trainingActivitiesApi.get(activity.id);
                 },
               })
@@ -764,7 +818,10 @@ export function TrainingActivityDetailPage({
       id: "state",
       header: "Attendance",
       cell: (p) => (
-        <div className="max-w-64 whitespace-normal">{labelOfState(p)}</div>
+        <div className="max-w-64 whitespace-normal">
+          {labelOfState(p)}
+          {accountNote(p)}
+        </div>
       ),
     },
     {
@@ -835,7 +892,12 @@ export function TrainingActivityDetailPage({
               ? p.signMode === "ESIGN"
                 ? "E-signature"
                 : "Signed on paper"
-              : labelOfState(p),
+              : (
+                <>
+                  {labelOfState(p)}
+                  {accountNote(p)}
+                </>
+              ),
         },
         ...participantColumns.filter((c) => c.id === "actions"),
       ]
@@ -878,10 +940,8 @@ export function TrainingActivityDetailPage({
   const paperShown = mode === "edit" || (mode === "conduct" && activity.status === "NOTIFIED");
   const paperBlocks = (
     <>
-      <TrainingPaperBlock
+      <TrainingPrintedPacks
         activity={activity}
-        canPrint={Boolean(caps?.printPaper)}
-        canMode={Boolean(caps?.adjustPlan)}
         onChanged={() =>
           void run(() => trainingActivitiesApi.get(activity.id), "Updated")
         }
@@ -901,7 +961,7 @@ export function TrainingActivityDetailPage({
     title: string,
     meaningCode: string,
     meaningName: string,
-    runWith: (token: string) => Promise<TrainingActivityDetail>,
+    runWith: (token: string, reason?: string) => Promise<TrainingActivityDetail>,
     changes?: ReturnType<typeof statusChange>,
   ) => setSign({ title, meaningCode, meaningName, changes, run: runWith });
 
@@ -925,6 +985,12 @@ export function TrainingActivityDetailPage({
             "Today is the day of the training: send the attendance list to QA today (SOP.0003 5.3.6)."}
           {qa.state === "OVERDUE" &&
             `The attendance list was due to QA on ${day(qa.dueOn)} and has not been sent. Send it now; the delay is recorded.`}
+        </p>
+      )}
+      {!activity.parentActivityId && ((activity.supplementaryPending ?? 0) > 0 || (activity.supplementaryBlocked ?? 0) > 0) && ["IN_PROGRESS", "PENDING_QA_CONFIRMATION"].includes(activity.status) && (
+        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {(activity.supplementaryPending ?? 0) > 0 && `${activity.supplementaryPending} absent or failed person(s) have no supplementary training yet (SOP.0003 5.3.7). Create it with Supplementary training; they are listed on it for you. `}
+          {(activity.supplementaryBlocked ?? 0) > 0 && `${activity.supplementaryBlocked} person(s) cannot be put on one now because their account is not Active (left or suspended); they stay Absent on the list.`}
         </p>
       )}
       {external && activity.vendorWarning && (
@@ -1051,12 +1117,14 @@ export function TrainingActivityDetailPage({
     ) : null;
 
   // APD.0108: the head of a department confirms the people of that department only; the button is for the departments of which the person is the head and that have people waiting.
-  const listDepartments = (activity.selfReadingDepartments ?? []).filter((d) => d.departmentId);
-  const myWaitingDepartments = (activity.selfReadingDepartments ?? []).filter((d) => d.mine && d.waiting > 0);
+  const myWaitingDepartments = (activity.selfReadingDepartments ?? []).filter((d) => d.mine && d.waiting > 0 && d.invited === 0);
 
   // The signatures that matter, in the order of the flow: the person on the left, the time on the right. A step that does not apply to this training is not shown (a document, a content to review,
   // a self-reading); the others show "-" until they are done, so the person sees how far the flow has come. Preparatory and routine steps (the list prepared, the notice sent) stay in the Audit Trail.
   const confirmed = (kind: string) => activity.confirmations.find((x) => x.kind === kind);
+  // Every session that is not cancelled is a self-reading: no attendance list APD.0117 and no check-in (SOP.0003: its list is APD.0108)
+  const liveSessions = activity.sessions.filter((x) => x.status !== "CANCELLED");
+  const readingOnly = liveSessions.length > 0 && liveSessions.every((x) => x.method === "SELF_READING");
   const signatureSteps: { key: string; label: string; by?: string | null; on?: string | null }[] = [
     ...(activity.documentNumber ? [{ key: "docApproved", label: "Document Approved", by: activity.documentApprovedByName, on: activity.documentApprovedAt ?? day(activity.approvedOn) }] : []),
     ...(external ? [] : [
@@ -1067,7 +1135,7 @@ export function TrainingActivityDetailPage({
       .filter((c) => c.kind === "HEAD_SELF_READING")
       .map((c) => ({ key: `read-${c.id}`, label: `Self-reading Verified${c.departmentName ? ` (${c.departmentName})` : ""}`, by: c.confirmedByName, on: when(c.confirmedAt) })),
     ...(hasSelfReading && !activity.confirmations.some((c) => c.kind === "HEAD_SELF_READING") ? [{ key: "read", label: "Self-reading Verified", by: null, on: null }] : []),
-    { key: "sent", label: "Attendance List Sent to QA", by: activity.attendanceSentByName, on: activity.attendanceSentAt },
+    ...(readingOnly ? [] : [{ key: "sent", label: "Attendance List Sent to QA", by: activity.attendanceSentByName, on: activity.attendanceSentAt }]),
     { key: "finished", label: "Training Finished and Results Sent to QA", by: activity.resultsFinishedByName, on: activity.resultsFinishedAt },
     { key: "completion", label: "Completion Confirmed by QA", by: confirmed("QA_COMPLETION")?.confirmedByName, on: when(confirmed("QA_COMPLETION")?.confirmedAt) },
   ];
@@ -1098,7 +1166,7 @@ export function TrainingActivityDetailPage({
     SELF_READING_CONFIRMATION: "Self-reading",
   };
   const wsAttendanceDone = wsHeld && wsPending === 0 && wsStatsData.total > 0;
-  const wsSteps: WorkspaceStep[] = [
+  const allWsSteps: WorkspaceStep[] = [
     {
       id: "ws-prepare",
       label: "Prepare",
@@ -1147,6 +1215,31 @@ export function TrainingActivityDetailPage({
       icon: IconTrophy,
     },
   ];
+  // A self-reading has no attendance, no teaching and no assessment: the person signs the reading in the system and the head of the department confirms it (owner decision 2026-10-31)
+  const wsReading = wsSession?.method === "SELF_READING";
+  const wsSteps: WorkspaceStep[] = wsReading
+    ? allWsSteps
+        .filter((x) => x.id === "ws-prepare" || x.id === "ws-attendance" || x.id === "ws-results")
+        .map((x) =>
+          x.id === "ws-attendance"
+            ? {
+                ...x,
+                label: "Reading",
+                subtitle: `${wsPresent} of ${wsStatsData.total} read`,
+                description:
+                  "Every invited person reads the document and signs in the system (My Training). A person who has not signed is reminded before the due date (Training Properties), and you can remind one person with Send Reminder. The head of each department then confirms the people of the department.",
+                done: wsPending === 0 && wsStatsData.total > 0,
+              }
+            : x.id === "ws-results"
+              ? {
+                  ...x,
+                  subtitle: `${wsPassed} confirmed by the head`,
+                  description:
+                    "The result of each person comes from the confirmation of the head of the department. When nobody is waiting, the trainer finishes the training with a signature: QA is told and the self-reading lists APD.0108 go with the message.",
+                }
+              : x,
+        )
+    : allWsSteps;
   // What still stops the attendance list from going to QA (the same two rules as the server): a session still to be held, a person not recorded yet.
   const attendanceBlockers = [
     [activity.sessions.filter((x) => x.status === "POSTPONED" || sessionNotStarted(x)).length, "session(s) still to be held"],
@@ -1161,6 +1254,15 @@ export function TrainingActivityDetailPage({
       "Attendance List Sent to QA",
       (t) => trainingActivitiesApi.sendAttendanceList(activity.id, activity.version, t),
       statusChange("Not sent", "Sent to QA", "Attendance list"),
+    );
+  // The head signs for the departments of which they are the head and that are ready (every person signed or was recorded as not having read)
+  const verifySelfReading = () =>
+    signAction(
+      "Verify self-reading",
+      "TRAINING_READ_VERIFIED",
+      "Self-reading Verified",
+      (t, reason) => trainingActivitiesApi.verifySelfReading(activity.id, t, reason),
+      statusChange("Read and understood", "Verified", `Self-reading of ${myWaitingDepartments.map((d) => d.departmentName).join(", ")}`),
     );
   if (workspace && !stepSettled && wsSession) {
     setStepSettled(true);
@@ -1214,21 +1316,21 @@ export function TrainingActivityDetailPage({
     : [];
   const wsStats: WorkspaceStat[] = [
     { label: "on the list", value: wsStatsData.total, icon: IconUsers, tone: "slate" },
-    { label: "absent", value: wsAbsent, icon: IconUserX, tone: "amber" },
+    { label: wsReading ? "not signed yet" : "absent", value: wsReading ? wsPending : wsAbsent, icon: IconUserX, tone: "amber" },
   ];
   const wsRates: WorkspaceRate[] = [
     {
-      label: "Attendance",
+      label: wsReading ? "Read" : "Attendance",
       percent: wsStatsData.total
         ? Math.round((wsPresent / wsStatsData.total) * 100)
         : null,
-      detail: `${wsPresent} of ${wsStatsData.total} present`,
+      detail: `${wsPresent} of ${wsStatsData.total} ${wsReading ? "read" : "present"}`,
       tone: "emerald",
     },
     {
-      label: "Pass rate",
+      label: wsReading ? "Confirmed by the head" : "Pass rate",
       percent: wsPresent ? Math.round((wsPassed / wsPresent) * 100) : null,
-      detail: `${wsPassed} of ${wsPresent} passed`,
+      detail: `${wsPassed} of ${wsPresent} ${wsReading ? "confirmed" : "passed"}`,
       tone: "blue",
     },
   ];
@@ -1251,7 +1353,7 @@ export function TrainingActivityDetailPage({
         />
       )}
       {tab === "ws-attendance" && (
-        <WorkspaceAttendanceStep scoped={wsScoped} caps={caps} onActivity={() => void load()} table={groupTables(attendanceColumns)} />
+        <WorkspaceAttendanceStep scoped={wsScoped} caps={caps} reading={wsReading} onActivity={() => void load()} table={groupTables(attendanceColumns)} />
       )}
       {tab === "ws-training" && (
         <WorkspaceTrainingStep activityId={activity.id} mode={mode} external={external} participants={activity.participants} />
@@ -1268,7 +1370,16 @@ export function TrainingActivityDetailPage({
           onChanged={refreshActivity}
         />
       )}
-      {tab === "ws-results" && (
+      {tab === "ws-results" && wsReading && (
+        <WorkspaceReadingResultsStep
+          departments={activity.selfReadingDepartments ?? []}
+          canFinish={Boolean(caps?.finishTraining)}
+          finished={!!activity.resultsFinishedAt}
+          onConfirm={verifySelfReading}
+          formatTime={(value) => when(value)}
+        />
+      )}
+      {tab === "ws-results" && !wsReading && (
         <WorkspaceResultsStep
           table={
             <WorkspaceResultsTable
@@ -1441,15 +1552,7 @@ export function TrainingActivityDetailPage({
             size="sm"
             variant="outline-emerald"
             className="whitespace-nowrap"
-            onClick={() =>
-              signAction(
-                "Verify self-reading",
-                "TRAINING_READ_VERIFIED",
-                "Self-reading Verified",
-                (t) => trainingActivitiesApi.verifySelfReading(activity.id, t),
-                statusChange("Read and understood", "Verified", `Self-reading of ${myWaitingDepartments.map((d) => d.departmentName).join(", ")}`),
-              )
-            }
+            onClick={verifySelfReading}
           >
             Verify self-reading
           </Button>
@@ -1571,31 +1674,19 @@ export function TrainingActivityDetailPage({
           }}
           headerActions={(
             <>
-              <AttendanceListExport activityId={activity.id} trainingNumber={activity.trainingNumber} />
-              {/* APD.0108 is one list for one department: with people of several departments, one list (and one confirmation of the head) for each */}
-              {activity.sessions.filter((x) => x.method === "SELF_READING").flatMap((x) => {
-                const many = listDepartments.length > 1;
-                return (many ? listDepartments : [undefined]).flatMap((d) => {
-                  const suffix = d ? ` · ${d.departmentName}` : "";
-                  const part = d ? `-${d.departmentName.replace(/[^\w]+/g, "")}` : "";
-                  const base = `${activity.trainingNumber.replace(/\//g, "-")}-S${x.sessionNo}-APD.0108${part}`;
-                  return [
-                    <PaperPrintButton
-                      key={`paper-${x.id}-${d?.departmentId ?? ""}`}
-                      label={`Print self-reading list for signing${suffix}`}
-                      load={(format, reason) => trainingFormsApi.selfReadingPaper(x.id, format, reason, d?.departmentId)}
-                      fileName={(format) => `${base}-paper.${format}`}
-                    />,
-                    <FormDownloadButtons
-                      key={`list-${x.id}-${d?.departmentId ?? ""}`}
-                      label={`The self-reading list${suffix}`}
-                      buttonText={d ? `Export${suffix}` : "Export"}
-                      load={(format) => trainingFormsApi.selfReading(x.id, format, d?.departmentId)}
-                      fileName={(format) => `${base}.${format}`}
-                    />,
-                  ];
-                });
-              })}
+              {!readingOnly && <AttendanceListExport activityId={activity.id} trainingNumber={activity.trainingNumber} />}
+              {/* APD.0108 is the record of the self-reading signed in the system (no paper print, no copy number): one list for each department of the session, each saved as its own file named by the department */}
+              {wsSession?.method === "SELF_READING" && sessionStarted(wsSession) && (
+                <FormDownloadButtons
+                  label="The self-reading list"
+                  buttonText="Self-reading List"
+                  parts={((activity.selfReadingDepartments ?? []).length > 1 ? activity.selfReadingDepartments ?? [] : [undefined]).map((d) => ({
+                    key: d?.departmentId || d?.departmentName || "",
+                    load: (format) => trainingFormsApi.selfReading(wsSession.id, format, d?.departmentId || undefined, d?.departmentId ? undefined : d?.departmentName),
+                    fileName: (format) => `${activity.trainingNumber.replace(/\//g, "-")}-S${wsSession.sessionNo}-APD.0108${d ? `-${fileSafe(d.departmentName)}` : ""}.${format}`,
+                  }))}
+                />
+              )}
               {caps?.sendAttendanceList && attendanceBlockers.length === 0 && (
                 <Button
                   size="sm"
@@ -1709,14 +1800,14 @@ export function TrainingActivityDetailPage({
                   <>
                     <ReadonlyField
                       label="Document"
-                      value={`${activity.documentNumber}${activity.revisionNumber ? ` Rev ${activity.revisionNumber}` : ""}`}
+                      value={activity.documentLabel ?? ""}
                     />
                   </>
                 )}
                 {(activity.groupRevisions ?? []).filter((r) => !r.isMain).length > 0 && (
                   <ReadonlyField
                     label="Related documents (same Training Number)"
-                    value={(activity.groupRevisions ?? []).filter((r) => !r.isMain).map((r) => `${r.documentNumber}${r.revisionNumber ? ` Rev ${r.revisionNumber}` : ""}`).join(", ")}
+                    value={(activity.groupRevisions ?? []).filter((r) => !r.isMain).map((r) => r.documentLabel ?? r.documentNumber).join(", ")}
                     wide
                   />
                 )}
@@ -2346,9 +2437,9 @@ export function TrainingActivityDetailPage({
       <ESignatureModal
         isOpen={!!sign}
         onClose={() => setSign(undefined)}
-        onConfirm={async (data: { signatureToken: string }) => {
+        onConfirm={async (data: { signatureToken: string; reason?: string }) => {
           if (!sign) return;
-          const ok = await run(() => sign.run(data.signatureToken), SIGNED_DONE[sign.meaningCode] ?? sign.title);
+          const ok = await run(() => sign.run(data.signatureToken, data.reason), SIGNED_DONE[sign.meaningCode] ?? sign.title);
           if (ok) setSign(undefined);
         }}
         actionTitle={sign?.title}
@@ -2506,7 +2597,7 @@ function PostponeDialog({
       confirmText="Postpone"
       isLoading={busy}
       confirmDisabled={!date || !reason.trim()}
-      size="md"
+      size="xl"
     >
       <div className="grid gap-4">
         <TrainingDateField label="New date" value={date} onChange={setDate} />
@@ -2785,36 +2876,71 @@ function SupplementaryDialog({
 }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [reason, setReason] = useState("");
+  // The list looks like the one that chooses the Reviewers and Approvers of a document: one line a person, a round mark with the number that becomes a tick when chosen.
+  const toggle = (id: string) => setSelected((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
   return (
     <FormModal
       isOpen
       onClose={onClose}
       title="Supplementary Training"
       description="A new activity is created under the same number with the next letter. People who were absent or failed are listed."
-      confirmText="Create"
+      confirmText={`Create (${selected.length})`}
       isLoading={busy}
       confirmDisabled={selected.length === 0 || !reason.trim()}
-      size="md"
+      size="lg"
       onConfirm={() => onSave(selected, reason.trim())}
     >
       {participants.length === 0 ? (
         <p className="text-sm text-slate-600">No one was absent or failed.</p>
       ) : (
-        <div className="grid gap-3">
-          {participants.map((p) => (
-            <Checkbox
-              key={p.id}
-              checked={selected.includes(p.id)}
-              onChange={(c) =>
-                setSelected(
-                  c
-                    ? [...selected, p.id]
-                    : selected.filter((id) => id !== p.id),
-                )
-              }
-              label={`${p.fullName} — ${p.state === "ABSENT" ? "absent" : "failed"}`}
-            />
-          ))}
+        <div className="space-y-4">
+          <div className="max-h-[350px] min-h-[100px] overflow-y-auto px-1 -mx-1 custom-scrollbar">
+            <div className="space-y-2">
+              {participants.map((p, index) => {
+                const isSelected = selected.includes(p.id);
+                const notActive = p.canOfferSupplementary === false;
+                const disabled = notActive || p.hasSupplementary === true;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => !disabled && toggle(p.id)}
+                    title={notActive ? `The account is ${(p.accountStatus ?? "not active").toLowerCase()}: the person cannot be trained until it is Active.` : undefined}
+                    className={cn(
+                      "group flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all",
+                      isSelected
+                        ? "border-emerald-200 bg-emerald-50 shadow-sm"
+                        : disabled
+                          ? "cursor-not-allowed border-slate-100 bg-slate-50 opacity-60"
+                          : "border-slate-200 bg-white hover:border-emerald-500/30 hover:shadow-sm",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors",
+                        isSelected ? "border-emerald-200 bg-emerald-100 text-emerald-700" : "border-slate-200 bg-slate-100 text-slate-500",
+                      )}
+                    >
+                      {isSelected ? <Check className="h-4 w-4" /> : index + 1}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 truncate text-xs font-medium text-slate-900 md:text-sm">
+                        {p.fullName}
+                        <Badge color={p.state === "ABSENT" ? "amber" : "red"} size="sm">{p.state === "ABSENT" ? "Absent" : "Failed"}</Badge>
+                        {p.hasSupplementary && <Badge color="slate" size="sm">Already in a supplementary training</Badge>}
+                        {notActive && <Badge color="slate" size="sm">{`Account ${(p.accountStatus ?? "not active").toLowerCase()}`}</Badge>}
+                      </div>
+                      <div className="mt-0.5 truncate text-xs text-slate-500">
+                        <span className="mr-1.5 font-medium text-emerald-600">{p.employeeCode || "-"}</span>
+                        • {p.position || "-"} • {p.department || "-"}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <FormField label="Reason" required>
             <Textarea
               rows={2}

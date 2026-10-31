@@ -122,7 +122,7 @@ export const EducationAddModal: React.FC<EducationAddModalProps> = ({ isOpen, on
       <div className="space-y-4">
         {/* Degree — active degree levels from Education Settings; no education-admin permission required. */}
         <div>
-          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
             Degree <span className="text-red-500">*</span>
           </label>
           <Select
@@ -144,7 +144,7 @@ export const EducationAddModal: React.FC<EducationAddModalProps> = ({ isOpen, on
 
         {/* Field of Study */}
         <div>
-          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
             Field of Study / Major <span className="text-red-500">*</span>
           </label>
           <input
@@ -163,7 +163,7 @@ export const EducationAddModal: React.FC<EducationAddModalProps> = ({ isOpen, on
 
         {/* Institution — active schools from Education Settings; no education-admin permission required. */}
         <div>
-          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
             Institution / University / College <span className="text-red-500">*</span>
           </label>
           <Select
@@ -199,7 +199,7 @@ export const EducationAddModal: React.FC<EducationAddModalProps> = ({ isOpen, on
             />
           </div>
           <div>
-            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
               GPA / Grade
             </label>
             <div className="relative">

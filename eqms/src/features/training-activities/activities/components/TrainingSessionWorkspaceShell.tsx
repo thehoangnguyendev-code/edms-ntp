@@ -292,7 +292,7 @@ export function TrainingSessionWorkspaceShell({
           </motion.span>
           <div className="min-w-0 flex-1 text-sm">
             <div className="font-semibold text-emerald-900">
-              All five steps are done. Well done!
+              {`All ${steps.length === 3 ? "three" : steps.length === 5 ? "five" : steps.length} steps are done. Well done!`}
             </div>
             <div className="text-slate-600">The session is complete.</div>
           </div>

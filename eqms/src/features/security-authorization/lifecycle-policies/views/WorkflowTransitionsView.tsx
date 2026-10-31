@@ -644,7 +644,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
 >
 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
             <div>
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                   <Search className="h-4 w-4 text-slate-400" />

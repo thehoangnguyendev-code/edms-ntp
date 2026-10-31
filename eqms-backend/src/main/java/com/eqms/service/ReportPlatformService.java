@@ -45,6 +45,12 @@ public class ReportPlatformService {
     private com.eqms.service.report.ReportTemplateService templates;
     private com.eqms.service.report.ReportArtifactPublisher publisher;
     private com.eqms.service.report.ReportWordService words;
+    private com.eqms.service.report.ReportRunLeaseService runLeases;
+    private VerifiedDownloadService verifiedDownloads;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void configureVerifiedDownloads(VerifiedDownloadService verifiedDownloads) {this.verifiedDownloads=verifiedDownloads;}
+    @org.springframework.beans.factory.annotation.Autowired
+    public void configureRunLeases(com.eqms.service.report.ReportRunLeaseService runLeases) { this.runLeases=runLeases; }
     @org.springframework.beans.factory.annotation.Autowired
     public void configureWords(com.eqms.service.report.ReportWordService words) {this.words=words;}
     @org.springframework.beans.factory.annotation.Autowired
@@ -395,6 +401,34 @@ public class ReportPlatformService {
     }
 
     public DownloadArtifact download(UserAccount actor, UUID runId, UUID artifactId) {
+        Map<String,Object> artifact=authorizedDownloadArtifact(actor,runId,artifactId);
+        try {
+            byte[] bytes = fileStorage.readReportArtifact(String.valueOf(artifact.get("provider")), String.valueOf(artifact.get("object_key")));
+            if (!HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)).equalsIgnoreCase(String.valueOf(artifact.get("sha256")))) throw new IllegalStateException("REPORT_ARTIFACT_CHECKSUM_MISMATCH");
+            auditTrail.logAs(actor, "REPORT_ARTIFACT", String.valueOf(artifact.get("generated_filename")), artifactId, "REPORT_ARTIFACT_DOWNLOADED", null, null, "Artifact download authorized and checksum verified");
+            return new DownloadArtifact(String.valueOf(artifact.get("generated_filename")), String.valueOf(artifact.get("mime_type")), bytes);
+        }
+        catch (Exception missing) { throw new IllegalStateException("REPORT_ARTIFACT_EXPIRED"); }
+    }
+
+    public record PreparedArtifact(String filename,String mimeType,VerifiedDownloadService.Prepared file) { }
+
+    public PreparedArtifact prepareDownload(UserAccount actor,UUID runId,UUID artifactId) {
+        Map<String,Object> artifact=authorizedDownloadArtifact(actor,runId,artifactId);
+        VerifiedDownloadService.Prepared file=null;
+        try {
+            file=verifiedDownloads.prepare(String.valueOf(artifact.get("object_key")),String.valueOf(artifact.get("sha256")));
+            auditTrail.logAs(actor,"REPORT_ARTIFACT",String.valueOf(artifact.get("generated_filename")),artifactId,
+                    "REPORT_ARTIFACT_DOWNLOADED",null,null,"Artifact download authorized and checksum verified");
+            return new PreparedArtifact(String.valueOf(artifact.get("generated_filename")),String.valueOf(artifact.get("mime_type")),file);
+        } catch(VerifiedDownloadService.Busy busy) {throw busy;}
+        catch(Exception missing) {
+            if(file!=null)try{file.close();}catch(java.io.IOException cleanup){missing.addSuppressed(cleanup);}
+            throw new IllegalStateException("REPORT_ARTIFACT_EXPIRED");
+        }
+    }
+
+    private Map<String,Object> authorizedDownloadArtifact(UserAccount actor,UUID runId,UUID artifactId) {
         templates.require(actor,"reports.artifact.download","report.module.export");
         require(actor, "reports.artifact.download", "report.module.export");
         Map<String,Object> artifact=jdbc.queryForMap("""
@@ -405,13 +439,7 @@ public class ReportPlatformService {
         boolean canViewAll=permissions.hasPermission(actor,"reports.run.view_all");
         if (!canViewAll && !actor.getId().toString().equals(String.valueOf(artifact.get("requester_user_id")))) throw new SecurityException("REPORT_SCOPE_DENIED");
         reauthorizeArtifactScope(actor, String.valueOf(artifact.get("definition_code")), String.valueOf(artifact.get("authorization_snapshot")));
-        try {
-            byte[] bytes = fileStorage.readReportArtifact(String.valueOf(artifact.get("provider")), String.valueOf(artifact.get("object_key")));
-            if (!HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)).equalsIgnoreCase(String.valueOf(artifact.get("sha256")))) throw new IllegalStateException("REPORT_ARTIFACT_CHECKSUM_MISMATCH");
-            auditTrail.logAs(actor, "REPORT_ARTIFACT", String.valueOf(artifact.get("generated_filename")), artifactId, "REPORT_ARTIFACT_DOWNLOADED", null, null, "Artifact download authorized and checksum verified");
-            return new DownloadArtifact(String.valueOf(artifact.get("generated_filename")), String.valueOf(artifact.get("mime_type")), bytes);
-        }
-        catch (Exception missing) { throw new IllegalStateException("REPORT_ARTIFACT_EXPIRED"); }
+        return artifact;
     }
 
     @org.springframework.transaction.annotation.Transactional
@@ -495,7 +523,9 @@ public class ReportPlatformService {
                 """);
         if (candidates.isEmpty()) return false;
         Map<String,Object> run=candidates.getFirst(); UUID runId=UUID.fromString(run.get("id").toString());
-        try {
+        // Keep the short DB claim separate from rendering and renew without holding a transaction.
+        try (var runLease = Objects.requireNonNull(runLeases, "Report run lease service is required")
+                .maintain(runId, ((Number)run.get("attempt_count")).intValue())) {
             UserAccount requester=users.findById(UUID.fromString(run.get("requester_user_id").toString())).orElseThrow();
             String format=run.get("requested_format").toString();
             List<String> selected=objectMapper.readValue(String.valueOf(run.get("selected_fields")), objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
@@ -524,6 +554,7 @@ public class ReportPlatformService {
                 bytes=words==null?com.eqms.service.report.ReportPresentationRenderer.render(format,report.rows(),layout,presentation,charts):words.render(format,report.rows(),layout,presentation,charts);
             } else bytes=render(format, report.rows());
             if (bytes.length > 52_428_800) throw new IllegalArgumentException("REPORT_ARTIFACT_LIMIT_EXCEEDED");
+            runLease.requireOwned();
             String hash=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
             UUID artifactId=UUID.randomUUID(); String code=run.get("definition_code").toString().toLowerCase(Locale.ROOT);
             String extension=format.toLowerCase(Locale.ROOT); String artifactKey=StoragePathBuilder.reportArtifact(code,java.time.Year.now().getValue(),java.time.LocalDate.now().getMonthValue(),runId,artifactId,extension);
@@ -537,6 +568,7 @@ public class ReportPlatformService {
             }
             Instant expiresAt = resolveRetentionExpiry(String.valueOf(run.get("definition_code")));
             ((com.fasterxml.jackson.databind.node.ObjectNode)snapshot).set("sourceDocumentIds",objectMapper.valueToTree(report.sourceDocumentIds()));
+            runLease.requireOwned();
             publisher.publish(runId,attempt,artifactId,run.get("definition_code").toString(),snapshot,format,code+"-"+runId+"."+extension,stored,mimeFor(format),bytes.length,hash,expiresAt);
             if (delivery != null) delivery.notifyRecipientsOfCompletedRun(runId);
         } catch (Exception failure) {

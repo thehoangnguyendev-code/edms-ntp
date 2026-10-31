@@ -189,7 +189,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
         {/* Document Number (read-only, auto-generated) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Document Number
           </label>
           <input
@@ -203,7 +203,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
         {/* Created (read-only, auto-generated) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Created Time
           </label>
           <input
@@ -236,7 +236,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
         <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
           {/* Opened By (read-only, auto-generated) */}
           <div className="flex flex-col gap-1.5 md:col-span-2">
-            <label className="text-xs sm:text-sm font-medium text-slate-700">
+            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
               Opened By
             </label>
             <input
@@ -249,7 +249,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
           </div>
           {/* Author (Select) */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs sm:text-sm font-medium text-slate-700">
+            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
               Author<span className="text-red-500 ml-1">*</span>
             </label>
             {isLocked ? (
@@ -279,7 +279,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
           {/* Co-Authors (MultiSelect) */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs sm:text-sm font-medium text-slate-700">
+            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
               Co-Author(s)
             </label>
             {isLocked ? (
@@ -347,7 +347,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
         {/* Business Unit (Select) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Business Unit<span className="text-red-500 ml-1">*</span>
           </label>
             {isLocked ? (
@@ -374,7 +374,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
         {/* Department (Select) - depends on Business Unit */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Department<span className="text-red-500 ml-1">*</span>
           </label>
             {isLocked ? (
@@ -406,7 +406,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
         {/* Document Name - Full width */}
         <div className="flex flex-col gap-1.5 md:col-span-2">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Document Name<span className="text-red-500 ml-1">*</span>
           </label>
           <input
@@ -426,7 +426,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
         {/* Title in Local Language - Full width */}
         <div className="flex flex-col gap-1.5 md:col-span-2">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Title in Local Language
             <span className="text-slate-400 text-xs font-normal ml-1.5">(optional)</span>
           </label>
@@ -471,7 +471,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
         {/* Knowledge Base */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Knowledge Base
           </label>
           <input
@@ -486,7 +486,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
         {/* Document Type (Select) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Document Type<span className="text-red-500 ml-1">*</span>
           </label>
           {isLocked ? (
@@ -513,7 +513,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
         {/* Sub-Type (Select) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Sub-Type<span className="text-red-500 ml-1">*</span>
           </label>
           <Select
@@ -530,7 +530,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
         {/* Periodic Review Cycle */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Periodic Review Cycle (Months)
             <span className="text-red-500 ml-1">*</span>
           </label>
@@ -563,7 +563,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
         {/* Periodic Review Notification */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Periodic Review Notification (Days)
             <span className="text-red-500 ml-1">*</span>
           </label>
@@ -596,7 +596,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
         {/* Effective Date (read-only, auto-generated) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Effective Date
           </label>
           <input
@@ -609,7 +609,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Valid Until
           </label>
           <input
@@ -623,7 +623,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
                 {/* Review Date */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Review Date
           </label>
           {readOnlyReviewDate ? (
@@ -648,7 +648,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
         {/* Language */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Language</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Language</label>
           <Select
             value={formData.language}
             onChange={(value) =>
@@ -667,7 +667,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
         {/* Description */}
         <div className="flex flex-col gap-1.5 md:col-span-2">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Description <span className="text-red-500">*</span>
           </label>
           <textarea

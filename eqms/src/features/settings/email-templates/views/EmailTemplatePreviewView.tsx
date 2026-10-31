@@ -274,12 +274,12 @@ export const EmailTemplatePreviewView: React.FC = () => {
           <FormSection title="Template Info" icon={<Info className="h-4 w-4" />}>
             <div className="space-y-3 lg:space-y-4">
               <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0">Name</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Name</label>
                 <p className="text-xs lg:text-sm text-slate-900 font-medium flex-1">{previewTemplate.name}</p>
               </div>
 
               <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0">Status</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Status</label>
                 <div className="flex-1">
                   <Badge
                     color={previewTemplate.status === "Active" ? "emerald" : previewTemplate.status === "Inactive" ? "slate" : "amber"}
@@ -292,34 +292,34 @@ export const EmailTemplatePreviewView: React.FC = () => {
               </div>
 
               <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0">Type</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Type</label>
                 <p className="text-xs lg:text-sm text-slate-900 flex-1">{templateType.label}</p>
               </div>
 
               <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0">Author</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Author</label>
                 <p className="text-xs lg:text-sm text-slate-900 flex-1 truncate" title={previewTemplate.createdBy || ""}>
                   {previewTemplate.createdBy || "System"}
                 </p>
               </div>
 
               <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0">Usage</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Usage</label>
                 <p className="text-xs lg:text-sm text-slate-900 flex-1">{previewTemplate.usageCount ?? 0} times</p>
               </div>
 
               <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0">Version</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Version</label>
                 <p className="text-xs lg:text-sm text-slate-900 flex-1">{latestVersionLabel}</p>
               </div>
 
               <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0">Last Used</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Last Used</label>
                 <p className="text-xs lg:text-sm text-slate-900 flex-1">{previewTemplate.lastUsed || "Never"}</p>
               </div>
 
               <div className="flex flex-col lg:flex-row lg:items-start gap-1.5 lg:gap-2">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0">Description</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Description</label>
                 <p className="text-xs lg:text-sm text-slate-900 flex-1 leading-relaxed">
                   {previewTemplate.description || "—"}
                 </p>

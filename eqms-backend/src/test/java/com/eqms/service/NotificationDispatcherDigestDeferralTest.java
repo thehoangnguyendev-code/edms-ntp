@@ -49,7 +49,7 @@ class NotificationDispatcherDigestDeferralTest {
     @Mock private NotificationService notificationService;
     @Mock private UserAccountRepository userAccountRepository;
     @Mock private PermissionEvaluationService permissionEvaluationService;
-    @Mock private EmailNotificationService emailNotificationService;
+    @Mock private NotificationEmailOutbox emailOutbox;
     @Mock private NotificationDispatchQueueRepository dispatchQueueRepository;
 
     private NotificationDispatcher dispatcher;
@@ -60,7 +60,7 @@ class NotificationDispatcherDigestDeferralTest {
     void setUp() {
         dispatcher = new NotificationDispatcher(
                 eventRepository, policyRepository, templateVersionRepository, notificationService,
-                userAccountRepository, permissionEvaluationService, new ObjectMapper(), emailNotificationService,
+                userAccountRepository, permissionEvaluationService, new ObjectMapper(), emailOutbox,
                 dispatchQueueRepository);
 
         recipient = new UserAccount();
@@ -113,8 +113,8 @@ class NotificationDispatcherDigestDeferralTest {
 
         dispatcher.dispatch("test.event", List.of(recipient), Map.of());
 
-        verify(emailNotificationService).sendRenderedEmailWithTracking(
-                eq("a@example.local"), any(), any(), eq("test.event"), any(), any());
+        verify(emailOutbox).enqueue(
+                eq("a@example.local"), any(), any(), eq("test.event"), any(), any(),org.mockito.ArgumentMatchers.anyBoolean());
         verify(dispatchQueueRepository, never()).save(any());
     }
 
@@ -125,8 +125,8 @@ class NotificationDispatcherDigestDeferralTest {
 
         dispatcher.dispatch("test.event", List.of(recipient), Map.of());
 
-        verify(emailNotificationService, never()).sendRenderedEmailWithTracking(
-                any(), any(), any(), any(), any(), any());
+        verify(emailOutbox, never()).enqueue(
+                any(), any(), any(), any(), any(), any(),org.mockito.ArgumentMatchers.anyBoolean());
         ArgumentCaptor<NotificationDispatchQueue> captor = ArgumentCaptor.forClass(NotificationDispatchQueue.class);
         verify(dispatchQueueRepository).save(captor.capture());
         NotificationDispatchQueue queued = captor.getValue();
@@ -158,8 +158,8 @@ class NotificationDispatcherDigestDeferralTest {
 
         dispatcher.dispatch("test.event", List.of(recipient), Map.of());
 
-        verify(emailNotificationService, never()).sendRenderedEmailWithTracking(
-                any(), any(), any(), any(), any(), any());
+        verify(emailOutbox, never()).enqueue(
+                any(), any(), any(), any(), any(), any(),org.mockito.ArgumentMatchers.anyBoolean());
         verify(dispatchQueueRepository).save(any(NotificationDispatchQueue.class));
     }
 
@@ -174,8 +174,8 @@ class NotificationDispatcherDigestDeferralTest {
 
         dispatcher.dispatch("test.event", List.of(recipient), Map.of());
 
-        verify(emailNotificationService).sendRenderedEmailWithTracking(
-                eq("a@example.local"), any(), any(), eq("test.event"), any(), any());
+        verify(emailOutbox).enqueue(
+                eq("a@example.local"), any(), any(), eq("test.event"), any(), any(),eq(true));
         verify(dispatchQueueRepository, never()).save(any());
     }
 }

@@ -175,4 +175,28 @@ class SystemConfigurationServiceBrandingTest {
 
         assertTrue(SystemConfigurationService.hasDocumentsPreviewChange(previous, changed));
     }
+
+    @Test
+    void footerHasALeftAndARightTextAndKeepsTheOldBehaviourUntilTheSwitchesAreSet() throws Exception {
+        var defaults = serviceWithGeneral("{}").getPublicBranding();
+        assertNull(defaults.systemFooterLeft());
+        assertNull(defaults.systemFooterRight());
+        assertTrue(defaults.footerShowOnDesktop());
+        assertFalse(defaults.footerShowOnMobile());
+        var set = serviceWithGeneral("{\"systemFooterLeft\":\"Left\",\"systemFooterRight\":\"Right\",\"footerShowOnDesktop\":false,\"footerShowOnMobile\":true}").getPublicBranding();
+        assertEquals("Left", set.systemFooterLeft());
+        assertEquals("Right", set.systemFooterRight());
+        assertFalse(set.footerShowOnDesktop());
+        assertTrue(set.footerShowOnMobile());
+    }
+
+    @Test
+    void footerValidationRejectsLongTextLineBreaksAndSwitchesThatAreNotBooleans() throws Exception {
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> SystemConfigurationService.validateFooter(json.readTree("{\"systemFooterLeft\":\"\",\"systemFooterRight\":\"© {year}\",\"footerShowOnMobile\":true}")));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validateFooter(json.readTree("{\"systemFooterRight\":\"" + "x".repeat(501) + "\"}")));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validateFooter(json.readTree("{\"systemFooterLeft\":\"a\\nb\"}")));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validateFooter(json.readTree("{\"systemFooterLeft\":5}")));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validateFooter(json.readTree("{\"footerShowOnDesktop\":\"yes\"}")));
+    }
 }

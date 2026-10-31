@@ -26,6 +26,10 @@ public class TrainingRecordController {
         return ResponseEntity.ok(records.myRecords(users.requireCurrentUser(), search, sortDirection, page, limit));
     }
 
+    /** One of my own invitations (the screen where the employee reads the training and signs the reading). Only the invited person, only {@code training.self.view}. */
+    @GetMapping("/me/participations/{participantId}")
+    public ResponseEntity<?> myParticipation(@PathVariable UUID participantId) { return ResponseEntity.ok(records.myParticipation(users.requireCurrentUser(), participantId)); }
+
     @GetMapping("/me/tasks")
     public ResponseEntity<?> myTasks() { return ResponseEntity.ok(Map.of("data", records.myTasks(users.requireCurrentUser()))); }
 

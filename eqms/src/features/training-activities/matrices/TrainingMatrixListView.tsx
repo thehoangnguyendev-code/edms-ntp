@@ -35,6 +35,7 @@ import {
   trainingBreadcrumbs,
   TRAINING_PAGES,
 } from "../shared/trainingLabels";
+import { useTrainingRowMenu } from "../shared/useTrainingRowMenu";
 
 const OPEN_LABEL: Record<string, string> = {
   DRAFT: "Draft",
@@ -112,6 +113,9 @@ export function TrainingMatrixListView() {
 
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
+  const versionOf = (m: TrainingMatrixSummary) => m.effectiveVersionId ?? m.openVersionId;
+  const rowMenu = useTrainingRowMenu(table.items, (m) => (versionOf(m) ? [{ label: "View Details", icon: <IconInfoCircle className="h-4 w-4" />, onClick: () => navigate(`/training-management/matrix/${versionOf(m)}`) }] : []));
+
   const columns: DataTableColumn<TrainingMatrixSummary>[] = [
     {
       id: "rowNo",
@@ -123,7 +127,7 @@ export function TrainingMatrixListView() {
       id: "code",
       header: "Matrix", sort: sorted("code"),
       cell: (m) => {
-        const target = m.effectiveVersionId ?? m.openVersionId;
+        const target = versionOf(m);
         return target ? (
           <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/matrix/${target}`)}>
             {m.code}
@@ -148,6 +152,7 @@ export function TrainingMatrixListView() {
   const { layout, control } = useCustomColumnLayout(
     "training.matrices.list",
     columns,
+    rowMenu.action,
   );
   const filters: ReportSelectFilter[] = [
     {
@@ -214,6 +219,7 @@ export function TrainingMatrixListView() {
           isDragging={drag.isDragging}
           columns={columns}
           columnLayout={layout}
+          action={rowMenu.action}
           pagination={
             table.totalItems > 0 ? (
               <TablePagination
@@ -228,6 +234,7 @@ export function TrainingMatrixListView() {
           }
         />
       </ReportListToolbar>
+      {rowMenu.node}
       <FormModal
         isOpen={creating}
         onClose={() => setCreating(false)}

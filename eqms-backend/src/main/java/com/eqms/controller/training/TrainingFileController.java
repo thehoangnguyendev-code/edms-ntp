@@ -65,6 +65,12 @@ public class TrainingFileController {
         return ResponseEntity.ok(fileService.uploadEvidence(users.requireCurrentUser(), id, file, kind, participantId, remark, formUsed, packId));
     }
 
+    /** One scanned PDF with the pages of many people in any order: the QR code of every page says whose it is (see the service). */
+    @PostMapping(value = "/activities/{id}/paper-evidence/batch", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadScanBatch(@PathVariable UUID id, @RequestPart("file") MultipartFile file) {
+        return ResponseEntity.ok(fileService.uploadScanBatch(users.requireCurrentUser(), id, file));
+    }
+
     /** Opens the exam template or the answer key of an activity in the editor: the answer holds the editor configuration signed for the document server. */
     @PostMapping("/activities/{id}/assessment-editor")
     public ResponseEntity<?> openEditor(@PathVariable UUID id, @RequestBody com.eqms.service.training.TrainingAssessmentEditService.OpenRequest request) {

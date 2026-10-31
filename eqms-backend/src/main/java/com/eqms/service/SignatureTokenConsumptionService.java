@@ -65,6 +65,10 @@ public class SignatureTokenConsumptionService {
         }
         UUID tokenId = parsed.principal().sessionId();
         String txResourceKey = "signature-token-consumed:" + tokenId;
+        String suspendedResourceKey = "signature-token-suspended:" + tokenId;
+        if (TransactionSynchronizationManager.hasResource(suspendedResourceKey)) {
+            throw new UnauthorizedException("This electronic signature belongs to a different transaction");
+        }
         if (TransactionSynchronizationManager.hasResource(txResourceKey)) {
             return tokenId;
         }
@@ -74,7 +78,31 @@ public class SignatureTokenConsumptionService {
             throw new UnauthorizedException("This electronic signature has already been used and cannot be reused");
         }
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.bindResource(txResourceKey, Boolean.TRUE);
+            Object owner = new Object();
+            TransactionSynchronizationManager.bindResource(txResourceKey, owner);
+            TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+                @Override
+                public void suspend() {
+                    TransactionSynchronizationManager.unbindResourceIfPossible(txResourceKey);
+                    TransactionSynchronizationManager.bindResource(suspendedResourceKey, owner);
+                }
+
+                @Override
+                public void resume() {
+                    TransactionSynchronizationManager.unbindResourceIfPossible(suspendedResourceKey);
+                    TransactionSynchronizationManager.bindResource(txResourceKey, owner);
+                }
+
+                @Override
+                public void afterCompletion(int status) {
+                    if (TransactionSynchronizationManager.getResource(txResourceKey) == owner) {
+                        TransactionSynchronizationManager.unbindResourceIfPossible(txResourceKey);
+                    }
+                    if (TransactionSynchronizationManager.getResource(suspendedResourceKey) == owner) {
+                        TransactionSynchronizationManager.unbindResourceIfPossible(suspendedResourceKey);
+                    }
+                }
+            });
         }
         return tokenId;
     }

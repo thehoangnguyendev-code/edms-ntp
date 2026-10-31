@@ -8,8 +8,13 @@ import java.util.UUID;
 import java.util.List;
 public interface ControlledCopyDistributionJobRepository extends JpaRepository<ControlledCopyDistributionJob, UUID> {
     @Modifying
+    @org.springframework.transaction.annotation.Transactional
     @Query("update ControlledCopyDistributionJob j set j.status = 'PROCESSING', j.startedAt = CURRENT_TIMESTAMP where j.id = :id and j.status = 'PENDING'")
     int claimPendingJob(@Param("id") UUID id);
+    @Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("update ControlledCopyDistributionJob j set j.status = 'PROCESSING', j.startedAt = CURRENT_TIMESTAMP where j.id = :id and j.actionType = 'DISTRIBUTE' and j.status in ('FAILED','COMPLETED_WITH_ERRORS')")
+    int claimFailedDistributionJob(@Param("id") UUID id);
     List<ControlledCopyDistributionJob> findTop10ByStatusOrderByCreatedAtAsc(String status);
     List<ControlledCopyDistributionJob> findByBatch_IdOrderByCreatedAtDesc(UUID batchId);
     List<ControlledCopyDistributionJob> findByBatch_IdAndActionTypeOrderByCreatedAtDesc(UUID batchId, String actionType);

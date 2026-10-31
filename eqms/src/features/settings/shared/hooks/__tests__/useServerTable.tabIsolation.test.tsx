@@ -13,7 +13,7 @@ it("retains URL initialization by default for existing list screens", async () =
   renderHook(() => useServerTable({ fetcher, defaultSortBy: "name" }), {
     wrapper: ({ children }) => <MemoryRouter initialEntries={["/?search=GMP&page=2&sortBy=created&sortDirection=desc"]}>{children}</MemoryRouter>,
   });
-  await waitFor(() => expect(fetcher).toHaveBeenCalledWith(expect.objectContaining({ search: "GMP", page: 2, sortBy: "created", sortDirection: "desc" })));
+  await waitFor(() => expect(fetcher).toHaveBeenCalledWith(expect.objectContaining({ search: "GMP", page: 2, sortBy: "created", sortDirection: "desc" }), expect.any(AbortSignal)));
 });
 
 it("ignores another table's URL query when URL synchronization is disabled", async () => {
@@ -21,7 +21,7 @@ it("ignores another table's URL query when URL synchronization is disabled", asy
   renderHook(() => useServerTable({ fetcher, defaultSortBy: "assignedAt", syncToUrl: false }), {
     wrapper: ({ children }) => <MemoryRouter initialEntries={["/?search=GMP&page=2&sortBy=dueDate&limit=50"]}>{children}</MemoryRouter>,
   });
-  await waitFor(() => expect(fetcher).toHaveBeenCalledWith(expect.objectContaining({ search: undefined, page: 1, limit: 10, sortBy: "assignedAt" })));
+  await waitFor(() => expect(fetcher).toHaveBeenCalledWith(expect.objectContaining({ search: undefined, page: 1, limit: 10, sortBy: "assignedAt" }), expect.any(AbortSignal)));
 });
 
 it("keeps a tab search stable while the parent table owns the URL", async () => {
@@ -32,7 +32,7 @@ it("keeps a tab search stable while the parent table owns the URL", async () => 
   }), { wrapper: ({ children }) => <MemoryRouter initialEntries={["/"]}>{children}</MemoryRouter> });
   await waitFor(() => expect(result.current.child.isLoading).toBe(false));
   act(() => result.current.child.setSearchQuery("Trainee"));
-  await waitFor(() => expect(fetcher).toHaveBeenCalledWith(expect.objectContaining({ search: "Trainee", sortBy: "fullName" })));
+  await waitFor(() => expect(fetcher).toHaveBeenCalledWith(expect.objectContaining({ search: "Trainee", sortBy: "fullName" }), expect.any(AbortSignal)));
   expect(result.current.child.searchQuery).toBe("Trainee");
   expect(result.current.parent.searchQuery).toBe("");
 });
@@ -44,9 +44,9 @@ it("sorts ascending on the first click of a list that sorts descending by defaul
   });
   await waitFor(() => expect(fetcher).toHaveBeenCalled());
   act(() => result.current.handleSort("employeeCode"));
-  await waitFor(() => expect(fetcher).toHaveBeenLastCalledWith(expect.objectContaining({ sortBy: "employeeCode", sortDirection: "asc" })));
+  await waitFor(() => expect(fetcher).toHaveBeenLastCalledWith(expect.objectContaining({ sortBy: "employeeCode", sortDirection: "asc" }), expect.any(AbortSignal)));
   // The address now carries sortDirection=asc; reading it back must not turn it into the default (desc).
   await new Promise((resolve) => setTimeout(resolve, 100));
   expect(result.current.sortConfig).toEqual({ key: "employeeCode", direction: "asc" });
-  expect(fetcher).not.toHaveBeenLastCalledWith(expect.objectContaining({ sortBy: "employeeCode", sortDirection: "desc" }));
+  expect(fetcher).not.toHaveBeenLastCalledWith(expect.objectContaining({ sortBy: "employeeCode", sortDirection: "desc" }), expect.any(AbortSignal));
 });

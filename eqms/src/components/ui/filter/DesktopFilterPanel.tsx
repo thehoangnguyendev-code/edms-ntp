@@ -1,3 +1,4 @@
+import { observeOverlayPosition } from "@/utils/scroll";
 import React from "react";
 import { createPortal } from "react-dom";
 import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
@@ -104,17 +105,12 @@ export function DesktopFilterPanel({
       )
         setOpen(false);
     };
-    const scroll = (event: Event) => {
-      if (!panel.current?.contains(event.target as Node)) place();
-    };
     place();
     panel.current?.querySelector<HTMLButtonElement>("nav button")?.focus();
-    window.addEventListener("resize", place);
-    window.addEventListener("scroll", scroll, true);
+    const stopObserving = observeOverlayPosition(() => trigger.current, place);
     document.addEventListener("mousedown", outside);
     return () => {
-      window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", scroll, true);
+      stopObserving();
       document.removeEventListener("mousedown", outside);
     };
   }, [open]);

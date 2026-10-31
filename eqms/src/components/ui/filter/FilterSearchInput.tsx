@@ -22,7 +22,7 @@ export const FilterSearchInput: React.FC<FilterSearchInputProps> = ({
   value,
   onChange,
   placeholder,
-  debounceMs = 300,
+  debounceMs = 150,
   disabled = false,
   fullWidth = true,
   ...rest

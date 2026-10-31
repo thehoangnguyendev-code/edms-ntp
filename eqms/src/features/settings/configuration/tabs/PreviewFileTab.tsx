@@ -140,7 +140,7 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
               <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
                 <div className="space-y-4">
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Watermark text</label>
+                    <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">Watermark text</label>
                     <input
                       value={pdf?.watermarkText ?? 'FOR PREVIEW ONLY'}
                       onChange={(event) => setPdf({ watermarkText: event.target.value.slice(0, 120) })}

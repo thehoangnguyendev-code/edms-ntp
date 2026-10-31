@@ -26,8 +26,8 @@ export const documentNameFormatApi = {
     return response.data;
   },
 
-  getFormatsPage: async (params: DictionaryListParams): Promise<PageResponse<DocumentNameFormatItem>> => {
-    const response = await api.get<PageResponse<DocumentNameFormatItem>>(`${BASE}/document-name-formats/page`, { params });
+  getFormatsPage: async (params: DictionaryListParams, signal?: AbortSignal): Promise<PageResponse<DocumentNameFormatItem>> => {
+    const response = await api.get<PageResponse<DocumentNameFormatItem>>(`${BASE}/document-name-formats/page`, { params, signal });
     return response.data;
   },
 
@@ -52,8 +52,8 @@ export const documentNameFormatApi = {
     return response.data;
   },
 
-  getComponentsPage: async (params: DictionaryListParams): Promise<PageResponse<DocumentComponentItem>> => {
-    const response = await api.get<PageResponse<DocumentComponentItem>>(`${BASE}/document-components/page`, { params });
+  getComponentsPage: async (params: DictionaryListParams, signal?: AbortSignal): Promise<PageResponse<DocumentComponentItem>> => {
+    const response = await api.get<PageResponse<DocumentComponentItem>>(`${BASE}/document-components/page`, { params, signal });
     return response.data;
   },
 

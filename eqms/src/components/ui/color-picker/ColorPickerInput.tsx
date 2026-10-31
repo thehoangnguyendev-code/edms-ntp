@@ -1,3 +1,4 @@
+import { observeOverlayPosition } from "@/utils/scroll";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/components/ui/utils";
@@ -82,12 +83,10 @@ export const ColorPickerInput: React.FC<ColorPickerInputProps> = ({
     };
     const handleScroll = () => computePosition();
     document.addEventListener("mousedown", handleClickOutside);
-    window.addEventListener("scroll", handleScroll, true);
-    window.addEventListener("resize", handleScroll);
+    const stopObserving = observeOverlayPosition(() => triggerRef.current, handleScroll);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
-      window.removeEventListener("scroll", handleScroll, true);
-      window.removeEventListener("resize", handleScroll);
+      stopObserving();
     };
   }, [isOpen, computePosition]);
 

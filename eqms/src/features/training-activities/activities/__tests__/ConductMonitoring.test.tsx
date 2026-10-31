@@ -9,7 +9,7 @@ vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermissio
 vi.mock("@/features/realtime/useEntityChanged", () => ({ useEntityChanged: () => undefined }));
 vi.mock("@/components/ui/toast/Toast", () => ({ useToast: () => ({ showToast: vi.fn() }) }));
 vi.mock("@/features/documents/shared/components/AuditTrailTab", () => ({ AuditTrailTab: () => <div>audit</div> }));
-vi.mock("../components/TrainingPaperBlock", async (importOriginal) => ({ ...(await importOriginal<object>()), TrainingPaperBlock: () => <div>PAPER BLOCK</div> }));
+vi.mock("../components/TrainingPaperBlock", async (importOriginal) => ({ ...(await importOriginal<object>()), TrainingPrintedPacks: () => <div>PAPER BLOCK</div> }));
 vi.mock("../components/TrainingPreparationBlock", () => ({ TrainingPreparationBlock: () => <div>PREPARATION BLOCK</div> }));
 vi.mock("../components/TrainingTranscriptionBlock", () => ({ TrainingTranscriptionBlock: () => <div>TRANSCRIPTION BLOCK</div> }));
 vi.mock("../components/TrainingExamBlock", () => ({ TrainingExamBlock: () => <div>EXAM BLOCK</div> }));

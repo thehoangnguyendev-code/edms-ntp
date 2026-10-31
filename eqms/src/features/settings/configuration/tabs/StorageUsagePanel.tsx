@@ -5,6 +5,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { api } from '@/services/api/client';
 import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
+import { formatDate, formatDateTime } from '@/utils/format';
 
 type Snapshot = {
   measuredAt: string;
@@ -19,7 +20,7 @@ const GIB = 1024 ** 3;
 const size = (bytes: number) => {
   const unit = bytes >= GIB ? 'GiB' : bytes >= 1024 ** 2 ? 'MiB' : bytes >= 1024 ? 'KiB' : 'B';
   const divisor = unit === 'GiB' ? GIB : unit === 'MiB' ? 1024 ** 2 : unit === 'KiB' ? 1024 : 1;
-  return `${(bytes / divisor).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${unit}`;
+  return `${Math.round((bytes / divisor) * 100) / 100} ${unit}`;
 };
 const signedSize = (bytes: number) => `${bytes < 0 ? '−' : '+'}${size(Math.abs(bytes))}`;
 
@@ -108,7 +109,7 @@ export function StorageUsagePanel() {
         <div className="grid gap-3 sm:grid-cols-3">
           <div><p className="text-sm text-slate-500">Object-version size</p><p className="font-semibold text-slate-900">{size(latest.totalBytes)}</p></div>
           <div><p className="text-sm text-slate-500">Object versions</p><p className="font-semibold text-slate-900">{latest.objectVersions.toLocaleString()}</p></div>
-          <div><p className="text-sm text-slate-500">Last successful measurement</p><p className="font-semibold text-slate-900">{new Date(latest.measuredAt).toLocaleString()}</p></div>
+          <div><p className="text-sm text-slate-500">Last successful measurement</p><p className="font-semibold text-slate-900">{formatDateTime(latest.measuredAt)}</p></div>
         </div>
         {usedPercent !== null && budgetBytes && (
           <div>
@@ -131,7 +132,7 @@ export function StorageUsagePanel() {
         </div>
         {snapshots.length > 1 && <div><h4 className="mb-2 text-sm font-semibold text-slate-700">Last 90 days</h4>
           <ChartContainer config={{ totalBytes: { label: 'Object-version size', color: '#059669' } }} className="h-52 w-full">
-            <LineChart data={[...snapshots].reverse()}><CartesianGrid vertical={false} /><XAxis dataKey="measuredAt" tickFormatter={v => new Date(v).toLocaleDateString()} minTickGap={40} /><YAxis tickFormatter={size} width={70} /><ChartTooltip content={<ChartTooltipContent />} /><Line type="monotone" dataKey="totalBytes" stroke="var(--color-totalBytes)" dot={false} /></LineChart>
+            <LineChart data={[...snapshots].reverse()}><CartesianGrid vertical={false} /><XAxis dataKey="measuredAt" tickFormatter={v => formatDate(v)} minTickGap={40} /><YAxis tickFormatter={size} width={70} /><ChartTooltip content={<ChartTooltipContent />} /><Line type="monotone" dataKey="totalBytes" stroke="var(--color-totalBytes)" dot={false} /></LineChart>
           </ChartContainer>
         </div>}</>}
       </div>}

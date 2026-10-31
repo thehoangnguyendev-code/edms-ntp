@@ -156,7 +156,7 @@ export function PersonnelReviewDetailPage() {
             <ReadonlyField label="Event" value={REVIEW_KIND_LABEL[review.kind]} />
             <ReadonlyField label="Status" value={REVIEW_STATUS_LABEL[review.status]} />
             <ReadonlyField label={EVENT_DATE_LABEL[review.kind] ?? "Event Date"} value={day(review.eventDate)} />
-            <ReadonlyField label="Person who closes the review" value={review.closerName ?? review.closedByName ?? (review.status === "OPEN" ? "Anyone who may (no person was chosen)" : "")} />
+            <ReadonlyField label="Person Who Closes The Review" value={review.closerName ?? review.closedByName ?? (review.status === "OPEN" ? "Anyone who may (no person was chosen)" : "")} />
             {review.kind === "ABSENCE_RETURN" && (
               <>
                 <ReadonlyField label="Absent from" value={day(review.absenceFrom)} />

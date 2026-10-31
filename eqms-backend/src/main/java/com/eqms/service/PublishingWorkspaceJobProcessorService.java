@@ -29,6 +29,10 @@ public class PublishingWorkspaceJobProcessorService {
     private final AuditTrailService auditTrailService;
     private final PermissionEvaluationService permissionEvaluationService;
     private final TokenService tokenService;
+    private PublishingCommandService commands;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void configureCommands(PublishingCommandService commands) { this.commands=commands; }
 
     public PublishingWorkspaceJobProcessorService(
             PublishingWorkspaceService publishingWorkspaceService,
@@ -48,30 +52,33 @@ public class PublishingWorkspaceJobProcessorService {
 
     @Async("fileProcessingExecutor")
     public void processPublishJob(UUID jobId, UUID revisionId, PublishingWorkspaceRequest request, UUID userId) {
-        UserAccount currentUser = currentUserService.requireCurrentUser(userId);
+        processPublishCommand(jobId, revisionId, request, userId);
+    }
+
+    public void processPublishCommand(UUID jobId, UUID revisionId, PublishingWorkspaceRequest request, UUID userId) {
         SecurityContext previousContext = SecurityContextHolder.getContext();
-        SecurityContext jobContext = SecurityContextHolder.createEmptyContext();
-        var permissions = permissionEvaluationService.getPermissionCodes(currentUser);
-        var principal = new AuthenticatedUser(
-                currentUser.getId(),
-                null,
-                currentUser.getUsername(),
-                currentUser.getRoleName(),
-                permissions
-        );
-        jobContext.setAuthentication(new UsernamePasswordAuthenticationToken(
-                principal,
-                null,
-                tokenService.toAuthorities(permissions)
-        ));
-        SecurityContextHolder.setContext(jobContext);
+        UserAccount currentUser = null;
         try {
+            currentUser = currentUserService.requireCurrentUser(userId);
+            SecurityContext jobContext = SecurityContextHolder.createEmptyContext();
+            var permissions = permissionEvaluationService.getPermissionCodes(currentUser);
+            var principal = new AuthenticatedUser(
+                    currentUser.getId(), null, currentUser.getUsername(), currentUser.getRoleName(), permissions);
+            jobContext.setAuthentication(new UsernamePasswordAuthenticationToken(
+                    principal, null, tokenService.toAuthorities(permissions)));
+            SecurityContextHolder.setContext(jobContext);
+            if (commands != null && commands.exists(jobId)) {
+                commands.execute(jobId, userId);
+                return;
+            }
             publishingWorkspaceJobService.markProcessing(jobId, "Processing publishing package and electronic signature.");
             publishingWorkspaceService.completePublish(revisionId, request, userId);
             publishingWorkspaceJobService.markCompleted(jobId, "Publishing completed successfully.");
         } catch (Exception ex) {
             String message = extractMessage(ex);
-            publishingWorkspaceJobService.markFailed(jobId, message);
+            if (commands != null && commands.exists(jobId)) {
+                if (!commands.failIfQueued(jobId, message)) return;
+            } else publishingWorkspaceJobService.markFailed(jobId, message);
             auditTrailService.logAs(
                     currentUser,
                     "REVISION",
@@ -94,6 +101,10 @@ public class PublishingWorkspaceJobProcessorService {
     @Async("fileProcessingExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void processOpenWorkspaceJob(PublishingWorkspaceOpenedEvent event) {
+        if (commands != null && commands.exists(event.jobId())) {
+            processPublishCommand(event.jobId(), event.revisionId(), null, event.requestedByUserId());
+            return;
+        }
         publishingWorkspaceJobService.markProcessing(event.jobId(), "Generating publishing workspace preview.");
         try {
             UserAccount currentUser = currentUserService.requireCurrentUser(event.requestedByUserId());

@@ -54,7 +54,7 @@ export const TemplateFieldEditor: React.FC<TemplateFieldEditorProps> = ({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
-        <label className="text-xs font-medium text-slate-700">{label}</label>
+        <label className="text-xs font-medium text-slate-700 capitalize">{label}</label>
         {maxLength && (
           <span className="text-2xs text-slate-400">{value.length}/{maxLength}</span>
         )}

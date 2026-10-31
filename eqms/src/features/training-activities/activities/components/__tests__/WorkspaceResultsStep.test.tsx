@@ -10,7 +10,7 @@ describe("WorkspaceResultsStep", () => {
     render(<WorkspaceResultsStep table={<div>results table</div>} absent={2} failed={1} canArrange onArrange={onArrange} />);
 
     expect(screen.getByText(/2 absent and 1 did not pass/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Arrange supplementary training" }));
+    fireEvent.click(screen.getByRole("button", { name: /Arrange supplementary training/i }));
     expect(onArrange).toHaveBeenCalledTimes(1);
     expect(screen.getByText("results table")).toBeTruthy();
   });
@@ -25,6 +25,6 @@ describe("WorkspaceResultsStep", () => {
     render(<WorkspaceResultsStep table={<div>results table</div>} absent={0} failed={3} canArrange={false} onArrange={() => undefined} />);
 
     expect(screen.getByText(/3 did not pass/)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Arrange supplementary training" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Arrange supplementary training/i })).toBeNull();
   });
 });

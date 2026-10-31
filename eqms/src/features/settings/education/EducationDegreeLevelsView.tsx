@@ -175,7 +175,7 @@ export const EducationDegreeLevelsView: React.FC = () => {
         <div className="compact-filter-section px-4 pt-4 md:p-5 flex flex-col">
           <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
           <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
             <div className="flex items-center gap-2">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -240,7 +240,7 @@ export const EducationDegreeLevelsView: React.FC = () => {
 >
 <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="w-full">
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Search</label>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input type="text" placeholder="Search degree levels..." value={searchQuery}
@@ -409,13 +409,13 @@ const DegreeLevelModal: React.FC<DegreeLevelModalProps> = ({ isOpen, onClose, it
     <FormModal isOpen={isOpen} onClose={onClose} onConfirm={handleSubmit} title={`${isEdit ? "Edit" : "New"} Degree Level`} isLoading={isSaving} size="lg">
       <div className="space-y-4">
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Name<span className="text-red-500 ml-1">*</span></label>
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Name<span className="text-red-500 ml-1">*</span></label>
           <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
             placeholder="e.g., Đại học" required disabled={isSaving} />
         </div>
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Display Order</label>
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Display Order</label>
           <input type="number" value={formData.displayOrder} onChange={(e) => setFormData({ ...formData, displayOrder: parseInt(e.target.value, 10) || 0 })}
             className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500" disabled={isSaving} />
         </div>

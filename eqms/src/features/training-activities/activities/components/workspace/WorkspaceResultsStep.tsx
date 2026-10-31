@@ -20,7 +20,7 @@ export function WorkspaceResultsStep({ table, absent, failed, canArrange, onArra
           <p className="min-w-0">
             {[absent > 0 ? `${absent} absent` : "", failed > 0 ? `${failed} did not pass` : ""].filter(Boolean).join(" and ")}: they are trained again in a separate list under the same Training Number (SOP.0003 5.3.7).
           </p>
-          {canArrange && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={onArrange}>Arrange supplementary training</Button>}
+          {canArrange && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={onArrange}>Arrange Supplementary Training</Button>}
         </div>
       )}
       {table}

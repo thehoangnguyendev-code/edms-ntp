@@ -129,7 +129,7 @@ export const PermissionToolbar: React.FC<PermissionToolbarProps> = ({
 
       {/* ── Mobile: Search + Filter button ── */}
       <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-        <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
+        <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
         <div className="flex items-center gap-2">
           <div className="flex-1 relative">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -166,7 +166,7 @@ export const PermissionToolbar: React.FC<PermissionToolbarProps> = ({
       <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
         {/* Search */}
         <div className="w-full">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
             Search
           </label>
           <div className="relative">

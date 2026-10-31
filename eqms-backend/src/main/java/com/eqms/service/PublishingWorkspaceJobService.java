@@ -20,6 +20,10 @@ public class PublishingWorkspaceJobService {
     private final PublishingWorkspaceJobRepository jobRepository;
     private final CurrentUserService currentUserService;
     private final AuditTrailService auditTrailService;
+    private PublishingCommandStore commandStore;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void configureCommandStore(PublishingCommandStore commandStore) { this.commandStore=commandStore; }
 
     public PublishingWorkspaceJobService(
             PublishingWorkspaceJobRepository jobRepository,
@@ -76,6 +80,7 @@ public class PublishingWorkspaceJobService {
                 buildQueuedSelectionChanges(request)
         );
 
+        java.util.Objects.requireNonNull(commandStore, "Publishing command store is required").savePreview(saved, request);
         return saved;
     }
 

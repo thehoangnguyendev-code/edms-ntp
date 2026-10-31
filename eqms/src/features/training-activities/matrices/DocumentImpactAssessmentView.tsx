@@ -4,7 +4,6 @@ import { IconCircleOpenArrowRight, IconListCheck, IconPhotoSensor } from "@table
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Badge } from "@/components/ui/badge/Badge";
-import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { RadioGroup } from "@/components/ui/radio";
@@ -19,6 +18,7 @@ import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/sh
 import { dictionaryApi } from "@/services/api/dictionary";
 import { trainingError, trainingFollowUpApi, type TrainingImpactContext, type TrainingImpactRow } from "@/services/api/trainingActivities";
 import { Textarea } from "../shared/TrainingFields";
+import { ImpactPositionsTable } from "./ImpactPositionsTable";
 import { useTrainingRowMenu } from "../shared/useTrainingRowMenu";
 import { STATUS_COLOR, STATUS_LABEL, statusChange, trainingBreadcrumbs, TRAINING_PAGES, when } from "../shared/trainingLabels";
 
@@ -35,13 +35,13 @@ const OUTCOME_LABEL: Record<string, string> = {
  * issued, the department assesses the training impact, names the Work Positions to be trained and updates the matrix). The assessment is signed. "Pending Matrix Update" ends by
  * itself when an effective matrix of the department contains the document.
  */
-export function DocumentTrainingsView() {
+export function DocumentImpactAssessmentView() {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [status, setStatus] = usePersistedState("training.documentTrainings.status", "OPEN");
+  const [status, setStatus] = usePersistedState("training.documentImpactAssessment.status", "OPEN");
   const [departments, setDepartments] = useState<{ label: string; value: string }[]>([]);
   const [departmentId, setDepartmentId] = useState("");
-  const [activityStatus, setActivityStatus] = usePersistedState("training.documentTrainings.activityStatus", "");
+  const [activityStatus, setActivityStatus] = usePersistedState("training.documentImpactAssessment.activityStatus", "");
   const [error, setError] = useState("");
   const [assessing, setAssessing] = useState<{ row: TrainingImpactRow; context: TrainingImpactContext }>();
   const [outcome, setOutcome] = useState("");
@@ -52,11 +52,11 @@ export function DocumentTrainingsView() {
   useEffect(() => { dictionaryApi.getDepartments().then((l) => setDepartments(l.map((d) => ({ label: d.name, value: d.id })))).catch(() => setDepartments([])); }, []);
 
   const fetcher = useCallback(
-    (params: Record<string, string | number | boolean | undefined>) => trainingFollowUpApi.documentTrainings(params).catch((e) => { setError(trainingError(e)); throw e; }),
+    (params: Record<string, string | number | boolean | undefined>) => trainingFollowUpApi.documentImpactAssessments(params).catch((e) => { setError(trainingError(e)); throw e; }),
     [],
   );
   const extra = useMemo(() => ({ departmentId: departmentId || undefined, status: status || undefined, activityStatus: activityStatus || undefined }), [departmentId, status, activityStatus]);
-  const table = useServerTable<TrainingImpactRow>({ persistKey: "training.documentTrainings", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "impactStatus", extraParams: extra, initialItemsPerPage: 10, syncToUrl: false });
+  const table = useServerTable<TrainingImpactRow>({ persistKey: "training.documentImpactAssessment", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "impactStatus", extraParams: extra, initialItemsPerPage: 10, syncToUrl: false });
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
   const open = async (row: TrainingImpactRow) => {
@@ -75,14 +75,15 @@ export function DocumentTrainingsView() {
 
   const columns: DataTableColumn<TrainingImpactRow>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "document", header: "Document", sort: sorted("documentNumber"), cell: (r) => <div className="max-w-80 whitespace-normal"><div className="font-medium text-slate-900">{r.documentNumber}</div><div className="text-xs text-slate-500">{r.documentName}</div></div> },
-    { id: "revision", header: "Revision", sort: sorted("revisionNumber"), cell: (r) => r.revisionNumber ?? "—" },
+    { id: "documentNumber", header: "Document Number", sort: sorted("documentNumber"), cell: (r) => <span className="font-medium text-slate-900">{r.documentNumber ?? "—"}</span> },
+    { id: "documentName", header: "Document Name", sort: sorted("documentName"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.documentName ?? "—"}</div> },
+    { id: "revision", header: "Revision Number", sort: sorted("revisionNumber"), cell: (r) => r.revisionNumber ?? "—" },
     { id: "training", header: "Training Number", sort: sorted("trainingNumber"), cell: (r) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/activities/${r.id}`)}>{r.trainingNumber}</button> },
     { id: "activity", header: "Training Status", sort: sorted("activityStatus"), cell: (r) => <Badge color={STATUS_COLOR[r.activityStatus] ?? "slate"}>{STATUS_LABEL[r.activityStatus] ?? r.activityStatus}</Badge> },
     { id: "impact", header: "Impact on the Matrix", sort: sorted("impactStatus"), cell: (r) => <Badge color={IMPACT_COLOR[r.impactStatus]}>{IMPACT_LABEL[r.impactStatus]}</Badge> },
     { id: "outcome", header: "Assessment", cell: (r) => (r.outcome ? <div className="max-w-72 whitespace-normal">{OUTCOME_LABEL[r.outcome]}<div className="text-xs text-slate-500">{r.assessedByName} · {when(r.assessedAt)}</div></div> : "—") },
   ];
-  const { layout, control } = useCustomColumnLayout("training.document.trainings", columns, rowMenu.action);
+  const { layout, control } = useCustomColumnLayout("training.document.impact.assessment", columns, rowMenu.action);
   const filters: ReportSelectFilter[] = [
     { id: "department", label: "Department", value: departmentId, options: [{ label: "My department", value: "" }, ...departments], onChange: (v) => { setDepartmentId(v); table.setCurrentPage(1); } },
     { id: "activityStatus", label: "Training Status", value: activityStatus, options: [{ label: "All statuses", value: "" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setActivityStatus(v); table.setCurrentPage(1); } },
@@ -106,7 +107,7 @@ export function DocumentTrainingsView() {
 
   return (
     <div className="flex h-full w-full min-w-0 flex-1 flex-col gap-4 md:gap-6">
-      <PageHeader title={TRAINING_PAGES.documentTrainings.title} breadcrumbItems={trainingBreadcrumbs(navigate, "documentTrainings")} />
+      <PageHeader title={TRAINING_PAGES.documentImpactAssessment.title} breadcrumbItems={trainingBreadcrumbs(navigate, "documentImpactAssessment")} />
       <p className="text-xs text-slate-500">When a document is issued or revised, the department assesses its effect on the training matrix, names the Work Positions that must be trained and updates the matrix (SOP.0003 5.3.1). Each assessment is signed.</p>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar
@@ -126,7 +127,7 @@ export function DocumentTrainingsView() {
       </ReportListToolbar>
       {rowMenu.node}
       <FormModal
-        isOpen={!!assessing && !signing} onClose={() => setAssessing(undefined)} title={`Impact of ${ctx?.documentNumber ?? "the document"} on the Training Matrix`} confirmText="Continue" size="xl" confirmDisabled={!ready}
+        isOpen={!!assessing && !signing} onClose={() => setAssessing(undefined)} title={`Impact of ${ctx?.documentNumber ?? "the document"} on the Training Matrix`} confirmText="Continue" size="3xl" confirmDisabled={!ready}
         description={ctx ? `${ctx.documentName ?? ""} · revision ${ctx.revisionNumber ?? "—"} · ${ctx.trainingNumber}` : undefined}
         onConfirm={() => setSigning(true)}
       >
@@ -142,21 +143,13 @@ export function DocumentTrainingsView() {
             <RadioGroup label="Result of the assessment" required name="impact-outcome" value={outcome} onChange={(v) => setOutcome(String(v))}
               options={[
                 { label: OUTCOME_LABEL.MATRIX_UPDATE_NEEDED, value: "MATRIX_UPDATE_NEEDED" },
-                { label: OUTCOME_LABEL.MATRIX_ALREADY_COVERS, value: "MATRIX_ALREADY_COVERS", disabled: !ctx.inEffectiveMatrix },
+                { label: OUTCOME_LABEL.MATRIX_ALREADY_COVERS, value: "MATRIX_ALREADY_COVERS", disabled: !ctx.inEffectiveMatrix, description: ctx.inEffectiveMatrix ? undefined : "Available only when the effective matrix already has this document." },
                 { label: OUTCOME_LABEL.NO_TRAINING_IMPACT, value: "NO_TRAINING_IMPACT" },
               ]} />
             {needsPositions && (
               <div className="space-y-1.5">
                 <p className="text-xs font-medium text-slate-700 sm:text-sm">Work Positions that must be trained on the document <span className="text-red-500">*</span></p>
-                <div className="grid max-h-56 grid-cols-1 gap-1 overflow-y-auto rounded-xl border border-slate-200 p-2 md:grid-cols-2">
-                  {ctx.positions.length === 0 && <p className="p-2 text-slate-500">The department has no Work Position.</p>}
-                  {ctx.positions.map((p) => (
-                    <label key={p.id} className="flex cursor-pointer items-center gap-2 rounded-lg p-1.5 hover:bg-emerald-50/50">
-                      <Checkbox checked={positionIds.includes(p.id)} onChange={(c) => setPositionIds(c ? [...positionIds, p.id] : positionIds.filter((x) => x !== p.id))} />
-                      <span>{p.name}</span>
-                    </label>
-                  ))}
-                </div>
+                <ImpactPositionsTable activityId={ctx.activityId} selected={positionIds} onChange={setPositionIds} />
                 <p className="text-xs text-slate-500">The matrix itself is then updated on the Training Matrix screen. This line stays "Pending Matrix Update" until an effective matrix has the document.</p>
               </div>
             )}

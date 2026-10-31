@@ -65,8 +65,8 @@ public class NotificationDispatcher {
     private final UserAccountRepository userAccountRepository;
     private final PermissionEvaluationService permissionEvaluationService;
     private final ObjectMapper objectMapper;
-    private final EmailNotificationService emailNotificationService;
     private final NotificationDispatchQueueRepository dispatchQueueRepository;
+    private final NotificationEmailOutbox emailOutbox;
 
     public NotificationDispatcher(
             NotificationEventDefinitionRepository eventRepository,
@@ -76,7 +76,7 @@ public class NotificationDispatcher {
             UserAccountRepository userAccountRepository,
             PermissionEvaluationService permissionEvaluationService,
             ObjectMapper objectMapper,
-            EmailNotificationService emailNotificationService,
+            NotificationEmailOutbox emailOutbox,
             NotificationDispatchQueueRepository dispatchQueueRepository
     ) {
         this.eventRepository = eventRepository;
@@ -86,7 +86,7 @@ public class NotificationDispatcher {
         this.userAccountRepository = userAccountRepository;
         this.permissionEvaluationService = permissionEvaluationService;
         this.objectMapper = objectMapper;
-        this.emailNotificationService = emailNotificationService;
+        this.emailOutbox = emailOutbox;
         this.dispatchQueueRepository = dispatchQueueRepository;
     }
 
@@ -170,8 +170,8 @@ public class NotificationDispatcher {
                         queueDeferredSend(policy, event.getCode(), recipient,
                                 NotificationTemplateVersion.CHANNEL_EMAIL, subject, body, deferredUntil);
                     } else {
-                        emailNotificationService.sendRenderedEmailWithTracking(
-                                recipient.getEmail(), subject, body, event.getCode(), moduleKey, recipientVariables);
+                        emailOutbox.enqueue(
+                                recipient.getEmail(), subject, body, event.getCode(), moduleKey, recipientVariables, mandatory);
                     }
                 }
             }

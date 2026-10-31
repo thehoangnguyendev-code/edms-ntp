@@ -19,6 +19,10 @@ import java.util.UUID;
 public class DistributedSchedulerLockService {
 
     private static final String PREFIX = "eqms:scheduler-lock:";
+    private static final DefaultRedisScript<Long> RENEW_IF_OWNER = new DefaultRedisScript<>(
+            "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('pexpire', KEYS[1], ARGV[2]) else return 0 end",
+            Long.class
+    );
     private static final DefaultRedisScript<Long> RELEASE_IF_OWNER = new DefaultRedisScript<>(
             "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
             Long.class
@@ -63,7 +67,7 @@ public class DistributedSchedulerLockService {
         private final StringRedisTemplate redis;
         private final String key;
         private final String owner;
-        private final boolean acquired;
+        private volatile boolean acquired;
 
         private SchedulerLease(StringRedisTemplate redis, String key, String owner, boolean acquired) {
             this.redis = redis;
@@ -84,15 +88,31 @@ public class DistributedSchedulerLockService {
             return acquired;
         }
 
+        /** Never extends another owner's lease; a failed renewal permanently loses this handle. */
+        public synchronized boolean renew(Duration ttl) {
+            if (!acquired || ttl == null || ttl.isNegative() || ttl.isZero()) return false;
+            if (redis == null) return true; // Explicit single-instance configuration only.
+            try {
+                acquired = Long.valueOf(1).equals(redis.execute(RENEW_IF_OWNER, List.of(key), owner,
+                        Long.toString(ttl.toMillis())));
+            } catch (RuntimeException unavailable) {
+                acquired = false;
+            }
+            return acquired;
+        }
+
         @Override
-        public void close() {
+        public synchronized void close() {
             if (!acquired || redis == null) {
+                acquired = false;
                 return;
             }
             try {
                 redis.execute(RELEASE_IF_OWNER, List.of(key), owner);
             } catch (RuntimeException ignored) {
                 // TTL remains the safe fallback if Redis is briefly unavailable.
+            } finally {
+                acquired = false;
             }
         }
     }

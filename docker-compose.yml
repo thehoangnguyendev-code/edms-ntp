@@ -315,6 +315,8 @@ services:
       TZ: Asia/Ho_Chi_Minh
       # DEV | TEST | PROD. Checked at startup and before every storage write (EnvironmentConfigurationValidator).
       APP_ENVIRONMENT: ${EQMS_ENVIRONMENT:-DEV}
+      # Dedicated 32-byte Base64 key; retain across restarts and on every backend instance.
+      APP_NOTIFICATIONS_OUTBOX_ENCRYPTION_KEY: ${NOTIFICATION_OUTBOX_ENCRYPTION_KEY:?NOTIFICATION_OUTBOX_ENCRYPTION_KEY is required}
       APP_BACKUP_AGENT_URL: http://backup-agent:5600
       APP_BACKUP_AGENT_TOKEN: ${BACKUP_AGENT_API_TOKEN:?BACKUP_AGENT_API_TOKEN is required}
       # maintenance window (SDS 11.5): the lock file is read only here; the pass secret signs the Super Administrator's pass

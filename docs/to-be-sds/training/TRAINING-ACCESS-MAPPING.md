@@ -16,7 +16,7 @@ until an Administrator assigns them (Security & Authorization), after QA approve
 | Approve training content and tests (chart: QM; text 5.3.5: head of QA) — see D-32 | `training.content.approve` (designated) | Training - Content Approve | Content Approver, QA Manager |
 | Trainer qualification: granted by QA on any topic | `training.trainer.qualified` | Training - Qualified Trainer | none; QA grants per person |
 | Trainer check (qualified, or exception) | `training.trainer.exception.approve` (designated) | Training - Exception Approve | QA Manager |
-| Print the paper pack | `training.paper.print` | Training - Organizer | Department Coordinator |
+| Print the paper pack and the numbered copies | `training.activity.conduct` or `training.activity.organize` (the permission `training.paper.print` was removed in V711, 2026-10-31) | Training - Trainer, Training - Organizer | Trainer, Department Coordinator |
 | Receive the attendance list and the results sent to QA (the revision is completed in Document Control after the list) | `training.attendance.receive` | the person who receives them (named by the profile, never by a position name in code) | DCO of QA |
 | Conduct training, record attendance | `training.activity.conduct` | Training - Trainer | Trainer |
 | Record assessment | `training.assessment.record` | Training - Trainer | Trainer |

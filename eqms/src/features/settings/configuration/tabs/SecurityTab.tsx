@@ -41,7 +41,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Length</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
               Minimum Password Length
             </label>
             <input
@@ -123,7 +123,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Complexity Limits</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
               Minimum Unique Characters
             </label>
             <input
@@ -137,7 +137,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
             <p className="text-xs text-slate-500 mt-1">Number of different characters required. 0 = not enforced.</p>
           </div>
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
               Maximum Repeated Characters in a Row
             </label>
             <input
@@ -173,7 +173,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
           </div>
           {config.enablePasswordExpiry && (
             <div className="ml-7">
-              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                 Password Expiry Period (Days)
               </label>
               <input
@@ -202,7 +202,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
             </p>
             {config.preventPasswordReuse && (
               <div className="ml-7 mt-3">
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                   Password History Count
                 </label>
                 <input
@@ -242,7 +242,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(config.sessionTimeoutEnabled ?? true) && <div>
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
               Session Timeout (Minutes)
             </label>
             <input
@@ -287,7 +287,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
             </p>
             {config.enableAccountLockout && (
               <div className="ml-7 mt-3">
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                   Maximum Login Attempts
                 </label>
                 <input

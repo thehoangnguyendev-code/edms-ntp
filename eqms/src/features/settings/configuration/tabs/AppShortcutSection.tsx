@@ -141,7 +141,7 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-4">
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
               Shortcut Icon
             </label>
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3">
@@ -202,7 +202,7 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
             <div>
               <label
                 htmlFor="app-short-name"
-                className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5"
+                className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize"
               >
                 Shortcut Label
               </label>

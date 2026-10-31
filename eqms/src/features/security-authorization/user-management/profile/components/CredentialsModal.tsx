@@ -45,7 +45,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
 
         {/* Employee ID */}
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-2">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-2 capitalize">
             Employee ID
           </label>
           <div className="flex items-center gap-2">
@@ -65,7 +65,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
 
         {/* Username */}
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-2">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-2 capitalize">
             Username
           </label>
           <div className="flex items-center gap-2">
@@ -85,7 +85,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
 
         {/* Password */}
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-2">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-2 capitalize">
             Temporary Password
           </label>
           <div className="flex items-center gap-2">

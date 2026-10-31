@@ -1,7 +1,7 @@
 import React from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Archive, BellRing, CalendarClock, GraduationCap, NotebookPen, Send, Timer, UserPlus } from "lucide-react";
+import { Archive, BellRing, CalendarClock, FileText, GraduationCap, NotebookPen, RotateCcw, Send, Timer, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { Button } from "@/components/ui/button/Button";
@@ -27,7 +27,7 @@ const NumberField: React.FC<{
   onChange: (value: number) => void;
 }> = ({ label, hint, value, min, max, fallback, disabled, onChange }) => (
   <div className="min-w-0">
-    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{label}</label>
     <input
       type="number"
       min={min}
@@ -52,9 +52,32 @@ const SETTING_TABS = [
   { id: "assessment", label: "Assessment", about: "How a test is marked, and by when the trainer must finish the training, which sends the results to QA. It is used when the trainer records the results of a training." },
   { id: "documents", label: "Document Training", about: "How training on a new or revised document is organised. A document that requires training always goes through Training Management; this is used when it is created in Document Control." },
   { id: "annual", label: "Annual & Retraining", about: "When the annual requirement is due, when a person who was away is retrained, and how long a person counts as a new employee. It is used by the training requirements, the training reviews and Training Compliance." },
-  { id: "reminders", label: "Review Reminders", about: "When the person who must close a training review, and the person who opened it, are reminded. A reminder is sent once a week." },
+  { id: "reminders", label: "Reminders", about: "When a person who has not signed a self-reading is reminded before the due date, and when the person who must close a training review, and the person who opened it, are reminded (once a week)." },
+  { id: "files", label: "File Names", about: "The name of the file a person downloads for each form (APD.0011, 0014, 0024, 0108, 0117, 0118). Write the name with variables in braces; the example shows the result. It is used every time a form is downloaded as Word or PDF." },
   { id: "retention", label: "Records Retention", about: "How long training records are kept. It is used when the records of a person who left are archived." },
 ] as const;
+
+const SAMPLE: Record<string, string> = { EMPLOYEE_CODE: "NT-0123", EMPLOYEE_NAME: "Nguyen-Van-An", DEPARTMENT: "Quality-Control", TRAINING_NUMBER: "TRN-QC-26-045", SESSION_NO: "01", MATRIX_CODE: "TM-QC", VERSION: "3", ISSUE_NO: "2", REQUEST_NO: "TR-QC-26-001", YEAR: "2026", DATE: "20261101" };
+
+/** The example while the pattern is typed (the server gives the exact one when it is saved): the same variables, with sample values. */
+export const previewFileName = (form: { form: string; defaultPattern: string }, pattern: string) => {
+  const code = `${form.form.replace(".BATCH", "")}.02`;
+  const make = (text: string) => text.replace(/\{([A-Z_]+)\}/g, (_m, name: string) => (name === "FILE_CODE" ? code : (SAMPLE[name] ?? ""))).replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, "-").replace(/^[-_.]+|[-_.]+$/g, "");
+  return `${make(pattern) || make(form.defaultPattern)}${form.form.endsWith("BATCH") ? ".zip" : ".pdf"}`;
+};
+
+/** A pattern that the server would refuse, said before saving. */
+export const fileNameProblem = (f: { pattern: string; variables: { name: string }[] }) => {
+  const p = f.pattern.trim();
+  if (!p) return "";
+  if (/[\\/:*?"<>|]/.test(p)) return "A file name cannot hold \\ / : * ? \" < > |";
+  const used = [...p.matchAll(/\{([A-Z_]+)\}/g)].map((m) => m[1]);
+  const unknown = used.find((n) => !f.variables.some((v) => v.name === n));
+  if (unknown) return `{${unknown}} is not a variable of this form`;
+  if (used.length === 0) return "The pattern needs at least one variable, otherwise every file has the same name";
+  if (/[{}]/.test(p.replace(/\{[A-Z_]+\}/g, ""))) return "A brace is not closed";
+  return "";
+};
 
 /** Settings are version-checked and changes are recorded in the Audit Trail. */
 export const TrainingPropertiesView: React.FC = () => {
@@ -97,6 +120,7 @@ export const TrainingPropertiesView: React.FC = () => {
   }, [load]);
 
   const isDirty = JSON.stringify(settings) !== JSON.stringify(original);
+  const hasFileNameProblem = Boolean(settings?.downloadFileNames.some((f) => fileNameProblem(f)));
   // A change made by someone else refreshes the values, but never over what the person is typing.
   const unsaved = React.useRef(false);
   unsaved.current = isDirty;
@@ -125,6 +149,11 @@ export const TrainingPropertiesView: React.FC = () => {
         resultsDueDayType: settings.resultsDueDayType,
         initialTrainingDays: settings.initialTrainingDays,
         warnScheduledAfterDue: settings.warnScheduledAfterDue,
+        selfReadingReminderFirstDays: settings.selfReadingReminderFirstDays,
+        selfReadingReminderSecondDays: settings.selfReadingReminderSecondDays,
+        makeupReminderDays: settings.makeupReminderDays,
+        // only the forms whose pattern was changed are sent; the default pattern is sent as empty (the default is then used)
+        downloadFileNames: Object.fromEntries(settings.downloadFileNames.filter((f) => f.pattern !== original?.downloadFileNames.find((o) => o.form === f.form)?.pattern).map((f) => [f.form, f.pattern === f.defaultPattern ? "" : f.pattern])),
         version: settings.version,
       });
       setSettings(saved);
@@ -166,7 +195,7 @@ export const TrainingPropertiesView: React.FC = () => {
             onChange={(v) => patch({ resultsDueDays: v })}
           />
           <div className="mt-4 min-w-0">
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Which days are counted</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Which days are counted</label>
             <Select
               value={settings.resultsDueDayType}
               enableSearch={false}
@@ -269,6 +298,41 @@ export const TrainingPropertiesView: React.FC = () => {
       </div>
     ),
     reminders: (
+      <div className="space-y-4">
+      <FormSection title="Self-reading Reminders" icon={<BellRing className="h-4 w-4" />}>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <NumberField
+            label="First reminder: days before the due date"
+            hint="Every invited person who has not read and signed a self-reading receives an e-mail and a notice this many days before the due date of the training. Must be more than the second reminder."
+            value={settings.selfReadingReminderFirstDays}
+            min={1}
+            max={30}
+            fallback={3}
+            disabled={!canManage}
+            onChange={(v) => patch({ selfReadingReminderFirstDays: v })}
+          />
+          <NumberField
+            label="Second reminder: days before the due date"
+            hint="The same reminder once more, closer to the due date. The trainer can also remind one person at any time with Send Reminder in the Reading step."
+            value={settings.selfReadingReminderSecondDays}
+            min={1}
+            max={30}
+            fallback={1}
+            disabled={!canManage}
+            onChange={(v) => patch({ selfReadingReminderSecondDays: v })}
+          />
+          <NumberField
+            label="Make-up reminder: days after the due date"
+            hint="SOP.0003 5.3.7 leaves the rescheduling of an absent person to the organizer. This many days after the due date of a training, and every week after, the organizer is told of each person still absent whom no supplementary training lists. People who left the company or are suspended are not chased."
+            value={settings.makeupReminderDays}
+            min={1}
+            max={365}
+            fallback={14}
+            disabled={!canManage}
+            onChange={(v) => patch({ makeupReminderDays: v })}
+          />
+        </div>
+      </FormSection>
       <FormSection title="Training Review Reminders" icon={<BellRing className="h-4 w-4" />}>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <NumberField
@@ -293,6 +357,43 @@ export const TrainingPropertiesView: React.FC = () => {
           />
         </div>
       </FormSection>
+      </div>
+    ),
+    files: (
+      <div className="space-y-4">
+        {settings.downloadFileNames.map((f) => (
+          <FormSection key={f.form} title={f.label} icon={<FileText className="h-4 w-4" />}>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-end">
+              <div className="min-w-0">
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5" htmlFor={`file-name-${f.form}`}>File name pattern</label>
+                <input
+                  id={`file-name-${f.form}`}
+                  type="text"
+                  maxLength={200}
+                  disabled={!canManage}
+                  value={f.pattern}
+                  onChange={(e) => patch({ downloadFileNames: settings.downloadFileNames.map((x) => (x.form === f.form ? { ...x, pattern: e.target.value, example: previewFileName(x, e.target.value) } : x)) })}
+                  className="w-full h-9 px-3.5 text-sm font-mono border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
+                />
+              </div>
+              {canManage && (
+                <Button size="sm" variant="outline-emerald" disabled={f.pattern === f.defaultPattern} onClick={() => patch({ downloadFileNames: settings.downloadFileNames.map((x) => (x.form === f.form ? { ...x, pattern: x.defaultPattern, example: previewFileName(x, x.defaultPattern) } : x)) })}>
+                   Default
+                </Button>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-slate-500">Example: <span className="font-mono text-slate-800" data-testid={`file-name-example-${f.form}`}>{f.example}</span></p>
+            <p className="mt-1 text-xs text-slate-500">
+              Variables:{" "}
+              {f.variables.map((v) => (
+                <span key={v.name} title={v.meaning} className="mr-1.5 inline-block rounded bg-slate-100 px-1.5 py-0.5 font-mono text-slate-700">{`{${v.name}}`}</span>
+              ))}
+            </p>
+            {fileNameProblem(f) && <p className="mt-1 text-xs text-red-600" role="alert">{fileNameProblem(f)}</p>}
+          </FormSection>
+        ))}
+        <p className="text-xs text-slate-500">Accents are taken out, a blank becomes "-", and the characters \ / : * ? " &lt; &gt; | never appear in a name. A name is at most 120 characters. An empty pattern brings back the default.</p>
+      </div>
     ),
     retention: (
       <FormSection title="Records Retention" icon={<Archive className="h-4 w-4" />}>
@@ -317,7 +418,7 @@ export const TrainingPropertiesView: React.FC = () => {
         breadcrumbItems={trainingProperties(navigate)}
         actions={
           settingTab && canManage && settings ? (
-            <Button size="sm" variant="outline-emerald" disabled={!isDirty || saving} onClick={() => setShowSaveModal(true)}>
+            <Button size="sm" variant="outline-emerald" disabled={!isDirty || saving || hasFileNameProblem} onClick={() => setShowSaveModal(true)}>
               Save Changes
             </Button>
           ) : undefined

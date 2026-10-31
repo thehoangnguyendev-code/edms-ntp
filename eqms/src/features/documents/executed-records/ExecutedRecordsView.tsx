@@ -306,7 +306,7 @@ export const ExecutedRecordsView: React.FC = () => {
         <div className="p-4 md:p-5 flex-1 flex flex-col">
           <div className="flex flex-col w-full">
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -343,7 +343,7 @@ export const ExecutedRecordsView: React.FC = () => {
             >
               <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
                 <div>
-                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Search</label>
+                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input

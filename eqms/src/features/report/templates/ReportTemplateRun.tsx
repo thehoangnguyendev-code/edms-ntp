@@ -160,7 +160,7 @@ export function ReportTemplateRun({
         title={template.displayName}
         description={`Template v${template.definitionVersion}. Preview is indicative; generation creates a new server snapshot.`}
       >
-        <label className="mb-5 block text-sm font-medium text-slate-700">
+        <label className="mb-5 block text-sm font-medium text-slate-700 capitalize">
           Report name <span className="text-red-600">*</span>
           <Input
             className="mt-1.5 h-9 w-full rounded-lg border border-slate-200 px-3 text-sm"
@@ -195,7 +195,7 @@ export function ReportTemplateRun({
                   />
                 ) : (
                   <div key={field.code} className="sm:col-span-2">
-                    <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700 capitalize">
                       {field.name}
                     </label>
                     <SearchInput

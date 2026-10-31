@@ -248,7 +248,8 @@ public class TrainingRecordExportBatchService {
             if (!sha256(bytes).equals(b.get("sha256"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXPORT_INTEGRITY_FAILED");
             String department = departmentName((UUID) b.get("department_id"));
             audit.logAs(actor, TYPE, "Batch export of training records, " + department + " " + b.get("year"), id, "TRAINING_RECORD_EXPORT_BATCH_DOWNLOADED", null, null, "Downloaded");
-            return Map.of("bytes", bytes, "name", "training-records-" + safe(department) + "-" + b.get("year") + ".zip");
+            return Map.of("bytes", bytes, "name", new TrainingFileNames(jdbc).name("APD.0014.BATCH", TrainingAnnexContract.fullCode("APD.0014", revisionOfForm()),
+                    Map.of("DEPARTMENT", String.valueOf(department), "YEAR", String.valueOf(b.get("year")))) + ".zip");
         } catch (IOException ex) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TRAINING_FILE_UNAVAILABLE");
         }
@@ -256,6 +257,11 @@ public class TrainingRecordExportBatchService {
 
     private Map<String, Object> lock(UUID id) {
         return jdbc.queryForList("select * from training_record_export_batches where id = ? for update", id).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+    }
+
+    /** The revision of the form APD.0014 in force (the code of the file is APD.0014.02); empty when no template is enabled. */
+    private String revisionOfForm() {
+        return jdbc.queryForList("select version_label from training_form_templates where code = 'APD.0014' and status = 'ENABLED' order by activated_at desc limit 1", String.class).stream().findFirst().orElse("");
     }
 
     private static String safe(String value) { return value == null ? "x" : value.replaceAll("[^A-Za-z0-9._-]+", "-"); }

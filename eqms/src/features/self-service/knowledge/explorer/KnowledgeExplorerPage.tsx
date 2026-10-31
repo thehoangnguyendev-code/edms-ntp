@@ -219,7 +219,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
     go(parent);
   }, [parent, go, searchInput]);
 
-  useEffect(() => { scrollRef.current?.scrollTo?.({ top: 0 }); }, [navKey(nav), searchTerm]);
+  useEffect(() => { scrollRef.current?.scrollTo?.({ top: 0, behavior: "instant" }); }, [navKey(nav), searchTerm]);
 
   // ---- what is on screen ------------------------------------------------------------------
   const trimmedSearch = searchInput.trim();

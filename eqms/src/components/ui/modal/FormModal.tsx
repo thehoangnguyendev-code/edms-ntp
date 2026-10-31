@@ -18,7 +18,7 @@ export interface FormModalProps {
   isLoading?: boolean;
   confirmDisabled?: boolean;
   showCancel?: boolean;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
   confirmVariant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   showFooter?: boolean;
   footerLeft?: React.ReactNode;
@@ -33,6 +33,7 @@ const sizeToClass: Record<NonNullable<FormModalProps['size']>, string> = {
   lg: 'max-w-lg',
   xl: 'max-w-2xl',
   '2xl': 'max-w-3xl',
+  '3xl': 'max-w-5xl',
 };
 
 export const FormModal: React.FC<FormModalProps> = ({

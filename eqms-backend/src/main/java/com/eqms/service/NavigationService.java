@@ -114,7 +114,10 @@ public class NavigationService {
             List<NavigationItemResponse> trainingChildren = new ArrayList<>();
             // My Training stands alone at the top: it is the page every person uses. The other pages are grouped by what they are for.
             if (hasPermission(normalizedPermissions, "training.self.view")) {
-                trainingChildren.add(new NavigationItemResponse("my-training", "My Training", null, "/training-management/my-training", false, null));
+                List<NavigationItemResponse> mine = new ArrayList<>();
+                mine.add(new NavigationItemResponse("my-tasks", "My Tasks", null, "/training-management/my-training/tasks", false, null));
+                mine.add(new NavigationItemResponse("my-records", "My Records", null, "/training-management/my-training/records", false, null));
+                trainingChildren.add(new NavigationItemResponse("my-training", "My Training", null, null, false, mine));
             }
             List<NavigationItemResponse> planning = new ArrayList<>();
             if (hasPermission(normalizedPermissions, "training.requirement.view")) {
@@ -130,7 +133,7 @@ public class NavigationService {
                 planning.add(new NavigationItemResponse("training-assessments", "Training Assessments", null, "/training-management/assessments", false, null));
             }
             if (hasPermission(normalizedPermissions, "training.matrix.view")) {
-                planning.add(new NavigationItemResponse("training-document-trainings", "Document Trainings", null, "/training-management/document-trainings", false, null));
+                planning.add(new NavigationItemResponse("training-document-impact-assessment", "Document Impact Assessment", null, "/training-management/document-impact-assessment", false, null));
             }
             if (!planning.isEmpty()) {
                 trainingChildren.add(new NavigationItemResponse("training-planning", "Training Programme", null, null, false, planning));

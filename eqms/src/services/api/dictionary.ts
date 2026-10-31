@@ -281,8 +281,8 @@ const pendingRetentionPoliciesRequests = new Map<string, Promise<RetentionPolicy
 const pendingLanguagesRequests = new Map<string, Promise<{ label: string; value: string }[]>>();
 
 export const dictionaryApi = {
-  getBusinessUnitsPage: async (params: DictionaryListParams): Promise<PageResponse<BusinessUnitItem>> => {
-    const response = await api.get<PageResponse<ApiBusinessUnit>>('/settings/dictionaries/business-units/page', { params });
+  getBusinessUnitsPage: async (params: DictionaryListParams, signal?: AbortSignal): Promise<PageResponse<BusinessUnitItem>> => {
+    const response = await api.get<PageResponse<ApiBusinessUnit>>('/settings/dictionaries/business-units/page', { params, signal });
     return {
       data: response.data.data.map(mapBusinessUnit),
       pagination: response.data.pagination,
@@ -333,8 +333,8 @@ export const dictionaryApi = {
     return request;
   },
 
-  getDepartmentsPage: async (params: DepartmentDictionaryListParams): Promise<PageResponse<DepartmentItem>> => {
-    const response = await api.get<PageResponse<ApiDepartment>>('/settings/dictionaries/departments/page', { params });
+  getDepartmentsPage: async (params: DepartmentDictionaryListParams, signal?: AbortSignal): Promise<PageResponse<DepartmentItem>> => {
+    const response = await api.get<PageResponse<ApiDepartment>>('/settings/dictionaries/departments/page', { params, signal });
     return {
       data: response.data.data.map(mapDepartment),
       pagination: response.data.pagination,
@@ -370,8 +370,8 @@ export const dictionaryApi = {
     return request;
   },
 
-  getPositionsPage: async (params: PositionDictionaryListParams): Promise<PageResponse<PositionItem>> => {
-    const response = await api.get<PageResponse<ApiPosition>>('/settings/dictionaries/positions/page', { params });
+  getPositionsPage: async (params: PositionDictionaryListParams, signal?: AbortSignal): Promise<PageResponse<PositionItem>> => {
+    const response = await api.get<PageResponse<ApiPosition>>('/settings/dictionaries/positions/page', { params, signal });
     return {
       data: response.data.data.map(mapPosition),
       pagination: response.data.pagination,
@@ -422,8 +422,8 @@ export const dictionaryApi = {
     return request;
   },
 
-  getSubTypesPage: async (params: DocumentSubTypeDictionaryListParams): Promise<PageResponse<DocumentSubTypeItem>> => {
-    const response = await api.get<PageResponse<ApiDocumentSubType>>('/documents/administration/document-sub-types/page', { params });
+  getSubTypesPage: async (params: DocumentSubTypeDictionaryListParams, signal?: AbortSignal): Promise<PageResponse<DocumentSubTypeItem>> => {
+    const response = await api.get<PageResponse<ApiDocumentSubType>>('/documents/administration/document-sub-types/page', { params, signal });
     return {
       data: response.data.data.map(mapDocumentSubType),
       pagination: response.data.pagination,
@@ -440,8 +440,8 @@ export const dictionaryApi = {
     return mapDocumentSubType(response.data);
   },
 
-  getDocumentTypesPage: async (params: DictionaryListParams): Promise<PageResponse<DocumentTypeItem>> => {
-    const response = await api.get<PageResponse<ApiDocumentType>>('/documents/administration/document-types/page', { params });
+  getDocumentTypesPage: async (params: DictionaryListParams, signal?: AbortSignal): Promise<PageResponse<DocumentTypeItem>> => {
+    const response = await api.get<PageResponse<ApiDocumentType>>('/documents/administration/document-types/page', { params, signal });
     return {
       data: response.data.data.map(mapDocumentType),
       pagination: response.data.pagination,
@@ -473,8 +473,8 @@ export const dictionaryApi = {
     return request;
   },
 
-  getStorageLocationsPage: async (params: DictionaryListParams): Promise<PageResponse<StorageLocationItem>> => {
-    const response = await api.get<PageResponse<ApiStorageLocation>>('/settings/dictionaries/storage-locations/page', { params });
+  getStorageLocationsPage: async (params: DictionaryListParams, signal?: AbortSignal): Promise<PageResponse<StorageLocationItem>> => {
+    const response = await api.get<PageResponse<ApiStorageLocation>>('/settings/dictionaries/storage-locations/page', { params, signal });
     return {
       data: response.data.data.map(mapStorageLocation),
       pagination: response.data.pagination,
@@ -528,8 +528,8 @@ export const dictionaryApi = {
     return request;
   },
 
-  getRetentionPoliciesPage: async (params: DictionaryListParams): Promise<PageResponse<RetentionPolicyItem>> => {
-    const response = await api.get<PageResponse<ApiRetentionPolicy>>('/settings/dictionaries/retention-policies/page', { params });
+  getRetentionPoliciesPage: async (params: DictionaryListParams, signal?: AbortSignal): Promise<PageResponse<RetentionPolicyItem>> => {
+    const response = await api.get<PageResponse<ApiRetentionPolicy>>('/settings/dictionaries/retention-policies/page', { params, signal });
     return {
       data: response.data.data.map(mapRetentionPolicy),
       pagination: response.data.pagination,

@@ -182,7 +182,7 @@ export function PageBackgroundEditor({
           )}
           {draft.mode === 'radial' && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{(['centerX', 'centerY'] as const).map((key) => <div key={key} className="text-sm text-slate-700">{key === 'centerX' ? 'Center horizontal' : 'Center vertical'} ({draft[key] ?? 50}%)<Slider label={key === 'centerX' ? 'Center horizontal' : 'Center vertical'} value={draft[key] ?? 50} onChange={(value) => patch({ [key]: value })} /></div>)}</div>}
           {(draft.mode === "linear" || draft.mode === "conic") && (
-            <label className="block text-xs font-medium text-slate-700 sm:text-sm">
+            <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">
               Angle (0–360°)
               <input
                 type="number"

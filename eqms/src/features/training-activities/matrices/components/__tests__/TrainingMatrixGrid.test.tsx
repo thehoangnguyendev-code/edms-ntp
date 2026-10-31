@@ -75,13 +75,14 @@ describe("TrainingMatrixGrid (APD.0011 layout)", () => {
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   });
 
-  it("drags the matrix horizontally without taking over checkbox clicks", () => {
+  it("drags the matrix horizontally without taking over checkbox clicks", async () => {
     const onToggle = vi.fn();
     render(<TrainingMatrixGrid rows={rows} positions={positions} editing onToggle={onToggle} onAnnual={vi.fn()} onRemove={vi.fn()} />);
     const scroller = screen.getByRole("table").parentElement as HTMLDivElement;
     fireEvent.mouseDown(scroller, { button: 0, clientX: 300, clientY: 10 });
     fireEvent.mouseMove(scroller, { clientX: 200, clientY: 10 });
-    expect(scroller.scrollLeft).toBe(100);
+    // the hook writes the scroll position once per paint (requestAnimationFrame)
+    await waitFor(() => expect(scroller.scrollLeft).toBe(100));
     expect(scroller.className).toContain("cursor-grabbing");
     fireEvent.mouseUp(scroller, { clientX: 200, clientY: 10 });
     fireEvent.click(scroller);

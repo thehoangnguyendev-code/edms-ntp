@@ -1943,6 +1943,12 @@ public class RevisionService {
 
     @Transactional
     public RevisionDetailResponse publishRevision(UUID revisionId, RevisionWorkflowActionRequest request, UserAccount currentUser) {
+        return publishRevisionWithConfirmation(revisionId, request, currentUser, null);
+    }
+
+    @Transactional
+    RevisionDetailResponse publishRevisionWithConfirmation(UUID revisionId, RevisionWorkflowActionRequest request,
+            UserAccount currentUser, ConfirmedPublishAuthorization confirmation) {
         if (currentUser == null) {
             currentUser = currentUserService.requireCurrentUser();
         }
@@ -1959,7 +1965,8 @@ public class RevisionService {
         );
         DocumentRecord document = requireDocument(revision.getDocument().getId());
         requireDocumentActiveForPublish(document);
-        UUID signatureSessionId = requireValidSignatureToken(request, currentUser, "publish");
+        if (confirmation != null) confirmation.require(currentUser.getId(), revisionId);
+        UUID signatureSessionId = confirmation == null ? requireValidSignatureToken(request, currentUser, "publish") : confirmation.confirmationId;
         validatePublishableRevision(revision);
 
         RelatedPublishBatchResolution batchResolution = resolveRelatedPublishBatch(document);
@@ -1975,6 +1982,7 @@ public class RevisionService {
         // Batch publishing never grants authority the actor does not already hold: each
         // Related Document is checked exactly as if it were being published on its own.
         for (DocumentRevisionRecord relatedRevision : relatedRevisionsToPublish) {
+            if (confirmation != null) confirmation.require(currentUser.getId(), relatedRevision.getId());
             revisionWorkflowAuthorizationService.require(
                     currentUser,
                     relatedRevision,
@@ -2013,12 +2021,35 @@ public class RevisionService {
                     request == null ? null : request.signatureToken(),
                     resolution.date(),
                     effectiveDateRuleText,
-                    siblingLabels
+                    siblingLabels,
+                    confirmation
             );
             notifyKnowledgeSubscribers(member);
         }
 
         return toDetailResponse(revision);
+    }
+
+    /** Locks and snapshots the exact related publication bundle; no signature is applied here. */
+    @Transactional
+    Map<UUID, String> capturePublishConfirmationBundle(UUID revisionId, UserAccount actor) {
+        var revision = requireRevisionForUpdate(revisionId);
+        var resolution = resolveRelatedPublishBatch(requireDocument(revision.getDocument().getId()));
+        if (!resolution.blocking().isEmpty()) throw new IllegalStateException("Related documents are not ready for publishing");
+        var bundle = new java.util.ArrayList<DocumentRevisionRecord>();
+        bundle.add(revision);
+        bundle.addAll(resolution.ready());
+        Map<UUID, String> snapshot = new java.util.TreeMap<>();
+        for (var candidate : bundle) {
+            var member = requireRevisionForUpdate(candidate.getId());
+            revisionWorkflowAuthorizationService.require(actor, member, RevisionWorkflowAction.PUBLISH,
+                    com.eqms.dto.security.RevisionWorkflowAuthorizationContext.of(member));
+            requireDocumentActiveForPublish(member.getDocument());
+            validatePublishableRevision(member);
+            snapshot.put(member.getId(), member.getRevisionNumber() + ":" + member.getSourceFileChecksum()
+                    + ":" + member.getSourceStorageVersionId());
+        }
+        return snapshot;
     }
 
     @Transactional
@@ -2482,7 +2513,8 @@ public class RevisionService {
             String signatureToken,
             LocalDate effectiveDate,
             String effectiveDateRuleText,
-            List<String> batchMemberLabels
+            List<String> batchMemberLabels,
+            ConfirmedPublishAuthorization confirmation
     ) {
         String fromStatus = revision.getStatus() == null ? null : revision.getStatus().getCode();
         String promotedVersion = promoteToNextMajorVersion(revision.getRevisionNumber());
@@ -2579,7 +2611,10 @@ public class RevisionService {
                 currentUser,
                 signatureSessionId
         );
-        electronicSignatureService.createRevisionSignature(
+        if (confirmation != null) {
+            electronicSignatureService.createConfirmedPublishSignature(revision, currentUser, comment,
+                    fromStatus, revision.getSourceFileChecksum(), confirmation);
+        } else electronicSignatureService.createRevisionSignature(
                 revision,
                 currentUser,
                 signatureToken,

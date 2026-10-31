@@ -8,7 +8,7 @@ const ReadOnlyField: React.FC<{
   value?: string | number | null;
 }> = ({ label, value }) => (
   <div className="flex min-w-0 flex-col gap-1.5">
-    <label className="text-xs font-medium text-slate-700 sm:text-sm">
+    <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">
       {label}
     </label>
     <input

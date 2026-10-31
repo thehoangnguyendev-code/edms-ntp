@@ -63,7 +63,7 @@ const EmployeeIdField: React.FC<EmployeeIdFieldProps> = ({ value, draftValue, is
 
   return (
     <div className="min-w-0">
-      <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+      <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
         Employee ID <span className="text-red-500">*</span>
       </label>
       <div className="relative">

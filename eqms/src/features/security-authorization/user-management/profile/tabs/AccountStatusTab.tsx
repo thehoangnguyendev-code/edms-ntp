@@ -63,7 +63,7 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
       <div>
         <div className="grid grid-cols-1 gap-y-5">
           <div>
-            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
               Account Status <span className="text-red-500">*</span>
             </label>
             <Select
@@ -76,7 +76,7 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
             {statusError && <p className="text-xs text-red-600 mt-1.5">{statusError}</p>}
           </div>
           <div>
-            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Home Page</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Home Page</label>
             <p className="text-xs text-slate-500 mb-2">Where this user lands immediately after logging in.</p>
             <Select
               label=""
@@ -117,7 +117,7 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
         <InfoField label="Last Login" value={user.lastLogin !== "Never" ? user.lastLogin : "Never logged in"} />
         {isEditingProfile && canEdit ? (
           <div className="md:col-span-2">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Home Page</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Home Page</label>
             <p className="text-xs text-slate-500 mb-2">Where this user lands immediately after logging in.</p>
             <Select
               label=""

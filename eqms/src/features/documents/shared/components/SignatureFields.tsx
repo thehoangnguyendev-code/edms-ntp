@@ -76,7 +76,7 @@ export const SignatureFields: React.FC<SignatureFieldsProps> = ({
         {displayRecords.map((record, index) => (
           <React.Fragment key={`${record.actionBy}-${index}`}>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
                 {record.actionBy}
               </label>
               <input
@@ -89,7 +89,7 @@ export const SignatureFields: React.FC<SignatureFieldsProps> = ({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
                 {record.actionOn}
               </label>
               <input

@@ -125,7 +125,7 @@ export const ROUTES = {
     ACTIVITY_DETAIL: (activityId: string) => `/training-management/activities/${activityId}`,
     MATRIX: '/training-management/matrix',
     ASSESSMENTS: '/training-management/assessments',
-    DOCUMENT_TRAININGS: '/training-management/document-trainings',
+    DOCUMENT_IMPACT_ASSESSMENT: '/training-management/document-impact-assessment',
     RECORDS: '/training-management/records',
     NUMBER_LOG: '/training-management/number-log',
     COMPLIANCE: '/training-management/compliance',
@@ -136,6 +136,8 @@ export const ROUTES = {
     JOB_ASSIGNMENTS: '/training-management/job-assignments',
     PERSONNEL_REVIEWS: '/training-management/personnel-reviews',
     MY_TRAINING: '/training-management/my-training',
+    MY_TASKS: '/training-management/my-training/tasks',
+    MY_RECORDS: '/training-management/my-training/records',
   },
 
   // Report

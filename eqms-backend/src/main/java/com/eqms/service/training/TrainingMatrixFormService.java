@@ -42,8 +42,12 @@ public class TrainingMatrixFormService {
     private static final String W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
     /** The width of the table in the template, in twentieths of a point. */
     private static final int GRID = 9628;
-    /** From this many positions the names of the positions are written upwards so that the columns can be narrow. */
-    private static final int UPRIGHT_LIMIT = 6;
+    /** The width of the writing area of a landscape A4 page of the template, in twentieths of a point. */
+    private static final int GRID_LANDSCAPE = 14560;
+    /** From this many positions the page is turned to landscape: the table is too wide for a portrait page. */
+    private static final int LANDSCAPE_LIMIT = 6;
+    /** From this many positions the names of the positions are written upwards (even on a landscape page) so that the columns can be narrow. */
+    private static final int UPRIGHT_LIMIT = 12;
     /** The properties of the table of the template: the whole width of the page and single borders. */
     private static final String TBL_PR = "<w:tblPr><w:tblW w:w=\"5000\" w:type=\"pct\"/><w:tblBorders><w:top w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:left w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/>"
             + "<w:bottom w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:right w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:insideH w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/>"
@@ -87,7 +91,8 @@ public class TrainingMatrixFormService {
         }
         audit.logAs(actor, "TRAINING_MATRIX", v.get("matrixCode") + " v" + v.get("versionNo"), versionId, "TRAINING_MATRIX_PRINTED", null, null,
                 ("pdf".equalsIgnoreCase(format) ? "PDF" : "Word") + ", form " + TEMPLATE_CODE + " " + template.versionLabel() + ", template SHA-256 " + template.sha256());
-        return templates.file(docx, format, v.get("matrixCode") + "-v" + v.get("versionNo") + "-" + TEMPLATE_CODE);
+        return templates.file(docx, format, templates.fileName(TEMPLATE_CODE, TEMPLATE_CODE, template.versionLabel(),
+                Map.of("MATRIX_CODE", String.valueOf(v.get("matrixCode")), "VERSION", String.valueOf(v.get("versionNo")), "DEPARTMENT", String.valueOf(v.get("departmentName")))));
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ the form
@@ -102,6 +107,7 @@ public class TrainingMatrixFormService {
                     try {
                         XmlCursor made = XmlObject.Factory.parse(table(v)).newCursor();
                         made.toFirstChild();
+                        if (landscape(v)) turnToLandscape(doc);
                         made.moveXml(marker.newCursor());
                     } catch (XmlException e) {
                         throw new IllegalStateException("TRAINING_PRINT_FAILED", e);
@@ -171,6 +177,7 @@ public class TrainingMatrixFormService {
             // the table of the form is replaced by the one made: the new one is moved in front of the old one, and the old one is removed
             XmlCursor made = XmlObject.Factory.parse(table(v)).newCursor();
             made.toFirstChild();
+            if (landscape(v)) turnToLandscape(doc);
             XmlCursor old = matrix.getCTTbl().newCursor();
             made.moveXml(old);
             old.removeXml();
@@ -223,6 +230,24 @@ public class TrainingMatrixFormService {
 
     // ------------------------------------------------------------------------------------------------------------------------------ the table
 
+    @SuppressWarnings("unchecked")
+    private static boolean landscape(Map<String, Object> v) {
+        return ((List<Map<String, Object>>) v.get("positions")).size() > LANDSCAPE_LIMIT;
+    }
+
+    /** A matrix with many Work Positions does not fit a portrait page: the page of the form is turned (A4 landscape), once. */
+    static void turnToLandscape(XWPFDocument doc) {
+        org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr section = doc.getDocument().getBody().isSetSectPr() ? doc.getDocument().getBody().getSectPr() : doc.getDocument().getBody().addNewSectPr();
+        org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz size = section.isSetPgSz() ? section.getPgSz() : section.addNewPgSz();
+        java.math.BigInteger w = size.getW() == null ? java.math.BigInteger.valueOf(11906) : (java.math.BigInteger) size.getW();
+        java.math.BigInteger h = size.getH() == null ? java.math.BigInteger.valueOf(16838) : (java.math.BigInteger) size.getH();
+        if (w.compareTo(h) < 0) {
+            size.setW(h);
+            size.setH(w);
+        }
+        size.setOrient(org.openxmlformats.schemas.wordprocessingml.x2006.main.STPageOrientation.LANDSCAPE);
+    }
+
     /** The table of the matrix: the heading of the template (two rows, the positions under "Work position"), then the rows of the matrix under the heading of their group. */
     @SuppressWarnings("unchecked")
     private static String table(Map<String, Object> v) throws XmlException {
@@ -230,6 +255,7 @@ public class TrainingMatrixFormService {
         List<Map<String, Object>> rows = (List<Map<String, Object>>) v.get("rows");
         int n = Math.max(positions.size(), 1);
         boolean upright = n > UPRIGHT_LIMIT;
+        int grid_ = landscape(v) ? GRID_LANDSCAPE : GRID;
         // widths in fiftieths of a percent of the page (5000 = all of it): No., SOP, subject, the positions share the rest, annual
         int no = 400, sop = 1000, annual = 700;
         int free = 5000 - no - sop - annual;
@@ -242,7 +268,7 @@ public class TrainingMatrixFormService {
         for (int i = 0; i < n; i++) widths[3 + i] = each;
         widths[n + 3] = 5000 - no - sop - subject - each * n;
         StringBuilder grid = new StringBuilder("<w:tblGrid>");
-        for (int w : widths) grid.append("<w:gridCol w:w=\"").append(w * GRID / 5000).append("\"/>");
+        for (int w : widths) grid.append("<w:gridCol w:w=\"").append(w * grid_ / 5000).append("\"/>");
         grid.append("</w:tblGrid>");
 
         StringBuilder x = new StringBuilder("<w:tbl xmlns:w=\"" + W + "\">");

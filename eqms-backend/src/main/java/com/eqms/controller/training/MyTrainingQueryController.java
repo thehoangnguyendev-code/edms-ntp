@@ -16,6 +16,11 @@ public class MyTrainingQueryController {
         this.users = users;
     }
 
+    @GetMapping("/counts")
+    public Map<String, Object> counts() {
+        return queries.counts(users.requireCurrentUser());
+    }
+
     @GetMapping("/{kind}/table")
     public Map<String, Object> list(@PathVariable String kind, @RequestParam Map<String, String> params) {
         return queries.list(users.requireCurrentUser(), kind, params);

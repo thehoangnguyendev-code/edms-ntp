@@ -186,7 +186,8 @@ public class TrainingRecordExportService {
             byte[] bytes = files.readReportArtifact(String.valueOf(e.get("provider")), String.valueOf(e.get("stored_path")));
             if (!sha256(bytes).equals(e.get("sha256"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXPORT_INTEGRITY_FAILED");
             audit.logAs(actor, TYPE, label(person), id, "TRAINING_RECORD_EXPORT_DOWNLOADED", null, null, "Downloaded");
-            return Map.of("bytes", bytes, "name", "training-record-" + (person.getEmployeeCode() == null ? person.getUsername() : person.getEmployeeCode()) + ".pdf");
+            return Map.of("bytes", bytes, "name", templates.fileName("APD.0014", "APD.0014", currentRevision(), Map.of("EMPLOYEE_CODE", person.getEmployeeCode() == null ? person.getUsername() : person.getEmployeeCode(),
+                    "EMPLOYEE_NAME", String.valueOf(person.getFullName()), "DEPARTMENT", String.valueOf(person.getDepartment() == null ? "" : person.getDepartment()))) + ".pdf");
         } catch (IOException ex) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TRAINING_FILE_UNAVAILABLE");
         }
@@ -201,10 +202,28 @@ public class TrainingRecordExportService {
         return forms.personalRecord(person, qualification(person), records, preparedSignature, at, approvedSignature, at);
     }
 
-    /** The highest qualification the person has on record (APD.0014 v2.0.0): the latest degree with its field of study and institution. */
+    /**
+     * The highest qualification the person has on record (APD.0014 v2.0.0): the degree with its field of study and institution. "Highest" is read from the order of the Degree Levels of the master data
+     * (Application Settings > Education > Degree Levels: ordinary labour, primary, intermediate, college, university, master, doctor, professor); a degree whose name is not in that list counts below all of
+     * them, and of two degrees of the same level the later graduation year wins.
+     */
     private String qualification(UserAccount person) {
-        return jdbc.queryForList("select degree, field_of_study, institution from user_educations where user_id = ? order by graduation_year desc nulls last, created_at desc limit 1", person.getId()).stream().findFirst()
+        return jdbc.queryForList("""
+                select e.degree, e.field_of_study, e.institution
+                  from user_educations e left join education_degree_levels l on lower(trim(l.name)) = lower(trim(e.degree))
+                 where e.user_id = ?
+                 order by coalesce(l.display_order, -1) desc, e.graduation_year desc nulls last, e.created_at desc limit 1
+                """, person.getId()).stream().findFirst()
                 .map(r -> nvl((String) r.get("degree")) + (r.get("field_of_study") == null ? "" : ", " + r.get("field_of_study")) + (r.get("institution") == null ? "" : " (" + r.get("institution") + ")")).orElse("");
+    }
+
+    /** The revision of the form APD.0014 in force, for the code in the name of the file; empty when no template is enabled any more. */
+    private String currentRevision() {
+        try {
+            return templates.enabled("APD.0014").versionLabel();
+        } catch (ResponseStatusException e) {
+            return "";
+        }
     }
 
     private static String nvl(String v) { return v == null ? "" : v; }

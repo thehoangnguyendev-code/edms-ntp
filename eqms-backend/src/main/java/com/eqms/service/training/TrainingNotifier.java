@@ -54,8 +54,9 @@ public class TrainingNotifier {
             case "TRAINING_PERSONNEL_REVIEW" -> "/training-management/personnel-reviews/" + id;
             case "TRAINING_COMPLIANCE_SUSPENSIONS" -> "/training-management/compliance?tab=suspensions";
             case "TRAINING_REQUIREMENT_LIST" -> "/training-management/requirements";
-            case "TRAINING_DOCUMENT_TRAININGS" -> "/training-management/document-trainings";
-            default -> "/training-management/my-training";
+            // the earlier key of the same screen stays for the notifications that were already sent with it
+            case "TRAINING_DOCUMENT_IMPACT_ASSESSMENT", "TRAINING_DOCUMENT_TRAININGS" -> "/training-management/document-impact-assessment";
+            default -> "/training-management/my-training/tasks";
         };
     }
 

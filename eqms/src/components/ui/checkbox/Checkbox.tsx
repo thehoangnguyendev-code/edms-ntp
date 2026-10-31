@@ -31,6 +31,8 @@ export interface CheckboxProps {
   className?: string;
   /** Additional CSS classes for the label */
   labelClassName?: string;
+  /** The name a screen reader reads when the checkbox has no visible label (a box in a table row or in a table header). */
+  'aria-label'?: string;
 }
 
 export const Checkbox: React.FC<CheckboxProps> = ({
@@ -42,6 +44,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
   indeterminate = false,
   className,
   labelClassName,
+  'aria-label': ariaLabel,
 }) => {
   const generatedId = useReactId();
   const checkboxId = id || generatedId;
@@ -68,6 +71,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
           ref={inputRef}
           id={checkboxId}
           type="checkbox"
+          aria-label={ariaLabel}
           checked={checked}
           onChange={handleChange}
           disabled={disabled}
@@ -96,6 +100,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
         <label
           htmlFor={checkboxId}
           className={cn(
+            'capitalize',
             'text-xs sm:text-sm font-medium text-slate-700 cursor-pointer',
             labelClassName,
             disabled && 'cursor-default'

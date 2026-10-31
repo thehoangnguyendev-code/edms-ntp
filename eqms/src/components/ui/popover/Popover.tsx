@@ -1,3 +1,4 @@
+import { observeOverlayPosition } from "@/utils/scroll";
 import React, {
   useState,
   useEffect,
@@ -144,12 +145,7 @@ export const Popover: React.FC<PopoverProps> = ({
 
   useEffect(() => {
     if (!mounted) return;
-    window.addEventListener('scroll', reposition, true);
-    window.addEventListener('resize', reposition);
-    return () => {
-      window.removeEventListener('scroll', reposition, true);
-      window.removeEventListener('resize', reposition);
-    };
+    return observeOverlayPosition(() => triggerRef.current, reposition);
   }, [mounted, reposition]);
 
   // ── 4. Close with exit animation ─────────────────────────────────────────────

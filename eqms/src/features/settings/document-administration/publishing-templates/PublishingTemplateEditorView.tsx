@@ -1752,7 +1752,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                     ["underline", "Underline"],
                     ["preserveLineBreaks", "Keep line breaks"],
                   ] as [keyof PublishingPlaceholderStyleConfig, string][]).map(([key, label]) => (
-                    <label key={key} className="flex items-center justify-between gap-3 py-2 text-xs sm:text-sm font-medium text-slate-700">
+                    <label key={key} className="flex items-center justify-between gap-3 py-2 text-xs sm:text-sm font-medium text-slate-700 capitalize">
                       <span>{label}</span>
                       <Switch
                         size="sm"

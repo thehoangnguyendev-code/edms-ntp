@@ -59,7 +59,7 @@ export function TrainingNumberLogView() {
     { id: "number", header: "Training Number", sort: sorted("number"), cell: (r) => <span className="font-medium text-slate-900">{r.trainingNumber}</span> },
     { id: "kind", header: "Type", sort: sorted("kind"), cell: (r) => KIND_LABEL[r.kind] ?? r.kind },
     { id: "title", header: "Training Topic", sort: sorted("title"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.trainingTopics}</div> },
-    { id: "document", header: "SOP", sort: sorted("document"), cell: (r) => (r.documentNumber ? `${r.documentNumber}${r.revisionNumber ? ` Rev ${r.revisionNumber}` : ""}` : "—") },
+    { id: "document", header: "SOP", sort: sorted("document"), cell: (r) => (r.documentLabel ?? "—") },
     { id: "sessions", header: "Sessions", sort: sorted("sessions"), cell: (r) => r.sessions },
     { id: "status", header: "Status", sort: sorted("status"), cell: (r) => <Badge color={STATUS_COLOR[r.status] ?? "slate"}>{STATUS_LABEL[r.status] ?? r.status}</Badge> },
     {

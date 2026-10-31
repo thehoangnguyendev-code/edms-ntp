@@ -53,7 +53,7 @@ export const WorkingNotesTab: React.FC<WorkingNotesTabProps> = ({
       <div className="flex flex-col gap-2">
         {!isReadOnly && (
           <>
-            <label className="text-xs sm:text-sm font-medium text-slate-700">Working Note</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Working Note</label>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}

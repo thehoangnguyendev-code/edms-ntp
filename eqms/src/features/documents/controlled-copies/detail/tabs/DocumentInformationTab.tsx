@@ -39,7 +39,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
             longer agree) -- that mismatch was showing a member copy's own number under a "Batch
             Number" label. distributionBatchNumber is always the batch's own number, unconditionally. */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             {isBatchParent ? "Batch Number" : "Document Number"}
           </label>
           <input
@@ -52,7 +52,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
 
         {/* Created */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Created
           </label>
           <input
@@ -65,7 +65,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
 
         {/* Opened By */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Opened By
           </label>
           <input
@@ -78,7 +78,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
 
         {/* Business Unit */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Business Unit
           </label>
           <input
@@ -91,7 +91,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
 
         {/* Controlled Copy Name - Full width */}
         <div className="flex flex-col gap-1.5 md:col-span-2">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Controlled Copy Name
           </label>
           <input
@@ -104,7 +104,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
 
         {/* Document */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Document
           </label>
           <input
@@ -121,7 +121,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
 
         {/* Document Revision */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Document Revision
           </label>
           <input
@@ -134,7 +134,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
 
         {/* Valid Until */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Valid Until
           </label>
           <input
@@ -147,7 +147,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
 
         {/* Expiry Date */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Expiry Date
           </label>
           <input
@@ -165,7 +165,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
 
         {/* Revision */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Revision
           </label>
           <input
@@ -178,7 +178,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
 
         {/* Purpose (a dash for a copy issued before the purpose existed) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Purpose
           </label>
           <input
@@ -191,7 +191,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
 
         {/* Copy Number / Quantity */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             {isBatchParent ? "Quantity" : "Copy Number"}
           </label>
           <div className="space-y-1.5">
@@ -211,7 +211,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
 
         {/* Total Copies Number */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Total Copies Number
           </label>
           <div className="space-y-1.5">
@@ -231,7 +231,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
 
         {/* Recall Date */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Recall Date
           </label>
           <input
@@ -247,11 +247,11 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {(controlledCopy.destructionType || controlledCopy.destroyedBy || controlledCopy.destroyedDate || controlledCopy.destroyReason) && (
           <>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700">Report Type</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Report Type</label>
               <input type="text" value={displayText(controlledCopy.destructionType)} readOnly className={CONTROL_STATE_CLASSES.readonlyField} />
             </div>
             <div className="flex flex-col gap-1.5 md:col-span-2">
-              <label className="text-xs sm:text-sm font-medium text-slate-700">Report Reason</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Report Reason</label>
               <textarea value={displayText(controlledCopy.destroyReason)} readOnly rows={2} className={CONTROL_STATE_CLASSES.readonlyTextarea} />
             </div>
           </>
@@ -261,7 +261,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
             Lost/Damaged record it replaced (Replaced by). */}
         {controlledCopy.replacedControlledCopyId && (
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs sm:text-sm font-medium text-slate-700">Reissued From</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Reissued From</label>
             <button
               type="button"
               onClick={() => onNavigateToLinkedCopy?.(controlledCopy.replacedControlledCopyId!)}
@@ -274,7 +274,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         )}
         {controlledCopy.replacementControlledCopyId && (
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs sm:text-sm font-medium text-slate-700">Replaced By</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Replaced By</label>
             <button
               type="button"
               onClick={() => onNavigateToLinkedCopy?.(controlledCopy.replacementControlledCopyId!)}
@@ -288,7 +288,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
 
         {/* Comments - Full width */}
         <div className="flex flex-col gap-1.5 md:col-span-2">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Comments
           </label>
           <textarea

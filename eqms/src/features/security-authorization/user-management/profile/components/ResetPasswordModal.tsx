@@ -172,7 +172,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                     {/* New Password */}
                     {generatedPassword ? (
                         <div>
-                            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                                 Temporary Password
                             </label>
                             <div className="flex items-center gap-2">

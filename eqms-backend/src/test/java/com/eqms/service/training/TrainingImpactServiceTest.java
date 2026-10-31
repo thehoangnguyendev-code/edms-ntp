@@ -123,4 +123,59 @@ class TrainingImpactServiceTest {
         assertThatThrownBy(() -> service.assess(actor, activityId, request("NO_TRAINING_IMPACT", "r", List.of(), "t")))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("TRAINING_IMPACT_NOT_APPLICABLE");
     }
+
+    private void positionsFixtures(long total) {
+        Map<String, Object> activity = new HashMap<>(store.activityForUpdate(activityId).orElseThrow());
+        when(jdbc.queryForList(contains("from training_activities a where id = ?"), eq(activityId))).thenReturn(List.of(activity));
+        when(jdbc.queryForObject(contains("select count(*) from training_job_roles p"), eq(Long.class), any(Object[].class))).thenReturn(total);
+        when(jdbc.queryForList(contains("from training_job_roles p"), any(Object[].class))).thenReturn(List.of(Map.of("id", positionId, "code", "QAS", "name", "QA Specialist", "in_matrix", true)));
+    }
+
+    @Test
+    void theWorkPositionsAreSearchedSortedAndPagedByTheServer() {
+        positionsFixtures(25L);
+
+        Map<String, Object> page = service.positions(actor, activityId, "qa_%", "inMatrix", "desc", 2, 10);
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc, org.mockito.Mockito.atLeastOnce()).queryForList(sql.capture(), args.capture());
+        assertThat(sql.getValue()).contains("p.is_active and p.department_id = ?").contains("lower(p.name) like ?").contains("lower(coalesce(p.code,'')) like ?").contains("order by in_matrix desc").endsWith("limit ? offset ?");
+        // the document of the activity, the department, the escaped search twice, the page size and the offset
+        assertThat(args.getValue()).hasSize(6);
+        assertThat(args.getValue()[1]).isEqualTo(departmentId);
+        assertThat(args.getValue()[2]).isEqualTo("%qa" + "\\" + "_" + "\\" + "%%");
+        assertThat(args.getValue()[4]).isEqualTo(10);
+        assertThat(args.getValue()[5]).isEqualTo(10);
+        assertThat(page.get("pagination")).isEqualTo(Map.of("page", 2, "limit", 10, "total", 25L, "totalPages", 3L));
+    }
+
+    @Test
+    void aSortKeyThatIsNotOnTheListFallsBackToTheNameAndNeverReachesTheSql() {
+        positionsFixtures(1L);
+
+        service.positions(actor, activityId, null, "p.name; drop table x", "asc", 1, 10);
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        verify(jdbc, org.mockito.Mockito.atLeastOnce()).queryForList(sql.capture(), any(Object[].class));
+        assertThat(sql.getValue()).contains("order by p.name limit ? offset ?").doesNotContain("drop table");
+    }
+
+    @Test
+    void thePageSizeIsLimitedAndThePageStartsAtOne() {
+        positionsFixtures(500L);
+
+        Map<String, Object> page = service.positions(actor, activityId, "", null, null, -3, 5000);
+
+        assertThat(page.get("pagination")).isEqualTo(Map.of("page", 1, "limit", 100, "total", 500L, "totalPages", 5L));
+    }
+
+    @Test
+    void thePositionsOfADepartmentAreOnlyForAPersonWhoMayActInIt() {
+        positionsFixtures(1L);
+        org.mockito.Mockito.doThrow(new SecurityException("TRAINING_SCOPE_DENIED")).when(access).requireScope(actor, departmentId);
+
+        assertThatThrownBy(() -> service.positions(actor, activityId, null, null, null, 1, 10)).isInstanceOf(SecurityException.class);
+        verify(jdbc, never()).queryForList(contains("from training_job_roles p"), any(Object[].class));
+    }
 }

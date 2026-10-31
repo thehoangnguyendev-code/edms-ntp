@@ -18,7 +18,7 @@ const isOpen = (a: TrainingExamMine["attempt"]): a is TrainingExamAttemptView =>
 export function TrainingExamPage() {
   const { participantId = "" } = useParams();
   const navigate = useNavigate();
-  const goBack = useTrainingBack("/training-management/my-training");
+  const goBack = useTrainingBack("/training-management/my-training/tasks");
   const { showToast } = useToast();
   const [mine, setMine] = useState<TrainingExamMine>();
   const [error, setError] = useState("");
@@ -66,7 +66,7 @@ export function TrainingExamPage() {
   };
 
   const title = "Training Test";
-  const crumbs = trainingBreadcrumbs(navigate, "myTraining", title);
+  const crumbs = trainingBreadcrumbs(navigate, "myTasks", title);
   const done = mine && mine.attempt && !isOpen(mine.attempt) ? (mine.attempt as TrainingExamSummary) : undefined;
   const clock = left == null ? "" : `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`;
   const answered = attempt ? attempt.questions.filter((q) => (answers[q.id] ?? []).length > 0).length : 0;

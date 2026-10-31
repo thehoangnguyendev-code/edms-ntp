@@ -33,6 +33,15 @@ public class ControlledCopyBatchDistributionAsyncService {
     private final NotificationRealtimeService notificationRealtimeService;
     private final ControlledCopyDistributionJobRepository jobRepository;
     private final ControlledCopyDistributionJobItemRepository itemRepository;
+    private org.springframework.core.task.TaskExecutor batchExecutor;
+    private ControlledCopyDistributionWorkerStore workerStore;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void configureWorkerStore(ControlledCopyDistributionWorkerStore workerStore) { this.workerStore=workerStore; }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void configureBatchExecutor(@org.springframework.beans.factory.annotation.Qualifier("controlledCopyBatchExecutor")
+            org.springframework.core.task.TaskExecutor batchExecutor) { this.batchExecutor=batchExecutor; }
 
     public ControlledCopyBatchDistributionAsyncService(
             ControlledCopyService controlledCopyService,
@@ -49,6 +58,11 @@ public class ControlledCopyBatchDistributionAsyncService {
     @Async("controlledCopyBatchExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onBatchDistributed(ControlledCopyBatchDistributedEvent event) {
+        if(workerStore!=null&&event.jobId()!=null) {
+            processClaim(workerStore.claim(event.jobId(),event.issuerUserId(),false));
+            return;
+        }
+        if (event.jobId() != null && jobRepository.claimPendingJob(event.jobId()) != 1) return;
         List<ControlledCopyDistributionJobItem> items = event.jobId() == null ? List.of() : itemRepository.findAllByJob_IdOrderByIdAsc(event.jobId());
         List<UUID> copyIds = items.isEmpty() ? (event.copyIds() == null ? List.of() : event.copyIds()) : items.stream().map(item -> item.getControlledCopy().getId()).toList();
         ControlledCopyDistributionJob job = event.jobId() == null ? null : jobRepository.findById(event.jobId()).orElse(null);
@@ -101,6 +115,11 @@ public class ControlledCopyBatchDistributionAsyncService {
         if (batchId == null) {
             return;
         }
+        if(workerStore!=null) {
+            UUID jobId=workerStore.latestDistributionJob(batchId);
+            if(jobId!=null)processClaim(workerStore.claim(jobId,issuerUserId,true));
+            return;
+        }
         ControlledCopyDistributionJob job = jobRepository.findByBatch_IdOrderByCreatedAtDesc(batchId).stream().findFirst().orElse(null);
         if (job == null) {
             return;
@@ -109,6 +128,7 @@ public class ControlledCopyBatchDistributionAsyncService {
         if (failedItems.isEmpty()) {
             return;
         }
+        if (jobRepository.claimFailedDistributionJob(job.getId()) != 1) return;
         String batchIdText = batchId.toString();
         job.setStatus("PROCESSING");
         jobRepository.save(job);
@@ -214,17 +234,70 @@ public class ControlledCopyBatchDistributionAsyncService {
     /** Restarts queued work after a backend restart; item state remains in the database. */
     @Scheduled(fixedDelay = 30000)
     public void resumePendingJobs() {
+        if(workerStore!=null) {
+            for(var job:workerStore.recoverable()) {
+                try { batchExecutor.execute(()->processClaim(workerStore.claim(job.jobId(),job.actorId(),false))); }
+                catch(org.springframework.core.task.TaskRejectedException busy) { break; }
+            }
+            return;
+        }
         for (ControlledCopyDistributionJob job : jobRepository.findTop10ByStatusOrderByCreatedAtAsc("PENDING")) {
             if (!"DISTRIBUTE".equals(job.getActionType())) {
-                continue;
-            }
-            if (jobRepository.claimPendingJob(job.getId()) != 1) {
                 continue;
             }
             List<UUID> copyIds = itemRepository.findAllByJob_IdOrderByIdAsc(job.getId()).stream()
                     .filter(item -> "PENDING".equals(item.getStatus()))
                     .map(item -> item.getControlledCopy().getId()).toList();
-            if (!copyIds.isEmpty()) onBatchDistributed(new ControlledCopyBatchDistributedEvent(job.getBatch().getId(), job.getId(), copyIds, job.getRequestedBy().getId()));
+            if (!copyIds.isEmpty()) {
+                var event=new ControlledCopyBatchDistributedEvent(job.getBatch().getId(), job.getId(), copyIds, job.getRequestedBy().getId());
+                try { batchExecutor.execute(() -> onBatchDistributed(event)); }
+                catch (org.springframework.core.task.TaskRejectedException busy) { break; }
+            }
         }
+    }
+
+    private void processClaim(ControlledCopyDistributionWorkerStore.Claim claim) {
+        if(claim==null)return;
+        String batchId=claim.batchId().toString();
+        try {
+            var progress=workerStore.progress(claim);
+            publishProgress(batchId,claim.actorId(),progress.processed(),progress.total(),progress.failed(),"in_progress");
+            UUID item;
+            while((item=workerStore.nextItem(claim))!=null) {
+                processClaimedItem(claim,item);
+                progress=workerStore.progress(claim);
+                publishProgress(batchId,claim.actorId(),progress.processed(),progress.total(),progress.failed(),"in_progress");
+            }
+            var completed=workerStore.complete(claim);
+            progress=completed.progress();
+            publishProgress(batchId,claim.actorId(),progress.processed(),progress.total(),progress.failed(),progress.errors()?"completed_with_errors":"completed");
+            if(!completed.succeededCopies().isEmpty()) {
+                try { controlledCopyService.sendDcoBatchZipEmail(claim.batchId(),completed.succeededCopies(),claim.actorId()); }
+                catch(Exception emailFailure) { log.warn("DCO ZIP notification failed for distribution job {}",claim.jobId(),emailFailure); }
+            }
+        } catch(ControlledCopyDistributionWorkerStore.LostClaim lost) {
+            log.info("Distribution worker stopped after losing job {}",claim.jobId());
+        } catch(Exception unavailable) {
+            // The durable PROCESSING claim expires. Never reset a copy outside the fenced transaction.
+            log.warn("Distribution job {} was interrupted and remains recoverable",claim.jobId(),unavailable);
+        }
+    }
+
+    private void processClaimedItem(ControlledCopyDistributionWorkerStore.Claim claim,UUID item) {
+        String message="File processing failed after automatic retries.";
+        for(int attempt=1;attempt<=MAX_PROCESSING_ATTEMPTS;attempt++) {
+            try { workerStore.processItem(claim,item);return; }
+            catch(ControlledCopyDistributionWorkerStore.LostClaim lost) { throw lost; }
+            catch(org.springframework.security.access.AccessDeniedException denied) {
+                message="Distribution authorization changed before processing.";
+                break;
+            } catch(Exception failure) {
+                if(attempt<MAX_PROCESSING_ATTEMPTS) {
+                    try { Thread.sleep(250L*attempt); }
+                    catch(InterruptedException interrupted) {Thread.currentThread().interrupt();throw new IllegalStateException("Distribution worker interrupted",interrupted);}
+                }
+            }
+        }
+        workerStore.failItem(claim,item,message);
     }
 }

@@ -41,6 +41,14 @@ public class TrainingFormTemplates {
         this.onlyOffice = onlyOffice;
     }
 
+    /**
+     * The name of a file of a form, from the pattern that the administrator set in Training Properties (or the default): {@code revision} is the version label of the template used, which
+     * gives the code of the form as Document Control writes it (APD.0014.02). The extension is added by {@link #file}.
+     */
+    public String fileName(String formKey, String codeOfForm, String revision, Map<String, String> values) {
+        return new TrainingFileNames(jdbc).name(formKey, TrainingAnnexContract.fullCode(codeOfForm, revision), values);
+    }
+
     /** The enabled template of the form; a refusal when there is none. For a form that is a living list (the personal record, the specimen list, the number log): always the one in force. */
     public Template enabled(String code) {
         Map<String, Object> template = jdbc.queryForList("select * from training_form_templates where code = ? and status = 'ENABLED' order by activated_at desc limit 1", code).stream().findFirst()

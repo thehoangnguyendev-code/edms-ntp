@@ -114,6 +114,28 @@ public class PublishingWorkspaceService {
         );
     }
 
+    /** Lightweight polling, retaining the same revision-view scope without recording another VIEW. */
+    @Transactional(readOnly = true)
+    public com.eqms.dto.publishing.PublishingJobStatusResponse getJobStatus(UUID revisionId, UUID jobId) {
+        var user=currentUserService.requireCurrentUser();
+        var revision=revisionRepository.findById(revisionId).orElseThrow(()->new IllegalArgumentException("Revision not found"));
+        documentAuthorizationService.requireCanViewRevision(user,revision);
+        var job=publishingWorkspaceJobRepository.findById(jobId)
+                .filter(candidate->revisionId.equals(candidate.getRevisionId()))
+                .orElseThrow(()->new IllegalArgumentException("Publishing job not found"));
+        return new com.eqms.dto.publishing.PublishingJobStatusResponse(job.getId(),job.getStatus(),job.getMessage(),job.getErrorMessage());
+    }
+
+    @Transactional(readOnly = true)
+    public PublishingWorkspaceResponse getAcceptedWorkspace(UUID revisionId,UUID jobId) {
+        var revision=revisionService.getRevisionForSnapshot(revisionId);
+        var metadata=metadataRepository.findByRevision_Id(revisionId).orElse(null);
+        var job=publishingWorkspaceJobRepository.findById(jobId).filter(candidate->revisionId.equals(candidate.getRevisionId()))
+                .orElseThrow(()->new IllegalArgumentException("Publishing job not found"));
+        return toWorkspaceResponse(revision,metadata,countPages(resolveWorkspacePreviewPath(revisionId,metadata)),
+                metadata==null||metadata.getPreviewGeneratedBy()==null?null:metadata.getPreviewGeneratedBy().getFullName(),job);
+    }
+
     /**
      * Returns a rendered component preview through the publishing-workspace authority.
      * DCOs may publish a revision without having Settings/Configuration permission, so
@@ -273,6 +295,12 @@ public class PublishingWorkspaceService {
 
     @Transactional
     public PublishingWorkspaceResponse completePublish(UUID revisionId, PublishingWorkspaceRequest request, UUID requestedByUserId) {
+        return completeConfirmedPublish(revisionId, request, requestedByUserId, null);
+    }
+
+    @Transactional
+    PublishingWorkspaceResponse completeConfirmedPublish(UUID revisionId, PublishingWorkspaceRequest request,
+            UUID requestedByUserId, ConfirmedPublishAuthorization confirmation) {
         UserAccount currentUser = currentUserService.requireCurrentUser(requestedByUserId);
         DocumentRevisionRecord revision = requireReadyRevision(revisionId);
         if (!electronicSignatureService.hasRevisionSignatureMeaning(revisionId, "PREPARED")) {
@@ -301,11 +329,13 @@ public class PublishingWorkspaceService {
         template = applyWorkspacePageRanges(storedTemplate, metadata, request, currentUser);
         metadata.setSelectedPublishingLayout(selectedLayout);
         validateSignaturePlaceholders(template, selectedLayout, revisionId, true);
-        revisionService.publishRevision(revisionId, new com.eqms.dto.document.RevisionWorkflowActionRequest(
+        var action = new com.eqms.dto.document.RevisionWorkflowActionRequest(
                 request == null ? null : request.changeSummary(),
                 request == null || request.reason() == null ? (request == null ? null : request.changeSummary()) : request.reason(),
                 request == null ? null : request.signatureToken()
-        ), currentUser);
+        );
+        if (confirmation == null) revisionService.publishRevision(revisionId, action, currentUser);
+        else revisionService.publishRevisionWithConfirmation(revisionId, action, currentUser, confirmation);
 
         // Recompose from the current template/placeholder-style state instead of trusting the
         // last-generated preview file — a placeholder style saved after that preview was

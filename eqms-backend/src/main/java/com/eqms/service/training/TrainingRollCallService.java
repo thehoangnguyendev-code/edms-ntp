@@ -44,6 +44,8 @@ public class TrainingRollCallService {
     @Transactional
     public Map<String, Object> rollCall(UserAccount actor, UUID sessionId, Request request) {
         access.require(actor, "training.activity.conduct");
+        // A self-reading has no attendance to record: the person signs the reading in the system (owner decision 2026-10-31)
+        if ("SELF_READING".equals(jdbc.queryForList("select method from training_sessions where id = ?", String.class, sessionId).stream().findFirst().orElse(null))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SELF_READING_NO_ATTENDANCE");
         activities.startSession(actor, sessionId);
         Map<String, Object> session = jdbc.queryForList("select s.*, a.organizer_department_id from training_sessions s join training_activities a on a.id = s.activity_id where s.id = ?", sessionId)
                 .stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));

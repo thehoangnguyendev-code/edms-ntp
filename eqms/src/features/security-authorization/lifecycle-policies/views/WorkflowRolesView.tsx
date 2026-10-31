@@ -436,7 +436,7 @@ export const WorkflowRolesView: React.FC = () => {
         <div className="flex flex-1 flex-col p-4 md:p-5">
           <div className="flex w-full flex-col">
             <div className="mb-4 flex w-full flex-col gap-1.5 md:hidden">
-              <label className="block text-xs font-medium text-slate-700 sm:text-sm">
+              <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">
                 Search
               </label>
               <div className="flex items-center gap-2">
@@ -545,7 +545,7 @@ export const WorkflowRolesView: React.FC = () => {
 >
 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">
+                <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">
                   Search
                 </label>
                 <div className="relative">
@@ -966,7 +966,7 @@ const FormField: React.FC<{
   children: React.ReactNode;
 }> = ({ label, required, children }) => (
   <div>
-    <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">
+    <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">
       {label}
       {required && <span className="ml-1 text-red-500">*</span>}
     </label>

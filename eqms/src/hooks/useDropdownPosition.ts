@@ -1,3 +1,4 @@
+import { observeOverlayPosition } from "@/utils/scroll";
 import { useState, useEffect, RefObject } from 'react';
 
 export interface DropdownPosition {
@@ -106,13 +107,7 @@ export const useDropdownPosition = ({
       if (isOpen) calculatePosition();
     };
 
-    window.addEventListener('scroll', handleUpdate, true);
-    window.addEventListener('resize', handleUpdate);
-
-    return () => {
-      window.removeEventListener('scroll', handleUpdate, true);
-      window.removeEventListener('resize', handleUpdate);
-    };
+    return observeOverlayPosition(() => triggerRef.current, handleUpdate);
   }, [isOpen, estimatedHeight, offset, minSpacing, triggerRef]);
 
   return { position };

@@ -106,7 +106,7 @@ export const WorkflowPolicyActorSelector: React.FC<WorkflowPolicyActorSelectorPr
                   const knownCode = codeOptions.some((o) => o.value === actor.actorCode);
                   return (
                     <div className="flex flex-col">
-                      <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">
+                      <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">
                         Actor Code <span className="text-red-500">*</span>
                       </label>
                       {codeOptions.length > 0 ? (

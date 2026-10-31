@@ -996,7 +996,7 @@ export const RequestControlledCopyView: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
             <div className="space-y-3">
               <div className="flex items-start gap-3">
-                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">
+                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
                   Document Number
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-all">
@@ -1004,7 +1004,7 @@ export const RequestControlledCopyView: React.FC = () => {
                 </p>
               </div>
               <div className="flex items-start gap-3">
-                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">
+                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
                   Document Name
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-words">
@@ -1012,7 +1012,7 @@ export const RequestControlledCopyView: React.FC = () => {
                 </p>
               </div>
               <div className="flex items-start gap-3">
-                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">
+                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
                   Document Type
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-words">
@@ -1023,7 +1023,7 @@ export const RequestControlledCopyView: React.FC = () => {
 
             <div className="space-y-3">
               <div className="flex items-start gap-3">
-                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">
+                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
                   Revision Number
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-all">
@@ -1031,7 +1031,7 @@ export const RequestControlledCopyView: React.FC = () => {
                 </p>
               </div>
               <div className="flex items-start gap-3">
-                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">
+                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
                   Revision Name
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-words">
@@ -1039,7 +1039,7 @@ export const RequestControlledCopyView: React.FC = () => {
                 </p>
               </div>
               <div className="flex items-start gap-3">
-                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">
+                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
                   Status
                 </label>
                 <div className="flex-1">
@@ -1050,7 +1050,7 @@ export const RequestControlledCopyView: React.FC = () => {
 
             <div className="space-y-3">
               <div className="flex items-start gap-3">
-                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">
+                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
                   Effective Date
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-all">
@@ -1058,7 +1058,7 @@ export const RequestControlledCopyView: React.FC = () => {
                 </p>
               </div>
               <div className="flex items-start gap-3">
-                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">
+                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
                   Valid Until
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-all">
@@ -1066,7 +1066,7 @@ export const RequestControlledCopyView: React.FC = () => {
                 </p>
               </div>
               <div className="flex items-start gap-3">
-                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">
+                <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
                   Business Unit
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-words">
@@ -1124,7 +1124,7 @@ export const RequestControlledCopyView: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {/* Distribution Scope */}
                   <div>
-                    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+                    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
                       Recipient <span className="text-red-600">*</span>
                     </label>
                     <Select
@@ -1143,7 +1143,7 @@ export const RequestControlledCopyView: React.FC = () => {
 
                   {/* Location */}
                   <div>
-                    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+                    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
                       {locationLabelByScope[distributionScope]}{" "}
                       <span className="text-red-600">*</span>
                     </label>
@@ -1175,7 +1175,7 @@ export const RequestControlledCopyView: React.FC = () => {
                 </div>
               ) : (
                 <div>
-                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
                     External Recipients <span className="text-red-600">*</span>
                   </label>
                   <div
@@ -1304,7 +1304,7 @@ export const RequestControlledCopyView: React.FC = () => {
 
               {/* Reason */}
               <div>
-                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
                   Reason for Request <span className="text-red-600">*</span>
                 </label>
                 <textarea

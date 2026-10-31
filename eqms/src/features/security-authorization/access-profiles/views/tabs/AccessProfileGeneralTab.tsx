@@ -27,7 +27,7 @@ export const GeneralTab: React.FC<{
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             Name <span className="text-red-500">*</span>
           </label>
           {isEditing ? (
@@ -44,14 +44,14 @@ export const GeneralTab: React.FC<{
           )}
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Code (immutable)</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Code (immutable)</label>
           <div className={cn("h-9 w-full flex items-center rounded-lg border border-slate-200 bg-slate-50/70 px-3", CONTROL_STATE_CLASSES.readonly)}>
             <p className="text-sm text-slate-500 truncate">{profile.code || "—"}</p>
           </div>
         </div>
       </div>
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs sm:text-sm font-medium text-slate-700">Description</label>
+        <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Description</label>
         {isEditing ? (
           <textarea
             className={textareaCls}
@@ -77,7 +77,7 @@ export const GeneralTab: React.FC<{
     >
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Type</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Type</label>
           <div className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 flex items-center">
             <Badge color={profile.type === "SYSTEM" ? "purple" : "slate"} size="sm">
               {profile.type === "SYSTEM" ? "System" : "Custom"}
@@ -85,7 +85,7 @@ export const GeneralTab: React.FC<{
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Business Unit Scope</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Business Unit Scope</label>
           {isEditing ? (
             <MultiSelect
               value={scopeStringToList(draft.businessUnitScope)}
@@ -101,7 +101,7 @@ export const GeneralTab: React.FC<{
           )}
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Department Scope</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Department Scope</label>
           {isEditing ? (
             <MultiSelect
               value={scopeStringToList(draft.departmentScope)}
@@ -153,7 +153,7 @@ export const NewProfileForm: React.FC<{
       contentClassName="p-4 md:p-5 flex flex-col gap-4"
     >
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs sm:text-sm font-medium text-slate-700">
+        <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
           Name <span className="text-red-500">*</span>
         </label>
         <input
@@ -164,7 +164,7 @@ export const NewProfileForm: React.FC<{
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs sm:text-sm font-medium text-slate-700">Description</label>
+        <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Description</label>
         <textarea
           className={textareaCls}
           rows={3}
@@ -186,7 +186,7 @@ export const NewProfileForm: React.FC<{
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Business Unit Scope</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Business Unit Scope</label>
           <MultiSelect
             value={scopeStringToList(draft.businessUnitScope)}
             onChange={(values) => onChange("businessUnitScope", scopeListToString(values.map(String)) ?? "")}
@@ -196,7 +196,7 @@ export const NewProfileForm: React.FC<{
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Department Scope</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Department Scope</label>
           <MultiSelect
             value={scopeStringToList(draft.departmentScope)}
             onChange={(values) => onChange("departmentScope", scopeListToString(values.map(String)) ?? "")}

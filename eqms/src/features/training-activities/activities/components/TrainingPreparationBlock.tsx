@@ -76,7 +76,7 @@ export function TrainingPreparationBlock({ activityId, sessionId, canManage, pap
       noStatus: true,
       extra: canManage && !["COMPLETED", "CANCELLED"].includes(paper.activity.status)
         ? <div className="mt-2 w-36"><Select value={mode} options={DELIVERY_OPTIONS} aria-label={`Delivery of session ${session.sessionNo}`}
-            onChange={(v) => { if (v === mode) return; if (printing.printed(session.id) > 0) printing.ask({ kind: "mode", session, mode: v }); else void printing.changeMode(session, v); }} /></div>
+            onChange={(v) => { if (v === mode) return; if (printing.hasPrint(session.id)) printing.ask({ kind: "mode", session, mode: v }); else void printing.changeMode(session, v); }} /></div>
         : <div className="mt-1 text-sm text-slate-700">{DELIVERY_LABEL[mode]}</div>,
     });
     const rules = paper.activity.contentRules;

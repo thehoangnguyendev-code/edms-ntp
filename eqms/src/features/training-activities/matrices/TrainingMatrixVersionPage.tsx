@@ -180,11 +180,11 @@ export function TrainingMatrixVersionPage() {
     setWaiting(0);
     if (!departmentOfVersion || !hasPermission("training.matrix.view")) return;
     let alive = true;
-    trainingFollowUpApi.documentTrainingsSummary(departmentOfVersion).then((s) => { if (alive) setWaiting(s.pending + s.matrixUpdatePending); }).catch(() => undefined);
+    trainingFollowUpApi.documentImpactAssessmentsSummary(departmentOfVersion).then((s) => { if (alive) setWaiting(s.pending + s.matrixUpdatePending); }).catch(() => undefined);
     return () => { alive = false; };
   }, [departmentOfVersion, version?.version]);
 
-  const title = "Training Matrix";
+  const title = "Training Matrix Details";
   const crumbs = trainingBreadcrumbs(navigate, "matrices", title);
   const positions = useMemo(() => version?.positions ?? [], [version]);
 
@@ -371,7 +371,7 @@ export function TrainingMatrixVersionPage() {
         {waiting > 0 && (
           <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
             {waiting} new or revised document{waiting === 1 ? "" : "s"} of this department {waiting === 1 ? "waits" : "wait"} for the matrix to be assessed or updated.{" "}
-            <button type="button" className="font-medium underline" onClick={() => navigate("/training-management/document-trainings")}>Open Document Trainings</button>
+            <button type="button" className="font-medium underline" onClick={() => navigate("/training-management/document-impact-assessment")}>Open Document Impact Assessment</button>
           </p>
         )}
         {tab === "general" && (

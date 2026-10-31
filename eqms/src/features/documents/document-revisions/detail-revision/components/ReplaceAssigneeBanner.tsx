@@ -154,7 +154,7 @@ export const ReplaceAssigneeBanner: React.FC<Props> = ({
             placeholder="Search an eligible user..."
           />
           <div>
-            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Reason</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Reason</label>
             <textarea
               value={reason}
               onChange={(event) => setReason(event.target.value)}

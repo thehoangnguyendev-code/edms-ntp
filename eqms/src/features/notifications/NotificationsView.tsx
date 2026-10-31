@@ -905,7 +905,7 @@ export const NotificationsView: React.FC = () => {
         <div className="compact-filter-section px-4 pt-4 md:p-5 flex flex-col">
           <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -955,7 +955,7 @@ export const NotificationsView: React.FC = () => {
               onApplied={() => setCurrentPage(1)} />}
             <div className={cn("hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end", compactDesktopFilters && "md:!hidden")}>
               <div className="w-full">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 block transition-colors px-0.5 mb-1.5">
+                <label className="text-xs sm:text-sm font-medium text-slate-700 block transition-colors px-0.5 mb-1.5 capitalize">
                   Search
                 </label>
                 <div className="relative">

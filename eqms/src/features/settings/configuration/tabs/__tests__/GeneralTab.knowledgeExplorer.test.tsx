@@ -13,7 +13,7 @@ const baseConfig = {
   systemDisplayName: "EQMS",
   systemLogo: "",
   systemFavicon: "",
-  systemFooter: "",
+  systemFooterLeft: "",
   adminEmail: "admin@example.com",
   maintenanceMode: false,
   dateTimeFormat: "DD/MM/YYYY HH:mm:ss",

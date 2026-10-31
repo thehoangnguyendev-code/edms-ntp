@@ -30,7 +30,7 @@ export const SignedParticipantTab: React.FC<SignedParticipantTabProps> = ({
         {rows.map((item, index) => (
           <React.Fragment key={item.id}>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 flex items-center gap-1.5">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 flex items-center gap-1.5 capitalize">
                 {labelPrefix} {index + 1}
                 {item.isLegacy && <Badge color="amber" size="xs">Legacy — Reference Only</Badge>}
               </label>
@@ -44,7 +44,7 @@ export const SignedParticipantTab: React.FC<SignedParticipantTabProps> = ({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
                 {item.isLegacy ? "Historical Date (not a signature)" : "Signed On (Date - Time)"}
               </label>
               <input

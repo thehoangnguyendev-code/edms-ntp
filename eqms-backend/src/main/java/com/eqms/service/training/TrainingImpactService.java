@@ -101,7 +101,7 @@ public class TrainingImpactService {
         args.add(safeLimit);
         args.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("select x.* from (" + BASE + ") x" + where
-                + TrainingRows.orderBy(sortBy, sortDirection, Map.of("trainingNumber", "x.training_number", "documentNumber", "x.document_number", "revisionNumber", "x.revision_number", "activityStatus", "x.activity_status",
+                + TrainingRows.orderBy(sortBy, sortDirection, Map.of("trainingNumber", "x.training_number", "documentNumber", "x.document_number", "documentName", "x.document_name", "revisionNumber", "x.revision_number", "activityStatus", "x.activity_status",
                         "impactStatus", "x.impact_status", "assessedAt", "x.assessed_at", "createdAt", "x.created_at"), "case x.impact_status when 'PENDING' then 0 when 'MATRIX_UPDATE_PENDING' then 1 else 2 end, x.created_at desc")
                 + " limit ? offset ?", args.toArray());
         boolean manage = access.has(actor, "training.matrix.manage");
@@ -168,6 +168,46 @@ public class TrainingImpactService {
         out.put("positions", TrainingRows.camel(jdbc.queryForList("select id, name from training_job_roles where is_active and department_id = ? order by name", department)));
         out.put("latest", TrainingRows.camel(jdbc.queryForList("select i.outcome, i.reason, i.positions, i.assessed_at, u.full_name as assessed_by_name from training_impact_assessments i join app_users u on u.id = i.assessed_by where i.activity_id = ? order by i.assessed_at desc limit 5", activityId)));
         return out;
+    }
+
+    /**
+     * The Work Positions of the department that can be named in the assessment, one page at a time: the search (name or code), the sort and the paging are done here, so a department with many
+     * positions is not sent whole. {@code inMatrix} tells whether the effective matrix of the department already has the document for that position.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> positions(UserAccount actor, UUID activityId, String search, String sortBy, String sortDirection, int page, int limit) {
+        Map<String, Object> activity = row(activityId);
+        UUID department = (UUID) activity.get("organizer_department_id");
+        access.require(actor, "training.matrix.view", "training.matrix.manage");
+        access.requireScope(actor, department);
+        List<Object> args = new ArrayList<>();
+        String inMatrix = """
+            exists (select 1 from training_matrix_cells c join training_matrix_rows r on r.id = c.row_id join training_matrix_versions v on v.id = r.version_id
+                     where v.status = 'EFFECTIVE' and v.matrix_id in (select m.id from training_matrices m where m.department_id = p.department_id) and r.document_id = ? and c.position_id = p.id)
+            """;
+        args.add(activity.get("document_id"));
+        List<Object> filterArgs = new ArrayList<>();
+        filterArgs.add(department);
+        StringBuilder where = new StringBuilder(" where p.is_active and p.department_id = ?");
+        if (search != null && !search.isBlank()) {
+            String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+            where.append(" and (lower(p.name) like ? escape '\\' or lower(coalesce(p.code,'')) like ? escape '\\')");
+            filterArgs.add(like);
+            filterArgs.add(like);
+        }
+        int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
+        Long total = jdbc.queryForObject("select count(*) from training_job_roles p" + where, Long.class, filterArgs.toArray());
+        args.addAll(filterArgs);
+        args.add(safeLimit);
+        args.add((safePage - 1) * safeLimit);
+        List<Map<String, Object>> rows = jdbc.queryForList("select p.id, p.code, p.name, " + inMatrix + " as in_matrix from training_job_roles p" + where
+                + TrainingRows.orderBy(sortBy, sortDirection, Map.of("name", "p.name", "code", "p.code", "inMatrix", "in_matrix"), "p.name")
+                + " limit ? offset ?", args.toArray());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("data", TrainingRows.camel(rows));
+        long count = total == null ? 0 : total;
+        result.put("pagination", Map.of("page", safePage, "limit", safeLimit, "total", count, "totalPages", Math.max(1, (count + safeLimit - 1) / safeLimit)));
+        return result;
     }
 
     @Transactional

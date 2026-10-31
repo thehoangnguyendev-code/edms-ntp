@@ -1,0 +1,219 @@
+{
+  "scope": "Selected regression suites on the working tree; not a full validation or release sign-off",
+  "backend": {
+    "suites": [
+      {
+        "suite": "com.eqms.AsyncResilienceContextTest",
+        "timestamp": null,
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.DocumentFilterAuthorLookupTest",
+        "timestamp": null,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.PublishingJobStatusScopeTest",
+        "timestamp": null,
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.PublishingCommandDatabaseTest",
+        "timestamp": null,
+        "tests": 11,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.ConfirmedPublishSignatureTest",
+        "timestamp": null,
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.SignatureTokenConsumptionServiceTest",
+        "timestamp": null,
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.report.ReportRunLeaseServiceTest",
+        "timestamp": null,
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.DistributedSchedulerLockServiceTest",
+        "timestamp": null,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.ReportJobWorkerTest",
+        "timestamp": null,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.RevisionBusinessRulesTest",
+        "timestamp": null,
+        "tests": 30,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.ControlledCopyBatchDistributionAsyncServiceTest",
+        "timestamp": null,
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.NotificationDispatcherEmailChannelTest",
+        "timestamp": null,
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.NotificationDispatcherDigestDeferralTest",
+        "timestamp": null,
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.NotificationDispatcherAffectedUserTest",
+        "timestamp": null,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.NotificationEmailOutboxDatabaseTest",
+        "timestamp": null,
+        "tests": 8,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.report.ReportArtifactPublisherFailureTest",
+        "timestamp": null,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.ControlledCopyWorkerFencingDatabaseTest",
+        "timestamp": null,
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.VerifiedDownloadServiceTest",
+        "timestamp": null,
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.controller.VerifiedDownloadResponsesTest",
+        "timestamp": null,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.ControlledCopyDeliveryScopeTest",
+        "timestamp": null,
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.ReportDownloadScopeTest",
+        "timestamp": null,
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.ControlledCopyFencedDispatchTest",
+        "timestamp": null,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "com.eqms.service.NotificationEmailCipherTest",
+        "timestamp": null,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ],
+    "totals": {
+      "tests": 105,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "frontend": {
+    "full_suite_count": 217,
+    "full_tests": 1137,
+    "full_failures": 0,
+    "selected_suite_count": 10,
+    "selected_tests": 50,
+    "selected_failures": 0,
+    "typescript_no_emit_exit_code": 0
+  },
+  "database": "Disposable PostgreSQL localhost:55439/async_test; random schemas for concurrency tests; complete Spring context with migrations through V715; demo NotificationBootstrap mocked",
+  "limits": [
+    "No complete real-document OnlyOffice/MinIO publish acceptance run",
+    "No measured production throughput or latency improvement claim",
+    "General table abort is wired to 15 direct fetchers; other fetchers retain stale-result protection but need signal forwarding",
+    "Non-policy mail outside fenced Controlled Copy delivery and DCO ZIP attachment mail retain existing delivery behavior",
+    "Root GitNexus now detects working-tree changes; results include unrelated pre-existing work and need manual scope review"
+  ],
+  "deployment": {
+    "backend": "Docker healthy; dedicated key present (value omitted); migrations V714 and V715 successful",
+    "frontend": "Docker started",
+    "commit_or_push": false
+  }
+}

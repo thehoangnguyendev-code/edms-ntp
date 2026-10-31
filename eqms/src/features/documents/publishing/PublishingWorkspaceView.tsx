@@ -20,6 +20,7 @@ import { publishingWorkspace as publishingWorkspaceBreadcrumbs } from "@/compone
 import { documentApi } from "@/services/api/documents";
 import { publishingTemplatesApi } from "@/services/api/publishingTemplates";
 import type { PublishingPlaceholderGroupResponse, PublishingTemplateResponse, PublishingWorkspaceResponse } from "./types";
+import { waitForPublishingJob } from "./waitForPublishingJob";
 import { buildRevisionDetailNavigationState, buildRevisionWorkspaceSourceState } from "@/features/documents/shared/navigationContext";
 import { buildPreviewVersionCacheBuster, replaceObjectUrlPreview, revokeObjectUrl } from "@/features/documents/shared/previewHelpers";
 import { cn } from "@/components/ui/utils";
@@ -465,7 +466,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
 
   useEffect(() => {
     const normalizedStatus = String(workspace?.publishingJobStatus || "").toUpperCase();
-    const shouldPoll = Boolean(workspace && (normalizedStatus === "QUEUED" || normalizedStatus === "PROCESSING"));
+    const shouldPoll = Boolean(workspace?.publishingJobId && (normalizedStatus === "QUEUED" || normalizedStatus === "PROCESSING"));
     if (!shouldPoll) {
       setPublishingJobPolling(false);
       return;
@@ -487,15 +488,18 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
       }
       requestInFlight = true;
       try {
-        const updated = await documentApi.getPublishingWorkspace(revisionId);
+        const status = await documentApi.getPublishingJobStatus(revisionId, workspace!.publishingJobId!);
         if (!alive) {
           return;
         }
-        setWorkspace(updated);
-        const updatedStatus = String(updated.publishingJobStatus || "").toUpperCase();
+        const updatedStatus = String(status.publishingJobStatus || "").toUpperCase();
         if (updatedStatus === "QUEUED" || updatedStatus === "PROCESSING") {
+          setWorkspace((current) => current?.publishingJobStatus === status.publishingJobStatus ? current : { ...current, ...status });
           return;
         }
+        const updated = await documentApi.getPublishingWorkspace(revisionId);
+        if (!alive) return;
+        setWorkspace(updated);
         if (updated.previewReady) {
           const blob = await documentApi.getPublishingWorkspacePreview(
             revisionId,
@@ -533,7 +537,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
       window.removeEventListener("online", onVisibilityOrOnline);
       setPublishingJobPolling(false);
     };
-  }, [revisionId, workspace?.publishingJobStatus]);
+  }, [revisionId, workspace?.publishingJobId, workspace?.publishingJobStatus]);
 
   useEffect(() => {
     if (!workspace?.previewReady || previewUrl) {
@@ -698,39 +702,12 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         ...buildPageRangePayload(),
       });
 
-      // Poll until the background publishing job completes (converting PDF & setting Effective status)
-      let currentWs = initialWs;
-      let pollCount = 0;
-      const maxPolls = 30; // Up to 60s
-      while (pollCount < maxPolls) {
-        const jobStatus = String(currentWs?.publishingJobStatus || "").toUpperCase();
-        if (jobStatus === "COMPLETED") {
-          break;
-        }
-        if (jobStatus === "FAILED") {
-          throw new Error(
-            currentWs?.publishingJobError ||
-              currentWs?.publishingJobMessage ||
-              "Publishing job failed on server.",
-          );
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        pollCount++;
-
-        try {
-          currentWs = await documentApi.getPublishingWorkspace(revisionId);
-        } catch (pollErr: any) {
-          const errMsg = pollErr?.response?.data?.message || pollErr?.message || "";
-          if (
-            errMsg.toLowerCase().includes("ready for publishing") ||
-            pollErr?.response?.status === 400 ||
-            pollErr?.response?.status === 403
-          ) {
-            // Revision status has transitioned away from Ready For Publishing to Effective/Published
-            break;
-          }
-        }
+      const result = await waitForPublishingJob(initialWs, () =>
+        documentApi.getPublishingJobStatus(revisionId, initialWs.publishingJobId!));
+      if (!result.completed) {
+        setWorkspace({ ...initialWs, ...result.status });
+        showToast({ type: "info", title: "Publishing in Progress", message: "Your confirmed request is still running on the server. This page will continue checking its status." });
+        return;
       }
 
       showToast({ type: "success", title: "Revision Published", message: "Revision has been published to Effective successfully." });

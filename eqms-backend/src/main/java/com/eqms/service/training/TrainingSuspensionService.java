@@ -77,14 +77,18 @@ public class TrainingSuspensionService {
         }
     }
 
-    /** The participant passed (a later attempt) or the person passed the retraining of the activity this one was made from. */
+    /**
+     * The participant passed (a later attempt) or the person passed a retraining of the activity this one was made from. Every flag of the person that was raised in the same family (the original activity
+     * and all its supplementary activities) ends: a person who failed the original, failed the first retraining too, and passed the second one has no flag left from the first retraining either.
+     */
     @Transactional
     public void clearOnPass(UserAccount actor, Map<String, Object> activity, Map<String, Object> participant) {
         UUID person = (UUID) participant.get("person_user_id");
         if (person == null) return;
         UUID parent = (UUID) activity.get("parent_activity_id");
-        List<Map<String, Object>> open = jdbc.queryForList("select id, activity_id from training_work_suspensions where status = 'OPEN' and (participant_id = ?" + (parent == null ? ")" : " or (person_user_id = ? and activity_id = ?))"),
-                parent == null ? new Object[] {participant.get("id")} : new Object[] {participant.get("id"), person, parent});
+        UUID root = parent != null ? parent : (UUID) activity.get("id");
+        List<Map<String, Object>> open = jdbc.queryForList("select id, activity_id from training_work_suspensions where status = 'OPEN' and (participant_id = ? or (person_user_id = ? and (activity_id = ? or activity_id in (select id from training_activities where parent_activity_id = ?))))",
+                new Object[] {participant.get("id"), person, root, root});
         for (Map<String, Object> row : open) {
             int done = jdbc.update("update training_work_suspensions set status='CLEARED', cleared_at=now(), cleared_by=?, clear_basis='RETRAINED_PASSED', clear_activity_id=? where id=? and status='OPEN'",
                     actor == null ? null : actor.getId(), activity.get("id"), row.get("id"));

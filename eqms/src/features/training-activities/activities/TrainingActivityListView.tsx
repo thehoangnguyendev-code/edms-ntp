@@ -105,7 +105,7 @@ export function TrainingActivityListView() {
     { id: "kind", header: "Type", sort: sorted("kind"), cell: (r) => KIND_LABEL[r.kind] ?? r.kind },
     { id: "reason", header: "Reason", sort: sorted("kindReason"), cell: (r) => (r.kindReason ? KIND_REASON_LABEL[r.kindReason] ?? r.kindReason : "—") },
     { id: "status", header: "Status", sort: sorted("status"), cell: (r) => <Badge color={STATUS_COLOR[r.status] ?? "slate"}>{STATUS_LABEL[r.status] ?? r.status}</Badge> },
-    { id: "document", header: "Document", sort: sorted("documentNumber"), cell: (r) => (r.documentNumber ? `${r.documentNumber}${r.revisionNumber ? ` Rev ${r.revisionNumber}` : ""}` : "—") },
+    { id: "document", header: "Document", sort: sorted("documentNumber"), cell: (r) => (r.documentLabel ?? "—") },
     { id: "department", header: "Department", sort: sorted("departmentName"), cell: (r) => r.departmentName },
     { id: "people", header: "People", sort: sorted("participantCount"), cell: (r) => r.participantCount },
     { id: "attended", header: "Attended", sort: sorted("attendedCount"), cell: (r) => (r.participantCount ? `${r.attendedCount ?? 0} / ${r.participantCount}` : "—") },

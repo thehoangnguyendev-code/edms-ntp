@@ -35,7 +35,7 @@ const Field: React.FC<{
   hint?: string;
 }> = ({ label, required, error, children, hint }) => (
   <div className="w-full">
-    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
       {label}{required && <span className="text-red-500 ml-1">*</span>}
     </label>
     {children}
@@ -502,7 +502,7 @@ export const EmailTemplateEditView: React.FC = () => {
                 </Field>
 
                 <div className="flex-1 flex flex-col">
-                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
                     Content <span className="text-red-500">*</span>
                   </label>
                   <LexicalEditor

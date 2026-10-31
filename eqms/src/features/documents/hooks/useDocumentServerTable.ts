@@ -164,7 +164,7 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
     const loadFilters = async () => {
       setIsLookupLoading(true);
       try {
-        const response = await documentApi.getDocumentFilters();
+        const response = await documentApi.getDocumentFilters(undefined, [authorFilter, reviewerFilter, approverFilter]);
         if (cancelled) return;
         setFiltersLookup(response);
       } catch (lookupError) {
@@ -191,7 +191,7 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
     return () => {
       cancelled = true;
     };
-  }, [refreshTick]);
+  }, [refreshTick, authorFilter, reviewerFilter, approverFilter]);
 
   const querySignature = useMemo(() => JSON.stringify({
     viewType,
@@ -258,6 +258,7 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
   useEffect(() => {
     let cancelled = false;
     const seq = ++requestSeqRef.current;
+    const controller = new AbortController();
 
     const load = async () => {
       setIsLoading(true);
@@ -287,7 +288,7 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
           sortDirection: sortConfig.direction,
           page: currentPage,
           limit: Math.min(itemsPerPage, 50),
-        });
+        }, controller.signal);
 
         if (cancelled || seq !== requestSeqRef.current) return;
 
@@ -314,11 +315,11 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [
     querySignature,
     viewType,
-    debouncedSearch,
     statusFilter,
     typeFilter,
     businessUnitFilter,

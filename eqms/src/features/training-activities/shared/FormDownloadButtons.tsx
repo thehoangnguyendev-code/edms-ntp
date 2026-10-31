@@ -20,11 +20,14 @@ import { saveBlob } from "./trainingLabels";
 export function FormDownloadButtons({
   load,
   fileName,
+  parts,
   label,
   buttonText = "Export",
 }: {
-  load: (format: TrainingFormFormat) => Promise<Blob>;
-  fileName: (format: TrainingFormFormat) => string;
+  load?: (format: TrainingFormFormat) => Promise<Blob>;
+  fileName?: (format: TrainingFormFormat) => string;
+  /** Several files in one click (one for each department): each is saved as its own file, never in a ZIP. Used in place of `load` and `fileName`. */
+  parts?: { key: string; load: (format: TrainingFormFormat) => Promise<Blob>; fileName: (format: TrainingFormFormat) => string }[];
   label?: string;
   /** The text of the button, when several forms of the same kind are offered side by side (for example one list for each department). */
   buttonText?: string;
@@ -34,17 +37,19 @@ export function FormDownloadButtons({
   const [busy, setBusy] = useState<TrainingFormFormat | "">("");
   const download = async (format: TrainingFormFormat) => {
     setBusy(format);
-    try {
-      saveBlob(await load(format), fileName(format));
-    } catch (e) {
-      showToast({
-        type: "error",
-        title: `${label ?? "The form"} was not exported`,
-        message: trainingError(e),
-      });
-    } finally {
-      setBusy("");
+    const files = parts ?? (load && fileName ? [{ key: "one", load, fileName }] : []);
+    for (const file of files) {
+      try {
+        saveBlob(await file.load(format), file.fileName(format));
+      } catch (e) {
+        showToast({
+          type: "error",
+          title: `${label ?? "The form"} was not exported`,
+          message: trainingError(e),
+        });
+      }
     }
+    setBusy("");
   };
   return (
     <>

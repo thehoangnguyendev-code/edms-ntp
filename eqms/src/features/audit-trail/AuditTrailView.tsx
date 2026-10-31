@@ -557,7 +557,7 @@ export const AuditTrailView: React.FC = () => {
       <div className="flex w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-1 flex-col p-4 md:p-5">
           <div className="flex w-full flex-col gap-1.5 pb-4 md:hidden">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 block">
+            <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">
               Search
             </label>
             <div className="flex items-center gap-2">
@@ -650,7 +650,7 @@ export const AuditTrailView: React.FC = () => {
 >
 <div className="hidden md:grid grid-cols-1 items-end gap-4 pb-4 md:grid-cols-3 md:pb-5">
             <div className="w-full">
-              <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">
+              <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">
                 Search
               </label>
               <div className="relative">

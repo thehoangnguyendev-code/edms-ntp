@@ -308,7 +308,7 @@ const SessionLengthField: React.FC<{
     <div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,12rem)]">
         <div className="min-w-0">
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
             Session length
           </label>
           <input
@@ -1229,7 +1229,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                         role="tab"
                         aria-selected={markingTab === tab.key}
                         onClick={() => setMarkingTab(tab.key)}
-                        className={`flex-1 whitespace-nowrap rounded-md px-2 py-1.5 text-2xs sm:text-xs font-medium transition-colors ${
+                        className={`flex-1 whitespace-nowrap rounded-md px-2 py-1.5 text-2xs sm:text-xs font-medium capitalize transition-colors ${
                           markingTab === tab.key
                             ? "bg-white text-emerald-700 shadow-sm"
                             : "text-slate-600 hover:text-slate-900"

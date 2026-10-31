@@ -221,7 +221,7 @@ export const ReportTypesView: React.FC = () => {
             <div className="compact-filter-stack flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
               <div className="bg-white w-full">
                 <div className="flex md:hidden flex-col gap-1.5 w-full">
-                  <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
+                  <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -263,7 +263,7 @@ export const ReportTypesView: React.FC = () => {
                 >
                   <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-end">
                     <div className="sm:col-span-1 lg:col-span-4">
-                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Search</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <input
@@ -368,7 +368,7 @@ export const ReportTypesView: React.FC = () => {
               </p>
             </div>
             <div>
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
                 Reason <span className="text-red-500">*</span>
               </label>
               <textarea

@@ -249,7 +249,7 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
       <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3">
         <div className="flex flex-wrap items-end gap-4">
           {!allLines && (
-            <label className="block text-xs font-medium text-slate-700 sm:text-sm">
+            <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">
               Maximum score of the test
               <div className="mt-1 w-36">
                 <Input type="number" min={1} step="any" value={max} aria-label="Maximum score of the test" onChange={(e) => setMax(e.target.value)} />

@@ -267,8 +267,11 @@ const FOUNDATION_MODULES: NavItem[] = [
       {
         id: "my-training",
         label: "My Training",
-        path: ROUTES.TRAINING.MY_TRAINING,
         allowedPermissions: ["training.self.view"],
+        children: [
+          { id: "my-tasks", label: "My Tasks", path: ROUTES.TRAINING.MY_TASKS, allowedPermissions: ["training.self.view"] },
+          { id: "my-records", label: "My Records", path: ROUTES.TRAINING.MY_RECORDS, allowedPermissions: ["training.self.view"] },
+        ],
       },
       {
         id: "training-planning",
@@ -279,7 +282,7 @@ const FOUNDATION_MODULES: NavItem[] = [
           { id: "training-activities", label: "Training Activities", path: ROUTES.TRAINING.ACTIVITIES, allowedPermissions: ["training.activity.view"] },
           { id: "training-matrices", label: "Training Matrix", path: ROUTES.TRAINING.MATRIX, allowedPermissions: ["training.matrix.view"] },
           { id: "training-assessments", label: "Training Assessments", path: ROUTES.TRAINING.ASSESSMENTS, allowedPermissions: ["training.assessment.design", "training.assessment.approve"] },
-          { id: "training-document-trainings", label: "Document Trainings", path: ROUTES.TRAINING.DOCUMENT_TRAININGS, allowedPermissions: ["training.matrix.view"] },
+          { id: "training-document-impact-assessment", label: "Document Impact Assessment", path: ROUTES.TRAINING.DOCUMENT_IMPACT_ASSESSMENT, allowedPermissions: ["training.matrix.view"] },
         ],
       },
       {

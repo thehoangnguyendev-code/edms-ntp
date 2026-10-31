@@ -96,16 +96,31 @@ class TrainingMatrixFormServiceTest {
     }
 
     @Test
-    void manyPositionsAreWrittenUpwardsAndTheColumnsKeepTheWidthOfThePage() throws Exception {
-        byte[] out = TrainingMatrixFormService.fill(template(), version(12));
+    void manyPositionsAreWrittenUpwardsOnALandscapePageAndTheColumnsKeepTheWidthOfThePage() throws Exception {
+        byte[] out = TrainingMatrixFormService.fill(template(), version(14));
         try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(out))) {
             XWPFTable t = doc.getTables().get(0);
             String xml = t.getCTTbl().xmlText();
             assertTrue(xml.contains("btLr"), "the names of the positions are written upwards");
-            assertEquals(12 + 4, t.getCTTbl().getTblGrid().sizeOfGridColArray());
+            assertEquals(14 + 4, t.getCTTbl().getTblGrid().sizeOfGridColArray());
             int sum = 0;
             for (var c : t.getCTTbl().getTblGrid().getGridColArray()) sum += ((Number) c.getW()).intValue();
-            assertTrue(Math.abs(sum - 9628) <= 16, "the grid is as wide as the table of the form: " + sum);
+            assertTrue(Math.abs(sum - 14560) <= 16, "the grid is as wide as the landscape page: " + sum);
+            assertTrue(((java.math.BigInteger) doc.getDocument().getBody().getSectPr().getPgSz().getW()).compareTo((java.math.BigInteger) doc.getDocument().getBody().getSectPr().getPgSz().getH()) > 0, "the page is turned");
+        }
+    }
+
+    @Test
+    void fewPositionsStayOnAPortraitPageAndSevenOrMoreTurnThePage() throws Exception {
+        try (XWPFDocument few = new XWPFDocument(new ByteArrayInputStream(TrainingMatrixFormService.fill(template(), version(5))))) {
+            var size = few.getDocument().getBody().getSectPr().getPgSz();
+            assertTrue(((java.math.BigInteger) size.getW()).compareTo((java.math.BigInteger) size.getH()) < 0, "portrait");
+            assertTrue(!few.getTables().get(0).getCTTbl().xmlText().contains("btLr"));
+        }
+        try (XWPFDocument eight = new XWPFDocument(new ByteArrayInputStream(TrainingMatrixFormService.fill(template(), version(8))))) {
+            var size = eight.getDocument().getBody().getSectPr().getPgSz();
+            assertTrue(((java.math.BigInteger) size.getW()).compareTo((java.math.BigInteger) size.getH()) > 0, "landscape");
+            assertTrue(!eight.getTables().get(0).getCTTbl().xmlText().contains("btLr"), "names stay horizontal on a landscape page");
         }
     }
 

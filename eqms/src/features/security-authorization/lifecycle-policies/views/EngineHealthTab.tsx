@@ -247,7 +247,7 @@ export const EngineHealthTab: React.FC = () => {
 
       <div className="grid grid-cols-1 items-end gap-4 pb-4 md:grid-cols-2 lg:grid-cols-4 md:pb-5">
         <div className="w-full">
-          <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">
+          <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">
             Search
           </label>
           <div className="relative">

@@ -297,7 +297,7 @@ export const DepartmentsTab = React.forwardRef<
       {/* Filter Card */}
       <div className="bg-white w-full">
         <div className="flex md:hidden flex-col gap-1.5 w-full">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 block">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">
             Search
           </label>
           <div className="flex items-center gap-2">
@@ -395,7 +395,7 @@ export const DepartmentsTab = React.forwardRef<
 >
 <div className="hidden md:grid grid-cols-3 gap-4 items-end">
           <div className="w-full">
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
               Search
             </label>
             <div className="relative">
@@ -863,7 +863,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
     >
       <div className="space-y-4">
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
             Department Name<span className="text-red-500 ml-1">*</span>
           </label>
           <input
@@ -878,7 +878,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
             Abbreviation<span className="text-red-500 ml-1">*</span>
           </label>
           <input
@@ -898,7 +898,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
             Business Unit<span className="text-red-500 ml-1">*</span>
           </label>
           <Select
@@ -912,7 +912,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
               Department Head
             </label>
             <Select
@@ -937,7 +937,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
             />
           </div>
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
               Primary Contact
             </label>
             <input
@@ -957,7 +957,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
             Description
           </label>
           <textarea

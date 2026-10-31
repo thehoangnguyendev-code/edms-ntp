@@ -13,7 +13,7 @@ const baseConfig = {
   systemDisplayName: "EQMS",
   systemLogo: "",
   systemFavicon: "",
-  systemFooter: "",
+  systemFooterLeft: "",
   adminEmail: "admin@example.com",
   maintenanceMode: false,
   dateTimeFormat: "DD/MM/YYYY HH:mm:ss",
@@ -48,7 +48,7 @@ describe("GeneralTab > Branding > Header Title", () => {
     fireEvent.change(input(), { target: { value: "Quality Hub" } });
     const draft = onChange.mock.calls[0][0] as GeneralConfig;
     expect(draft.systemHeaderTitle).toBe("Quality Hub");
-    expect(draft.systemFooter).toBe(baseConfig.systemFooter);
+    expect(draft.systemFooterLeft).toBe(baseConfig.systemFooterLeft);
     expect(draft.systemDisplayName).toBe(baseConfig.systemDisplayName);
     expect(draft.appearance).toEqual(baseConfig.appearance);
   });

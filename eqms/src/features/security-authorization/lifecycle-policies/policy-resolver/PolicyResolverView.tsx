@@ -374,7 +374,7 @@ export const PolicyResolverView: React.FC = () => {
                       options={fromStatusOptions}
                     />
                   ) : (
-                    <label className="block text-xs font-medium text-slate-700 sm:text-sm">
+                    <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">
                       From status <span className="text-red-500">*</span>
                       <input
                         type="text"

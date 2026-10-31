@@ -59,7 +59,7 @@ const Field: React.FC<{
     <div>
       <label
         htmlFor={id}
-        className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm"
+        className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize"
       >
         {label}
         {required && <span className="ml-1 text-red-500">*</span>}

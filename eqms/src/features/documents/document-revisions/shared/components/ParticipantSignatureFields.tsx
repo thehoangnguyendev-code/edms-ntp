@@ -28,7 +28,7 @@ export const ParticipantSignatureFields: React.FC<ParticipantSignatureFieldsProp
         {records.map((record, index) => (
           <React.Fragment key={`${record.label}-${index}`}>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
                 {record.label}
               </label>
               <input
@@ -41,7 +41,7 @@ export const ParticipantSignatureFields: React.FC<ParticipantSignatureFieldsProp
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
                 Signed On (Date - Time)
               </label>
               <input

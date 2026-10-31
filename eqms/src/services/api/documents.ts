@@ -449,8 +449,13 @@ export const documentApi = {
   },
 
   /** GET /documents  server-side paginated list with filters */
-  getDocumentsPage: async (params?: DocumentListQuery) => {
+  getDocumentsPage: async (params?: DocumentListQuery, signal?: AbortSignal) => {
     const query = buildDocumentListQueryParams(params);
+    // A caller-owned cancellation must never cancel another consumer's deduplicated request.
+    if (signal) {
+      const response = await api.get<PaginatedResponse<DocumentListItem>>(`${DOCUMENTS_ENDPOINT}?${query}`, { signal });
+      return response.data;
+    }
     const cachedRequest = documentListRequestCache.get(query);
     if (cachedRequest) {
       return cachedRequest;
@@ -477,15 +482,21 @@ export const documentApi = {
   },
 
   /** GET /documents/filters */
-  getDocumentFilters: async (authorSearch?: string) => {
-    const cacheKey = authorSearch ? `default:${authorSearch}` : "default";
+  getDocumentFilters: async (authorSearch?: string, selectedUsers: string[] = []) => {
+    // Search uses the small people endpoint rather than fetching all filter dictionaries again.
+    if (authorSearch !== undefined) {
+      const response = await api.get<DocumentFiltersLookup["authors"]>(`${DOCUMENTS_ENDPOINT}/filter-authors`, { params: { search: authorSearch } });
+      return { statuses: [], documentTypes: [], businessUnits: [], departments: [], authors: response.data } satisfies DocumentFiltersLookup;
+    }
+    const selected = [...new Set(selectedUsers.filter((id) => id && id !== "All"))].sort();
+    const cacheKey = JSON.stringify(selected);
     const cachedRequest = documentFiltersRequestCache.get(cacheKey);
     if (cachedRequest) {
       return cachedRequest;
     }
 
     const request = api.get<DocumentFiltersLookup>(`${DOCUMENTS_ENDPOINT}/filters`, {
-      params: authorSearch ? { authorSearch } : undefined,
+      params: selected.length > 0 ? { selectedUsers: selected.join(",") } : undefined,
     })
       .then((response) => {
         const data = response.data;
@@ -1320,6 +1331,12 @@ export const documentApi = {
 
   getPublishingWorkspace: async (revisionId: string) => {
     const response = await api.get<PublishingWorkspaceResponse>(`${REVISIONS_ENDPOINT}/${revisionId}/publishing-workspace`);
+    return response.data;
+  },
+
+  getPublishingJobStatus: async (revisionId: string, jobId: string) => {
+    const response = await api.get<Pick<PublishingWorkspaceResponse, "publishingJobId" | "publishingJobStatus" | "publishingJobMessage" | "publishingJobError">>(
+      `${REVISIONS_ENDPOINT}/${revisionId}/publishing-workspace/jobs/${jobId}`);
     return response.data;
   },
 

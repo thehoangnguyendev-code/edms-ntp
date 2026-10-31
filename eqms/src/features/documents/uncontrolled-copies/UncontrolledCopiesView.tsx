@@ -511,7 +511,7 @@ export const UncontrolledCopiesView: React.FC<{
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
         <div className="p-4 md:p-5 flex-1 flex flex-col">
           <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 block">
+            <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">
               Search
             </label>
             <div className="flex items-center gap-2">
@@ -569,7 +569,7 @@ export const UncontrolledCopiesView: React.FC<{
             }} />}
           <div className={cn("hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5", compactDesktopFilters && "md:!hidden")}>
             <div>
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
                 Search
               </label>
               <div className="relative">
@@ -597,7 +597,7 @@ export const UncontrolledCopiesView: React.FC<{
               </div>
             </div>
             <div>
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
                 Status
               </label>
               <Select

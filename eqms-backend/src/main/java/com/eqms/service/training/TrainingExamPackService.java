@@ -55,7 +55,7 @@ public class TrainingExamPackService {
 
     @Transactional
     public Map<String, Object> print(UserAccount actor, UUID sessionId, String reason, String format) {
-        access.require(actor, "training.paper.print");
+        access.require(actor, "training.activity.conduct", "training.activity.organize");
         boolean wordOut = "docx".equalsIgnoreCase(format);
         if (format != null && !format.isBlank() && !wordOut && !"pdf".equalsIgnoreCase(format)) throw new IllegalArgumentException("TRAINING_FORMAT_INVALID");
         Map<String, Object> session = jdbc.queryForList("""
@@ -90,7 +90,7 @@ public class TrainingExamPackService {
         if (why != null && why.length() > 1000) throw new IllegalArgumentException("TRAINING_REASON_TOO_LONG");
 
         List<Map<String, Object>> trainees = jdbc.queryForList("""
-            select p.full_name, p.employee_code, p.department from training_participants p where p.session_id = ? and p.state <> 'ABSENT' and p.planned_absence is null and p.participation_role = 'TRAINEE' order by p.full_name
+            select p.id, p.full_name, p.employee_code, p.department from training_participants p where p.session_id = ? and p.state <> 'ABSENT' and p.planned_absence is null and p.participation_role = 'TRAINEE' order by p.full_name
             """, sessionId);
         if (trainees.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PARTICIPANT_REQUIRED");
         if (trainees.size() > MAX_TRAINEES) throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "TRAINING_PAPER_TOO_LARGE");
@@ -120,6 +120,8 @@ public class TrainingExamPackService {
                     extension = ".pdf";
                 }
                 if (".pdf".equals(extension)) {
+                    // the QR code of the copy on every page (copy, trainee, page): the scans of a whole class come back sorted by it
+                    file = TrainingPaperQr.stamp(file, code, TrainingPaperQr.personTag((UUID) t.get("id")));
                     try (PDDocument d = Loader.loadPDF(file)) {
                         pages += d.getNumberOfPages();
                         total += d.getNumberOfPages();

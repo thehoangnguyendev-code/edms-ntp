@@ -313,12 +313,15 @@ public class TrainingActivityService {
         out.put("selfReadingDepartments", TrainingRows.camel(jdbc.queryForList("""
             select coalesce(d.id::text, '') as department_id, coalesce(d.name, nullif(btrim(p.department), ''), '—') as department_name,
                    count(*) as people, count(*) filter (where p.state = 'READ_CONFIRMED' and p.result = 'PENDING') as waiting, count(*) filter (where p.state = 'READ_CONFIRMED' and p.result <> 'PENDING') as verified,
-                   h.full_name as head_name, (h.id = ?) as mine
+                   count(*) filter (where p.state = 'INVITED') as invited,
+                   h.full_name as head_name, (h.id = ?) as mine,
+                   (select u2.full_name from training_active_confirmations c join app_users u2 on u2.id = c.confirmed_by where c.activity_id = ? and c.kind = 'HEAD_SELF_READING' and c.department_id is not distinct from d.id order by c.confirmed_at desc limit 1) as signed_by_name,
+                   (select c.confirmed_at from training_active_confirmations c where c.activity_id = ? and c.kind = 'HEAD_SELF_READING' and c.department_id is not distinct from d.id order by c.confirmed_at desc limit 1) as signed_at
               from training_participants p join training_sessions s on s.id = p.session_id and s.method = 'SELF_READING'
               left join departments d on lower(btrim(d.name)) = lower(btrim(p.department)) left join app_users h on h.id = d.department_head_id
              where p.activity_id = ? and p.external_name is null
              group by d.id, d.name, btrim(p.department), h.id, h.full_name order by 2
-            """, actor.getId(), id)));
+            """, actor.getId(), id, id, id)));
         // A department that has no head (or is not in the master data): a person who holds the right to close a training confirms in place of the head, and the record says so.
         if (access.has(actor, "training.activity.close")) {
             for (Map<String, Object> d : (List<Map<String, Object>>) out.get("selfReadingDepartments")) {
@@ -397,6 +400,17 @@ public class TrainingActivityService {
                 total == null ? 0 : total, total == null ? 0 : (int) Math.ceil((double) total / size)));
     }
 
+    /** True when a supplementary (make-up) training of the activity already lists the person, or has them proposed. */
+    private boolean hasSupplementary(UUID activityId, Object personUserId) {
+        if (!(personUserId instanceof UUID person)) return false;
+        Integer found = jdbc.queryForObject("""
+            select count(*) from training_activities c where c.parent_activity_id = ? and c.status <> 'CANCELLED'
+               and (exists (select 1 from training_participants x where x.activity_id = c.id and x.person_user_id = ?)
+                 or exists (select 1 from training_proposed_participants q where q.activity_id = c.id and q.person_user_id = ?))
+            """, Integer.class, activityId, person, person);
+        return found != null && found > 0;
+    }
+
     @Transactional(readOnly = true)
     public Map<String, Object> overview(UserAccount actor, UUID id, UUID sessionId, boolean participantContext) {
         Map<String, Object> result = new LinkedHashMap<>(get(actor, id));
@@ -409,7 +423,17 @@ public class TrainingActivityService {
                 .forEach(sid -> sessions.put(sid.toString(), participantStats(people.stream().filter(p -> sid.equals(p.get("sessionId"))).toList())));
         stats.put("sessions", sessions);
         result.put("participantSummary", stats);
-        result.put("supplementaryCandidates", people.stream().filter(p -> "ABSENT".equals(p.get("state")) || "FAILED".equals(p.get("result"))).toList());
+        // a candidate whose account is not Active (left the company, suspended on a long leave) is shown but cannot be put on a make-up training until the account is Active again (D-SRM-6)
+        List<Map<String, Object>> candidates = people.stream().filter(p -> "ABSENT".equals(p.get("state")) || "FAILED".equals(p.get("result")))
+                .map(p -> {
+                    Map<String, Object> c = new LinkedHashMap<>(p);
+                    c.put("canOfferSupplementary", p.get("personUserId") == null || "Active".equals(p.get("accountStatus")));
+                    c.put("hasSupplementary", hasSupplementary(id, p.get("personUserId")));
+                    return c;
+                }).toList();
+        result.put("supplementaryCandidates", candidates);
+        result.put("supplementaryPending", candidates.stream().filter(c -> !Boolean.TRUE.equals(c.get("hasSupplementary")) && Boolean.TRUE.equals(c.get("canOfferSupplementary"))).count());
+        result.put("supplementaryBlocked", candidates.stream().filter(c -> !Boolean.TRUE.equals(c.get("canOfferSupplementary"))).count());
         result.put("participants", participantContext ? people : List.of());
         result.put("sessionParticipants", participantContext ? people.stream().filter(p -> sessionId == null || sessionId.equals(p.get("sessionId"))).toList() : List.of());
         return result;
@@ -434,7 +458,7 @@ public class TrainingActivityService {
 
     private static final String PARTICIPANT_SELECT = """
 select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.department, p.position, p.external_name, p.external_org, p.state, p.result,
-                   p.absence_reason, p.planned_absence, p.added_reason, p.sign_mode, p.read_confirmed_at,
+                   p.absence_reason, p.planned_absence, p.added_reason, p.sign_mode, p.read_confirmed_at, p.last_read_reminder_at,
                    p.participation_role, p.participation_reason, p.participation_set_at, (select su.full_name from app_users su where su.id = p.participation_set_by) as participation_set_by_name,
                    case when not exists (select 1 from training_exam_questions q where q.activity_id = p.activity_id) then null
                         when exists (select 1 from training_exam_attempts t where t.participant_id = p.id and t.status = 'SUBMITTED') then 'DONE'
@@ -446,7 +470,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
                    (select a.percent from training_assessments a where a.participant_id = p.id order by attempt_no desc limit 1) as last_percent,
                    (select a.score_obtained from training_assessments a where a.participant_id = p.id order by attempt_no desc limit 1) as last_score,
                    (select a.score_max from training_assessments a where a.participant_id = p.id order by attempt_no desc limit 1) as last_max,
-                   (select au.avatar from app_users au where au.id = p.person_user_id) as avatar
+                   (select au.avatar from app_users au where au.id = p.person_user_id) as avatar,
+                   (select au.status from app_users au where au.id = p.person_user_id) as account_status
               from training_participants p where p.activity_id=?
         """;
 
@@ -587,7 +612,10 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         caps.put("recordAttendance", conduct && "IN_PROGRESS".equals(status));
         // How each person takes part (trainee, trainer, attends only, listed only) is decided before the training and on the day, until the trainer finishes it.
         caps.put("setParticipation", conduct && Set.of("PLANNED", "NOTIFIED", "IN_PROGRESS").contains(status) && !finished && !"EXTERNAL".equals(activity.get("kind")));
-        caps.put("printPaper", conduct && access.has(actor, "training.paper.print") && Set.of("NOTIFIED", "IN_PROGRESS").contains(status));
+        caps.put("printPaper", conduct && Set.of("NOTIFIED", "IN_PROGRESS").contains(status));
+        // The trainer reminds a person of a self-reading who has not signed yet (the button is on the person's line in the Reading step)
+        caps.put("remindToRead", conduct && Set.of("NOTIFIED", "IN_PROGRESS").contains(status));
+        caps.put("excuseReader", conduct && Set.of("NOTIFIED", "IN_PROGRESS").contains(status));
         caps.put("rollCall", conduct && "IN_PROGRESS".equals(status));
         caps.put("transcribe", conduct && access.has(actor, "training.paper.transcribe") && "IN_PROGRESS".equals(status));
         caps.put("verifyTranscription", access.has(actor, "training.paper.verify") && access.inScope(actor, department) && "IN_PROGRESS".equals(status));
@@ -597,8 +625,10 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         caps.put("editSession", organize && Set.of("PLANNED", "NOTIFIED").contains(status));
         // A training from a document is finished in Document Control: the revision waits for "Complete Training" once the activity is completed.
         // The trainer sends the attendance list (the screen turns the button on when everyone is recorded), then, with every result in, finishes the training and sends the results to QA.
-        caps.put("sendAttendanceList", sender && !listSent);
-        caps.put("finishTraining", sender && listSent && allResultsIn((UUID) activity.get("id")) && allScansIn((UUID) activity.get("id")));
+        // A training of self-reading only has no attendance list APD.0117 to send (SOP.0003: its list is APD.0108, signed in the system): its trainer finishes it once nobody is left Invited (owner decision 2026-10-31)
+        boolean readingOnly = selfReadingOnly((UUID) activity.get("id"));
+        caps.put("sendAttendanceList", sender && !listSent && !readingOnly);
+        caps.put("finishTraining", sender && (listSent || (readingOnly && readersSettled((UUID) activity.get("id")))) && allResultsIn((UUID) activity.get("id")) && allScansIn((UUID) activity.get("id")));
         // The revision is completed in Document Control once the trainer has finished the training (Finish Training), not before: the attendance list sent to QA is not enough.
         caps.put("completeTraining", ("COMPLETED".equals(status) || activity.get("results_finished_at") != null)
                 && !jdbc.queryForList("select 1 from document_revisions where training_activity_id = ? and status_code = 'PENDING_TRAINING' limit 1", Integer.class, activity.get("id")).isEmpty());
@@ -1047,6 +1077,51 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private TrainingAttendanceListService attendanceLists;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @org.springframework.context.annotation.Lazy
+    private TrainingFormExportService forms;
+
+    /**
+     * The self-reading list(s) APD.0108 of a self-reading activity, filled with what was signed in the system: one PDF for one department, one ZIP when the activity has several lists (departments or sessions).
+     * Null when the lists cannot be made; the e-mail then goes without them.
+     */
+    private Map<String, Object> selfReadingLists(UserAccount actor, UUID id) {
+        if (forms == null) return null;
+        try {
+            List<Map<String, Object>> files = new ArrayList<>();
+            for (UUID sessionId : jdbc.queryForList("select id from training_sessions where activity_id = ? and status <> 'CANCELLED' and method = 'SELF_READING' order by session_no", UUID.class, id)) {
+                files.add(forms.selfReading(actor, sessionId, "pdf", null));
+            }
+            if (files.size() == 1 && "application/pdf".equals(files.get(0).get("contentType"))) return files.get(0);
+            java.io.ByteArrayOutputStream zip = new java.io.ByteArrayOutputStream();
+            try (java.util.zip.ZipOutputStream out = new java.util.zip.ZipOutputStream(zip)) {
+                java.util.Set<String> used = new java.util.HashSet<>();
+                for (Map<String, Object> file : files) {
+                    if ("application/pdf".equals(file.get("contentType"))) {
+                        String name = String.valueOf(file.get("name"));
+                        while (!used.add(name)) name = "x-" + name;
+                        out.putNextEntry(new java.util.zip.ZipEntry(name));
+                        out.write((byte[]) file.get("bytes"));
+                        out.closeEntry();
+                    } else {
+                        try (java.util.zip.ZipInputStream in = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream((byte[]) file.get("bytes")))) {
+                            for (java.util.zip.ZipEntry e = in.getNextEntry(); e != null; e = in.getNextEntry()) {
+                                String name = e.getName();
+                                while (!used.add(name)) name = "x-" + name;
+                                out.putNextEntry(new java.util.zip.ZipEntry(name));
+                                in.transferTo(out);
+                                out.closeEntry();
+                            }
+                        }
+                    }
+                }
+            }
+            return Map.of("bytes", zip.toByteArray(), "name", jdbc.queryForObject("select training_number from training_activities where id = ?", String.class, id).replace('/', '-') + "-APD.0108.zip", "contentType", "application/zip");
+        } catch (RuntimeException | java.io.IOException failure) {
+            return null;
+        }
+    }
+
     private byte[] attendanceListPdf(UserAccount actor, UUID id) {
         if (attendanceLists == null) return null;
         try {
@@ -1177,7 +1252,9 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         requireStatus(activity, "IN_PROGRESS");
         if (request == null || request.state() == null || !Set.of("ATTENDED", "ONLINE", "ABSENT").contains(request.state())) throw new IllegalArgumentException("TRAINING_ATTENDANCE_INVALID");
         Map<String, Object> session = session((UUID) participant.get("session_id"));
-        if (!TrainingSessionState.started(session)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_NOT_HELD");
+        // Self-reading is read and confirmed by every invited person with their own electronic signature (owner decisions 2026-10-31): the trainer records nothing for them, neither that they read nor that they did not; a person who has not signed is reminded
+        if ("SELF_READING".equals(session.get("method"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SELF_READING_ELECTRONIC_ONLY");
+        if (!"SELF_READING".equals(session.get("method")) && !TrainingSessionState.started(session)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_NOT_HELD");
         if (!"INVITED".equals(participant.get("state"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_ALREADY");
         if ("ABSENT".equals(request.state()) && (request.absenceReason() == null || request.absenceReason().isBlank())) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         if (participant.get("person_user_id") != null && participant.get("person_user_id").equals(actor.getId())) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
@@ -1202,6 +1279,7 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         if (request == null || request.state() == null || !Set.of("ATTENDED", "ONLINE", "ABSENT").contains(request.state())) throw new IllegalArgumentException("TRAINING_ATTENDANCE_INVALID");
         if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         if (participant.get("person_user_id") != null && participant.get("person_user_id").equals(actor.getId())) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
+        if ("SELF_READING".equals(session((UUID) participant.get("session_id")).get("method"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SELF_READING_ELECTRONIC_ONLY");
         String before = String.valueOf(participant.get("state"));
         if (!Set.of("ATTENDED", "ONLINE", "ABSENT").contains(before)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_NOT_RECORDED");
         if (before.equals(request.state())) throw new IllegalArgumentException("TRAINING_ATTENDANCE_UNCHANGED");
@@ -1320,6 +1398,65 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         return TrainingRows.camel(store.activity((UUID) activity.get("id")).orElseThrow());
     }
 
+    /** A reminder by hand is not repeated within this time, so that the person is not flooded. */
+    static final int READ_REMINDER_MINUTES = 60;
+
+    /**
+     * The trainer reminds a person who has not yet signed that they have read a self-reading (owner decision 2026-10-31). The person gets a notice in the application and an e-mail;
+     * the time is kept on the line, and a person who has signed (or a row that is not a self-reading) cannot be reminded.
+     */
+    @Transactional
+    public Map<String, Object> remindToRead(UserAccount actor, UUID participantId) {
+        Map<String, Object> participant = participant(participantId);
+        Map<String, Object> activity = store.activityForUpdate((UUID) participant.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        requireConductor(actor, activity);
+        requireStatus(activity, "NOTIFIED", "IN_PROGRESS");
+        Map<String, Object> session = session((UUID) participant.get("session_id"));
+        if (!"SELF_READING".equals(session.get("method")) || !"INVITED".equals(participant.get("state")) || participant.get("person_user_id") == null)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_READ_REMINDER_NOT_NEEDED");
+        Integer recent = jdbc.queryForObject("select count(*) from training_participants where id = ? and last_read_reminder_at > now() - make_interval(mins => ?)", Integer.class, participantId, READ_REMINDER_MINUTES);
+        if (recent != null && recent > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_READ_REMINDER_TOO_SOON");
+        UserAccount person = users.findById((UUID) participant.get("person_user_id")).orElseThrow(() -> new IllegalArgumentException("TRAINING_PARTICIPANT_REQUIRED"));
+        // a person who left or is suspended cannot sign: nothing is sent to them, the trainer records them with Cannot Read instead (D-SRM-6)
+        Integer active = jdbc.queryForObject("select count(*) from app_users where id = ? and status = 'Active'", Integer.class, person.getId());
+        if (active == null || active == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_READER_ACCOUNT_NOT_ACTIVE");
+        jdbc.update("update training_participants set last_read_reminder_at = now() where id = ?", participantId);
+        notifier.send("TRAINING_READ_REMINDER", person, actor, "Training: please read and sign",
+                readReminderText(activity), "TRAINING_ACTIVITY", (UUID) activity.get("id"), null);
+        store.auditActivity(actor, activity, "TRAINING_READ_REMINDED", null, null, String.valueOf(participant.get("full_name")));
+        return get(actor, (UUID) activity.get("id"));
+    }
+
+    /**
+     * A person of a self-reading who cannot read within this training (left the company, long leave, illness) is not taken off the list, as the SOP keeps every invited person on it: the organizer or
+     * trainer records them as absent, with the reason and an electronic signature, and they become a candidate of the supplementary training (make-up) of SOP.0003 5.3.7. Nothing is recorded as read.
+     */
+    @Transactional
+    public Map<String, Object> excuseReader(UserAccount actor, UUID participantId, CommandRequest request) {
+        Map<String, Object> participant = participant(participantId);
+        Map<String, Object> activity = store.activityForUpdate((UUID) participant.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        requireConductor(actor, activity);
+        requireStatus(activity, "NOTIFIED", "IN_PROGRESS");
+        Map<String, Object> session = session((UUID) participant.get("session_id"));
+        if (!"SELF_READING".equals(session.get("method")) || !"INVITED".equals(participant.get("state"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CANNOT_READ_NOT_APPLICABLE");
+        if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
+        if (participant.get("person_user_id") != null && participant.get("person_user_id").equals(actor.getId())) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
+        UUID signature = sign(actor, activity, "TRAINING_READER_EXCUSED", request);
+        String reason = request.reason().trim();
+        // the state of the person's account at the time is part of the record: the reason is typed, the account state is a system fact (ALCOA+)
+        String accountStatus = participant.get("person_user_id") == null ? "-" : jdbc.queryForList("select status from app_users where id = ?", String.class, participant.get("person_user_id")).stream().findFirst().orElse("-");
+        jdbc.update("update training_participants set state='ABSENT', absence_reason=?, result='PENDING', sign_mode='NONE', attend_signature_id=?, version=version+1 where id=?", reason, signature, participantId);
+        store.event(TrainingStore.OBJECT_ACTIVITY, (UUID) activity.get("id"), (UUID) activity.get("id"), "READER_EXCUSED", Map.of("participant", String.valueOf(participant.get("full_name")), "reason", reason, "accountStatus", accountStatus), actor.getId());
+        store.auditActivity(actor, activity, "TRAINING_READER_EXCUSED", "INVITED", "ABSENT", participant.get("full_name") + " (account " + accountStatus + "): " + reason);
+        return get(actor, (UUID) activity.get("id"));
+    }
+
+    static String readReminderText(Map<String, Object> activity) {
+        Object due = activity.get("due_date");
+        return "You have not yet confirmed that you have read and understood the training " + activity.get("training_number")
+                + (due == null ? "" : ", due on " + com.eqms.util.DateTimeFormatUtils.display(due)) + ". Open My Training, read the document and sign electronically.";
+    }
+
     /**
      * The head of a department confirms the self-reading of the people of that department who confirmed it (TR-16, APD.0108); they are then treated as having passed. The head is the Department Head
      * of the master data of departments (Settings, Departments); a person who is the head of no department that has people waiting cannot confirm. A head confirms only the people of their own
@@ -1350,6 +1487,15 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
             return false;
         }).toList();
         if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "TRAINING_NOT_DEPARTMENT_HEAD");
+        // The head confirms a department only when every person of it has signed or was recorded as not having read (owner decision 2026-10-31)
+        Set<UUID> notSigned = new HashSet<>();
+        for (Map<String, Object> r : jdbc.queryForList("""
+            select d.id as department_id from training_participants p left join departments d on lower(btrim(d.name)) = lower(btrim(p.department))
+             where p.activity_id = ? and p.state = 'INVITED' and p.external_name is null
+            """, activityId)) notSigned.add(r.get("department_id") == null ? new UUID(0, 0) : (UUID) r.get("department_id"));
+        List<Map<String, Object>> settled = rows.stream().filter(r -> !notSigned.contains(r.get("department_id") == null ? new UUID(0, 0) : (UUID) r.get("department_id"))).toList();
+        if (settled.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SELF_READING_NOT_ALL_SIGNED");
+        rows = settled;
         if (rows.stream().anyMatch(r -> actor.getId().equals(r.get("person_user_id")))) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
         UUID signature = sign(actor, activity, "TRAINING_READ_VERIFIED", request);
         for (Map<String, Object> row : rows) jdbc.update("update training_participants set result='PASSED', version=version+1 where id=?", row.get("id"));
@@ -1376,7 +1522,11 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         Map<String, Object> activity = lockedForSender(actor, id);
         requireVersion(activity, request == null ? null : request.version());
         requireStatus(activity, "IN_PROGRESS");
-        if (activity.get("attendance_sent_at") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_NOT_SENT");
+        if (selfReadingOnly(id)) {
+            if (!readersSettled(id)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PARTICIPANT_NOT_FINAL");
+        } else if (activity.get("attendance_sent_at") == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_NOT_SENT");
+        }
         if (!allResultsIn(id)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_RESULT_PENDING");
         if (!allScansIn(id)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SCANS_PENDING");
         UUID signature = sign(actor, activity, "TRAINING_RESULTS_FINISHED", request);
@@ -1402,13 +1552,17 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         for (UserAccount confirmer : approvals.eligibleUsers("ACTIVITY_COMPLETE", (UUID) activity.get("organizer_department_id"), keptApart(activity, "ACTIVITY_COMPLETE"))) toTell.put(confirmer.getId(), confirmer);
         for (UserAccount receiver : attendanceReceivers(activity)) toTell.putIfAbsent(receiver.getId(), receiver);
         // The list APD.0117 with the results written in it goes with the e-mail.
-        byte[] pdf = toTell.isEmpty() ? null : attendanceListPdf(actor, id);
-        String fileName = String.valueOf(activity.get("training_number")).replace('/', '-') + "-APD.0117.pdf";
+        // A self-reading has no APD.0117: QA gets the lists APD.0108 signed in the system (owner decision 2026-10-31)
+        boolean reading = selfReadingOnly(id);
+        Map<String, Object> readingLists = reading && !toTell.isEmpty() ? selfReadingLists(actor, id) : null;
+        byte[] pdf = reading ? (readingLists == null ? null : (byte[]) readingLists.get("bytes")) : (toTell.isEmpty() ? null : attendanceListPdf(actor, id));
+        String fileName = reading ? (readingLists == null ? null : String.valueOf(readingLists.get("name"))) : String.valueOf(activity.get("training_number")).replace('/', '-') + "-APD.0117.pdf";
+        String formCode = reading ? "APD.0108" : "APD.0117";
         for (UserAccount confirmer : toTell.values()) {
             if (confirmer.getId().equals(actor.getId())) continue;
             notifier.send("TRAINING_SUBMITTED_TO_QA", confirmer, actor, "Training: results are waiting for QA",
-                    "The attendance list and the results of " + activity.get("training_number") + " (" + activity.get("training_topics") + ") were sent to QA by " + actor.getFullName()
-                            + ". " + (pdf != null ? "The list (APD.0117) with the results is attached to the e-mail as a PDF. " : "")
+                    (reading ? "The self-reading of " : "The attendance list and the results of ") + activity.get("training_number") + " (" + activity.get("training_topics") + ") " + (reading ? "is finished: the people signed in the system and the heads of the departments confirmed it. It was sent to QA by " : "were sent to QA by ") + actor.getFullName()
+                            + ". " + (pdf != null ? "The list (" + formCode + ")" + (reading ? "" : " with the results") + " is attached to the e-mail" + (pdf.length > 4 && pdf[0] == 'P' && pdf[1] == 'K' ? " (a ZIP with one list for each department). " : " as a PDF. ") : "")
                             + "Please check them and confirm that the training is completed, with your signature.", "TRAINING_ACTIVITY", id, "qa-submitted:" + id + ":" + confirmer.getId() + ":" + stamp,
                     pdf == null ? null : fileName, pdf);
         }
@@ -1518,6 +1672,9 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
             Map<String, Object> p = participant(participantId);
             if (!id.equals(p.get("activity_id"))) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");
             if (!"ABSENT".equals(p.get("state")) && !"FAILED".equals(p.get("result"))) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");
+            // a person who left the company, or is suspended, cannot be trained: they stay Absent on the original list and are offered the make-up when the account is Active again (D-SRM-6)
+            Integer active = p.get("person_user_id") == null ? 1 : jdbc.queryForObject("select count(*) from app_users where id = ? and status = 'Active'", Integer.class, p.get("person_user_id"));
+            if (active == null || active == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SUPPLEMENTARY_PERSON_NOT_ACTIVE");
             failed |= "FAILED".equals(p.get("result"));
             people.add(p);
         }
@@ -1531,6 +1688,9 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
             """, childId, number, parent.get("base_number"), suffix, id, parent.get("organizer_department_id"), parent.get("year"), parent.get("serial"),
                 failed ? "FAILED_ASSESSMENT" : "ABSENT_MAKEUP", parent.get("document_id"), parent.get("revision_id"), parent.get("revision_number"),
                 parent.get("document_number"), parent.get("document_name"), request.reason().trim(), actor.getId());
+        // the people are proposed on the new activity: the system adds them to its first session, but the organizer still confirms the list with a signature as for any activity
+        for (Map<String, Object> p : people)
+            if (p.get("person_user_id") != null) jdbc.update("insert into training_proposed_participants(id, activity_id, person_user_id, proposed_by) values (?,?,?,?) on conflict do nothing", UUID.randomUUID(), childId, p.get("person_user_id"), actor.getId());
         Map<String, Object> child = store.activity(childId).orElseThrow();
         store.event(TrainingStore.OBJECT_ACTIVITY, childId, childId, "NUMBER_ISSUED", Map.of("number", number, "parent", String.valueOf(parent.get("training_number"))), actor.getId());
         store.auditActivity(actor, child, "TRAINING_ACTIVITY_CREATED", null, "PLANNED", "Supplementary of " + parent.get("training_number") + ": " + request.reason().trim());
@@ -1621,8 +1781,22 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
      * A session held on paper (or mixed) has the scan of the written test of each person kept in the system, or one scan for the whole session, before the trainer may finish the training;
      * an electronic session has nothing to scan.
      */
+    /** Every session that is not cancelled is a self-reading: the activity has no attendance list APD.0117 and no check-in (owner decision 2026-10-31). */
+    boolean selfReadingOnly(UUID activityId) {
+        Integer other = jdbc.queryForObject("select count(*) filter (where method <> 'SELF_READING') from training_sessions where activity_id = ? and status <> 'CANCELLED'", Integer.class, activityId);
+        Integer all = jdbc.queryForObject("select count(*) from training_sessions where activity_id = ? and status <> 'CANCELLED'", Integer.class, activityId);
+        return all != null && all > 0 && other != null && other == 0;
+    }
+
+    /** Nobody is left Invited (each person signed, or was recorded as not having read) and at least one person read: the self-reading can be finished. */
+    private boolean readersSettled(UUID activityId) {
+        Integer invited = jdbc.queryForObject("select count(*) from training_participants where activity_id = ? and state = 'INVITED'", Integer.class, activityId);
+        Integer read = jdbc.queryForObject("select count(*) from training_participants where activity_id = ? and state = 'READ_CONFIRMED'", Integer.class, activityId);
+        return (invited == null || invited == 0) && read != null && read > 0;
+    }
+
     private boolean allScansIn(UUID activityId) {
-        Integer onPaper = jdbc.queryForObject("select count(*) from training_sessions where activity_id=? and status <> 'CANCELLED' and delivery_mode is not null and delivery_mode <> 'ELECTRONIC'", Integer.class, activityId);
+        Integer onPaper = jdbc.queryForObject("select count(*) from training_sessions where activity_id=? and status <> 'CANCELLED' and method <> 'SELF_READING' and delivery_mode is not null and delivery_mode <> 'ELECTRONIC'", Integer.class, activityId);
         if (onPaper == null || onPaper == 0) return true;
         Integer whole = jdbc.queryForObject("select count(*) from training_paper_evidence where activity_id=? and kind='ASSESSMENT' and participant_id is null", Integer.class, activityId);
         if (whole != null && whole > 0) return true;

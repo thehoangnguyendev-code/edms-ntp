@@ -48,6 +48,12 @@ public class TrainingSignatureBlocks {
         return out;
     }
 
+    /** The reason the signer typed in the electronic signature window; null when there is no such signature. */
+    @Transactional(readOnly = true)
+    public String reason(UUID signatureId) {
+        return signatureId == null ? null : repository.findById(signatureId).map(s -> s.getReason()).orElse(null);
+    }
+
     /** The lines of the block of one signature; empty when there is no such signature. */
     @Transactional(readOnly = true)
     public List<String> lines(UUID signatureId) {

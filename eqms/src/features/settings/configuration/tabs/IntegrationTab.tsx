@@ -209,7 +209,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
             />
             {['aws-s3', 'azure-blob', 'google-cloud'].includes(config.storage.provider) && (
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                   Bucket / Container Name
                 </label>
                 <input
@@ -226,7 +226,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Region
                   </label>
                   <input
@@ -238,7 +238,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   />
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Base Path
                   </label>
                   <input
@@ -250,7 +250,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   />
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Access Key ID
                   </label>
                   <div className="relative">
@@ -271,7 +271,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Secret Access Key
                   </label>
                   <div className="relative">
@@ -301,7 +301,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                 />
                 {config.storage.enableCdn && (
                   <div className="mt-3">
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                       CDN URL
                     </label>
                     <input
@@ -320,7 +320,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     MinIO Endpoint
                   </label>
                   <input
@@ -366,7 +366,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   </p>
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Bucket Name
                   </label>
                   <input
@@ -381,7 +381,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   </p>
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Access Key ID
                   </label>
                   <input
@@ -396,7 +396,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   </p>
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Secret Access Key
                   </label>
                   <div className="relative">
@@ -417,7 +417,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Retention Period
                   </label>
                   <div className="flex h-9 items-center gap-3">
@@ -490,7 +490,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     NAS Host / IP
                   </label>
                   <input
@@ -502,7 +502,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Shared Folder Name
                   </label>
                   <input
@@ -514,7 +514,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   />
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Domain / Workgroup (optional)
                   </label>
                   <input
@@ -526,7 +526,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   />
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Username
                   </label>
                   <input
@@ -538,7 +538,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   />
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Password
                   </label>
                   <div className="relative">
@@ -559,7 +559,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   </div>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Resolved SMB Path
                   </label>
                   <input
@@ -580,7 +580,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Client ID
                   </label>
                   <input
@@ -592,7 +592,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   />
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Client Secret
                   </label>
                   <div className="relative">
@@ -613,7 +613,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   </div>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Google Drive Folder ID
                   </label>
                   <input
@@ -632,7 +632,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     App Key
                   </label>
                   <input
@@ -644,7 +644,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   />
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     App Secret
                   </label>
                   <div className="relative">
@@ -665,7 +665,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   </div>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Access Token
                   </label>
                   <div className="relative">
@@ -686,7 +686,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                   </div>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                     Folder Path
                   </label>
                   <input

@@ -69,6 +69,8 @@ public class EmailNotificationService {
 
     @Autowired
     private NotificationTemplateVersionRepository notificationTemplateVersionRepository;
+    @Autowired private ObjectProvider<NotificationEmailOutbox> emailOutboxProvider;
+    @Autowired private ObjectProvider<EmailTemplateService> emailTemplateServiceProvider;
 
     @Value("${app.public-url:http://localhost:3000}")
     private String envPublicAppUrl;
@@ -145,6 +147,7 @@ public class EmailNotificationService {
                     log.debug("Skipping email notification for {} because email notifications are disabled for this module.", recipientEmail);
                     continue;
                 }
+                if(queueFencedDelivery(template,recipientEmail.trim(),payload,"CONTROLLED_COPY",true))continue;
                 boolean sent = sendTemplateEmailWithRetry(emailService, recipientEmail.trim(), template, payload, true);
                 if (!sent) {
                     String reason = "Email provider rejected delivery or is not configured";
@@ -164,6 +167,7 @@ public class EmailNotificationService {
                     auditEmailAttempt(recipientEmail, recipientEmail, template.getName(), payload, true, null);
                 }
             } catch (Exception ex) {
+                if(ControlledCopyDeliveryScope.active())throw new IllegalStateException("Could not queue controlled copy delivery",ex);
                 recordDeliveryFailure(recipientEmail, normalizedType, "CONTROLLED_COPY", ex, payload);
                 auditEmailAttempt(recipientEmail, recipientEmail, template.getName(), payload, false, ex.getMessage());
                 log.warn("Failed to send '{}' controlled copy notification to {}: {}", normalizedType, recipientEmail, ex.getMessage(), ex);
@@ -623,6 +627,9 @@ public class EmailNotificationService {
                     emailPayload.put("recipientEmail", recipientEmail);
                     emailPayload.put("userEmail", recipientEmail);
                     emailPayload.put("displayName", StringUtils.hasText(recipient.getFullName()) ? recipient.getFullName() : recipientEmail);
+                    if(queueFencedDelivery(template,recipientEmail,emailPayload,eventDomain,!userSent)) {
+                        userSent=true;sentAny=true;continue;
+                    }
                     boolean sent = sendTemplateEmailWithRetry(emailService, recipientEmail, template, emailPayload, !userSent);
                     userSent = userSent || sent;
                     sentAny = sentAny || sent;
@@ -641,6 +648,7 @@ public class EmailNotificationService {
                     }
                 }
             } catch (Exception ex) {
+                if(ControlledCopyDeliveryScope.active())throw new IllegalStateException("Could not queue controlled copy delivery",ex);
                 recordDeliveryFailure(recipient.getEmail(), normalizedType, eventDomain, ex, variables);
                 auditEmailAttempt(recipient.getFullName(), recipient.getEmail(), template.getName(), variables, false, ex.getMessage());
                 log.warn("Failed to send '{}' notification to {}: {}", normalizedType, recipient.getEmail(), ex.getMessage(), ex);
@@ -687,6 +695,7 @@ public class EmailNotificationService {
                 log.warn("Policy-driven email '{}' was not sent to {} because email notifications are disabled or SMTP is not configured.", eventCode, recipientEmail);
             } else {
                 auditEmailAttempt(recipientLabel, recipientEmail, eventCode, payload, true, null);
+                recordOutboxTemplateUsage(payload);
             }
             return sent;
         } catch (Exception ex) {
@@ -883,6 +892,34 @@ public class EmailNotificationService {
             return StringUtils.hasText(value) ? UUID.fromString(value.trim()) : null;
         } catch (IllegalArgumentException ex) {
             return null;
+        }
+    }
+
+    /** Visible in the existing failure centre; an uncertain SMTP outcome must be checked before retry. */
+    public void recordUncertainDelivery(String recipient, String eventCode, String domain, Map<String,String> payload) {
+        recordDeliveryFailure(recipient,eventCode,domain,
+                new IllegalStateException("DELIVERY_OUTCOME_UNKNOWN: Check whether the recipient received this email before manually retrying."),payload);
+    }
+
+    private boolean queueFencedDelivery(EmailTemplate template,String recipient,Map<String,String> payload,String domain,boolean countUsage) {
+        if(!ControlledCopyDeliveryScope.active())return false;
+        var renderer=emailTemplateServiceProvider.getObject();
+        var metadata=new LinkedHashMap<>(payload);
+        metadata.put("outboxLegacyTemplateId",template.getId().toString());
+        metadata.put("outboxLegacyCountUsage",Boolean.toString(countUsage));
+        emailOutboxProvider.getObject().enqueue(recipient,renderer.renderTemplateText(template.getSubject(),payload),
+                renderer.renderTemplateContent(template,payload),template.getType(),domain,metadata,true);
+        return true;
+    }
+
+    private void recordOutboxTemplateUsage(Map<String,String> payload) {
+        if(payload==null||!Boolean.parseBoolean(payload.get("outboxLegacyCountUsage")))return;
+        try {
+            var id=UUID.fromString(payload.get("outboxLegacyTemplateId"));
+            templateRepository.findById(id).ifPresent(template->emailTemplateServiceProvider.getObject().incrementUsage(template));
+        } catch(RuntimeException counterFailure) {
+            // SMTP has already succeeded: a statistics failure must not cause a second delivery.
+            log.warn("Could not update queued email template usage",counterFailure);
         }
     }
 

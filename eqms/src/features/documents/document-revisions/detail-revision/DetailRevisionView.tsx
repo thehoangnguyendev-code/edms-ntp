@@ -17,6 +17,7 @@ import {
   AuditTrailTab,
 } from "./tabs";
 import { Button } from "@/components/ui/button/Button";
+import { trainingLinksApi, type TrainingLink } from "@/services/api/trainingLinks";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { revisionDetail } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { ROUTES } from "@/app/routes.constants";
@@ -244,6 +245,23 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       setCommentHistoryOpen(false);
     }
   }, [activeTab]);
+
+  // The training of this revision (its Training Number): the button "Training Details" opens that activity.
+  const [trainingLink, setTrainingLink] = useState<TrainingLink | null>(null);
+  useEffect(() => {
+    let active = true;
+    trainingLinksApi
+      .forRevision(revisionId)
+      .then((link) => active && setTrainingLink(link))
+      .catch(() => active && setTrainingLink(null));
+    return () => {
+      active = false;
+    };
+  }, [revisionId]);
+  const trainingActivityId = trainingLink?.canOpen && trainingLink.status !== "CANCELLED" ? trainingLink.activityId : undefined;
+  const openTrainingDetails = () => {
+    if (trainingActivityId) navigateTo(ROUTES.TRAINING.ACTIVITY_DETAIL(trainingActivityId), { state: { from: location.pathname } });
+  };
 
   // Published state controls the success banner while refreshed server data is loading.
   const [isPublished, setIsPublished] = useState(false);
@@ -1106,6 +1124,16 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
               >
                 Back
               </Button>
+              {trainingActivityId && (
+                <Button
+                  onClick={openTrainingDetails}
+                  size="sm"
+                  variant="outline-emerald"
+                  className="whitespace-nowrap"
+                >
+                  Training Details
+                </Button>
+              )}
               {canCancelCurrentRevision && (
                 <Button
                   size="sm"
@@ -1327,6 +1355,16 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         >
           Back
         </Button>
+        {trainingActivityId && (
+          <Button
+            onClick={openTrainingDetails}
+            size="sm"
+            variant="outline-emerald"
+            className="whitespace-nowrap"
+          >
+            Training Details
+          </Button>
+        )}
         {canCancelCurrentRevision && (
           <Button
             size="sm"
@@ -1404,7 +1442,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       >
         <div className="space-y-3">
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
               Activity Summary <span className="text-red-500">*</span>
             </label>
             <textarea

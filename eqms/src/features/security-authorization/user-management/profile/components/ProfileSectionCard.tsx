@@ -122,7 +122,7 @@ export const EditableField: React.FC<{
   }
   return (
     <div className={cn("min-w-0", className)}>
-      <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+      <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
         {/\*\s*$/.test(label) ? (
           <>
             {label.replace(/\s*\*\s*$/, "")} <span className="text-red-500">*</span>

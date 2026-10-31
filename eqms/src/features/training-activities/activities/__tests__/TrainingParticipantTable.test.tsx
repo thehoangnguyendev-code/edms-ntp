@@ -37,3 +37,36 @@ it("sorts on the server by the header of a column, back to page 1, and flips the
   await waitFor(() => expect(api.participantPage).toHaveBeenLastCalledWith("activity", expect.objectContaining({ sortBy: "department", sortDirection: "desc" })));
   expect(screen.getByText("Training number").closest("th")?.querySelector("button")).toBeNull();
 });
+const cols = [{ id: "name", header: "Name", cell: (p: { fullName: string }) => p.fullName }];
+it("draws nothing for a group other than the employees until its first answer arrives, and nothing at all when the group is empty", async () => {
+  let finish: (value: unknown) => void = () => {};
+  api.participantPage.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  const { container } = render(<TrainingParticipantTable activityId="activity" group="EXTERNAL" title="Outside persons" columns={cols} refreshToken={1} />);
+  expect(container.textContent).toBe("");
+  expect(screen.queryByText(/Loading participants/)).toBeNull();
+  finish({ data: [], pagination: { total: 0, totalPages: 0 } });
+  await waitFor(() => expect(api.participantPage).toHaveBeenCalledTimes(1));
+  expect(container.textContent).toBe("");
+});
+it("shows the employees group at once, without a count until the answer arrives (no (0) that turns into the real number)", async () => {
+  let finish: (value: unknown) => void = () => {};
+  api.participantPage.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  render(<TrainingParticipantTable activityId="activity" group="EMPLOYEES" title="Employees" columns={cols} refreshToken={1} />);
+  expect(screen.getByText("Employees")).toBeTruthy();
+  expect(screen.queryByText("Employees (0)")).toBeNull();
+  finish({ data: [{ id: "a", fullName: "Anne" }], pagination: { total: 1, totalPages: 1 } });
+  expect(await screen.findByText("Employees (1)")).toBeTruthy();
+});
+it("a refresh that only follows a change of the activity keeps the rows on the screen (no loading state again)", async () => {
+  api.participantPage.mockResolvedValueOnce({ data: [{ id: "a", fullName: "Anne" }], pagination: { total: 1, totalPages: 1 } });
+  let finish: (value: unknown) => void = () => {};
+  api.participantPage.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+  const view = render(<TrainingParticipantTable activityId="activity" group="EMPLOYEES" title="Employees" columns={cols} refreshToken={1} />);
+  await screen.findByText("Anne");
+  view.rerender(<TrainingParticipantTable activityId="activity" group="EMPLOYEES" title="Employees" columns={cols} refreshToken={2} />);
+  await waitFor(() => expect(api.participantPage).toHaveBeenCalledTimes(2));
+  expect(screen.getByText("Anne")).toBeTruthy();
+  expect(screen.queryByText(/Loading participants/)).toBeNull();
+  finish({ data: [{ id: "a", fullName: "Anne" }, { id: "b", fullName: "Bao" }], pagination: { total: 2, totalPages: 1 } });
+  expect(await screen.findByText("Bao")).toBeTruthy();
+});

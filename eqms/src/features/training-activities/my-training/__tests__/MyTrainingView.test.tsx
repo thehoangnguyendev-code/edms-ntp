@@ -37,37 +37,56 @@ beforeEach(() => {
 
 describe("My Training server tables", () => {
   it("sends task search, filters, sort and pagination to the server and clears them", async () => {
-    render(<MemoryRouter><MyTrainingView /></MemoryRouter>);
-    await waitFor(() => expect(api.tasks).toHaveBeenCalledWith(expect.objectContaining({ page: 1, limit: 10, sortBy: "dueDate" })));
+    render(<MemoryRouter><MyTrainingView section="tasks" /></MemoryRouter>);
+    await waitFor(() => expect(api.tasks).toHaveBeenCalledWith(expect.objectContaining({ page: 1, limit: 10, sortBy: "dueDate" }), expect.any(AbortSignal)));
     fireEvent.change(screen.getByLabelText("Mode"), { target: { value: "CLASSROOM" } });
-    await waitFor(() => expect(api.tasks).toHaveBeenLastCalledWith(expect.objectContaining({ method: "CLASSROOM", page: 1 })));
+    await waitFor(() => expect(api.tasks).toHaveBeenLastCalledWith(expect.objectContaining({ method: "CLASSROOM", page: 1 }), expect.any(AbortSignal)));
     fireEvent.click(screen.getByRole("button", { name: "Training Number" }));
-    await waitFor(() => expect(api.tasks).toHaveBeenLastCalledWith(expect.objectContaining({ sortBy: "trainingNumber" })));
+    await waitFor(() => expect(api.tasks).toHaveBeenLastCalledWith(expect.objectContaining({ sortBy: "trainingNumber" }), expect.any(AbortSignal)));
     fireEvent.click(screen.getByRole("button", { name: "Next page" }));
-    await waitFor(() => expect(api.tasks).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })));
+    await waitFor(() => expect(api.tasks).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 }), expect.any(AbortSignal)));
     fireEvent.change(screen.getByLabelText("Search"), { target: { value: "GMP" } });
-    await waitFor(() => expect(api.tasks).toHaveBeenLastCalledWith(expect.objectContaining({ search: "GMP", page: 1 })));
+    await waitFor(() => expect(api.tasks).toHaveBeenLastCalledWith(expect.objectContaining({ search: "GMP", page: 1 }), expect.any(AbortSignal)));
     fireEvent.click(screen.getByRole("button", { name: "Clear Filters" }));
-    await waitFor(() => expect(api.tasks).toHaveBeenLastCalledWith(expect.objectContaining({ method: undefined, search: undefined, page: 1 })));
+    await waitFor(() => expect(api.tasks).toHaveBeenLastCalledWith(expect.objectContaining({ method: undefined, search: undefined, page: 1 }), expect.any(AbortSignal)));
   });
 
   it("queries the complete signature table on the server without carrying another tab's sort", async () => {
-    render(<MemoryRouter initialEntries={["/?sortBy=dueDate&page=2"]}><MyTrainingView /></MemoryRouter>);
+    render(<MemoryRouter initialEntries={["/?sortBy=dueDate&page=2"]}><MyTrainingView section="tasks" /></MemoryRouter>);
     await waitFor(() => expect(api.tasks).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("tab", { name: /Pending My Signature/i }));
-    await waitFor(() => expect(api.approvals).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, sortBy: "assignedAt" })));
+    await waitFor(() => expect(api.approvals).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, sortBy: "assignedAt" }), expect.any(AbortSignal)));
     fireEvent.change(screen.getByLabelText("Step"), { target: { value: "RECEIVER_ACCEPT" } });
-    await waitFor(() => expect(api.approvals).toHaveBeenLastCalledWith(expect.objectContaining({ stepCode: "RECEIVER_ACCEPT" })));
+    await waitFor(() => expect(api.approvals).toHaveBeenLastCalledWith(expect.objectContaining({ stepCode: "RECEIVER_ACCEPT" }), expect.any(AbortSignal)));
     expect(screen.getByRole("tabpanel", { name: /Pending My Signature/i })).toBeInTheDocument();
   });
 
   it("passes personal record filters and sortable columns to the personal server endpoint", async () => {
-    render(<MemoryRouter initialEntries={["/?tab=records"]}><MyTrainingView /></MemoryRouter>);
+    render(<MemoryRouter initialEntries={["/"]}><MyTrainingView section="records" /></MemoryRouter>);
     await waitFor(() => expect(api.records).toHaveBeenCalled());
     fireEvent.change(screen.getByLabelText("Result"), { target: { value: "READ" } });
     fireEvent.change(screen.getByLabelText("Record"), { target: { value: "VALID" } });
     await waitFor(() => expect(api.records).toHaveBeenLastCalledWith(expect.objectContaining({ result: "READ", recordState: "VALID", limit: 10 })));
     fireEvent.click(screen.getByRole("button", { name: "Training Topic" }));
     await waitFor(() => expect(api.records).toHaveBeenLastCalledWith(expect.objectContaining({ sortBy: "topicText" })));
+  });
+});
+
+describe("My Tasks and My Records are two pages of the menu", () => {
+  it("My Tasks has To Do and Pending My Signature, and no records tabs", async () => {
+    render(<MemoryRouter><MyTrainingView section="tasks" /></MemoryRouter>);
+    expect(screen.getByRole("heading", { name: "My Tasks" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /To Do/ })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Pending My Signature/ })).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: /My Records/ })).toBeNull();
+    await waitFor(() => expect(api.tasks).toHaveBeenCalled());
+  });
+  it("My Records has My Records and Copies Received, a tab of the other page falls back to the first tab", async () => {
+    render(<MemoryRouter initialEntries={["/?tab=sign"]}><MyTrainingView section="records" /></MemoryRouter>);
+    expect(screen.getByRole("heading", { name: "My Records" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Copies Received/ })).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: /To Do/ })).toBeNull();
+    await waitFor(() => expect(api.records).toHaveBeenCalled());
+    expect(api.approvals).not.toHaveBeenCalled();
   });
 });

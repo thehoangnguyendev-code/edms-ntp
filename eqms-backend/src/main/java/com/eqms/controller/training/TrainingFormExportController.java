@@ -36,17 +36,11 @@ public class TrainingFormExportController {
     }
 
     @GetMapping("/sessions/{id}/self-reading-list")
-    public ResponseEntity<byte[]> selfReading(@PathVariable UUID id, @RequestParam(defaultValue = "docx") String format, @RequestParam(required = false) UUID department) {
-        return file(forms.selfReading(users.requireCurrentUser(), id, format, department));
+    public ResponseEntity<byte[]> selfReading(@PathVariable UUID id, @RequestParam(defaultValue = "docx") String format, @RequestParam(required = false) UUID department, @RequestParam(required = false) String departmentName) {
+        return file(forms.selfReading(users.requireCurrentUser(), id, format, department, departmentName));
     }
 
-    public record PaperRequest(String format, String reason, UUID departmentId) {}
-
-    /** The paper print of the self-reading list (APD.0108) of a session: the people are written, the signatures are for the hand; a numbered copy. */
-    @PostMapping("/sessions/{id}/self-reading-list/paper")
-    public ResponseEntity<byte[]> selfReadingPaper(@PathVariable UUID id, @RequestBody(required = false) PaperRequest request) {
-        return file(forms.selfReadingPaper(users.requireCurrentUser(), id, request == null || request.format() == null ? "pdf" : request.format(), request == null ? null : request.reason(), request == null ? null : request.departmentId()));
-    }
+    public record PaperRequest(String format, String reason) {}
 
     /** The paper print of the job assignment (APD.0024), to be signed by hand: a numbered copy. */
     @PostMapping("/job-assignments/{id}/paper")

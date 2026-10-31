@@ -158,7 +158,7 @@ export const SignaturesTab: React.FC<SignaturesTabProps> = ({
         {signatureRecords.map((record, index) => (
           <React.Fragment key={index}>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
                 {record.actionBy}
               </label>
               <div className="flex items-center gap-2">
@@ -172,7 +172,7 @@ export const SignaturesTab: React.FC<SignaturesTabProps> = ({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
                 {record.actionOn}
               </label>
               <input
@@ -188,15 +188,15 @@ export const SignaturesTab: React.FC<SignaturesTabProps> = ({
         {hasReportConfirmation && (
           <>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700">Reported By</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Reported By</label>
               <input type="text" value={displayValue(controlledCopy.destroyedBy)} readOnly className={CONTROL_STATE_CLASSES.readonlyField} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700">Reported On</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Reported On</label>
               <input type="text" value={formatDateTimeDisplay(controlledCopy.destroyedDate)} readOnly className={CONTROL_STATE_CLASSES.readonlyField} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700">Witnessed By</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Witnessed By</label>
               <input type="text" value={displayValue(controlledCopy.witnessedBy)} readOnly className={CONTROL_STATE_CLASSES.readonlyField} />
             </div>
           </>

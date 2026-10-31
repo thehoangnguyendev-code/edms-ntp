@@ -194,6 +194,10 @@ const requestOnceGet = async <T = unknown>(
   url: string,
   config?: AxiosRequestConfig,
 ): Promise<AxiosResponse<T>> => {
+  // A caller-owned cancellation must not cancel another consumer or let a new
+  // effect reuse an already-aborted promise (notably React StrictMode remounts).
+  // Keep the same authenticated Axios instance, but isolate its transport/cache.
+  if (config?.signal || config?.cancelToken) return apiClient.get<T>(url, config);
   const requestKey = buildGetRequestKey(url, config);
   const cachedResponse = getResponseCache.get(requestKey);
   if (cachedResponse && cachedResponse.expiresAt > Date.now()) {

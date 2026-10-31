@@ -1,3 +1,4 @@
+import { observeOverlayPosition } from "@/utils/scroll";
 import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
@@ -223,12 +224,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       update(false);
       const raf = requestAnimationFrame(() => update(true));
       const onReposition = () => update(true);
-      window.addEventListener('resize', onReposition);
-      window.addEventListener('scroll', onReposition, true);
+      const stopObserving = observeOverlayPosition(() => triggerRef.current, onReposition);
       return () => {
         cancelAnimationFrame(raf);
-        window.removeEventListener('resize', onReposition);
-        window.removeEventListener('scroll', onReposition, true);
+        stopObserving();
       };
     }
   }, [isOpen, viewMode, viewDate, includeTime]);
@@ -340,6 +339,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
   const navigateMonth = (dir: 'prev' | 'next') => {
     const d = new Date(viewDate);
+    d.setDate(1);
     d.setMonth(d.getMonth() + (dir === 'next' ? 1 : -1));
     setViewDate(d);
   };
@@ -433,6 +433,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
   const handleMonthSelect = (idx: number) => {
     const d = new Date(viewDate);
+    d.setDate(1);
     d.setMonth(idx);
     setViewDate(d);
     setViewMode('calendar');
@@ -919,7 +920,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                     {/* Start */}
                     <div className={cn("flex items-center justify-between gap-4", !includeTime && "flex-1")}> 
                       <div className="flex-1 min-w-0">
-                        <label htmlFor={startFieldId} className="text-xs font-medium text-slate-500 mb-1 block">Start Date</label>
+                        <label htmlFor={startFieldId} className="text-xs font-medium text-slate-500 mb-1 block capitalize">Start Date</label>
                         <button
                           id={startFieldId}
                           type="button"
@@ -949,7 +950,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                     {/* Due/End */}
                     <div className={cn("flex items-center justify-between gap-4", !includeTime && "flex-1")}> 
                       <div className="flex-1 min-w-0">
-                        <label htmlFor={endFieldId} className="text-xs font-medium text-slate-500 mb-1 block">End Date</label>
+                        <label htmlFor={endFieldId} className="text-xs font-medium text-slate-500 mb-1 block capitalize">End Date</label>
                         <button
                           id={endFieldId}
                           type="button"
@@ -1037,7 +1038,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   return (
     <div className="relative w-full">
       {label && (
-        <label htmlFor={`${pickerId}-trigger`} className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+        <label htmlFor={`${pickerId}-trigger`} className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
           {label}
         </label>
       )}

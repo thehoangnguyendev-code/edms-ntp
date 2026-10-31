@@ -122,7 +122,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                 Document Server URL (browser-reachable)
               </label>
               <input
@@ -139,7 +139,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">JWT Secret</label>
+              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">JWT Secret</label>
               <div className="relative">
                 <input
                   type={showJwtSecret ? 'text' : 'password'}

@@ -124,7 +124,7 @@ export function TrainingLegacyEvidenceView() {
 
   const columns: DataTableColumn<TrainingLegacyRow>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "doc", header: "Document", sort: sorted("document"), cell: (r) => <div className="max-w-80 whitespace-normal"><div className="font-medium">{r.documentNumber} Rev {r.revisionNumber}</div><div className="text-xs text-slate-500">{r.documentName}</div></div> },
+    { id: "doc", header: "Document", sort: sorted("document"), cell: (r) => <div className="max-w-80 whitespace-normal"><div className="font-medium">{r.documentLabel}</div><div className="text-xs text-slate-500">{r.documentName}</div></div> },
     { id: "completion", header: "Paper Training Completed On", sort: sorted("completion"), cell: (r) => day(r.completionDate) },
     { id: "paperNo", header: "Paper Training Number", sort: sorted("paperNo"), cell: (r) => r.paperTrainingNumber ?? "—" },
     { id: "state", header: "Evidence", sort: sorted("evidence"), cell: (r) => <Badge color={STATE_COLOR[stateOf(r)]}>{STATE_LABEL[stateOf(r)]}</Badge> },
@@ -177,7 +177,7 @@ export function TrainingLegacyEvidenceView() {
         confirmDisabled={!submitting || !submitting.verifierId || (submitting.none ? !submitting.reason.trim() : !submitting.file)}>
         {submitting && (
           <div className="grid gap-4">
-            <p className="text-sm text-slate-600">{submitting.row.documentNumber} Rev {submitting.row.revisionNumber}</p>
+            <p className="text-sm text-slate-600">{submitting.row.documentLabel}</p>
             {submitting.none ? (
               <FormField label="Why there is no evidence" required><Textarea rows={3} value={submitting.reason} onChange={(e) => setSubmitting({ ...submitting, reason: e.target.value })} /></FormField>
             ) : (

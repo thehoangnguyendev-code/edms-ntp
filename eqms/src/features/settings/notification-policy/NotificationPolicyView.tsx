@@ -342,7 +342,7 @@ export const NotificationPolicyView: React.FC = () => {
           {/* Desktop filters */}
           <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
             <div className="w-full">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
                 Search
               </label>
               <div className="relative">

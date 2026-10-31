@@ -266,7 +266,7 @@ export const BusinessUnitsTab = React.forwardRef<
       {/* Filters */}
       <div className="bg-white w-full">
         <div className="flex md:hidden flex-col gap-1.5 w-full">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -353,7 +353,7 @@ export const BusinessUnitsTab = React.forwardRef<
 <div className="hidden md:flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-4 items-end">
             <div className="w-full">
-              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Search</label>
+              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
@@ -704,7 +704,7 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
     >
       <div className="space-y-4">
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
             Business Unit Name<span className="text-red-500 ml-1">*</span>
           </label>
           <input
@@ -719,7 +719,7 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
             Abbreviation<span className="text-red-500 ml-1">*</span>
           </label>
           <input
@@ -736,7 +736,7 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
             Description
           </label>
           <textarea

@@ -39,7 +39,7 @@ describe("TrainingPersonRelatedCard", () => {
     renderCard();
 
     expect(await screen.findByText("TR-1")).toBeTruthy();
-    expect(api.records).toHaveBeenCalledWith(expect.objectContaining({ personId: "person-1", limit: 10 }));
+    expect(api.records).toHaveBeenCalledWith(expect.objectContaining({ personId: "person-1", limit: 10 }), expect.any(AbortSignal));
     expect(screen.getByRole("tab", { name: /Job Assignments/ })).toBeTruthy();
     expect(screen.getByRole("tab", { name: /Training Reviews/ })).toBeTruthy();
     expect(screen.queryByRole("tab", { name: /Specimen Signatures/ })).toBeNull();
@@ -50,8 +50,43 @@ describe("TrainingPersonRelatedCard", () => {
     renderCard();
 
     expect(await screen.findByText("Issue 2")).toBeTruthy();
-    expect(api.jobs).toHaveBeenCalledWith(expect.objectContaining({ personId: "person-1" }));
+    expect(api.jobs).toHaveBeenCalledWith(expect.objectContaining({ personId: "person-1" }), expect.any(AbortSignal));
     fireEvent.click(screen.getByRole("tab", { name: /Training Reviews/ }));
-    await waitFor(() => expect(api.reviews).toHaveBeenCalledWith(expect.objectContaining({ personId: "person-1" })));
+    await waitFor(() => expect(api.reviews).toHaveBeenCalledWith(expect.objectContaining({ personId: "person-1" }), expect.any(AbortSignal)));
+  });
+
+  it("searches on the server: the text typed in the search box is sent with the person, from the first page", async () => {
+    state.permissions = new Set(["training.record.view"]);
+    renderCard();
+
+    await screen.findByText("TR-1");
+    fireEvent.change(screen.getAllByRole("textbox", { name: /Search/ })[0], { target: { value: "gmp" } });
+    await waitFor(() => expect(api.records).toHaveBeenCalledWith(expect.objectContaining({ personId: "person-1", search: "gmp", page: 1 }), expect.any(AbortSignal)));
+  });
+
+  it("sorts on the server: a click on a header asks for that column, a second click reverses it", async () => {
+    state.permissions = new Set(["training.record.view"]);
+    renderCard();
+
+    await screen.findByText("TR-1");
+    const header = () => screen.getByRole("columnheader", { name: /Training Number/ });
+    fireEvent.click(header());
+    await waitFor(() => expect(api.records).toHaveBeenCalledWith(expect.objectContaining({ personId: "person-1", sortBy: "trainingNumber" }), expect.any(AbortSignal)));
+    const first = api.records.mock.calls.at(-1)![0].sortDirection;
+    fireEvent.click(header());
+    await waitFor(() => expect(api.records.mock.calls.at(-1)![0].sortDirection).not.toBe(first));
+  });
+
+  it("each tab has a search box and the sortable columns the server allows (no other sort key is sent)", async () => {
+    state.permissions = new Set(["training.job_assignment.view", "training.signature.view"]);
+    renderCard();
+
+    await screen.findByText("Issue 2");
+    expect(screen.getAllByRole("textbox", { name: /Search/ }).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("columnheader", { name: /Status/ }));
+    await waitFor(() => expect(api.jobs).toHaveBeenCalledWith(expect.objectContaining({ sortBy: "status" }), expect.any(AbortSignal)));
+    fireEvent.click(screen.getByRole("tab", { name: /Specimen Signatures/ }));
+    await waitFor(() => expect(api.specimens).toHaveBeenCalled());
+    expect(screen.getAllByRole("textbox", { name: /Search/ }).length).toBeGreaterThan(0);
   });
 });

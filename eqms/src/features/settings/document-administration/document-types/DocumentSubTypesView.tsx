@@ -331,7 +331,7 @@ export const DocumentSubTypesView: React.FC = () => {
       <div className="compact-filter-stack flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
         <div className="bg-white w-full">
           <div className="flex md:hidden flex-col gap-1.5 w-full">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 block">
+            <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">
               Search
             </label>
             <div className="flex items-center gap-2">
@@ -429,7 +429,7 @@ export const DocumentSubTypesView: React.FC = () => {
 >
 <div className="hidden md:grid grid-cols-3 gap-4 items-end">
             <div className="w-full">
-              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
                 Search
               </label>
               <div className="relative">
@@ -798,7 +798,7 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
     >
       <div className="space-y-4">
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
             Sub-Type Name<span className="text-red-500 ml-1">*</span>
           </label>
           <input
@@ -827,7 +827,7 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
             Description
           </label>
           <textarea
