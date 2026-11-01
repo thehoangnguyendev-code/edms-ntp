@@ -78,6 +78,10 @@ public class ExecutedRecordService {
     @org.springframework.beans.factory.annotation.Autowired
     private ControlledCopyPdfMarkingService pdfMarkingService;
 
+    /** The watermark and traceability of Settings > Configuration > Preview File, drawn on a PDF that is sent to be looked at (see {@code TrainingPreviewMarking}). */
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.eqms.service.training.TrainingPreviewMarking previewMarking;
+
     public ExecutedRecordService(
             ExecutedRecordRepository executedRecordRepository,
             DocumentRecordRepository documentRecordRepository,
@@ -332,7 +336,13 @@ public class ExecutedRecordService {
         // Never trust the stored/claimed type for what the browser will render: sniff the bytes.
         String sniffed = ControlledCopyScanCodeService.sniffContentType(bytes);
         String contentType = sniffed != null ? sniffed : "application/octet-stream";
-        return markedScan(record, bytes, contentType, StringUtils.hasText(record.getFileName()) ? record.getFileName() : record.getRecordNumber());
+        RecordFile marked = markedScan(record, bytes, contentType, StringUtils.hasText(record.getFileName()) ? record.getFileName() : record.getRecordNumber());
+        // a view in the preview modal carries the watermark of the preview settings, on top of the stamp of the copy
+        if (previewMarking != null) {
+            var scan = previewMarking.markScan(marked.bytes(), marked.contentType(), currentUser);
+            return new RecordFile(scan.bytes(), scan.contentType(), marked.fileName());
+        }
+        return marked;
     }
 
     @Transactional(readOnly = true)

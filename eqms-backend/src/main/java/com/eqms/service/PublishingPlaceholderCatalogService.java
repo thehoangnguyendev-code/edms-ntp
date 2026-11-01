@@ -33,33 +33,25 @@ public class PublishingPlaceholderCatalogService {
     }
 
     /**
-     * The signature placeholders, one group for each display style and one placeholder for each step (Prepared, Reviewed, Approved, Published). All three styles draw the same electronic
-     * signature record; they differ only in how much of it is written (name, meaning and date and time are in every one; see {@link SignatureDisplayStyle}).
+     * The signature placeholders, one for each step (Prepared, Reviewed, Approved, Published). A signature is written in a document in one way only, the Standard frame: the name of the
+     * signer, "Electronically" and the meaning, then the date and time (see {@link SignaturePlaceholderName}).
      */
-    private java.util.List<PublishingPlaceholderGroupResponse> signatureStyleGroups() {
-        String[][] styles = {
-                {"COMPACT", "Compact", "Name, then meaning and date and time on one line (Approved · 26/10/2026 23:16 (UTC+07)). For the signature cells of the table at the top of a document."},
-                {"STANDARD", "Standard", "Name, then Electronically approved, then the date and time. For a signature area of its own."},
-                {"DETAILED", "Detailed", "Name, then meaning and date and time, then the signature ID in small grey type. For a signature page or an important record."}
-        };
+    private java.util.List<PublishingPlaceholderGroupResponse> signatureGroups() {
         String[][] steps = {
                 {"PREPARED", "Prepared (complete editing)"}, {"REVIEWED", "Reviewed"}, {"APPROVED", "Approved"}, {"PUBLISHED", "Published"}
         };
-        java.util.List<PublishingPlaceholderGroupResponse> groups = new java.util.ArrayList<>();
-        for (String[] style : styles) {
-            java.util.List<PublishingPlaceholderItemResponse> items = new java.util.ArrayList<>();
-            for (String[] step : steps) {
-                items.add(item("{{" + step[0] + "_SIGNATURE_" + style[0] + "}}", step[1] + " signature in the " + style[1] + " style. " + style[2]));
-            }
-            groups.add(new PublishingPlaceholderGroupResponse("Signature - " + style[1], style[2] + " The same electronic signature record is used by all three styles.", java.util.List.copyOf(items)));
+        String frame = "Name, then Electronically and the meaning (Electronically approved), then the date and time.";
+        java.util.List<PublishingPlaceholderItemResponse> items = new java.util.ArrayList<>();
+        for (String[] step : steps) {
+            items.add(item("{{" + step[0] + "_SIGNATURE}}", step[1] + " signature. " + frame));
         }
+        java.util.List<PublishingPlaceholderGroupResponse> groups = new java.util.ArrayList<>();
+        groups.add(new PublishingPlaceholderGroupResponse("Signature", frame + " Every signature of a document is written this way, and all of them are drawn from the electronic signature record.", java.util.List.copyOf(items)));
         // several reviewers or approvers: all of them in the order of the workflow, or one by its number
         java.util.List<PublishingPlaceholderItemResponse> several = new java.util.ArrayList<>();
-        for (String[] style : styles) {
-            several.add(item("{{REVIEWER_SIGNATURES_" + style[0] + "}}", "All reviewers, one signature under another in the order of the workflow, in the " + style[1] + " style. One reviewer: the same as a single signature."));
-            several.add(item("{{APPROVER_SIGNATURES_" + style[0] + "}}", "All approvers, one signature under another in the order of the workflow, in the " + style[1] + " style."));
-        }
-        groups.add(new PublishingPlaceholderGroupResponse("Signature - Several Reviewers or Approvers", "Use these when a document has more than one reviewer or approver. To put each person in a cell of their own, number the placeholder: {{REVIEWER_SIGNATURE_1_COMPACT}}, {{REVIEWER_SIGNATURE_2_COMPACT}}, {{APPROVER_SIGNATURE_1_STANDARD}} and so on, in the style you need. A number with no person leaves the cell empty.", java.util.List.copyOf(several)));
+        several.add(item("{{REVIEWER_SIGNATURES}}", "All reviewers, one signature under another in the order of the workflow. One reviewer: the same as a single signature."));
+        several.add(item("{{APPROVER_SIGNATURES}}", "All approvers, one signature under another in the order of the workflow."));
+        groups.add(new PublishingPlaceholderGroupResponse("Signature - Several Reviewers or Approvers", "Use these when a document has more than one reviewer or approver. To put each person in a cell of their own, number the placeholder: {{REVIEWER_SIGNATURE_1}}, {{REVIEWER_SIGNATURE_2}}, {{APPROVER_SIGNATURE_1}} and so on. A number with no person leaves the cell empty.", java.util.List.copyOf(several)));
         return groups;
     }
 
@@ -159,12 +151,12 @@ public class PublishingPlaceholderCatalogService {
                         )
                 )
         ));
-        // the signature placeholders follow the group of the sign-off fields, one group for each display style
+        // the signature placeholders follow the group of the sign-off fields
         int signOff = 0;
         for (int i = 0; i < groups.size(); i++) {
             if ("Sign-off and Workflow".equals(groups.get(i).title())) signOff = i + 1;
         }
-        groups.addAll(signOff, signatureStyleGroups());
+        groups.addAll(signOff, signatureGroups());
         return new PublishingPlaceholderCatalogResponse(List.copyOf(groups));
     }
 

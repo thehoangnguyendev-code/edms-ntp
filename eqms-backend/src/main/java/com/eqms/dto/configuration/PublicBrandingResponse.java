@@ -13,6 +13,8 @@ public record PublicBrandingResponse(
         boolean compactDesktopFilters,
         boolean alternatingRecordColors,
         String alternatingRecordColor,
+        /** Vertical lines between the columns of every table (false when the administrator set nothing). */
+        boolean tableColumnDividers,
         JsonNode mainBackground,
         JsonNode authBackground,
         String toastPosition,

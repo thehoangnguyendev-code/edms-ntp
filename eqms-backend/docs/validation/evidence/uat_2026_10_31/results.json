@@ -1,0 +1,2685 @@
+{
+ "p0b": [
+  {
+   "check": "0.1 uat31.head.qa signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.head.qc signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.head.prod signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s1.pass1 signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s1.pass2 signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s1.absent signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s1.fail signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s1.left signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s2.qa.pass signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s2.qa.fail signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s2.qa.absent signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s2.qa.left signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s2.qc.pass signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s2.qc.fail1 signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s2.qc.fail2 signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s2.qc.absent signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s2.pr.fail signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s2.pr.left signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.1 uat31.s3.new signs in",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.2 head of Quality Assurance",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.2 head of Quality Control",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.2 head of Production",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "0.3 the screenshot exists",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p1a": [
+  {
+   "check": "S1-a.3 the approval opens the activity (Planned)",
+   "ok": false,
+   "detail": "IN_PROGRESS",
+   "resolution": "Hiện tượng chạy lại: lần chạy đầu bị dừng giữa chừng nên activity đã sang In Progress; ở lần chạy từ đầu activity ở Planned (đã kiểm tra ở lần chạy đầu: S1-a.3 đạt khi activity mới mở)."
+  },
+  {
+   "check": "S1-a.4 two people sign the reading, the head of Quality Control confirms",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-a.5 Finish Training, then QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-a.6 Complete Training of revision 1",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-a.7 revision 1 is Effective after publishing",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-a.8 Upgrade Revision creates revision 2",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-a.9 revision 2 goes through editing, review and approval",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-a.10 revision 2 has its own activity (not the one of revision 1)",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p1b": [
+  {
+   "check": "S1-b.1 the training is In Progress with five people on the list",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.2 the line of the person shows that the account is closed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.3 uat31.s1.pass1 attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.3 uat31.s1.pass2 attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.3 uat31.s1.fail attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.4 the absent person is recorded Absent with a reason",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.5 the person who left is recorded Absent with the reason (left the company)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.6 score of uat31.s1.pass1: 9/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.6 score of uat31.s1.pass2: 8/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.6 score of uat31.s1.fail: 4/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.7 results: two PASSED, one FAILED, the two absent have none",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.8 the attendance list is sent",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.9 Finish Training works although one is absent, one failed and one left",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.10 QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.11 the absent person and the one who failed can be offered a supplementary training, the one who left cannot",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.12 the revision sees the training as Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.13 Complete Training of revision 2",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.14 revision 2 is Effective after Publish",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.15 APD.0117 attendance list as Word",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S1-b.16 the list names all five people and \"Vắng mặt\" for the absent ones",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p1c": [
+  {
+   "check": "S1-c.1 the pictures were taken",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p1d": [
+  {
+   "check": "S1-d.1 the person who failed has an open Work Suspension flag",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p2": [
+  {
+   "check": "S2-1.1 the activity has no document and is In Progress with ten people",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-1.2 the people belong to three departments",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-2.1 the lines of the two people show the closed account",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-3 uat31.s2.qa.pass attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-3 uat31.s2.qc.pass attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-3 uat31.s2.qa.fail attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-3 uat31.s2.qc.fail1 attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-3 uat31.s2.qc.fail2 attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-3 uat31.s2.pr.fail attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-3 uat31.s2.qa.absent is recorded Absent",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-3 uat31.s2.qc.absent is recorded Absent",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-3 uat31.s2.qa.left (left the company) is recorded Absent with the reason",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-3 uat31.s2.pr.left (left the company) is recorded Absent with the reason",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-4 score of uat31.s2.qa.pass: 9/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-4 score of uat31.s2.qc.pass: 8/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-4 score of uat31.s2.qa.fail: 3/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-4 score of uat31.s2.qc.fail1: 4/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-4 score of uat31.s2.qc.fail2: 5/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-4 score of uat31.s2.pr.fail: 6/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-4.1 two PASSED and four FAILED",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-4.2 each failed person has an open Work Suspension flag",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-5.1 the attendance list is sent to QA",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-5.2 Finish Training with 2 absent, 2 left and 4 failed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-5.3 QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-6.1 the 2 absent and the 4 failed can be offered a supplementary training, the 2 who left cannot",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-7.1 APD.0117 as Word",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S2-7.2 all ten names are in the list",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p2b": [
+  {
+   "check": "S2b.1 the line shows the closed account",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p3a": [
+  {
+   "check": "S3-a.2 a new version of the matrix is started from the effective one",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-a.3 the rows of the two positions are saved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-a.4 the matrix is submitted with a signature",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-a.5 QA approves the matrix with a signature: Effective",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-a.6 the matrix version is Effective",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-a.7 APD.0011 as Word",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-a.8 the matrix names both positions and the trainings",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p3c": [
+  {
+   "check": "S3-b.1 the draft of the assignment is created",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.2 three trainings are missing before any training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.3 signing is refused: TRAINING_MATRIX_INCOMPLETE",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.4 attendance",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.4 score 4/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.4 finished and confirmed by QA",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.5 the failed test leaves the training missing: the appointment is still blocked",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.6 a work-suspension flag is raised for the failed test",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.7 attendance",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.7 score 9/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.7 finished and confirmed by QA",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.8 the retraining keeps the number of the original with a letter",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.9 the topic of QC Microbiology is no longer missing",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.10 the work-suspension flag of the failed test is cleared by the pass",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.11 attendance",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.11 score 8/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.11 finished and confirmed by QA",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.12 the topic of QC Physicochemistry is no longer missing; the SOP is still missing",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.13 the employee signs the reading, the head of Quality Control confirms",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.14 the self-reading is finished and confirmed by QA",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.15 nothing is missing now",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.16 the head signs: the assignment now waits for the employee",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.17 the employee accepts with an e-signature: Effective",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.18 the employee now holds both Work Positions",
+   "ok": true,
+   "detail": "first run: the check text was wrong (the position names were split by the SQL separator); the positions held were both listed: re-checked in the second run"
+  },
+  {
+   "check": "S3-b.19 APD.0024 as Word",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.20 name, both positions, the duties and the signatures are written",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.21 the export of the personal record (APD.0014) is asked for",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.22 APD.0014 as PDF after approval",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-b.23 the record lists the three trainings",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p3d": [
+  {
+   "check": "S3-c.1 a draft for a QC employee without the trainings is created",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-c.2 the check lists three trainings still missing",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S3-c.3 the head cannot sign: TRAINING_MATRIX_INCOMPLETE",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p4": [
+  {
+   "check": "S4-1.1 the person who left cannot be put on a supplementary training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-1.2 the reason is TRAINING_SUPPLEMENTARY_PERSON_NOT_ACTIVE",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "screenshot S4-01__Activity_rev2_supplementary_dialog.png",
+   "ok": false,
+   "detail": "Locator.click: Timeout 25000ms exceeded.\nCall log:\n  - waiting for get_by_role(\"button\", name=re.compile(r\"Supplementary\", re.IGNORECASE)).first\n",
+   "resolution": "Script chụp tìm nút \"Supplementary training\" ở trang chi tiết; nút nằm ở chế độ Conduct (/activities/{id}/conduct). Đã chụp lại bằng p4c."
+  },
+  {
+   "check": "S4-1.3 the make-up activity for the absent person is created (original number + a)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-1.4 make-up uat31.s1.absent attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-1.4 make-up uat31.s1.absent scores 8/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-1.4 make-up finished and confirmed by QA",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-1.5 the retraining activity for the person who failed is created (FAILED_ASSESSMENT)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-1.6 retraining uat31.s1.fail attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-1.6 retraining uat31.s1.fail scores 9/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-1.6 retraining finished and confirmed by QA",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-1.7 the person who left stays Absent on the original list, nothing was created for them",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-1.8 the work-suspension flag of the retrained person is cleared by the passed retest",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-1.9 the absent and the failed person now have a record of the SOP; the person who left has none",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.1 uat31.s2.qa.left (left) cannot be put on a supplementary training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.1 uat31.s2.pr.left (left) cannot be put on a supplementary training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "screenshot S4-04__Activity_no_document_supplementary_dialog.png",
+   "ok": false,
+   "detail": "Locator.click: Timeout 25000ms exceeded.\nCall log:\n  - waiting for get_by_role(\"button\", name=re.compile(r\"Supplementary\", re.IGNORECASE)).first\n",
+   "resolution": "Script chụp tìm nút \"Supplementary training\" ở trang chi tiết; nút nằm ở chế độ Conduct (/activities/{id}/conduct). Đã chụp lại bằng p4c."
+  },
+  {
+   "check": "S4-2.2 one make-up activity for the 2 absent people of two departments",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.3 make-up uat31.s2.qa.absent attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.3 make-up uat31.s2.qa.absent scores 9/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.3 make-up uat31.s2.qc.absent attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.3 make-up uat31.s2.qc.absent scores 8/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.3 make-up finished and confirmed by QA",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.4 one retraining activity for the 4 people who failed (3 departments)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.5 retraining uat31.s2.qa.fail attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.5 retraining uat31.s2.qa.fail scores 8/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.5 retraining uat31.s2.qc.fail1 attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.5 retraining uat31.s2.qc.fail1 scores 9/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.5 retraining uat31.s2.qc.fail2 attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.5 retraining uat31.s2.qc.fail2 scores 7/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.5 retraining uat31.s2.pr.fail attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.5 retraining uat31.s2.pr.fail scores 5/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.5 retraining finished and confirmed by QA",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.6 three of the four pass the retest; one fails AGAIN",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.7 the person who failed again keeps an open work-suspension flag",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.8 the person who failed again is offered a second retraining",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.9 a second retraining is created from the first retraining",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.10 the second retraining is created from the ORIGINAL activity",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.11 second retraining uat31.s2.pr.fail attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.11 second retraining uat31.s2.pr.fail scores 9/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.11 second retraining finished and confirmed by QA",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-2.12 all open work-suspension flags of scenario 2 are cleared",
+   "ok": false,
+   "detail": "[['uat31.s2.qa.fail', 'CLEARED'], ['uat31.s2.qc.fail1', 'CLEARED'], ['uat31.s2.qc.fail2', 'CLEARED'], ['uat31.s2.pr.fail', 'OPEN'], ['uat31.s2.pr.fail', 'CLEARED']]",
+   "resolution": "LỖI THẬT của hệ thống, đã sửa: clearOnPass chỉ gỡ cờ tạm ngừng việc của hoạt động gốc và của chính dòng đó, nên cờ do lần đào tạo lại thứ nhất (trượt) không bao giờ được gỡ sau khi đạt lần thứ hai. Sửa TrainingSuspensionService.clearOnPass (gỡ mọi cờ cùng họ hoạt động gốc), thêm test đơn vị, triển khai lại backend, kiểm chứng p4b 11/11."
+  },
+  {
+   "check": "S4-07.1 APD.0117 of the original still lists the people who left, marked Absent with the reason",
+   "ok": false,
+   "detail": " 1. Thông tin chung/ General information Nội dung / Content UAT31 Good Laboratory Practice refresher: handling and recording of results Bộ phận / Department Quality Assurance Loại đào tạo / Training T",
+   "resolution": "Kỳ vọng sai của script: biểu mẫu APD.0117 không có cột lý do (SOP 5.3.7 chỉ yêu cầu ghi \"Vắng mặt\"); lý do nằm ở Audit Trail. Tên người nghỉ việc và \"Vắng mặt / Absent\" đều có trong file."
+  },
+  {
+   "check": "S4-08.1 APD.0117 of the original still lists the people who left, marked Absent with the reason",
+   "ok": false,
+   "detail": " 1. Thông tin chung/ General information Nội dung / Content SOP.10407 UAT31 SOP Handling of QC samples Bộ phận / Department Quality Control Loại đào tạo / Training Type Đột xuất / Unplanned (sop versi",
+   "resolution": "Kỳ vọng sai của script (như S4-07.1)."
+  },
+  {
+   "check": "S4-09.1 APD.0117 of the make_up_scenario1 (own list, number of the original + letter)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-09.2 the list shows the number with the letter",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-10.1 APD.0117 of the retraining_scenario1 (own list, number of the original + letter)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-10.2 the list shows the number with the letter",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-11.1 APD.0117 of the make_up_scenario2 (own list, number of the original + letter)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-11.2 the list shows the number with the letter",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-12.1 APD.0117 of the retraining_scenario2 (own list, number of the original + letter)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-12.2 the list shows the number with the letter",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-13.1 APD.0014 is asked for (uat31.s1.fail)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-13.2 APD.0014 as PDF (uat31.s1.fail)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-14.1 APD.0014 is asked for (uat31.s1.absent)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-14.2 APD.0014 as PDF (uat31.s1.absent)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-15.1 APD.0014 is asked for (uat31.s1.left)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S4-15.2 APD.0014 as PDF (uat31.s1.left)",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p4b": [
+  {
+   "check": "original: fails score 4/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "original: fails finished and confirmed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "R.1 the failed original raises one flag",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "first retraining: fails again score 5/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "first retraining: fails again finished and confirmed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "R.2 the failed first retraining raises a flag too",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "second retraining: passes score 9/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "second retraining: passes finished and confirmed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "R.3 after the second retraining is passed NO flag is left open (the defect: one stayed OPEN)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "R.4 the stuck flag is resumed with a reason and an e-signature",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "R.5 Phan Thi Quyen has no open flag",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p4c": [],
+ "p5": [
+  {
+   "check": "S5-1 the self-reading is In Progress with seven people of three departments",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-2.1 the employee signed the reading electronically",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-2.2 the e-signature was made through the screen (no API fallback)",
+   "ok": false,
+   "detail": "no read/confirm button found: []",
+   "open": false,
+   "resolution": "ĐÃ SỬA theo phương án A của chủ sở hữu (màn riêng cho nhân viên): thêm GET /training/me/participations/{id} (chỉ cần training.self.view, chỉ người được mời, không lộ người khác) và trang /training-management/participations/{id}; My Training dẫn nhân viên tự đọc tới trang này. Kiểm chứng p5d 10/10: nhân viên ký điện tử qua màn hình; người khác đọc/ký thay bị 403; activity vẫn không mở cho nhân viên."
+  },
+  {
+   "check": "S5-3.1 the lines show the closed accounts",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-3.2 no reminder is sent to the person who left",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-3.3 a reminder is sent to a person who has not signed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-4 uat31.s2.qa.fail signs the reading",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-4 uat31.s2.qc.pass signs the reading",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-4 uat31.s2.qc.fail1 signs the reading",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-4 uat31.s2.pr.fail signs the reading",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-4.1 uat31.s2.qc.fail2 is recorded with Cannot Read (reason + e-signature)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-4.1 uat31.s2.qa.absent is recorded with Cannot Read (reason + e-signature)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-5 the head of Quality Assurance confirms",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-5 the head of Quality Control confirms",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-5 the head of Production confirms",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-5.1 Finish Training is offered once all three departments are confirmed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-6.1 APD.0108 (docx) downloads",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-6.1 APD.0108 (pdf) downloads",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-7.1 Finish Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-7.2 QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-7.3 both the person who left and the person on long leave are blocked from a make-up while the account is closed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5-7.4 when the long leave ends (account Active) the person can be offered the make-up; the one who left still cannot",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p5b": [
+  {
+   "check": "S5b.1 the employee signed the reading through the screen (e-signature window)",
+   "ok": false,
+   "detail": "page denied",
+   "open": false,
+   "resolution": "ĐÃ SỬA theo phương án A của chủ sở hữu (màn riêng cho nhân viên): thêm GET /training/me/participations/{id} (chỉ cần training.self.view, chỉ người được mời, không lộ người khác) và trang /training-management/participations/{id}; My Training dẫn nhân viên tự đọc tới trang này. Kiểm chứng p5d 10/10: nhân viên ký điện tử qua màn hình; người khác đọc/ký thay bị 403; activity vẫn không mở cho nhân viên."
+  },
+  {
+   "check": "S5b.2 the second employee signs the reading (API, e-signature)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5b.3 the head of Quality Control confirms the department (e-signature, remarks)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5b.4 Finish Training and QA confirmation: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5b.5 APD.0108 shows the two employees, the head and three e-signature blocks",
+   "ok": true,
+   "detail": "first run: the script compared the PDF text exactly (the PDF text reader drops some letters); re-checked from the saved file with the normalisation used in earlier scripts: names and 3 signature blocks present"
+  }
+ ],
+ "p5c": [
+  {
+   "check": "S5c.1 APD.0108 (docx) downloads",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5c.2 the zip holds one docx file for each of the three departments",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5c.4 QA: the person on long leave is \"Vắng mặt\", the signed people and the head are written",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5c.3 QC: the person who left is \"Vắng mặt\", the signed people and the head are written",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5c.5 PROD: the signed person and the head are written",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5c.1 APD.0108 (pdf) downloads",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5c.2 the zip holds one pdf file for each of the three departments",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5c.4 QA: the person on long leave is \"Vắng mặt\", the signed people and the head are written",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5c.3 QC: the person who left is \"Vắng mặt\", the signed people and the head are written",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5c.5 PROD: the signed person and the head are written",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p5d": [
+  {
+   "check": "S5d-1.1 the invited employee reads their own invitation with training.self.view only",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5d-1.2 the answer holds no other participant and no result of another person",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5d-1.3 another employee cannot read the invitation of the first (403)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5d-1.4 the activity itself is still not opened to the employee (403)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5d-1.5 another employee cannot sign for the first (403)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5d-2.1 the employee signed the reading through the screen (e-signature window)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5d-2.2 the second employee signs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5d-2.3 the head of Quality Control confirms",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5d-2.4 Finish Training and QA confirmation: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "S5d-2.5 APD.0108 shows both employees, the head and the e-signature blocks",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p6a": [
+  {
+   "check": "F-1.3 APD.0117 PDF is produced",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-1.4 the trainer from outside is written External Trainer (Nguyen Van Minh), in the table of topics and in the signature part",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-1.5 the session is written 01 and no session is written SS01",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-1.6 the heading of the list is \"01:\" not \"SS01:\"",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-1.7 the meaning of the signature in the column \"Signature\" is Attendance Has Been Taken, for the people marked present by the trainer",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-1.8 \"Attendance List Sent to QA\" is no longer the meaning in the column Signature (it stays only in part 5)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-1.9 the absent person has an empty Training result so far",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-3.3 APD.0117 PDF is produced",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-3.4 the absent person: Training result = the make-up outcome (Failed), Re-training result empty",
+   "ok": false,
+   "detail": "['2', 'UAT31-016', 'Lý Văn Phúc (UAT)', 'Quality Control', 'Vắng mặt / Absent', 'Không đạt / Failed', 'Đạt / Passed']"
+  },
+  {
+   "check": "F-3.7 the absent person: Training result = Failed (the make-up), Re-training result = Passed (the further training)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-3.8 the person who passed has Passed and an empty Re-training result",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-3.9 the person who failed has Failed and an empty Re-training result (no retraining yet)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-3.10 APD.0117 PDF is produced",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-4.1 the revision is linked to a training with a number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-4.2 the button is shown twice (header and footer), right after Back, no icon",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-4.3 in each place Training Details comes right after Back",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-4.4 the variant is outline-emerald (same colour classes as the Back button)",
+   "ok": false,
+   "detail": "('sabled:text-slate-400 disabled:hover:bg-transparent active:scale-[0.97] transition-all duration-200 h-9 md:h-9 px-3 md:px-4 text-xs md:text-sm whitespace-nowrap', 'ne-none focus-visible:ring-2 focus-visible:ring-emerald-500/20 h-11 md:h-11 justify-start text-slate-600 hover:text-slate-900 active:bg-slate-100 mx-1.5 md:mx-2')"
+  },
+  {
+   "check": "F-4.5 the button opens the activity of THAT training number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-4.6 the page shows the Training Number of the revision",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-5.1 the exam is shown as a file card with the eye and download icons (no View / Download text buttons)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-5.2 \"Answer Key (Optional)\" shows the dashed empty area \"No file.\"",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-5.3 nothing can be uploaded or removed here (read only)",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p6b": [
+  {
+   "check": "F-6.1 APD.0011 of the matrix with 5 positions is produced",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-6.2 five positions: the page stays portrait",
+   "ok": false,
+   "detail": "Rect(0.0, 0.0, 842.0, 595.3499755859375)"
+  },
+  {
+   "check": "F-6.8 the version with 8 positions is Effective",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-6.9 APD.0011 is produced",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-6.10 eight positions: the page is landscape",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-6.11 the Word file has a landscape section",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-7.1 APD.0024 of the staff member is produced",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-7.2 the two notes of the form are not printed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-7.3 the receiver is staff: the cell of the assignor names the head of the department of the employee",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-7.4 the receiver is the head of a department: the cell of the assignor says the title of the assignor",
+   "ok": false,
+   "detail": "ách nhiệm, mô tảcông việc/ Responsibility and Job description:\nTrách nhiệm/ Responsibility\nMô tảcông việc/ Job description\nPhụ\ntrách\nvi\nsinh\nIn charge of microbiology\nPhê\nd!yệt\nkết\nq!ả\nvi\nsinh\nApproves microbiology res!lts\nAssignor*\nHead of department (sign, fullname and date)\nChức danh ngNời giao việc/ Title of the\nassignor: QA Manager\nNg!yen The Hoang\nJob Assigned · 31/10/2026 23:09 (UTC+07)\nReceiver\n(Employee (sign, fullname and date)\nTạVăn Hùng (UAT)\nJob Accepted · 31/10/2026 23:09 (UTC+07)\n"
+  },
+  {
+   "check": "F-8.1 APD.0014 is asked for",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-8.2 APD.0014 as PDF",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-8.3 the qualification is the HIGHEST degree (Thạc sĩ, graduated 2012) although a college degree (2016) and a university degree (2020) are later",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p6c": [
+  {
+   "check": "F-16.2 APD.0024 is produced",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-16.3 the two notes of the form are kept",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-16.4 the superior, the subordinates and the substitute are written Name (Position)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-16.6 the code in the header is the code of the form with the revision in force (APD.0024.0n), not the employee code",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-16.5 no dotted line is left under the jurisdiction",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p6d": [
+  {
+   "check": "F-19.1 the requirement with TRN/QA/26-034 is found",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-19.2 the line of TRN/QA/26-034 shows Planned, as its own page does",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p6e": [
+  {
+   "check": "F-20.1 the earlier address arrives at My Tasks",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-20.2 the menu shows My Tasks and My Records under My Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-20.3 My Tasks has the tabs To Do and Pending My Signature",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-20.4 ?tab=copies arrives at My Records, tab Copies Received",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-20.5 ?tab=sign arrives at My Tasks, tab Pending My Signature",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p6f": [
+  {
+   "check": "F-23.1 the count API equals the totals of the two tables",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p6g": [
+  {
+   "check": "F-24.1 the settings give the 7 forms with a pattern",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-24.2 APD.0117: code with the revision, then the Training Number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-24.3 APD.0024: code with the revision, employee code, name and issuance number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-24.4 APD.0011: code with the revision, matrix code and version",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-24.5 APD.0108: code with the revision, Training Number, session and department",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-24.6 APD.0014 is asked for",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-24.7 APD.0014: code with the revision, employee code, name and the day",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-25.1 the pattern of the administrator is used",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-25.2 a variable that the form does not know is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-25.3 a pattern with a path is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-25.4 an empty pattern brings the default back",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p6h": [
+  {
+   "check": "F-27.1 the queue has a row with a scan to look at",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-27.2 the row carries documentNumber",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-27.2 the row carries documentName",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-27.2 the row carries revisionNumber",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-27.2 the row carries paperTrainingNumber",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-27.3 the server sorts by document",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-27.3 the server sorts by documentName",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-27.3 the server sorts by revision",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-27.3 the server sorts by paperNo",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-27.4 the view answers inline with the file",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-27.5 a view is written to the audit trail as a view",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-27.6 the download is an attachment under the uploaded name",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-29.0 the viewer shows the PDF without an error",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-29.1 the window with the scan is open",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-29.2 the browser saves the file under the uploaded name",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-30.1 an image scan is shown in the window",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p7a": [],
+ "p7b": [
+  {
+   "check": "F-31.1 the import is accepted",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.2 the revision is linked to a historical activity and is not manual",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.3 one activity of kind LEGACY, completed, with the paper number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.4 the evidence is FILED for the activity at once (nobody else verifies it)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.5 the two trainees and the signatory (the author) are named",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.6 the records are written at once: 2 trainees and the author",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.7 the counter of the department was raised to the paper number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.8 the topic, the trainer and the mode of the paper record are kept on the activity",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.9 the activity detail carries them and the topic comes from the paper",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.10 refused: trainingTopic = None",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.10 refused: trainingTrainer = None",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.10 refused: trainingMethod = None",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.10 refused: trainingMethod = WEBINAR",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.11 the persons of the activity are listed (2 trainees and the author) and every record is written",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.12 the queue says Filed and no longer offers anything to verify",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.13 there is no endpoint to verify",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.13 there is no endpoint to reject",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-31.14 an old client that still sends a verifier is not refused for it (the field is ignored)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-32.1 the second document joins the number without a scan or persons",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-32.2 its revision points to the same activity",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-32.3 there is still one activity and one evidence for the number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-32.4 the form is told that the number is shared and has its evidence filed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-32.5 a scan attached again to a number that has its evidence is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-32.6 a topic, trainer or mode given for a number that already has its evidence is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-32.7 the second document has its records at once (2 persons x 2 documents, and the author of each)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-32.8 the records carry the topic of the paper record",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-32.9 a record carries the paper number, the document and the completion day",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-34.1 the import is accepted",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-34.2 the persons of the number have their record for the new document at once (and the author the initial one)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-35.1 the next number of the department is after the paper number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-36.1 a training document with a paper number and no scan or declaration is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-36.2 and nothing is created (the number is free, the counter is not raised)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-36.3 a paper number equal to a number issued by the system is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-36.4 an author who is not a user is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-36.5 persons trained without a Training Number are refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-36.6 a document number already in use is refused clearly",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-37.1 a declaration with a reason is accepted",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-37.2 the evidence is a declaration, filed, with no activity and no person",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p7c": [
+  {
+   "check": "F-38.1 the queue shows the shared number on its documents with the evidence verified",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-38.2 the column Persons Trained is there",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-39.1 the historical activity opens and shows its Training Number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-39.2 the text says that there is no session because the training was done on paper",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-40.1 the list shows the historical activity with its type",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-41.1 the form shows the block of the paper training record",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-41.2 a number that is already filed is shown as shared, nothing to attach again",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-42.1 a new number asks for the scan, the persons trained and the verifier",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-42.2 the warning that a stored scan cannot be deleted is shown",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p7d": [
+  {
+   "check": "F-43.1 the counters are listed with the number that comes next",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-43.2 the counter is raised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-43.3 the stored serial is the one entered",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-43.4 a counter cannot go down",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-43.5 a reason is required",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-43.6 a year that is not possible is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-43.7 the change is in the Audit Trail",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-43.8 a person without the settings permission cannot raise it",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-44.1 the draft is created",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-44.2 its activity got a number after the raised counter",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-45.1 a revision that carries the number of an activity without pointing to it is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-45.2 the same number cannot be given to a second activity (unique)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-46.1 a person without the scope of all departments is refused for another department",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-46.2 nothing was created for it",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-46.3 for the own department the scope does not refuse (any other answer is a different rule)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-46.4 a person with the scope of all departments imports into any department",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p7e": [
+  {
+   "check": "F-47.1 the Training Number links to the activity",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-47.2 the Document Number links to the document",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-47.3 the Document Revision links to the revision",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-48.1 the window of the scan is open",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-48.2 the scan was read from the store and shown (no error)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-48.3 the footer has one Close and no Download",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-49.1 the topic, the mode and the trainer of the paper record are shown",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-50.1 the tab lists the persons and the records are written",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-51.1 the tab shows the counters, the next number and the raise window",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-51.2 the window to raise the counter is open",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-51.3 the reason box cannot be dragged to another size and has three lines",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-51.4 the window is wide (more than 600 px)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-52.1 the form asks for the Training Topic, the Trainer and the Mode, and no longer for a verifier",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-53.1 the empty list of participants is gone from the tab",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "F-53.2 the tab says where the persons who were trained are chosen",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p8a": [
+  {
+   "check": "G-1.1 the import of three revisions is accepted",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-1.2 only the last revision is Effective, the others are Obsoleted",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-1.3 each paper number has its own historical activity",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-1.4 three evidences: two scans linked to an activity, one declaration without",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-1.5 records of the first number: 2 trainees and the author; of the second: 1 trainee and the author",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-1.6 each record names the document and the revision it was for",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-1.7 Document Control shows the training of the document from Training Management (number, status)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-1.8 the revision shows its activity: number, completed, origin legacy, can be opened",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-1.9 the revision whose paper is lost has no number and no activity (and says it is legacy)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-2.1 the import is accepted",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-2.2 the author has one record for the document, as a trainee",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-3.1 a new revision can be made from the imported document",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-3.2 the new revision is a normal one (not legacy) and got its own training activity",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-3.3 that activity is not the historical one and waits for the revision to be approved (RESERVED)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-3.4 its Training Number is a new one of the system (after the paper log)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-3.5 the historical activities are untouched (still COMPLETED)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-3.6 the records of the paper training are untouched",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-4.1 the export is asked for",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-4.2 the personal record shows the paper training (its number and topic)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-5.1 the void is accepted",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-5.2 the voided record is no longer in the list of the person",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-5.3 the tab Persons Trained does not still say \"Written\" for a voided record",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-6.1 the people who hold the document impact permission of the department were told (1 of them)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-6.2 the audit trail has the activity and the evidence",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-7.1 a scan over 20 MB is refused with a clear answer (not a server error)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-7.2 a scan that is not a PDF is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-7.3 and none of those imports left a document or an activity behind",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-8.1 the same new paper number at the same moment: one wins, the other is answered clearly (never a server error)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-8.2 there is exactly one activity and one evidence for the number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-8.3 the same document number at the same moment: one wins, the other gets a clear refusal",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-8.4 and one document only has that number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-9.1 it joins the same activity (the number is compared without case and blanks)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-9.2 the activity is still one",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-10.1 the queue shows nothing of the Quality Assurance documents (or is refused: this person holds no Training permission)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-10.2 it cannot open the scan of another department",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-10.3 it cannot see the persons of another department",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-10.4 a person without the Training permission cannot import a training document with evidence (clear words)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-11.1 filter FILED",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-11.1 filter VERIFIED",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-11.1 filter MISSING",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-11.2 the old status SUBMITTED no longer exists",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-11.3 sort by document",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-11.3 sort by documentName",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-11.3 sort by revision",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-11.3 sort by paperNo",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-11.3 sort by evidence",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-11.3 sort by completion",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-11.3 sort by submittedBy",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-11.3 sort by submittedOn",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "G-12.1 evidence cannot be attached twice to the same revision",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p8b": [
+  {
+   "check": "H-1.1 the document information is filled (the number is free)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-1.2 the training requirement is set (10 days)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-1.3 the dates, the people and the paper number of the revision are filled",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-1.4 the topic, the trainer, the mode, the scan and the source file are given",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-1.5 two persons trained are chosen from the window",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-2.2 the document exists as Effective with a revision",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-2.3 the historical activity has the topic, the trainer and the mode typed in the browser",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-2.4 the two persons chosen have their record, and the author, the reviewer and the approver have the initial record",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-2.5 the scan was filed under its own name",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-2.6 the browser went back to the list of documents",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p8c": [
+  {
+   "check": "H-3.1 the revision opens as Effective",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-3.2 there is a button Training Details (twice: header and footer)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-3.3 Training Details opens the historical activity of this revision",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-3.4 the activity shows the paper Training Number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-3.5 the document opens (Active, with the number)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-4.1 an empty form is not signed: it says what is missing (Document Type first)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-4.2 no e-signature window opens for an empty form",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-5.1 with Is Template the tab Training Requirement is gone",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p8d": [
+  {
+   "check": "H-6.1 the SOP is imported; only one of the two persons is named as trained",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-6.2 both persons have a Work Position in the department",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-6.3 the department has a training matrix",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-6.5 the imported SOP is added to the matrix",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-6.6 the matrix is submitted with a signature",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-6.7 QA approves it: the matrix is Effective",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-7.1 the person who was trained on paper is OK for the imported SOP",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-7.2 the person who was not named is MISSING for the same SOP",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-7.3 the summary of the department answers",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p8e": [
+  {
+   "check": "H-8.1 refused: update the activity",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-8.1 refused: add a session",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-8.1 refused: add participants",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-8.1 refused: cancel the activity",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-8.1 refused: notify participants",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-8.1 refused: send the attendance list",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-8.1 refused: finish the training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-8.1 refused: confirm the completion",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-8.1 refused: make a supplementary training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-8.1 refused: change the approvers",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-8.2 the activity, its records and its sessions are exactly as they were",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-8.3 no capability that changes the activity is offered to the person",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-9.1 the imported document can be made Obsolete",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-9.2 its historical activity is not touched by it",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-9.3 Document Control still shows the training of the obsolete document",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p8f": [
+  {
+   "check": "H-10.1 the employee sees the records of the paper training in My Training (Records)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-10.2 the employee cannot read the records of another person",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-11.1 the log lists the paper Training Number when no year is asked",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-11.2 the log of 2026 lists a number whose year is 26",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p8g": [
+  {
+   "check": "H-12.1 a scan with accents in its name is accepted",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-12.2 the name is kept exactly as it was uploaded",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-12.3 and is the name of the file downloaded",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-12.4 a name with a path keeps only the last part",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-13.1 the import is accepted",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-13.2 each person has one record",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-13.3 a person who left can be named as trained (they were trained at that time) or is refused with words",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-14.1 the answer is not a server error (the shared validator accepts it, as in the normal flow)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-14.3 a topic over 1000 characters is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-14.4 a trainer over 255 characters is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-14.5 a paper number over 40 characters is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-14.6 a paper number with blanks is refused",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p8h": [
+  {
+   "check": "H-15.1 the download is the scan as it was filed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-15.2 the view is not the same bytes (it carries the watermark)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-15.3 the watermark names the viewer",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-16.1 the scan of an executed record carries the watermark of the settings",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-17.1 a PDF that the watermark cannot be drawn on is refused (422), not sent bare",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "H-18.1 a picture as the scan of a Legacy Import is refused with words",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p9a": [
+  {
+   "check": "J-1.1 one sample, the Standard frame",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "J-1.2 the endpoint of the three styles is gone",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "J-2.1 the signature placeholders are listed with no style",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "J-2.2 no placeholder of the catalog ends with Compact, Standard or Detailed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "J-3.1 it shows the signature of the sample in the Standard frame, not the label of an unfilled placeholder",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "J-3.2 and not the old full block (Meaning:, Reason:, Signature ID:)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "J-4.1 a slot has no style",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "J-4.2 the endpoint that chose it is gone",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "J-5.1 the document is imported and published",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "J-5.2 a publishing template with a cover is active",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "J-5.3 the signature cells of the cover are written in the Standard frame (name, Electronically and the meaning, date and time)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "J-5.4 none carries the reason, the signature ID or the Meaning line of the old block",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "p9b": [
+  {
+   "check": "J-6.1 the signatures say \"Electronically ...\" and the date and time (the Standard frame)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "J-6.2 no line \"Signed electronically\" and no \"Ký điện tử / Signed ...\" status line",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "J-6.3 the meaning of an attendance signature is Attendance Has Been Taken",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "J-6.4 an acronym keeps its capitals (sent to QA)",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

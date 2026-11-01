@@ -51,14 +51,26 @@ const asPerson = (p: ProposedPerson): TrainingPerson => ({
  * Once the training activity of the document exists, a change saves by itself (each change is recorded in the Audit Trail of the training activity). Before that (a
  * document that is being created) the people are chosen at once and kept by the form (`pending`, `onPendingChange`); the form sends them when the document is saved.
  */
+export interface ProposedParticipantsLabels {
+  title?: string;
+  description?: string;
+  localNotice?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  modalTitle?: string;
+}
+
 export function ProposedParticipantsField({
   documentId,
   pending,
   onPendingChange,
+  labels,
 }: {
   documentId?: string | null;
   pending?: ProposedPerson[];
   onPendingChange?: (people: ProposedPerson[]) => void;
+  /** Other words for the screen that keeps the people for something else than a proposal (for example the people who were trained on paper). */
+  labels?: ProposedParticipantsLabels;
 }) {
   const [proposal, setProposal] = useState<TrainingProposal>();
   const [error, setError] = useState("");
@@ -208,13 +220,12 @@ export function ProposedParticipantsField({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-slate-800">
-            List of participants in the Training
+            {labels?.title ?? "List of participants in the Training"}
             {totalItems ? ` (${totalItems})` : ""}
           </h3>
           <p className="text-xs text-slate-500">
-            A proposal. When the training opens and its first session is added,
-            these people are put on the list; the organizer confirms the list
-            with a signature.
+            {labels?.description ??
+              "A proposal. When the training opens and its first session is added, these people are put on the list; the organizer confirms the list with a signature."}
           </p>
         </div>
         {editable && (
@@ -241,7 +252,7 @@ export function ProposedParticipantsField({
       {local && (
         <WarningBanner
           variant="info"
-          description="The people chosen here are saved with the document. The Training Number is issued, and the list is sent to the training, when the document is saved with a training period."
+          description={labels?.localNotice ?? "The people chosen here are saved with the document. The Training Number is issued, and the list is sent to the training, when the document is saved with a training period."}
         />
       )}
       {!local && documentId && proposal && !proposal.available && (
@@ -273,11 +284,12 @@ export function ProposedParticipantsField({
           }
           emptyState={
             <TableEmptyState
-              title="No participant proposed"
+              title={labels?.emptyTitle ?? "No participant proposed"}
               description={
-                editable
+                labels?.emptyDescription ??
+                (editable
                   ? "Use Add Participants to propose the people to be trained."
-                  : "Nobody has been proposed."
+                  : "Nobody has been proposed.")
               }
             />
           }
@@ -308,7 +320,7 @@ export function ProposedParticipantsField({
       <FormModal
         isOpen={adding}
         onClose={() => setAdding(false)}
-        title="Participants in the Training"
+        title={labels?.modalTitle ?? "Participants in the Training"}
         confirmText={`Save (${selection.length})`}
         size="2xl"
         className="max-w-5xl"

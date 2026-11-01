@@ -187,6 +187,7 @@ public class SystemConfigurationService {
                 : onlyOfficeConfigurationService.mergeGeneralConfigForStorage(request.general(), config.getGeneralConfig());
         validateDesktopFilterConfig(nextGeneral);
         validateAlternatingRecordColors(nextGeneral);
+        validateTableColumnDividers(nextGeneral);
         validatePageBackgrounds(nextGeneral);
         JsonNode videoBackground = nextGeneral.path("appearance").path("authBackground");
         if ("video".equals(videoBackground.path("mode").asText()) && (authBackgroundVideoStore == null || !authBackgroundVideoStore.exists(UUID.fromString(videoBackground.path("videoId").asText())))) throw new IllegalArgumentException("Authentication background video does not exist");
@@ -196,6 +197,7 @@ public class SystemConfigurationService {
         validateSystemHeaderTitle(nextGeneral);
         validateFooter(nextGeneral);
         PwaBrandingService.validate(nextGeneral);
+        ImageWatermarkService.validate(nextGeneral);
         nextGeneral = withDisplayFormat(nextGeneral);
         config.setGeneralConfig(nextGeneral);
         config.setSecurityConfig(defaultIfNull(request.security(), config.getSecurityConfig()));
@@ -342,6 +344,14 @@ public class SystemConfigurationService {
         return result;
     }
 
+    /** The saved watermark settings of one target ({@code controlledCopyEvidence}, {@code specimenSignature}); null when never set up. */
+    @Transactional(readOnly = true)
+    public JsonNode getImageWatermarkConfig(String targetKey) {
+        JsonNode general = requireConfiguration().getGeneralConfig();
+        JsonNode node = general == null ? null : general.path("imageWatermark").get(targetKey);
+        return node == null || node.isNull() ? null : node;
+    }
+
     @Transactional(readOnly = true)
     @Cacheable(cacheNames = "public-branding", key = "'current'")
     public com.eqms.dto.configuration.PublicBrandingResponse getPublicBranding() {
@@ -358,6 +368,7 @@ public class SystemConfigurationService {
                 appearance != null && appearance.path("compactDesktopFilters").asBoolean(false),
                 appearance != null && appearance.path("alternatingRecordColors").asBoolean(false),
                 alternatingRecordColor(appearance),
+                appearance != null && appearance.path("tableColumnDividers").asBoolean(false),
                 publicPageBackground(appearance, "mainBackground"),
                 publicPageBackground(appearance, "authBackground"),
                 toastPosition(appearance),
@@ -514,6 +525,12 @@ public class SystemConfigurationService {
         JsonNode color = appearance == null ? null : appearance.get("alternatingRecordColor");
         if (enabled != null && !enabled.isBoolean()) throw new IllegalArgumentException("alternatingRecordColors must be true or false");
         if (color != null && (!color.isTextual() || !color.asText().matches("^#[0-9a-fA-F]{6}$"))) throw new IllegalArgumentException("alternatingRecordColor must be a six-digit hex color");
+    }
+
+    static void validateTableColumnDividers(JsonNode general) {
+        JsonNode appearance = general == null ? null : general.get("appearance");
+        JsonNode enabled = appearance == null ? null : appearance.get("tableColumnDividers");
+        if (enabled != null && !enabled.isBoolean()) throw new IllegalArgumentException("tableColumnDividers must be true or false");
     }
 
     private static JsonNode publicPageBackground(JsonNode appearance, String field) {
@@ -1824,7 +1841,15 @@ public class SystemConfigurationService {
             return null;
         }
         JsonNode sanitized = generalConfig.deepCopy();
-        if (sanitized != null && sanitized.isObject()) {
+        JsonNode watermark = sanitized.path("imageWatermark");
+        if (watermark.isObject()) {
+            // A custom watermark logo is a picture: the Audit Trail names it by its fingerprint, so a change of logo shows without storing the image again.
+            watermark.fields().forEachRemaining(entry -> {
+                JsonNode data = entry.getValue().path("logoData");
+                if (data.isTextual() && !data.asText().isEmpty()) {
+                    ((ObjectNode) entry.getValue()).put("logoData", "[custom logo sha256:" + ImageWatermarkService.sha256(data.asText().getBytes(java.nio.charset.StandardCharsets.UTF_8)).substring(0, 16) + "]");
+                }
+            });
         }
         return sanitized;
     }

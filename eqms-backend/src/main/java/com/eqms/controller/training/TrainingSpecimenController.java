@@ -53,8 +53,8 @@ public class TrainingSpecimenController {
     }
 
     @GetMapping("/{id}/image")
-    public ResponseEntity<byte[]> image(@PathVariable UUID id, @RequestParam(defaultValue = "1") int which) {
-        Map<String, Object> image = specimens.image(users.requireCurrentUser(), id, which);
+    public ResponseEntity<byte[]> image(@PathVariable UUID id, @RequestParam(defaultValue = "1") int which, @RequestParam(defaultValue = "shown") String variant) {
+        Map<String, Object> image = specimens.image(users.requireCurrentUser(), id, which, "original".equals(variant));
         return ResponseEntity.ok().contentType(MediaType.parseMediaType((String) image.get("contentType"))).cacheControl(CacheControl.noStore()).body((byte[]) image.get("bytes"));
     }
 }

@@ -58,32 +58,25 @@ export function UserDashboard() {
       </header>
 
       <DashboardWidgets widgets={[
-      { id: 'user-kpis', label: 'Overview', width: 'full', content: <><KpiStrip
-        label="Workflow and library totals"
-        cells={[
-          {
+      { id: 'user-pending-actions', label: 'My pending actions', width: 'half', content: <><KpiStrip label="My pending actions" className="!grid-cols-1" cells={[{
             title: 'My Pending Actions',
             accent: '#34d399',
             value: s ? s.myPendingTasks : dash,
             chip: s && awaitingAction ? `${share(s.myPendingTasks, awaitingAction)}% of awaiting` : undefined,
             footValue: s ? (awaitingAction ?? 0) : dash,
             footLabel: 'Awaiting review or approval',
-          },
-          stage(s?.pendingReview, '#10b981', 'Pending Review'),
-          stage(s?.pendingApproval, '#059669', 'Pending Approval'),
-          {
+          }]} />{summary.error && <PanelError message="Totals could not be loaded." onRetry={summary.reload} />}</> },
+      { id: 'user-pending-review', label: 'Pending review', width: 'half', content: <><KpiStrip label="Pending review" className="!grid-cols-1" cells={[stage(s?.pendingReview, '#10b981', 'Pending Review')]} />{summary.error && <PanelError message="Pending review could not be loaded." onRetry={summary.reload} />}</> },
+      { id: 'user-pending-approval', label: 'Pending approval', width: 'half', content: <><KpiStrip label="Pending approval" className="!grid-cols-1" cells={[stage(s?.pendingApproval, '#059669', 'Pending Approval')]} />{summary.error && <PanelError message="Pending approval could not be loaded." onRetry={summary.reload} />}</> },
+      { id: 'user-effective-documents', label: 'Effective documents', width: 'half', content: <><KpiStrip label="Effective documents" className="!grid-cols-1" cells={[{
             title: 'Effective documents',
             accent: '#6ee7b7',
             value: s ? s.totalEffectiveDocuments : dash,
             chip: effectiveShare === undefined ? undefined : `${effectiveShare}% of all`,
             footValue: s ? s.totalDocuments : dash,
             footLabel: 'Total documents',
-          },
-        ]}
-      />
-      {summary.error && (
-        <PanelError message="Totals could not be loaded." onRetry={summary.reload} />
-      )}</> },
+          }]} />{summary.error && <PanelError message="Effective documents could not be loaded." onRetry={summary.reload} />}</> },
+      { id: 'user-pending-training', label: 'Pending training', width: 'half', content: <><KpiStrip label="Pending training" className="!grid-cols-1" cells={[stage(s?.pendingTraining, '#14b8a6', 'Pending Training')]} />{summary.error && <PanelError message="Pending training could not be loaded." onRetry={summary.reload} />}</> },
 
       { id: 'document-activity', label: 'Document activity', width: 'half', content: <DocumentActivityPanel /> },
       { id: 'workflow-pipeline', label: 'Workflow pipeline', width: 'half', content: <Card aria-label="Workflow pipeline">

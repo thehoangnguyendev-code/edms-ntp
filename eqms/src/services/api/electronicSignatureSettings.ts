@@ -51,7 +51,7 @@ export interface ElectronicSignatureRecord {
   createdAt?: string;
 }
 
-export interface ElectronicSignatureDisplayStyle { style: 'COMPACT' | 'STANDARD' | 'DETAILED'; label: string; frame: string; text: string }
+export interface ElectronicSignatureDisplayStyle { style: 'STANDARD'; label: string; frame: string; text: string }
 
 export const electronicSignatureSettingsApi = {
   getSettings: async () => {
@@ -68,8 +68,8 @@ export const electronicSignatureSettingsApi = {
     const response = await api.put<ElectronicSignatureSettings>('/settings/electronic-signature', { ...payload, ...sig });
     return response.data;
   },
-  /** The three display styles of a signed signature, drawn by the server from one sample record. */
-  getDisplayStyles: async () => (await api.get<ElectronicSignatureDisplayStyle[]>('/settings/electronic-signature/display-styles')).data,
+  /** The way a signed signature is written in a document (the Standard frame), drawn by the server from one sample record. */
+  getDisplayStyle: async () => (await api.get<ElectronicSignatureDisplayStyle>('/settings/electronic-signature/display-style')).data,
   generatePdfPreview: async () => {
     const response = await api.get<Blob>('/settings/electronic-signature/pdf-preview', { responseType: 'blob' });
     return response.data;

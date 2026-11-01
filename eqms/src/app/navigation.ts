@@ -307,7 +307,7 @@ const FOUNDATION_MODULES: NavItem[] = [
         children: [
           { id: "training-records", label: "Training Records", path: ROUTES.TRAINING.RECORDS, allowedPermissions: ["training.record.view"] },
           { id: "training-compliance", label: "Training Compliance", path: ROUTES.TRAINING.COMPLIANCE, allowedPermissions: ["training.compliance.view"] },
-          { id: "training-number-log", label: "Training Number Register", path: ROUTES.TRAINING.NUMBER_LOG, allowedPermissions: ["training.compliance.view"] },
+          { id: "training-number-allocation-log", label: "Training Number Allocation Log", path: ROUTES.TRAINING.NUMBER_ALLOCATION_LOG, allowedPermissions: ["training.compliance.view"] },
           { id: "training-record-exports", label: "Training Record Exports", path: ROUTES.TRAINING.RECORD_EXPORTS, allowedPermissions: ["training.record.export"] },
           { id: "training-legacy-evidence", label: "Legacy Training Evidence", path: ROUTES.TRAINING.LEGACY_EVIDENCE, allowedPermissions: ["training.activity.view"] },
         ],

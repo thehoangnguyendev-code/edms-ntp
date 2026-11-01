@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ChevronDown, Droplets, QrCode, Stamp } from "lucide-react";
-import { FormSection } from "@/components/ui/form/FormSection";
+import { AnimatePresence, motion } from "framer-motion";
+import { cn } from "@/components/ui/utils";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch/Switch";
 import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput";
@@ -102,7 +103,10 @@ const markIcon = (title: string) => {
   return t.includes("stamp") ? MARK_ICONS.stamp : t.includes("watermark") ? MARK_ICONS.watermark : t.includes("qr") ? MARK_ICONS.qr : undefined;
 };
 
-/** One marking (stamp, watermark, QR code) as a section of the left column, the same card as the other administration screens, with its on/off switch and a fold. */
+/**
+ * One marking (stamp, watermark, QR code) as a card of the left column. The whole header folds the card, with the same spring and the same chevron turn as the placeholder groups
+ * of the Publishing Template editor; the on/off switch only enables the mark and never folds it. A folded card is its header alone: no empty body is left under it.
+ */
 export const MarkCard: React.FC<{
   title: string;
   icon?: React.ReactNode;
@@ -113,21 +117,41 @@ export const MarkCard: React.FC<{
   children: React.ReactNode;
 }> = ({ title, icon, enabled, onToggle, disabled, defaultExpanded = true, children }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const resolvedIcon = icon ?? markIcon(title);
   return (
-    <FormSection
-      title={title}
-      icon={icon ?? markIcon(title)}
-      headerRight={
-        <div className="flex items-center gap-2">
-          <Switch checked={enabled} onChange={onToggle} size="sm" disabled={disabled} />
-          <button type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${title}`} aria-expanded={expanded} onClick={() => setExpanded((v) => !v)} className="rounded p-1 text-slate-500 hover:bg-slate-100">
-            <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div
+        onClick={() => setExpanded((v) => !v)}
+        className="flex min-h-[52px] cursor-pointer items-center justify-between gap-3 px-4 py-3 transition hover:bg-slate-100/70 md:px-5"
+      >
+        <div className="flex min-w-0 items-center gap-2.5">
+          {resolvedIcon && <span className="flex-shrink-0 text-emerald-600">{resolvedIcon}</span>}
+          <h3 className="truncate text-sm font-semibold tracking-tight text-slate-900">{title}</h3>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <div onClick={(event) => event.stopPropagation()}>
+            <Switch checked={enabled} onChange={onToggle} size="sm" disabled={disabled} />
+          </div>
+          <button type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${title}`} aria-expanded={expanded} className="rounded p-1 text-slate-500">
+            <ChevronDown className={cn("h-4 w-4 text-slate-400 transition-transform duration-300", expanded && "rotate-180")} />
           </button>
         </div>
-      }
-    >
-      {expanded ? <div className="space-y-4">{children}</div> : null}
-    </FormSection>
+      </div>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 90, damping: 16 }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-4 border-t border-slate-200 bg-white p-4 md:p-5">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 };
 

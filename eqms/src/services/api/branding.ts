@@ -11,6 +11,7 @@ export interface PublicBranding {
   compactDesktopFilters?: boolean;
   alternatingRecordColors?: boolean;
   alternatingRecordColor?: string;
+  tableColumnDividers?: boolean;
   mainBackground?: PageBackground | null;
   authBackground?: PageBackground | null;
   /** Machine value: center | top-right | top-left | bottom-right | bottom-left. */

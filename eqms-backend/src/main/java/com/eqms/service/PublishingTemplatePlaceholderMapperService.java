@@ -41,11 +41,10 @@ public class PublishingTemplatePlaceholderMapperService {
     }
 
     private PublishingTemplatePlaceholderMappingResponse buildMapping(PublishingPlaceholderSyntax.PlaceholderToken token, RevisionDetailResponse revision) {
-        SignatureDisplayStyle displayStyle = SignatureDisplayStyle.ofName(token.name());
-        if (displayStyle != null) {
-            // {{approvedSignatureCompact}}: the same signature as {{approvedSignature}}, in the display style the ending names
-            PublishingTemplatePlaceholderMappingResponse base = buildMapping(new PublishingPlaceholderSyntax.PlaceholderToken(SignatureDisplayStyle.baseName(token.name()), token.transform()), revision);
-            return mapping(token.key(), base.revisionField(), base.label() + " (" + displayStyle.label() + " style)", base.sampleValue(), base.sourceSection());
+        if (SignaturePlaceholderName.hasLegacyEnding(token.name())) {
+            // {{approvedSignatureCompact}} of a template of the time of the three styles: the same placeholder as {{approvedSignature}}
+            PublishingTemplatePlaceholderMappingResponse base = buildMapping(new PublishingPlaceholderSyntax.PlaceholderToken(SignaturePlaceholderName.baseName(token.name()), token.transform()), revision);
+            return mapping(token.key(), base.revisionField(), base.label(), base.sampleValue(), base.sourceSection());
         }
         String placeholder = token.key();
         String normalized = token.name().toLowerCase(Locale.ROOT);
@@ -270,19 +269,13 @@ public class PublishingTemplatePlaceholderMapperService {
         if (participant == null) {
             return participantLabel + " signature block";
         }
+        // the Standard frame, as every signature is written in a document: the name, "Electronically" and the meaning, then the date and time
         String fullName = valueOrDash(participant.fullName());
-        String position = valueOrDash(participant.position());
-        String department = valueOrDash(participant.department());
-        String username = valueOrDash(participant.username());
         String actedAt = valueOrDash(participant.actedAt());
         return participantLabel + " signature block\n"
                 + fullName + "\n"
-                + position + "\n"
-                + department + "\n"
-                + "Username: " + username + "\n"
-                + "Status: Electronically Signed\n"
-                + "Signed at: " + actedAt + "\n"
-                + "Meaning: " + meaningDisplay;
+                + "Electronically " + (meaningDisplay == null ? "signed" : meaningDisplay.toLowerCase(Locale.ROOT)) + "\n"
+                + actedAt;
     }
 
     private List<DocumentParticipantResponse> orderedParticipants(List<DocumentParticipantResponse> participants) {

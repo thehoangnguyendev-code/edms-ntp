@@ -31,11 +31,15 @@ class TrainingAttendanceListColumnsTest {
 
     @Test
     void whoeverTookTheAttendanceTheMeaningOfTheSignatureIsAttendanceHasBeenTaken() {
-        List<String> trainer = TrainingAttendanceListService.taken(List.of("Nguyen The Hoang", "Attendance List Sent to QA · 31/10/2026 17:47 (UTC+07)"));
-        assertEquals("Attendance Has Been Taken · 31/10/2026 17:47 (UTC+07)", trainer.get(1));
-        List<String> own = TrainingAttendanceListService.taken(List.of("Nguyen Van An", "Attendance Confirmed by Trainee · 31/10/2026 09:00 (UTC+07)"));
-        assertEquals("Attendance Has Been Taken · 31/10/2026 09:00 (UTC+07)", own.get(1));
-        assertFalse(String.join(" ", trainer).contains("Sent to QA"));
+        // the signature is the Standard frame: the name, "Electronically" and the meaning, then the date and time
+        List<String> trainer = TrainingAttendanceListService.taken(List.of("Nguyen The Hoang", "Electronically attendance list sent to QA", "31/10/2026 17:47 (UTC+07)"));
+        assertEquals("Electronically attendance has been taken", trainer.get(1));
+        assertEquals("31/10/2026 17:47 (UTC+07)", trainer.get(2));
+        List<String> own = TrainingAttendanceListService.taken(List.of("Nguyen Van An", "Electronically attendance confirmed by trainee", "31/10/2026 09:00 (UTC+07)"));
+        assertEquals("Electronically attendance has been taken", own.get(1));
+        List<String> byTrainer = TrainingAttendanceListService.taken(List.of("Nguyen The Hoang", "Electronically attendance confirmed by trainer", "31/10/2026 09:00 (UTC+07)"));
+        assertEquals("Electronically attendance has been taken", byTrainer.get(1));
+        assertFalse(String.join(" ", trainer).toLowerCase().contains("sent to qa"));
     }
 
     @Test

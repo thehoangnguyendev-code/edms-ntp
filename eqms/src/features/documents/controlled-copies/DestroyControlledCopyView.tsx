@@ -21,6 +21,7 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import { FormSection } from "@/components/ui/form";
 import { destroyControlledCopy } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { documentApi } from "@/services/api/documents";
+import { imageWatermarkApi } from "@/services/api/imageWatermark";
 import { metadataApi } from "@/services/api/metadata";
 import { Select } from "@/components/ui/select/Select";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
@@ -42,6 +43,9 @@ interface EvidenceFile {
   file: File;
   preview: string;
   id: string;
+  /** The photo as the server would stamp it (object URL), when a watermark is set for evidence. */
+  stamped?: string;
+  stampNote?: string;
 }
 
 interface DestructionFormData {
@@ -139,6 +143,10 @@ export const DestroyControlledCopyView: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [showOriginal, setShowOriginal] = useState(false);
+  // The stamped previews are object URLs: they are released when a photo is removed and when the screen closes.
+  const stampedUrls = React.useRef<Set<string>>(new Set());
+  useEffect(() => { const urls = stampedUrls.current; return () => { urls.forEach((url) => URL.revokeObjectURL(url)); urls.clear(); }; }, []);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [controlledCopy, setControlledCopy] = useState<ControlledCopy | null>(null);
   const [userOptions, setUserOptions] = useState<SelectOption[]>([]);
@@ -241,19 +249,24 @@ export const DestroyControlledCopyView: React.FC = () => {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
-      await new Promise<void>((resolve) => {
+      const item: EvidenceFile = await new Promise<EvidenceFile>((resolve) => {
         const reader = new FileReader();
-        reader.onloadend = () => {
-          newEvidenceFiles.push({
-            file,
-            preview: reader.result as string,
-            id: `${Date.now()}-${i}`,
-          });
-          setUploadProgress(Math.round(((i + 1) / files.length) * 100));
-          resolve();
-        };
+        reader.onloadend = () => resolve({ file, preview: reader.result as string, id: `${Date.now()}-${i}` });
         reader.readAsDataURL(file);
       });
+      // The server stamps the photo with the watermark set in Configuration; the preview shows it. If the server cannot answer, the photo is shown as it is and is still stamped on submit.
+      try {
+        const result = await imageWatermarkApi.uploadPreview("controlledCopyEvidence", file);
+        if (result.applied) {
+          item.stamped = URL.createObjectURL(result.blob);
+          stampedUrls.current.add(item.stamped);
+        }
+        item.stampNote = result.note;
+      } catch {
+        // The preview is a help, not a step.
+      }
+      newEvidenceFiles.push(item);
+      setUploadProgress(Math.round(((i + 1) / files.length) * 100));
     }
 
     setFormData((prev) => ({
@@ -273,6 +286,8 @@ export const DestroyControlledCopyView: React.FC = () => {
   };
 
   const handleRemoveFile = (id: string) => {
+    const removed = formData.evidenceFiles.find((item) => item.id === id);
+    if (removed?.stamped) { URL.revokeObjectURL(removed.stamped); stampedUrls.current.delete(removed.stamped); }
     setFormData((prev) => ({
       ...prev,
       evidenceFiles: prev.evidenceFiles.filter(file => file.id !== id),
@@ -684,7 +699,7 @@ export const DestroyControlledCopyView: React.FC = () => {
                         >
                           <div className="aspect-square">
                             <img
-                              src={evidence.preview}
+                              src={evidence.stamped ?? evidence.preview}
                               alt={`Evidence ${index + 1}`}
                               className="w-full h-full object-cover"
                             />
@@ -709,6 +724,11 @@ export const DestroyControlledCopyView: React.FC = () => {
                         </div>
                       ))}
                     </div>
+                  )}
+                  {formData.evidenceFiles.some((item) => item.stamped) && (
+                    <p className="mt-2 text-xs text-slate-500">
+                      The photos are shown with the watermark that the system adds when you submit. The time on it is the time of submission, and the photo as you took it is kept as well.
+                    </p>
                   )}
                 </div>
 
@@ -831,7 +851,7 @@ export const DestroyControlledCopyView: React.FC = () => {
 
               <div className="relative flex items-center justify-center w-full h-full">
                 <img
-                  src={formData.evidenceFiles[selectedImageIndex].preview}
+                  src={showOriginal ? formData.evidenceFiles[selectedImageIndex].preview : (formData.evidenceFiles[selectedImageIndex].stamped ?? formData.evidenceFiles[selectedImageIndex].preview)}
                   alt={`Evidence ${selectedImageIndex + 1}`}
                   className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg"
                 />
@@ -840,6 +860,16 @@ export const DestroyControlledCopyView: React.FC = () => {
                     {selectedImageIndex + 1} / {formData.evidenceFiles.length}
                   </p>
                 </div>
+
+                {formData.evidenceFiles[selectedImageIndex].stamped && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setShowOriginal((value) => !value); }}
+                    className="absolute top-2 left-2 md:top-4 md:left-4 rounded-full bg-white/10 px-3 py-1.5 text-xs md:text-sm font-medium text-white transition-colors hover:bg-white/20"
+                  >
+                    {showOriginal ? "Show With Watermark" : "Show Original"}
+                  </button>
+                )}
 
                 {/* Navigation buttons */}
                 {formData.evidenceFiles.length > 1 && (

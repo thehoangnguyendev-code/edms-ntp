@@ -1,0 +1,23 @@
+# Image watermark for evidence photos and specimen signatures — 2026-11-01
+
+## Authorization and invariants
+
+Requested by the owner: a configurable watermark (logo, uploader, upload time, corner, size, opacity) on the pictures uploaded as **destruction evidence of a controlled copy** and as **specimen signature**, with a preview. Decisions of the owner (see `DECISION_LOG.md`, IMAGE-WATERMARK-2026-11-01): the picture as uploaded is kept beside the stamped one; the server draws the stamp; the two purposes have their own settings; PNG and JPEG only; screens show the stamped picture and those who compare strokes can open the original; a preview is shown in the upload forms.
+
+Invariants kept: the stamp is drawn on the server at the moment the file is received (it cannot be skipped by calling the API; the uploader is the signed-in user and the time is the server clock, the same instant as `uploaded_at` / `created_at`); the original is never replaced (hash of the original and of the stamped copy are stored; the specimen guard trigger now refuses a change of the original columns); an earlier row is never re-stamped when the settings change; opening the original of a specimen is a separate Audit Trail action `TRAINING_SPECIMEN_ORIGINAL_VIEWED`; the Audit Trail of a configuration change names a custom logo by a fingerprint, not by the picture.
+
+## Implementation and impact
+
+- Backend: `ImageWatermarkService` (new, one renderer for evidence, specimen and both previews); `ControlledCopyService.storeEvidenceFiles` uses it (the earlier fixed logo code, decode/encode/scale helpers and constants were removed from that class); `TrainingSpecimenService.upload` stamps both pictures, stores the originals and writes `watermarked`; `image(..., original)` and `GET /training/specimen-signatures/{id}/image?variant=original`; `SystemConfigurationService` validates and audits `general.imageWatermark`; new `ImageWatermarkController` (`POST /image-watermark/config-preview` needs `settings.configuration.manage`; `POST /image-watermark/upload-preview` is for the signed-in user and stores nothing); `AdministrativeOperationCatalog` lists `configPreview`.
+- Database: `V724__image_watermark_specimen_originals.sql` adds `watermarked` and the `original_*` columns (and `_2`) to `training_specimen_signatures` and extends the guard trigger. Forward-only, idempotent; rows before it have `watermarked = false`. **Not yet applied to the DEV database in this session.**
+- Frontend: Configuration > **Image Watermark** tab (settings, position, size/opacity/margin sliders, preview made by the server); preview in the Destroy Controlled Copy form (with a Show Original switch in the photo viewer) and in the specimen signature picker; **Show Original** in the two specimen viewers when the row is `watermarked`.
+- Behaviour that changes: a new specimen signature accepts **PNG and JPEG only** (WebP and BMP are refused; earlier rows stay readable). A target that was never configured behaves as before: evidence stamped with the system logo at the top left; specimen not stamped.
+- GitNexus: not available in this session; no `impact` / `detect_changes` was run. Callers were found by search: `watermarkEvidence` had no caller outside `storeEvidenceFiles` (two tests that called it by reflection were moved to `ImageWatermarkServiceTest`); `TrainingSpecimenService.image` had one caller (`TrainingSpecimenController`).
+
+## Verification and limitations
+
+Verified by unit tests only: `ImageWatermarkServiceTest` (12: corner, opacity, size, text, switched off, tiny picture, height cap, spoofed bytes, defaults, validation, sample), `TrainingSpecimenScanRecordTest` (8: stamped copy kept beside the original, unstamped keeps no second copy, PNG/JPEG only, original opened from its own path with its own audit action), `AdministrativeOperationCatalogTest`, `ControlledCopyServiceAuthorizationIntegrationTest`; frontend `ImageWatermarkTab` (7), `SpecimenImagePicker` (4), `TrainingSpecimenDetailPage` (6) and `tsc`.
+
+**Not verified:** nothing was run in a browser or against the running backend and database; V724 was not applied; the real text rendering on the Docker image (the font `fonts-dejavu-core` is installed by the Dockerfile; on DEV Windows another font is used); the Vietnamese diacritics in the stamp; a real upload of an evidence photo and of a specimen signature end to end; the Destroy form preview has no automated test. The stamp of the specimen can hide strokes: the default is off, and the original stays available.
+
+Rollback: revert the code; stored `general.imageWatermark` is ignored by the old application. V724 columns can stay (unused). Stamped pictures already stored remain valid records with their originals.

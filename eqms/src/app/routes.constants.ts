@@ -127,7 +127,7 @@ export const ROUTES = {
     ASSESSMENTS: '/training-management/assessments',
     DOCUMENT_IMPACT_ASSESSMENT: '/training-management/document-impact-assessment',
     RECORDS: '/training-management/records',
-    NUMBER_LOG: '/training-management/number-log',
+    NUMBER_ALLOCATION_LOG: '/training-management/number-allocation-log',
     COMPLIANCE: '/training-management/compliance',
     LEGACY_EVIDENCE: '/training-management/legacy-evidence',
     REQUIREMENTS: '/training-management/requirements',

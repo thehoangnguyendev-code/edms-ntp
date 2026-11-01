@@ -30,19 +30,6 @@ import {
 import { TokenCheckBadge } from "./TokenCheckBadge";
 
 const STATUS_LABEL = { ENABLED: "Enabled", DISABLED: "Disabled" } as const;
-const STYLE_OPTIONS = [
-  { label: "Compact (default)", value: "" },
-  { label: "Compact", value: "COMPACT" },
-  { label: "Standard", value: "STANDARD" },
-  { label: "Detailed", value: "DETAILED" },
-];
-const STYLE_LABEL: Record<string, string> = { COMPACT: "Compact", STANDARD: "Standard", DETAILED: "Detailed" };
-const STYLE_HINT: Record<string, string> = {
-  COMPACT: "Name, then the meaning and the date and time on one line. For a narrow cell.",
-  STANDARD: "Name, “Electronically” and the meaning, then the date and time. For a signature area of its own.",
-  DETAILED: "Name, the meaning and the date and time to the second, then the Signature ID. For an important record.",
-};
-
 /** The code of the form as Document Control writes it: APD.0024 with the revision 2.0.0 is APD.0024.02. */
 const fullCode = (code: string, revision: string) => {
   const m = /^\s*(\d{1,3})(\.\d+){0,2}\s*$/.exec(revision);
@@ -79,7 +66,6 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
   const [uploadOpen, setUploadOpen] = useState(false);
   const [upload, setUpload] = useState({ file: null as File | null, versionLabel: "", remark: "" });
   const [viewing, setViewing] = useState(false);
-  const [styling, setStyling] = useState<{ slot: TrainingAnnexSlot; style: string; reason: string }>();
   const [open, setOpen] = useState({ check: true, signatures: true, tokens: false });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -155,12 +141,6 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
       previewOf.current = "";
       load(created?.id);
     }
-  };
-  const doStyle = async () => {
-    if (!styling) return;
-    const ok = await run(() => trainingAnnexApi.setStyle(code, styling.slot.name, styling.style, styling.reason.trim()),
-      { title: "Signature style saved", message: `${styling.slot.name}: ${STYLE_LABEL[styling.style]}` }, "The style was not saved");
-    if (ok) { setStyling(undefined); load(); }
   };
   const download = async (kind: "template" | "starter") => {
     try {
@@ -322,7 +302,7 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
 
           {checked && (
             <Fold title="Electronic Signatures" icon={<PenLine className="h-4 w-4" />} open={open.signatures} onToggle={() => toggle("signatures")}>
-              <p className="mb-3 text-xs text-slate-600">Each slot is filled when its stage is reached, in the order below. The style is how much of the signature record is written; Compact is used until another is chosen and applies from the next form made.{editing ? "" : " Choose a style with Edit Training Annex in the list."}</p>
+              <p className="mb-3 text-xs text-slate-600">Each slot is filled when its stage is reached, in the order below. Every signature is written the same way as in any document: the name, “Electronically” and the meaning, then the date and time.</p>
               <ol className="space-y-2">
                 {contract.slots.map((s, i) => (
                   <li key={s.name} className="rounded-lg border border-slate-200 p-3">
@@ -332,21 +312,6 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
                         <p className="break-words text-sm font-medium text-slate-900">{s.name}</p>
                         <p className="text-xs text-slate-500">{s.stage}</p>
                         <div className="mt-1.5 flex flex-wrap gap-1">{s.meanings.map((m) => <span key={m} className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">{m}</span>)}</div>
-                        <div className="mt-2.5 flex items-center gap-2 border-t border-slate-100 pt-2.5">
-                          <span className="shrink-0 text-xs text-slate-500">Style</span>
-                          {canManage ? (
-                            <div className="min-w-0 flex-1">
-                              <Select
-                                value={s.style ?? ""}
-                                options={STYLE_OPTIONS}
-                                aria-label={`Style of ${s.name}`}
-                                onChange={(v) => { const style = String(v); if (style && style !== (s.style ?? "")) setStyling({ slot: s, style, reason: "" }); }}
-                              />
-                            </div>
-                          ) : (
-                            <span className="text-xs font-medium text-slate-800">{s.style ? STYLE_LABEL[s.style] : "Compact (default)"}</span>
-                          )}
-                        </div>
                       </div>
                     </div>
                   </li>
@@ -414,10 +379,6 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
           </div>
         </FormModal>
       )}
-      <FormModal isOpen={!!styling} onClose={() => setStyling(undefined)} onConfirm={() => void doStyle()} title={`Signature Style: ${styling?.slot.name ?? ""}`} confirmText="Save" size="md" isLoading={busy} confirmDisabled={!styling?.reason.trim()}
-        description={styling ? `${STYLE_LABEL[styling.style]}: ${STYLE_HINT[styling.style]} From the next form made. The reason stays in the Audit Trail.` : undefined}>
-        {styling && <FormField label="Reason" required><Textarea rows={3} value={styling.reason} onChange={(e) => setStyling({ ...styling, reason: e.target.value })} /></FormField>}
-      </FormModal>
     </div>
   );
 }

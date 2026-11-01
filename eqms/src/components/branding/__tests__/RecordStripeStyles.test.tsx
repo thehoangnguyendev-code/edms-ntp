@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 
-const branding = vi.hoisted(() => ({ alternatingRecordColors: false, alternatingRecordColor: '#F8FAFC' }));
+const branding = vi.hoisted(() => ({ alternatingRecordColors: false, alternatingRecordColor: '#F8FAFC', tableColumnDividers: false }));
 vi.mock('../BrandLogo', () => ({ useBranding: () => branding }));
 import { RecordStripeStyles } from '../RecordStripeStyles';
 
@@ -17,6 +17,11 @@ it('applies saved settings, falls back on invalid colors and cleans up', () => {
   branding.alternatingRecordColor = 'red;display:none';
   view.rerender(<RecordStripeStyles />);
   expect(document.documentElement.style.getPropertyValue('--record-stripe-color')).toBe('#F8FAFC');
+  expect(document.documentElement.dataset.columnDividers).toBe('false');
+  branding.tableColumnDividers = true;
+  view.rerender(<RecordStripeStyles />);
+  expect(document.documentElement.dataset.columnDividers).toBe('true');
   view.unmount();
   expect(document.documentElement.dataset.alternatingRecords).toBeUndefined();
+  expect(document.documentElement.dataset.columnDividers).toBeUndefined();
 });

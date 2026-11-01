@@ -117,7 +117,7 @@ for who in TRAINEES:
 b.shot('admin', '/training-management/specimen-signatures', 'p5_05_specimen_list', wait=5000)
 
 step('5.10 the registers and the screens of the employees')
-b.shot('admin', '/training-management/number-log', 'p5_06_number_register', wait=5000)
+b.shot('admin', '/training-management/number-allocation-log', 'p5_06_number_register', wait=5000)
 b.shot('admin', '/training-management/compliance', 'p5_07_compliance', wait=6000)
 b.shot('admin', '/training-management/activities', 'p5_08_activities_list', wait=5000)
 b.shot('trainee.test1', '/training-management/my-training', 'p5_09_trainee_my_training', wait=6000)

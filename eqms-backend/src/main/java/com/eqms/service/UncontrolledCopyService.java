@@ -134,6 +134,10 @@ public class UncontrolledCopyService {
     private final ApplicationEventPublisher eventPublisher;
     private final SodConstraintService sodConstraintService;
 
+    /** The watermark and traceability of Settings > Configuration > Preview File, drawn on a PDF that is sent to be looked at (see {@code TrainingPreviewMarking}). */
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.eqms.service.training.TrainingPreviewMarking previewMarking;
+
     public UncontrolledCopyService(
             UncontrolledCopyRepository uncontrolledCopyRepository,
             UncontrolledCopyEligibilityRuleRepository eligibilityRuleRepository,
@@ -692,6 +696,8 @@ public class UncontrolledCopyService {
         byte[] bytes = readStoredFile(copy);
         auditTrailService.logAs(currentUser, ENTITY_TYPE, copy.getUncontrolledCopyNumber(), copy.getId(), "VIEW_FILE",
                 null, copy.getStatus(), "Viewed the uncontrolled copy file", List.of(), null);
+        // the copy is already marked by its own policy; a view also carries the watermark and traceability of the preview settings
+        if (previewMarking != null) bytes = previewMarking.mark(bytes, currentUser);
         return new FileDownload(bytes, downloadFileName(copy), "application/pdf");
     }
 

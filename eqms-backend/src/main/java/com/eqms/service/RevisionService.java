@@ -912,6 +912,19 @@ public class RevisionService {
             String legacyJustification,
             String signatureToken
     ) {
+        return createLegacyImportRevisionsBatch(documentId, revisionsJson, files, List.of(), legacyJustification, signatureToken);
+    }
+
+    /** {@code trainingScans}: the scans of the paper training records (APD.0108 or APD.0117), one for each section with hasTrainingScan, in the order of the sections. */
+    @Transactional
+    public LegacyBatchImportResponse createLegacyImportRevisionsBatch(
+            UUID documentId,
+            String revisionsJson,
+            List<MultipartFile> files,
+            List<MultipartFile> trainingScans,
+            String legacyJustification,
+            String signatureToken
+    ) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         if (!permissionEvaluationService.hasPermission(currentUser, "documents.legacy_import.manage")) {
             throw new AccessDeniedException("Only Legacy Import is permitted to create revisions this way.");
@@ -990,9 +1003,6 @@ public class RevisionService {
                 if (!legacyTrainingNumbers.add(key)) {
                     throw new IllegalArgumentException("Training Number " + legacyTrainingNumber + " is used twice in this import.");
                 }
-                if (trainingHooks != null && trainingHooks.trainingNumberExists(legacyTrainingNumber)) {
-                    throw new IllegalArgumentException("Training Number " + legacyTrainingNumber + " is already used by another training record.");
-                }
             }
 
             if (document.isTemplate() && !section.hasFile()) {
@@ -1008,6 +1018,9 @@ public class RevisionService {
             if (!StringUtils.hasText(section.authorId())) {
                 throw new IllegalArgumentException("Author is required for revision "
                         + section.revisionNumber() + ".");
+            }
+            if (userAccountRepository.findById(parseLegacyUserId(section.authorId(), "Author", section.revisionNumber())).isEmpty()) {
+                throw new IllegalArgumentException("The Author chosen for revision " + section.revisionNumber() + " is not a user of the system.");
             }
             if (!StringUtils.hasText(section.legacyHistoricalAuthoredDate())) {
                 throw new IllegalArgumentException("Authored Date is required for revision "
@@ -1079,6 +1092,33 @@ public class RevisionService {
         if (!sections.get(sections.size() - 1).hasFile()) {
             throw new IllegalArgumentException("The most recent revision (the one becoming Effective) must include a source file.");
         }
+        List<MultipartFile> scans = trainingScans == null ? List.of() : trainingScans;
+        long expectedScans = sections.stream().filter(LegacyBatchRevisionSectionRequest::hasTrainingScan).count();
+        if (scans.size() != expectedScans) {
+            throw new IllegalArgumentException("Expected " + expectedScans + " training scan(s) for the sections marked as having one, got " + scans.size() + ".");
+        }
+        List<TrainingRevisionHooks.LegacyTraining> trainingEntries = new ArrayList<>();
+        int scanCursor = 0;
+        for (int i = 0; i < sections.size(); i++) {
+            LegacyBatchRevisionSectionRequest section = sections.get(i);
+            if (document.isTemplate() || !document.isRequiresTraining()) {
+                trainingEntries.add(null);
+                continue;
+            }
+            MultipartFile scan = section.hasTrainingScan() ? scans.get(scanCursor++) : null;
+            TrainingRevisionHooks.LegacyTraining entry = new TrainingRevisionHooks.LegacyTraining(
+                    normalizeToNull(section.trainingNumber()),
+                    StringUtils.hasText(section.trainingCompletionDate()) ? parseDate(section.trainingCompletionDate()) : null,
+                    parseLegacyUserIds(section.traineeIds(), "trained person", section.revisionNumber()),
+                    legacySignatories(section),
+                    section.trainingNotEvidenced(), normalizeToNull(section.trainingNoEvidenceReason()),
+                    normalizeToNull(section.trainingTopic()), normalizeToNull(section.trainingTrainer()), normalizeToNull(section.trainingMethod()), scan);
+            trainingEntries.add(entry);
+            if (trainingHooks != null) {
+                String problem = trainingHooks.legacyTrainingProblem(currentUser, document, section.revisionNumber(), entry);
+                if (problem != null) throw new IllegalArgumentException(problem);
+            }
+        }
 
         // Validate every attached file (structure + ClamAV, same as the single-revision flow)
         // before any DB write -- a bad file anywhere in the batch fails fast.
@@ -1116,6 +1156,7 @@ public class RevisionService {
         }
 
         List<RevisionDetailResponse> createdRevisions = new ArrayList<>();
+        List<DocumentRevisionRecord> createdEntities = new ArrayList<>();
         DocumentRevisionRecord parent = null;
         int fileCursor = 0;
         for (int i = 0; i < sections.size(); i++) {
@@ -1248,10 +1289,48 @@ public class RevisionService {
             }
 
             createdRevisions.add(toDetailResponse(revision));
+            createdEntities.add(revision);
             parent = revision;
         }
 
+        // Training Management keeps each paper Training Number as a historical activity, files the evidence and names the persons (same transaction: a failure rolls the import back).
+        if (trainingHooks != null && !document.isTemplate() && document.isRequiresTraining()) {
+            trainingHooks.onLegacyImported(currentUser, document, createdEntities, trainingEntries);
+        }
+
         return new LegacyBatchImportResponse(document.getId(), createdRevisions);
+    }
+
+    private UUID parseLegacyUserId(String id, String what, String revisionNumber) {
+        try {
+            return UUID.fromString(id.trim());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("The " + what + " chosen for revision " + revisionNumber + " is not a valid user.");
+        }
+    }
+
+    private List<UUID> parseLegacyUserIds(List<String> ids, String what, String revisionNumber) {
+        List<UUID> out = new ArrayList<>();
+        if (ids == null) return out;
+        for (String id : ids) {
+            if (StringUtils.hasText(id)) {
+                UUID parsed = parseLegacyUserId(id, what, revisionNumber);
+                if (!out.contains(parsed)) out.add(parsed);
+            }
+        }
+        return out;
+    }
+
+    /** The author, reviewers and approver of the paper revision that were chosen among the users of the system. */
+    private List<UUID> legacySignatories(LegacyBatchRevisionSectionRequest section) {
+        List<UUID> out = new ArrayList<>(parseLegacyUserIds(section.legacyHistoricalReviewerIds(), "Reviewer", section.revisionNumber()));
+        for (String id : java.util.Arrays.asList(section.authorId(), section.legacyHistoricalApproverId())) {
+            if (StringUtils.hasText(id)) {
+                UUID parsed = parseLegacyUserId(id, "signatory", section.revisionNumber());
+                if (!out.contains(parsed)) out.add(parsed);
+            }
+        }
+        return out;
     }
 
     private List<LegacyBatchRevisionSectionRequest> parseLegacyBatchSections(String revisionsJson) {

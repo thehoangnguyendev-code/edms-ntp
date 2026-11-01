@@ -42,11 +42,6 @@ public class TrainingAnnexController {
     @GetMapping("/{code}/starter")
     public ResponseEntity<byte[]> starter(@PathVariable String code) { return file(annex.starter(users.requireCurrentUser(), code), true); }
 
-    @PutMapping("/{code}/slots/{slot}/style")
-    public ResponseEntity<?> style(@PathVariable String code, @PathVariable String slot, @RequestBody TrainingAnnexService.StyleRequest request) {
-        return ResponseEntity.ok(annex.setStyle(users.requireCurrentUser(), code, slot, request));
-    }
-
     @GetMapping("/templates/{id}/preview")
     public ResponseEntity<byte[]> preview(@PathVariable UUID id) { return file(annex.preview(users.requireCurrentUser(), id), false); }
 

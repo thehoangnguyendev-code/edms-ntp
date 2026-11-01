@@ -150,7 +150,7 @@ describe('AdminDashboardView system monitoring', () => {
     api.getPendingWorkflowActions.mockResolvedValue([]);
     api.getAdminStats.mockResolvedValue(stats);
     renderInRouter(<AdminDashboardView />);
-    return screen.findByRole('region', { name: 'Server, database and security' });
+    return screen.findByRole('region', { name: 'Server uptime' });
   };
 
   it('shows the real server, database and security figures', async () => {
@@ -158,13 +158,18 @@ describe('AdminDashboardView system monitoring', () => {
     expect(await within(strip).findByText('3d 4h')).toBeInTheDocument(); // 3 days 4 h 9 min
     expect(within(strip).getByText('40% heap')).toBeInTheDocument(); // 400 of 1000 MB
     expect(within(strip).getByText('Heap used of 1000 MB')).toBeInTheDocument();
-    expect(within(strip).getByText('3 / 10')).toBeInTheDocument(); // active / max connections
-    expect(within(strip).getByText('schema v551')).toBeInTheDocument();
-    expect(within(strip).getByText('Idle connections').previousElementSibling).toHaveTextContent('7');
-    expect(within(strip).getByLabelText('5')).toBeInTheDocument(); // active sessions
-    expect(within(strip).getByText('Locked accounts').previousElementSibling).toHaveTextContent('1');
-    expect(within(strip).getByLabelText('9')).toBeInTheDocument(); // failed logins, 24 h
-    expect(within(strip).getByText('E-signatures (30 days)').previousElementSibling).toHaveTextContent('40');
+    const database = within(screen.getByRole('region', { name: 'Database connections' }));
+    expect(database.getByText('3 / 10')).toBeInTheDocument();
+    expect(database.getByText('schema v551')).toBeInTheDocument();
+    expect(database.getByText('Idle connections').previousElementSibling).toHaveTextContent('7');
+    const sessions = within(screen.getByRole('region', { name: 'Active sessions' }));
+    expect(sessions.getByLabelText('5')).toBeInTheDocument();
+    expect(sessions.getByText('Locked accounts').previousElementSibling).toHaveTextContent('1');
+    expect(within(screen.getByRole('region', { name: 'Failed logins (24 h)' })).getByLabelText('9')).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'E-signatures (30 days)' })).getByLabelText('40')).toBeInTheDocument();
+    expect(api.getSystemMonitoring).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('[data-dashboard-widget="system-monitoring"]')).toBeNull();
+    expect(document.querySelectorAll('[data-dashboard-widget]')).toHaveLength(18);
   });
 
   it('does not invent connection-pool numbers when the pool is not reported', async () => {
@@ -172,7 +177,7 @@ describe('AdminDashboardView system monitoring', () => {
     const strip = await open();
     await within(strip).findByText('3d 4h');
     expect(within(strip).queryByText('3 / 10')).toBeNull();
-    expect(within(strip).getByText('Idle connections').previousElementSibling).toHaveTextContent('—');
+    expect(within(screen.getByRole('region', { name: 'Database connections' })).getByText('Idle connections').previousElementSibling).toHaveTextContent('—');
   });
 
   it('lists every user status, largest first, with its share of all accounts', async () => {
@@ -212,7 +217,7 @@ describe('AdminDashboardView system monitoring', () => {
     await open();
     await screen.findByRole('region', { name: 'System runtime' });
     expect(screen.queryByRole('button', { name: /Refresh/ })).toBeNull();
-    expect(screen.getByText(/updates by itself/)).toBeInTheDocument();
+    expect(api.getSystemMonitoring).toHaveBeenCalledTimes(1);
   });
 
   it('reads again each time the server announces that the figures moved on, over the event stream', async () => {
@@ -270,7 +275,7 @@ describe('AdminDashboardView system monitoring', () => {
     api.getSystemMonitoring.mockRejectedValueOnce(new Error('boom')).mockResolvedValue(monitoring);
     const strip = await open();
     expect(await screen.findByText('System monitoring could not be loaded.')).toBeInTheDocument();
-    expect(within(strip).getAllByText('—').length).toBeGreaterThanOrEqual(4); // dashes, never zeros
+    expect(within(strip).getAllByText('—')).toHaveLength(2); // this independent card has a value and footer
     expect(await screen.findByText('70% active')).toBeInTheDocument(); // the rest of the page still works
 
     fireEvent.click(screen.getAllByRole('button', { name: /Try again/ })[0]);

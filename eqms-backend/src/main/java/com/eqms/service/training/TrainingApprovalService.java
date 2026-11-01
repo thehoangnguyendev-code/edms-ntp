@@ -46,6 +46,7 @@ public class TrainingApprovalService {
             Map.entry("REQUIREMENT_REVIEW", new Step("REQUIREMENT_REVIEW", "training.requirement.review", "TRAINING_REQUIREMENT_REVIEWED")),
             Map.entry("REQUIREMENT_APPROVE", new Step("REQUIREMENT_APPROVE", "training.requirement.approve", "TRAINING_REQUIREMENT_APPROVED")),
             Map.entry("TRAINER_EXCEPTION", new Step("TRAINER_EXCEPTION", "training.trainer.exception.approve", "TRAINING_TRAINER_EXCEPTION_APPROVED")),
+            // Retired 2026-11-01 (no second person verifies legacy training evidence any more): kept so that the assignments already made can still be described.
             Map.entry("LEGACY_EVIDENCE_VERIFY", new Step("LEGACY_EVIDENCE_VERIFY", "training.activity.close", "TRAINING_LEGACY_VERIFIED")),
             Map.entry("REVIEW_CLOSE", new Step("REVIEW_CLOSE", "training.job_assignment.manage", "TRAINING_REVIEW_CLOSED")));
 

@@ -39,11 +39,16 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
     @PersistenceContext
     private EntityManager entityManager;
 
-    public TrainingDocumentIntegrationService(JdbcTemplate jdbc, TrainingStore store, TrainingNumberService numbers, TrainingSettingsService settings) {
+    /** Lazy: the evidence service reaches Document Control's signature code, which reaches this door back. */
+    private final TrainingLegacyEvidenceService legacyEvidence;
+
+    public TrainingDocumentIntegrationService(JdbcTemplate jdbc, TrainingStore store, TrainingNumberService numbers, TrainingSettingsService settings,
+                                              @org.springframework.context.annotation.Lazy TrainingLegacyEvidenceService legacyEvidence) {
         this.jdbc = jdbc;
         this.store = store;
         this.numbers = numbers;
         this.settings = settings;
+        this.legacyEvidence = legacyEvidence;
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------------------
@@ -212,6 +217,16 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
                 "select exists(select 1 from training_activities where upper(training_number)=upper(?)) or exists(select 1 from document_revisions where upper(training_number)=upper(?))",
                 Boolean.class, trainingNumber, trainingNumber);
         return Boolean.TRUE.equals(used);
+    }
+
+    @Override
+    public String legacyTrainingProblem(UserAccount actor, DocumentRecord document, String revisionNumber, LegacyTraining entry) {
+        return legacyEvidence.problem(actor, document, revisionNumber, entry);
+    }
+
+    @Override
+    public void onLegacyImported(UserAccount actor, DocumentRecord document, List<DocumentRevisionRecord> revisions, List<LegacyTraining> entries) {
+        legacyEvidence.imported(actor, document, revisions, entries);
     }
 
     @Override

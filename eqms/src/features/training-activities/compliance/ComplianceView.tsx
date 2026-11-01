@@ -5,6 +5,8 @@ import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import type { ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { dictionaryApi } from "@/services/api/dictionary";
 import { trainingBreadcrumbs, TRAINING_PAGES } from "@/features/training-activities/shared/trainingLabels";
+import { SectionLoading } from "@/components/ui/loading/Loading";
+import { departmentOptions, useOwnDepartment } from "../shared/useOwnDepartment";
 import { ComplianceSummaryTab } from "./tabs/ComplianceSummaryTab";
 import { ComplianceCompletionTab } from "./tabs/ComplianceCompletionTab";
 import { ComplianceGapsTab } from "./tabs/ComplianceGapsTab";
@@ -21,12 +23,18 @@ const TABS: TabItem[] = [
 
 /** Who is trained on what the effective matrix requires, for one department. The department chosen is shared by the three tabs. */
 export function TrainingComplianceView() {
+  const own = useOwnDepartment();
+  if (!own.loaded) return <SectionLoading text="Loading…" />;
+  return <TrainingCompliance ownDepartmentId={own.id} />;
+}
+
+function TrainingCompliance({ ownDepartmentId }: { ownDepartmentId: string }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get("tab");
   const [tab, setTab] = useState(TABS.some((t) => t.id === initialTab) ? String(initialTab) : "summary");
   const [departments, setDepartments] = useState<{ label: string; value: string }[]>([]);
-  const [departmentId, setDepartmentId] = useState("");
+  const [departmentId, setDepartmentId] = useState(ownDepartmentId);
 
   useEffect(() => {
     dictionaryApi.getDepartments().then((l) => setDepartments(l.map((d) => ({ label: d.name, value: d.id })))).catch(() => setDepartments([]));
@@ -42,7 +50,7 @@ export function TrainingComplianceView() {
     id: "department",
     label: "Department",
     value: departmentId,
-    options: [{ label: "My department", value: "" }, ...departments],
+    options: departmentOptions(departments, ownDepartmentId),
     onChange: setDepartmentId,
   };
 
@@ -53,7 +61,7 @@ export function TrainingComplianceView() {
         <TabNav tabs={TABS} activeTab={tab} onChange={changeTab} variant="underline" ariaLabel="Training compliance" tabIdPrefix="compliance-tab" panelIdPrefix="compliance-panel" />
         <div className="p-4 md:p-5">
           <div id={`compliance-panel-${tab}`} role="tabpanel" aria-labelledby={`compliance-tab-${tab}`} className="min-w-0">
-            {tab === "summary" && <ComplianceSummaryTab departmentId={departmentId} departments={departments} onDepartment={setDepartmentId} />}
+            {tab === "summary" && <ComplianceSummaryTab departmentId={departmentId} departments={departmentOptions(departments, ownDepartmentId)} onDepartment={setDepartmentId} />}
             {tab === "completion" && <ComplianceCompletionTab departmentId={departmentId} departmentFilter={departmentFilter} />}
             {tab === "gaps" && <ComplianceGapsTab departmentId={departmentId} departmentFilter={departmentFilter} />}
             {tab === "suspensions" && <ComplianceSuspensionsTab departmentId={departmentId} departmentFilter={departmentFilter} />}

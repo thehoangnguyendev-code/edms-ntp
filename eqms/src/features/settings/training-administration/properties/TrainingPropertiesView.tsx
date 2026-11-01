@@ -5,6 +5,7 @@ import { Archive, BellRing, CalendarClock, FileText, GraduationCap, NotebookPen,
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { Button } from "@/components/ui/button/Button";
+import { TrainingNumberCountersPanel } from "./TrainingNumberCountersPanel";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { Switch } from "@/components/ui/switch/Switch";
@@ -89,6 +90,8 @@ export const TrainingPropertiesView: React.FC = () => {
   const [params, setParams] = useSearchParams();
   const tabs: TabItem[] = [
     ...SETTING_TABS.map(({ id, label }) => ({ id, label })),
+    // Not a setting: the counters of the Training Numbers are raised on their own, not saved with the settings.
+    { id: "numbers", label: "Number Counters" },
   ];
   const requested = params.get("tab");
   const tab = tabs.some((x) => x.id === requested) ? (requested as string) : SETTING_TABS[0].id;
@@ -450,6 +453,7 @@ export const TrainingPropertiesView: React.FC = () => {
             )}
           </>
         )}
+        {tab === "numbers" && <TrainingNumberCountersPanel canManage={canManage} />}
           </div>
         </div>
       </div>

@@ -4,7 +4,7 @@ import type { TrainingActivityStatus } from "./trainingLinks";
 
 /** Training Management: activities, sessions, people and approval steps (SDS-TR-001 section 7). Everything is decided by the server; the screens only show it. */
 
-export type TrainingKind = "INITIAL" | "PERIODIC" | "UNPLANNED" | "RETRAINING" | "EXTERNAL";
+export type TrainingKind = "INITIAL" | "PERIODIC" | "UNPLANNED" | "RETRAINING" | "EXTERNAL" | "LEGACY";
 export type TrainingApprovalStep = "CONTENT_REVIEW" | "CONTENT_APPROVE" | "ACTIVITY_COMPLETE";
 
 export interface TrainingActivitySummary {
@@ -16,6 +16,10 @@ export interface TrainingActivitySummary {
   kindReason?: string | null;
   externalType?: "ACTIVE" | "PASSIVE" | null;
   trainingUnitName?: string | null;
+  /** A historical activity (Legacy Import): what the paper record says about the training. */
+  paperTopic?: string | null;
+  paperTrainer?: string | null;
+  paperMethod?: string | null;
   vendorRef?: string | null;
   status: TrainingActivityStatus;
   dueDate?: string | null;
@@ -286,9 +290,9 @@ export interface TrainingMyParticipation {
   documentNumber?: string | null; documentName?: string | null; revisionNumber?: string | null; revisionId?: string | null;
   materials: { id: string; title: string; linkUrl?: string | null; originalName?: string | null }[]; canConfirmRead: boolean;
 }
-export interface TrainingNumberLogRow {
-  trainingNumber: string; createdAt: string; kind: TrainingKind; status: TrainingActivityStatus; trainingTopics: string; documentNumber?: string | null; documentLabel?: string | null;
-  revisionNumber?: string | null; cancelReason?: string | null; sessions: number; postponements: number;
+export interface TrainingNumberAllocationLogRow {
+  activityId: string; trainingNumber: string; createdAt: string; kind: TrainingKind; status: TrainingActivityStatus; trainingTopics: string; documentNumber?: string | null; documentLabel?: string | null;
+  revisionNumber?: string | null; cancelReason?: string | null; departmentName?: string | null; sessions: number; postponements: number;
 }
 /** One form and the pattern of the name of its downloaded file; the variables say what each {NAME} means. */
 export interface TrainingFileNameForm { form: string; label: string; pattern: string; defaultPattern: string; variables: { name: string; meaning: string }[]; example: string }
@@ -303,9 +307,11 @@ export const trainingRecordsApi = {
   mine: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingRecord>>("/training/me/records", { params })).data,
   list: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingRecord>>("/training/records", { params })).data,
   tasks: async () => (await apiClient.get<{ data: TrainingTask[] }>("/training/me/tasks")).data.data,
+  /** The department of the signed-in person, as the department lists name it; both null when the person has none. */
+  myDepartment: async () => (await apiClient.get<{ id: string | null; name: string | null }>("/training/me/department")).data,
   voidRecord: async (id: string, reason: string, signatureToken: string) => (await apiClient.post<TrainingRecord>(`/training/records/${id}/void`, { reason, signatureToken })).data,
-  numberLog: async (params: Record<string, string | number | undefined>) =>
-    (await apiClient.get<TrainingPage<TrainingNumberLogRow> & { year: number }>("/training/number-log", { params })).data,
+  numberAllocationLog: async (params: Record<string, string | number | undefined>) =>
+    (await apiClient.get<TrainingPage<TrainingNumberAllocationLogRow> & { year: number }>("/training/number-allocation-log", { params })).data,
 };
 
 /** One notice in the log: sent, skipped (and why) or failed. The event is a machine code; the screen writes its own readable name. */
@@ -326,15 +332,19 @@ export const trainingNotificationsApi = {
   runReminders: async () => (await apiClient.post<TrainingReminderRun>("/training/notifications/run-reminders")).data,
 };
 
+/** The counter of the Training Numbers of a department and year (Training Properties, Number Counters). */
+export interface TrainingNumberCounter { departmentId: string; departmentName: string; departmentCode: string; year: number; lastSerial: number; nextNumber: string }
 export const trainingSettingsApi = {
   get: async () => (await apiClient.get<TrainingSettings>("/training/settings")).data,
+  numberCounters: async (params: { page: number; limit: number }) => (await apiClient.get<TrainingPage<TrainingNumberCounter>>("/training/settings/number-counters", { params })).data,
+  raiseNumberCounter: async (body: { departmentId: string; year: number; lastSerial: number; reason: string }) => (await apiClient.post<TrainingPage<TrainingNumberCounter>>("/training/settings/number-counters/raise", body)).data,
   update: async (body: Omit<Partial<TrainingSettings>, "downloadFileNames"> & { downloadFileNames?: Record<string, string>; version: number; reason?: string }) => (await apiClient.put<TrainingSettings>("/training/settings", body)).data,
 };
 
 /** The rule of the code of a Training Requirement, a Training Matrix or a Training Assessment (Training Administration, Code Rules). */
 export interface TrainingCodeRule { entity: "REQUIREMENT" | "MATRIX" | "ASSESSMENT"; label: string; pattern: string; example: string; version: number; updatedAt?: string | null; updatedByName?: string | null }
 export const trainingCodeRulesApi = {
-  list: async () => (await apiClient.get<TrainingCodeRule[]>("/training/code-rules")).data,
+  list: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingCodeRule>>("/training/code-rules", { params })).data,
   update: async (entity: string, body: { version: number; pattern: string; reason?: string }) => (await apiClient.put<TrainingCodeRule>(`/training/code-rules/${entity}`, body)).data,
   preview: async (entity: string, pattern: string) => (await apiClient.post<{ example: string }>("/training/code-rules/preview", { entity, pattern })).data,
 };
@@ -796,6 +806,8 @@ export const trainingJobsApi = {
 
 export interface TrainingSpecimen {
   hasSecond?: boolean;
+  /** True when a watermark was stamped on the pictures: the original can be opened beside the stamped picture the screens show. */
+  watermarked?: boolean;
   id: string; personUserId: string; fullName: string; avatar?: string | null; employeeCode?: string | null; department?: string | null; versionNo: number; status: "PENDING_CONFIRMATION" | "APPROVED" | "OBSOLETED";
   effectiveDate?: string | null; contentType: string; sizeBytes: number; changeReason?: string | null; rejectReason?: string | null; createdAt: string; uploadedByName: string; confirmedByName?: string | null;
   capabilities: { viewImage: boolean };
@@ -820,8 +832,9 @@ export const trainingSpecimenApi = {
     return (await apiClient.post<TrainingSpecimen>("/training/specimen-signatures", form, { params, headers: { "Content-Type": "multipart/form-data" } })).data;
   },
   /** The specimen signature in force of a person (an empty object when there is none), to open it beside a scan. */
-  current: async (personId: string) => (await apiClient.get<{ id?: string; versionNo?: number; effectiveDate?: string; hasSecond?: boolean; fullName?: string }>(`/training/specimen-signatures/person/${personId}/current`)).data,
-  image: async (id: string, which = 1) => (await apiClient.get<Blob>(`/training/specimen-signatures/${id}/image`, { params: { which }, responseType: "blob" })).data,
+  current: async (personId: string) => (await apiClient.get<{ id?: string; versionNo?: number; effectiveDate?: string; hasSecond?: boolean; watermarked?: boolean; fullName?: string }>(`/training/specimen-signatures/person/${personId}/current`)).data,
+  /** The picture the screens show (stamped when a watermark was applied), or with variant "original" the picture as it was uploaded (the server writes that opening to the Audit Trail). */
+  image: async (id: string, which = 1, variant: "shown" | "original" = "shown") => (await apiClient.get<Blob>(`/training/specimen-signatures/${id}/image`, { params: { which, variant }, responseType: "blob" })).data,
 };
 
 export interface TrainingRecordExport {
@@ -880,7 +893,7 @@ export interface TrainingFormTemplate {
   checkedAt?: string | null;
 }
 /** What the system fixes for a form of the Training Annex. */
-export interface TrainingAnnexSlot { name: string; stage: string; meanings: string[]; style?: "COMPACT" | "STANDARD" | "DETAILED" | null }
+export interface TrainingAnnexSlot { name: string; stage: string; meanings: string[] }
 export interface TrainingAnnexContract {
   checked: boolean; scalars: string[]; groups: { name: string; fields: string[]; repeatsBlock: boolean }[]; cases: string[]; checks: string[]; blocks: string[]; required: string[]; slots: TrainingAnnexSlot[];
 }
@@ -890,7 +903,6 @@ export const trainingAnnexApi = {
   page: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingAnnexRow>>("/training/annex", { params })).data,
   detail: async (code: string) => (await apiClient.get<TrainingAnnexDetail>(`/training/annex/${code}`)).data,
   starter: async (code: string) => (await apiClient.get<Blob>(`/training/annex/${code}/starter`, { responseType: "blob" })).data,
-  setStyle: async (code: string, slot: string, style: string, reason: string) => (await apiClient.put<{ code: string; slot: string; style: string }>(`/training/annex/${code}/slots/${slot}/style`, { style, reason })).data,
   preview: async (templateId: string) => (await apiClient.get<Blob>(`/training/annex/templates/${templateId}/preview`, { responseType: "blob" })).data,
 };
 export interface TrainingFormTemplateRef { id: string; code: string; title: string; versionLabel: string; originalName: string; sha256: string; enabledAt?: string | null }
@@ -950,21 +962,37 @@ export const trainingFilesApi = {
 };
 
 export interface TrainingLegacyRow {
-  revisionId: string; documentNumber: string; documentLabel?: string | null; documentName: string; revisionNumber: string; completionDate?: string | null; paperTrainingNumber?: string | null;
-  evidenceId?: string | null; evidenceStatus?: "SUBMITTED" | "VERIFIED" | null; notEvidenced?: boolean | null; notEvidencedReason?: string | null; originalName?: string | null;
-  submittedAt?: string | null; verifiedAt?: string | null; submittedByName?: string | null; verifiedByName?: string | null; pendingForMe: boolean;
+  revisionId: string; documentId: string; documentNumber: string; documentLabel?: string | null; documentName: string; revisionNumber: string; completionDate?: string | null; paperTrainingNumber?: string | null;
+  activityId?: string | null; traineeCount?: number | null; contentType?: string | null;
+  /** FILED: the person who imported (or attached) the evidence signed it. VERIFIED: evidence that a person verified before the second person was dropped (history). */
+  evidenceId?: string | null; evidenceStatus?: "FILED" | "VERIFIED" | null; notEvidenced?: boolean | null; notEvidencedReason?: string | null; originalName?: string | null;
+  submittedAt?: string | null; verifiedAt?: string | null; submittedByName?: string | null; verifiedByName?: string | null;
+}
+export interface TrainingLegacyPerson {
+  role: "TRAINEE" | "SIGNATORY"; personId: string; fullName: string; employeeCode?: string | null; department?: string | null; position?: string | null;
+  documentNumber?: string | null; revisionNumber?: string | null; recordWritten: boolean; recordVoided?: boolean;
+}
+export interface TrainingLegacyNumberInfo {
+  number: string; exists: boolean; usedElsewhere?: boolean; legacy?: boolean; activityId?: string; evidenceStatus?: "FILED" | "VERIFIED" | null; traineeCount?: number;
+  documents?: { documentNumber: string; documentName: string; revisionNumber: string }[];
 }
 export const trainingLegacyApi = {
   queue: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingLegacyRow> & { canSubmit: boolean }>("/training/legacy-evidence", { params })).data,
-  eligibleVerifiers: async (revisionId: string, search?: string) => (await apiClient.get<TrainingPage<TrainingPerson>>(`/training/legacy-evidence/revisions/${revisionId}/eligible-verifiers`, { params: { search, limit: 50 } })).data,
-  submit: async (revisionId: string, verifierId: string, file: File | null, notEvidenced: boolean, reason?: string) => {
+  /** The persons named with the evidence of a historical activity, with whether their training record is written. */
+  people: async (activityId: string, params: { page: number; limit: number }) => (await apiClient.get<TrainingPage<TrainingLegacyPerson> & { evidenceStatus?: "FILED" | "VERIFIED" | null }>(`/training/legacy-evidence/activities/${activityId}/people`, { params })).data,
+  /** What the import form needs to know about a paper Training Number: new, shared with another document, evidence on file. */
+  numberInfo: async (number: string) => (await apiClient.get<TrainingLegacyNumberInfo>("/training/legacy-evidence/number-info", { params: { number } })).data,
+  /** Attaches the scan (or declares the paper lost) of a revision imported earlier without it. The person who attaches it signs: there is no second person to verify. */
+  submit: async (revisionId: string, signatureToken: string, file: File | null, notEvidenced: boolean, reason?: string, traineeIds: string[] = []) => {
     const form = new FormData();
     if (file) form.append("file", file);
-    return (await apiClient.post<TrainingLegacyRow>(`/training/legacy-evidence/revisions/${revisionId}`, form, { params: { verifierId, notEvidenced, reason }, headers: { "Content-Type": "multipart/form-data" } })).data;
+    form.append("signatureToken", signatureToken);
+    return (await apiClient.post<TrainingLegacyRow>(`/training/legacy-evidence/revisions/${revisionId}`, form, {
+      params: { notEvidenced, reason, traineeIds: traineeIds.length ? traineeIds.join(",") : undefined }, headers: { "Content-Type": "multipart/form-data" } })).data;
   },
-  verify: async (id: string, signatureToken: string) => (await apiClient.post<TrainingLegacyRow>(`/training/legacy-evidence/${id}/verify`, { signatureToken })).data,
-  reject: async (id: string, reason: string) => (await apiClient.post<TrainingLegacyRow>(`/training/legacy-evidence/${id}/reject`, { reason })).data,
   download: async (id: string) => (await apiClient.get<Blob>(`/training/legacy-evidence/${id}/download`, { responseType: "blob" })).data,
+  /** The scan for the viewer of the page; the server writes it to the audit trail as a view, not as a download. */
+  view: async (id: string) => (await apiClient.get<Blob>(`/training/legacy-evidence/${id}/download`, { params: { inline: true }, responseType: "blob" })).data,
 };
 
 /** The stable code the server answered with, mapped to a sentence. The screen never shows the raw code or any internal detail. */
@@ -1188,7 +1216,7 @@ const ERROR_TEXT: Record<string, string> = {
   TRAINING_JOB_DUTY_INVALID: "Every duty needs a responsibility (up to 500 characters).",
   TRAINING_JOB_NO_EXCEPTION: "No exception was requested for this assignment.",
   TRAINING_JOB_INVALID: "Choose a person and a position.",
-  TRAINING_FILE_REJECTED: "The image was refused. Use a PNG, JPEG, WebP or BMP picture (not a GIF) of up to 5 MB, between 40x20 and 5000x5000 pixels, with no virus.",
+  TRAINING_FILE_REJECTED: "The image was refused. Use a PNG or JPEG picture of up to 5 MB, between 40x20 and 5000x5000 pixels, with no virus.",
   TRAINING_FILE_UNAVAILABLE: "The image is not available right now.",
   TRAINING_SPECIMEN_INVALID_TRANSITION: "This action is not available in the current status.",
   TRAINING_MATERIAL_PURPOSE_EXISTS: "This file is already on record. Remove it first, with a reason, to add another.",
@@ -1239,7 +1267,7 @@ const ERROR_TEXT: Record<string, string> = {
   TRAINING_TRAINER_ALREADY_QUALIFIED: "This trainer is qualified; no exception is needed.",
   TRAINING_TRAINER_EXCEPTION_EXISTS: "An exception is already waiting or approved for this session.",
   TRAINING_TRAINER_EXCEPTION_DECIDED: "This exception was already decided.",
-  TRAINING_LEGACY_EVIDENCE_EXISTS: "Evidence was already submitted or verified for this revision.",
+  TRAINING_LEGACY_EVIDENCE_EXISTS: "Evidence was already filed for this revision.",
   TRAINING_LEGACY_INVALID_TRANSITION: "This action is not available in the current status of the evidence.",
   TRAINING_LEGACY_NOT_APPLICABLE: "This revision was not imported from paper or does not require training.",
   TRAINING_LEGACY_NO_FILE: "This evidence is a declaration without a file.",

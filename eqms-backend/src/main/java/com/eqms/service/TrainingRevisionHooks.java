@@ -42,4 +42,27 @@ public interface TrainingRevisionHooks {
     }
 
     record CompletionGate(boolean completed, LocalDate plannedOn, LocalDate periodEndOn, LocalDate completedOn, String trainingNumber) {}
+
+    /**
+     * What the person who imports a document from paper entered about the paper training of ONE revision (Legacy Import). The Training Number is the one written on the paper
+     * record (never issued by the system); {@code traineeIds} are the persons who were trained, {@code signatoryIds} the author, reviewers and approver of the revision that are users
+     * of the system; {@code scan} is the scan of APD.0108 or APD.0117, or {@code notEvidenced} with a reason declares that the paper is lost (nobody else verifies it: the person who
+     * imports signs the import). {@code topic}, {@code trainer}
+     * (as written on the paper) and {@code method} (SELF_READING, CLASSROOM, HYBRID or PRACTICAL) say what the paper training was; they are kept on the historical activity.
+     */
+    record LegacyTraining(String paperTrainingNumber, LocalDate completionDate, java.util.List<java.util.UUID> traineeIds, java.util.List<java.util.UUID> signatoryIds,
+                          boolean notEvidenced, String reason, String topic, String trainer, String method,
+                          org.springframework.web.multipart.MultipartFile scan) {}
+
+    /** A problem with the paper training entered for a revision of an import, in words for the person, or {@code null} when it is acceptable. Called before anything is written. */
+    default String legacyTrainingProblem(UserAccount actor, DocumentRecord document, String revisionNumber, LegacyTraining entry) {
+        return null;
+    }
+
+    /**
+     * The revisions of a document imported from paper were created, in the same transaction. {@code entries.get(i)} belongs to {@code revisions.get(i)} and may be {@code null}.
+     * A failure here rolls the whole import back.
+     */
+    default void onLegacyImported(UserAccount actor, DocumentRecord document, java.util.List<DocumentRevisionRecord> revisions, java.util.List<LegacyTraining> entries) {
+    }
 }

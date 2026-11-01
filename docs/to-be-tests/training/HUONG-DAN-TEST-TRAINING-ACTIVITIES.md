@@ -163,7 +163,7 @@ Việc gỡ tài liệu liên quan, tài liệu liên quan đã thông báo đà
 |---|---|---|
 | F1 | Mở một phiên bản ma trận đã Effective, bấm Download Word và Download PDF | File đúng mẫu APD.0011: tên bộ phận, mỗi vị trí một cột, dấu X, cột Annual Yes/No; không có ghi chú của mẫu và bảng lịch sử sửa đổi. Phiên bản nháp không tải được |
 | F2 | Yêu cầu đào tạo đã duyệt: Download Word/PDF (danh sách hoặc trang chi tiết) | File đúng mẫu APD.0118, có logo, Year, Request No, ô loại đào tạo được đánh dấu, khối chữ ký điện tử của người chuẩn bị, rà soát, phê duyệt |
-| F3 | Training Number Register: Download Word/PDF | File đúng mẫu FRM.0044 theo bộ phận và năm |
+| F3 | Training Number Allocation Log: Download Word/PDF | File đúng mẫu FRM.0044 theo bộ phận và năm |
 | F4 | Bản giao việc: Download Word/PDF | File đúng mẫu APD.0024, ô "Bổ nhiệm lần đầu" hoặc "Thay đổi vị trí" được đánh dấu, hai khối chữ ký |
 | F5 | Chữ ký mẫu (hàng của người đã duyệt): Download Word (FRM.0007) | Hai ảnh chữ ký, ngày, người xác nhận kèm khối chữ ký điện tử |
 | F6 | Hoạt động có buổi Tự đọc: Download Word/PDF của danh sách tự đọc | File đúng mẫu APD.0108 |

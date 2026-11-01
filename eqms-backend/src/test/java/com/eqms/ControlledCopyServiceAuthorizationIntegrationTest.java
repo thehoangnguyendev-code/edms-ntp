@@ -18,7 +18,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -142,32 +141,6 @@ class ControlledCopyServiceAuthorizationIntegrationTest {
         lenient().doThrow(new AccessDeniedException("denied"))
                 .when(controlledCopyAuthorizationService)
                 .requireDistributeControlledCopy(eq(user), eq(copy));
-    }
-
-    @Test
-    void watermarkEvidence_rejectsBytesThatOnlyClaimToBeAnImage() {
-        MultipartFile spoofedImage = new MockMultipartFile(
-                "evidence", "evidence.jpg", "image/jpeg", "not an image".getBytes(java.nio.charset.StandardCharsets.UTF_8)
-        );
-
-        assertThatThrownBy(() -> ReflectionTestUtils.invokeMethod(service, "watermarkEvidence", spoofedImage))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("valid JPEG or PNG");
-    }
-
-    @Test
-    void watermarkEvidence_usesTheDecodedFormatInsteadOfTheBrowserClaim() throws Exception {
-        java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB);
-        java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
-        javax.imageio.ImageIO.write(image, "png", bytes);
-        MultipartFile mismatchedClaim = new MockMultipartFile(
-                "evidence", "evidence.jpg", "image/jpeg", bytes.toByteArray()
-        );
-
-        Object result = ReflectionTestUtils.invokeMethod(service, "watermarkEvidence", mismatchedClaim);
-        Object originalContentType = ReflectionTestUtils.invokeMethod(result, "originalContentType");
-
-        assertThat(originalContentType).isEqualTo("image/png");
     }
 
     @Test

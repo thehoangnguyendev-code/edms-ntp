@@ -272,11 +272,12 @@ public class DocumentController {
             @PathVariable java.util.UUID id,
             @RequestPart(value = "revisions") String revisionsJson,
             @RequestPart(value = "files", required = false) java.util.List<MultipartFile> files,
+            @RequestPart(value = "trainingScans", required = false) java.util.List<MultipartFile> trainingScans,
             @RequestPart(value = "legacyJustification") String legacyJustification,
             @RequestPart(value = "signatureToken", required = false) String signatureToken
     ) {
         return ResponseEntity.ok(revisionService.createLegacyImportRevisionsBatch(
-                id, revisionsJson, files, legacyJustification, signatureToken
+                id, revisionsJson, files, trainingScans == null ? java.util.List.of() : trainingScans, legacyJustification, signatureToken
         ));
     }
 
@@ -292,11 +293,12 @@ public class DocumentController {
             @RequestPart(value = "document") String documentJson,
             @RequestPart(value = "revisions") String revisionsJson,
             @RequestPart(value = "files", required = false) java.util.List<MultipartFile> files,
+            @RequestPart(value = "trainingScans", required = false) java.util.List<MultipartFile> trainingScans,
             @RequestPart(value = "legacyJustification") String legacyJustification,
             @RequestPart(value = "signatureToken", required = false) String signatureToken
     ) {
         return ResponseEntity.ok(documentService.createLegacyImportDocumentAndRevisions(
-                documentJson, revisionsJson, files, legacyJustification, signatureToken
+                documentJson, revisionsJson, files, trainingScans == null ? java.util.List.of() : trainingScans, legacyJustification, signatureToken
         ));
     }
 

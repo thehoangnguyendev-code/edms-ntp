@@ -87,6 +87,10 @@ public class ControlledCopyRecallBatchService {
     private final ElectronicSignatureService electronicSignatureService;
     private final SignatureTokenConsumptionService signatureTokenConsumptionService;
 
+    /** The watermark and traceability of Settings > Configuration > Preview File, drawn on a PDF that is sent to be looked at (see {@code TrainingPreviewMarking}). */
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.eqms.service.training.TrainingPreviewMarking previewMarking;
+
     public ControlledCopyRecallBatchService(
             ControlledCopyRecallBatchRepository batchRepository,
             ControlledCopyRecallItemRepository itemRepository,
@@ -302,7 +306,14 @@ public class ControlledCopyRecallBatchService {
         }
         byte[] bytes = fileStorageService.readFile(item.getStoredPath(), item.getSha256());
         String sniffed = ControlledCopyScanCodeService.sniffContentType(bytes);
-        return new ExecutedRecordService.RecordFile(bytes, sniffed != null ? sniffed : "application/octet-stream", item.getFileName());
+        String type = sniffed != null ? sniffed : "application/octet-stream";
+        // the review of the scan is a view: it carries the watermark of the preview settings
+        if (previewMarking != null) {
+            var scan = previewMarking.markScan(bytes, type, actor);
+            bytes = scan.bytes();
+            type = scan.contentType();
+        }
+        return new ExecutedRecordService.RecordFile(bytes, type, item.getFileName());
     }
 
     // ------------------------------------------------------------------------------------------------------------

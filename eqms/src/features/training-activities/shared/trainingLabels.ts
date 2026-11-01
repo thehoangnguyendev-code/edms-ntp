@@ -26,6 +26,7 @@ export const KIND_LABEL: Record<string, string> = {
   UNPLANNED: "Unplanned Training",
   RETRAINING: "Supplementary Training",
   EXTERNAL: "External Training",
+  LEGACY: "Paper Training (Legacy Import)",
 };
 /** SOP.0003 5.1.2: the two kinds of external training. */
 export const EXTERNAL_TYPE_LABEL: Record<string, string> = { ACTIVE: "Active external training", PASSIVE: "Passive external training" };
@@ -97,7 +98,7 @@ export const statusChange = (from: string, to: string, action = "Update Status")
 
 export const day = (value?: string | null) => (value ? displayDate(`${value.slice(0, 10)}T00:00:00`) : "—");
 
-export type TrainingPageKey = "myTasks" | "myRecords" | "activities" | "assessments" | "matrices" | "requirements" | "jobs" | "reviews" | "specimen" | "records" | "compliance" | "documentImpactAssessment" | "numberLog" | "exports" | "legacy";
+export type TrainingPageKey = "myTasks" | "myRecords" | "activities" | "assessments" | "matrices" | "requirements" | "jobs" | "reviews" | "specimen" | "records" | "compliance" | "documentImpactAssessment" | "numberAllocationLog" | "exports" | "legacy";
 
 /**
  * The name of every page of Training Management, exactly as the menu calls it, and the menu group it sits in. Page titles and breadcrumbs take their text from
@@ -116,7 +117,7 @@ export const TRAINING_PAGES: Record<TrainingPageKey, { title: string; group?: st
   specimen: { title: "Specimen Signatures", group: "Personnel Qualification", path: "/training-management/specimen-signatures" },
   records: { title: "Training Records", group: "Training Records & Compliance", path: "/training-management/records" },
   compliance: { title: "Training Compliance", group: "Training Records & Compliance", path: "/training-management/compliance" },
-  numberLog: { title: "Training Number Register", group: "Training Records & Compliance", path: "/training-management/number-log" },
+  numberAllocationLog: { title: "Training Number Allocation Log", group: "Training Records & Compliance", path: "/training-management/number-allocation-log" },
   exports: { title: "Training Record Exports", group: "Training Records & Compliance", path: "/training-management/record-exports" },
   legacy: { title: "Legacy Training Evidence", group: "Training Records & Compliance", path: "/training-management/legacy-evidence" },
 };

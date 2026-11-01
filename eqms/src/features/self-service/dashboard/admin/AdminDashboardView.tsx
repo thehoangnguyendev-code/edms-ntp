@@ -8,7 +8,7 @@ import { describeMyWork, fillAuditDays, share } from '../shared/dashboardMetrics
 import { PanelError } from '../shared/dashboardParts';
 import { Card, CardHeader, GrowthColumns, KpiStrip, PrimaryButton } from '../shared/dashboardUi';
 import { DocumentsByStatusPanel } from './DocumentsByStatusPanel';
-import { SystemMonitoringSection } from './SystemMonitoringSection';
+import { useSystemMonitoringWidgets } from './SystemMonitoringSection';
 import { EffectiveByTypePanel } from '../shared/EffectiveByTypePanel';
 import { PendingWorkPanel } from '../shared/PendingWorkPanel';
 import { useDashboardResource } from '../shared/useDashboardResource';
@@ -18,6 +18,7 @@ const dash = '—';
 
 export function AdminDashboardView() {
   const navigate = useNavigate();
+  const monitoringWidgets = useSystemMonitoringWidgets();
   const summary = useDashboardResource(() => dashboardApi.getSummary(), []);
   const [taskQuery, setTaskQuery] = useState('');
   const taskSearch = useDebounce(taskQuery, 300);
@@ -46,18 +47,12 @@ export function AdminDashboardView() {
       </header> */}
 
       <DashboardWidgets widgets={[
-      { id: 'admin-kpis', label: 'Overview', width: 'full', content: <><KpiStrip
-        label="Users, documents and audit totals"
-        cells={[
-          { title: 'Total users', accent: '#10b981', value: st ? st.totalUsers : dash, chip: st ? `${activeRate}% active` : undefined, footValue: st ? st.activeUsers : dash, footLabel: 'Active users' },
-          { title: 'Total documents', accent: '#059669', value: st ? st.totalDocuments : dash, chip: st ? `${share(effective, st.totalDocuments)}% effective` : undefined, footValue: st ? effective : dash, footLabel: 'Effective documents' },
-          { title: 'Revisions in flight', accent: '#34d399', value: st ? inFlight : dash, footValue: st ? revision('READY_FOR_PUBLISHING') : dash, footLabel: 'Ready to publish' },
-          { title: 'Audit events (30 days)', accent: '#6ee7b7', value: st ? st.auditEventsLast30Days : dash, footValue: st ? auditPeak.value : dash, footLabel: st ? `Peak day · ${auditPeak.label}` : 'Peak day' },
-        ]}
-      />
-      {stats.error && <PanelError message="Administrative statistics could not be loaded." onRetry={stats.reload} />}</> },
+      { id: 'admin-total-users', label: 'Total users', width: 'half', content: <><KpiStrip label="Total users" className="!grid-cols-1" cells={[{ title: 'Total users', accent: '#10b981', value: st ? st.totalUsers : dash, chip: st ? `${activeRate}% active` : undefined, footValue: st ? st.activeUsers : dash, footLabel: 'Active users' }]} />{stats.error && <PanelError message="Administrative statistics could not be loaded." onRetry={stats.reload} />}</> },
+      { id: 'admin-total-documents', label: 'Total documents', width: 'half', content: <><KpiStrip label="Total documents" className="!grid-cols-1" cells={[{ title: 'Total documents', accent: '#059669', value: st ? st.totalDocuments : dash, chip: st ? `${share(effective, st.totalDocuments)}% effective` : undefined, footValue: st ? effective : dash, footLabel: 'Effective documents' }]} />{stats.error && <PanelError message="Total documents could not be loaded." onRetry={stats.reload} />}</> },
+      { id: 'admin-revisions-in-flight', label: 'Revisions in flight', width: 'half', content: <><KpiStrip label="Revisions in flight" className="!grid-cols-1" cells={[{ title: 'Revisions in flight', accent: '#34d399', value: st ? inFlight : dash, footValue: st ? revision('READY_FOR_PUBLISHING') : dash, footLabel: 'Ready to publish' }]} />{stats.error && <PanelError message="Revisions in flight could not be loaded." onRetry={stats.reload} />}</> },
+      { id: 'admin-audit-events', label: 'Audit events (30 days)', width: 'half', content: <><KpiStrip label="Audit events (30 days)" className="!grid-cols-1" cells={[{ title: 'Audit events (30 days)', accent: '#6ee7b7', value: st ? st.auditEventsLast30Days : dash, footValue: st ? auditPeak.value : dash, footLabel: st ? `Peak day · ${auditPeak.label}` : 'Peak day' }]} />{stats.error && <PanelError message="Audit events (30 days) could not be loaded." onRetry={stats.reload} />}</> },
 
-      { id: 'audit-activity', label: 'Audit activity', width: 'half', content: <Card aria-label="Audit activity">
+      { id: 'audit-activity', label: 'Audit activity', width: 'half', content: <Card aria-label="Audit activity" className="flex flex-col justify-between">
           <CardHeader title="Audit activity" subtitle={st ? `${st.auditEventsLast30Days.toLocaleString()} events in the last 30 days, per UTC day` : 'Audit events per day'} />
           {st ? (
             auditSeries.some((point) => point.value > 0)
@@ -86,7 +81,7 @@ export function AdminDashboardView() {
       { id: 'effective-by-type', label: 'Effective documents by type', width: 'half', content: <EffectiveByTypePanel /> },
       { id: 'documents-by-status', label: 'Documents by status', width: 'half', content: <DocumentsByStatusPanel stats={stats} /> },
 
-      { id: 'system-monitoring', label: 'System monitoring', width: 'full', content: <SystemMonitoringSection /> },
+      ...monitoringWidgets,
 
       { id: 'pending-work', label: 'Pending work', width: 'full', content: <PendingWorkPanel
         query={taskQuery}

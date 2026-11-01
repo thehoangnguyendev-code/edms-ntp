@@ -96,7 +96,7 @@ export function ComplianceSummaryTab({ departmentId, departments, onDepartment }
   return (
     <div className="space-y-6">
       <div className="w-full md:w-80">
-        <Select label="Department" value={departmentId} options={[{ label: "My department", value: "" }, ...departments]} onChange={onDepartment} />
+        <Select label="Department" value={departmentId} options={departments} onChange={onDepartment} />
       </div>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       {!summary ? (

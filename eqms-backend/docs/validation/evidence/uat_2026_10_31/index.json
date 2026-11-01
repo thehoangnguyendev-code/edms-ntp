@@ -1,0 +1,1392 @@
+[
+ {
+  "kind": "shot",
+  "id": "S0-01",
+  "file": "S0-01__My_Training_of_a_trainee.png",
+  "caption": "Màn My Training của nhân sự test (uat31.s1.pass1) — kiểm tra trình duyệt và cách đặt tên ảnh",
+  "time": "2026-10-31T17:31:02",
+  "user": "uat31.s1.pass1",
+  "path": "/training-management/my-training"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-01",
+  "file": "S1-01__Revision_1_effective.png",
+  "caption": "Revision 1 của tài liệu UAT31 SOP Handling of QC samples đã Effective (trước khi nâng revision)",
+  "time": "2026-10-31T17:44:21",
+  "user": "admin",
+  "path": "/documents/revisions/a2d21703-cb1f-44fd-9f16-cc49a777255a"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-02",
+  "file": "S1-02__Revision_2_created_by_Upgrade.png",
+  "caption": "Revision 2 vừa được tạo bằng Upgrade Revision từ revision 1 đã Effective",
+  "time": "2026-10-31T17:44:27",
+  "user": "admin",
+  "path": "/documents/revisions/ed9480ae-5146-42ec-ae69-de341d5e18dc"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-03",
+  "file": "S1-03__Activity_of_revision_2_Planned.png",
+  "caption": "Activity đào tạo của revision 2 (TRN/QC/26-003) ở trạng thái Planned sau khi revision 2 được phê duyệt",
+  "time": "2026-10-31T17:44:56",
+  "user": "admin",
+  "path": "/training-management/activities/99eb3337-614e-4311-9246-dffdab398d53"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-05",
+  "file": "S1-05__Session_workspace_before_attendance.png",
+  "caption": "Session Workspace của buổi đào tạo trước khi điểm danh",
+  "time": "2026-10-31T17:47:05",
+  "user": "admin",
+  "path": "/training-management/activities/99eb3337-614e-4311-9246-dffdab398d53/sessions/6250f477-05c3-4c50-85af-d794ab0692c0/workspace"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-07",
+  "file": "S1-07__Session_workspace_attendance_recorded.png",
+  "caption": "Session Workspace sau khi điểm danh: 3 có mặt, 1 vắng (nghỉ ốm), 1 vắng do nghỉ việc",
+  "time": "2026-10-31T17:47:26",
+  "user": "admin",
+  "path": "/training-management/activities/99eb3337-614e-4311-9246-dffdab398d53/sessions/6250f477-05c3-4c50-85af-d794ab0692c0/workspace"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-08",
+  "file": "S1-08__Session_workspace_test_results.png",
+  "caption": "Session Workspace sau khi chấm bài: 2 đạt, 1 trượt (Failed)",
+  "time": "2026-10-31T17:47:38",
+  "user": "admin",
+  "path": "/training-management/activities/99eb3337-614e-4311-9246-dffdab398d53/sessions/6250f477-05c3-4c50-85af-d794ab0692c0/workspace"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-11",
+  "file": "S1-11__Revision_2_ready_for_publishing.png",
+  "caption": "Revision 2 sau Complete Training: Ready For Publishing",
+  "time": "2026-10-31T17:48:58",
+  "user": "admin",
+  "path": "/documents/revisions/ed9480ae-5146-42ec-ae69-de341d5e18dc"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-12",
+  "file": "S1-12__Revision_2_effective.png",
+  "caption": "Revision 2 đã Effective dù danh sách đào tạo còn người vắng, người trượt và người nghỉ việc",
+  "time": "2026-10-31T17:49:21",
+  "user": "admin",
+  "path": "/documents/revisions/ed9480ae-5146-42ec-ae69-de341d5e18dc"
+ },
+ {
+  "kind": "apd",
+  "id": "S1-13",
+  "file": "S1-13__APD0117_attendance_list_rev2.docx",
+  "caption": "APD.0117 danh sách tham dự đào tạo revision 2 (2 đạt, 1 trượt, 2 vắng)",
+  "time": "2026-10-31T17:49:25"
+ },
+ {
+  "kind": "apd",
+  "id": "S1-13",
+  "file": "S1-13__APD0117_attendance_list_rev2.pdf",
+  "caption": "APD.0117 danh sách tham dự đào tạo revision 2 (PDF)",
+  "time": "2026-10-31T17:49:29"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-13",
+  "file": "S1-13__APD0117_attendance_list_rev2-p1.png",
+  "caption": "APD.0117 danh sách tham dự đào tạo revision 2 (PDF) (trang 1/2)",
+  "time": "2026-10-31T17:49:29"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-13",
+  "file": "S1-13__APD0117_attendance_list_rev2-p2.png",
+  "caption": "APD.0117 danh sách tham dự đào tạo revision 2 (PDF) (trang 2/2)",
+  "time": "2026-10-31T17:49:29"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-14",
+  "file": "S1-14__Activity_rev2_Participants_tab.png",
+  "caption": "Activity revision 2, tab Participants: 5 nhân sự với trạng thái và kết quả (đạt / trượt / vắng / nghỉ việc)",
+  "time": "2026-10-31T17:50:53",
+  "user": "admin",
+  "path": "/training-management/activities/99eb3337-614e-4311-9246-dffdab398d53"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-15",
+  "file": "S1-15__Activity_rev2_Assessment_tab.png",
+  "caption": "Activity revision 2, tab Assessment: điểm số từng người",
+  "time": "2026-10-31T17:51:00",
+  "user": "admin",
+  "path": "/training-management/activities/99eb3337-614e-4311-9246-dffdab398d53"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-16",
+  "file": "S1-16__Activity_rev2_Signatures_tab.png",
+  "caption": "Activity revision 2, tab Signatures: các chữ ký điện tử (danh sách, nội dung, gửi danh sách, Finish Training, QA xác nhận)",
+  "time": "2026-10-31T17:51:07",
+  "user": "admin",
+  "path": "/training-management/activities/99eb3337-614e-4311-9246-dffdab398d53"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-17",
+  "file": "S1-17__Activity_rev2_Audit_Trail_tab.png",
+  "caption": "Activity revision 2, tab Audit Trail: lịch sử thao tác",
+  "time": "2026-10-31T17:51:14",
+  "user": "admin",
+  "path": "/training-management/activities/99eb3337-614e-4311-9246-dffdab398d53"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-18",
+  "file": "S1-18__Revision_2_Training_Information_tab.png",
+  "caption": "Revision 2 (Effective), tab Training Information: thông tin đào tạo gắn với revision",
+  "time": "2026-10-31T17:51:21",
+  "user": "admin",
+  "path": "/documents/revisions/ed9480ae-5146-42ec-ae69-de341d5e18dc"
+ },
+ {
+  "kind": "shot",
+  "id": "S1-19",
+  "file": "S1-19__Compliance_Work_Suspensions_tab.png",
+  "caption": "Compliance, tab Work Suspensions (phòng Quality Control): cờ tạm ngừng việc của người trượt bài kiểm tra (SOP 5.3.7)",
+  "time": "2026-10-31T17:54:31",
+  "user": "admin",
+  "path": "/training-management/compliance"
+ },
+ {
+  "kind": "shot",
+  "id": "S2-01",
+  "file": "S2-01__Activity_without_document_general.png",
+  "caption": "Activity TRN/QA/26-942 không xuất phát từ tài liệu (Type: Unplanned, không có Document), In Progress",
+  "time": "2026-10-31T17:56:23",
+  "user": "admin",
+  "path": "/training-management/activities/466fb889-9051-4c8c-98cf-4b6c9b24d332"
+ },
+ {
+  "kind": "shot",
+  "id": "S2-02",
+  "file": "S2-02__Participants_ten_people_before_attendance.png",
+  "caption": "Tab Participants: 10 nhân sự của 3 phòng (QA, QC, Production) trước khi điểm danh",
+  "time": "2026-10-31T17:56:30",
+  "user": "admin",
+  "path": "/training-management/activities/466fb889-9051-4c8c-98cf-4b6c9b24d332"
+ },
+ {
+  "kind": "shot",
+  "id": "S2-04",
+  "file": "S2-04__Workspace_attendance_recorded.png",
+  "caption": "Session Workspace sau khi điểm danh: 6 có mặt, 4 vắng (2 nghỉ phép, 2 nghỉ việc)",
+  "time": "2026-10-31T17:57:06",
+  "user": "admin",
+  "path": "/training-management/activities/466fb889-9051-4c8c-98cf-4b6c9b24d332/sessions/78fe2343-c55e-4d3b-acab-198510ffbd1b/workspace"
+ },
+ {
+  "kind": "shot",
+  "id": "S2-05",
+  "file": "S2-05__Assessment_tab_scores.png",
+  "caption": "Tab Assessment: điểm của 6 người có mặt (2 đạt, 4 trượt)",
+  "time": "2026-10-31T17:57:28",
+  "user": "admin",
+  "path": "/training-management/activities/466fb889-9051-4c8c-98cf-4b6c9b24d332"
+ },
+ {
+  "kind": "shot",
+  "id": "S2-06",
+  "file": "S2-06__Participants_tab_final.png",
+  "caption": "Tab Participants khi activity Completed: kết quả cuối của 10 nhân sự",
+  "time": "2026-10-31T17:58:32",
+  "user": "admin",
+  "path": "/training-management/activities/466fb889-9051-4c8c-98cf-4b6c9b24d332"
+ },
+ {
+  "kind": "shot",
+  "id": "S2-07",
+  "file": "S2-07__Signatures_tab_final.png",
+  "caption": "Tab Signatures: các chữ ký điện tử của activity",
+  "time": "2026-10-31T17:58:39",
+  "user": "admin",
+  "path": "/training-management/activities/466fb889-9051-4c8c-98cf-4b6c9b24d332"
+ },
+ {
+  "kind": "shot",
+  "id": "S2-08",
+  "file": "S2-08__Workspace_results_step.png",
+  "caption": "Session Workspace, bước Results",
+  "time": "2026-10-31T17:58:46",
+  "user": "admin",
+  "path": "/training-management/activities/466fb889-9051-4c8c-98cf-4b6c9b24d332/sessions/78fe2343-c55e-4d3b-acab-198510ffbd1b/workspace"
+ },
+ {
+  "kind": "apd",
+  "id": "S2-09",
+  "file": "S2-09__APD0117_attendance_list_activity_without_document.docx",
+  "caption": "APD.0117 danh sách tham dự đào tạo (activity không từ tài liệu): 10 nhân sự, 3 phòng",
+  "time": "2026-10-31T17:58:50"
+ },
+ {
+  "kind": "apd",
+  "id": "S2-09",
+  "file": "S2-09__APD0117_attendance_list_activity_without_document.pdf",
+  "caption": "APD.0117 danh sách tham dự đào tạo (PDF)",
+  "time": "2026-10-31T17:58:54"
+ },
+ {
+  "kind": "shot",
+  "id": "S2-09",
+  "file": "S2-09__APD0117_attendance_list_activity_without_document-p1.png",
+  "caption": "APD.0117 danh sách tham dự đào tạo (PDF) (trang 1/3)",
+  "time": "2026-10-31T17:58:54"
+ },
+ {
+  "kind": "shot",
+  "id": "S2-09",
+  "file": "S2-09__APD0117_attendance_list_activity_without_document-p2.png",
+  "caption": "APD.0117 danh sách tham dự đào tạo (PDF) (trang 2/3)",
+  "time": "2026-10-31T17:58:54"
+ },
+ {
+  "kind": "shot",
+  "id": "S2-09",
+  "file": "S2-09__APD0117_attendance_list_activity_without_document-p3.png",
+  "caption": "APD.0117 danh sách tham dự đào tạo (PDF) (trang 3/3)",
+  "time": "2026-10-31T17:58:54"
+ },
+ {
+  "kind": "shot",
+  "id": "S2-03",
+  "file": "S2-03__Participants_person_left_still_invited.png",
+  "caption": "Tab Participants: người đã nghỉ việc (tài khoản Terminated) vẫn ở trạng thái Invited: ghi chú \"Account terminated: cannot sign\" ở dòng thứ hai, cột Attendance không bị cắt",
+  "time": "2026-10-31T18:02:20",
+  "user": "admin",
+  "path": "/training-management/activities/a9f10fab-8d96-4ef2-84b4-ba37434f1f4b"
+ },
+ {
+  "kind": "shot",
+  "id": "S3-01",
+  "file": "S3-01__Job_assignments_list_before.png",
+  "caption": "Danh sách Job Assignments (APD.0024) trước khi bổ nhiệm",
+  "time": "2026-10-31T18:05:18",
+  "user": "admin",
+  "path": "/training-management/job-assignments"
+ },
+ {
+  "kind": "shot",
+  "id": "S3-02",
+  "file": "S3-02__Matrix_QC_draft_with_new_rows.png",
+  "caption": "Ma trận đào tạo phòng Quality Control (bản nháp): cột QC Microbiology / QC Physicochemistry và các đào tạo gắn với từng vị trí",
+  "time": "2026-10-31T18:05:36",
+  "user": "admin",
+  "path": "/training-management/matrix/3990f6a3-e019-4402-a2c0-d2e62101bc5d"
+ },
+ {
+  "kind": "shot",
+  "id": "S3-03",
+  "file": "S3-03__Matrix_QC_effective.png",
+  "caption": "Ma trận Quality Control đã Effective với các đào tạo của 2 vị trí mới",
+  "time": "2026-10-31T18:05:56",
+  "user": "admin",
+  "path": "/training-management/matrix/3990f6a3-e019-4402-a2c0-d2e62101bc5d"
+ },
+ {
+  "kind": "apd",
+  "id": "S3-04",
+  "file": "S3-04__APD0011_matrix_Quality_Control.docx",
+  "caption": "APD.0011 ma trận đào tạo phòng Quality Control (có 2 vị trí QC Microbiology, QC Physicochemistry)",
+  "time": "2026-10-31T18:05:58"
+ },
+ {
+  "kind": "apd",
+  "id": "S3-04",
+  "file": "S3-04__APD0011_matrix_Quality_Control.pdf",
+  "caption": "APD.0011 ma trận đào tạo phòng Quality Control (PDF)",
+  "time": "2026-10-31T18:06:01"
+ },
+ {
+  "kind": "shot",
+  "id": "S3-04",
+  "file": "S3-04__APD0011_matrix_Quality_Control-p1.png",
+  "caption": "APD.0011 ma trận đào tạo phòng Quality Control (PDF) (trang 1/1)",
+  "time": "2026-10-31T18:06:01"
+ },
+ {
+  "kind": "shot",
+  "id": "S3-09",
+  "file": "S3-09__Job_assignment_pending_receiver.png",
+  "caption": "Job Assignment sau khi trưởng bộ phận ký: chờ nhân viên nhận (Pending Receiver); không còn đào tạo thiếu",
+  "time": "2026-10-31T18:16:16",
+  "user": "admin",
+  "path": "/training-management/job-assignments/24152feb-996c-4dab-a9ef-abcffbcb6dde"
+ },
+ {
+  "kind": "shot",
+  "id": "S3-06",
+  "file": "S3-06__Training_A_failed_participants.png",
+  "caption": "Đào tạo chủ đề QC Microbiology: Mai Văn Tâm trượt bài kiểm tra (4/10, Failed)",
+  "time": "2026-10-31T18:17:52",
+  "user": "admin",
+  "path": "/training-management/activities/122dd324-24dc-4e21-aeb2-2c96e6a86732"
+ },
+ {
+  "kind": "shot",
+  "id": "S3-07",
+  "file": "S3-07__Training_A_retraining_passed.png",
+  "caption": "Đào tạo lại TRN/QA/26-944a (số gốc + chữ cái): Mai Văn Tâm đạt 9/10",
+  "time": "2026-10-31T18:18:14",
+  "user": "admin",
+  "path": "/training-management/activities/909b9227-be17-4149-a84e-ff22ab3db5c9"
+ },
+ {
+  "kind": "shot",
+  "id": "S3-10",
+  "file": "S3-10__Job_assignment_effective.png",
+  "caption": "Job Assignment Effective: Mai Văn Tâm giữ 2 vị trí QC Microbiology và QC Physicochemistry",
+  "time": "2026-10-31T18:19:12",
+  "user": "admin",
+  "path": "/training-management/job-assignments/24152feb-996c-4dab-a9ef-abcffbcb6dde"
+ },
+ {
+  "kind": "shot",
+  "id": "S3-11",
+  "file": "S3-11__Job_assignments_list_after.png",
+  "caption": "Danh sách Job Assignments sau khi bổ nhiệm",
+  "time": "2026-10-31T18:19:16",
+  "user": "admin",
+  "path": "/training-management/job-assignments"
+ },
+ {
+  "kind": "apd",
+  "id": "S3-12",
+  "file": "S3-12__APD0024_job_assignment_Mai_Van_Tam.docx",
+  "caption": "APD.0024 bản giao việc / bổ nhiệm Mai Văn Tâm: QC Microbiology + QC Physicochemistry (2 chữ ký điện tử)",
+  "time": "2026-10-31T18:19:19"
+ },
+ {
+  "kind": "apd",
+  "id": "S3-12",
+  "file": "S3-12__APD0024_job_assignment_Mai_Van_Tam.pdf",
+  "caption": "APD.0024 bổ nhiệm Mai Văn Tâm (PDF)",
+  "time": "2026-10-31T18:19:22"
+ },
+ {
+  "kind": "shot",
+  "id": "S3-12",
+  "file": "S3-12__APD0024_job_assignment_Mai_Van_Tam-p1.png",
+  "caption": "APD.0024 bổ nhiệm Mai Văn Tâm (PDF) (trang 1/2)",
+  "time": "2026-10-31T18:19:22"
+ },
+ {
+  "kind": "shot",
+  "id": "S3-12",
+  "file": "S3-12__APD0024_job_assignment_Mai_Van_Tam-p2.png",
+  "caption": "APD.0024 bổ nhiệm Mai Văn Tâm (PDF) (trang 2/2)",
+  "time": "2026-10-31T18:19:22"
+ },
+ {
+  "kind": "apd",
+  "id": "S3-13",
+  "file": "S3-13__APD0014_training_record_Mai_Van_Tam.pdf",
+  "caption": "APD.0014 hồ sơ đào tạo cá nhân Mai Văn Tâm (gồm lần trượt, đào tạo lại và các đào tạo đạt)",
+  "time": "2026-10-31T18:19:34"
+ },
+ {
+  "kind": "shot",
+  "id": "S3-13",
+  "file": "S3-13__APD0014_training_record_Mai_Van_Tam-p1.png",
+  "caption": "APD.0014 hồ sơ đào tạo cá nhân Mai Văn Tâm (gồm lần trượt, đào tạo lại và các đào tạo đạt) (trang 1/1)",
+  "time": "2026-10-31T18:19:34"
+ },
+ {
+  "kind": "shot",
+  "id": "S3-05",
+  "file": "S3-05__Job_assignment_draft_Matrix_Check_missing.png",
+  "caption": "Job Assignment bản nháp của Đỗ Thị Lan (UAT) (chưa đào tạo gì): tab Matrix Check liệt kê 3 đào tạo còn thiếu của 2 vị trí; ký bị chặn (TRAINING_MATRIX_INCOMPLETE)",
+  "time": "2026-10-31T18:20:43",
+  "user": "admin",
+  "path": "/training-management/job-assignments/014bf859-8b5b-4c64-8f30-b4561a446533"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-02",
+  "file": "S4-02__Make_up_of_the_absent_person.png",
+  "caption": "Activity TRN/QC/26-003a (đào tạo bù cho người vắng) đã Completed",
+  "time": "2026-10-31T18:26:31",
+  "user": "admin",
+  "path": "/training-management/activities/79248e1f-8c62-4d1d-abc8-5adee5a056c2"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-03",
+  "file": "S4-03__Retraining_of_the_failed_person.png",
+  "caption": "Activity TRN/QC/26-003b (đào tạo lại cho người trượt) đã Completed",
+  "time": "2026-10-31T18:26:40",
+  "user": "admin",
+  "path": "/training-management/activities/f8a65d6e-dfb3-418e-9add-aee40b78e38f"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-05",
+  "file": "S4-05__Retraining_four_people_one_failed_again.png",
+  "caption": "Đào tạo lại cho 4 người trượt (3 phòng): 3 đạt, 1 người (Production) trượt lần nữa",
+  "time": "2026-10-31T18:31:15",
+  "user": "admin",
+  "path": "/training-management/activities/f13535a9-8638-495c-9795-c8263439a654"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-06",
+  "file": "S4-06__Activity_no_document_audit_trail.png",
+  "caption": "Audit Trail của activity không từ tài liệu: các thao tác điểm danh Absent (nghỉ việc), chấm điểm, đào tạo bù và đào tạo lại",
+  "time": "2026-10-31T18:33:21",
+  "user": "admin",
+  "path": "/training-management/activities/466fb889-9051-4c8c-98cf-4b6c9b24d332"
+ },
+ {
+  "kind": "apd",
+  "id": "S4-07",
+  "file": "S4-07__APD0117_original_after_make_up_scenario2.docx",
+  "caption": "APD.0117 của activity gốc sau khi đã có đào tạo bù/đào tạo lại: người nghỉ việc vẫn nằm trong danh sách, ghi Vắng mặt và lý do (scenario 2)",
+  "time": "2026-10-31T18:33:23"
+ },
+ {
+  "kind": "apd",
+  "id": "S4-07",
+  "file": "S4-07__APD0117_original_after_make_up_scenario2.pdf",
+  "caption": "APD.0117 của activity gốc (PDF)",
+  "time": "2026-10-31T18:33:26"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-07",
+  "file": "S4-07__APD0117_original_after_make_up_scenario2-p1.png",
+  "caption": "APD.0117 của activity gốc (PDF) (trang 1/3)",
+  "time": "2026-10-31T18:33:26"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-07",
+  "file": "S4-07__APD0117_original_after_make_up_scenario2-p2.png",
+  "caption": "APD.0117 của activity gốc (PDF) (trang 2/3)",
+  "time": "2026-10-31T18:33:26"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-07",
+  "file": "S4-07__APD0117_original_after_make_up_scenario2-p3.png",
+  "caption": "APD.0117 của activity gốc (PDF) (trang 3/3)",
+  "time": "2026-10-31T18:33:26"
+ },
+ {
+  "kind": "apd",
+  "id": "S4-08",
+  "file": "S4-08__APD0117_original_after_make_up_scenario1.docx",
+  "caption": "APD.0117 của activity gốc sau khi đã có đào tạo bù/đào tạo lại: người nghỉ việc vẫn nằm trong danh sách, ghi Vắng mặt và lý do (scenario 1)",
+  "time": "2026-10-31T18:33:29"
+ },
+ {
+  "kind": "apd",
+  "id": "S4-08",
+  "file": "S4-08__APD0117_original_after_make_up_scenario1.pdf",
+  "caption": "APD.0117 của activity gốc (PDF)",
+  "time": "2026-10-31T18:33:32"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-08",
+  "file": "S4-08__APD0117_original_after_make_up_scenario1-p1.png",
+  "caption": "APD.0117 của activity gốc (PDF) (trang 1/2)",
+  "time": "2026-10-31T18:33:32"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-08",
+  "file": "S4-08__APD0117_original_after_make_up_scenario1-p2.png",
+  "caption": "APD.0117 của activity gốc (PDF) (trang 2/2)",
+  "time": "2026-10-31T18:33:32"
+ },
+ {
+  "kind": "apd",
+  "id": "S4-09",
+  "file": "S4-09__APD0117_make_up_scenario1.pdf",
+  "caption": "APD.0117 danh sách riêng của buổi đào tạo bù (make_up_scenario1): mã gốc + chữ cái, kết quả của từng người",
+  "time": "2026-10-31T18:33:35"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-09",
+  "file": "S4-09__APD0117_make_up_scenario1-p1.png",
+  "caption": "APD.0117 danh sách riêng của buổi đào tạo bù (make_up_scenario1): mã gốc + chữ cái, kết quả của từng người (trang 1/2)",
+  "time": "2026-10-31T18:33:36"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-09",
+  "file": "S4-09__APD0117_make_up_scenario1-p2.png",
+  "caption": "APD.0117 danh sách riêng của buổi đào tạo bù (make_up_scenario1): mã gốc + chữ cái, kết quả của từng người (trang 2/2)",
+  "time": "2026-10-31T18:33:36"
+ },
+ {
+  "kind": "apd",
+  "id": "S4-10",
+  "file": "S4-10__APD0117_retraining_scenario1.pdf",
+  "caption": "APD.0117 danh sách riêng của buổi đào tạo lại (retraining_scenario1): mã gốc + chữ cái, kết quả của từng người",
+  "time": "2026-10-31T18:33:43"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-10",
+  "file": "S4-10__APD0117_retraining_scenario1-p1.png",
+  "caption": "APD.0117 danh sách riêng của buổi đào tạo lại (retraining_scenario1): mã gốc + chữ cái, kết quả của từng người (trang 1/2)",
+  "time": "2026-10-31T18:33:43"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-10",
+  "file": "S4-10__APD0117_retraining_scenario1-p2.png",
+  "caption": "APD.0117 danh sách riêng của buổi đào tạo lại (retraining_scenario1): mã gốc + chữ cái, kết quả của từng người (trang 2/2)",
+  "time": "2026-10-31T18:33:43"
+ },
+ {
+  "kind": "apd",
+  "id": "S4-11",
+  "file": "S4-11__APD0117_make_up_scenario2.pdf",
+  "caption": "APD.0117 danh sách riêng của buổi đào tạo bù (make_up_scenario2): mã gốc + chữ cái, kết quả của từng người",
+  "time": "2026-10-31T18:33:51"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-11",
+  "file": "S4-11__APD0117_make_up_scenario2-p1.png",
+  "caption": "APD.0117 danh sách riêng của buổi đào tạo bù (make_up_scenario2): mã gốc + chữ cái, kết quả của từng người (trang 1/2)",
+  "time": "2026-10-31T18:33:51"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-11",
+  "file": "S4-11__APD0117_make_up_scenario2-p2.png",
+  "caption": "APD.0117 danh sách riêng của buổi đào tạo bù (make_up_scenario2): mã gốc + chữ cái, kết quả của từng người (trang 2/2)",
+  "time": "2026-10-31T18:33:51"
+ },
+ {
+  "kind": "apd",
+  "id": "S4-12",
+  "file": "S4-12__APD0117_retraining_scenario2.pdf",
+  "caption": "APD.0117 danh sách riêng của buổi đào tạo lại (retraining_scenario2): mã gốc + chữ cái, kết quả của từng người",
+  "time": "2026-10-31T18:33:58"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-12",
+  "file": "S4-12__APD0117_retraining_scenario2-p1.png",
+  "caption": "APD.0117 danh sách riêng của buổi đào tạo lại (retraining_scenario2): mã gốc + chữ cái, kết quả của từng người (trang 1/2)",
+  "time": "2026-10-31T18:33:58"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-12",
+  "file": "S4-12__APD0117_retraining_scenario2-p2.png",
+  "caption": "APD.0117 danh sách riêng của buổi đào tạo lại (retraining_scenario2): mã gốc + chữ cái, kết quả của từng người (trang 2/2)",
+  "time": "2026-10-31T18:33:58"
+ },
+ {
+  "kind": "apd",
+  "id": "S4-13",
+  "file": "S4-13__APD0014_record_fail_retrained.pdf",
+  "caption": "APD.0014 hồ sơ đào tạo cá nhân của Phạm Thị Dung (UAT) (sau đào tạo lại / đào tạo bù)",
+  "time": "2026-10-31T18:34:14"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-13",
+  "file": "S4-13__APD0014_record_fail_retrained-p1.png",
+  "caption": "APD.0014 hồ sơ đào tạo cá nhân của Phạm Thị Dung (UAT) (sau đào tạo lại / đào tạo bù) (trang 1/1)",
+  "time": "2026-10-31T18:34:15"
+ },
+ {
+  "kind": "apd",
+  "id": "S4-14",
+  "file": "S4-14__APD0014_record_absent_retrained.pdf",
+  "caption": "APD.0014 hồ sơ đào tạo cá nhân của Lê Văn Cường (UAT) (sau đào tạo lại / đào tạo bù)",
+  "time": "2026-10-31T18:34:26"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-14",
+  "file": "S4-14__APD0014_record_absent_retrained-p1.png",
+  "caption": "APD.0014 hồ sơ đào tạo cá nhân của Lê Văn Cường (UAT) (sau đào tạo lại / đào tạo bù) (trang 1/1)",
+  "time": "2026-10-31T18:34:26"
+ },
+ {
+  "kind": "apd",
+  "id": "S4-15",
+  "file": "S4-15__APD0014_record_left_left_the_company.pdf",
+  "caption": "APD.0014 hồ sơ đào tạo cá nhân của Hoàng Văn Em (UAT) (đã nghỉ việc)",
+  "time": "2026-10-31T18:34:38"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-15",
+  "file": "S4-15__APD0014_record_left_left_the_company-p1.png",
+  "caption": "APD.0014 hồ sơ đào tạo cá nhân của Hoàng Văn Em (UAT) (đã nghỉ việc) (trang 1/1)",
+  "time": "2026-10-31T18:34:38"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-16",
+  "file": "S4-16__Compliance_Gap_List_Quality_Control.png",
+  "caption": "Compliance, tab Gap List (Quality Control): chỉ người còn tài khoản Active được đo yêu cầu đào tạo; người đã nghỉ việc không còn bị đòi",
+  "time": "2026-10-31T18:34:50",
+  "user": "admin",
+  "path": "/training-management/compliance"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-04",
+  "file": "S4-04__Activity_no_document_supplementary_dialog.png",
+  "caption": "Activity không từ tài liệu: hộp thoại Supplementary training — người vắng / trượt đã có đào tạo bù được đánh dấu, 2 người nghỉ việc bị khoá kèm lý do",
+  "time": "2026-10-31T18:47:33",
+  "user": "admin",
+  "path": "/training-management/activities/466fb889-9051-4c8c-98cf-4b6c9b24d332/conduct"
+ },
+ {
+  "kind": "shot",
+  "id": "S4-01",
+  "file": "S4-01__Activity_rev2_supplementary_dialog.png",
+  "caption": "Activity revision 2: hộp thoại Supplementary training — người nghỉ việc bị khoá kèm lý do, người vắng / trượt đã nằm trong đào tạo bù",
+  "time": "2026-10-31T18:47:42",
+  "user": "admin",
+  "path": "/training-management/activities/99eb3337-614e-4311-9246-dffdab398d53/conduct"
+ },
+ {
+  "kind": "shot",
+  "id": "S5-01",
+  "file": "S5-01__My_Training_self_reading_to_do.png",
+  "caption": "My Training của nhân viên Vũ Thị Giang: việc cần làm — tài liệu tự đọc chờ xác nhận bằng chữ ký điện tử",
+  "time": "2026-10-31T18:49:13",
+  "user": "uat31.s2.qa.pass",
+  "path": "/training-management/my-training"
+ },
+ {
+  "kind": "shot",
+  "id": "S5-02",
+  "file": "S5-02__Participate_page_self_reading.png",
+  "caption": "[TRƯỚC KHI SỬA — lỗi] Trang Participation mở bằng tài khoản nhân viên chỉ có quyền self.view: báo \"Your permissions or department do not allow this action\" — nhân viên không mở được đào tạo của chính mình (lỗi đang chờ quyết định)",
+  "time": "2026-10-31T18:49:18",
+  "user": "uat31.s2.qa.pass",
+  "path": null
+ },
+ {
+  "kind": "shot",
+  "id": "S5-05",
+  "file": "S5-05__Workspace_reading_step_left_and_long_leave.png",
+  "caption": "Session Workspace, bước Reading: 1 người đã ký, 2 tài khoản đã đóng (nghỉ việc / nghỉ dài hạn) hiện \"cannot sign\", người còn lại chưa ký",
+  "time": "2026-10-31T18:49:44",
+  "user": "admin",
+  "path": "/training-management/activities/89f44027-508f-444c-85c6-7836825f14b2/sessions/38af12f4-ae7b-4299-8a09-cc93c64ef95b/workspace"
+ },
+ {
+  "kind": "shot",
+  "id": "S5-06",
+  "file": "S5-06__Workspace_reading_step_all_recorded.png",
+  "caption": "Session Workspace, bước Reading: 5 người đã ký điện tử, 2 người ghi Cannot Read (nghỉ việc / nghỉ dài hạn)",
+  "time": "2026-10-31T18:50:30",
+  "user": "admin",
+  "path": "/training-management/activities/89f44027-508f-444c-85c6-7836825f14b2/sessions/38af12f4-ae7b-4299-8a09-cc93c64ef95b/workspace"
+ },
+ {
+  "kind": "shot",
+  "id": "S5-07",
+  "file": "S5-07__Workspace_results_step_departments_confirmed.png",
+  "caption": "Session Workspace, bước Results: 3 phòng đã được trưởng bộ phận xác nhận, sẵn sàng Finish Training",
+  "time": "2026-10-31T18:51:01",
+  "user": "admin",
+  "path": "/training-management/activities/89f44027-508f-444c-85c6-7836825f14b2/sessions/38af12f4-ae7b-4299-8a09-cc93c64ef95b/workspace"
+ },
+ {
+  "kind": "shot",
+  "id": "S5-09",
+  "file": "S5-09__Activity_self_reading_completed_signatures.png",
+  "caption": "Activity tự đọc đã Completed: tab Signatures (chữ ký của nhân viên, trưởng bộ phận, người tổ chức, QA)",
+  "time": "2026-10-31T18:51:49",
+  "user": "admin",
+  "path": "/training-management/activities/89f44027-508f-444c-85c6-7836825f14b2"
+ },
+ {
+  "kind": "shot",
+  "id": "S5-10",
+  "file": "S5-10__Activity_self_reading_notice_make_up.png",
+  "caption": "Activity tự đọc sau khi người nghỉ dài hạn trở lại (Active): thông báo cần bố trí đào tạo bù cho 1 người, 1 người không thể bù (đã nghỉ việc)",
+  "time": "2026-10-31T18:52:00",
+  "user": "admin",
+  "path": "/training-management/activities/89f44027-508f-444c-85c6-7836825f14b2"
+ },
+ {
+  "kind": "shot",
+  "id": "S5-12",
+  "file": "S5-12__Employee_opens_the_training.png",
+  "caption": "[TRƯỚC KHI SỬA — lỗi] Nhân viên bấm số hiệu đào tạo trong My Training: trang Training Participation báo \"Your permissions or department do not allow this action\" (403 TRAINING_SCOPE_DENIED) — nhân viên không thể ký tự đọc trên màn hình (lỗi đang chờ quyết định)",
+  "time": "2026-10-31T18:53:47",
+  "user": "uat31.s2.qc.pass",
+  "path": null
+ },
+ {
+  "kind": "shot",
+  "id": "S5-11",
+  "file": "S5-11__My_Training_employee_sees_the_self_reading.png",
+  "caption": "My Training của nhân viên Đỗ Thị Lan: việc cần làm có đào tạo tự đọc TRN/QA/26-949",
+  "time": "2026-10-31T18:55:27",
+  "user": "uat31.s2.qc.pass",
+  "path": null
+ },
+ {
+  "kind": "shot",
+  "id": "S5-15",
+  "file": "S5-15__Activity_signed_on_screen_signatures_tab.png",
+  "caption": "Activity TRN/QA/26-949 đã Completed: tab Signatures có chữ ký điện tử của nhân viên, trưởng bộ phận, người tổ chức, QA",
+  "time": "2026-10-31T18:56:27",
+  "user": "admin",
+  "path": "/training-management/activities/c90abf50-b4c5-4a9a-9d7e-1ba625fc75ce"
+ },
+ {
+  "kind": "apd",
+  "id": "S5-16",
+  "file": "S5-16__APD0108_Quality_Control_signed_on_screen.pdf",
+  "caption": "APD.0108 phòng Quality Control (TRN/QA/26-949): nhân viên ký điện tử trên màn hình + trưởng bộ phận xác nhận",
+  "time": "2026-10-31T18:56:30"
+ },
+ {
+  "kind": "shot",
+  "id": "S5-16",
+  "file": "S5-16__APD0108_Quality_Control_signed_on_screen-p1.png",
+  "caption": "APD.0108 phòng Quality Control (TRN/QA/26-949): nhân viên ký điện tử trên màn hình + trưởng bộ phận xác nhận (trang 1/1)",
+  "time": "2026-10-31T18:56:30"
+ },
+ {
+  "kind": "apd",
+  "id": "S5-08",
+  "file": "S5-08__APD0108_Quality_Assurance.docx",
+  "caption": "APD.0108 danh sách tự đọc phòng Quality Assurance (docx): chữ ký điện tử của từng nhân viên, người ghi Vắng mặt (nghỉ việc / nghỉ dài hạn), xác nhận và nhận xét của trưởng bộ phận",
+  "time": "2026-10-31T18:58:44"
+ },
+ {
+  "kind": "apd",
+  "id": "S5-08",
+  "file": "S5-08__APD0108_Quality_Control.docx",
+  "caption": "APD.0108 danh sách tự đọc phòng Quality Control (docx): chữ ký điện tử của từng nhân viên, người ghi Vắng mặt (nghỉ việc / nghỉ dài hạn), xác nhận và nhận xét của trưởng bộ phận",
+  "time": "2026-10-31T18:58:44"
+ },
+ {
+  "kind": "apd",
+  "id": "S5-08",
+  "file": "S5-08__APD0108_Production.docx",
+  "caption": "APD.0108 danh sách tự đọc phòng Production (docx): chữ ký điện tử của từng nhân viên, người ghi Vắng mặt (nghỉ việc / nghỉ dài hạn), xác nhận và nhận xét của trưởng bộ phận",
+  "time": "2026-10-31T18:58:44"
+ },
+ {
+  "kind": "apd",
+  "id": "S5-08",
+  "file": "S5-08__APD0108_Quality_Assurance.pdf",
+  "caption": "APD.0108 danh sách tự đọc phòng Quality Assurance (pdf): chữ ký điện tử của từng nhân viên, người ghi Vắng mặt (nghỉ việc / nghỉ dài hạn), xác nhận và nhận xét của trưởng bộ phận",
+  "time": "2026-10-31T18:58:50"
+ },
+ {
+  "kind": "shot",
+  "id": "S5-08",
+  "file": "S5-08__APD0108_Quality_Assurance-p1.png",
+  "caption": "APD.0108 danh sách tự đọc phòng Quality Assurance (pdf): chữ ký điện tử của từng nhân viên, người ghi Vắng mặt (nghỉ việc / nghỉ dài hạn), xác nhận và nhận xét của trưởng bộ phận (trang 1/1)",
+  "time": "2026-10-31T18:58:50"
+ },
+ {
+  "kind": "apd",
+  "id": "S5-08",
+  "file": "S5-08__APD0108_Quality_Control.pdf",
+  "caption": "APD.0108 danh sách tự đọc phòng Quality Control (pdf): chữ ký điện tử của từng nhân viên, người ghi Vắng mặt (nghỉ việc / nghỉ dài hạn), xác nhận và nhận xét của trưởng bộ phận",
+  "time": "2026-10-31T18:58:50"
+ },
+ {
+  "kind": "shot",
+  "id": "S5-08",
+  "file": "S5-08__APD0108_Quality_Control-p1.png",
+  "caption": "APD.0108 danh sách tự đọc phòng Quality Control (pdf): chữ ký điện tử của từng nhân viên, người ghi Vắng mặt (nghỉ việc / nghỉ dài hạn), xác nhận và nhận xét của trưởng bộ phận (trang 1/1)",
+  "time": "2026-10-31T18:58:50"
+ },
+ {
+  "kind": "apd",
+  "id": "S5-08",
+  "file": "S5-08__APD0108_Production.pdf",
+  "caption": "APD.0108 danh sách tự đọc phòng Production (pdf): chữ ký điện tử của từng nhân viên, người ghi Vắng mặt (nghỉ việc / nghỉ dài hạn), xác nhận và nhận xét của trưởng bộ phận",
+  "time": "2026-10-31T18:58:50"
+ },
+ {
+  "kind": "shot",
+  "id": "S5-08",
+  "file": "S5-08__APD0108_Production-p1.png",
+  "caption": "APD.0108 danh sách tự đọc phòng Production (pdf): chữ ký điện tử của từng nhân viên, người ghi Vắng mặt (nghỉ việc / nghỉ dài hạn), xác nhận và nhận xét của trưởng bộ phận (trang 1/1)",
+  "time": "2026-10-31T18:58:50"
+ },
+ {
+  "kind": "shot",
+  "id": "S5-17",
+  "file": "S5-17__After_fix_My_Training_to_do.png",
+  "caption": "Sau khi sửa: My Training của nhân viên Đỗ Thị Lan có đào tạo tự đọc TRN/QA/26-950",
+  "time": "2026-10-31T19:23:18",
+  "user": "uat31.s2.qc.pass",
+  "path": null
+ },
+ {
+  "kind": "shot",
+  "id": "S5-18",
+  "file": "S5-18__After_fix_Self_reading_screen_of_the_employee.png",
+  "caption": "Sau khi sửa: màn Self-Reading riêng cho nhân viên (TRN/QA/26-950): đào tạo, hạn, tài liệu cần đọc, nút \"I have read and understood\"",
+  "time": "2026-10-31T19:23:23",
+  "user": "uat31.s2.qc.pass",
+  "path": null
+ },
+ {
+  "kind": "shot",
+  "id": "S5-19",
+  "file": "S5-19__After_fix_E_signature_window_opened.png",
+  "caption": "Cửa sổ ký điện tử mở ra khi nhân viên bấm \"I have read and understood\"",
+  "time": "2026-10-31T19:23:27",
+  "user": "uat31.s2.qc.pass",
+  "path": null
+ },
+ {
+  "kind": "shot",
+  "id": "S5-20",
+  "file": "S5-20__After_fix_E_signature_window_filled.png",
+  "caption": "Cửa sổ ký điện tử: nhân viên nhập lý do và mật khẩu (mật khẩu bị ẩn) để ký xác nhận đã đọc",
+  "time": "2026-10-31T19:23:29",
+  "user": "uat31.s2.qc.pass",
+  "path": null
+ },
+ {
+  "kind": "shot",
+  "id": "S5-21",
+  "file": "S5-21__After_fix_Employee_signed_on_screen.png",
+  "caption": "Sau khi nhân viên ký điện tử trên màn hình: \"You confirmed the reading\", không còn nút ký",
+  "time": "2026-10-31T19:23:35",
+  "user": "uat31.s2.qc.pass",
+  "path": null
+ },
+ {
+  "kind": "shot",
+  "id": "S5-22",
+  "file": "S5-22__After_fix_Activity_signatures_tab.png",
+  "caption": "Activity TRN/QA/26-950 đã Completed: tab Signatures có chữ ký điện tử của nhân viên (ký trên màn hình), trưởng bộ phận, người tổ chức, QA",
+  "time": "2026-10-31T19:24:33",
+  "user": "admin",
+  "path": "/training-management/activities/8f11ea1f-9b41-4de7-9f9b-6897cbfcbbdf"
+ },
+ {
+  "kind": "apd",
+  "id": "S5-23",
+  "file": "S5-23__APD0108_Quality_Control_signed_on_screen_after_fix.pdf",
+  "caption": "APD.0108 phòng Quality Control (TRN/QA/26-950): nhân viên ký điện tử trên màn hình + trưởng bộ phận xác nhận",
+  "time": "2026-10-31T19:24:36"
+ },
+ {
+  "kind": "shot",
+  "id": "S5-23",
+  "file": "S5-23__APD0108_Quality_Control_signed_on_screen_after_fix-p1.png",
+  "caption": "APD.0108 phòng Quality Control (TRN/QA/26-950): nhân viên ký điện tử trên màn hình + trưởng bộ phận xác nhận (trang 1/1)",
+  "time": "2026-10-31T19:24:36"
+ },
+ {
+  "kind": "shot",
+  "id": "F-07",
+  "file": "F-07__Supplementary_dialog_one_person_chosen.png",
+  "caption": "Hộp thoại Supplementary Training: đã chọn 1 người (dấu tick, nút \"Create (1)\" sáng), đã nhập lý do",
+  "time": "2026-10-31T22:56:46",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "kind": "shot",
+  "id": "F-06",
+  "file": "F-06__Supplementary_dialog_list_like_reviewers.png",
+  "caption": "Hộp thoại Supplementary Training của TRN/QA/26-951: danh sách dạng thẻ giống hộp chọn Reviewer/Approver (số thứ tự → dấu tick khi chọn, tên + nhãn Absent/Failed, mã NV • chức danh • bộ phận)",
+  "time": "2026-10-31T23:03:29",
+  "user": "admin",
+  "path": "/training-management/activities/cb654097-a08a-41d2-8dbf-6c04220984b8/conduct"
+ },
+ {
+  "kind": "apd",
+  "id": "F-01",
+  "file": "F-01__APD0117_external_trainer_session_01_signature_meaning.pdf",
+  "caption": "APD.0117 của TRN/QA/26-951: Session \"01\" (không còn SS01), người đào tạo \"External Trainer (Nguyen Van Minh)\", ý nghĩa chữ ký \"Attendance Has Been Taken\"",
+  "time": "2026-10-31T23:04:18"
+ },
+ {
+  "kind": "shot",
+  "id": "F-01",
+  "file": "F-01__APD0117_external_trainer_session_01_signature_meaning-p1.png",
+  "caption": "APD.0117 của TRN/QA/26-951: Session \"01\" (không còn SS01), người đào tạo \"External Trainer (Nguyen Van Minh)\", ý nghĩa chữ ký \"Attendance Has Been Taken\" (trang 1/2)",
+  "time": "2026-10-31T23:04:18"
+ },
+ {
+  "kind": "shot",
+  "id": "F-01",
+  "file": "F-01__APD0117_external_trainer_session_01_signature_meaning-p2.png",
+  "caption": "APD.0117 của TRN/QA/26-951: Session \"01\" (không còn SS01), người đào tạo \"External Trainer (Nguyen Van Minh)\", ý nghĩa chữ ký \"Attendance Has Been Taken\" (trang 2/2)",
+  "time": "2026-10-31T23:04:19"
+ },
+ {
+  "kind": "apd",
+  "id": "F-02",
+  "file": "F-02__APD0117_absent_person_make_up_failed.pdf",
+  "caption": "APD.0117 của TRN/QA/26-951: người vắng đã đào tạo bù nhưng không đạt — kết quả ghi ở cột \"Kết quả đào tạo\", cột \"Kết quả đào tạo lại\" còn trống",
+  "time": "2026-10-31T23:04:22"
+ },
+ {
+  "kind": "shot",
+  "id": "F-02",
+  "file": "F-02__APD0117_absent_person_make_up_failed-p1.png",
+  "caption": "APD.0117 của TRN/QA/26-951: người vắng đã đào tạo bù nhưng không đạt — kết quả ghi ở cột \"Kết quả đào tạo\", cột \"Kết quả đào tạo lại\" còn trống (trang 1/2)",
+  "time": "2026-10-31T23:04:22"
+ },
+ {
+  "kind": "shot",
+  "id": "F-02",
+  "file": "F-02__APD0117_absent_person_make_up_failed-p2.png",
+  "caption": "APD.0117 của TRN/QA/26-951: người vắng đã đào tạo bù nhưng không đạt — kết quả ghi ở cột \"Kết quả đào tạo\", cột \"Kết quả đào tạo lại\" còn trống (trang 2/2)",
+  "time": "2026-10-31T23:04:22"
+ },
+ {
+  "kind": "apd",
+  "id": "F-03",
+  "file": "F-03__APD0117_absent_person_make_up_failed_then_passed.pdf",
+  "caption": "APD.0117 của TRN/QA/26-951: người vắng — đào tạo bù không đạt (cột \"Kết quả đào tạo\") rồi đào tạo lại đạt (cột \"Kết quả đào tạo lại\")",
+  "time": "2026-10-31T23:04:30"
+ },
+ {
+  "kind": "shot",
+  "id": "F-03",
+  "file": "F-03__APD0117_absent_person_make_up_failed_then_passed-p1.png",
+  "caption": "APD.0117 của TRN/QA/26-951: người vắng — đào tạo bù không đạt (cột \"Kết quả đào tạo\") rồi đào tạo lại đạt (cột \"Kết quả đào tạo lại\") (trang 1/2)",
+  "time": "2026-10-31T23:04:30"
+ },
+ {
+  "kind": "shot",
+  "id": "F-03",
+  "file": "F-03__APD0117_absent_person_make_up_failed_then_passed-p2.png",
+  "caption": "APD.0117 của TRN/QA/26-951: người vắng — đào tạo bù không đạt (cột \"Kết quả đào tạo\") rồi đào tạo lại đạt (cột \"Kết quả đào tạo lại\") (trang 2/2)",
+  "time": "2026-10-31T23:04:30"
+ },
+ {
+  "kind": "shot",
+  "id": "F-04",
+  "file": "F-04__Revision_details_training_details_buttons.png",
+  "caption": "Revision Details (SOP.10407 rev 2, Effective): nút outline-emerald \"Training Details\" bên phải nút Back ở header và ở footer; số đào tạo của revision là TRN/QC/26-003",
+  "time": "2026-10-31T23:04:45",
+  "user": "admin",
+  "path": "/documents/revisions/ed9480ae-5146-42ec-ae69-de341d5e18dc"
+ },
+ {
+  "kind": "shot",
+  "id": "F-05",
+  "file": "F-05__Training_activity_opened_from_revision.png",
+  "caption": "Sau khi bấm \"Training Details\": mở đúng Training Activity TRN/QC/26-003 (số đào tạo của revision)",
+  "time": "2026-10-31T23:04:51",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "kind": "shot",
+  "id": "F-08",
+  "file": "F-08__Workspace_assessment_materials_new_look.png",
+  "caption": "Session Workspace, bước Assessment: \"Assessment Materials\" có cùng giao diện với tab Assessment (thẻ file có biểu tượng, nút xem/tải bằng icon, ô Answer Key nét đứt)",
+  "time": "2026-10-31T23:05:06",
+  "user": "admin",
+  "path": "/training-management/activities/daaa31a0-1bee-4593-be6f-8b6b45969e60/sessions/5df328ea-2cc9-4a03-a5f5-f48c580d44f6/workspace"
+ },
+ {
+  "kind": "shot",
+  "id": "F-09",
+  "file": "F-09__Activity_assessment_tab_for_comparison.png",
+  "caption": "Tab Assessment của cùng activity (để so sánh): giao diện \"Assessment Materials\" giống bước Assessment của Session Workspace",
+  "time": "2026-10-31T23:05:13",
+  "user": "admin",
+  "path": "/training-management/activities/daaa31a0-1bee-4593-be6f-8b6b45969e60"
+ },
+ {
+  "kind": "shot",
+  "id": "F-10",
+  "file": "F-10__Matrix_editor_rule_before_delete_column.png",
+  "caption": "Ma trận ở chế độ sửa (bản nháp): có đường kẻ dọc phân tách cột \"Annual training required\" và cột nút xoá (thùng rác)",
+  "time": "2026-10-31T23:08:48",
+  "user": "admin",
+  "path": "/training-management/matrix/ee30b617-b409-4a9f-9f64-e1c3a0524a76"
+ },
+ {
+  "kind": "apd",
+  "id": "F-11",
+  "file": "F-11__APD0011_eight_positions_landscape.pdf",
+  "caption": "APD.0011 ma trận Quality Control với 8 vị trí: giấy xoay ngang, tên vị trí nằm ngang",
+  "time": "2026-10-31T23:08:56"
+ },
+ {
+  "kind": "shot",
+  "id": "F-11",
+  "file": "F-11__APD0011_eight_positions_landscape-p1.png",
+  "caption": "APD.0011 ma trận Quality Control với 8 vị trí: giấy xoay ngang, tên vị trí nằm ngang (trang 1/2)",
+  "time": "2026-10-31T23:08:56"
+ },
+ {
+  "kind": "shot",
+  "id": "F-11",
+  "file": "F-11__APD0011_eight_positions_landscape-p2.png",
+  "caption": "APD.0011 ma trận Quality Control với 8 vị trí: giấy xoay ngang, tên vị trí nằm ngang (trang 2/2)",
+  "time": "2026-10-31T23:08:56"
+ },
+ {
+  "kind": "shot",
+  "id": "F-10b",
+  "file": "F-10b__Matrix_effective_8_positions.png",
+  "caption": "Ma trận Quality Control (Effective) với 8 vị trí công việc",
+  "time": "2026-10-31T23:09:03",
+  "user": "admin",
+  "path": "/training-management/matrix/ee30b617-b409-4a9f-9f64-e1c3a0524a76"
+ },
+ {
+  "kind": "apd",
+  "id": "F-13",
+  "file": "F-13__APD0024_staff_receiver_head_of_department.pdf",
+  "caption": "APD.0024 bổ nhiệm Mai Văn Tâm (nhân viên): ô Assignor ghi trưởng đơn vị của nhân viên (Tạ Văn Hùng (UAT)); không in hai ghi chú của biểu mẫu",
+  "time": "2026-10-31T23:09:06"
+ },
+ {
+  "kind": "shot",
+  "id": "F-13",
+  "file": "F-13__APD0024_staff_receiver_head_of_department-p1.png",
+  "caption": "APD.0024 bổ nhiệm Mai Văn Tâm (nhân viên): ô Assignor ghi trưởng đơn vị của nhân viên (Tạ Văn Hùng (UAT)); không in hai ghi chú của biểu mẫu (trang 1/2)",
+  "time": "2026-10-31T23:09:06"
+ },
+ {
+  "kind": "shot",
+  "id": "F-13",
+  "file": "F-13__APD0024_staff_receiver_head_of_department-p2.png",
+  "caption": "APD.0024 bổ nhiệm Mai Văn Tâm (nhân viên): ô Assignor ghi trưởng đơn vị của nhân viên (Tạ Văn Hùng (UAT)); không in hai ghi chú của biểu mẫu (trang 2/2)",
+  "time": "2026-10-31T23:09:06"
+ },
+ {
+  "kind": "apd",
+  "id": "F-14",
+  "file": "F-14__APD0024_head_receiver_title_of_assignor.pdf",
+  "caption": "APD.0024 bổ nhiệm trưởng phòng QC: ô Assignor ghi chức danh của người giao việc (QA Manager)",
+  "time": "2026-10-31T23:09:42"
+ },
+ {
+  "kind": "shot",
+  "id": "F-14",
+  "file": "F-14__APD0024_head_receiver_title_of_assignor-p1.png",
+  "caption": "APD.0024 bổ nhiệm trưởng phòng QC: ô Assignor ghi chức danh của người giao việc (QA Manager) (trang 1/1)",
+  "time": "2026-10-31T23:09:42"
+ },
+ {
+  "kind": "apd",
+  "id": "F-15",
+  "file": "F-15__APD0014_qualification_highest_degree.pdf",
+  "caption": "APD.0014 hồ sơ đào tạo cá nhân của Mai Văn Tâm: \"Trình độ chuyên môn\" = bằng cao nhất (Thạc sĩ), dù có bằng Cao đẳng (2016) và Đại học (2020) mới hơn",
+  "time": "2026-10-31T23:09:54"
+ },
+ {
+  "kind": "shot",
+  "id": "F-15",
+  "file": "F-15__APD0014_qualification_highest_degree-p1.png",
+  "caption": "APD.0014 hồ sơ đào tạo cá nhân của Mai Văn Tâm: \"Trình độ chuyên môn\" = bằng cao nhất (Thạc sĩ), dù có bằng Cao đẳng (2016) và Đại học (2020) mới hơn (trang 1/1)",
+  "time": "2026-10-31T23:09:54"
+ },
+ {
+  "kind": "apd",
+  "id": "F-16",
+  "file": "F-16__APD0024_names_notes_kept_no_dots.pdf",
+  "caption": "APD.0024: cấp trên / cấp dưới / người thay thế là tên người dùng dạng \"Tên (Chức vụ)\"; Quyền hạn đã điền nên bỏ các dòng chấm; hai ghi chú cuối biểu mẫu được giữ nguyên",
+  "time": "2026-10-31T23:29:52"
+ },
+ {
+  "kind": "shot",
+  "id": "F-16",
+  "file": "F-16__APD0024_names_notes_kept_no_dots-p1.png",
+  "caption": "APD.0024: cấp trên / cấp dưới / người thay thế là tên người dùng dạng \"Tên (Chức vụ)\"; Quyền hạn đã điền nên bỏ các dòng chấm; hai ghi chú cuối biểu mẫu được giữ nguyên (trang 1/1)",
+  "time": "2026-10-31T23:29:52"
+ },
+ {
+  "kind": "shot",
+  "id": "F-17",
+  "file": "F-17__Job_assignment_people_pickers.png",
+  "caption": "Job Assignment bản nháp: Cấp trên / Cấp dưới / Người thay thế chọn người dùng, hiển thị \"Tên (Chức vụ)\"",
+  "time": "2026-10-31T23:30:03",
+  "user": "admin",
+  "path": "/training-management/job-assignments/9ed33d20-79c2-4311-bfa2-f32f54304eaf"
+ },
+ {
+  "kind": "shot",
+  "id": "F-18",
+  "file": "F-18__Direct_superior_dropdown_Name_Position.png",
+  "caption": "Mở danh sách chọn \"Job title of direct superior\": mỗi người hiển thị dạng \"Tên (Chức vụ)\"",
+  "time": "2026-10-31T23:30:06",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "kind": "shot",
+  "id": "Q-1",
+  "file": "Q-1__search_944a.png",
+  "caption": "q",
+  "time": "2026-10-31T23:37:05",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "kind": "shot",
+  "id": "F-19",
+  "file": "F-19__Requirement_lines_status_of_activity.png",
+  "caption": "Training Requirement Details, tab Lines: cột Status hiện trạng thái thật của activity (TRN/QA/26-034 = Planned, giống trang Training Activity Details)",
+  "time": "2026-10-31T23:47:38",
+  "user": "admin",
+  "path": "/training-management/requirements/82ba7e2a-bfeb-42f3-9c04-47a2a5085597"
+ },
+ {
+  "kind": "shot",
+  "id": "F-20",
+  "file": "F-20__My_Training_redirects_to_My_Tasks.png",
+  "caption": "Địa chỉ cũ /my-training chuyển sang My Tasks; menu My Training có hai mục con My Tasks và My Records",
+  "time": "2026-11-01T00:08:06",
+  "user": "admin",
+  "path": "/training-management/my-training"
+ },
+ {
+  "kind": "shot",
+  "id": "F-21",
+  "file": "F-21__My_Records_copies_tab.png",
+  "caption": "My Records: hai tab My Records và Copies Received (đang ở Copies Received); không có nút Check in",
+  "time": "2026-11-01T00:08:11",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "kind": "shot",
+  "id": "F-22",
+  "file": "F-22__My_Tasks_pending_signature_tab.png",
+  "caption": "My Tasks: hai tab To Do và Pending My Signature (đang ở Pending My Signature), có nút Check in",
+  "time": "2026-11-01T00:08:16",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "kind": "shot",
+  "id": "F-23",
+  "file": "F-23__Sidebar_badge_My_Tasks.png",
+  "caption": "Sidebar: mục My Tasks (và nhóm My Training) có badge số việc đang chờ",
+  "time": "2026-11-01T00:14:10",
+  "user": "admin",
+  "path": "/training-management/my-training/tasks"
+ },
+ {
+  "kind": "shot",
+  "id": "F-26",
+  "file": "F-26__Training_properties_file_names.png",
+  "caption": "Training Properties, tab File Names: mỗi biểu mẫu một mẫu tên file, ví dụ kết quả, các biến {FILE_CODE}..., nút Default",
+  "time": "2026-11-01T00:28:11",
+  "user": "admin",
+  "path": "/settings/administration/training/properties?tab=files"
+ },
+ {
+  "kind": "shot",
+  "id": "F-27",
+  "file": "F-27__Legacy_evidence_columns.png",
+  "caption": "Legacy Training Evidence: các cột Training Number, Document Number, Document Name, Document Revision",
+  "time": "2026-11-01T15:11:23",
+  "user": "admin",
+  "path": "/training-management/legacy-evidence"
+ },
+ {
+  "kind": "shot",
+  "id": "F-28",
+  "file": "F-28__Legacy_evidence_menu.png",
+  "caption": "Menu thao tác của một dòng có bản scan: View Scan, Download the scan",
+  "time": "2026-11-01T15:11:32",
+  "user": "admin",
+  "path": "/training-management/legacy-evidence"
+ },
+ {
+  "kind": "shot",
+  "id": "F-29",
+  "file": "F-29__Legacy_evidence_view_scan.png",
+  "caption": "View Scan: bản scan mở trong cửa sổ xem PDF của hệ thống, có nút Download",
+  "time": "2026-11-01T15:11:48",
+  "user": "admin",
+  "path": "/training-management/legacy-evidence"
+ },
+ {
+  "kind": "shot",
+  "id": "F-30",
+  "file": "F-30__Legacy_evidence_view_scan_image.png",
+  "caption": "View Scan của một bản scan dạng ảnh PNG/JPEG: ảnh hiện trong cửa sổ, có nút Download",
+  "time": "2026-11-01T15:12:04",
+  "user": "admin",
+  "path": "/training-management/legacy-evidence"
+ },
+ {
+  "kind": "shot",
+  "id": "F-41",
+  "file": "F-41__Legacy_import_form_top.png",
+  "caption": "Form Legacy Import (đầu trang)",
+  "time": "2026-11-01T15:43:48",
+  "user": "admin",
+  "path": "/documents/all/legacy-import"
+ },
+ {
+  "kind": "shot",
+  "id": "F-38",
+  "file": "F-38__Legacy_evidence_shared_number.png",
+  "caption": "Legacy Training Evidence: một Training Number dùng chung cho 3 tài liệu, cột Persons Trained, trạng thái Verified",
+  "time": "2026-11-01T15:52:06",
+  "user": "admin",
+  "path": "/training-management/legacy-evidence"
+ },
+ {
+  "kind": "shot",
+  "id": "F-39",
+  "file": "F-39__Legacy_activity_detail.png",
+  "caption": "Chi tiết activity lịch sử (Paper Training - Legacy Import): Training Number giấy, tài liệu dùng chung số, ngày hoàn thành, không có buổi học",
+  "time": "2026-11-01T15:52:15",
+  "user": "admin",
+  "path": "/training-management/activities/99241a77-c22b-4e90-8083-b0cc652b4af2"
+ },
+ {
+  "kind": "shot",
+  "id": "F-40",
+  "file": "F-40__Activities_list_legacy_type.png",
+  "caption": "Training Activities: activity lịch sử có loại Paper Training (Legacy Import)",
+  "time": "2026-11-01T15:52:26",
+  "user": "admin",
+  "path": "/training-management/activities"
+ },
+ {
+  "kind": "shot",
+  "id": "F-41",
+  "file": "F-41__Legacy_import_form_training_evidence.png",
+  "caption": "Form Legacy Import, tab Revision History: khối Paper training record (Training Number dùng chung đã có bằng chứng thì chỉ hiện thông báo)",
+  "time": "2026-11-01T15:52:48",
+  "user": "admin",
+  "path": "/documents/all/legacy-import"
+ },
+ {
+  "kind": "shot",
+  "id": "F-42",
+  "file": "F-42__Legacy_import_form_new_number.png",
+  "caption": "Form Legacy Import với Training Number mới: ô scan APD.0108/0117 (cảnh báo không xóa được), danh sách người học (giao diện như bước Training của tài liệu thường), người xác nhận",
+  "time": "2026-11-01T15:53:14",
+  "user": "admin",
+  "path": "/documents/all/legacy-import"
+ },
+ {
+  "kind": "shot",
+  "id": "F-47",
+  "file": "F-47__Legacy_evidence_links.png",
+  "caption": "Legacy Training Evidence: Training Number, Document Number và Document Revision là liên kết sang màn chi tiết",
+  "time": "2026-11-01T17:01:38",
+  "user": "admin",
+  "path": "/training-management/legacy-evidence"
+ },
+ {
+  "kind": "shot",
+  "id": "F-48",
+  "file": "F-48__Legacy_scan_window_from_the_store.png",
+  "caption": "View Scan: bản scan thật đọc từ kho lưu (không giả lập), cửa sổ chỉ còn một nút Close, không có nút Download",
+  "time": "2026-11-01T17:01:58",
+  "user": "admin",
+  "path": "/training-management/legacy-evidence"
+ },
+ {
+  "kind": "shot",
+  "id": "F-49",
+  "file": "F-49__Legacy_activity_mode_trainer.png",
+  "caption": "Activity lịch sử: Training Topic, Mode và Trainer lấy từ bản giấy",
+  "time": "2026-11-01T17:02:06",
+  "user": "admin",
+  "path": "/training-management/activities/9d1cb525-7bc5-4d0c-9138-0d1d2c8bf6be"
+ },
+ {
+  "kind": "shot",
+  "id": "F-50",
+  "file": "F-50__Legacy_persons_trained_tab.png",
+  "caption": "Tab Persons Trained của activity lịch sử: người học trên giấy và người ký, bản ghi đào tạo đã ghi sau khi người xác nhận ký",
+  "time": "2026-11-01T17:02:20",
+  "user": "admin",
+  "path": "/training-management/activities/9d1cb525-7bc5-4d0c-9138-0d1d2c8bf6be"
+ },
+ {
+  "kind": "shot",
+  "id": "F-51",
+  "file": "F-51__Number_counters_tab.png",
+  "caption": "Training Properties, tab Number Counters: bộ đếm số của từng phòng ban và năm, nút Raise Counter",
+  "time": "2026-11-01T17:02:30",
+  "user": "admin",
+  "path": "/settings/administration/training/properties?tab=numbers"
+ },
+ {
+  "kind": "shot",
+  "id": "F-52",
+  "file": "F-52__Legacy_form_topic_trainer_mode.png",
+  "caption": "Form Legacy Import (đã tách file): Training Topic, Trainer, Mode, ô scan, người học, người xác nhận",
+  "time": "2026-11-01T17:02:53",
+  "user": "admin",
+  "path": "/documents/all/legacy-import"
+ },
+ {
+  "kind": "shot",
+  "id": "F-53",
+  "file": "F-53__Legacy_training_requirement_tab.png",
+  "caption": "Tab Training Requirement của Legacy Import: không còn khối List of participants trống, có dòng chỉ dẫn nơi chọn người học",
+  "time": "2026-11-01T17:03:08",
+  "user": "admin",
+  "path": "/documents/all/legacy-import"
+ },
+ {
+  "kind": "shot",
+  "id": "F-61",
+  "file": "F-61__Imported_revision_details.png",
+  "caption": "Revision Details của tài liệu vừa nhập từ giấy: nút Training Details, trạng thái Effective",
+  "time": "2026-11-01T19:57:26",
+  "user": "admin",
+  "path": "/documents/revisions/722a5d6f-0508-4466-944c-cc30c3290ecd"
+ },
+ {
+  "kind": "shot",
+  "id": "F-62",
+  "file": "F-62__Imported_document_details.png",
+  "caption": "Document Details của tài liệu nhập từ giấy",
+  "time": "2026-11-01T19:57:39",
+  "user": "admin",
+  "path": "/documents/87c8f2fa-bedc-4c78-b154-a71cc2931434"
+ },
+ {
+  "kind": "shot",
+  "id": "F-63",
+  "file": "F-63__Legacy_form_empty_publish.png",
+  "caption": "Form Legacy Import để trống, bấm Publish Document: báo thiếu thông tin",
+  "time": "2026-11-01T19:57:48",
+  "user": "admin",
+  "path": "/documents/all/legacy-import"
+ },
+ {
+  "kind": "shot",
+  "id": "F-64",
+  "file": "F-64__Legacy_form_template.png",
+  "caption": "Form Legacy Import khi chọn Is Template: tab Training Requirement biến mất",
+  "time": "2026-11-01T19:57:57",
+  "user": "admin",
+  "path": "/documents/all/legacy-import"
+ }
+]

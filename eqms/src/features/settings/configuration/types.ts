@@ -53,6 +53,8 @@ export interface AppearanceSettings {
   authBackground?: PageBackground | null;
   alternatingRecordColors?: boolean;
   alternatingRecordColor?: string;
+  /** Vertical lines between the columns of every table. */
+  tableColumnDividers?: boolean;
   /** Desktop Search + two-column draft filter panel. */
   compactDesktopFilters?: boolean;
   /** Where system toast notifications appear. Machine values only; labels live in GeneralTab. */
@@ -72,6 +74,35 @@ export interface AppearanceSettings {
   showBreadcrumbs: boolean;
   sidebarDefaultCollapsed: boolean;
   animationsEnabled: boolean;
+}
+
+/** How the stamp on one kind of uploaded picture looks (Image Watermark tab). Missing values mean the defaults of that tab. */
+export interface ImageWatermarkSettings {
+  /** Stamp every picture uploaded for this purpose. */
+  enabled?: boolean;
+  showLogo?: boolean;
+  /** SYSTEM = the system logo of the General tab; CUSTOM = the picture in logoData. */
+  logoSource?: 'SYSTEM' | 'CUSTOM';
+  /** PNG or JPEG data URL, up to 2 MB, used when logoSource is CUSTOM. */
+  logoData?: string;
+  /** The name of the signed-in user who uploads. */
+  showUploadedBy?: boolean;
+  /** The time of the upload, as the server clock gives it. */
+  showUploadedAt?: boolean;
+  position?: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT';
+  /** Width of the whole stamp as a share of the picture width, 5 to 40. */
+  sizePercent?: number;
+  /** How solid the stamp is, 10 to 100. */
+  opacityPercent?: number;
+  /** Distance from the edge as a share of the shorter side of the picture, 0 to 10. */
+  marginPercent?: number;
+  /** A light panel behind the stamp so the text can be read on a dark picture. */
+  textBackground?: boolean;
+}
+
+export interface ImageWatermarkConfig {
+  controlledCopyEvidence?: ImageWatermarkSettings;
+  specimenSignature?: ImageWatermarkSettings;
 }
 
 export interface GeneralConfig {
@@ -105,6 +136,8 @@ export interface GeneralConfig {
   backupSettings: BackupSettings;
   locale: LocaleSettings;
   appearance: AppearanceSettings;
+  /** Stamp on pictures uploaded as evidence or as specimen signatures. */
+  imageWatermark?: ImageWatermarkConfig;
 }
 
 export interface SecurityConfig {

@@ -157,16 +157,9 @@ def self_reading_form():
         check('FM9 it names the person who read', 'Trainee' in txt or 'trainee' in txt.lower(), txt[:200])
     code, b = get(admin, f'/training/sessions/{sid}/self-reading-list?format=pdf')
     check('FM10 the self-reading list is also a PDF', code == 200 and b[:4] == b'%PDF', (code, b[:80]))
+    # owner decision 2026-10-31 (TRAINING-SELFREAD-ELECTRONIC): APD.0108 is signed in the system, so it has no paper print and no copy number any more
     code, b1 = admin.call('POST', f'/training/sessions/{sid}/self-reading-list/paper', {'format': 'pdf', 'reason': 'UAT-2026'}, raw=True)
-    code2, b2 = admin.call('POST', f'/training/sessions/{sid}/self-reading-list/paper', {'format': 'pdf', 'reason': 'UAT-2026'}, raw=True)
-    check('FM11 the paper print is a PDF', code == 200 and b1[:4] == b'%PDF', (code, b1[:80]))
-    check('FM12 each paper print is a numbered copy, so two prints differ', code2 == 200 and b1 != b2)
-    t = pdf_text(b1) if code == 200 else None
-    if t is not None:
-        check('FM13 the paper print shows a copy number', bool(re.search(r'(?i)copy|bản', t)), t[:200])
-    code, b = admin.call('POST', f'/training/sessions/{sid}/self-reading-list/paper', {'format': 'pdf'}, raw=True)
-    check('FM14 a paper print needs a reason (or is refused otherwise)', code in (200, 400), code)  # recorded; see the change record for the observed behaviour
-    print('   paper print without a reason:', code)
+    check('FM11 the paper print of the self-reading list no longer exists', code in (404, 405), (code, b1[:80]))
     code, b = get(nopower, f'/training/sessions/{sid}/self-reading-list?format=docx')
     check('FM15 a person without the right cannot export the list of another', code in (401, 403, 404), (code, b[:100]))
 
@@ -186,7 +179,7 @@ def attendance_form():
 
 
 def job_assignment_form():
-    rows = sql("select id from training_job_assignments order by created_at desc limit 1")
+    rows = sql("select id from training_job_assignments where status = 'EFFECTIVE' order by created_at desc limit 1")
     if not rows:
         return notrun('FM19.. job assignment form', 'no job assignment on DEV')
     jid = rows[0][0]
@@ -194,13 +187,17 @@ def job_assignment_form():
     code, b = get(admin, f'/training/job-assignments/{jid}/export?format=docx')
     check('FM19 the job assignment form (APD.0024) is a Word file', code == 200 and b[:2] == b'PK', (code, b[:80]))
     code, b = get(admin, f'/training/job-assignments/{jid}/export?format=pdf')
+    cancelled = sql("select id from training_job_assignments where status = 'CANCELLED' order by created_at desc limit 1")
+    if cancelled:
+        c2, b2 = get(admin, f'/training/job-assignments/{cancelled[0][0]}/export?format=docx')
+        check('FM20a a cancelled job assignment has no form to export (TRAINING_PRINT_NOT_APPROVED)', c2 == 409 and b'TRAINING_PRINT_NOT_APPROVED' in b2, (c2, b2[:160]))
     check('FM20 the job assignment form is also a PDF', code == 200 and b[:4] == b'%PDF', (code, b[:80]))
     if open_:
         code, b = admin.call('POST', f'/training/job-assignments/{open_[0][0]}/paper', {'format': 'pdf', 'reason': 'UAT-2026'}, raw=True)
         check('FM21 the paper print of an open job assignment (Draft or Pending Receiver) is a PDF', code == 200 and b[:4] == b'%PDF', (code, b[:80]))
     else:
         notrun('FM21 paper print of an open job assignment', 'no Draft or Pending Receiver job assignment on DEV')
-    done = sql("select id from training_job_assignments where status not in ('DRAFT','PENDING_RECEIVER') order by created_at desc limit 1")
+    done = sql("select id from training_job_assignments where status = 'EFFECTIVE' order by created_at desc limit 1")
     if done:
         code, b = admin.call('POST', f'/training/job-assignments/{done[0][0]}/paper', {'format': 'pdf', 'reason': 'UAT-2026'}, raw=True)
         check('FM22 a paper print of a job assignment that is no longer open is refused (TRAINING_PAPER_STATUS)', code == 409 and b'TRAINING_PAPER_S' in b, (code, b[:200]))

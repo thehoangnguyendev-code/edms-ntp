@@ -21,7 +21,7 @@ import {
 } from "@/services/api/electronicSignatureSettings";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TabNav } from "@/components/ui/tabs/TabNav";
-import { SignatureDisplayStyles } from "./SignatureDisplayStyles";
+import { SignatureDisplay } from "./SignatureDisplay";
 import { SignatureMeaningsTable } from "./SignatureMeaningsTable";
 import { IconCalendarTime } from "@tabler/icons-react";
 import { displayDateTime } from "@/utils/format";
@@ -34,7 +34,7 @@ const defaultSettings: ElectronicSignatureSettings = {
 
 const ESIGN_TABS = [
   { id: "timestamp", label: "Signature Timestamp" },
-  { id: "styles", label: "Signature Styles" },
+  { id: "display", label: "Signature Display" },
   { id: "meanings", label: "Signature Meanings" },
 ];
 
@@ -55,7 +55,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showTimestampWarning, setShowTimestampWarning] = useState(false);
-  const [tab, setTab] = useState<"timestamp" | "styles" | "meanings">("timestamp");
+  const [tab, setTab] = useState<"timestamp" | "display" | "meanings">("timestamp");
 
   const breadcrumbItems = useMemo(
     () => electronicSignatureSettingsBreadcrumbs(navigateTo),
@@ -252,7 +252,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
       </FormSection>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <TabNav tabs={ESIGN_TABS} activeTab={tab} onChange={(id) => setTab(id as "timestamp" | "styles" | "meanings")} ariaLabel="Electronic signature configuration" />
+        <TabNav tabs={ESIGN_TABS} activeTab={tab} onChange={(id) => setTab(id as "timestamp" | "display" | "meanings")} ariaLabel="Electronic signature configuration" />
         <div className="space-y-4 p-4 md:p-5">
           {tab === "timestamp" && (
             <>
@@ -302,7 +302,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
           </FormSection>
             </>
           )}
-          {tab === "styles" && <SignatureDisplayStyles />}
+          {tab === "display" && <SignatureDisplay />}
           {tab === "meanings" && (
             <SignatureMeaningsTable
               meanings={settings.meanings}

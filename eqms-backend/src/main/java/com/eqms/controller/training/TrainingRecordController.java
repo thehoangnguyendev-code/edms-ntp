@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import java.util.UUID;
 
-/** Personal training records, My Training, the Training Number log. */
+/** Personal training records, My Training, the Training Number Allocation Log. */
 @RestController
 @RequestMapping("/training")
 public class TrainingRecordController {
@@ -30,6 +30,10 @@ public class TrainingRecordController {
     @GetMapping("/me/participations/{participantId}")
     public ResponseEntity<?> myParticipation(@PathVariable UUID participantId) { return ResponseEntity.ok(records.myParticipation(users.requireCurrentUser(), participantId)); }
 
+    /** The department the lists open on: the one of the signed-in person. */
+    @GetMapping("/me/department")
+    public ResponseEntity<?> myDepartment() { return ResponseEntity.ok(records.myDepartment(users.requireCurrentUser())); }
+
     @GetMapping("/me/tasks")
     public ResponseEntity<?> myTasks() { return ResponseEntity.ok(Map.of("data", records.myTasks(users.requireCurrentUser()))); }
 
@@ -47,10 +51,10 @@ public class TrainingRecordController {
         return ResponseEntity.ok(records.voidRecord(users.requireCurrentUser(), id, request));
     }
 
-    @GetMapping("/number-log")
-    public ResponseEntity<?> numberLog(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) Integer year, @RequestParam(required = false) String search,
+    @GetMapping("/number-allocation-log")
+    public ResponseEntity<?> numberAllocationLog(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) Integer year, @RequestParam(required = false) String search,
                                        @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
                                   @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {
-        return ResponseEntity.ok(records.numberLog(users.requireCurrentUser(), departmentId, year, search, sortBy, sortDirection, page, limit));
+        return ResponseEntity.ok(records.numberAllocationLog(users.requireCurrentUser(), departmentId, year, search, sortBy, sortDirection, page, limit));
     }
 }

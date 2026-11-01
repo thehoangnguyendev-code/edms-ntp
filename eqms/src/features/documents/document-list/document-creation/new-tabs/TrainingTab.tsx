@@ -27,6 +27,8 @@ interface TrainingTabProps {
     /** The people chosen before the document has its training activity, and how they change. */
     pendingParticipants?: ProposedPerson[];
     onPendingParticipantsChange?: (people: ProposedPerson[]) => void;
+    /** The list of people proposed for the training of the document. A document imported from paper has no training that opens, so Legacy Import turns it off. */
+    showParticipants?: boolean;
 }
 
 export const TrainingTab: React.FC<TrainingTabProps> = ({
@@ -37,7 +39,8 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
     trainingLink,
     documentId,
     pendingParticipants,
-    onPendingParticipantsChange
+    onPendingParticipantsChange,
+    showParticipants = true
 }) => {
     const [confirmRemove, setConfirmRemove] = React.useState(false);
     const hasNumber = Boolean(trainingLink?.trainingNumber) && trainingLink?.status !== "CANCELLED";
@@ -129,7 +132,7 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                             )}
                         </div>
                     </div>
-                    <ProposedParticipantsField documentId={documentId} pending={pendingParticipants} onPendingChange={onPendingParticipantsChange} />
+                    {showParticipants && <ProposedParticipantsField documentId={documentId} pending={pendingParticipants} onPendingChange={onPendingParticipantsChange} />}
                 </div>
             ) : (
                 <div className="space-y-4">

@@ -39,6 +39,10 @@ public class SettingsUserController {
     private final FileStorageService fileStorageService;
     private final EmailService emailService;
 
+    /** The watermark and traceability of Settings > Configuration > Preview File, drawn on a PDF that is sent to be looked at . */
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.eqms.service.training.TrainingPreviewMarking previewMarking;
+
     public SettingsUserController(
             UserManagementService service,
             TimeLimitedUserGrantService timeLimitedUserGrantService,
@@ -649,6 +653,11 @@ public class SettingsUserController {
     public ResponseEntity<byte[]> downloadCertificationFile(@PathVariable UUID id, @PathVariable UUID certificationId) {
         requireUserView();
         var download = service.downloadCertificationFile(id, certificationId);
+        byte[] content = download.content();
+        // the file is sent inline to be looked at: a PDF carries the watermark of the preview settings
+        if (previewMarking != null && content != null && String.valueOf(download.fileName()).toLowerCase(java.util.Locale.ROOT).endsWith(".pdf")) {
+            content = previewMarking.mark(content, currentUserService.requireCurrentUser());
+        }
         org.springframework.http.MediaType mediaType;
         try {
             mediaType = org.springframework.util.StringUtils.hasText(download.contentType())
@@ -661,6 +670,6 @@ public class SettingsUserController {
                 .contentType(mediaType)
                 .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
                         "inline; filename=\"" + (download.fileName() == null ? "certificate" : download.fileName()) + "\"")
-                .body(download.content());
+                .body(content);
     }
 }

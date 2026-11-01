@@ -37,7 +37,7 @@ public class ElectronicSignaturePdfPreviewService {
                 sampleDocx,
                 PREVIEW_FILE_NAME,
                 null,
-                Map.of("approvedsignature", previewBlock),
+                Map.of("approved_signature", previewBlock),
                 true
         );
         return onlyOfficeDocumentEditService.convertLocalFileToPdf(rendered, PREVIEW_FILE_NAME);

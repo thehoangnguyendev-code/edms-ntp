@@ -19,6 +19,7 @@ import { dictionaryApi } from "@/services/api/dictionary";
 import { trainingError, trainingFollowUpApi, type TrainingImpactContext, type TrainingImpactRow } from "@/services/api/trainingActivities";
 import { Textarea } from "../shared/TrainingFields";
 import { ImpactPositionsTable } from "./ImpactPositionsTable";
+import { departmentOptions, useOwnDepartment } from "../shared/useOwnDepartment";
 import { useTrainingRowMenu } from "../shared/useTrainingRowMenu";
 import { STATUS_COLOR, STATUS_LABEL, statusChange, trainingBreadcrumbs, TRAINING_PAGES, when } from "../shared/trainingLabels";
 
@@ -36,11 +37,17 @@ const OUTCOME_LABEL: Record<string, string> = {
  * itself when an effective matrix of the department contains the document.
  */
 export function DocumentImpactAssessmentView() {
+  const own = useOwnDepartment();
+  if (!own.loaded) return <SectionLoading text="Loading…" />;
+  return <DocumentImpactAssessment ownDepartmentId={own.id} />;
+}
+
+function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string }) {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [status, setStatus] = usePersistedState("training.documentImpactAssessment.status", "OPEN");
   const [departments, setDepartments] = useState<{ label: string; value: string }[]>([]);
-  const [departmentId, setDepartmentId] = useState("");
+  const [departmentId, setDepartmentId] = useState(ownDepartmentId);
   const [activityStatus, setActivityStatus] = usePersistedState("training.documentImpactAssessment.activityStatus", "");
   const [error, setError] = useState("");
   const [assessing, setAssessing] = useState<{ row: TrainingImpactRow; context: TrainingImpactContext }>();
@@ -85,7 +92,7 @@ export function DocumentImpactAssessmentView() {
   ];
   const { layout, control } = useCustomColumnLayout("training.document.impact.assessment", columns, rowMenu.action);
   const filters: ReportSelectFilter[] = [
-    { id: "department", label: "Department", value: departmentId, options: [{ label: "My department", value: "" }, ...departments], onChange: (v) => { setDepartmentId(v); table.setCurrentPage(1); } },
+    { id: "department", label: "Department", value: departmentId, options: departmentOptions(departments, ownDepartmentId), onChange: (v) => { setDepartmentId(v); table.setCurrentPage(1); } },
     { id: "activityStatus", label: "Training Status", value: activityStatus, options: [{ label: "All statuses", value: "" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setActivityStatus(v); table.setCurrentPage(1); } },
     { id: "status", label: "Impact", value: status, options: [{ label: "All", value: "" }, { label: "Not done yet", value: "OPEN" }, ...Object.entries(IMPACT_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setStatus(v); table.setCurrentPage(1); } },
   ];

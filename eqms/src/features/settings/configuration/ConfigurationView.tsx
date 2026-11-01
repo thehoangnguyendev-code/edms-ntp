@@ -15,7 +15,7 @@ import { BROWSER_TAB_TITLE_STORAGE_KEY, SECURITY_CONFIG_STORAGE_KEY } from '@/co
 import { settingsApi } from '@/services/api/settings';
 import { useNetworkAccessDraft } from './useNetworkAccessDraft';
 import { usePermissions } from '@/hooks/usePermissions';
-import { IconDragDrop, IconFileIsr, IconPlugConnected, IconSettings2 } from '@tabler/icons-react';
+import { IconDragDrop, IconFileIsr, IconPhoto, IconPlugConnected, IconSettings2 } from '@tabler/icons-react';
 
 const GeneralTab = lazy(() => import('./tabs/GeneralTab').then(m => ({ default: m.GeneralTab })));
 const DashboardRoleDefaults = lazy(() => import('./tabs/DashboardRoleDefaults').then(m => ({ default: m.DashboardRoleDefaults })));
@@ -28,8 +28,9 @@ const StorageUsagePanel = lazy(() => import('./tabs/StorageUsagePanel').then(m =
 const NetworkAccessPanel = lazy(() => import('./tabs/NetworkAccessPanel').then(m => ({ default: m.NetworkAccessPanel })));
 const PreviewFileTab = lazy(() => import('./tabs/PreviewFileTab').then(m => ({ default: m.PreviewFileTab })));
 const FeaturesTab = lazy(() => import('./tabs/FeaturesTab').then(m => ({ default: m.FeaturesTab })));
+const ImageWatermarkTab = lazy(() => import('./tabs/ImageWatermarkTab').then(m => ({ default: m.ImageWatermarkTab })));
 
-type TabId = 'general' | 'navigation' | 'security' | 'notification' | 'integration' | 'preview' | 'features';
+type TabId = 'general' | 'navigation' | 'security' | 'notification' | 'integration' | 'preview' | 'watermark' | 'features';
 
 const TABS = [
   {
@@ -61,6 +62,11 @@ const TABS = [
     id: 'preview' as TabId,
     label: 'Preview File',
     icon: IconFileIsr,
+  },
+  {
+    id: 'watermark' as TabId,
+    label: 'Image Watermark',
+    icon: IconPhoto,
   },
   {
     id: 'features' as TabId,
@@ -99,7 +105,7 @@ export const ConfigurationView: React.FC = () => {
   const [isMountLoading, setIsMountLoading] = useState(true);
   const getTabFromSearch = (search: string): TabId => {
     const tab = new URLSearchParams(search).get('tab');
-    if (tab === 'general' || tab === 'navigation' || tab === 'security' || tab === 'notification' || tab === 'integration' || tab === 'preview' || tab === 'features') {
+    if (tab === 'general' || tab === 'navigation' || tab === 'security' || tab === 'notification' || tab === 'integration' || tab === 'preview' || tab === 'watermark' || tab === 'features') {
       return tab;
     }
     return 'general';
@@ -325,6 +331,8 @@ export const ConfigurationView: React.FC = () => {
             onDocumentsChange={(val) => handleConfigChange('documents', val)}
           />
         );
+      case 'watermark':
+        return <ImageWatermarkTab config={config.general} onChange={(val) => handleConfigChange('general', val)} />;
       case 'features':
         return <FeaturesTab features={config.features} onChange={(val) => handleConfigChange('features', val)} />;
       default:

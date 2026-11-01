@@ -148,10 +148,6 @@ public class TrainingAttendanceListService {
         return value == null ? "" : String.valueOf(value);
     }
 
-    private static String signedAt(Object when) {
-        return when == null ? "" : "Ký điện tử / Signed electronically " + DateTimeFormatUtils.formatDateTime(when);
-    }
-
     private static String kind(Map<String, Object> activity) {
         String reason = text(activity.get("kind_reason"));
         return switch (text(activity.get("kind"))) {
@@ -214,7 +210,7 @@ public class TrainingAttendanceListService {
             case "ONLINE" -> "Trực tuyến / Online";
             case "READ_CONFIRMED" -> "Đã đọc, ký điện tử / Read, signed electronically";
             case "ATTENDED" -> "NAME_ONLY".equals(text(p.get("participation_role"))) && "NONE".equals(mode) ? "Không ký, chỉ ghi tên / Not signed, listed only"
-                    : "SELF".equals(mode) ? (p.get("attend_signature_id") != null ? "Ký điện tử khi điểm danh / Signed at check-in" : "Điểm danh điện tử / Checked in") : "ESIGN".equals(mode) ? "Ký điện tử / Signed electronically" : "Có mặt / Present";
+                    : "SELF".equals(mode) ? (p.get("attend_signature_id") != null ? "Ký điện tử khi điểm danh / Signed at check-in" : "Điểm danh điện tử / Checked in") : "Có mặt / Present";
             default -> p.get("planned_absence") != null ? "Vắng mặt (đã báo) / Absent (planned)" : "";
         };
     }
@@ -273,7 +269,7 @@ public class TrainingAttendanceListService {
                 int no = 1;
                 for (Map<String, Object> p : d.people().get(s.get("id"))) {
                     UUID person = (UUID) p.get("person_user_id");
-                    lines.add(List.of(String.valueOf(no++), text(p.get("employee_code")), text(p.get("full_name")), text(p.get("department")), signature(p),
+                    lines.add(List.of(String.valueOf(no++), text(p.get("employee_code")), text(p.get("full_name")), text(p.get("department")), String.join("\n", attendanceSignature(p, s)),
                             finished ? resultColumns(p, person, d.retraining())[0] : "", finished ? resultColumns(p, person, d.retraining())[1] : ""));
                 }
                 fillRows(lists.get(i), lines);
@@ -364,10 +360,13 @@ public class TrainingAttendanceListService {
         return signature(p).isEmpty() ? List.of() : List.of(signature(p));
     }
 
-    /** In the column "Signature" the meaning of the signature is the same whoever took the attendance (the trainee at check-in or the trainer on their behalf): "Attendance Has Been Taken". */
+    /** In the column "Signature" the meaning of the signature is the same whoever took the attendance (the trainee at check-in or the trainer on their behalf): "Attendance Has Been Taken" (Electronically attendance has been taken). */
     static List<String> taken(List<String> lines) {
         List<String> out = new ArrayList<>();
-        for (String line : lines) out.add(line.replace("Attendance List Sent to QA", "Attendance Has Been Taken").replace("Attendance Confirmed by Trainee", "Attendance Has Been Taken").replace("Attendance Confirmed by Trainer", "Attendance Has Been Taken"));
+        for (String line : lines) {
+            String meaning = line.startsWith("Electronically ") ? "attendance has been taken" : "Attendance Has Been Taken";
+            out.add(line.replaceAll("(?i)Attendance List Sent to QA|Attendance Confirmed by Trainee|Attendance Confirmed by Trainer", meaning));
+        }
         return out;
     }
 

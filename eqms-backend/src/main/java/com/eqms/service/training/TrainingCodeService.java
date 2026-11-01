@@ -10,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +60,36 @@ public class TrainingCodeService {
             out.add(m);
         }
         return out;
+    }
+
+    /**
+     * One page of the rules for the list: searched, filtered, sorted and cut on the server. The label, the example and the rule that is still the default are not columns, so the three rules
+     * are read and worked on here; the list is fixed and small.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> rulesPage(UserAccount actor, String search, String entity, String changed, String sortBy, String sortDirection, int page, int limit) {
+        List<Map<String, Object>> rows = new ArrayList<>(rules(actor));
+        String needle = search == null ? "" : search.trim().toLowerCase(java.util.Locale.ROOT);
+        rows.removeIf(r -> {
+            if (entity != null && !entity.isBlank() && !entity.equals(r.get("entity"))) return true;
+            boolean isChanged = r.get("updatedAt") != null;
+            if ("CHANGED".equals(changed) && !isChanged) return true;
+            if ("DEFAULT".equals(changed) && isChanged) return true;
+            if (needle.isEmpty()) return false;
+            return java.util.stream.Stream.of("label", "pattern", "example", "updatedByName").noneMatch(k -> r.get(k) != null && String.valueOf(r.get(k)).toLowerCase(java.util.Locale.ROOT).contains(needle));
+        });
+        String key = sortBy == null ? "" : switch (sortBy) { case "label", "pattern", "example", "updatedAt" -> sortBy; default -> "entity"; };
+        Comparator<Map<String, Object>> order = Comparator.comparing((Map<String, Object> r) -> r.get(key) == null ? null : String.valueOf(r.get(key)), Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+        if ("desc".equalsIgnoreCase(sortDirection)) order = Comparator.comparing((Map<String, Object> r) -> r.get(key) == null ? null : String.valueOf(r.get(key)), Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)).reversed();
+        rows.sort(order.thenComparing(r -> String.valueOf(r.get("entity"))));
+        int safeLimit = Math.min(Math.max(limit, 1), 100);
+        int safePage = Math.max(page, 1);
+        int from = Math.min((safePage - 1) * safeLimit, rows.size());
+        long total = rows.size();
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("data", rows.subList(from, Math.min(from + safeLimit, rows.size())));
+        result.put("pagination", Map.of("page", safePage, "limit", safeLimit, "total", total, "totalPages", Math.max(1, (total + safeLimit - 1) / safeLimit)));
+        return result;
     }
 
     @Transactional

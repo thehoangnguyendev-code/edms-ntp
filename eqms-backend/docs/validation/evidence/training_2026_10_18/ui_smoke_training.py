@@ -10,11 +10,11 @@ os.makedirs(OUT, exist_ok=True)
 BASE = 'http://localhost:3000'
 ROUTES = [
     ('my-training', '/training-management/my-training'), ('activities', '/training-management/activities'), ('activity-new', '/training-management/activities/new'),
-    ('assessments', '/training-management/assessments'), ('matrix', '/training-management/matrix'), ('document-trainings', '/training-management/document-trainings'),
+    ('assessments', '/training-management/assessments'), ('matrix', '/training-management/matrix'), ('document-impact-assessment', '/training-management/document-impact-assessment'),
     ('requirements', '/training-management/requirements'), ('job-assignments', '/training-management/job-assignments'), ('personnel-reviews', '/training-management/personnel-reviews'),
     ('specimen-signatures', '/training-management/specimen-signatures'), ('records', '/training-management/records'), ('compliance', '/training-management/compliance'),
     ('compliance-gaps', '/training-management/compliance?tab=gaps'), ('compliance-completion', '/training-management/compliance?tab=completion'),
-    ('number-log', '/training-management/number-log'), ('record-exports', '/training-management/record-exports'), ('legacy-evidence', '/training-management/legacy-evidence'),
+    ('number-allocation-log', '/training-management/number-allocation-log'), ('record-exports', '/training-management/record-exports'), ('legacy-evidence', '/training-management/legacy-evidence'),
     ('properties', '/settings/administration/training/properties'), ('properties-assessment', '/settings/administration/training/properties?tab=assessment'),
     ('vendors', '/settings/administration/training/vendors'), ('job-roles', '/settings/administration/training/job-roles'),
     ('notifications', '/settings/administration/training/notifications'),

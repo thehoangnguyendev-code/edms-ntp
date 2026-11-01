@@ -85,28 +85,6 @@ class TrainingAnnexServiceTest {
     }
 
     @Test
-    void theStyleOfASlotIsSavedWithAReasonAndRecordedInTheAuditTrail() {
-        service.setStyle(actor, "APD.0117", "LIST_PREPARED", new TrainingAnnexService.StyleRequest("compact", "Narrow cell"));
-
-        verify(access).require(actor, "training.annex.manage");
-        verify(jdbc).update(contains("insert into training_annex_slot_styles"), eq("APD.0117"), eq("LIST_PREPARED"), eq("COMPACT"), any());
-        verify(audit).logAs(eq(actor), eq("TRAINING_ANNEX"), eq("APD.0117"), any(UUID.class), eq("TRAINING_ANNEX_SIGNATURE_STYLE_CHANGED"), any(), eq("COMPACT"), contains("Narrow cell"));
-    }
-
-    @Test
-    void aStyleNeedsAReasonAKnownSlotAndAKnownStyle() {
-        assertThatThrownBy(() -> service.setStyle(actor, "APD.0117", "LIST_PREPARED", new TrainingAnnexService.StyleRequest("COMPACT", " ")))
-                .isInstanceOf(IllegalArgumentException.class).hasMessage("TRAINING_REASON_REQUIRED");
-        assertThatThrownBy(() -> service.setStyle(actor, "APD.0117", "NO_SUCH_SLOT", new TrainingAnnexService.StyleRequest("COMPACT", "x")))
-                .isInstanceOf(IllegalArgumentException.class).hasMessage("TRAINING_TEMPLATE_INVALID");
-        assertThatThrownBy(() -> service.setStyle(actor, "APD.0117", "LIST_PREPARED", new TrainingAnnexService.StyleRequest("FANCY", "x")))
-                .isInstanceOf(IllegalArgumentException.class).hasMessage("TRAINING_TEMPLATE_INVALID");
-        assertThatThrownBy(() -> service.setStyle(actor, "APD.0009", "ANY", new TrainingAnnexService.StyleRequest("COMPACT", "x")))
-                .isInstanceOf(IllegalArgumentException.class);
-        verify(jdbc, never()).update(anyString(), any(Object[].class));
-    }
-
-    @Test
     void anEarlierTemplateCannotBePreviewed() {
         UUID id = UUID.randomUUID();
         when(jdbc.queryForList(contains("select * from training_form_templates where id = ?"), eq(id))).thenReturn(List.of(Map.of("code", "APD.0117", "token_mode", "LEGACY")));

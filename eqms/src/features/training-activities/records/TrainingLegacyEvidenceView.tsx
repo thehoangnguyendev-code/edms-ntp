@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { MoreVertical } from "lucide-react";
-import { IconBan, IconCheck, IconFileDownload, IconPaperclip, IconFileOff, IconDownload } from "@tabler/icons-react";
+import { IconPaperclip, IconFileOff, IconDownload, IconEye } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
+import { PdfPreviewModal } from "@/features/documents/shared/components/PdfPreviewModal";
+import { ProposedParticipantsField, type ProposedPerson } from "../shared/ProposedParticipantsField";
 import { Badge } from "@/components/ui/badge/Badge";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { Textarea } from "../shared/TrainingFields";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
-import { Select } from "@/components/ui/select/Select";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
@@ -19,16 +20,19 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
-import { trainingError, trainingLegacyApi, type TrainingLegacyRow, type TrainingPerson } from "@/services/api/trainingActivities";
+import { ROUTES } from "@/app/routes.constants";
+import { trainingError, trainingLegacyApi, type TrainingLegacyRow } from "@/services/api/trainingActivities";
 import { TrainingFileDropzone } from "../shared/TrainingFileDropzone";
 import { day, trainingBreadcrumbs, TRAINING_PAGES, statusChange } from "../shared/trainingLabels";
 import { resettingDates, useDateRange, useDepartmentOptions } from "../shared/useListFilters";
 
-const STATE_LABEL: Record<string, string> = { MISSING: "No evidence yet", SUBMITTED: "Pending Verification", VERIFIED: "Verified" };
-const STATE_COLOR: Record<string, "red" | "amber" | "emerald"> = { MISSING: "red", SUBMITTED: "amber", VERIFIED: "emerald" };
+// FILED: the person who imported (or attached) the evidence signed it; there is no second person. VERIFIED: evidence that a person verified before that was changed (history).
+const STATE_LABEL: Record<string, string> = { MISSING: "No evidence yet", FILED: "Filed", VERIFIED: "Verified" };
+const STATE_COLOR: Record<string, "red" | "amber" | "emerald"> = { MISSING: "red", FILED: "emerald", VERIFIED: "emerald" };
 const stateOf = (r: TrainingLegacyRow) => r.evidenceStatus ?? "MISSING";
+const LINK = "font-medium text-emerald-700 hover:underline";
 
-/** Training evidence of the documents imported from paper: the scan of the paper record, or a declaration that there is none, verified by a person designated. */
+/** Training evidence of the documents imported from paper: the scan of the paper record, or a declaration that there is none, signed by the person who filed it. */
 export function TrainingLegacyEvidenceView() {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -42,10 +46,9 @@ export function TrainingLegacyEvidenceView() {
   const [error, setError] = useState("");
   const [canSubmit, setCanSubmit] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [submitting, setSubmitting] = useState<{ row: TrainingLegacyRow; none: boolean; file: File | null; reason: string; verifierId: string }>();
-  const [verifiers, setVerifiers] = useState<TrainingPerson[]>([]);
-  const [sign, setSign] = useState<TrainingLegacyRow>();
-  const [rejecting, setRejecting] = useState<{ id: string; reason: string }>();
+  const [submitting, setSubmitting] = useState<{ row: TrainingLegacyRow; none: boolean; file: File | null; reason: string; trainees: ProposedPerson[] }>();
+  const [signing, setSigning] = useState(false);
+  const [viewing, setViewing] = useState<{ row: TrainingLegacyRow; url: string; isPdf: boolean }>();
 
   const fetcher = useCallback(
     (params: Record<string, string | number | boolean | undefined>) =>
@@ -59,50 +62,35 @@ export function TrainingLegacyEvidenceView() {
   }), [status, departmentFilter, completedRange.from, completedRange.to, submittedRange.from, submittedRange.to, verifiedRange.from, verifiedRange.to]);
   const table = useServerTable<TrainingLegacyRow>({ persistKey: "training.legacy", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "document", extraParams: extra, initialItemsPerPage: 10 });
 
-  useEffect(() => {
-    if (!submitting) { setVerifiers([]); return; }
-    trainingLegacyApi.eligibleVerifiers(submitting.row.revisionId).then((p) => setVerifiers(p.data)).catch(() => setVerifiers([]));
-  }, [submitting?.row.revisionId]);
-
-  const submit = async () => {
+  const submit = async (signatureToken: string) => {
     if (!submitting) return;
     setBusy(true);
     try {
-      await trainingLegacyApi.submit(submitting.row.revisionId, submitting.verifierId, submitting.none ? null : submitting.file, submitting.none, submitting.reason.trim() || undefined);
-      showToast({ type: "success", title: "Evidence submitted", message: "It waits for the person you chose." });
+      await trainingLegacyApi.submit(submitting.row.revisionId, signatureToken, submitting.none ? null : submitting.file, submitting.none, submitting.reason.trim() || undefined,
+        submitting.none ? [] : submitting.trainees.map((p) => p.personId));
+      showToast({ type: "success", title: "Evidence filed", message: submitting.row.documentNumber });
+      setSigning(false);
       setSubmitting(undefined);
       table.reload();
     } catch (e) {
-      showToast({ type: "error", title: "The evidence was not submitted", message: trainingError(e) });
+      setSigning(false);
+      showToast({ type: "error", title: "The evidence was not filed", message: trainingError(e) });
     } finally {
       setBusy(false);
     }
   };
-  const verify = async (token: string) => {
-    if (!sign?.evidenceId) return;
-    setBusy(true);
-    try {
-      await trainingLegacyApi.verify(sign.evidenceId, token);
-      showToast({ type: "success", title: "Evidence verified", message: sign.documentNumber });
-      setSign(undefined);
-      table.reload();
-    } catch (e) {
-      showToast({ type: "error", title: "The verification failed", message: trainingError(e) });
-    } finally {
-      setBusy(false);
-    }
+  const closeViewer = () => {
+    if (viewing) URL.revokeObjectURL(viewing.url);
+    setViewing(undefined);
   };
-  const reject = async () => {
-    if (!rejecting) return;
-    setBusy(true);
+  useEffect(() => () => { if (viewing) URL.revokeObjectURL(viewing.url); }, [viewing]);
+  const viewScan = async (row: TrainingLegacyRow) => {
+    if (!row.evidenceId) return;
     try {
-      await trainingLegacyApi.reject(rejecting.id, rejecting.reason.trim());
-      setRejecting(undefined);
-      table.reload();
+      const blob = await trainingLegacyApi.view(row.evidenceId);
+      setViewing({ row, url: URL.createObjectURL(blob), isPdf: blob.type === "application/pdf" });
     } catch (e) {
-      showToast({ type: "error", title: "The rejection failed", message: trainingError(e) });
-    } finally {
-      setBusy(false);
+      showToast({ type: "error", title: "The scan could not be opened", message: trainingError(e) });
     }
   };
   const download = async (row: TrainingLegacyRow) => {
@@ -124,9 +112,12 @@ export function TrainingLegacyEvidenceView() {
 
   const columns: DataTableColumn<TrainingLegacyRow>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "doc", header: "Document", sort: sorted("document"), cell: (r) => <div className="max-w-80 whitespace-normal"><div className="font-medium">{r.documentLabel}</div><div className="text-xs text-slate-500">{r.documentName}</div></div> },
+    { id: "paperNo", header: "Training Number", sort: sorted("paperNo"), cell: (r) => (r.paperTrainingNumber ? (r.activityId ? <Link className={LINK} to={ROUTES.TRAINING.ACTIVITY_DETAIL(r.activityId)}>{r.paperTrainingNumber}</Link> : r.paperTrainingNumber) : "—") },
+    { id: "docNumber", header: "Document Number", sort: sorted("document"), cell: (r) => <Link className={LINK} to={ROUTES.DOCUMENTS.DETAIL(r.documentId)}>{r.documentNumber}</Link> },
+    { id: "docName", header: "Document Name", sort: sorted("documentName"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.documentName}</div> },
+    { id: "docRevision", header: "Document Revision", sort: sorted("revision"), cell: (r) => <Link className={LINK} to={ROUTES.DOCUMENTS.REVISIONS.DETAIL(r.revisionId)}>{r.revisionNumber}</Link> },
     { id: "completion", header: "Paper Training Completed On", sort: sorted("completion"), cell: (r) => day(r.completionDate) },
-    { id: "paperNo", header: "Paper Training Number", sort: sorted("paperNo"), cell: (r) => r.paperTrainingNumber ?? "—" },
+    { id: "trained", header: "Persons Trained", cell: (r) => (r.traineeCount ? r.traineeCount : "—") },
     { id: "state", header: "Evidence", sort: sorted("evidence"), cell: (r) => <Badge color={STATE_COLOR[stateOf(r)]}>{STATE_LABEL[stateOf(r)]}</Badge> },
     { id: "detail", header: "Detail", sort: sorted("detail"), cell: (r) => <div className="max-w-60 whitespace-normal">{r.notEvidenced ? `No evidence: ${r.notEvidencedReason}` : r.originalName ?? "—"}</div> },
     { id: "by", header: "Submitted By", sort: sorted("submittedBy"), cell: (r) => r.submittedByName ?? "—" },
@@ -152,7 +143,7 @@ export function TrainingLegacyEvidenceView() {
     <div className="flex min-w-0 flex-col gap-4 md:gap-6">
       <PageHeader title={TRAINING_PAGES.legacy.title} breadcrumbItems={trainingBreadcrumbs(navigate, "legacy")} />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      <ReportListToolbar searchPlaceholder="Search document number or name…" search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
+      <ReportListToolbar searchPlaceholder="Search training number, document number or name…" search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
         filters={filters} dates={resettingDates([completedRange.filter, submittedRange.filter, verifiedRange.filter], () => table.setCurrentPage(1))}
         hasActiveFilters={Boolean(status || departmentFilter || completedRange.isSet || submittedRange.isSet || verifiedRange.isSet || table.searchQuery)}
         onClear={() => { setStatus(""); setDepartmentFilter(""); completedRange.clear(); submittedRange.clear(); verifiedRange.clear(); table.setCurrentPage(1); }} customControl={control}>
@@ -163,37 +154,55 @@ export function TrainingLegacyEvidenceView() {
       <PortalDropdownMenu isOpen={!!row} onClose={menu.close} position={menu.position} minWidth={220}>
         {row && (
           <div className="py-1">
-            {!row.evidenceId && canSubmit && <DropdownMenuItem icon={<IconPaperclip className="h-4 w-4" />} onClick={() => { setSubmitting({ row, none: false, file: null, reason: "", verifierId: "" }); menu.close(); }}>Attach the scan</DropdownMenuItem>}
-            {!row.evidenceId && canSubmit && <DropdownMenuItem icon={<IconFileOff className="h-4 w-4" />} onClick={() => { setSubmitting({ row, none: true, file: null, reason: "", verifierId: "" }); menu.close(); }}>Declare: no evidence</DropdownMenuItem>}
+            {!row.evidenceId && canSubmit && <DropdownMenuItem icon={<IconPaperclip className="h-4 w-4" />} onClick={() => { setSubmitting({ row, none: false, file: null, reason: "", trainees: [] }); menu.close(); }}>Attach the scan</DropdownMenuItem>}
+            {!row.evidenceId && canSubmit && <DropdownMenuItem icon={<IconFileOff className="h-4 w-4" />} onClick={() => { setSubmitting({ row, none: true, file: null, reason: "", trainees: [] }); menu.close(); }}>Declare: no evidence</DropdownMenuItem>}
+            {row.evidenceId && !row.notEvidenced && <DropdownMenuItem icon={<IconEye className="h-4 w-4" />} onClick={() => { void viewScan(row); menu.close(); }}>View Scan</DropdownMenuItem>}
             {row.evidenceId && !row.notEvidenced && <DropdownMenuItem icon={<IconDownload className="h-4 w-4" />} onClick={() => { void download(row); menu.close(); }}>Download the scan</DropdownMenuItem>}
-            {row.pendingForMe && <DropdownMenuItem icon={<IconCheck className="h-4 w-4" />} onClick={() => { setSign(row); menu.close(); }}>Verify</DropdownMenuItem>}
-            {row.pendingForMe && <DropdownMenuItem icon={<IconBan className="h-4 w-4" />} onClick={() => { setRejecting({ id: row.evidenceId as string, reason: "" }); menu.close(); }}>Reject</DropdownMenuItem>}
           </div>
         )}
       </PortalDropdownMenu>
-      <FormModal isOpen={!!submitting} onClose={() => setSubmitting(undefined)} onConfirm={() => void submit()} isLoading={busy} confirmText="Submit" size="md"
+      <FormModal isOpen={!!submitting && !signing} onClose={() => setSubmitting(undefined)} onConfirm={() => setSigning(true)} isLoading={busy} confirmText="Continue to Sign" size="md"
         title={submitting?.none ? "Declare: no evidence" : "Attach the scan of the paper record"}
-        description="The person you choose verifies it with a signature; it cannot be you. After that it is read-only."
-        confirmDisabled={!submitting || !submitting.verifierId || (submitting.none ? !submitting.reason.trim() : !submitting.file)}>
+        description="You sign the evidence in the next step; nobody else verifies it. After that it is read-only, and the persons you name get their training record."
+        confirmDisabled={!submitting || (submitting.none ? !submitting.reason.trim() : !submitting.file)}>
         {submitting && (
           <div className="grid gap-4">
-            <p className="text-sm text-slate-600">{submitting.row.documentLabel}</p>
+            <p className="text-sm text-slate-600">{submitting.row.documentNumber} Rev {submitting.row.revisionNumber} — {submitting.row.documentName}</p>
             {submitting.none ? (
               <FormField label="Why there is no evidence" required><Textarea rows={3} value={submitting.reason} onChange={(e) => setSubmitting({ ...submitting, reason: e.target.value })} /></FormField>
             ) : (
-              <TrainingFileDropzone label="Scan" required accept=".pdf,.png,.jpg,.jpeg" maxMb={20} hint="PDF, PNG or JPEG (max 20 MB)" file={submitting.file} onChange={(f) => setSubmitting({ ...submitting, file: f })} />
+              <TrainingFileDropzone label="Scan" required accept=".pdf" maxMb={20} hint="PDF only (max 20 MB)" file={submitting.file} onChange={(f) => setSubmitting({ ...submitting, file: f })} />
             )}
-            <FormField label="Who verifies" required>
-              {verifiers.length === 0 ? <p className="text-sm text-amber-700">No eligible person was found.</p> : <Select value={submitting.verifierId} onChange={(v) => setSubmitting({ ...submitting, verifierId: v })} options={verifiers.map((p) => ({ label: `${p.fullName}${p.position ? ` — ${p.position}` : ""}`, value: p.id }))} placeholder="Choose" />}
-            </FormField>
+            {!submitting.none && submitting.row.paperTrainingNumber && (
+              <ProposedParticipantsField
+                pending={submitting.trainees}
+                onPendingChange={(people) => setSubmitting({ ...submitting, trainees: people })}
+                labels={{
+                  title: "Persons who were trained",
+                  description: "The people who were at the paper training. They get their training record when you sign.",
+                  localNotice: "A person who is no longer in the system cannot be chosen and gets no record.",
+                  emptyTitle: "Nobody chosen",
+                  emptyDescription: "Use Add Participants to choose the people who were trained.",
+                  modalTitle: "Persons who were trained",
+                }}
+              />
+            )}
           </div>
         )}
       </FormModal>
-      <ESignatureModal isOpen={!!sign} onClose={() => setSign(undefined)} onConfirm={async (d: { signatureToken: string }) => verify(d.signatureToken)} actionTitle="Verify the Training Evidence" changes={statusChange("Submitted", "Verified")}
-        meaningDisplayName="Legacy Training Evidence Verified" meaningCode="TRAINING_LEGACY_VERIFIED" targetDetails={{ code: sign?.documentNumber ?? "", title: sign?.documentName ?? "", revision: sign?.revisionNumber ?? "" }} />
-      <FormModal isOpen={!!rejecting} onClose={() => setRejecting(undefined)} onConfirm={() => void reject()} title="Reject the Evidence" confirmText="Reject" confirmVariant="destructive" isLoading={busy} confirmDisabled={!rejecting?.reason.trim()} size="md">
-        <FormField label="Reason" required><Textarea rows={3} value={rejecting?.reason ?? ""} onChange={(e) => rejecting && setRejecting({ ...rejecting, reason: e.target.value })} /></FormField>
-      </FormModal>
+      {viewing && viewing.isPdf && (
+        <PdfPreviewModal title="Scan of the paper training record" description={`${viewing.row.documentNumber} Rev ${viewing.row.revisionNumber} — ${viewing.row.originalName ?? ""}`} fileUrl={viewing.url} onClose={closeViewer} showCancel={false} />
+      )}
+      {viewing && !viewing.isPdf && (
+        <FormModal isOpen onClose={closeViewer} onConfirm={closeViewer} title="Scan of the paper training record" description={`${viewing.row.documentNumber} Rev ${viewing.row.revisionNumber} — ${viewing.row.originalName ?? ""}`}
+          confirmText="Close" showCancel={false} size="2xl">
+          <div className="flex max-h-[68dvh] justify-center overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
+            <img src={viewing.url} alt={viewing.row.originalName ?? "Scan of the paper training record"} className="h-auto max-w-full object-contain" onContextMenu={(e) => e.preventDefault()} />
+          </div>
+        </FormModal>
+      )}
+      <ESignatureModal isOpen={!!submitting && signing} onClose={() => setSigning(false)} onConfirm={async (d: { signatureToken: string }) => submit(d.signatureToken)} actionTitle="File the Training Evidence" changes={statusChange("No evidence", "Filed")}
+        meaningDisplayName="Legacy Training Evidence Filed" meaningCode="TRAINING_LEGACY_FILED" targetDetails={{ code: submitting?.row.documentNumber ?? "", title: submitting?.row.documentName ?? "", revision: submitting?.row.revisionNumber ?? "" }} />
     </div>
   );
 }

@@ -1,9 +1,19 @@
 package com.eqms.service.training;
 
+import com.eqms.entity.UserAccount;
+import com.eqms.service.AuditTrailService;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import java.sql.Timestamp;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /** The pattern of the code of a Training Requirement, a Training Matrix or a Training Assessment: what it allows, what it needs, and the code it gives. */
 class TrainingCodeServiceTest {
@@ -44,5 +54,36 @@ class TrainingCodeServiceTest {
     @Test
     void aCodeThatCouldNotFitTheColumnIsRefused() {
         assertThrows(IllegalArgumentException.class, () -> TrainingCodeService.validate("REQUIREMENT", "REQUIREMENT-OF-THE-YEAR/{YYYY}/{DEPT}/{SEQ:8}"));
+    }
+
+    /** The list of the rules is worked on the server: searched, filtered, sorted and cut into pages. */
+    @Test
+    void theRulesListIsSearchedFilteredSortedAndPagedOnTheServer() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(anyString())).thenReturn(List.of(
+                Map.of("entity", "ASSESSMENT", "pattern", "TAS-{SEQ:4}", "version", 1),
+                Map.of("entity", "MATRIX", "pattern", "TM-{DEPT}", "version", 3, "updated_at", Timestamp.valueOf("2026-10-01 10:00:00"), "updated_by_name", "An Nguyen"),
+                Map.of("entity", "REQUIREMENT", "pattern", "REQ/{YYYY}-{SEQ:3}", "version", 1)));
+        TrainingCodeService service = new TrainingCodeService(jdbc, mock(TrainingAccess.class), mock(AuditTrailService.class));
+        UserAccount actor = mock(UserAccount.class);
+
+        Map<String, Object> all = service.rulesPage(actor, null, null, null, null, null, 1, 10);
+        assertEquals(List.of("ASSESSMENT", "MATRIX", "REQUIREMENT"), entities(all));
+
+        assertEquals(List.of("MATRIX"), entities(service.rulesPage(actor, "an nguyen", null, null, null, null, 1, 10)), "the search reads the person who changed it");
+        assertEquals(List.of("REQUIREMENT"), entities(service.rulesPage(actor, "req/", null, null, null, null, 1, 10)), "the search reads the pattern");
+        assertEquals(List.of("MATRIX"), entities(service.rulesPage(actor, null, null, "CHANGED", null, null, 1, 10)));
+        assertEquals(List.of("ASSESSMENT", "REQUIREMENT"), entities(service.rulesPage(actor, null, null, "DEFAULT", null, null, 1, 10)));
+        assertEquals(List.of("REQUIREMENT"), entities(service.rulesPage(actor, null, "REQUIREMENT", null, null, null, 1, 10)));
+        assertEquals(List.of("MATRIX", "ASSESSMENT", "REQUIREMENT"), entities(service.rulesPage(actor, null, null, null, "pattern", "desc", 1, 10)));
+
+        Map<String, Object> second = service.rulesPage(actor, null, null, null, null, null, 2, 2);
+        assertEquals(List.of("REQUIREMENT"), entities(second));
+        assertEquals(Map.of("page", 2, "limit", 2, "total", 3L, "totalPages", 2L), second.get("pagination"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<String> entities(Map<String, Object> page) {
+        return ((List<Map<String, Object>>) page.get("data")).stream().map(r -> String.valueOf(r.get("entity"))).toList();
     }
 }

@@ -13,6 +13,9 @@
   },
   "dependencies": {
     "@animate-ui/react": "^2.3.0",
+    "@dnd-kit/dom": "^0.5.3",
+    "@dnd-kit/helpers": "^0.5.3",
+    "@dnd-kit/react": "^0.5.3",
     "@embedpdf/react-pdf-viewer": "^2.15.1",
     "@lexical/code": "^0.42.0",
     "@lexical/html": "^0.42.0",

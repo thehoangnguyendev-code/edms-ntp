@@ -1896,7 +1896,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                       className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
                     >
                       <FilePlusCorner className="h-4 w-4 flex-shrink-0" />
-                      <span className="font-medium text-slate-500">Create new version</span>
+                      <span className="font-medium text-slate-500">Create New version</span>
                     </button>
                     <button
                       onClick={() => {
@@ -2308,7 +2308,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                 </div>
               </div>
 
-              <div className="relative">
+              <div className="flex items-center gap-2">
+              <div className="relative min-w-0 flex-1">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
                   <Search className="h-4 w-4 text-slate-400" />
                 </div>
@@ -2330,23 +2331,24 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                 )}
               </div>
 
-              {!placeholderSearch.trim() && (
-                <button
-                  type="button"
-                  onClick={() => setPlaceholderCatalogExpanded((prev) => !prev)}
-                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50"
-                >
-                  <span>
-                    {placeholderCatalogExpanded ? "Hide placeholder catalog" : "Browse all placeholders"}
-                  </span>
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 text-slate-400 transition-transform duration-300",
-                      placeholderCatalogExpanded && "rotate-180",
-                    )}
-                  />
-                </button>
-              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-1.5"
+                aria-expanded={placeholderCatalogExpanded || Boolean(placeholderSearch.trim())}
+                aria-label="Show or hide the placeholder catalog"
+                disabled={Boolean(placeholderSearch.trim())}
+                onClick={() => setPlaceholderCatalogExpanded((prev) => !prev)}
+              >
+                {placeholderCatalogExpanded || placeholderSearch.trim() ? "Hide" : "Show"}
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 text-slate-400 transition-transform duration-300",
+                    (placeholderCatalogExpanded || placeholderSearch.trim()) && "rotate-180",
+                  )}
+                />
+              </Button>
+              </div>
 
               {(placeholderCatalogExpanded || placeholderSearch.trim()) && (
                 placeholderCatalogLoading ? (

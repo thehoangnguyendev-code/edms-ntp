@@ -41,7 +41,7 @@ public class ElectronicSignatureRendererService {
         ElectronicSignature sample = sampleSignature();
         sample.setTimezone(setting != null && StringUtils.hasText(setting.getSignatureTimezone()) ? setting.getSignatureTimezone() : "Asia/Ho_Chi_Minh");
         sample.setTimestampDisplay(formatTimestampSnapshot(sample.getSignedAt(), setting));
-        return renderTextBlock(sample, setting);
+        return renderStandard(sample);
     }
 
     /** Renders the canonical GMP signature text block. The setting param is accepted for backward compatibility but ignored. */
@@ -59,13 +59,14 @@ public class ElectronicSignatureRendererService {
     }
 
     /**
-     * A signed signature written in one of the three display styles. They are drawn from the same record and differ only in how much of it is written. What 21 CFR 11.50 requires of a
-     * signed record is in every one of them: the printed name of the signer, the date and time of the signing, and the meaning of the signature. The reason and the rest stay on the record.
-     * A signature that is not signed (pending, rejected) and a signed one that lacks the name, the time or the meaning is written in full as {@link #renderTextBlock}, never shortened.
+     * A signature as it is written in a document: the only way a signature is shown (the Standard frame). The name of the signer, "Electronically" and the meaning, then the date and time.
+     * What 21 CFR 11.50 requires of a signed record is in it: the printed name of the signer, the date and time of the signing, and the meaning of the signature. The reason and the
+     * signature ID stay on the electronic signature record and in the Audit Trail. A signature that is not signed (pending, rejected) and a signed one that lacks the name, the time or the
+     * meaning is written in full as {@link #renderTextBlock}, never shortened.
      */
-    public String renderStyled(ElectronicSignature signature, SignatureDisplayStyle style) {
+    public String renderStandard(ElectronicSignature signature) {
         ElectronicSignature s = signature == null ? new ElectronicSignature() : signature;
-        if (style == null || !"SIGNED".equals(normalizeStatus(s.getStatus()))) return renderTextBlock(s, null);
+        if (!"SIGNED".equals(normalizeStatus(s.getStatus()))) return renderTextBlock(s, null);
         String name = StringUtils.hasText(s.getFullName()) ? s.getFullName().trim() : null;
         if (name == null || s.getSignedAt() == null || !StringUtils.hasText(s.getMeaning())) return renderTextBlock(s, null);
         String meaning = displayMeaning(s.getMeaning());
@@ -74,29 +75,27 @@ public class ElectronicSignatureRendererService {
         String minutes = DISPLAY_TIME_PATTERN.withZone(zone).format(s.getSignedAt()) + " " + offset;
         StringBuilder b = new StringBuilder();
         appendLine(b, name);
-        switch (style) {
-            case COMPACT -> appendLine(b, meaning + " · " + minutes);
-            case STANDARD -> {
-                appendLine(b, "Electronically " + meaning.toLowerCase(Locale.ROOT));
-                appendLine(b, minutes);
-            }
-            case DETAILED -> {
-                appendLine(b, meaning + " · " + minutes);
-                appendLine(b, s.getSignatureId());
-            }
-        }
+        appendLine(b, "Electronically " + lowerCaseKeepingAcronyms(meaning));
+        appendLine(b, minutes);
         return b.toString();
     }
 
-    /** The three styles of the sample signature, for the settings screen: the same record drawn three times. */
-    public java.util.List<StylePreview> renderStylePreviews() {
+    /** "Attendance List Sent to QA" becomes "attendance list sent to QA": a word that is all capitals (QA, DCO, SOP) is an acronym and keeps its letters. */
+    static String lowerCaseKeepingAcronyms(String text) {
+        StringBuilder out = new StringBuilder();
+        for (String word : text.trim().split(" ")) {
+            if (out.length() > 0) out.append(' ');
+            boolean acronym = word.length() > 1 && word.equals(word.toUpperCase(Locale.ROOT)) && word.chars().anyMatch(Character::isLetter);
+            out.append(acronym ? word : word.toLowerCase(Locale.ROOT));
+        }
+        return out.toString();
+    }
+
+    /** The sample signature drawn the way every signature is drawn, for the settings screen. */
+    public StylePreview renderStylePreview() {
         ElectronicSignature sample = sampleSignature();
         sample.setSignedAt(Instant.now());
-        java.util.List<StylePreview> previews = new java.util.ArrayList<>();
-        for (SignatureDisplayStyle style : SignatureDisplayStyle.values()) {
-            previews.add(new StylePreview(style.name(), style.label(), style.frame(), renderStyled(sample, style)));
-        }
-        return previews;
+        return new StylePreview("STANDARD", "Standard", "Standard frame", renderStandard(sample));
     }
 
     public record StylePreview(String style, String label, String frame, String text) {

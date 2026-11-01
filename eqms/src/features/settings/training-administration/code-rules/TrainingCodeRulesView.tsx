@@ -1,15 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { IconPencil } from "@tabler/icons-react";
+import { IconPencil, IconPencilMinus } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { trainingAdministrationBase } from "@/components/ui/breadcrumb/breadcrumbs/settings";
-import { Button } from "@/components/ui/button/Button";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { SectionLoading } from "@/components/ui/loading/Loading";
+import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
+import { TablePagination } from "@/components/ui/table/TablePagination";
 import { useToast } from "@/components/ui/toast/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useTableDragScroll } from "@/hooks/useTableDragScroll";
+import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
+import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { Input, Textarea } from "@/features/training-activities/shared/TrainingFields";
+import { useTrainingRowMenu } from "@/features/training-activities/shared/useTrainingRowMenu";
 import { when } from "@/features/training-activities/shared/trainingLabels";
 import { trainingCodeRulesApi, trainingError, type TrainingCodeRule } from "@/services/api/trainingActivities";
 
@@ -28,23 +35,45 @@ const NOTE: Record<TrainingCodeRule["entity"], string> = {
   ASSESSMENT: "Needs the number. An assessment belongs to no department.",
 };
 
+const ENTITY_OPTIONS = [
+  { label: "All", value: "" },
+  { label: "Training Requirement", value: "REQUIREMENT" },
+  { label: "Training Matrix", value: "MATRIX" },
+  { label: "Training Assessment", value: "ASSESSMENT" },
+];
+const CHANGED_OPTIONS = [
+  { label: "All", value: "" },
+  { label: "Default Rule", value: "DEFAULT" },
+  { label: "Changed", value: "CHANGED" },
+];
+
+type RuleRow = TrainingCodeRule & { id: string };
+
 /**
  * The rules of the codes of the Training Requirement, the Training Matrix and the Training Assessment. SOP.0003 gives a rule only for the Training Number; these codes are set by the company here.
  * A rule applies to the codes made after it: the codes already issued do not change. The server checks the pattern, gives the next number and writes the change to the Audit Trail.
  */
 export function TrainingCodeRulesView() {
   const navigate = useNavigate();
+  const drag = useTableDragScroll();
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
   const canManage = hasPermission("training.settings.manage");
-  const [rules, setRules] = useState<TrainingCodeRule[]>();
+  const [entity, setEntity] = useState("");
+  const [changed, setChanged] = useState("");
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<{ rule: TrainingCodeRule; pattern: string; reason: string }>();
   const [example, setExample] = useState<{ text: string; error: string }>({ text: "", error: "" });
   const [saving, setSaving] = useState(false);
 
-  const load = useCallback(() => { trainingCodeRulesApi.list().then(setRules).catch((e) => setError(trainingError(e))); }, []);
-  useEffect(load, [load]);
+  const fetcher = useCallback(
+    (params: Record<string, string | number | boolean | undefined>) => trainingCodeRulesApi.list(params).catch((e) => { setError(trainingError(e)); throw e; }),
+    [],
+  );
+  const extraParams = useMemo(() => ({ entity: entity || undefined, changed: changed || undefined }), [entity, changed]);
+  const table = useServerTable<TrainingCodeRule>({ persistKey: "training.codeRules", fetcher, defaultSortBy: "entity", extraParams, initialItemsPerPage: 10, syncToUrl: false });
+  useEffect(() => setError(""), [table.items]);
+  const rows: RuleRow[] = table.items.map((r) => ({ ...r, id: r.entity }));
 
   // The example is asked from the server while the pattern is typed, so what is shown is what the server would write.
   useEffect(() => {
@@ -65,7 +94,7 @@ export function TrainingCodeRulesView() {
       await trainingCodeRulesApi.update(editing.rule.entity, { version: editing.rule.version, pattern: editing.pattern.trim(), reason: editing.reason.trim() || undefined });
       showToast({ type: "success", title: "The rule was saved", message: `${editing.rule.label}: the codes made from now on follow it.` });
       setEditing(undefined);
-      load();
+      table.reload();
     } catch (e) {
       showToast({ type: "error", title: "The rule was not saved", message: trainingError(e) });
     } finally {
@@ -75,31 +104,60 @@ export function TrainingCodeRulesView() {
 
   const open = (rule: TrainingCodeRule) => { setExample({ text: rule.example, error: "" }); setEditing({ rule, pattern: rule.pattern, reason: "" }); };
 
+  const rowMenu = useTrainingRowMenu(canManage ? rows : [], (r) => [{ label: "Edit Rule", icon: <IconPencilMinus className="h-4 w-4" />, onClick: () => open(r) }]);
+  const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
+  const columns: DataTableColumn<RuleRow>[] = [
+    { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
+    { id: "label", header: "Code Of", sort: sorted("label"), cell: (r) => <span className="font-medium text-slate-900">{r.label}</span> },
+    { id: "pattern", header: "Pattern", sort: sorted("pattern"), cell: (r) => <span className="break-all font-mono text-slate-900">{r.pattern}</span> },
+    { id: "example", header: "Next Code Looks Like", sort: sorted("example"), cell: (r) => <span className="font-mono font-semibold text-emerald-700">{r.example || "—"}</span> },
+    { id: "changed", header: "Last Changed", sort: sorted("updatedAt"), cell: (r) => (r.updatedAt ? `${when(r.updatedAt)}${r.updatedByName ? ` by ${r.updatedByName}` : ""}` : "Default rule") },
+    { id: "note", header: "Notes", cell: (r) => <div className="max-w-80 whitespace-normal text-xs text-slate-500">{NOTE[r.entity]}</div> },
+  ];
+  const { layout, control } = useCustomColumnLayout("training.code.rules", columns, canManage ? rowMenu.action : undefined);
+  const reset = (apply: () => void) => { apply(); table.setCurrentPage(1); };
+  const filters: ReportSelectFilter[] = [
+    { id: "entity", label: "Code Of", value: entity, options: ENTITY_OPTIONS, onChange: (v) => reset(() => setEntity(v)) },
+    { id: "changed", label: "Rule", value: changed, options: CHANGED_OPTIONS, onChange: (v) => reset(() => setChanged(v)) },
+  ];
+
   return (
     <div className="flex h-full flex-col gap-4 md:gap-6">
       <PageHeader title="Training Code Rules" breadcrumbItems={[...trainingAdministrationBase(navigate), { label: "Training Code Rules", isActive: true }]} />
+      <WarningBanner
+        variant="info"
+        description="SOP.0003 sets the rule of the Training Number only. The codes of the Training Requirement, the Training Matrix and the Training Assessment are set here. A rule applies to the codes made after it; the codes already issued do not change. The number goes on from the last one made: it does not start again when the pattern changes, so a number is never used twice."
+      />
       {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{error}</p>}
-      <p className="text-sm text-slate-600">
-        SOP.0003 sets the rule of the Training Number only. The codes of the Training Requirement, the Training Matrix and the Training Assessment are set here. A rule applies to the codes made after it; the codes already issued do not change. The number goes on from the last one made: it does not start again when the pattern changes, so a number is never used twice.
-      </p>
-      {!rules ? <SectionLoading text="Loading the code rules…" /> : (
-        <div className="grid grid-cols-1 gap-3 md:gap-4 lg:grid-cols-3">
-          {rules.map((r) => (
-            <section key={r.entity} aria-label={r.label} className="flex min-w-0 flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-2">
-                <h2 className="text-sm font-semibold text-slate-900 md:text-base">{r.label}</h2>
-                {canManage && <Button size="sm" variant="outline-emerald" className="gap-1 whitespace-nowrap" aria-label={`Edit the rule of the ${r.label}`} onClick={() => open(r)}><IconPencil className="h-4 w-4" />Edit</Button>}
-              </div>
-              <dl className="grid gap-2 text-sm">
-                <div><dt className="text-xs text-slate-500">Pattern</dt><dd className="break-all font-mono text-slate-900">{r.pattern}</dd></div>
-                <div><dt className="text-xs text-slate-500">Next code looks like</dt><dd className="font-mono font-semibold text-emerald-700">{r.example || "—"}</dd></div>
-                <div><dt className="text-xs text-slate-500">Last changed</dt><dd className="text-slate-700">{r.updatedAt ? `${when(r.updatedAt)}${r.updatedByName ? ` by ${r.updatedByName}` : ""}` : "Default rule"}</dd></div>
-              </dl>
-              <p className="text-xs text-slate-500">{NOTE[r.entity]}</p>
-            </section>
-          ))}
-        </div>
-      )}
+      <ReportListToolbar
+        searchPlaceholder="Search code, pattern, example or person…"
+        search={table.searchQuery}
+        onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
+        filters={filters}
+        hasActiveFilters={Boolean(entity || changed || table.searchQuery)}
+        onClear={() => { setEntity(""); setChanged(""); table.setSearchQuery(""); table.setCurrentPage(1); }}
+        customControl={control}
+      >
+        <DataTable
+          rows={rows}
+          getRowKey={(r) => r.entity}
+          isLoading={table.isLoading}
+          loadingContent={<SectionLoading text="Loading the code rules…" />}
+          emptyState={<TableEmptyState title="No Code Rules" description="Try changing your search or filter." />}
+          scrollerRef={drag.scrollerRef}
+          scrollProps={drag.dragEvents}
+          isDragging={drag.isDragging}
+          columns={columns}
+          columnLayout={layout}
+          action={canManage ? rowMenu.action : undefined}
+          pagination={
+            table.totalItems > 0 ? (
+              <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} />
+            ) : undefined
+          }
+        />
+      </ReportListToolbar>
+      {canManage && rowMenu.node}
       <FormModal
         isOpen={!!editing} onClose={() => setEditing(undefined)} title={`Rule of the ${editing?.rule.label ?? "code"}`} confirmText="Save" size="md" isLoading={saving}
         confirmDisabled={!editing || !editing.pattern.trim() || !!example.error || editing.pattern.trim() === editing.rule.pattern}

@@ -1,0 +1,15 @@
+/* Shared ordinal column: inline offsets used by other pinned-column implementations remain compatible. */
+table > :is(thead, tbody, tfoot) > tr > [data-number-sticky] {
+  position: sticky !important;
+  left: var(--table-number-left, 0px) !important;
+  z-index: 21;
+  background-color: var(--table-number-background, #fff) !important;
+  box-shadow: inset -1px 0 0 #e2e8f0;
+}
+table > thead > tr > [data-number-sticky] {
+  z-index: 41;
+  background-color: #f8fafc !important;
+}
+@media print {
+  table > :is(thead, tbody, tfoot) > tr > [data-number-sticky] { position: static !important; }
+}

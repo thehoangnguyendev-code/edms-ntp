@@ -23,3 +23,8 @@ html[data-alternating-records="true"] :is(ul[class*="space-y-"], ol[class*="spac
 html[data-alternating-records="true"] :is(ul[class*="space-y-"], ol[class*="space-y-"]):not(nav *):not([role="menu"]):not([role="listbox"]):has(> li[class*="rounded"]) > li:nth-child(even):not([class^="bg-"]):not([class*=" bg-"]):not([aria-selected="true"]):not([data-state="selected"]) {
   background-color: var(--record-stripe-color);
 }
+
+/* Vertical column lines, switched on in Configuration > General > Record Lists. Pinned cells draw their own right edge; a cell before the pinned Action column leaves it that edge. Rich-text content is left alone. */
+html[data-column-dividers="true"] table:not(:is(.ProseMirror, [contenteditable="true"]) table) > :is(thead, tbody, tfoot) > tr > :is(th, td):not(:last-child):not([data-number-sticky]):not(:has(+ [class*="sticky"][class*="right-0"])) {
+  border-right: 1px solid #e2e8f0;
+}

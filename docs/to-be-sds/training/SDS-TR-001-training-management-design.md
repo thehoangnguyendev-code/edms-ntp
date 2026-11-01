@@ -451,7 +451,7 @@ Quy ước (theo module Report đã làm): tiền tố `/training`; JSON; danh s
 | | `POST /training/persons/{id}/transfer-training` | `training.activity.organize` + `training.job_assignment.manage` | **Theo lưu đồ:** điều chuyển sinh đào tạo ban đầu. Nhận danh sách chủ đề đã xác nhận (từ khoảng trống ma trận), tạo hoạt động `INITIAL` lý do `TRANSFER` (D-33) |
 | **Chữ ký mẫu** | `GET/POST /training/specimen-signatures`, `POST …/{id}/confirm`, `GET …/{id}/image` | `training.signature.view` / `.manage` / `.confirm` | Xem ảnh vào Audit Trail |
 | **Tuân thủ** | `GET /training/compliance/coverage` `/overdue` `/untrained` `/due-soon` | `training.compliance.view` | Máy chủ tính; phạm vi theo bộ phận |
-| | `GET /training/number-log?department=&year=` | `.view` | View `training_number_log_v` |
+| | `GET /training/number-allocation-log?department=&year=` | `.view` | View `training_number_log_v` |
 | | `GET /training/document-impact-assessments` | `.view` | Hàng đợi hoạt động gắn tài liệu |
 | | `GET /training/legacy-evidence` | `.view` | |
 | **Quản trị** | `GET/PUT /training/settings` | `training.settings.view` / `.manage` | Phiên bản, lý do |
@@ -640,7 +640,7 @@ Mọi thời điểm ghi là thời gian cơ sở dữ liệu hoặc máy chủ 
 | Document Impact Assessment (was Document Trainings until 2026-10-30) | `/training/document-impact-assessments` | `training.activity.view` |
 | Training Matrices | `/training/matrices`, `/training/matrices/:id`, `/training/matrix-versions/:id` | `training.matrix.view` |
 | Training Requirements | `/training/requirements`, `/training/requirements/:id` | `training.requirement.view` |
-| Training Number Log | `/training/number-log` | `training.compliance.view` |
+| Training Number Log | `/training/number-allocation-log` | `training.compliance.view` |
 | Training Records | `/training/records`, `/training/persons/:id` | `training.record.view` |
 | Job Assignments | `/training/job-assignments`, `/training/job-assignments/:id` | `training.job_assignment.view` |
 | Specimen Signatures | `/training/specimen-signatures` | `training.signature.view` |
@@ -725,7 +725,7 @@ Mọi tính toán ở máy chủ, có chỉ mục, phân trang và lọc phía m
 | 5 | Nhân viên đã hoàn thành ma trận vị trí chưa | Bản giao việc, ma trận | `/job-assignments/eligibility` |
 | 6 | Ai vắng lâu cần đào tạo lại | Người tham gia, dữ liệu vắng | `/compliance/due-soon` |
 | 7 | Hồ sơ của một người | Hồ sơ | `/persons/{id}/dossier` |
-| 8 | Sổ mã của bộ phận | View sổ mã | `/number-log` |
+| 8 | Sổ mã của bộ phận | View sổ mã | `/number-allocation-log` |
 | 9 | Hạn nộp kết quả cho QA | Hoạt động | `/compliance/overdue?kind=results` |
 
 Bao phủ chỉ tính **một người đúng một lần cho mỗi (chủ đề, phiên bản tài liệu)**; "đã đào tạo" nghĩa là có dòng hồ sơ hợp lệ (không bị vô hiệu) cho **phiên bản tài liệu hiệu lực hiện hành** hoặc phiên bản mà ma trận chấp nhận (**MỞ**: một người đã đào tạo revision 1 có còn "đạt" khi revision 2 hiệu lực không; mặc định **không**, phải đào tạo lại, phù hợp D-25). Số liệu thật, lỗi hiển thị lỗi.

@@ -52,7 +52,7 @@ const KIND_LABEL: Record<string, string> = {
   CERTIFICATE: "Certificate",
   OTHER: "Other",
 };
-const ACCEPT = ".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.pptx";
+const ACCEPT = ".pdf,.docx,.xlsx,.pptx";
 const size = (bytes: number) =>
   bytes > 1048576
     ? `${(bytes / 1048576).toFixed(1)} MB`
@@ -473,7 +473,7 @@ export function TrainingActivityFilesTab({
                       required
                       accept={ACCEPT}
                       maxMb={20}
-                      hint="PDF, picture or Office file, max 20 MB."
+                      hint="PDF or Office file, max 20 MB."
                       file={sending.evidence?.file ?? evidence.file}
                       uploading={
                         sending.evidence

@@ -35,6 +35,14 @@ class SystemConfigurationServiceBrandingTest {
     }
 
     @Test
+    void tableColumnDividersAreOffByDefaultAndMustBeABoolean() throws Exception {
+        assertFalse(serviceWithGeneral("{}").getPublicBranding().tableColumnDividers());
+        assertTrue(serviceWithGeneral("{\"appearance\":{\"tableColumnDividers\":true}}").getPublicBranding().tableColumnDividers());
+        var rejected = new com.fasterxml.jackson.databind.ObjectMapper().readTree("{\"appearance\":{\"tableColumnDividers\":\"yes\"}}");
+        assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validateTableColumnDividers(rejected));
+    }
+
+    @Test
     void alternatingRecordsAreOptInAndColorIsSanitizedForPublicBranding() throws Exception {
         var defaults = serviceWithGeneral("{}").getPublicBranding();
         assertFalse(defaults.alternatingRecordColors());

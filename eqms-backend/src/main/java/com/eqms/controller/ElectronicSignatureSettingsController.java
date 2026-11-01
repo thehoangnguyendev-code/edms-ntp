@@ -80,11 +80,11 @@ public class ElectronicSignatureSettingsController {
         return policy == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(policy);
     }
 
-    /** The three display styles of a signed electronic signature, drawn from one sample record. */
-    @GetMapping("/settings/electronic-signature/display-styles")
-    public ResponseEntity<List<com.eqms.service.ElectronicSignatureRendererService.StylePreview>> displayStyles() {
+    /** The way a signed electronic signature is drawn in a document, drawn from one sample record. */
+    @GetMapping("/settings/electronic-signature/display-style")
+    public ResponseEntity<com.eqms.service.ElectronicSignatureRendererService.StylePreview> displayStyle() {
         requireAdminView();
-        return ResponseEntity.ok(electronicSignatureService.displayStyles());
+        return ResponseEntity.ok(electronicSignatureService.displayStyle());
     }
 
     @GetMapping("/settings/electronic-signature/pdf-preview")

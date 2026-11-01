@@ -43,6 +43,12 @@ describe("GeneralTab Knowledge Base setting", () => {
     fireEvent.change(screen.getByDisplayValue('#F8FAFC'), { target: { value: '#E5F1F2' } });
     expect(onChange.mock.calls.at(-1)?.[0].appearance).toEqual(expect.objectContaining({ alternatingRecordColors: true, alternatingRecordColor: '#E5F1F2' }));
   });
+  it("switches the vertical column dividers of every table on", () => {
+    const onChange = vi.fn();
+    render(<GeneralTab config={baseConfig} onChange={onChange} />);
+    fireEvent.click(screen.getByLabelText('Show vertical column dividers'));
+    expect(onChange.mock.calls[0][0].appearance.tableColumnDividers).toBe(true);
+  });
   it("keeps the chosen record color when another appearance setting changes", () => {
     const onChange = vi.fn();
     const configured = { ...baseConfig, appearance: { ...baseConfig.appearance, alternatingRecordColors: true, alternatingRecordColor: '#E5F1F2' } } as GeneralConfig;

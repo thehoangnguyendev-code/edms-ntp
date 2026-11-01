@@ -156,7 +156,7 @@ public class NavigationService {
             }
             if (hasPermission(normalizedPermissions, "training.compliance.view")) {
                 records.add(new NavigationItemResponse("training-compliance", "Training Compliance", null, "/training-management/compliance", false, null));
-                records.add(new NavigationItemResponse("training-number-log", "Training Number Register", null, "/training-management/number-log", false, null));
+                records.add(new NavigationItemResponse("training-number-allocation-log", "Training Number Allocation Log", null, "/training-management/number-allocation-log", false, null));
             }
             if (hasPermission(normalizedPermissions, "training.record.export")) {
                 records.add(new NavigationItemResponse("training-record-exports", "Training Record Exports", null, "/training-management/record-exports", false, null));

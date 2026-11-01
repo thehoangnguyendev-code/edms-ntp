@@ -1,5 +1,6 @@
 import { sessionStarted, sessionNotStarted } from "@/services/api/trainingActivities";
 import { SessionEditDialog } from "./components/SessionEditDialog";
+import { LegacyPeopleTab } from "./components/LegacyPeopleTab";
 import { SessionDetails } from "./components/SessionDetails";
 import { TrainingParticipantTable } from "./components/TrainingParticipantTable";
 import { ContentRulesPanel, assessmentFormKind, contentRuleNote } from "./components/ContentRulesPanel";
@@ -363,16 +364,17 @@ export function TrainingActivityDetailPage({
         { id: "overview", label: "General Information" },
         {
           id: "participants",
-          label: "Participants",
+          // A historical activity (Legacy Import) has no participants of sessions: the tab shows the persons who were trained on paper.
+          label: activity?.kind === "LEGACY" ? "Persons Trained" : "Participants",
           // The total comes from the summary, which the server always sends; the list itself is empty on the tabs that do not need the people, which made this number jump between 0 and the real one.
-          count: activity?.participantSummary?.all?.total ?? activity?.participants.length,
+          count: activity?.kind === "LEGACY" ? undefined : (activity?.participantSummary?.all?.total ?? activity?.participants.length),
         },
         { id: "materials", label: "Training Materials" },
         { id: "assessment", label: "Assessment" },
         { id: "signatures", label: "Signatures" },
         { id: "audit", label: "Audit Trail" },
       ],
-    [activity?.participantSummary?.all?.total, activity?.participants.length],
+    [activity?.kind, activity?.participantSummary?.all?.total, activity?.participants.length],
   );
   // The step is kept in the address and in this browser: a closed tab opens again on the step it was left on.
   useEffect(() => {
@@ -1821,6 +1823,13 @@ export function TrainingActivityDetailPage({
                     wide
                   />
                 )}
+                {/* A historical activity has no session: the mode and the trainer are the ones written on the paper record. */}
+                {activity.kind === "LEGACY" && (
+                  <>
+                    <ReadonlyField label="Mode" value={activity.paperMethod ? METHOD_LABEL[activity.paperMethod] ?? activity.paperMethod : "—"} />
+                    <ReadonlyField label="Trainer" value={activity.paperTrainer || "—"} />
+                  </>
+                )}
               </ReadonlyGrid>
               {/* The session: what the training is, then when, where and with whom it is held (the fields of the Session of New Training Activity). */}
               <div className="space-y-4">
@@ -1846,8 +1855,9 @@ export function TrainingActivityDetailPage({
                   {activity.sessions.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50">
                       <p className="p-4 text-sm text-slate-500">
-                        No session yet. Fill in the form above to add the first
-                        one.
+                        {activity.kind === "LEGACY"
+                          ? "This training was done on paper before the system and was imported with its document. It has no session; the scan of the paper record and the persons who were trained are in Legacy Training Evidence."
+                          : "No session yet. Fill in the form above to add the first one."}
                         {(activity.proposedParticipantCount ?? 0) > 0 &&
                           ` ${activity.proposedParticipantCount} participant${activity.proposedParticipantCount === 1 ? " was" : "s were"} proposed when the document was prepared; they are put on the list of the first session, and you confirm the list.`}
                       </p>
@@ -1897,7 +1907,8 @@ export function TrainingActivityDetailPage({
             </div>
           )}
 
-          {tab === "participants" && (
+          {tab === "participants" && activity.kind === "LEGACY" && <LegacyPeopleTab activityId={activity.id} />}
+          {tab === "participants" && activity.kind !== "LEGACY" && (
             <div className="space-y-6">
               {!singleSession && sessionChips}
               {caps?.addParticipants &&

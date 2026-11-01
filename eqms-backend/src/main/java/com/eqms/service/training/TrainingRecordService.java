@@ -17,7 +17,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Personal training records, "My Training", the Training Number log and the correction of a record by voiding (SDS-TR-001 sections 3.1, 4.5, 9.3). A record
+ * Personal training records, "My Training", the Training Number Allocation Log and the correction of a record by voiding (SDS-TR-001 sections 3.1, 4.5, 9.3). A record
  * is only ever written by the completion of an activity; it is never edited. A wrong record is voided with a reason and a signature and stays in the list.
  */
 @Service
@@ -155,14 +155,24 @@ public class TrainingRecordService {
             """, actor.getId()));
     }
 
+    /** The department of the signed-in person as the department lists show it (id and exact name); both null when the person has no department in the dictionary. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> myDepartment(UserAccount actor) {
+        UUID id = access.departmentOf(actor);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", id);
+        result.put("name", id == null ? null : jdbc.queryForObject("select name from departments where id = ?", String.class, id));
+        return result;
+    }
+
     /** The Training Number log of a department and year: every number issued, including cancelled ones, and the session count (FRM.0044). */
     @Transactional(readOnly = true)
-    public Map<String, Object> numberLog(UserAccount actor, UUID departmentId, Integer year, String search, String sortBy, String sortDirection, int page, int limit) {
-        return numberLog(actor, departmentId, year, search, sortBy, sortDirection, page, limit, Map.of());
+    public Map<String, Object> numberAllocationLog(UserAccount actor, UUID departmentId, Integer year, String search, String sortBy, String sortDirection, int page, int limit) {
+        return numberAllocationLog(actor, departmentId, year, search, sortBy, sortDirection, page, limit, Map.of());
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> numberLog(UserAccount actor, UUID departmentId, Integer year, String search, String sortBy, String sortDirection, int page, int limit, Map<String, String> more) {
+    public Map<String, Object> numberAllocationLog(UserAccount actor, UUID departmentId, Integer year, String search, String sortBy, String sortDirection, int page, int limit, Map<String, String> more) {
         access.require(actor, "training.compliance.view", "training.activity.view");
         UUID department = departmentId != null ? departmentId : access.departmentOf(actor);
         if (department == null) throw new IllegalArgumentException("TRAINING_DEPARTMENT_REQUIRED");
@@ -183,11 +193,12 @@ public class TrainingRecordService {
         pageArgs.add(safeLimit);
         pageArgs.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select a.training_number, a.created_at, a.kind, a.status, training_activity_topics(a.id) as training_topics, a.document_number, a.revision_number, a.cancel_reason,
+            select a.id as activity_id, a.training_number, a.created_at, a.kind, a.status, training_activity_topics(a.id) as training_topics, a.document_number, a.revision_number, a.cancel_reason,
+                   (select d.name from departments d where d.id = a.organizer_department_id) as department_name,
                    (select count(*) from training_sessions s where s.activity_id = a.id and s.status <> 'CANCELLED') as sessions,
                    (select count(*) from training_events e where e.activity_id = a.id and e.event_type = 'SESSION_POSTPONED') as postponements
               from training_activities a where a.organizer_department_id=? and a.year=?""" + filter
-                + TrainingRows.orderBy(sortBy, sortDirection, Map.of("date", "a.created_at", "number", "a.serial", "kind", "a.kind", "title", "training_activity_topics(a.id)", "document", "a.document_number", "sessions", "sessions", "status", "a.status"),
+                + TrainingRows.orderBy(sortBy, sortDirection, Map.of("date", "a.created_at", "number", "a.serial", "kind", "a.kind", "title", "training_activity_topics(a.id)", "document", "a.document_number", "sessions", "sessions", "status", "a.status", "department", "department_name"),
                 "a.serial, a.suffix nulls first") + " limit ? offset ?", pageArgs.toArray());
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", TrainingRows.camel(rows));

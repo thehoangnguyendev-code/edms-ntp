@@ -83,6 +83,32 @@ describe("TrainingSpecimenDetailPage", () => {
     renderPage();
 
     fireEvent.click(await screen.findByRole("button", { name: /View Image/ }));
-    await waitFor(() => expect(api.image).toHaveBeenCalledWith("s2", 2));
+    await waitFor(() => expect(api.image).toHaveBeenCalledWith("s2", 2, "shown"));
+  });
+
+  it("offers the original only when a watermark was stamped, and opens it as the original", async () => {
+    api.image.mockResolvedValue(new Blob(["x"], { type: "image/png" }));
+    URL.createObjectURL = vi.fn(() => "blob:x");
+    URL.revokeObjectURL = vi.fn();
+    api.get.mockResolvedValue(specimen({ watermarked: true }));
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: /View Image/ }));
+    expect(await screen.findByText(/Showing the pictures with the watermark/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show Original" }));
+    await waitFor(() => expect(api.image).toHaveBeenCalledWith("s2", 1, "original"));
+    expect(await screen.findByText(/Showing the pictures as they were uploaded/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Show With Watermark" })).toBeTruthy();
+  });
+
+  it("does not offer an original when no watermark was stamped", async () => {
+    api.image.mockResolvedValue(new Blob(["x"], { type: "image/png" }));
+    URL.createObjectURL = vi.fn(() => "blob:x");
+    URL.revokeObjectURL = vi.fn();
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: /View Image/ }));
+    await waitFor(() => expect(api.image).toHaveBeenCalledWith("s2", 1, "shown"));
+    expect(screen.queryByRole("button", { name: "Show Original" })).toBeNull();
   });
 });

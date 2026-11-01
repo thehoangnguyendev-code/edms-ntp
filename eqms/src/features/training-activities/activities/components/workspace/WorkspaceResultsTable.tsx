@@ -17,7 +17,7 @@ import { Input } from "../../../shared/TrainingFields";
 import { TrainingScannedTestsModal } from "../../../shared/TrainingScannedTestsModal";
 import { PARTICIPANT_STATE_LABEL } from "../../../shared/trainingLabels";
 
-const SCAN_TYPES = ".pdf,.png,.jpg,.jpeg,.webp";
+const SCAN_TYPES = ".pdf";
 
 /**
  * The results of a session typed straight into the row of each person: the maximum score of the test once at the top, the score in the row, the result worked out with the pass mark in force

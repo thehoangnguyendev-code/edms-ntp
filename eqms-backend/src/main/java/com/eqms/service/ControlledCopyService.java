@@ -93,8 +93,6 @@ import java.io.BufferedWriter;
 import java.io.OutputStream;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -108,13 +106,7 @@ import java.util.UUID;
 import java.util.Map;
 import java.util.stream.Stream;
 import javax.imageio.ImageIO;
-import javax.imageio.IIOImage;
-import javax.imageio.ImageWriteParam;
-import javax.imageio.ImageWriter;
 import javax.imageio.ImageTypeSpecifier;
-import javax.imageio.ImageReader;
-import javax.imageio.stream.ImageInputStream;
-import javax.imageio.stream.ImageOutputStream;
 
 @Service
 public class ControlledCopyService {
@@ -127,8 +119,6 @@ public class ControlledCopyService {
     private static final ZoneId SYSTEM_ZONE = DateTimeFormatUtils.ZONE;
     private static final DateTimeFormatter DMY_DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final long MAX_EVIDENCE_FILE_SIZE_BYTES = 10L * 1024L * 1024L;
-    private static final int MAX_EVIDENCE_DIMENSION = 4096;
-    private static final long MAX_EVIDENCE_PIXELS = 16L * 1024L * 1024L;
     private static final String STATUS_READY_FOR_DISTRIBUTION = "READY_FOR_DISTRIBUTION";
     private static final String STATUS_DISTRIBUTED = "DISTRIBUTED";
     private static final String STATUS_OBSOLETED = "OBSOLETED";
@@ -156,6 +146,7 @@ public class ControlledCopyService {
     private final EmailNotificationService emailNotificationService;
     private final FileStorageService fileStorageService;
     private SystemConfigurationService systemConfigurationService;
+    private ImageWatermarkService imageWatermarkService;
     private final SecureFileAccessService secureFileAccessService;
     private final ControlledCopyPolicyService controlledCopyPolicyService;
     private final ControlledCopyExpiryLimitService controlledCopyExpiryLimitService;
@@ -278,6 +269,11 @@ public class ControlledCopyService {
     @Autowired
     public void setSystemConfigurationService(SystemConfigurationService systemConfigurationService) {
         this.systemConfigurationService = systemConfigurationService;
+    }
+
+    @Autowired
+    public void setImageWatermarkService(ImageWatermarkService imageWatermarkService) {
+        this.imageWatermarkService = imageWatermarkService;
     }
 
     public record FileDownload(byte[] bytes, String fileName, String contentType) {
@@ -3818,18 +3814,20 @@ public class ControlledCopyService {
             validateEvidenceFile(file);
             try {
                 scanEvidenceFileOrThrow(file);
-                WatermarkedEvidence evidenceUpload = watermarkEvidence(file);
+                Instant uploadedAt = Instant.now();
+                ImageWatermarkService.Result evidenceUpload = imageWatermarkService.apply(
+                        ImageWatermarkService.Target.CONTROLLED_COPY_EVIDENCE, file.getBytes(),
+                        new ImageWatermarkService.Stamp(currentUser.getFullName(), uploadedAt));
                 String evidenceStem = buildEvidenceFileStem(copy, nextSequence++);
-                String originalFileName = evidenceStem + extensionOf(evidenceUpload.originalFileName(), ".jpg");
-                String watermarkedFileName = evidenceStem
-                        + (evidenceUpload.watermarked() ? "-watermarked" : "")
-                        + extensionOf(evidenceUpload.fileName(), ".jpg");
+                String stampedExtension = "image/jpeg".equals(evidenceUpload.contentType()) ? ".jpg" : ".png";
+                String originalFileName = evidenceStem + extensionOf(file.getOriginalFilename(), stampedExtension);
+                String watermarkedFileName = evidenceStem + (evidenceUpload.applied() ? "-watermarked" : "") + stampedExtension;
                 FileStorageService.StorageWriteResult originalStored = null;
-                if (evidenceUpload.watermarked()) {
+                if (evidenceUpload.applied()) {
                     originalStored = fileStorageService.storeControlledCopyEvidence(
                             copy,
                             originalFileName,
-                            new ByteArrayInputStream(evidenceUpload.originalBytes())
+                            new ByteArrayInputStream(file.getBytes())
                     );
                 }
                 FileStorageService.StorageWriteResult stored = fileStorageService.storeControlledCopyEvidence(
@@ -3842,12 +3840,13 @@ public class ControlledCopyService {
                 evidence.setFileSize((long) evidenceUpload.bytes().length);
                 evidence.setStoredPath(stored.storedPath());
                 evidence.setOriginalFileName(originalFileName);
-                evidence.setOriginalContentType(evidenceUpload.originalContentType());
-                evidence.setOriginalFileSize((long) evidenceUpload.originalBytes().length);
+                evidence.setOriginalContentType(evidenceUpload.contentType());
+                evidence.setOriginalFileSize(file.getSize());
                 evidence.setOriginalStoredPath(originalStored == null ? stored.storedPath() : originalStored.storedPath());
                 evidence.setOriginalSha256(evidenceUpload.originalSha256());
-                evidence.setWatermarkedSha256(evidenceUpload.watermarkedSha256());
-                evidence.setWatermarked(evidenceUpload.watermarked());
+                evidence.setWatermarkedSha256(evidenceUpload.stampedSha256());
+                evidence.setWatermarked(evidenceUpload.applied());
+                evidence.setUploadedAt(uploadedAt);
                 evidence.setUploadedBy(currentUser);
                 controlledCopyEvidenceFileRepository.save(evidence);
                 auditTrailService.logAs(currentUser, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "UPLOAD_EVIDENCE", null, copy.getStatus(), evidence.getFileName());
@@ -3867,178 +3866,6 @@ public class ControlledCopyService {
         String safe = sanitizeFileName(fileName);
         int dot = safe.lastIndexOf('.');
         return dot >= 0 && dot < safe.length() - 1 ? safe.substring(dot).toLowerCase(Locale.ROOT) : fallback;
-    }
-
-    private record WatermarkedEvidence(
-            byte[] originalBytes,
-            String originalFileName,
-            String originalContentType,
-            byte[] bytes,
-            String fileName,
-            String contentType,
-            String originalSha256,
-            String watermarkedSha256,
-            boolean watermarked
-    ) { }
-
-    private record DecodedEvidenceImage(BufferedImage image, String contentType, boolean jpeg) { }
-
-    private WatermarkedEvidence watermarkEvidence(MultipartFile file) throws IOException {
-        byte[] original = file.getBytes();
-        DecodedEvidenceImage decoded = decodeEvidenceImage(original);
-        BufferedImage image = decoded.image();
-        String originalName = sanitizeFileName(file.getOriginalFilename());
-        String originalContentType = decoded.contentType();
-
-        String logoData = systemConfigurationService == null ? null : systemConfigurationService.getPublicBranding().systemLogo();
-        if (!StringUtils.hasText(logoData) || !logoData.startsWith("data:image/")) {
-            return unchangedEvidence(original, originalName, originalContentType);
-        }
-        int comma = logoData.indexOf(',');
-        if (comma < 0) {
-            return unchangedEvidence(original, originalName, originalContentType);
-        }
-        byte[] logoBytes;
-        try {
-            logoBytes = Base64.getDecoder().decode(logoData.substring(comma + 1));
-        } catch (IllegalArgumentException ex) {
-            return unchangedEvidence(original, originalName, originalContentType);
-        }
-        BufferedImage logo = ImageIO.read(new ByteArrayInputStream(logoBytes));
-        if (logo == null) {
-            return unchangedEvidence(original, originalName, originalContentType);
-        }
-
-        image = scaleEvidenceImage(image);
-
-        int margin = Math.max(12, Math.min(image.getWidth(), image.getHeight()) / 40);
-        int maxWidth = Math.max(1, image.getWidth() / 5);
-        int maxHeight = Math.max(1, image.getHeight() / 8);
-        double scale = Math.min((double) maxWidth / logo.getWidth(), (double) maxHeight / logo.getHeight());
-        int logoWidth = Math.max(1, (int) Math.round(logo.getWidth() * scale));
-        int logoHeight = Math.max(1, (int) Math.round(logo.getHeight() * scale));
-        Graphics2D graphics = image.createGraphics();
-        try {
-            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            graphics.setComposite(AlphaComposite.SrcOver);
-            graphics.drawImage(logo, margin, margin, logoWidth, logoHeight, null);
-        } finally {
-            graphics.dispose();
-        }
-
-        boolean jpeg = decoded.jpeg();
-        String format = jpeg ? "jpg" : "png";
-        byte[] encoded = encodeEvidenceImage(image, format, jpeg ? 0.92f : null);
-        String extension = jpeg ? ".jpg" : ".png";
-        String watermarkedName = originalName.replaceFirst("(?i)\\.[^.]+$", "") + "-watermarked" + extension;
-        return new WatermarkedEvidence(
-                original, originalName, originalContentType, encoded, watermarkedName,
-                jpeg ? "image/jpeg" : "image/png", sha256(original), sha256(encoded), true);
-    }
-
-    private DecodedEvidenceImage decodeEvidenceImage(byte[] bytes) throws IOException {
-        try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
-            if (input == null) {
-                throw new IllegalArgumentException("Evidence file must be a valid JPEG or PNG image");
-            }
-            java.util.Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
-            if (!readers.hasNext()) {
-                throw new IllegalArgumentException("Evidence file must be a valid JPEG or PNG image");
-            }
-            ImageReader reader = readers.next();
-            try {
-                reader.setInput(input, true, true);
-                String format = reader.getFormatName().toLowerCase(Locale.ROOT);
-                boolean jpeg = "jpeg".equals(format) || "jpg".equals(format);
-                if (!jpeg && !"png".equals(format)) {
-                    throw new IllegalArgumentException("Evidence file must be a valid JPEG or PNG image");
-                }
-                int width = reader.getWidth(0);
-                int height = reader.getHeight(0);
-                if (width <= 0 || height <= 0 || (long) width * height > MAX_EVIDENCE_PIXELS) {
-                    throw new IllegalArgumentException("Evidence image exceeds the maximum allowed pixel dimensions");
-                }
-                BufferedImage image = reader.read(0);
-                if (image == null) {
-                    throw new IllegalArgumentException("Evidence file must be a valid JPEG or PNG image");
-                }
-                return new DecodedEvidenceImage(image, jpeg ? "image/jpeg" : "image/png", jpeg);
-            } finally {
-                reader.dispose();
-            }
-        }
-    }
-
-    private WatermarkedEvidence unchangedEvidence(byte[] bytes, String fileName, String contentType) {
-        String hash = sha256(bytes);
-        return new WatermarkedEvidence(bytes, fileName, contentType, bytes, fileName, contentType, hash, hash, false);
-    }
-
-    private byte[] encodeEvidenceImage(BufferedImage source, String format, Float quality) throws IOException {
-        BufferedImage image = source;
-        if ("jpg".equals(format) && source.getColorModel().hasAlpha()) {
-            image = new BufferedImage(source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_RGB);
-            Graphics2D graphics = image.createGraphics();
-            try {
-                graphics.setColor(Color.WHITE);
-                graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
-                graphics.drawImage(source, 0, 0, null);
-            } finally {
-                graphics.dispose();
-            }
-        }
-        if (quality == null) {
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
-            ImageIO.write(image, format, output);
-            return output.toByteArray();
-        }
-        java.util.Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName(format);
-        if (!writers.hasNext()) throw new IOException("No image writer available for " + format);
-        ImageWriter writer = writers.next();
-        try (ByteArrayOutputStream output = new ByteArrayOutputStream();
-             ImageOutputStream imageOutput = ImageIO.createImageOutputStream(output)) {
-            writer.setOutput(imageOutput);
-            ImageWriteParam param = writer.getDefaultWriteParam();
-            param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-            param.setCompressionQuality(quality);
-            writer.write(null, new IIOImage(image, null, null), param);
-            imageOutput.flush();
-            return output.toByteArray();
-        } finally {
-            writer.dispose();
-        }
-    }
-
-    private BufferedImage scaleEvidenceImage(BufferedImage source) {
-        int longestSide = Math.max(source.getWidth(), source.getHeight());
-        if (longestSide <= MAX_EVIDENCE_DIMENSION) {
-            return source;
-        }
-        double scale = (double) MAX_EVIDENCE_DIMENSION / longestSide;
-        int width = Math.max(1, (int) Math.round(source.getWidth() * scale));
-        int height = Math.max(1, (int) Math.round(source.getHeight() * scale));
-        int type = source.getColorModel().hasAlpha() ? BufferedImage.TYPE_INT_ARGB : BufferedImage.TYPE_INT_RGB;
-        BufferedImage resized = new BufferedImage(width, height, type);
-        Graphics2D graphics = resized.createGraphics();
-        try {
-            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-            graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-            graphics.drawImage(source, 0, 0, width, height, null);
-        } finally {
-            graphics.dispose();
-        }
-        return resized;
-    }
-
-    private String sha256(byte[] bytes) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(bytes);
-            StringBuilder hex = new StringBuilder(digest.length * 2);
-            for (byte value : digest) hex.append(String.format("%02x", value));
-            return hex.toString();
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("SHA-256 is unavailable", ex);
-        }
     }
 
     private void validateEvidenceFile(MultipartFile file) {

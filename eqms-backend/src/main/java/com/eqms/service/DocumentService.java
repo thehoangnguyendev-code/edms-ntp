@@ -1058,6 +1058,19 @@ public class DocumentService {
             String legacyJustification,
             String signatureToken
     ) {
+        return createLegacyImportDocumentAndRevisions(documentJson, revisionsJson, files, List.of(), legacyJustification, signatureToken);
+    }
+
+    /** {@code trainingScans}: the scans of the paper training records, see {@link RevisionService#createLegacyImportRevisionsBatch}. */
+    @Transactional
+    public LegacyBatchImportResponse createLegacyImportDocumentAndRevisions(
+            String documentJson,
+            String revisionsJson,
+            List<MultipartFile> files,
+            List<MultipartFile> trainingScans,
+            String legacyJustification,
+            String signatureToken
+    ) {
         DocumentDraftCreateRequest documentRequest = parseDocumentDraftCreateRequest(documentJson);
         // This request carries the regulatory justification TWICE -- once embedded in `document`
         // (persisted permanently on DocumentRecord.legacyJustification) and once as this top-level
@@ -1073,9 +1086,29 @@ public class DocumentService {
             );
         }
         DocumentListItemResponse created = createDocumentDraft(documentRequest, false);
+        // Two people importing the same number at the same moment both pass the check above; the unique index decides, and the second one is told clearly instead of getting a server error.
+        try {
+            documentRepository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException duplicate) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    "Document number '" + documentRequest.legacyDocumentNumber() + "' is already in use.");
+        }
         return revisionService.createLegacyImportRevisionsBatch(
-                UUID.fromString(created.id()), revisionsJson, files, legacyJustification, signatureToken
+                UUID.fromString(created.id()), revisionsJson, files, trainingScans, legacyJustification, signatureToken
         );
+    }
+
+    /**
+     * Legacy Import (owner decision D5): a person imports into the department they belong to; another department only with {@code training.scope.all}, the permission that
+     * Training Management uses for "other departments' data".
+     */
+    private void requireLegacyDepartmentScope(UserAccount user, Department department) {
+        if (department == null) return;
+        if (permissionEvaluationService.hasPermission(user, "training.scope.all")) return;
+        String own = user.getDepartment() == null ? "" : user.getDepartment().trim();
+        if (!own.equalsIgnoreCase(department.getName() == null ? "" : department.getName().trim())) {
+            throw new AccessDeniedException("A document can be imported from paper only into your own department, unless you hold the scope of all departments.");
+        }
     }
 
     /** Mirrors RevisionService#parseLegacyBatchSections -- a plain JSON string multipart part,
@@ -3249,6 +3282,7 @@ public class DocumentService {
                 }
                 String legacyNumber = request.legacyDocumentNumber().trim();
                 requireLegacyDocumentNumberFormat(legacyNumber, documentType);
+                requireLegacyDepartmentScope(currentUser, department);
                 if (documentRepository.existsByDocumentNumber(legacyNumber)) {
                     throw new IllegalArgumentException("Document number '" + legacyNumber + "' is already in use.");
                 }
@@ -4224,7 +4258,9 @@ public class DocumentService {
             try {
                 bytes = applyPreviewWatermark(bytes, currentUser);
             } catch (IOException ex) {
+                // a view without the watermark is never sent: it is what tells who let a screenshot out
                 log.warn("Failed to apply watermark to PDF preview for document {}: {}", documentId, ex.getMessage());
+                throw new IllegalStateException("PREVIEW_WATERMARK_FAILED", ex);
             }
         }
 

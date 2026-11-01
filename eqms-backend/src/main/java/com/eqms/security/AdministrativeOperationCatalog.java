@@ -43,6 +43,7 @@ public final class AdministrativeOperationCatalog {
             Map.entry("com.eqms.controller.StorageUsageController", Set.of("history", "policy", "savePolicy", "status")),
             Map.entry("com.eqms.controller.ConfigurationController", Set.of("updateSecurityConfiguration")),
             Map.entry("com.eqms.controller.AuthBackgroundVideoController", Set.of("upload", "preview")),
+            Map.entry("com.eqms.controller.ImageWatermarkController", Set.of("configPreview")),
             Map.entry("com.eqms.controller.DashboardRoleLayoutController", Set.of("list", "roles", "save")),
             Map.entry("com.eqms.controller.SettingsDictionaryController", Set.of("createBusinessUnit", "updateBusinessUnit", "createDepartment", "updateDepartment", "createPosition", "updatePosition", "deletePosition", "createStorageLocation", "updateStorageLocation", "deleteStorageLocation", "createRetentionPolicy", "updateRetentionPolicy", "deleteRetentionPolicy")),
             Map.entry("com.eqms.controller.DocumentNameFormatController", Set.of("createFormat", "updateFormat", "createComponent", "updateComponent")),

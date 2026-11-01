@@ -1,4 +1,5 @@
 import React from "react";
+import { useStickyNumberColumn } from "./useStickyNumberColumn";
 
 export { TABLE_STYLES } from "./tableStyles";
 
@@ -7,8 +8,11 @@ export { TABLE_STYLES } from "./tableStyles";
  * Each primitive forwards every native prop (including ref) without adding wrappers or styles.
  * DataTable supplies the default register layout; specialized screens compose these primitives.
  */
-function Root(props: React.ComponentPropsWithRef<"table">) {
-  return <table {...props} />;
+function Root({ ref, ...props }: React.ComponentPropsWithRef<"table">) {
+  const [table, setTable] = React.useState<HTMLTableElement | null>(null);
+  React.useImperativeHandle(ref, () => table!, [table]);
+  useStickyNumberColumn(table);
+  return <table {...props} ref={setTable} />;
 }
 function Head(props: React.ComponentPropsWithRef<"thead">) {
   return <thead {...props} />;

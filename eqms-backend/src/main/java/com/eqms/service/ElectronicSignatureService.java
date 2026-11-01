@@ -322,9 +322,9 @@ public class ElectronicSignatureService {
                 continue;
             }
             String key = token.key();
-            // {{approvedSignatureCompact}} and the like: the same signature as {{approvedSignature}}, drawn in the style the ending names
-            SignatureDisplayStyle style = SignatureDisplayStyle.ofName(token.name());
-            String baseName = style == null ? token.name() : SignatureDisplayStyle.baseName(token.name());
+            // a template of the time of the three styles may still say {{approvedSignatureCompact}}: the same placeholder as {{approvedSignature}}
+            boolean oldEnding = SignaturePlaceholderName.hasLegacyEnding(token.name());
+            String baseName = SignaturePlaceholderName.baseName(token.name());
             String normalized = baseName.trim().toUpperCase(Locale.ROOT);
             String collapsed = collapsePlaceholderName(normalized);
 
@@ -332,29 +332,29 @@ public class ElectronicSignatureService {
             // Legacy skipped-stage rendering and existing signatures remain unchanged.
             if ("OPTIONAL".equals(revision.reviewRequirement()) && isStageSkipped(revision, "REVIEWED")
                     && (isReviewerCollectionPlaceholder(collapsed) || isReviewerIndexedPlaceholder(collapsed)
-                    || "REVIEWED".equals(meaningFromSignaturePlaceholder(style == null ? placeholder : baseName)))) {
+                    || "REVIEWED".equals(meaningFromSignaturePlaceholder(oldEnding ? baseName : placeholder)))) {
                 values.put(key, "");
                 continue;
             }
 
             if (isReviewerCollectionPlaceholder(collapsed)) {
-                values.put(key, renderParticipantSignatureCollection(reviewerBlocks, token.transform(), style));
+                values.put(key, renderParticipantSignatureCollection(reviewerBlocks, token.transform()));
                 continue;
             }
             if (isApproverCollectionPlaceholder(collapsed)) {
-                values.put(key, renderParticipantSignatureCollection(approverBlocks, token.transform(), style));
+                values.put(key, renderParticipantSignatureCollection(approverBlocks, token.transform()));
                 continue;
             }
             if (isReviewerIndexedPlaceholder(collapsed)) {
-                values.put(key, renderIndexedParticipantSignature(reviewerBlocks, extractPlaceholderIndex(collapsed), token.transform(), style));
+                values.put(key, renderIndexedParticipantSignature(reviewerBlocks, extractPlaceholderIndex(collapsed), token.transform()));
                 continue;
             }
             if (isApproverIndexedPlaceholder(collapsed)) {
-                values.put(key, renderIndexedParticipantSignature(approverBlocks, extractPlaceholderIndex(collapsed), token.transform(), style));
+                values.put(key, renderIndexedParticipantSignature(approverBlocks, extractPlaceholderIndex(collapsed), token.transform()));
                 continue;
             }
 
-            String meaning = meaningFromSignaturePlaceholder(style == null ? placeholder : baseName);
+            String meaning = meaningFromSignaturePlaceholder(oldEnding ? baseName : placeholder);
             if (!StringUtils.hasText(meaning)) {
                 continue;
             }
@@ -369,7 +369,7 @@ public class ElectronicSignatureService {
                 );
             }
             if (signature != null) {
-                values.put(key, style == null ? signatureRendererService.renderTextBlock(signature, requireSetting()) : signatureRendererService.renderStyled(signature, style));
+                values.put(key, signatureRendererService.renderStandard(signature));
             } else if (isStageSkipped(revision, meaning)) {
                 // No participant is configured for this stage at all (e.g. the document
                 // subtype skips review entirely) -- distinct from "not signed yet", which
@@ -388,15 +388,10 @@ public class ElectronicSignatureService {
         return new LinkedHashMap<>();
     }
 
+    /** The block of a signature as it is written in every document (the Standard frame). */
     @Transactional(readOnly = true)
     public String renderSignatureBlock(ElectronicSignature signature) {
-        return signatureRendererService.renderTextBlock(signature, requireSetting());
-    }
-
-    /** The block of a signature in one of the three styles of Publishing Template (compact, standard, detailed); null keeps the block of the configuration. */
-    @Transactional(readOnly = true)
-    public String renderSignatureBlock(ElectronicSignature signature, SignatureDisplayStyle style) {
-        return style == null ? renderSignatureBlock(signature) : signatureRendererService.renderStyled(signature, style);
+        return signatureRendererService.renderStandard(signature);
     }
 
     @Transactional(readOnly = true)
@@ -404,10 +399,10 @@ public class ElectronicSignatureService {
         return signatureRendererService.renderPreviewText(requireSetting());
     }
 
-    /** The three display styles of a signed signature, drawn by the server from one sample record, for the settings screen. */
+    /** The way a signed signature is drawn in a document, drawn by the server from one sample record, for the settings screen. */
     @Transactional(readOnly = true)
-    public List<ElectronicSignatureRendererService.StylePreview> displayStyles() {
-        return signatureRendererService.renderStylePreviews();
+    public ElectronicSignatureRendererService.StylePreview displayStyle() {
+        return signatureRendererService.renderStylePreview();
     }
 
     public Double getDisplayFontSizePt() {
@@ -675,24 +670,24 @@ public class ElectronicSignatureService {
         return StringUtils.hasText(value) ? value.trim().toLowerCase(Locale.ROOT) : "";
     }
 
-    private String renderParticipantSignatureCollection(List<ParticipantSignatureBlock> blocks, String transform, SignatureDisplayStyle style) {
+    private String renderParticipantSignatureCollection(List<ParticipantSignatureBlock> blocks, String transform) {
         if (blocks == null || blocks.isEmpty()) {
             return applyTransform("-", transform);
         }
         return blocks.stream()
-                .map(block -> renderParticipantSignatureBlock(block, style))
+                .map(this::renderParticipantSignatureBlock)
                 .filter(StringUtils::hasText)
                 .collect(java.util.stream.Collectors.joining("\n\n"));
     }
 
-    private String renderIndexedParticipantSignature(List<ParticipantSignatureBlock> blocks, Integer index, String transform, SignatureDisplayStyle style) {
+    private String renderIndexedParticipantSignature(List<ParticipantSignatureBlock> blocks, Integer index, String transform) {
         if (blocks == null || blocks.isEmpty() || index == null || index < 1 || index > blocks.size()) {
             return applyTransform("-", transform);
         }
-        return renderParticipantSignatureBlock(blocks.get(index - 1), style);
+        return renderParticipantSignatureBlock(blocks.get(index - 1));
     }
 
-    private String renderParticipantSignatureBlock(ParticipantSignatureBlock block, SignatureDisplayStyle style) {
+    private String renderParticipantSignatureBlock(ParticipantSignatureBlock block) {
         if (block == null) {
             return "-";
         }
@@ -739,7 +734,7 @@ public class ElectronicSignatureService {
         if (!StringUtils.hasText(display.getTimezone())) {
             display.setTimezone(displayTimezone(requireSetting()));
         }
-        return style == null ? signatureRendererService.renderTextBlock(display, requireSetting()) : signatureRendererService.renderStyled(display, style);
+        return signatureRendererService.renderStandard(display);
     }
 
     private String resolveParticipantDisplayStatus(DocumentParticipantResponse participant, ElectronicSignature signature) {

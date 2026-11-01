@@ -13,7 +13,7 @@ vi.mock("@/features/realtime/useEntityChanged", () => ({ useEntityChanged: () =>
 import { ComplianceSuspensionsTab } from "../ComplianceSuspensionsTab";
 import { ComplianceRetentionTab } from "../ComplianceRetentionTab";
 
-const department: ReportSelectFilter = { id: "department", label: "Department", value: "", options: [{ label: "My department", value: "" }], onChange: () => undefined };
+const department: ReportSelectFilter = { id: "department", label: "Department", value: "", options: [{ label: "Select Department", value: "" }], onChange: () => undefined };
 const open = { id: "s1", personUserId: "p1", fullName: "Anne Tran", employeeCode: "E-001", position: "Operator", activityId: "a1", trainingNumber: "TRN/QA/26-001", topicText: "Gowning", percent: 55, status: "OPEN", raisedAt: "2026-10-20T08:00:00Z", canResume: true };
 
 beforeEach(() => {

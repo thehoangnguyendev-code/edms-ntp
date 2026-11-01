@@ -320,6 +320,12 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
               <ColorPickerInput label="Alternating row color" value={config.appearance?.alternatingRecordColor ?? DEFAULT_ALTERNATING_RECORD_COLOR}
                 onChange={(value) => handleAppearanceChange('alternatingRecordColor', value)} disabled={!config.appearance?.alternatingRecordColors} />
             </div>
+            <div className="mt-4">
+              <Checkbox id="tableColumnDividers" label="Show vertical column dividers"
+                checked={config.appearance?.tableColumnDividers ?? false}
+                onChange={(checked) => handleAppearanceChange('tableColumnDividers', checked)} />
+              <p className="ml-7 mt-1 text-xs text-slate-500">Draw a vertical line between the columns of every table, besides the horizontal line between records. Applies after Save Changes.</p>
+            </div>
           </div>
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Page Backgrounds</p>

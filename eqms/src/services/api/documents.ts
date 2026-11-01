@@ -71,6 +71,18 @@ export interface LegacyBatchRevisionSectionPayload {
   trainingCompletionDate?: string;
   /** Optional: the number on the paper training record of this revision, kept as typed. */
   trainingNumber?: string;
+  /** The users behind the historical reviewer(s) and approver (account ids); a user who signed the paper revision gets the initial training record when its evidence is verified. */
+  legacyHistoricalReviewerIds?: string[];
+  legacyHistoricalApproverId?: string;
+  /** The paper training of the revision (Training Management): the users who were trained, who verifies, and the evidence (the scan, or the paper declared lost with a reason). */
+  traineeIds?: string[];
+  trainingScan?: File | null;
+  trainingNotEvidenced?: boolean;
+  trainingNoEvidenceReason?: string;
+  /** What the paper training was: its topic, its trainer as written, its mode (SELF_READING, CLASSROOM, HYBRID, PRACTICAL). */
+  trainingTopic?: string;
+  trainingTrainer?: string;
+  trainingMethod?: string;
   file?: File | null;
   /** Required when file is not provided. */
   noFileJustification?: string;
@@ -958,11 +970,23 @@ export const documentApi = {
           trainingNumber: section.trainingNumber,
           hasFile: Boolean(section.file),
           noFileJustification: section.noFileJustification,
+          legacyHistoricalReviewerIds: section.legacyHistoricalReviewerIds,
+          legacyHistoricalApproverId: section.legacyHistoricalApproverId,
+          traineeIds: section.traineeIds,
+          trainingTopic: section.trainingTopic,
+          trainingTrainer: section.trainingTrainer,
+          trainingMethod: section.trainingMethod,
+          trainingNotEvidenced: Boolean(section.trainingNotEvidenced),
+          trainingNoEvidenceReason: section.trainingNoEvidenceReason,
+          hasTrainingScan: Boolean(section.trainingScan),
         })),
       ),
     );
     sections.forEach((section) => {
       if (section.file) formData.append('files', section.file);
+    });
+    sections.forEach((section) => {
+      if (section.trainingScan) formData.append('trainingScans', section.trainingScan);
     });
     formData.append('legacyJustification', legacyJustification);
     if (signatureToken) formData.append('signatureToken', signatureToken);

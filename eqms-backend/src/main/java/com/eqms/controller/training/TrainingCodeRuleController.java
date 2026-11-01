@@ -18,7 +18,11 @@ public class TrainingCodeRuleController {
     }
 
     @GetMapping
-    public ResponseEntity<?> list() { return ResponseEntity.ok(codes.rules(users.requireCurrentUser())); }
+    public ResponseEntity<?> list(@RequestParam(required = false) String search, @RequestParam(required = false) String entity, @RequestParam(required = false) String changed,
+                                  @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
+                                  @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(codes.rulesPage(users.requireCurrentUser(), search, entity, changed, sortBy, sortDirection, page, limit));
+    }
 
     @PutMapping("/{entity}")
     public ResponseEntity<?> update(@PathVariable String entity, @RequestBody TrainingCodeService.RuleWrite request) {

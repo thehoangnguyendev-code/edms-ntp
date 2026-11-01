@@ -7,7 +7,7 @@ const detail = vi.hoisted(() => ({
   contract: {
     checked: true, scalars: ["YEAR", "REQUEST_NO"], cases: [], checks: ["KIND_ANNUAL"], blocks: [], required: ["YEAR", "REQUEST_NO", "LINE.NO"],
     groups: [{ name: "LINE", fields: ["NO", "MONTH"], repeatsBlock: false }],
-    slots: [{ name: "PREPARED", stage: "M1 the requirement is prepared", meanings: ["TRAINING_REQUIREMENT_PREPARED"], style: null }],
+    slots: [{ name: "PREPARED", stage: "M1 the requirement is prepared", meanings: ["TRAINING_REQUIREMENT_PREPARED"] }],
   },
   templates: [
     { id: "t1", code: "APD.0118", title: "Training requirement", versionLabel: "2.0", status: "ENABLED", tokenMode: "TOKENS", checkProblems: null, checkedAt: "2026-10-28T01:00:00Z", enabledByName: "QA", enabledAt: "2026-10-28T02:00:00Z", originalName: "a.docx", sha256: "a".repeat(64), uploadedByName: "QA", uploadedAt: "2026-10-27T01:00:00Z" },
@@ -15,7 +15,7 @@ const detail = vi.hoisted(() => ({
     { id: "t3", code: "APD.0118", title: "Training requirement", versionLabel: "0.9", status: "DISABLED", tokenMode: "LEGACY", checkProblems: null, originalName: "c.docx", sha256: "c".repeat(64), uploadedByName: "QA", uploadedAt: "2026-10-25T01:00:00Z" },
   ],
 }));
-const api = vi.hoisted(() => ({ detail: vi.fn(), setStyle: vi.fn(), preview: vi.fn(), starter: vi.fn() }));
+const api = vi.hoisted(() => ({ detail: vi.fn(), preview: vi.fn(), starter: vi.fn() }));
 const permissions = vi.hoisted(() => ({ granted: new Set(["training.annex.view", "training.annex.manage", "training.annex.enable"]) }));
 const toast = vi.hoisted(() => ({ showToast: vi.fn() }));
 vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermission: (code: string) => permissions.granted.has(code) }) }));
@@ -34,7 +34,6 @@ beforeEach(() => {
   URL.createObjectURL = vi.fn(() => "blob:preview");
   URL.revokeObjectURL = vi.fn();
   api.detail.mockResolvedValue(detail);
-  api.setStyle.mockResolvedValue({});
   api.preview.mockResolvedValue(new Blob(["pdf"], { type: "application/pdf" }));
 });
 afterEach(() => { cleanup(); Object.values(api).forEach((f) => f.mockReset()); permissions.granted = new Set(["training.annex.view", "training.annex.manage", "training.annex.enable"]); });
@@ -80,18 +79,11 @@ describe("TrainingAnnexDetailView", () => {
     expect(screen.getByText(/M1 the requirement is prepared/)).toBeTruthy();
   });
 
-  it("in the edit page uploads a template and saves the style of a slot only with a reason; it enables and disables nothing", async () => {
+  it("in the edit page uploads a template; a signature slot has no style to choose, and it enables and disables nothing", async () => {
     open("edit");
     expect(await screen.findByText("Edit Training Annex")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Upload Template/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Enable This Version/ })).toBeNull();
-    fireEvent.click(await screen.findByLabelText("Style of PREPARED"));
-    fireEvent.click((await screen.findAllByText("Compact"))[0]);
-    const save = (await screen.findByRole("button", { name: "Save" })) as HTMLButtonElement;
-    expect(save.disabled).toBe(true);
-    const boxes = screen.getAllByRole("textbox");
-    fireEvent.change(boxes[boxes.length - 1], { target: { value: "Narrow cell" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(api.setStyle).toHaveBeenCalledWith("APD.0118", "PREPARED", "COMPACT", "Narrow cell"));
+    expect(screen.queryByLabelText("Style of PREPARED")).toBeNull();
   });
 });

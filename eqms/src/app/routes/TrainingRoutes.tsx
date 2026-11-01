@@ -15,7 +15,7 @@ const TrainingMatrixLandingPage = lazy(() => import('@/features/training-activit
 const TrainingMatrixVersionPage = lazy(() => import('@/features/training-activities/matrices/TrainingMatrixVersionPage').then(m => ({ default: m.TrainingMatrixVersionPage })));
 const DocumentImpactAssessmentView = lazy(() => import('@/features/training-activities/matrices/DocumentImpactAssessmentView').then(m => ({ default: m.DocumentImpactAssessmentView })));
 const TrainingRecordsView = lazy(() => import('@/features/training-activities/records/TrainingRecordsView').then(m => ({ default: m.TrainingRecordsView })));
-const TrainingNumberLogView = lazy(() => import('@/features/training-activities/records/TrainingNumberLogView').then(m => ({ default: m.TrainingNumberLogView })));
+const TrainingNumberAllocationLogView = lazy(() => import('@/features/training-activities/records/TrainingNumberAllocationLogView').then(m => ({ default: m.TrainingNumberAllocationLogView })));
 const TrainingComplianceView = lazy(() => import('@/features/training-activities/compliance/ComplianceView').then(m => ({ default: m.TrainingComplianceView })));
 const TrainingJobListView = lazy(() => import('@/features/training-activities/jobs/TrainingJobListView').then(m => ({ default: m.TrainingJobListView })));
 const TrainingJobCreatePage = lazy(() => import('@/features/training-activities/jobs/TrainingJobCreatePage').then(m => ({ default: m.TrainingJobCreatePage })));
@@ -98,7 +98,7 @@ export function trainingRoutes() {
       <Route path="requirements/:requirementId/track" element={<Suspense fallback={<LoadingFallback />}><TrainingRequirementDetailPage mode="track" /></Suspense>} />
       <Route path="legacy-evidence" element={guardedTrainingElement("training.activity.view", <TrainingLegacyEvidenceView />)} />
       <Route path="compliance" element={guardedTrainingElement("training.compliance.view", <TrainingComplianceView />)} />
-      <Route path="number-log" element={guardedTrainingElement("training.compliance.view", <TrainingNumberLogView />)} />
+      <Route path="number-allocation-log" element={guardedTrainingElement("training.compliance.view", <TrainingNumberAllocationLogView />)} />
       <Route path="my-training" element={<MyTrainingRedirect />} />
       <Route path="my-training/tasks" element={guardedTrainingElement("training.self.view", <MyTrainingView section="tasks" />)} />
       <Route path="my-training/records" element={guardedTrainingElement("training.self.view", <MyTrainingView section="records" />)} />

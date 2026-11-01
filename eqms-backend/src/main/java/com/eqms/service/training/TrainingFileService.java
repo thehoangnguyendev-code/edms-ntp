@@ -255,7 +255,8 @@ public class TrainingFileService {
         }
         if (formUsed != null && formUsed.trim().length() > 80) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         Checked checked = check(file);
-        if ("mp4".equals(checked.extension())) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
+        // a scan is a PDF (a picture cannot carry the watermark of the preview); a filled Office file is still accepted
+        if (Set.of("mp4", "png", "jpg", "jpeg").contains(checked.extension())) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         UUID id = UUID.randomUUID();
         FileStorageService.StorageWriteResult stored = write("training/paper-evidence/" + activityId + "/" + id + "." + checked.extension(), checked);
         jdbc.update("insert into training_paper_evidence(id, activity_id, participant_id, kind, original_name, provider, stored_path, content_type, size_bytes, sha256, remark, form_used, uploaded_by, pack_id) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -489,7 +490,13 @@ public class TrainingFileService {
     public Map<String, Object> personEvidenceFile(UserAccount actor, UUID personId, UUID activityId, UUID evidenceId, boolean inline) {
         Map<String, Object> activity = personActivity(actor, personId, activityId);
         Map<String, Object> row = personEvidenceRow(actor, personId, activityId, evidenceId, activity);
-        return read(actor, activity, row, inline ? "TRAINING_PAPER_EVIDENCE_VIEWED" : "TRAINING_PAPER_EVIDENCE_DOWNLOADED");
+        Map<String, Object> file = read(actor, activity, row, inline ? "TRAINING_PAPER_EVIDENCE_VIEWED" : "TRAINING_PAPER_EVIDENCE_DOWNLOADED");
+        // a view carries the watermark of the preview settings (the file that is downloaded is the scan as it was filed)
+        if (inline && String.valueOf(row.get("original_name")).toLowerCase(Locale.ROOT).endsWith(".pdf") && file.get("bytes") instanceof byte[] bytes) {
+            file = new java.util.HashMap<>(file);
+            file.put("bytes", marking.mark(bytes, actor));
+        }
+        return file;
     }
 
     /** The read-only OnlyOffice viewer config of a scanned Word file of that person. The file is served to the document server by a token that names it, after its SHA-256 is checked. */

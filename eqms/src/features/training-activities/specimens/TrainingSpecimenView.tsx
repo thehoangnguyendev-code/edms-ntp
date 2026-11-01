@@ -316,7 +316,7 @@ export function TrainingSpecimenView() {
         }}
         onConfirm={() => void upload()}
         title="Upload a Specimen Signature"
-        description="The scan of the paper that the employee signed by hand (FRM.0007): a PNG, JPEG, WebP or BMP picture of up to 5 MB (not a GIF). It becomes the current record of the employee at once; nobody confirms it."
+        description="The scan of the paper that the employee signed by hand (FRM.0007): a PNG or JPEG picture of up to 5 MB. The watermark set in Configuration is stamped on it, and the picture as it was uploaded is kept. It becomes the current record of the employee at once; nobody confirms it."
         confirmText="Upload"
         isLoading={busy}
         confirmDisabled={!file || !file2}

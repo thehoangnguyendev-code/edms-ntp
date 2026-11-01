@@ -161,6 +161,23 @@ class UserUiPreferenceServiceTest {
     }
 
     @Test
+    void independentDashboardWidgetsCanBeSavedAlongsideLegacyPreferences() throws Exception {
+        String key = UserUiPreferenceService.DASHBOARD_LAYOUT;
+        when(repository.findByUserIdAndPrefKey(ADA, key)).thenReturn(Optional.empty());
+        var widgets = mapper.createArrayNode();
+        for (String id : new String[]{"admin-total-users", "admin-total-documents", "admin-revisions-in-flight", "admin-audit-events",
+                "user-pending-actions", "user-pending-review", "user-pending-approval", "user-effective-documents", "user-pending-training",
+                "system-uptime", "database-connections", "active-sessions", "failed-logins", "users-by-status", "compliance-queues",
+                "system-runtime", "locked-accounts", "electronic-signatures", "admin-kpis", "user-kpis", "system-monitoring"}) {
+            widgets.addObject().put("id", id).put("visible", false).put("width", "full");
+        }
+        var layout = mapper.createObjectNode().set("widgets", widgets);
+        assertThat(service().save(ADA, key, layout)).isEqualTo(layout);
+        verify(repository).findByUserIdAndPrefKey(ADA, key);
+        verify(repository).save(org.mockito.ArgumentMatchers.argThat(row -> row.getUserId().equals(ADA)));
+    }
+
+    @Test
     void theControllerAlwaysActsOnTheSignedInUserAndTakesNoUserIdFromTheRequest() throws Exception {
         UUID signedIn = UUID.randomUUID();
         when(currentUserService.requireCurrentUser()).thenReturn(currentUser);

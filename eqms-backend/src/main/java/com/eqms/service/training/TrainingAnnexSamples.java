@@ -14,7 +14,7 @@ import static com.eqms.service.training.TrainingAnnexData.Item;
 public final class TrainingAnnexSamples {
     private TrainingAnnexSamples() {}
 
-    private static final List<String> SIGNED = List.of("Signed electronically: Nguyen Van A", "2026-10-28 09:30 (UTC+7)", "Meaning: sample");
+    private static final List<String> SIGNED = List.of("Nguyen Van A", "Electronically approved", "28/10/2026 09:30 (UTC+07)");
 
     public static TrainingAnnexData of(String code) {
         TrainingAnnexData d = new TrainingAnnexData().scalar("FORM_CODE", code).scalar("FORM_REVISION", "SAMPLE").scalar("GENERATED_AT", "PREVIEW - sample data, not a record");

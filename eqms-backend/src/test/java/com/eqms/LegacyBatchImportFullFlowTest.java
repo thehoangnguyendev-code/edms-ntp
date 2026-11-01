@@ -254,19 +254,33 @@ class LegacyBatchImportFullFlowTest {
     }
 
     @Test
-    void batchImport_paperTrainingNumber_isKeptAsTypedAndMarkedLegacy() {
+    void batchImport_trainingDocumentWithAPaperNumberButNoEvidence_isRejectedAndNothingIsCreated() {
         UUID documentId = createLegacyDraft(uniqueLegacyDocumentNumber(), "Legacy Paper Training Number Test", true);
+        String paperNumber = "pap/qa-" + UUID.randomUUID().toString().substring(0, 8);
         LegacyBatchRevisionSectionRequest section = new LegacyBatchRevisionSectionRequest(
                 "1.0.0", batchImportActor.getId().toString(), "17/09/2020", "Jane Doe (Quality Assurance)", "Mary QM (Quality Management)",
-                "18/09/2020", "20/09/2020", "Historical revision 1.0.0", "22/09/2020", "21/09/2020", " pap/qa-19.012 ", true, null);
+                "18/09/2020", "20/09/2020", "Historical revision 1.0.0", "22/09/2020", "21/09/2020", " " + paperNumber + " ", true, null);
         String token = tokenService.createSignatureToken(batchImportActor);
-        revisionService.createLegacyImportRevisionsBatch(documentId, toJson(List.of(section)),
-                List.of(buildMinimalValidDocx("paper-number")), "Migrated from paper archive, box #9", token);
+        IllegalArgumentException rejected = org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () ->
+                revisionService.createLegacyImportRevisionsBatch(documentId, toJson(List.of(section)),
+                        List.of(buildMinimalValidDocx("paper-number")), "Migrated from paper archive, box #9", token));
+        org.junit.jupiter.api.Assertions.assertTrue(rejected.getMessage().contains("paper training record"), rejected.getMessage());
+        // The import is all or nothing: no revision, and the paper number is not taken.
+        org.junit.jupiter.api.Assertions.assertTrue(revisionRepository.findAllByDocument_IdOrderByCreatedAtDesc(documentId).isEmpty());
+    }
 
-        DocumentRevisionRecord revision = revisionRepository.findAllByDocument_IdOrderByCreatedAtDesc(documentId).get(0);
-        assertEquals("pap/qa-19.012", revision.getTrainingNumber());
-        assertEquals("LEGACY_IMPORT", revision.getTrainingOrigin());
-        assertEquals("MANUAL", revision.getTrainingMode());
+    @Test
+    void batchImport_authorThatIsNotAUser_isRejected() {
+        UUID documentId = createLegacyDraft(uniqueLegacyDocumentNumber(), "Legacy Unknown Author Test", false);
+        LegacyBatchRevisionSectionRequest section = new LegacyBatchRevisionSectionRequest(
+                "1.0.0", UUID.randomUUID().toString(), "17/09/2020", "Jane Doe (Quality Assurance)", "Mary QM (Quality Management)",
+                "18/09/2020", "20/09/2020", "Historical revision 1.0.0", "22/09/2020", null, null, true, null);
+        String token = tokenService.createSignatureToken(batchImportActor);
+        IllegalArgumentException rejected = org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () ->
+                revisionService.createLegacyImportRevisionsBatch(documentId, toJson(List.of(section)),
+                        List.of(buildMinimalValidDocx("unknown-author")), "Migrated from paper archive, box #9", token));
+        org.junit.jupiter.api.Assertions.assertTrue(rejected.getMessage().contains("not a user of the system"), rejected.getMessage());
+        org.junit.jupiter.api.Assertions.assertTrue(revisionRepository.findAllByDocument_IdOrderByCreatedAtDesc(documentId).isEmpty());
     }
 
     @Test

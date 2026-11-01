@@ -1,3 +1,4 @@
+import { DASHBOARD_WIDGETS as WIDGETS, expandDashboardWidgets } from '@/features/self-service/dashboard/shared/dashboardWidgetCatalog';
 import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '@/services/api/client';
@@ -10,12 +11,6 @@ import { useToast } from '@/components/ui/toast/Toast';
 type Item = { id: string; label: string; visible: boolean; width: 'half' | 'full' };
 type Role = { id: string; name: string };
 type RoleLayout = { roleId: string; priority: number; layout: { widgets: Omit<Item, 'label'>[] } };
-const WIDGETS: Array<[string, string, 'half' | 'full']> = [
-  ['user-kpis', 'User overview', 'full'], ['admin-kpis', 'Admin overview', 'full'], ['document-activity', 'Document activity', 'half'],
-  ['workflow-pipeline', 'Workflow pipeline', 'half'], ['my-documents', 'My documents', 'half'], ['effective-by-type', 'Effective documents by type', 'half'],
-  ['audit-activity', 'Audit activity', 'half'], ['revision-pipeline', 'Revision pipeline', 'half'], ['documents-by-status', 'Documents by status', 'half'],
-  ['system-monitoring', 'System monitoring', 'full'], ['pending-work', 'Pending work', 'full'],
-];
 const initial = (): Item[] => WIDGETS.map(([id, label, width]) => ({ id, label, width, visible: true }));
 
 export function DashboardRoleDefaults() {
@@ -34,7 +29,7 @@ export function DashboardRoleDefaults() {
     setSelected(id);
     const record = saved.find(row => row.roleId === id), lookup = new Map(initial().map(item => [item.id, item]));
     const ordered: Item[] = [];
-    for (const widget of record?.layout.widgets ?? []) { const item = lookup.get(widget.id); if (item) { ordered.push({ ...item, visible: widget.visible, width: widget.width }); lookup.delete(widget.id); } }
+    for (const widget of expandDashboardWidgets(record?.layout.widgets ?? [])) { const item = lookup.get(widget.id); if (item) { ordered.push({ ...item, visible: widget.visible, width: widget.width }); lookup.delete(widget.id); } }
     setItems([...ordered, ...lookup.values()]); setPriority(record?.priority ?? 100);
   };
   // the same move as dragging, for the keyboard and for touch screens

@@ -518,17 +518,13 @@ public class PublishingOpenXmlTemplateRenderService {
             }
             String replacementValue = values.getOrDefault(key, "-");
             CTRPr replacementStyle = styleAt(sourceRuns, matcher.start(), matcher.end());
-            SignatureDisplayStyle signatureStyle = isSignatureKey(key) && token != null ? SignatureDisplayStyle.ofName(token.name()) : null;
-            if (signatureStyle != null && StringUtils.hasText(replacementValue) && !"-".equals(replacementValue.trim())) {
-                // {{approvedSignatureCompact}} and the like: lines of text in the paragraph (also inside a table cell), not a table of their own
+            if (isSignatureKey(key) && StringUtils.hasText(replacementValue) && !"-".equals(replacementValue.trim())) {
+                // every signature is written the same way (the Standard frame): lines of text in the paragraph (also inside a table cell), not a table of their own
                 appendStyledSignature(paragraph, replacementValue, replacementStyle, effectivePreviewFontSize, exactPreview, transform, styleConfig);
-            } else if (isSignatureKey(key) && insertSignatureBlocks(paragraph, replacementValue, transform, effectivePreviewFontSize, exactPreview, styleConfig)) {
-                // Signature placeholders render as Word tables so Graph/PDF output is the visual source of truth.
             } else {
-                String textValue = isSignatureKey(key) ? stripSignatureMeaningLine(replacementValue) : replacementValue;
                 appendStyledText(
                         paragraph,
-                        textValue,
+                        replacementValue,
                         replacementStyle,
                         autoFitLongText,
                         transform,
@@ -543,11 +539,9 @@ public class PublishingOpenXmlTemplateRenderService {
         return true;
     }
 
-    private static final java.util.regex.Pattern SIGNATURE_ID_LINE = java.util.regex.Pattern.compile("^SIG-[A-Za-z0-9-]+$");
-
     /**
-     * A signature written in one of the display styles (see {@link SignatureDisplayStyle}): the signer's name in bold, then the lines of the style; the signature ID, when the style has
-     * one, small and grey. A blank line separates the signatures of a placeholder that stands for several (all the reviewers).
+     * A signature written in the Standard frame (see {@link SignaturePlaceholderName}): the signer's name in bold, then the lines of the frame. A blank line separates the
+     * signatures of a placeholder that stands for several (all the reviewers).
      */
     private void appendStyledSignature(XWPFParagraph paragraph, String value, CTRPr style, Double previewFontSize, boolean exactPreview, String transform, PublishingPlaceholderStyleConfig styleConfig) {
         String[] lines = value.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1);
@@ -565,10 +559,8 @@ public class PublishingOpenXmlTemplateRenderService {
             applyRunStyleOverrides(run, paragraph, styleConfig, transform);
             run.setText(line);
             Double size = resolveFontSize(previewFontSize, exactPreview, styleConfig, transform, line);
-            boolean idLine = SIGNATURE_ID_LINE.matcher(line).matches();
-            if (size != null) run.setFontSize(idLine ? Math.max(6.0, size - 1.5) : size);
+            if (size != null) run.setFontSize(size);
             if (first) run.setBold(true);
-            if (idLine) run.setColor("6B7280");
             first = false;
         }
     }
@@ -577,332 +569,8 @@ public class PublishingOpenXmlTemplateRenderService {
         return key != null && key.toLowerCase(Locale.ROOT).contains("signature");
     }
 
-    /**
-     * When a signature placeholder falls back to compact plain text inside a table cell (see
-     * insertSignatureBlocks), the "Meaning: ..." line is redundant with the table's own
-     * row/column label (e.g. a "Prepared by" column) and the fixed cell height often can't fit
-     * the full multi-line block, causing it to overflow into the next row. Drop it; keep
-     * "Reason" since it carries the actual GMP audit-trail content and appears nowhere else.
-     */
-    private String stripSignatureMeaningLine(String value) {
-        if (!StringUtils.hasText(value)) {
-            return value;
-        }
-        return value.lines()
-                .filter(line -> !line.trim().toLowerCase(Locale.ROOT).startsWith("meaning:"))
-                .collect(Collectors.joining("\n"));
-    }
-
-    private boolean insertSignatureBlocks(XWPFParagraph anchorParagraph, String value, String transform, Double previewFontSize, boolean exactPreview, PublishingPlaceholderStyleConfig styleConfig) {
-        if (!StringUtils.hasText(value) || "-".equals(value.trim())) {
-            return false;
-        }
-        // Status tables in controlled cover templates already provide the visual grid.
-        // Adding a nested table inside one of their cells changes the OpenXML cursor and
-        // can spill the first signature into the following "Name" row.  Preserve the
-        // canonical multiline signature text in that cell instead.
-        if (anchorParagraph.getBody() instanceof XWPFTableCell) {
-            return false;
-        }
-        Double explicitFontSize = PublishingPlaceholderSyntax.extractFontSize(transform);
-        if (styleConfig != null && styleConfig.fontSizePt() != null) {
-            explicitFontSize = styleConfig.fontSizePt();
-        }
-        double fontSize = normalizeSignatureFontSize(explicitFontSize != null ? explicitFontSize : previewFontSize);
-        List<String> blocks = splitSignatureBlocks(value);
-        if (blocks.isEmpty()) {
-            return false;
-        }
-        try {
-            clearParagraph(anchorParagraph);
-            for (int i = 0; i < blocks.size(); i++) {
-                if (i > 0) {
-                    insertSignatureSpacer(anchorParagraph);
-                }
-                insertSignatureTable(anchorParagraph, blocks.get(i), fontSize, exactPreview, styleConfig);
-            }
-            return true;
-        } catch (RuntimeException ex) {
-            return false;
-        }
-    }
-
-    private List<String> splitSignatureBlocks(String value) {
-        String normalized = value == null ? "" : value.replace("\r\n", "\n").replace('\r', '\n').trim();
-        if (!StringUtils.hasText(normalized)) {
-            return List.of();
-        }
-        List<String> blocks = new ArrayList<>();
-        for (String block : normalized.split("\\n\\s*\\n")) {
-            if (StringUtils.hasText(block)) {
-                blocks.add(block.trim());
-            }
-        }
-        return blocks;
-    }
-
-    private void clearParagraph(XWPFParagraph paragraph) {
-        int runCount = paragraph.getRuns().size();
-        for (int i = runCount - 1; i >= 0; i--) {
-            paragraph.removeRun(i);
-        }
-        paragraph.setSpacingBefore(0);
-        paragraph.setSpacingAfter(0);
-    }
-
-    private void insertSignatureSpacer(XWPFParagraph anchorParagraph) {
-        XWPFParagraph spacer = anchorParagraph.getBody().insertNewParagraph(cursorAfter(anchorParagraph));
-        if (spacer != null) {
-            spacer.setSpacingBefore(0);
-            spacer.setSpacingAfter(80);
-        }
-    }
-
-    private void insertSignatureTable(XWPFParagraph anchorParagraph, String block, double fontSize, boolean exactPreview, PublishingPlaceholderStyleConfig styleConfig) {
-        XWPFTable table = anchorParagraph.getBody().insertNewTbl(cursorAfter(anchorParagraph));
-        if (table == null) {
-            throw new IllegalStateException("Unable to insert signature table");
-        }
-        table.setWidth("100%");
-        table.setCellMargins(80, 100, 80, 100);
-        applyTableBorders(table, "94A3B8");
-
-        String style = normalizeSignatureTableStyle(electronicSignatureService.getDisplayStyle());
-        SignatureBlockParts parts = parseSignatureBlock(block);
-        String fontFamily = styleConfig != null && StringUtils.hasText(styleConfig.fontFamily())
-                ? styleConfig.fontFamily()
-                : SIGNATURE_FONT_FAMILY;
-        boolean bold = styleConfig != null && Boolean.TRUE.equals(styleConfig.bold());
-        boolean italic = styleConfig != null && Boolean.TRUE.equals(styleConfig.italic());
-        boolean underline = styleConfig != null && Boolean.TRUE.equals(styleConfig.underline());
-        String alignment = styleConfig == null ? null : styleConfig.alignment();
-        if ("TABLE_CELL".equals(style)) {
-            buildSignatureKeyValueTable(table, parts, fontSize, fontFamily, bold, italic, underline, alignment);
-        } else {
-            buildSignatureCardTable(table, parts, fontSize, "COMPACT_TABLE".equals(style), fontFamily, bold, italic, underline, alignment);
-        }
-    }
-
-    private XmlCursor cursorAfter(XWPFParagraph paragraph) {
-        XmlCursor cursor = paragraph.getCTP().newCursor();
-        cursor.toEndToken();
-        return cursor;
-    }
-
-    private SignatureBlockParts parseSignatureBlock(String block) {
-        List<String> rawLines = block == null ? List.of() : block.lines()
-                .map(String::trim)
-                .filter(StringUtils::hasText)
-                .toList();
-        String statusLine = rawLines.stream()
-                .filter(this::isSignatureStatusLine)
-                .findFirst()
-                .orElse("");
-        String normalizedStatus = normalizeSignatureStatus(statusLine);
-        List<String> bodyLines = rawLines.stream()
-                .filter(line -> !line.equals(statusLine))
-                .toList();
-        return new SignatureBlockParts(normalizedStatus, statusLabel(normalizedStatus), statusIcon(normalizedStatus), bodyLines);
-    }
-
-    private boolean isSignatureStatusLine(String line) {
-        String normalized = line == null ? "" : line.toLowerCase(Locale.ROOT);
-        return normalized.contains("electronically signed")
-                || normalized.contains("pending signature")
-                || normalized.contains("awaiting")
-                || normalized.contains("signature invalid");
-    }
-
-    private String normalizeSignatureStatus(String statusLine) {
-        String normalized = statusLine == null ? "" : statusLine.toLowerCase(Locale.ROOT);
-        if (normalized.contains("invalid")) {
-            return "INVALID";
-        }
-        if (normalized.contains("pending") || normalized.contains("awaiting")) {
-            return "PENDING";
-        }
-        return "SIGNED";
-    }
-
-    private String statusLabel(String status) {
-        return switch (status) {
-            case "PENDING" -> "AWAITING SIGNATURE";
-            case "INVALID" -> "SIGNATURE INVALID";
-            default -> "ELECTRONICALLY SIGNED";
-        };
-    }
-
-    private String statusIcon(String status) {
-        return switch (status) {
-            case "PENDING" -> "!";
-            case "INVALID" -> "X";
-            default -> "\u2713";
-        };
-    }
-
-    private String statusBackground(String status) {
-        return switch (status) {
-            case "PENDING" -> "FFFBEB";
-            case "INVALID" -> "FEF2F2";
-            default -> "ECFDF5";
-        };
-    }
-
-    private String statusColor(String status) {
-        return switch (status) {
-            case "PENDING" -> "B45309";
-            case "INVALID" -> "DC2626";
-            default -> "047857";
-        };
-    }
-
-    private void buildSignatureCardTable(XWPFTable table, SignatureBlockParts parts, double fontSize, boolean compact, String fontFamily, boolean forceBold, boolean italic, boolean underline, String alignment) {
-        XWPFTableRow statusRow = table.getRow(0);
-        XWPFTableCell statusCell = statusRow.getCell(0);
-        styleCell(statusCell, statusBackground(parts.status()));
-        writeCellLine(statusCell, parts.icon() + " " + parts.label(), fontSize, true, statusColor(parts.status()), true, fontFamily, italic, underline, alignment);
-
-        List<String> lines = compact ? compactLines(parts.lines()) : parts.lines();
-        for (String line : lines) {
-            XWPFTableRow row = table.createRow();
-            XWPFTableCell cell = row.getCell(0);
-            styleCell(cell, "FFFFFF");
-            boolean primaryLine = isPrimarySignerLine(line);
-            writeCellLine(cell, line, fontSize, primaryLine || forceBold, primaryLine ? "0F172A" : "334155", false, fontFamily, italic, underline, alignment);
-        }
-    }
-
-    private void buildSignatureKeyValueTable(XWPFTable table, SignatureBlockParts parts, double fontSize, String fontFamily, boolean bold, boolean italic, boolean underline, String alignment) {
-        XWPFTableRow statusRow = table.getRow(0);
-        XWPFTableCell statusLabelCell = statusRow.getCell(0);
-        XWPFTableCell statusValueCell = statusRow.addNewTableCell();
-        styleCell(statusLabelCell, statusBackground(parts.status()));
-        styleCell(statusValueCell, statusBackground(parts.status()));
-        writeCellLine(statusLabelCell, parts.icon(), fontSize, true, statusColor(parts.status()), true, fontFamily, italic, underline, alignment);
-        writeCellLine(statusValueCell, parts.label(), fontSize, true, statusColor(parts.status()), true, fontFamily, italic, underline, alignment);
-
-        for (String line : parts.lines()) {
-            String[] pair = splitSignatureLine(line);
-            XWPFTableRow row = table.createRow();
-            XWPFTableCell labelCell = row.getCell(0);
-            XWPFTableCell valueCell = row.getCell(1);
-            styleCell(labelCell, "F8FAFC");
-            styleCell(valueCell, "FFFFFF");
-            writeCellLine(labelCell, pair[0], fontSize, true, "475569", false, fontFamily, italic, underline, alignment);
-            writeCellLine(valueCell, pair[1], fontSize, false, "334155", false, fontFamily, italic, underline, alignment);
-        }
-    }
-
-    private List<String> compactLines(List<String> lines) {
-        if (lines == null || lines.size() <= 5) {
-            return lines == null ? List.of() : lines;
-        }
-        return lines.stream()
-                .filter(line -> isPrimarySignerLine(line)
-                        || line.toLowerCase(Locale.ROOT).contains("signed")
-                        || line.toLowerCase(Locale.ROOT).contains("meaning")
-                        || line.toLowerCase(Locale.ROOT).contains("signature id"))
-                .toList();
-    }
-
-    private boolean isPrimarySignerLine(String line) {
-        if (!StringUtils.hasText(line)) {
-            return false;
-        }
-        String normalized = line.toLowerCase(Locale.ROOT);
-        return !normalized.contains(":")
-                && !normalized.contains("@")
-                && !normalized.contains("pending")
-                && !normalized.contains("signature")
-                && !normalized.contains("signed at");
-    }
-
-    private String[] splitSignatureLine(String line) {
-        if (!StringUtils.hasText(line)) {
-            return new String[]{"Field", "-"};
-        }
-        int separator = line.indexOf(':');
-        if (separator > 0) {
-            return new String[]{line.substring(0, separator).trim(), line.substring(separator + 1).trim()};
-        }
-        return isPrimarySignerLine(line) ? new String[]{"Name", line} : new String[]{"Info", line};
-    }
-
-    private void styleCell(XWPFTableCell cell, String fill) {
-        if (cell == null) {
-            return;
-        }
-        cell.setColor(fill);
-        if (cell.getCTTc().isSetTcPr()) {
-            CTShd shd = cell.getCTTc().getTcPr().isSetShd() ? cell.getCTTc().getTcPr().getShd() : cell.getCTTc().getTcPr().addNewShd();
-            shd.setVal(STShd.CLEAR);
-            shd.setFill(fill);
-        }
-    }
-
-    private void writeCellLine(XWPFTableCell cell, String text, double fontSize, boolean bold, String color, boolean uppercase, String fontFamily, boolean italic, boolean underline, String alignment) {
-        clearCellParagraphs(cell);
-        XWPFParagraph paragraph = cell.addParagraph();
-        paragraph.setSpacingBefore(0);
-        paragraph.setSpacingAfter(0);
-        applyAlignment(paragraph, alignment);
-        XWPFRun run = paragraph.createRun();
-        run.setFontFamily(StringUtils.hasText(fontFamily) ? fontFamily : SIGNATURE_FONT_FAMILY);
-        run.setFontSize(fontSize);
-        run.setBold(bold);
-        run.setItalic(italic);
-        run.setUnderline(underline ? org.apache.poi.xwpf.usermodel.UnderlinePatterns.SINGLE : org.apache.poi.xwpf.usermodel.UnderlinePatterns.NONE);
-        run.setColor(color);
-        run.setText(uppercase ? valueOrDash(text).toUpperCase(Locale.ROOT) : valueOrDash(text));
-    }
-
-    private void clearCellParagraphs(XWPFTableCell cell) {
-        if (cell == null) {
-            return;
-        }
-        for (int i = cell.getParagraphs().size() - 1; i >= 0; i--) {
-            cell.removeParagraph(i);
-        }
-    }
-
-    private void applyTableBorders(XWPFTable table, String color) {
-        CTTblPr tblPr = table.getCTTbl().getTblPr() == null ? table.getCTTbl().addNewTblPr() : table.getCTTbl().getTblPr();
-        CTTblBorders borders = tblPr.isSetTblBorders() ? tblPr.getTblBorders() : tblPr.addNewTblBorders();
-        setBorder(borders.isSetTop() ? borders.getTop() : borders.addNewTop(), color);
-        setBorder(borders.isSetBottom() ? borders.getBottom() : borders.addNewBottom(), color);
-        setBorder(borders.isSetLeft() ? borders.getLeft() : borders.addNewLeft(), color);
-        setBorder(borders.isSetRight() ? borders.getRight() : borders.addNewRight(), color);
-        setBorder(borders.isSetInsideH() ? borders.getInsideH() : borders.addNewInsideH(), "E2E8F0");
-        setBorder(borders.isSetInsideV() ? borders.getInsideV() : borders.addNewInsideV(), "E2E8F0");
-    }
-
-    private void setBorder(org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBorder border, String color) {
-        border.setVal(STBorder.SINGLE);
-        border.setSz(BigInteger.valueOf(6));
-        border.setColor(color);
-    }
-
-    private double normalizeSignatureFontSize(Double value) {
-        if (value == null || value.isNaN() || value.isInfinite()) {
-            return 8.5;
-        }
-        return Math.max(8.0, Math.min(10.0, value));
-    }
-
-    private String normalizeSignatureTableStyle(String style) {
-        String normalized = StringUtils.hasText(style) ? style.trim().toUpperCase(Locale.ROOT) : "DETAILED_TABLE";
-        return switch (normalized) {
-            case "COMPACT", "COMPACT_TABLE" -> "COMPACT_TABLE";
-            case "TABLE_CELL" -> "TABLE_CELL";
-            default -> "DETAILED_TABLE";
-        };
-    }
-
     private String valueOrDash(String value) {
         return StringUtils.hasText(value) ? value : "-";
-    }
-
-    private record SignatureBlockParts(String status, String label, String icon, List<String> lines) {
     }
 
     private void appendDynamicPageLabel(XWPFParagraph paragraph, int pageOffset, CTRPr style, boolean autoFitLongText, String transform) {

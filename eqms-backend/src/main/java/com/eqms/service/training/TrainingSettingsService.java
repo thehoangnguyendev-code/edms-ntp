@@ -50,6 +50,60 @@ public class TrainingSettingsService {
         }
     }
 
+    /** The Administrator raises the counter of the Training Numbers of a department and year to the last serial of the paper log (go-live). */
+    public record NumberCounterRaise(UUID departmentId, Integer year, Integer lastSerial, String reason) {}
+
+    /**
+     * The counters of the Training Numbers: for each department and year, the last serial that was issued (or reserved from a paper log) and the number that comes next. Server side paging.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> numberCounters(UserAccount actor, int page, int limit) {
+        access.require(actor, "training.settings.view", "training.settings.manage");
+        int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
+        Long total = jdbc.queryForObject("select count(*) from training_number_sequences", Long.class);
+        List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList("""
+            select s.department_id, d.name as department_name, d.code as department_code, s.year, s.last_serial
+              from training_number_sequences s join departments d on d.id = s.department_id
+             order by s.year desc, d.name limit ? offset ?
+            """, safeLimit, (safePage - 1) * safeLimit));
+        for (Map<String, Object> row : rows) {
+            row.put("nextNumber", TrainingNumberService.format(String.valueOf(row.get("departmentCode")).trim(), ((Number) row.get("year")).intValue(), ((Number) row.get("lastSerial")).intValue() + 1));
+        }
+        long count = total == null ? 0 : total;
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("data", rows);
+        result.put("pagination", Map.of("page", safePage, "limit", safeLimit, "total", count, "totalPages", Math.max(1, (count + safeLimit - 1) / safeLimit)));
+        return result;
+    }
+
+    /** Only raises: a counter that goes down could issue a number twice. A reason is required and the change is in the Audit Trail. */
+    @Transactional
+    public Map<String, Object> raiseNumberCounter(UserAccount actor, NumberCounterRaise request) {
+        access.require(actor, "training.settings.manage");
+        if (request == null || request.departmentId() == null || request.year() == null || request.lastSerial() == null) throw new IllegalArgumentException("TRAINING_NUMBER_COUNTER_INCOMPLETE");
+        if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
+        int thisYear = LocalDate.now(TrainingNumberService.ZONE).getYear();
+        if (request.year() < 2000 || request.year() > thisYear + 1) throw new IllegalArgumentException("TRAINING_NUMBER_COUNTER_YEAR_INVALID");
+        if (request.lastSerial() < 1 || request.lastSerial() > 999999) throw new IllegalArgumentException("TRAINING_NUMBER_COUNTER_SERIAL_INVALID");
+        List<Map<String, Object>> department = jdbc.queryForList("select name, code from departments where id = ?", request.departmentId());
+        if (department.isEmpty()) throw new IllegalArgumentException("TRAINING_DEPARTMENT_NOT_FOUND");
+        String code = String.valueOf(department.getFirst().get("code")).trim();
+        if (!code.matches("[A-Za-z0-9]{1,40}")) throw new IllegalArgumentException("TRAINING_DEPARTMENT_CODE_INVALID");
+        List<Integer> before = jdbc.queryForList("select last_serial from training_number_sequences where department_id = ? and year = ?", Integer.class, request.departmentId(), request.year());
+        Integer changed = jdbc.queryForObject("""
+            with up as (
+              insert into training_number_sequences(department_id, year, last_serial) values (?, ?, ?)
+              on conflict (department_id, year) do update set last_serial = excluded.last_serial where training_number_sequences.last_serial < excluded.last_serial
+              returning last_serial)
+            select count(*) from up
+            """, Integer.class, request.departmentId(), request.year(), request.lastSerial());
+        if (changed == null || changed == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_NUMBER_COUNTER_CAN_ONLY_RISE");
+        audit.logAs(actor, "TRAINING_SETTINGS", "TRAINING_NUMBER_COUNTER " + code + " " + request.year(), AUDIT_ID, "TRAINING_NUMBER_COUNTER_RAISED", null, null,
+                "Counter of " + department.getFirst().get("name") + " " + request.year() + " raised from " + (before.isEmpty() ? "none" : before.getFirst()) + " to " + request.lastSerial()
+                        + ". Next number: " + TrainingNumberService.format(code.toUpperCase(java.util.Locale.ROOT), request.year(), request.lastSerial() + 1) + ". Reason: " + request.reason().trim());
+        return numberCounters(actor, 1, 10);
+    }
+
     // ---- values used by other services (no permission: they run for the person who triggered the work) ----
 
     public boolean warnScheduledAfterDue() { return bool("warn_scheduled_after_due", true); }

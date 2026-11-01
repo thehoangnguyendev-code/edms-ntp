@@ -29,7 +29,7 @@ public class TrainingRetentionService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> list(UserAccount actor, UUID departmentId, String state, String search, String sortBy, String sortDirection, int page, int limit) {
-        access.require(actor, "training.record.view");
+        access.require(actor, "training.compliance.view");
         UUID department = departmentId != null ? departmentId : access.departmentOf(actor);
         if (department == null) throw new IllegalArgumentException("TRAINING_DEPARTMENT_REQUIRED");
         access.requireScope(actor, department);

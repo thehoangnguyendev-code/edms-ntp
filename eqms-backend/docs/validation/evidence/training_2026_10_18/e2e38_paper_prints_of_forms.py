@@ -63,20 +63,9 @@ qa.call('POST', f'/training/activities/{aid}/confirm-content', {'step': 'CONTENT
 trainee.call('POST', f'/training/activities/{aid}/confirm-content', {'step': 'CONTENT_APPROVE', 'signatureToken': sign(trainee)})
 admin.call('POST', f'/training/activities/{aid}/notify', {'version': admin.call('GET', f'/training/activities/{aid}')['version'], 'signatureToken': sign(admin)})
 if sid:
+    # owner decision 2026-10-31: APD.0108 is confirmed by electronic signature in the system, so its paper print was removed (checks 11 to 13 of the first run are replaced)
     code, body = admin.call('POST', f'/training/sessions/{sid}/self-reading-list/paper', {'format': 'docx'}, raw=True)
-    first = code == 200
-    if code == 200:
-        t = words(body)
-        check('11 first paper print of the self-reading list', 'Controlled print:' in t and '/L1' in t and 'Electronically Signed' not in t, t[:300])
-    else:
-        # a copy was printed before (earlier run): the next one needs a reason
-        code, body = admin.call('POST', f'/training/sessions/{sid}/self-reading-list/paper', {'format': 'docx', 'reason': 'E2E-TEST again'}, raw=True)
-        check('11 a paper print of the self-reading list (a reprint, with a reason)', code == 200 and 'Controlled print:' in words(body), code)
-    code, body, raw = attempt(admin, 'POST', f'/training/sessions/{sid}/self-reading-list/paper', {'format': 'docx'})
-    check('12 a reprint needs a reason (400)', code == 400, (code, raw))
-    act = sql(f"select activity_id from training_sessions where id = '{sid}'")
-    packs = admin.call('GET', f'/training/activities/{act}/paper-packs')
-    check('13 the copies are in the list of packs', any(p['packKind'] == 'SELFREAD' for p in packs), [p['packCode'] for p in packs])
+    check('11 the paper print of the self-reading list no longer exists', code in (404, 405), code)
 else:
     print('no open self-reading session on DEV: checks 11 to 13 are not run')
 print(sum(1 for r in results if r[1]), 'of', len(results), 'checks passed')

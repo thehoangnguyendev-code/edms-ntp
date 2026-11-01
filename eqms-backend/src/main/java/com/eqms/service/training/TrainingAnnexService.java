@@ -2,7 +2,6 @@ package com.eqms.service.training;
 
 import com.eqms.entity.UserAccount;
 import com.eqms.service.AuditTrailService;
-import com.eqms.service.SignatureDisplayStyle;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -26,7 +25,6 @@ import java.util.UUID;
  */
 @Service
 public class TrainingAnnexService {
-    public record StyleRequest(String style, String reason) {}
 
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;
@@ -93,21 +91,18 @@ public class TrainingAnnexService {
         return result;
     }
 
-    /** One form: what the system fixes (the contract), how each signature slot is shown, and every template version. */
+    /** One form: what the system fixes (the contract), and every template version. */
     @Transactional(readOnly = true)
     public Map<String, Object> detail(UserAccount actor, String code) {
         access.require(actor, "training.annex.view");
         TrainingAnnexContract contract = TrainingAnnexContract.of(code);
         if (contract == null) throw new SecurityException(TrainingAccess.DENIED);
-        Map<String, String> styles = new LinkedHashMap<>();
-        for (Map<String, Object> s : jdbc.queryForList("select slot, style from training_annex_slot_styles where code = ?", code)) styles.put((String) s.get("slot"), (String) s.get("style"));
         List<Map<String, Object>> slots = new ArrayList<>();
         for (TrainingAnnexContract.Slot slot : contract.slots().values()) {
             Map<String, Object> s = new LinkedHashMap<>();
             s.put("name", slot.name());
             s.put("stage", slot.stage());
             s.put("meanings", slot.meanings());
-            s.put("style", styles.get(slot.name()));
             slots.add(s);
         }
         List<Map<String, Object>> groups = new ArrayList<>();
@@ -147,29 +142,6 @@ public class TrainingAnnexService {
         } catch (IOException e) {
             throw new IllegalStateException("TRAINING_PRINT_FAILED", e);
         }
-    }
-
-    /** Chooses how the electronic signature of a slot is shown. A reason is recorded in the Audit Trail. */
-    @Transactional
-    public Map<String, Object> setStyle(UserAccount actor, String code, String slot, StyleRequest request) {
-        access.require(actor, "training.annex.manage");
-        TrainingAnnexContract contract = TrainingAnnexContract.of(code);
-        if (contract == null || !contract.slots().containsKey(slot)) throw new IllegalArgumentException("TRAINING_TEMPLATE_INVALID");
-        if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
-        SignatureDisplayStyle style;
-        try {
-            style = SignatureDisplayStyle.valueOf(String.valueOf(request.style()).toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("TRAINING_TEMPLATE_INVALID");
-        }
-        String before = jdbc.queryForList("select style from training_annex_slot_styles where code = ? and slot = ?", String.class, code, slot).stream().findFirst().orElse(null);
-        jdbc.update("""
-            insert into training_annex_slot_styles(code, slot, style, updated_by, updated_at) values (?,?,?,?, now())
-            on conflict (code, slot) do update set style = excluded.style, updated_by = excluded.updated_by, updated_at = now()
-            """, code, slot, style.name(), actor.getId());
-        audit.logAs(actor, "TRAINING_ANNEX", code, UUID.nameUUIDFromBytes(("TRAINING_ANNEX/" + code).getBytes(java.nio.charset.StandardCharsets.UTF_8)), "TRAINING_ANNEX_SIGNATURE_STYLE_CHANGED",
-                before, style.name(), code + " slot " + slot + ": " + request.reason().trim());
-        return Map.of("code", code, "slot", slot, "style", style.name());
     }
 
     /**
