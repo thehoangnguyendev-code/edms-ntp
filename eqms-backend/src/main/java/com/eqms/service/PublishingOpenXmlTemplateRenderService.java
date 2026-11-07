@@ -18,6 +18,7 @@ import org.apache.xmlbeans.XmlObject;
 import org.apache.xmlbeans.impl.xb.xmlschema.SpaceAttribute;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTHdrFtr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageMar;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTShd;
@@ -230,12 +231,15 @@ public class PublishingOpenXmlTemplateRenderService {
 
         try (InputStream input = Files.newInputStream(sourcePath);
              XWPFDocument document = new XWPFDocument(input)) {
+            boolean pageSetupApplied = false;
             if (renderedHeaderPath != null && Files.exists(renderedHeaderPath) && isDocx(renderedHeaderPath, headerFileName)) {
                 try (InputStream headerInput = Files.newInputStream(renderedHeaderPath);
                      XWPFDocument headerDocument = new XWPFDocument(headerInput)) {
                     XWPFHeader sourceHeader = firstHeader(headerDocument);
                     if (sourceHeader != null) {
                         applyHeader(document, sourceHeader);
+                        // The header is as wide as its own page's text area; the body pages must have that page size and width.
+                        pageSetupApplied = applyTemplatePageSetup(document, headerDocument);
                         // The header template's own page setup is what its designer positioned the
                         // header content against -- copying only the header XML content and leaving
                         // the body document's own (arbitrary, unrelated) header distance in place
@@ -251,6 +255,9 @@ public class PublishingOpenXmlTemplateRenderService {
                     XWPFFooter sourceFooter = firstFooter(footerDocument);
                     if (sourceFooter != null) {
                         applyFooter(document, sourceFooter);
+                        if (!pageSetupApplied) {
+                            applyTemplatePageSetup(document, footerDocument);
+                        }
                         // Same reasoning as the header above, but for the footer distance -- this is
                         // the "too much white space around the footer" gap reported when the source
                         // (body) document's own footer distance is larger than what the footer
@@ -1121,6 +1128,58 @@ public class PublishingOpenXmlTemplateRenderService {
         return (BigInteger) pgMar.getHeader();
     }
 
+    /**
+     * The Publishing Template decides the page the published document has: the cover is composed from a template file, but the
+     * body keeps the page size and margins of the author's own file, so a Letter body next to an A4 cover looked larger and the
+     * header table (written in twips for the template's text width) no longer matched its page. Every body section takes the
+     * template's page size and left/right margins; a landscape section keeps its orientation (the sides are swapped) and its margins.
+     * Returns false when the template declares no page size, in which case the body is left as it is.
+     */
+    private boolean applyTemplatePageSetup(XWPFDocument targetDocument, XWPFDocument templateDocument) {
+        if (targetDocument == null || templateDocument == null || templateDocument.getDocument() == null
+                || templateDocument.getDocument().getBody() == null
+                || !templateDocument.getDocument().getBody().isSetSectPr()) {
+            return false;
+        }
+        CTSectPr templateSection = templateDocument.getDocument().getBody().getSectPr();
+        if (templateSection == null || !templateSection.isSetPgSz()) {
+            return false;
+        }
+        CTPageSz templateSize = templateSection.getPgSz();
+        BigInteger width = (BigInteger) templateSize.getW();
+        BigInteger height = (BigInteger) templateSize.getH();
+        if (width == null || height == null || width.signum() <= 0 || height.signum() <= 0 || width.compareTo(height) > 0) {
+            return false; // only a portrait template page defines the portrait text width
+        }
+        CTPageMar templateMargin = templateSection.isSetPgMar() ? templateSection.getPgMar() : null;
+        forEachSectPr(targetDocument, sectPr -> {
+            CTPageSz size = sectPr.isSetPgSz() ? sectPr.getPgSz() : sectPr.addNewPgSz();
+            BigInteger bodyWidth = (BigInteger) size.getW();
+            BigInteger bodyHeight = (BigInteger) size.getH();
+            boolean landscape = bodyWidth != null && bodyHeight != null && bodyWidth.compareTo(bodyHeight) > 0;
+            if (landscape) {
+                size.setW(height);
+                size.setH(width);
+                return;
+            }
+            size.setW(width);
+            size.setH(height);
+            if (size.isSetOrient()) {
+                size.unsetOrient();
+            }
+            if (templateMargin != null) {
+                if (templateMargin.getLeft() != null) {
+                    sectPr.getPgMar().setLeft(templateMargin.getLeft());
+                }
+                if (templateMargin.getRight() != null) {
+                    sectPr.getPgMar().setRight(templateMargin.getRight());
+                }
+                sectPr.getPgMar().setGutter(BigInteger.ZERO);
+            }
+        });
+        return true;
+    }
+
     private void applyHeaderDistance(XWPFDocument targetDocument, BigInteger headerDistance) {
         if (headerDistance == null) {
             return;
@@ -1172,6 +1231,12 @@ public class PublishingOpenXmlTemplateRenderService {
         }
 
         CTHdrFtr copied = (CTHdrFtr) source._getHdrFtr().copy();
+        // The template's own styles do not travel with the XML: write what they give each run into it first.
+        try {
+            HeaderFooterFormattingBaker.bake(copied, source.getXWPFDocument().getStyle());
+        } catch (org.apache.xmlbeans.XmlException | IOException ex) {
+            // A template whose styles cannot be read keeps the previous behaviour (the target's defaults) instead of failing publishing.
+        }
         Map<String, String> relationshipIdMap = copyPictures(source, target);
         String xml = copied.xmlText();
         boolean xmlChanged = false;

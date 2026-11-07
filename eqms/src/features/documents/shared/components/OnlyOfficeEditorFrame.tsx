@@ -100,7 +100,7 @@ export const OnlyOfficeEditorFrame = ({ revisionId, title, onClose }: OnlyOffice
   }, [revisionId]);
 
   // Close the editor the moment the revision moves to a stage that no longer allows this session
-  // (Complete Editing, Submit, Complete/Reject Review/Approval done by anyone), instead of leaving
+  // (Submit, Complete/Reject Review/Approval done by anyone), instead of leaving
   // a live editor on screen until the user reloads.
   useEffect(() => {
     if (loadState !== "ready" || lockedReason) return;

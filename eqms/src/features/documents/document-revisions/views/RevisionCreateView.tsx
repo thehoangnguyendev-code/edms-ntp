@@ -451,8 +451,6 @@ const RevisionCreateViewContent: React.FC = () => {
   const [isOpeningWorkspace, setIsOpeningWorkspace] = useState(false);
   const [isSyncingOffice, setIsSyncingOffice] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showCompleteEditingModal, setShowCompleteEditingModal] =
-    useState(false);
   const [showSubmitForReviewModal, setShowSubmitForReviewModal] = useState(false);
   const [previewStatus, setPreviewStatus] = useState<
     "idle" | "loading" | "ready" | "error"
@@ -464,7 +462,6 @@ const RevisionCreateViewContent: React.FC = () => {
   const [reviewComments, setReviewComments] = useState<RevisionReviewCommentItem[]>([]);
   const [currentReviewRound, setCurrentReviewRound] = useState(1);
   const [openCommentCount, setOpenCommentCount] = useState(0);
-  const [isCompletingEditing, setIsCompletingEditing] = useState(false);
   const [isSubmittingForReview, setIsSubmittingForReview] = useState(false);
   const [isReplacingFile, setIsReplacingFile] = useState(false);
   const replaceFileInputRef = useRef<HTMLInputElement>(null);
@@ -775,19 +772,16 @@ const RevisionCreateViewContent: React.FC = () => {
     isEditable &&
     !editingCompleted &&
     resolveRevisionCapability("editOnline");
-  const canCompleteEditing =
-    Boolean(revisionDisplay?.id) &&
-    hasRevisionSource &&
-    resolveRevisionCapability("completeAuthoring");
   const canPersistRevision =
     Boolean(revisionDisplay?.id) &&
     resolveRevisionCapability("updateDraftMetadata");
   const canOpenPublishingWorkspace =
     Boolean(revisionDisplay?.id) &&
     resolveRevisionCapability("openPublishingWorkspace");
+  // Submitting locks the source (there is no separate Complete Editing step), so a source file must exist.
   const canSubmitForReview =
     Boolean(revisionDisplay?.id) &&
-    editingCompleted &&
+    hasRevisionSource &&
     resolveRevisionCapability("submitForReview");
   // OnlyOffice has no "upload a working copy to a remote workspace" step -- it reads the
   // revision's current MinIO-stored source file directly on each edit session (see
@@ -1348,61 +1342,6 @@ const RevisionCreateViewContent: React.FC = () => {
     }
   };
 
-  const handleCompleteEditing = async (signature?: {
-    reason?: string;
-    comment?: string;
-    signatureToken?: string;
-  }) => {
-    if (!revisionDisplay?.id) {
-      showToast({
-        type: "warning",
-        title: "Revision not created",
-        message:
-          "Please upload the revision file first before completing editing.",
-      });
-      return;
-    }
-
-    setIsCompletingEditing(true);
-    try {
-      const updated = await documentApi.completeRevisionEditing(
-        revisionDisplay.id,
-        signature,
-      );
-      const revId = updated?.id || revisionDisplay?.id;
-      if (revId) {
-        await refreshRevisionFromBackend(revId).catch(() => null);
-      }
-      showToast({
-        type: "success",
-        title: "Editing completed",
-        message:
-          "The revision is now locked for publishing workspace preparation.",
-        duration: 3000,
-      });
-      setShowCompleteEditingModal(false);
-      // Stay on this view instead of navigating to the read-only Detail page: Complete Editing
-      // only locks the source file, it does not finish the revision -- the very next expected
-      // action is Submit for Review, and that button (along with everything else this page
-      // already computes correctly from the just-refreshed revisionRecord/capabilities above)
-      // only exists here. DetailRevisionView is a read-only summary with no workflow actions,
-      // so navigating there stranded the user with no way to submit for review at all.
-    } catch (error) {
-      console.error("Failed to complete editing", error);
-      showToast({
-        type: "error",
-        title: "Complete editing failed",
-        message:
-          (error as any)?.response?.data?.error?.message ||
-          (error as any)?.response?.data?.message ||
-          "Unable to complete editing for this revision.",
-        duration: 3000,
-      });
-    } finally {
-      setIsCompletingEditing(false);
-    }
-  };
-
   const handleSubmitForReview = async (signature?: {
     reason?: string;
     comment?: string;
@@ -1644,20 +1583,6 @@ const RevisionCreateViewContent: React.FC = () => {
               {hasRevisionSource ? "Replace Source File" : "Upload Source File"}
             </Button>
           )}
-          {canCompleteEditing && (
-            <Button
-              onClick={() => setShowCompleteEditingModal(true)}
-              size="sm"
-              variant="outline-emerald"
-              disabled={isCompletingEditing}
-              className="whitespace-nowrap gap-2"
-            >
-              {isCompletingEditing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : null}
-              Complete Editing
-            </Button>
-          )}
 
           {canSubmitForReview && (
             <Button
@@ -1746,14 +1671,6 @@ const RevisionCreateViewContent: React.FC = () => {
         isSubmitting={isSaving}
       />
       <ESignatureModal
-        isOpen={showCompleteEditingModal}
-        onClose={() => setShowCompleteEditingModal(false)}
-        onConfirm={(signature) => handleCompleteEditing(signature)}
-        actionTitle="Complete Editing"
-        meaningDisplayName="Prepared"
-        meaningCode="PREPARED"
-      />
-      <ESignatureModal
         isOpen={showSubmitForReviewModal}
         onClose={() => setShowSubmitForReviewModal(false)}
         onConfirm={(signature) => handleSubmitForReview(signature)}
@@ -1784,7 +1701,7 @@ const RevisionCreateViewContent: React.FC = () => {
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <p className="font-semibold">Revision returned for rework</p>
             <p className="mt-1 text-amber-800">
-              Review feedback is available in the Document tab. Update the source working copy, then select Complete Editing to synchronize and lock the revised source before the next review round.
+              Review feedback is available in the Document tab. Update the source working copy, then select Submit for Review, which locks the revised source for the next review round.
             </p>
           </div>
         )}
@@ -1954,20 +1871,6 @@ const RevisionCreateViewContent: React.FC = () => {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : null}
                 {hasRevisionSource ? "Replace Source File" : "Upload Source File"}
-              </Button>
-            )}
-            {canCompleteEditing && (
-              <Button
-                onClick={() => setShowCompleteEditingModal(true)}
-                size="sm"
-                variant="outline-emerald"
-                disabled={isCompletingEditing}
-                className="whitespace-nowrap gap-2"
-              >
-                {isCompletingEditing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : null}
-                Complete Editing
               </Button>
             )}
             {canSubmitForReview && (

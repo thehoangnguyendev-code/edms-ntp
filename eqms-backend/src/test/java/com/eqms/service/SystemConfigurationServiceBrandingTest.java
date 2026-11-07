@@ -77,6 +77,58 @@ class SystemConfigurationServiceBrandingTest {
         }
     }
 
+    @Test
+    void knowledgeFolderNamesAreFullUnlessTheAdministratorChoosesAbbreviationAndOnlyKnownValuesAreSaved() throws Exception {
+        assertEquals("FULL", serviceWithGeneral("{}").getPublicBranding().knowledgeFolderNames());
+        assertEquals("ABBREVIATION", serviceWithGeneral("{\"appearance\":{\"knowledgeFolderNames\":\"ABBREVIATION\"}}").getPublicBranding().knowledgeFolderNames());
+        assertEquals("FULL", serviceWithGeneral("{\"appearance\":{\"knowledgeFolderNames\":\"short\"}}").getPublicBranding().knowledgeFolderNames());
+        for (String ok : new String[] {"\"FULL\"", "\"ABBREVIATION\"", "null"}) {
+            var general = mapper.readTree("{\"appearance\":{\"knowledgeFolderNames\":" + ok + "}}");
+            assertDoesNotThrow(() -> SystemConfigurationService.validateKnowledgeFolderNames(general), ok);
+        }
+        for (String bad : new String[] {"\"short\"", "\"full\"", "1", "true"}) {
+            var general = mapper.readTree("{\"appearance\":{\"knowledgeFolderNames\":" + bad + "}}");
+            assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validateKnowledgeFolderNames(general), bad);
+        }
+    }
+
+    @Test
+    void knowledgeBaseOpensInANewTabUnlessTheAdministratorTurnedItOff() throws Exception {
+        assertTrue(serviceWithGeneral("{}").getPublicBranding().knowledgeOpenInNewTab());
+        assertTrue(serviceWithGeneral("{\"appearance\":{\"showSidebarUserProfile\":true}}").getPublicBranding().knowledgeOpenInNewTab());
+        assertTrue(serviceWithGeneral("{\"appearance\":{\"knowledgeOpenInNewTab\":true}}").getPublicBranding().knowledgeOpenInNewTab());
+        assertFalse(serviceWithGeneral("{\"appearance\":{\"knowledgeOpenInNewTab\":false}}").getPublicBranding().knowledgeOpenInNewTab());
+    }
+
+    @Test
+    void theSidebarNamesItsFoldersOnItsOwnAndFollowsTheLayoutUntilTheAdministratorChoosesForIt() throws Exception {
+        assertEquals("FULL", serviceWithGeneral("{}").getPublicBranding().knowledgeSidebarFolderNames());
+        // nothing chosen for the sidebar: it follows the layout
+        assertEquals("ABBREVIATION", serviceWithGeneral("{\"appearance\":{\"knowledgeFolderNames\":\"ABBREVIATION\"}}").getPublicBranding().knowledgeSidebarFolderNames());
+        // its own choice wins, either way
+        var layoutAbbreviated = serviceWithGeneral("{\"appearance\":{\"knowledgeFolderNames\":\"ABBREVIATION\",\"knowledgeSidebarFolderNames\":\"FULL\"}}").getPublicBranding();
+        assertEquals("ABBREVIATION", layoutAbbreviated.knowledgeFolderNames());
+        assertEquals("FULL", layoutAbbreviated.knowledgeSidebarFolderNames());
+        assertEquals("ABBREVIATION", serviceWithGeneral("{\"appearance\":{\"knowledgeSidebarFolderNames\":\"ABBREVIATION\"}}").getPublicBranding().knowledgeSidebarFolderNames());
+        for (String bad : new String[] {"\"short\"", "1"}) {
+            var general = mapper.readTree("{\"appearance\":{\"knowledgeSidebarFolderNames\":" + bad + "}}");
+            assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validateKnowledgeFolderNames(general), bad);
+        }
+    }
+
+    @Test
+    void knowledgeBackgroundIsAColourOrGradientTheAdministratorSetAndNeverAnImageOrVideo() throws Exception {
+        assertNull(serviceWithGeneral("{}").getPublicBranding().knowledgeBackground());
+        String solid = "{\"mode\":\"solid\",\"colors\":[\"#f0fdf4\",\"#ffffff\"],\"angle\":0}";
+        assertEquals("solid", serviceWithGeneral("{\"appearance\":{\"knowledgeBackground\":" + solid + "}}").getPublicBranding().knowledgeBackground().get("mode").asText());
+        var general = mapper.readTree("{\"appearance\":{\"knowledgeBackground\":" + solid + "}}");
+        assertDoesNotThrow(() -> SystemConfigurationService.validatePageBackgrounds(general));
+        for (String mode : new String[] {"image", "video"}) {
+            var bad = mapper.readTree("{\"appearance\":{\"knowledgeBackground\":{\"mode\":\"" + mode + "\",\"colors\":[\"#ffffff\",\"#000000\"],\"angle\":0}}}");
+            assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validatePageBackgrounds(bad), mode);
+        }
+    }
+
     private final ObjectMapper mapper = new ObjectMapper();
 
     private SystemConfigurationService serviceWithGeneral(String generalJson) throws Exception {
@@ -121,26 +173,6 @@ class SystemConfigurationServiceBrandingTest {
                 "{\"systemHeaderTitle\":{\"a\":1}}", "{\"systemHeaderTitle\":\"two\\nlines\"}", "{\"systemHeaderTitle\":\"tab\\there\"}"}) {
             assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validateSystemHeaderTitle(mapper.readTree(json)), json);
         }
-    }
-
-    @Test
-    void knowledgeExplorerIsOffWhenTheSettingIsMissing() throws Exception {
-        var branding = serviceWithGeneral("{\"appearance\":{\"showSidebarUserProfile\":true}}").getPublicBranding();
-        assertFalse(branding.knowledgeExplorerEnabled());
-        assertTrue(branding.showSidebarUserProfile());
-    }
-
-    @Test
-    void knowledgeExplorerIsOffWhenThereIsNoAppearanceSection() throws Exception {
-        assertFalse(serviceWithGeneral("{}").getPublicBranding().knowledgeExplorerEnabled());
-    }
-
-    @Test
-    void knowledgeExplorerFollowsTheAdministratorSetting() throws Exception {
-        assertTrue(serviceWithGeneral("{\"appearance\":{\"knowledgeExplorerEnabled\":true}}")
-                .getPublicBranding().knowledgeExplorerEnabled());
-        assertFalse(serviceWithGeneral("{\"appearance\":{\"knowledgeExplorerEnabled\":false}}")
-                .getPublicBranding().knowledgeExplorerEnabled());
     }
 
     @Test

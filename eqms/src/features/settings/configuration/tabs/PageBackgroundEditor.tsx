@@ -22,6 +22,9 @@ const MODES: { label: string; value: PageBackgroundMode }[] = [
   { label: "Conic gradient", value: "conic" },
 ];
 
+/** What "System default" is, for the sign-in page and for the main layout alike: Tailwind's bg-gray-100/50 (gray-100, half transparent). Keep it in step with AUTH_UI.pageWrapper and MainLayout. */
+export const DEFAULT_PAGE_BACKGROUND_COLOR = 'rgba(243, 244, 246, 0.5)';
+
 const VIDEO_EXTENSIONS = /\.(mp4|mov|m4v|3gp|webm|mkv|avi|wmv|asf|flv|mpg|mpeg|ts|mts|ogv|ogg)$/i;
 
 export function PageBackgroundEditor({
@@ -145,9 +148,10 @@ export function PageBackgroundEditor({
                   {gradient && draft.colors.length > 2 && (
                     <Button
                       type="button"
-                      size="sm"
+                      size="icon-sm"
                       variant="destructive"
-                      className="shrink-0 gap-2"
+                      title={`Remove color ${index + 1}`}
+                      className="h-9 w-9 shrink-0 md:h-9 md:w-9"
                       onClick={() => {
                         ids.current.splice(index, 1);
                         patch({
@@ -157,7 +161,6 @@ export function PageBackgroundEditor({
                       aria-label={`Remove color ${index + 1}`}
                     >
                       <IconTrash className="h-4 w-4" aria-hidden="true" />
-                      Remove
                     </Button>
                   )}
                 </motion.div>
@@ -166,7 +169,7 @@ export function PageBackgroundEditor({
           </div>}
           {gradient && <div className="space-y-3 sm:space-y-4"><AnimatePresence initial={false}>{draft.colors.map((color, index) => <motion.div key={ids.current[index]} {...rowMotion} layout={!reduceMotion} className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600 sm:flex-nowrap">
             <span className="w-16 shrink-0">Color {index + 1}</span><Slider label={`Color ${index + 1} position`} min={index ? stops[index - 1] : 0} max={index < stops.length - 1 ? stops[index + 1] : 100} value={stops[index]} onChange={(value) => patch({ stops: stops.map((stop, i) => i === index ? value : stop) })} className="min-w-[5rem] flex-1" /><span className="w-10 text-right tabular-nums">{stops[index]}%</span>
-            <div className="ml-auto flex gap-1"><Button variant="ghost" size="icon-sm" aria-label={`Move color ${index + 1} left`} disabled={index === 0} onClick={() => reorder(index, index - 1)}><IconArrowLeft className="h-5 w-5" /></Button><Button variant="ghost" size="icon-sm" aria-label={`Move color ${index + 1} right`} disabled={index === draft.colors.length - 1} onClick={() => reorder(index, index + 1)}><IconArrowRight className="h-5 w-5" /></Button></div>
+            <div className="ml-auto flex gap-1"><Button variant="outline" size="icon-sm" className="h-9 w-9 md:h-9 md:w-9" title={`Move color ${index + 1} left`} aria-label={`Move color ${index + 1} left`} disabled={index === 0} onClick={() => reorder(index, index - 1)}><IconArrowLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon-sm" className="h-9 w-9 md:h-9 md:w-9" title={`Move color ${index + 1} right`} aria-label={`Move color ${index + 1} right`} disabled={index === draft.colors.length - 1} onClick={() => reorder(index, index + 1)}><IconArrowRight className="h-4 w-4" /></Button></div>
           </motion.div>)}</AnimatePresence></div>}
           {gradient && draft.colors.length < 5 && (
             <Button
@@ -208,6 +211,20 @@ export function PageBackgroundEditor({
             style={{ background: pageBackgroundCss(draft) }}
           />}
         </>
+      )}
+      {draft.mode === "default" && (
+        <div className="space-y-1.5">
+          <div
+            aria-label={`${title} background preview`}
+            className="h-20 rounded-lg border border-slate-200 bg-white"
+            style={{ background: DEFAULT_PAGE_BACKGROUND_COLOR }}
+          />
+          <p className="text-xs text-slate-500">
+            {allowImage
+              ? "The built-in Authentication background: light grey (bg-gray-100/50). Choose another style to replace it."
+              : "The built-in Main Layout background: light grey (bg-gray-100/50). Choose another style to replace it."}
+          </p>
+        </div>
       )}
     </div>
   );

@@ -119,7 +119,12 @@ services:
     # /var/log/onlyoffice/documentserver/pluginsmanager.log / docker logs), each kill leaving a
     # multi-GB WSL2 crash dump under %LOCALAPPDATA%\Temp\wsl-crashes.
     mem_limit: ${ONLYOFFICE_MEMORY_LIMIT:-5g}
-    image: onlyoffice/documentserver:8.2
+    # Built from deploy/onlyoffice/Dockerfile: Document Server 9.4.0.1 with draw.io as its only plugin and no Plugin Manager.
+    build:
+      context: ./deploy/onlyoffice
+      args:
+        ONLYOFFICE_VERSION: ${ONLYOFFICE_VERSION:-9.4.0.1}
+    image: eqms-onlyoffice:${ONLYOFFICE_VERSION:-9.4.0.1}
     container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-onlyoffice
     restart: unless-stopped
     logging: *default-logging
@@ -127,6 +132,8 @@ services:
       - no-new-privileges:true
     environment:
       JWT_ENABLED: "true"
+      # The plugins are part of the image; the start-up download and installation of the default plugins stays off.
+      PLUGINS_ENABLED: "false"
       JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-EQMS_DEV_ONLYOFFICE_JWT_SECRET_CHANGE_ME}
       JWT_HEADER: Authorization
     ports:
@@ -315,6 +322,8 @@ services:
       TZ: Asia/Ho_Chi_Minh
       # DEV | TEST | PROD. Checked at startup and before every storage write (EnvironmentConfigurationValidator).
       APP_ENVIRONMENT: ${EQMS_ENVIRONMENT:-DEV}
+      # Origins the browser may call the API from (comma separated). A public tunnel of a DEV machine is added in .env, never here.
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:4173,http://localhost:3000}
       # Dedicated 32-byte Base64 key; retain across restarts and on every backend instance.
       APP_NOTIFICATIONS_OUTBOX_ENCRYPTION_KEY: ${NOTIFICATION_OUTBOX_ENCRYPTION_KEY:?NOTIFICATION_OUTBOX_ENCRYPTION_KEY is required}
       APP_BACKUP_AGENT_URL: http://backup-agent:5600

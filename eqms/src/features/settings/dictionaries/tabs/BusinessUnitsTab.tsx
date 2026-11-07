@@ -4,7 +4,8 @@ import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDeskt
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { Trash2, MoreVertical, Power, PowerOff, Search, AlertTriangle, ChevronUp, ChevronDown, Check, X } from "lucide-react";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
-import { Select } from "@/components/ui/select/Select";
+import { Select, type SelectOption } from "@/components/ui/select/Select";
+import { settingsApi } from "@/services/api/settings";
 import { cn } from "@/components/ui/utils";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -24,6 +25,10 @@ import { extractApiMessage } from "../utils";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { FolderIcon } from "@/features/self-service/knowledge/explorer/ExplorerIcons";
+import { folderColor } from "@/features/self-service/knowledge/explorer/explorerModel";
+import { FolderColorField } from "../FolderColorField";
+import { userOptionLabel } from "../userOptionLabel";
 
 export const BusinessUnitsTab = React.forwardRef<
   { openAddModal: () => void },
@@ -142,6 +147,8 @@ export const BusinessUnitsTab = React.forwardRef<
       abbreviation: next.abbreviation,
       description: next.description,
       isActive: next.isActive,
+      headOfUnitId: next.headOfUnitId || null,
+      iconColor: next.iconColor || null,
     })
       .then((updated) => {
         setShowToggleModal(false);
@@ -224,6 +231,8 @@ export const BusinessUnitsTab = React.forwardRef<
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
     { id: "name", header: "Business Unit Name", label: "Business Unit Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cellClassName: TABLE_STYLES.cell28, cell: (item) => item.name },
     { id: "abbreviation", header: "Abbreviation", label: "Abbreviation", sort: { direction: sortConfig.key === "abbreviation" ? sortConfig.direction : undefined, onSort: () => handleSort("abbreviation") }, cell: (item) => <Badge color="blue" size="sm">{item.abbreviation}</Badge> },
+    { id: "icon", header: "Folder", label: "Folder", cell: (item) => <FolderIcon color={item.iconColor || folderColor(item.name)} className="h-6 w-7" /> },
+    { id: "headOfUnitName", header: "Head of Unit", label: "Head of Unit", cellClassName: "text-slate-700", cell: (item) => item.headOfUnitName || "-" },
     {
       id: "departments",
       header: "Departments",
@@ -494,6 +503,8 @@ export const BusinessUnitsTab = React.forwardRef<
             abbreviation: data.abbreviation,
             description: data.description,
             isActive: data.isActive,
+            headOfUnitId: data.headOfUnitId || null,
+            iconColor: data.iconColor || null,
           };
           try {
             const saved = showEditModal && selectedItem
@@ -665,8 +676,19 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
     abbreviation: item?.abbreviation ?? "",
     description: item?.description ?? "",
     isActive: item?.isActive ?? true,
+    headOfUnitId: item?.headOfUnitId ?? "",
+    headOfUnitLabel: item?.headOfUnitName ? userOptionLabel(item.headOfUnitEmployeeCode, item.headOfUnitName) : "",
+    iconColor: item?.iconColor ?? "",
   });
   const [isSaving, setIsSaving] = useState(false);
+
+  // Searched on the server as the admin types, like the Department Head of a Department.
+  const searchHeadOfUnitOptions = React.useCallback(async (query: string): Promise<SelectOption[]> => {
+    const response = await settingsApi.getUsers({ search: query, limit: 20, page: 1 } as any);
+    return response.data
+      .filter((u: any) => u.fullName && u.id)
+      .map((u: any) => ({ label: userOptionLabel(u.employeeCode, u.fullName, u.username), value: u.id }));
+  }, []);
 
   React.useEffect(() => {
     if (item) {
@@ -675,9 +697,12 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
         abbreviation: item.abbreviation,
         description: item.description ?? "",
         isActive: item.isActive,
+        headOfUnitId: item.headOfUnitId ?? "",
+        headOfUnitLabel: item.headOfUnitName ? userOptionLabel(item.headOfUnitEmployeeCode, item.headOfUnitName) : "",
+        iconColor: item.iconColor ?? "",
       });
     } else {
-      setFormData({ name: "", abbreviation: "", description: "", isActive: true });
+      setFormData({ name: "", abbreviation: "", description: "", isActive: true, headOfUnitId: "", headOfUnitLabel: "", iconColor: "" });
     }
   }, [item, isOpen]);
 
@@ -748,6 +773,23 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
             disabled={isSaving}
           />
         </div>
+
+        <div>
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
+            Head of Unit
+          </label>
+          <Select
+            value={formData.headOfUnitId}
+            onChange={(value) => setFormData({ ...formData, headOfUnitId: String(value) })}
+            options={formData.headOfUnitId ? [{ label: formData.headOfUnitLabel || formData.headOfUnitId, value: formData.headOfUnitId }] : []}
+            onSearch={searchHeadOfUnitOptions}
+            enableSearch
+            placeholder="Search and select a user..."
+            disabled={isSaving}
+          />
+        </div>
+
+        <FolderColorField name={formData.name} value={formData.iconColor} onChange={(iconColor) => setFormData({ ...formData, iconColor })} disabled={isSaving} />
 
         <div className="flex items-center gap-3">
           <Checkbox

@@ -71,7 +71,6 @@ public class RevisionActionCapabilityService {
         actions.put("syncToOffice", evaluateOfficeAction(user, revision, FileAccessAction.SYNC_TO_OFFICE));
         actions.put("syncFromOffice", evaluateOfficeAction(user, revision, FileAccessAction.SYNC_FROM_OFFICE));
 
-        actions.put("completeAuthoring", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.COMPLETE_AUTHORING));
         actions.put("updateDraftMetadata", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.UPDATE_DRAFT_METADATA));
         actions.put("openPublishingWorkspace", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.OPEN_PUBLISHING_WORKSPACE));
         actions.put("submitForReview", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.SUBMIT_FOR_REVIEW));

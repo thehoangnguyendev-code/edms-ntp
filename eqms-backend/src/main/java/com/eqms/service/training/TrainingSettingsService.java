@@ -40,14 +40,29 @@ public class TrainingSettingsService {
                                 Integer retentionYearsAfterLeaving, Integer reviewReadyReminderDays, Integer reviewOpenReminderDays,
                                 Integer resultsDueDays, String reason, String resultsDueDayType, Integer initialTrainingDays,
                                 Boolean warnScheduledAfterDue, Integer selfReadingReminderFirstDays, Integer selfReadingReminderSecondDays, Integer makeupReminderDays,
-                                Map<String, String> downloadFileNames) {
+                                Map<String, String> downloadFileNames, String trainingNumberEntryMode) {
+        /** Without the way the Training Number is given: it stays as it is. */
+        public SettingsWrite(Integer version, Integer passPercent, Integer documentTrainingDaysDefault, Integer annualRequirementDueMonth, Integer annualRequirementDueDay, Integer absenceRetrainMonths,
+                             Integer retentionYearsAfterLeaving, Integer reviewReadyReminderDays, Integer reviewOpenReminderDays, Integer resultsDueDays, String reason, String resultsDueDayType, Integer initialTrainingDays,
+                             Boolean warnScheduledAfterDue, Integer selfReadingReminderFirstDays, Integer selfReadingReminderSecondDays, Integer makeupReminderDays, Map<String, String> downloadFileNames) {
+            this(version, passPercent, documentTrainingDaysDefault, annualRequirementDueMonth, annualRequirementDueDay, absenceRetrainMonths, retentionYearsAfterLeaving, reviewReadyReminderDays,
+                    reviewOpenReminderDays, resultsDueDays, reason, resultsDueDayType, initialTrainingDays, warnScheduledAfterDue, selfReadingReminderFirstDays, selfReadingReminderSecondDays, makeupReminderDays, downloadFileNames, null);
+        }
+
         /** Without the patterns of the file names: they stay as they are. */
         public SettingsWrite(Integer version, Integer passPercent, Integer documentTrainingDaysDefault, Integer annualRequirementDueMonth, Integer annualRequirementDueDay, Integer absenceRetrainMonths,
                              Integer retentionYearsAfterLeaving, Integer reviewReadyReminderDays, Integer reviewOpenReminderDays, Integer resultsDueDays, String reason, String resultsDueDayType, Integer initialTrainingDays,
                              Boolean warnScheduledAfterDue, Integer selfReadingReminderFirstDays, Integer selfReadingReminderSecondDays, Integer makeupReminderDays) {
             this(version, passPercent, documentTrainingDaysDefault, annualRequirementDueMonth, annualRequirementDueDay, absenceRetrainMonths, retentionYearsAfterLeaving, reviewReadyReminderDays,
-                    reviewOpenReminderDays, resultsDueDays, reason, resultsDueDayType, initialTrainingDays, warnScheduledAfterDue, selfReadingReminderFirstDays, selfReadingReminderSecondDays, makeupReminderDays, null);
+                    reviewOpenReminderDays, resultsDueDays, reason, resultsDueDayType, initialTrainingDays, warnScheduledAfterDue, selfReadingReminderFirstDays, selfReadingReminderSecondDays, makeupReminderDays, null, null);
         }
+    }
+
+    /** How a Training Number is given: "AUTO" (the system issues it, the default) or "MANUAL" (the person creating the document types it). */
+    @Transactional(readOnly = true)
+    public String trainingNumberEntryMode() {
+        List<String> rows = jdbc.queryForList("select training_number_entry_mode from training_settings where id=1", String.class);
+        return !rows.isEmpty() && "MANUAL".equals(rows.getFirst()) ? "MANUAL" : "AUTO";
     }
 
     /** The Administrator raises the counter of the Training Numbers of a department and year to the last serial of the paper log (go-live). */
@@ -130,7 +145,7 @@ public class TrainingSettingsService {
     private Map<String, Object> read() {
         var row = jdbc.queryForMap("""
             select pass_percent, document_training_days_default, annual_requirement_due_month, annual_requirement_due_day,
-                   absence_retrain_months, retention_years_after_leaving, review_ready_reminder_days, review_open_reminder_days, results_due_days, results_due_day_type, initial_training_days, warn_scheduled_after_due, self_reading_reminder_first_days, self_reading_reminder_second_days, makeup_reminder_days, version, updated_at
+                   absence_retrain_months, retention_years_after_leaving, review_ready_reminder_days, review_open_reminder_days, results_due_days, results_due_day_type, initial_training_days, warn_scheduled_after_due, self_reading_reminder_first_days, self_reading_reminder_second_days, makeup_reminder_days, training_number_entry_mode, version, updated_at
               from training_settings where id=1
             """);
         Map<String, Object> result = new LinkedHashMap<>();
@@ -149,6 +164,7 @@ public class TrainingSettingsService {
         result.put("selfReadingReminderFirstDays", row.get("self_reading_reminder_first_days"));
         result.put("selfReadingReminderSecondDays", row.get("self_reading_reminder_second_days"));
         result.put("makeupReminderDays", row.get("makeup_reminder_days"));
+        result.put("trainingNumberEntryMode", row.get("training_number_entry_mode"));
         result.put("downloadFileNames", new TrainingFileNames(jdbc).describe());
         result.put("version", row.get("version"));
         result.put("updatedAt", row.get("updated_at"));
@@ -178,6 +194,9 @@ public class TrainingSettingsService {
         int makeupDays = pick(request.makeupReminderDays(), current, "makeup_reminder_days");
         String dayType = request.resultsDueDayType() == null ? String.valueOf(current.get("results_due_day_type")) : request.resultsDueDayType();
         if (!TrainingWorkingDays.valid(dayType)) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
+        String currentEntryMode = current.get("training_number_entry_mode") == null ? "AUTO" : String.valueOf(current.get("training_number_entry_mode"));
+        String entryMode = request.trainingNumberEntryMode() == null ? currentEntryMode : request.trainingNumberEntryMode();
+        if (!"AUTO".equals(entryMode) && !"MANUAL".equals(entryMode)) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
         boolean warnAfterDue = request.warnScheduledAfterDue() == null ? Boolean.TRUE.equals(current.get("warn_scheduled_after_due")) : request.warnScheduledAfterDue();
         if (pass < 1 || pass > 100 || days < 1 || days > 365 || absence < 1 || absence > 60) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
         if (resultsDays < 1 || resultsDays > 60) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
@@ -207,6 +226,7 @@ public class TrainingSettingsService {
         change(changes, "Days before the due date of a self-reading for the first reminder", current.get("self_reading_reminder_first_days"), readFirst);
         change(changes, "Days before the due date of a self-reading for the second reminder", current.get("self_reading_reminder_second_days"), readSecond);
         change(changes, "Days after the due date to remind about a person still absent without a make-up training", current.get("makeup_reminder_days"), makeupDays);
+        change(changes, "How the Training Number is given", currentEntryMode, entryMode);
         // the patterns of the names of the downloaded files: only the forms that were sent change; an empty pattern brings back the default
         TrainingFileNames names = new TrainingFileNames(jdbc);
         Map<String, String> patterns = new LinkedHashMap<>(names.saved());
@@ -227,8 +247,8 @@ public class TrainingSettingsService {
         jdbc.update("""
             update training_settings set pass_percent=?, document_training_days_default=?, annual_requirement_due_month=?,
               annual_requirement_due_day=?, absence_retrain_months=?, retention_years_after_leaving=?, review_ready_reminder_days=?, review_open_reminder_days=?, results_due_days=?,
-              results_due_day_type=?, initial_training_days=?, warn_scheduled_after_due=?, self_reading_reminder_first_days=?, self_reading_reminder_second_days=?, makeup_reminder_days=?, download_file_names=cast(? as jsonb), version=version+1, updated_by=?, updated_at=now() where id=1
-            """, pass, days, month, day, absence, retention, readyDays, openDays, resultsDays, dayType, initialDays, warnAfterDue, readFirst, readSecond, makeupDays, TrainingFileNames.toJson(patterns), actor.getId());
+              results_due_day_type=?, initial_training_days=?, warn_scheduled_after_due=?, self_reading_reminder_first_days=?, self_reading_reminder_second_days=?, makeup_reminder_days=?, training_number_entry_mode=?, download_file_names=cast(? as jsonb), version=version+1, updated_by=?, updated_at=now() where id=1
+            """, pass, days, month, day, absence, retention, readyDays, openDays, resultsDays, dayType, initialDays, warnAfterDue, readFirst, readSecond, makeupDays, entryMode, TrainingFileNames.toJson(patterns), actor.getId());
         String reason = request.reason() == null ? "" : request.reason().trim();
         audit.logAs(actor, "TRAINING_SETTINGS", "TRAINING_SETTINGS", AUDIT_ID, "TRAINING_SETTINGS_UPDATED", null, null,
                 (reason.isEmpty() ? "" : reason + " | ") + String.join("; ", changes));

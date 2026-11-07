@@ -1,4 +1,5 @@
 import { observeOverlayPosition } from "@/utils/scroll";
+import { openMenuRenderGate } from "@/components/ui/table/rowRenderGate";
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { RefObject } from 'react';
 
@@ -72,6 +73,10 @@ export interface UsePortalDropdownReturn {
  */
 export function usePortalDropdown(): UsePortalDropdownReturn {
   const [openId, setOpenId] = useState<string | null>(null);
+  // The row that is open now. toggle() reads it from here and not from its closure: a data table may leave a row as it was while a menu opens (see
+  // rowRenderGate), and the button of that row then still holds the toggle of an earlier render, which must know which menu is open.
+  const openIdRef = useRef<string | null>(null);
+  openIdRef.current = openId;
   const [position, setPosition] = useState<PortalDropdownPosition>({
     top: 0,
     left: 0,
@@ -145,8 +150,12 @@ export function usePortalDropdown(): UsePortalDropdownReturn {
     ) => {
       event.stopPropagation();
 
+      // The screen is rendered again because of this state, and only because of it: a data table then leaves the rows this change does not touch as they are.
+      const current = openIdRef.current;
+      openMenuRenderGate([current, id]);
+
       // Toggle closed if already open
-      if (openId === id) {
+      if (current === id) {
         setOpenId(null);
         return;
       }
@@ -157,9 +166,10 @@ export function usePortalDropdown(): UsePortalDropdownReturn {
       setPosition(computePosition(rect, menuHeight, menuWidth));
       setOpenId(id);
     },
-    [openId, computePosition]
+    [computePosition]
   );
 
+  // Not gated: a menu item calls close() and then does its own work in the same event, so the render that follows is not the menu's alone.
   const close = useCallback(() => {
     setOpenId(null);
   }, []);
@@ -178,6 +188,8 @@ export function usePortalDropdown(): UsePortalDropdownReturn {
       const button = buttonRef?.current;
       if (!button) return;
       const { menuHeight, menuWidth } = lastOptsRef.current;
+      // Each frame of a scroll moves the menu: that must not render every row of the table again.
+      openMenuRenderGate([openId]);
       setPosition(computePosition(button.getBoundingClientRect(), menuHeight, menuWidth));
     };
 

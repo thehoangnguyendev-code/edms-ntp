@@ -14,7 +14,7 @@ function SignatureSample({ text }: { text: string }) {
   );
 }
 
-/** Configuration > Electronic Signature > Signature Display: the one way a signed signature is written in a document, drawn by the server from a sample record. */
+/** Configuration > Electronic Signature > Signature Timestamp, second section: the one way a signed signature is written in a document, drawn by the server from a sample record. */
 export const SignatureDisplay: React.FC = () => {
   const [sample, setSample] = useState<ElectronicSignatureDisplayStyle | null>(null);
   const [error, setError] = useState(false);

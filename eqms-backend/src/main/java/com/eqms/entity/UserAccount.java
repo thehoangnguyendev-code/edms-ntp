@@ -44,6 +44,10 @@ public class UserAccount {
     @Column(length = 120)
     private String department;
 
+    /** The Department by foreign key -- what authorization uses; {@link #department} is the display text kept in step with it. */
+    @Column(name = "department_id")
+    private java.util.UUID departmentId;
+
     @Column(length = 120)
     private String position;
 
@@ -257,6 +261,14 @@ public class UserAccount {
 
     public void setRoleName(String roleName) {
         this.roleName = roleName;
+    }
+
+    public java.util.UUID getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(java.util.UUID departmentId) {
+        this.departmentId = departmentId;
     }
 
     public String getDepartment() {

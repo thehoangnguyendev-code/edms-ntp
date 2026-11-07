@@ -4,7 +4,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -31,6 +34,15 @@ public class BusinessUnit {
 
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
+
+    /** The Head of Unit: may share the whole Unit folder of the Knowledge Base and everything inside it. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "head_of_unit_id")
+    private UserAccount headOfUnit;
+
+    /** The colour of the folder in the Knowledge Base explorer as #rrggbb; an automatic colour when empty. */
+    @Column(name = "icon_color", length = 7)
+    private String iconColor;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -86,12 +98,28 @@ public class BusinessUnit {
         this.description = description;
     }
 
+    public UserAccount getHeadOfUnit() {
+        return headOfUnit;
+    }
+
+    public void setHeadOfUnit(UserAccount headOfUnit) {
+        this.headOfUnit = headOfUnit;
+    }
+
     public boolean isActive() {
         return active;
     }
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public String getIconColor() {
+        return iconColor;
+    }
+
+    public void setIconColor(String iconColor) {
+        this.iconColor = iconColor;
     }
 
     public Instant getCreatedAt() {

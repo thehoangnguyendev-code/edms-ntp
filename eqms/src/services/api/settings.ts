@@ -97,7 +97,7 @@ export interface ObjectAccessRuleResponse {
   description: string | null;
   accessProfileId: string | null;
   accessProfileName: string | null;
-  resourceType: 'DOCUMENT_CATEGORY' | 'DOCUMENT_TYPE' | 'DOCUMENT_STATUS';
+  resourceType: 'DOCUMENT_CATEGORY' | 'DOCUMENT_TYPE' | 'DOCUMENT_STATUS' | 'DEPARTMENT' | 'BUSINESS_UNIT';
   resourceId: string | null;
   resourceName: string | null;
   actions: string[];

@@ -27,6 +27,16 @@ public class KnowledgePortalController {
         return ResponseEntity.ok(service.overview(hierarchyId));
     }
 
+    @GetMapping("/folder-styles")
+    public ResponseEntity<List<com.eqms.dto.knowledge.KnowledgePortalDtos.FolderStyle>> folderStyles() {
+        return ResponseEntity.ok(service.folderStyles());
+    }
+
+    @GetMapping("/document-type-icons")
+    public ResponseEntity<List<com.eqms.dto.knowledge.KnowledgePortalDtos.DocumentTypeIcon>> documentTypeIcons() {
+        return ResponseEntity.ok(service.documentTypeIcons());
+    }
+
     @GetMapping("/default-determinator")
     public ResponseEntity<com.eqms.dto.knowledge.KnowledgePortalDtos.DeterminatorInfo> defaultDeterminator() {
         return ResponseEntity.ok(service.defaultDeterminator());
@@ -56,9 +66,17 @@ public class KnowledgePortalController {
         return ResponseEntity.ok(service.queryDocuments(search, collection, page, limit, sortBy, sortDirection));
     }
 
-    @GetMapping("/search")
-    public ResponseEntity<List<PortalDocument>> search(@RequestParam String q) {
-        return ResponseEntity.ok(service.search(q));
+    /** Auto-complete of the search box: only documents the user may see in the Knowledge Base. */
+    @GetMapping("/suggest")
+    public ResponseEntity<List<com.eqms.dto.knowledge.KnowledgePortalDtos.DocumentSuggestion>> suggest(
+            @RequestParam(required = false) String q, @RequestParam(defaultValue = "8") int limit) {
+        return ResponseEntity.ok(service.suggest(q, limit));
+    }
+
+    /** The PDF of the Effective revision, for the Knowledge preview page. */
+    @GetMapping("/documents/{documentId}/preview")
+    public ResponseEntity<byte[]> preview(@PathVariable UUID documentId) {
+        return service.preview(documentId);
     }
 
     @PostMapping("/documents/{documentId}/view")

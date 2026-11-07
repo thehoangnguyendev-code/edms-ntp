@@ -4,17 +4,14 @@ import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.publishing.PublishingTemplateRequest;
 import com.eqms.dto.publishing.PublishingTemplateComponentResponse;
 import com.eqms.dto.publishing.PublishingTemplateResponse;
-import com.eqms.dto.publishing.PublishingTemplateVersionResponse;
 import com.eqms.dto.audittrail.AuditTrailChangeResponse;
 import com.eqms.dto.user.PageResponse;
 import com.eqms.dto.user.PaginationResponse;
 import com.eqms.entity.PublishingTemplate;
 import com.eqms.entity.PublishingTemplateComponent;
-import com.eqms.entity.PublishingTemplateVersion;
 import com.eqms.entity.UserAccount;
 import com.eqms.repository.PublishingTemplateRepository;
 import com.eqms.repository.PublishingTemplateComponentRepository;
-import com.eqms.repository.PublishingTemplateVersionRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Predicate;
@@ -48,7 +45,6 @@ public class PublishingTemplateService {
 
     private final PublishingTemplateRepository templateRepository;
     private final PublishingTemplateComponentRepository componentRepository;
-    private final PublishingTemplateVersionRepository versionRepository;
     private final FileStorageService fileStorageService;
     private final CurrentUserService currentUserService;
     private final AuditTrailService auditTrailService;
@@ -63,7 +59,6 @@ public class PublishingTemplateService {
     public PublishingTemplateService(
             PublishingTemplateRepository templateRepository,
             PublishingTemplateComponentRepository componentRepository,
-            PublishingTemplateVersionRepository versionRepository,
             FileStorageService fileStorageService,
             CurrentUserService currentUserService,
             AuditTrailService auditTrailService,
@@ -77,7 +72,6 @@ public class PublishingTemplateService {
     ) {
         this.templateRepository = templateRepository;
         this.componentRepository = componentRepository;
-        this.versionRepository = versionRepository;
         this.fileStorageService = fileStorageService;
         this.currentUserService = currentUserService;
         this.auditTrailService = auditTrailService;
@@ -128,19 +122,11 @@ public class PublishingTemplateService {
         return toResponse(requireTemplate(id));
     }
 
-    @Transactional(readOnly = true)
-    public List<PublishingTemplateVersionResponse> getVersionHistory(UUID id) {
-        requireTemplate(id);
-        return versionRepository.findByTemplate_IdOrderByVersionNumberDesc(id).stream().map(this::toVersionResponse).toList();
-    }
-
     @Transactional
     public PublishingTemplateResponse createTemplate(PublishingTemplateRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        String nextStatus = normalizeTemplateStatus(request.status());
-        if (isLiveStatus(nextStatus)) {
-            throw new IllegalArgumentException("Use Publish Template to activate a template — it cannot be created directly as Active.");
-        }
+        // A new template has no files yet: it starts Inactive and is made Active once its files are uploaded.
+        String nextStatus = "INACTIVE";
         PublishingTemplate template = new PublishingTemplate();
         template.setTemplateName(validatedTemplateName(request, null));
         template.setDocumentType(normalizeOptional(request.documentType()));
@@ -153,8 +139,10 @@ public class PublishingTemplateService {
         template.setVersionNumber(1);
         template.setCreatedBy(currentUser.getFullName());
         template.setUpdatedBy(currentUser.getFullName());
+        template.touch();
         PublishingTemplate saved = templateRepository.save(template);
-        createVersionSnapshot(saved, "Initial template version", currentUser, false);
+        auditTrailService.logAs(currentUser, "PUBLISHING_TEMPLATE", saved.getTemplateName(), saved.getId(),
+                "PUBLISHING_TEMPLATE_CREATED", null, saved.getStatus(), "Created Publishing Template: " + saved.getTemplateName(), java.util.List.of());
         return toResponse(saved);
     }
 
@@ -162,15 +150,15 @@ public class PublishingTemplateService {
     public PublishingTemplateResponse updateTemplate(UUID id, PublishingTemplateRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         PublishingTemplate template = requireTemplate(id);
-        requireEditable(template);
         String nextStatus = normalizeTemplateStatus(request.status());
-        // Save Changes may move a template OUT of Active (deactivate) or leave it unchanged, but
-        // never INTO Active — that transition must go through Publish Template, which creates a
-        // version snapshot, bumps the version number, and writes an audit trail entry. Without
-        // this guard, the Status dropdown here let anyone flip a template live with none of that.
-        if (isLiveStatus(nextStatus) && !isLiveStatus(template.getStatus())) {
-            throw new IllegalArgumentException("Use Publish Template to activate a template — Save Changes cannot activate it directly.");
-        }
+        java.util.List<AuditTrailChangeResponse> changes = new java.util.ArrayList<>();
+        String beforeName = template.getTemplateName();
+        String beforeType = template.getDocumentType();
+        String beforeDescription = template.getDescription();
+        String beforeStatus = template.getStatus();
+        String beforeMode = template.getPublishingMode();
+        String beforeCoverOrientation = template.getCoverOrientation();
+        String beforeBodyOrientation = template.getBodyOrientation();
         template.setTemplateName(validatedTemplateName(request, template.getId()));
         template.setDocumentType(normalizeOptional(request.documentType()));
         template.setDescription(normalizeOptional(request.description()));
@@ -179,30 +167,42 @@ public class PublishingTemplateService {
         template.setCoverOrientation(normalizeOrientation(request.coverOrientation()));
         template.setBodyOrientation(normalizeOrientation(request.bodyOrientation()));
         applyTemplateSettings(template, request);
+        // A template may be made Active (alongside the others) only when it has the files its Publishing Mode needs.
+        if (isLiveStatus(template.getStatus()) && !isLiveStatus(beforeStatus)) {
+            requireComponentsForPublishingMode(template);
+        }
         template.setUpdatedBy(currentUser.getFullName());
+        template.touch();
         templateRepository.save(template);
+        addChange(changes, "Template Name", beforeName, template.getTemplateName());
+        addChange(changes, "Document Type", beforeType, template.getDocumentType());
+        addChange(changes, "Description", beforeDescription, template.getDescription());
+        addChange(changes, "Status", beforeStatus, template.getStatus());
+        addChange(changes, "Publishing Mode", beforeMode, template.getPublishingMode());
+        addChange(changes, "Cover Orientation", beforeCoverOrientation, template.getCoverOrientation());
+        addChange(changes, "Body Orientation", beforeBodyOrientation, template.getBodyOrientation());
+        auditTrailService.logAs(currentUser, "PUBLISHING_TEMPLATE", template.getTemplateName(), template.getId(),
+                "PUBLISHING_TEMPLATE_UPDATED", beforeStatus, template.getStatus(),
+                "Saved Publishing Template: " + template.getTemplateName(), changes);
         return toResponse(template);
+    }
+
+    private void addChange(java.util.List<AuditTrailChangeResponse> changes, String label, Object before, Object after) {
+        if (!java.util.Objects.equals(before, after)) {
+            changes.add(new AuditTrailChangeResponse(label, before == null ? "-" : String.valueOf(before), after == null ? "-" : String.valueOf(after)));
+        }
     }
 
     @Transactional
     public PublishingTemplateResponse duplicateTemplate(UUID id) {
-        return copyTemplate(id, false);
+        return copyTemplate(id);
     }
 
-    /** New version of a template: an editable copy that supersedes the original once it is published. */
-    @Transactional
-    public PublishingTemplateResponse createNewVersion(UUID id) {
-        return copyTemplate(id, true);
-    }
-
-    private PublishingTemplateResponse copyTemplate(UUID id, boolean newVersion) {
+    private PublishingTemplateResponse copyTemplate(UUID id) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         PublishingTemplate source = requireTemplate(id);
         PublishingTemplate duplicate = new PublishingTemplate();
-        duplicate.setTemplateName(uniqueTemplateName(source.getTemplateName() + (newVersion ? " (new version)" : " Copy")));
-        if (newVersion) {
-            duplicate.setSupersedesTemplateId(source.getId());
-        }
+        duplicate.setTemplateName(uniqueTemplateName(source.getTemplateName() + " Copy"));
         duplicate.setDocumentType(source.getDocumentType());
         duplicate.setVersionNumber(1);
         duplicate.setStatus("INACTIVE");
@@ -243,12 +243,9 @@ public class PublishingTemplateService {
         templateRepository.save(duplicate);
         cloneComponents(source.getId(), duplicate, currentUser);
         placeholderStyleService.cloneStylesForTemplate(source.getId(), duplicate, duplicate.getVersionNumber());
-        createVersionSnapshot(duplicate, (newVersion ? "New version of " : "Duplicated from ") + source.getTemplateName(), currentUser, false);
-        if (newVersion) {
-            auditTrailService.logAs(currentUser, "PUBLISHING_TEMPLATE", duplicate.getTemplateName(), duplicate.getId(),
-                    "PUBLISHING_TEMPLATE_NEW_VERSION_CREATED", null, duplicate.getStatus(),
-                    "Created a new version of Publishing Template: " + source.getTemplateName(), java.util.List.of());
-        }
+        auditTrailService.logAs(currentUser, "PUBLISHING_TEMPLATE", duplicate.getTemplateName(), duplicate.getId(),
+                "PUBLISHING_TEMPLATE_DUPLICATED", null, duplicate.getStatus(),
+                "Duplicated Publishing Template: " + source.getTemplateName(), java.util.List.of());
         return toResponse(duplicate);
     }
 
@@ -256,14 +253,21 @@ public class PublishingTemplateService {
     public PublishingTemplateResponse toggleStatus(UUID id) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         PublishingTemplate template = requireTemplate(id);
+        String before = template.getStatus();
         if (isLiveStatus(template.getStatus())) {
             template.setStatus("INACTIVE");
         } else {
-            // Activating must go through Publish Template, which versions/audits the change.
-            throw new IllegalArgumentException("Use Publish Template to activate a template — status cannot be toggled directly to Active.");
+            // Any number of templates may be Active at once (the person publishing chooses one); each needs the files its mode calls for.
+            requireComponentsForPublishingMode(template);
+            template.setStatus("ACTIVE");
         }
         template.setUpdatedBy(currentUser.getFullName());
+        template.touch();
         templateRepository.save(template);
+        auditTrailService.logAs(currentUser, "PUBLISHING_TEMPLATE", template.getTemplateName(), template.getId(),
+                isLiveStatus(template.getStatus()) ? "PUBLISHING_TEMPLATE_ACTIVATED" : "PUBLISHING_TEMPLATE_DEACTIVATED", before, template.getStatus(),
+                (isLiveStatus(template.getStatus()) ? "Activated" : "Deactivated") + " Publishing Template: " + template.getTemplateName(),
+                java.util.List.of(new AuditTrailChangeResponse("Status", before, template.getStatus())));
         return toResponse(template);
     }
 
@@ -286,47 +290,6 @@ public class PublishingTemplateService {
     }
 
     @Transactional
-    public PublishingTemplateResponse publishTemplate(UUID id, String changeSummary) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        PublishingTemplate template = requireTemplate(id);
-        requireComponentsForPublishingMode(template);
-        retireOtherLiveTemplates(template, currentUser);
-        String previousStatus = template.getStatus();
-        int previousVersion = template.getVersionNumber();
-        String previousPublishingMode = template.getPublishingMode();
-        String previousPublishedAt = template.getPublishedAt() == null ? null : template.getPublishedAt().toString();
-        PublishingTemplateVersion snapshot = createVersionSnapshot(template, changeSummary, currentUser, true);
-        int sourceVersionNumber = template.getVersionNumber();
-        template.setVersionNumber(template.getVersionNumber() + 1);
-        template.setStatus("ACTIVE");
-        template.setPublishedAt(java.time.Instant.now());
-        template.setPublishedBy(currentUser.getFullName());
-        template.setUpdatedBy(currentUser.getFullName());
-        templateRepository.save(template);
-        placeholderStyleService.copyStylesToNextVersion(template.getId(), sourceVersionNumber, template.getVersionNumber(), snapshot == null ? null : snapshot.getId());
-        auditTrailService.logAs(
-                currentUser,
-                "PUBLISHING_TEMPLATE",
-                template.getTemplateName(),
-                template.getId(),
-                "PUBLISHING_TEMPLATE_PUBLISHED",
-                previousStatus,
-                template.getStatus(),
-                StringUtils.hasText(changeSummary) ? changeSummary : "Published publishing template from editor.",
-                // "Publishing Mode" in particular is usually unchanged at publish time -- filter
-                // out any entry whose value didn't actually move, same as everywhere else.
-                java.util.stream.Stream.of(
-                        new AuditTrailChangeResponse("Change Summary", "-", StringUtils.hasText(changeSummary) ? changeSummary : "Published publishing template from editor."),
-                        new AuditTrailChangeResponse("Version", String.valueOf(previousVersion), String.valueOf(template.getVersionNumber())),
-                        new AuditTrailChangeResponse("Publishing Mode", previousPublishingMode, template.getPublishingMode()),
-                        new AuditTrailChangeResponse("Published At", previousPublishedAt == null ? "-" : previousPublishedAt, template.getPublishedAt() == null ? "-" : template.getPublishedAt().toString()),
-                        new AuditTrailChangeResponse("Published By", "-", template.getPublishedBy() == null ? "-" : template.getPublishedBy())
-                ).filter(c -> !java.util.Objects.equals(c.oldValue(), c.newValue())).toList()
-        );
-        return toResponse(template);
-    }
-
-    @Transactional
     public PublishingTemplateResponse updateTemplateComponent(UUID id, String componentType, String layout, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Template file is required");
@@ -334,7 +297,6 @@ public class PublishingTemplateService {
         validateDocxTemplateFile(file);
         scanTemplateFileOrThrow(file);
         PublishingTemplate template = requireTemplate(id);
-        requireEditable(template);
         String component = normalizeComponentType(componentType);
         String normalizedLayout = normalizeLayout(layout);
         try (InputStream input = file.getInputStream()) {
@@ -367,7 +329,13 @@ public class PublishingTemplateService {
                     template.setFooterFileName(file.getOriginalFilename());
                 }
             }
+            template.setUpdatedBy(currentUserService.requireCurrentUser().getFullName());
+            template.touch();
             templateRepository.save(template);
+            auditTrailService.logAs(currentUserService.requireCurrentUser(), "PUBLISHING_TEMPLATE", template.getTemplateName(), template.getId(),
+                    "PUBLISHING_TEMPLATE_FILE_UPLOADED", template.getStatus(), template.getStatus(),
+                    "Uploaded the " + component + " file (" + normalizedLayout + ") of Publishing Template: " + template.getTemplateName(),
+                    java.util.List.of(new AuditTrailChangeResponse("File", "-", String.valueOf(file.getOriginalFilename()))));
             if (!"logo".equals(component) && !"body".equals(component)) {
                 try {
                     previewService.getComponentPreviewPdf(template.getId(), component, normalizedLayout, null);
@@ -391,23 +359,6 @@ public class PublishingTemplateService {
      * The composer silently skips a component that has no file, so a template that is missing the cover/header/footer
      * its Publishing Mode calls for would go live and then publish official PDFs without them. Refuse to activate it.
      */
-    /** Only one Publishing Template is live at a time; publishing another retires the previous one (audited). */
-    private void retireOtherLiveTemplates(PublishingTemplate publishing, UserAccount currentUser) {
-        for (PublishingTemplate other : templateRepository.findAll()) {
-            if (other.getId().equals(publishing.getId()) || !isLiveStatus(other.getStatus())) {
-                continue;
-            }
-            String previousStatus = other.getStatus();
-            other.setStatus("INACTIVE");
-            other.setUpdatedBy(currentUser.getFullName());
-            templateRepository.saveAndFlush(other);
-            auditTrailService.logAs(currentUser, "PUBLISHING_TEMPLATE", other.getTemplateName(), other.getId(),
-                    "PUBLISHING_TEMPLATE_RETIRED", previousStatus, other.getStatus(),
-                    "Retired because \"" + publishing.getTemplateName() + "\" was published as the active Publishing Template.",
-                    java.util.List.of());
-        }
-    }
-
     private void requireComponentsForPublishingMode(PublishingTemplate template) {
         String mode = StringUtils.hasText(template.getPublishingMode()) ? template.getPublishingMode().trim().toUpperCase(Locale.ROOT) : "";
         boolean needsCover = "COVER_ONLY".equals(mode) || "COVER_HEADER_FOOTER".equals(mode) || "COVER_AND_HEADER_FOOTER".equals(mode);
@@ -424,7 +375,7 @@ public class PublishingTemplateService {
         }
         if (!missing.isEmpty()) {
             throw new IllegalArgumentException("Upload a DOCX file for the " + String.join(", ", missing)
-                    + " before publishing: the selected Publishing Mode (" + template.getPublishingMode() + ") requires it.");
+                    + " before making the template Active: its Publishing Mode (" + template.getPublishingMode() + ") requires it.");
         }
     }
 
@@ -473,7 +424,6 @@ public class PublishingTemplateService {
     public PublishingTemplateResponse deleteTemplateComponent(UUID id, String componentType, String layout) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         PublishingTemplate template = requireTemplate(id);
-        requireEditable(template);
         String normalizedComponent = normalizeComponentType(componentType);
         String normalizedLayout = normalizeLayout(layout);
         PublishingTemplateComponent component = componentRepository
@@ -501,76 +451,12 @@ public class PublishingTemplateService {
         }
 
         template.setUpdatedBy(currentUser.getFullName());
+        template.touch();
         templateRepository.save(template);
+        auditTrailService.logAs(currentUser, "PUBLISHING_TEMPLATE", template.getTemplateName(), template.getId(),
+                "PUBLISHING_TEMPLATE_FILE_DELETED", template.getStatus(), template.getStatus(),
+                "Deleted the " + normalizedComponent + " file (" + normalizedLayout + ") of Publishing Template: " + template.getTemplateName(), java.util.List.of());
         return toResponse(template);
-    }
-
-    private PublishingTemplateVersion createVersionSnapshot(PublishingTemplate template, String changeSummary, UserAccount currentUser, boolean published) {
-        PublishingTemplateVersion version = new PublishingTemplateVersion();
-        version.setTemplate(template);
-        version.setVersionNumber(findNextVersionNumber(template.getId()));
-        version.setTemplateName(template.getTemplateName());
-        version.setDocumentType(template.getDocumentType());
-        version.setStatus(template.getStatus());
-        version.setDescription(template.getDescription());
-        version.setCoverTemplatePath(template.getCoverTemplatePath());
-        version.setBodyTemplatePath(template.getBodyTemplatePath());
-        version.setHeaderTemplatePath(template.getHeaderTemplatePath());
-        version.setFooterTemplatePath(template.getFooterTemplatePath());
-        version.setLogoTemplatePath(template.getLogoTemplatePath());
-        version.setLogoFileName(template.getLogoFileName());
-        version.setBodyFileName(template.getBodyFileName());
-        version.setChangeSummary(normalizeOptional(changeSummary));
-        version.setPublishingMode(template.getPublishingMode());
-        version.setCoverOrientation(template.getCoverOrientation());
-        version.setBodyOrientation(template.getBodyOrientation());
-        version.setEnableHeader(template.isEnableHeader());
-        version.setEnableFooter(template.isEnableFooter());
-        version.setShowLogo(template.isShowLogo());
-        version.setShowQrCode(template.isShowQrCode());
-        version.setShowBarcode(template.isShowBarcode());
-        version.setShowConfidentiality(template.isShowConfidentiality());
-        version.setShowElectronicSignatureInformation(template.isShowElectronicSignatureInformation());
-        version.setWatermarkMode(template.getWatermarkMode());
-        version.setCoverSourcePageFrom(template.getCoverSourcePageFrom());
-        version.setCoverSourcePageTo(template.getCoverSourcePageTo());
-        version.setBodySourcePageFrom(template.getBodySourcePageFrom());
-        version.setBodySourcePageTo(template.getBodySourcePageTo());
-        version.setHeaderPageFrom(template.getHeaderPageFrom());
-        version.setHeaderPageTo(template.getHeaderPageTo());
-        version.setFooterPageFrom(template.getFooterPageFrom());
-        version.setFooterPageTo(template.getFooterPageTo());
-        version.setWatermarkPageFrom(template.getWatermarkPageFrom());
-        version.setWatermarkPageTo(template.getWatermarkPageTo());
-        version.setCreatedBy(currentUser.getFullName());
-        if (published) {
-            version.setPublishedAt(java.time.Instant.now());
-            version.setPublishedBy(currentUser.getFullName());
-        }
-        return versionRepository.save(version);
-    }
-
-    private int findNextVersionNumber(UUID templateId) {
-        return versionRepository.findTopByTemplate_IdOrderByVersionNumberDesc(templateId)
-                .map(existing -> existing.getVersionNumber() + 1)
-                .orElse(1);
-    }
-
-    /**
-     * A template that has been published is the reference a Revision's PDF and later Controlled Copies were composed with,
-     * so it is immutable from then on. A change is made in a new version (a new template that supersedes it).
-     */
-    private void requireEditable(PublishingTemplate template) {
-        if (template.getPublishedAt() != null) {
-            throw new com.eqms.exception.RevisionLifecycleConflictException("PUBLISHING_TEMPLATE_PUBLISHED_IMMUTABLE",
-                    "This Publishing Template has been published and can no longer be edited. Create a new version, edit it and publish that instead.");
-        }
-    }
-
-    /** Used by the controller before placeholder-style writes, which live outside this service. */
-    @Transactional(readOnly = true)
-    public void requireEditable(UUID templateId) {
-        requireEditable(requireTemplate(templateId));
     }
 
     private PublishingTemplate requireTemplate(UUID id) {
@@ -845,49 +731,6 @@ public class PublishingTemplateService {
         }
     }
 
-    private PublishingTemplateVersionResponse toVersionResponse(PublishingTemplateVersion version) {
-        return new PublishingTemplateVersionResponse(
-                version.getId(),
-                version.getVersionNumber(),
-                version.getTemplateName(),
-                version.getDocumentType(),
-                version.getStatus(),
-                version.getDescription(),
-                version.getCoverTemplatePath(),
-                version.getBodyTemplatePath(),
-                version.getHeaderTemplatePath(),
-                version.getFooterTemplatePath(),
-                version.getLogoTemplatePath(),
-                version.getLogoFileName(),
-                version.getBodyFileName(),
-                version.getChangeSummary(),
-                version.getPublishingMode(),
-                version.getCoverOrientation(),
-                version.getBodyOrientation(),
-                version.isEnableHeader(),
-                version.isEnableFooter(),
-                version.isShowLogo(),
-                version.isShowQrCode(),
-                version.isShowBarcode(),
-                version.isShowConfidentiality(),
-                version.isShowElectronicSignatureInformation(),
-                version.getWatermarkMode(),
-                version.getCoverSourcePageFrom(),
-                version.getCoverSourcePageTo(),
-                version.getBodySourcePageFrom(),
-                version.getBodySourcePageTo(),
-                version.getHeaderPageFrom(),
-                version.getHeaderPageTo(),
-                version.getFooterPageFrom(),
-                version.getFooterPageTo(),
-                version.getWatermarkPageFrom(),
-                version.getWatermarkPageTo(),
-                version.getCreatedAt(),
-                version.getCreatedBy(),
-                version.getPublishedAt(),
-                version.getPublishedBy()
-        );
-    }
 
     private List<PublishingTemplateComponentResponse> mapComponents(UUID templateId) {
         return componentRepository.findByTemplate_IdOrderByComponentTypeAscLayoutAsc(templateId).stream()
@@ -1005,6 +848,25 @@ public class PublishingTemplateService {
             copied.setUploadedBy(currentUser);
             componentRepository.save(copied);
         });
+    }
+
+    /**
+     * Computes the detected-placeholder list of components that never had one (stored before detection existed), so the
+     * Publishing Template screen lists them instead of "No placeholders detected yet". A file with no placeholder, or one
+     * that cannot be read now, stays empty and is looked at again next time.
+     */
+    @Transactional
+    public int backfillMissingDetectedPlaceholders() {
+        int updated = 0;
+        for (PublishingTemplateComponent component : componentRepository.findByDetectedPlaceholdersIsNull()) {
+            String detected = detectPlaceholdersForFile(component.getObjectKey(), component.getFileName(), component.getComponentType());
+            if (!"[]".equals(detected)) {
+                component.setDetectedPlaceholders(detected);
+                componentRepository.save(component);
+                updated++;
+            }
+        }
+        return updated;
     }
 
     private String detectPlaceholdersForFile(String objectKey, String fileName, String componentType) {

@@ -1,0 +1,226 @@
+[
+ {
+  "id": "S1",
+  "file": "S1__DCO-documents.png",
+  "caption": "S1: the DCO, who created the two documents, sees both in the Document list",
+  "user": "dco.test1",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S1",
+  "file": "S1__outsider-documents.png",
+  "caption": "S1: an employee with the View permission who is not in the flow and not named by the Head sees nothing",
+  "user": "coauthor.test2",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S2",
+  "file": "S2__author-revisions-draft.png",
+  "caption": "S2: the Author sees the two Draft revisions of the documents they write",
+  "user": "author.test1",
+  "path": "/documents/revisions/all"
+ },
+ {
+  "id": "S3",
+  "file": "S3__task-Pending-Review.png",
+  "caption": "S3: the Reviewer sees the revision waiting for them in their task list",
+  "user": "reviewer.test1",
+  "path": "/documents/revisions/pending-review"
+ },
+ {
+  "id": "S4",
+  "file": "S4__task-Pending-Approval.png",
+  "caption": "S4: the Approver sees the revision waiting for them in their task list",
+  "user": "approver.test1",
+  "path": "/documents/revisions/pending-approval"
+ },
+ {
+  "id": "S5",
+  "file": "S5__ADMIN-documents.png",
+  "caption": "S5: the administrator (view-all permission, no part in any flow) sees both documents",
+  "user": "user.a.test",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S5",
+  "file": "S5__HEAD-documents.png",
+  "caption": "S5: the Department Head of Quality Control sees both documents of the Department",
+  "user": "reviewer.test2",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S7",
+  "file": "S7__head-rules-screen.png",
+  "caption": "S7: the Department Head lists the rules of Quality Control: group 1 for SOP, group 2 for Instruction",
+  "user": "reviewer.test2",
+  "path": "/security/department-visibility"
+ },
+ {
+  "id": "S8",
+  "file": "S8__group1-documents.png",
+  "caption": "S8: a member of group 1 sees the SOP and not the Instruction",
+  "user": "coauthor.test2",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S8",
+  "file": "S8__group2-documents.png",
+  "caption": "S8: a member of group 2 sees the Instruction and not the SOP",
+  "user": "trainee.test2",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S8",
+  "file": "S8__group1-revisions.png",
+  "caption": "S8: the revisions list of a group 1 member shows the SOP revision only",
+  "user": "trainee.test1",
+  "path": "/documents/revisions/all"
+ },
+ {
+  "id": "S11",
+  "file": "S11__employee-no-department.png",
+  "caption": "S11: an employee who is not a Department Head opens the screen and finds nothing to manage",
+  "user": "coauthor.test2",
+  "path": "/security/department-visibility"
+ },
+ {
+  "id": "S14",
+  "file": "S14__author-revisions-rev2.png",
+  "caption": "S14: the Author sees revision 2 (Draft) next to revision 1 (Effective)",
+  "user": "author.test1",
+  "path": "/documents/revisions/all"
+ },
+ {
+  "id": "S14",
+  "file": "S14__group1-sees-draft.png",
+  "caption": "S14: a member of group 1 sees the Draft revision 2 as well: the rule is for every SOP, whatever its status",
+  "user": "coauthor.test2",
+  "path": "/documents/revisions/all"
+ },
+ {
+  "id": "S15",
+  "file": "S15__G1B-draft-hidden.png",
+  "caption": "S15: G1B (Deny on Draft) sees revision 1 only; the Draft revision 2 is hidden from this one person",
+  "user": "trainee.test1",
+  "path": "/documents/revisions/all"
+ },
+ {
+  "id": "S17",
+  "file": "S17__recipient-controlled-copies.png",
+  "caption": "S17: G2B, the recipient, sees the Controlled Copy although the SOP is not in the rule of group 2",
+  "user": "trainer.test1",
+  "path": "/documents/controlled-copies/all"
+ },
+ {
+  "id": "S17",
+  "file": "S17__group2-no-copy.png",
+  "caption": "S17: G2A (group 2, not the recipient) does not see the SOP copy",
+  "user": "trainee.test2",
+  "path": "/documents/controlled-copies/all"
+ },
+ {
+  "id": "S18",
+  "file": "S18__recipient-uncontrolled-copies.png",
+  "caption": "S18: G2A, the recipient, sees the Uncontrolled Copy",
+  "user": "trainee.test2",
+  "path": "/documents/uncontrolled-copies/all"
+ },
+ {
+  "id": "S18",
+  "file": "S18__group1-uncontrolled-copies.png",
+  "caption": "S18: G1B sees the copy because the SOP rule of the Head covers the copies of the SOP",
+  "user": "trainee.test1",
+  "path": "/documents/uncontrolled-copies/all"
+ },
+ {
+  "id": "S20",
+  "file": "S20__document-properties-mode.png",
+  "caption": "S20: Document Properties > Record Visibility, with the three modes",
+  "user": "user.a.test",
+  "path": "/documents/administration/properties"
+ },
+ {
+  "id": "S21",
+  "file": "S21__knowledge-group1.png",
+  "caption": "S21: the Knowledge Base of a group 1 member lists the SOP of Quality Control only",
+  "user": "coauthor.test2",
+  "path": "/self-service/knowledge"
+ },
+ {
+  "id": "S21",
+  "file": "S21__knowledge-group2.png",
+  "caption": "S21: the Knowledge Base of a group 2 member lists the Instruction only",
+  "user": "trainee.test2",
+  "path": "/self-service/knowledge"
+ },
+ {
+  "id": "S22",
+  "file": "S22__head-rules-final.png",
+  "caption": "S22: the Head screen with the rules of the run",
+  "user": "reviewer.test2",
+  "path": "/security/department-visibility"
+ },
+ {
+  "id": "S23",
+  "file": "S23__G1A-no-rule.png",
+  "caption": "S23: with no rule, G1A sees none of the ten documents of Quality Control",
+  "user": "coauthor.test2",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S23",
+  "file": "S23__G1A-no-rule.png",
+  "caption": "S23: with no rule, G1A sees none of the ten documents of Quality Control",
+  "user": "coauthor.test2",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S24",
+  "file": "S24__head-document-rules.png",
+  "caption": "S24: the Head sees the rules of specific documents: A for SOP 1 and 2, B for SOP 3, 4 and 5",
+  "user": "reviewer.test2",
+  "path": "/security/department-visibility"
+ },
+ {
+  "id": "S24",
+  "file": "S24__A-two-of-ten.png",
+  "caption": "S24: A (G1A) sees 2 of the 10 documents of the Department",
+  "user": "coauthor.test2",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S24",
+  "file": "S24__B-three-of-ten.png",
+  "caption": "S24: B (G1B) sees 3 of the 10 documents of the Department",
+  "user": "trainee.test1",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S29",
+  "file": "S29__B-copy-by-document-rule.png",
+  "caption": "S29: B sees the Controlled Copy of document A because the rule names that document",
+  "user": "trainee.test1",
+  "path": "/documents/controlled-copies/all"
+ },
+ {
+  "id": "S7",
+  "file": "S7__head-rules-screen.png",
+  "caption": "S7: the Department Head lists the rules of Quality Control: group 2 for the Instruction, and (here) the rules of specific documents: A for SOP 1 and 2, B for SOP 3, 4 and 5, and a Deny for SOP 4",
+  "user": "reviewer.test2",
+  "path": "/security/department-visibility"
+ },
+ {
+  "id": "S31",
+  "file": "S31__form-specific-documents.png",
+  "caption": "S31: the form of a rule with the target \"Specific documents\"",
+  "user": "reviewer.test2",
+  "path": null
+ },
+ {
+  "id": "S31",
+  "file": "S31__picker-open.png",
+  "caption": "S31: the picker lists the documents of Quality Control; a search runs on the server",
+  "user": "reviewer.test2",
+  "path": null
+ }
+]

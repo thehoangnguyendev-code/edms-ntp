@@ -23,6 +23,7 @@ export interface PdfPreviewSettings {
   watermarkShowEmployeeCode?: boolean;
   watermarkTiled?: boolean;
   watermarkColor?: string;
+  watermarkAngle?: number;
   watermarkStrength?: "light" | "standard" | "strong";
 }
 

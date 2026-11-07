@@ -16,7 +16,7 @@ public final class AdministrativeOperationCatalog {
             "SecurityPermissionSetController", "LifecycleStatePolicyController", "ObjectAccessRuleController",
             "SodConstraintController", "WorkflowActionPolicyController", "ReportConfigurationController",
             "EmailTemplateController", "StorageUsageController", "SettingsAnnouncementController",
-            "AccessReviewController", "AuthorizationParticipantReconciliationController",
+            "AccessReviewController", "KnowledgeShareOversightController", "AuthorizationParticipantReconciliationController",
             "AuthorizationShadowEvaluationController", "EffectiveAccessDiagnosisController",
             "BackupAlertController", "BackupDrDrillController", "BackupDrPlanController", "BackupExportController",
             "BackupInspectionController", "BackupPolicyController", "BackupRehearsalController",
@@ -59,7 +59,7 @@ public final class AdministrativeOperationCatalog {
             Map.entry("com.eqms.controller.UncontrolledCopyPolicyController", Set.of("getPolicy", "savePolicy", "markingPreview", "listEligibilityRules", "listEligibilityRulesPaged", "createEligibilityRule", "updateEligibilityRule", "deleteEligibilityRule")),
             Map.entry("com.eqms.controller.ReportConfigurationController", Set.of("list", "get", "update", "updateFields", "history")),
             Map.entry("com.eqms.controller.EmailTemplateController", Set.of("getAllTemplates", "exportTemplates", "getTemplateById", "createTemplate", "updateTemplate", "deleteTemplate", "duplicateTemplate", "toggleStatus", "getVersionHistory", "publishTemplate", "restoreTemplateVersion", "previewTemplate", "previewDraftTemplate", "testSendTemplate")),
-            Map.entry("com.eqms.controller.PublishingTemplateController", Set.of("savePlaceholderStyles", "deletePlaceholderStyle", "createTemplate", "updateTemplate", "duplicateTemplate", "createNewVersion", "toggleStatus", "deleteTemplate", "uploadComponent", "deleteComponent", "publishTemplate"))
+            Map.entry("com.eqms.controller.PublishingTemplateController", Set.of("savePlaceholderStyles", "deletePlaceholderStyle", "createTemplate", "updateTemplate", "duplicateTemplate", "toggleStatus", "deleteTemplate", "uploadComponent", "deleteComponent"))
     );
 
     public static boolean isReviewedAdministrativeMethod(Class<?> controller, String methodName) {

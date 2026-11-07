@@ -264,7 +264,7 @@ public class AccessEffectiveService {
         boolean isTerminal = "EFFECTIVE".equalsIgnoreCase(statusCode) || "OBSOLETED".equalsIgnoreCase(statusCode)
                 || "CLOSED_CANCELLED".equalsIgnoreCase(statusCode);
         return switch (action) {
-            case COMPLETE_AUTHORING, SUBMIT_FOR_REVIEW,
+            case SUBMIT_FOR_REVIEW,
                     GENERATE_REVIEW_SNAPSHOT, REGENERATE_SNAPSHOT -> isDraft;
             case OPEN_PUBLISHING_WORKSPACE -> isReadyForPublishing;
             case COMPLETE_REVIEW, REJECT_REVIEW -> isPendingReview;

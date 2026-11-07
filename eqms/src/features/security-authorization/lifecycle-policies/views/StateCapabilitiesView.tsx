@@ -442,7 +442,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
             <Select label="Status" value={activeFilter} onChange={(v) => { setActiveFilter(String(v)); setCurrentPage(1); }} options={ACTIVE_OPTIONS} />
             <DateRangePicker label="Created Date Range" startDate={createdFrom} endDate={createdTo} onStartDateChange={(v) => { setCreatedFrom(v); setCurrentPage(1); }} onEndDateChange={(v) => { setCreatedTo(v); setCurrentPage(1); }} placeholder="Select created date range" autoApply />
             <DateRangePicker label="Last Updated Range" startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(v) => { setUpdatedFrom(v); setCurrentPage(1); }} onEndDateChange={(v) => { setUpdatedTo(v); setCurrentPage(1); }} placeholder="Select last updated range" autoApply />
-            <div className="flex items-end gap-2">
+            <div className="filter-actions flex items-end gap-2">
               <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
               {stateControl}
             </div>

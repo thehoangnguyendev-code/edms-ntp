@@ -14,6 +14,8 @@ public record DepartmentDictionaryResponse(
         long positionCount,
         UUID departmentHeadId,
         String departmentHeadName,
-        String primaryContactPhone
+        String departmentHeadEmployeeCode,
+        String primaryContactPhone,
+        String iconColor
 ) {
 }

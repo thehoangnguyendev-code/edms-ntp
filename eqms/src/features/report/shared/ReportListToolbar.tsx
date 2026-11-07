@@ -138,7 +138,9 @@ export function ReportListToolbar({
             onToChange: (value: string) => date.onChange(date.from, value),
           }))}
         >
-          <div className="hidden grid-cols-1 items-end gap-4 sm:grid-cols-2 md:grid lg:grid-cols-3">
+          {/* User Management's grid: three columns at most (a wide screen never gets a row of six cramped boxes), fewer when the room is short
+              (15rem each, measured on the card, not the screen: next to the open sidebar a tablet has far less room than its width). */}
+          <div className="hidden items-end gap-4 md:grid [grid-template-columns:repeat(auto-fill,minmax(max(15rem,calc((100%-2rem)/3)),1fr))]">
             <div className="w-full">
               <label className="mb-1.5 block text-xs font-medium text-slate-700 transition-colors sm:text-sm capitalize">Search</label>
               <PlainSearch value={search} onChange={onSearch} placeholder={searchPlaceholder} height="h-9" />
@@ -157,7 +159,7 @@ export function ReportListToolbar({
                 placeholder="Select date range"
               />
             ))}
-            <div className="flex items-end gap-2">
+            <div className="filter-actions flex items-end gap-2">
               <ClearFiltersButton onClearSearch={() => onSearch("")} onClear={onClear} />
               {customControl}
             </div>

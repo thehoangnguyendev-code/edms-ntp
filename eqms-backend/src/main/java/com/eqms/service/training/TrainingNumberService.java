@@ -62,6 +62,63 @@ public class TrainingNumberService {
         throw new IllegalStateException("TRAINING_NUMBER_UNAVAILABLE");
     }
 
+    /** The answer for a typed Training Number: format, department, duplicate, then (a warning only) a year other than the current one. */
+    public record Check(boolean valid, String code, String message, String number, String expectedFormat, boolean otherYear, String usedBy) {}
+
+    private static final Pattern TYPED_NUMBER = Pattern.compile("^TRN/([A-Z0-9]{1,40})/([0-9]{2})-([0-9]{3,6})$");
+
+    /** Checks a typed Training Number against the department that organizes the training; {@code excludeActivityId} is the activity being renumbered. */
+    public Check check(UUID departmentId, String typed, UUID excludeActivityId) {
+        String number = typed == null ? "" : typed.trim().toUpperCase(java.util.Locale.ROOT);
+        String code = null;
+        if (departmentId != null) {
+            List<Map<String, Object>> rows = jdbc.queryForList("select code from departments where id=?", departmentId);
+            if (!rows.isEmpty() && rows.getFirst().get("code") != null) code = String.valueOf(rows.getFirst().get("code")).trim().toUpperCase(java.util.Locale.ROOT);
+        }
+        String expected = "TRN/" + (code == null ? "<department code>" : code) + "/YY-NNN";
+        if (code == null || !DEPARTMENT_CODE.matcher(code).matches()) {
+            return new Check(false, "TRAINING_DEPARTMENT_REQUIRED", "Choose the Department first: its code is part of the Training Number.", number, expected, false, null);
+        }
+        if (number.isEmpty()) return new Check(false, "TRAINING_NUMBER_REQUIRED", "Enter the Training Number.", number, expected, false, null);
+        Matcher m = TYPED_NUMBER.matcher(number);
+        if (!m.matches()) {
+            return new Check(false, "TRAINING_NUMBER_FORMAT", "The Training Number must look like " + expected + ", for example " + format(code, LocalDate.now(ZONE).getYear(), 1) + ".", number, expected, false, null);
+        }
+        if (!m.group(1).equals(code)) {
+            return new Check(false, "TRAINING_NUMBER_DEPARTMENT", "The department code in the number must be " + code + " (the department that organizes the training).", number, expected, false, null);
+        }
+        List<Map<String, Object>> byActivity = jdbc.queryForList(
+                "select training_number, status, document_number from training_activities where upper(training_number)=upper(?) and (?::uuid is null or id <> ?::uuid)",
+                number, excludeActivityId, excludeActivityId);
+        String usedBy = null;
+        if (!byActivity.isEmpty()) {
+            Map<String, Object> row = byActivity.getFirst();
+            usedBy = "the training " + row.get("training_number") + (row.get("document_number") == null ? "" : " of " + row.get("document_number")) + " (" + row.get("status") + ")";
+        } else {
+            List<Map<String, Object>> byRevision = jdbc.queryForList(
+                    "select document_number, revision_number from document_revisions where upper(training_number)=upper(?) and (?::uuid is null or training_activity_id is null or training_activity_id <> ?::uuid)",
+                    number, excludeActivityId, excludeActivityId);
+            if (!byRevision.isEmpty()) usedBy = "revision " + byRevision.getFirst().get("revision_number") + " of " + byRevision.getFirst().get("document_number");
+        }
+        if (usedBy != null) {
+            return new Check(false, "TRAINING_NUMBER_IN_USE", "This Training Number is already used by " + usedBy + ". Choose another number.", number, expected, false, usedBy);
+        }
+        boolean otherYear = 2000 + Integer.parseInt(m.group(2)) != LocalDate.now(ZONE).getYear();
+        return new Check(true, otherYear ? "TRAINING_NUMBER_OTHER_YEAR" : "OK",
+                otherYear ? "The year in this number (" + m.group(2) + ") is not the current year. Check that it is the number you mean." : null, number, expected, otherYear, null);
+    }
+
+    /** Takes a typed number as the Training Number of a new activity: it must be valid, and it raises the counter of its department and year like a number typed from a paper log. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Issued useTyped(UUID departmentId, String typed, UUID excludeActivityId) {
+        Check result = check(departmentId, typed, excludeActivityId);
+        if (!result.valid()) throw new IllegalArgumentException(result.message());
+        reserveFromPaper(result.number());
+        Matcher m = TYPED_NUMBER.matcher(result.number());
+        m.matches();
+        return new Issued(result.number(), 2000 + Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3)), m.group(1));
+    }
+
     /** True when a training activity or a document revision already carries the number (any case). */
     public boolean isUsed(String trainingNumber) {
         Boolean used = jdbc.queryForObject(

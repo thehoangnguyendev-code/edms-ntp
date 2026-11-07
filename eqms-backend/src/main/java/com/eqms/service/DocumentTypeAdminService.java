@@ -278,6 +278,8 @@ public class DocumentTypeAdminService {
         }
         documentType.setDescription(DictionaryQuerySupport.trimToNull(request.description()));
         documentType.setActive(request.isActive() == null ? (isNew || documentType.isActive()) : request.isActive());
+        documentType.setIconLabel(normalizeIconLabel(request.iconLabel()));
+        documentType.setIconColor(normalizeIconColor(request.iconColor()));
         if (request.nameFormatId() != null) {
             DocumentNameFormat format = documentNameFormatRepository.findById(request.nameFormatId())
                     .orElseThrow(() -> new EntityNotFoundException("Document name format not found"));
@@ -317,8 +319,35 @@ public class DocumentTypeAdminService {
                 effectiveCurrentSequence == 0 ? null : formatDocumentNumber(documentType, effectiveCurrentSequence),
                 formatDocumentNumber(documentType, effectiveCurrentSequence + 1),
                 documentType.getNameFormat() == null ? null : documentType.getNameFormat().getId(),
-                documentType.getNameFormat() == null ? null : documentType.getNameFormat().getName()
+                documentType.getNameFormat() == null ? null : documentType.getNameFormat().getName(),
+                documentType.getIconLabel(),
+                documentType.getIconColor()
         );
+    }
+
+    /** The text on the icon: up to 6 letters, digits, hyphen, underscore or slash, upper case; empty means the Short Code. */
+    private static String normalizeIconLabel(String value) {
+        String label = DictionaryQuerySupport.trimToNull(value);
+        if (label == null) {
+            return null;
+        }
+        label = label.toUpperCase(java.util.Locale.ROOT);
+        if (!label.matches("[A-Z0-9_/-]{1,6}")) {
+            throw new IllegalArgumentException("Icon text must be 1-6 characters: letters, digits, hyphen, underscore or slash");
+        }
+        return label;
+    }
+
+    /** The colour of the icon as #rrggbb; empty means a colour chosen from the palette. */
+    private static String normalizeIconColor(String value) {
+        String color = DictionaryQuerySupport.trimToNull(value);
+        if (color == null) {
+            return null;
+        }
+        if (!color.matches("#[0-9a-fA-F]{6}")) {
+            throw new IllegalArgumentException("Icon colour must be a colour such as #2563eb");
+        }
+        return color.toLowerCase(java.util.Locale.ROOT);
     }
 
     // Preview only ("Next Document Number" shown in this admin table) -- mirrors

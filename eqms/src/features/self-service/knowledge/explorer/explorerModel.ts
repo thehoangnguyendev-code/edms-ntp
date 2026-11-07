@@ -11,8 +11,9 @@ export type ExplorerNav =
 export type SortKey = "name" | "number" | "department" | "type" | "size" | "lastOpened" | "views" | "helpful" | "newest";
 export type SortDir = "asc" | "desc";
 
-/** Documents shown on one page of the table. */
-export const PAGE_SIZE = 20;
+/** How many documents a page can show (the server allows 100 at most); the list scrolls when it is long. */
+export const PAGE_SIZE_OPTIONS = [20, 50, 100];
+export const DEFAULT_PAGE_SIZE = 20;
 
 /** The direction a column sorts in the first time it is chosen: names and codes A to Z, figures and dates biggest or latest first. */
 export const DEFAULT_SORT_DIR: Record<SortKey, SortDir> = {
@@ -75,6 +76,8 @@ const TYPE_PALETTE: { hex: string; badge: BadgeColor }[] = [
   { hex: "#ea580c", badge: "orange" },
   { hex: "#0891b2", badge: "cyan" },
 ];
+/** The colours a Document Type icon is offered in (the automatic colour is one of them). */
+export const TYPE_ICON_COLORS: string[] = TYPE_PALETTE.map((slot) => slot.hex);
 const FOLDER_PALETTE = ["#f59e0b", "#0ea5e9", "#8b5cf6", "#10b981", "#ec4899", "#6366f1", "#14b8a6", "#f97316"];
 
 const hash = (value: string): number => {

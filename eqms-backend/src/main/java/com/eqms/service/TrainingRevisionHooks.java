@@ -16,6 +16,14 @@ public interface TrainingRevisionHooks {
     /** A document draft was created or saved. Only a document that has no revision yet is handled here (its first revision is created later). */
     void onDocumentSaved(DocumentRecord document, UserAccount actor);
 
+    /**
+     * The same, from a screen that lets the person type the Training Number (Document Properties > Training Number entry = MANUAL). {@code typedTrainingNumber}
+     * is what was typed (null or blank when nothing was); the default ignores it.
+     */
+    default void onDocumentSaved(DocumentRecord document, UserAccount actor, String typedTrainingNumber) {
+        onDocumentSaved(document, actor);
+    }
+
     /** A revision was created from a document (new revision, upload, upgrade). */
     void onRevisionCreated(DocumentRevisionRecord revision, UserAccount actor);
 

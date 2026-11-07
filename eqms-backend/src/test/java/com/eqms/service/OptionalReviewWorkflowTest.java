@@ -154,6 +154,28 @@ class OptionalReviewWorkflowTest {
         }
     }
 
+    @Test void submitWithoutSourceFileIsRefusedAndLocksNothing() throws Exception {
+        RevisionService service = service(RevisionService.class);
+        UserAccount actor = new UserAccount();
+        actor.setId(UUID.randomUUID());
+        DocumentRevisionRecord revision = new DocumentRevisionRecord();
+        revision.setId(UUID.randomUUID());
+        RevisionStatusDefinition draft = new RevisionStatusDefinition();
+        draft.setCode("DRAFT");
+        revision.setStatus(draft);
+        revision.setEditingStatus("IN_PROGRESS");
+        when(dependency(service, "revisionRepository", DocumentRevisionRepository.class).findByIdForUpdate(revision.getId()))
+                .thenReturn(Optional.of(revision));
+        when(dependency(service, "currentUserService", CurrentUserService.class).requireCurrentUser()).thenReturn(actor);
+        when(dependency(service, "revisionWorkflowAuthorizationService", RevisionWorkflowAuthorizationService.class)
+                .check(any(), any(), any(), any()))
+                .thenReturn(mock(com.eqms.dto.security.WorkflowAuthorizationDecision.class));
+        var ex = assertThrows(com.eqms.exception.RevisionLifecycleConflictException.class,
+                () -> service.submitForReview(revision.getId(), new RevisionWorkflowActionRequest("Submit", "Ready", "token")));
+        assertEquals("REVISION_SOURCE_FILE_REQUIRED", ex.getCode());
+        assertFalse(revision.isSourceLocked());
+        assertEquals("IN_PROGRESS", revision.getEditingStatus());
+    }
     @Test void submitRoutesByAssignedReviewersAndPersistsTransitionEvidence() throws Exception {
         for (boolean withReviewer : List.of(false, true)) {
             RevisionService service = service(RevisionService.class);
@@ -177,6 +199,12 @@ class OptionalReviewWorkflowTest {
             revision.setReviewRequirement(ReviewRequirement.OPTIONAL);
             revision.setRevisionNumber("1.0.0");
             revision.setSourceFileChecksum("unchanged-checksum");
+            // Submitting locks the source, so the source file must exist; no PREPARED signature is required any more.
+            java.nio.file.Path sourceFile = java.nio.file.Files.createTempFile("submit-source-", ".docx");
+            sourceFile.toFile().deleteOnExit();
+            revision.setFilePath("minio://test/source.docx");
+            when(dependency(service, "fileStorageService", com.eqms.service.FileStorageService.class)
+                    .materializeStoredFile("minio://test/source.docx")).thenReturn(sourceFile);
             String target = withReviewer ? "PENDING_REVIEW" : "PENDING_APPROVAL";
             for (String code : List.of("DRAFT", target)) {
                 RevisionStatusDefinition status = new RevisionStatusDefinition();
@@ -204,7 +232,6 @@ class OptionalReviewWorkflowTest {
             }
             when(revisions.findByIdForUpdate(revision.getId())).thenReturn(Optional.of(revision));
             when(dependency(service, "currentUserService", CurrentUserService.class).requireCurrentUser()).thenReturn(actor);
-            when(signatures.hasRevisionSignatureMeaning(revision, "PREPARED")).thenReturn(true);
             when(dependency(service, "revisionWorkflowAuthorizationService", RevisionWorkflowAuthorizationService.class)
                     .check(any(), any(), any(), any()))
                     .thenReturn(mock(com.eqms.dto.security.WorkflowAuthorizationDecision.class));
@@ -213,6 +240,9 @@ class OptionalReviewWorkflowTest {
             assertEquals(target, revision.getStatus().getCode());
             assertEquals("OPTIONAL", response.reviewRequirement());
             assertEquals("unchanged-checksum", revision.getSourceFileChecksum());
+            assertTrue(revision.isSourceLocked(), "Submit for Review locks the source");
+            assertEquals("COMPLETED", revision.getEditingStatus());
+            verify(signatures, never()).hasRevisionSignatureMeaning(any(DocumentRevisionRecord.class), eq("PREPARED"));
             verify(dependency(service, "signatureTokenConsumptionService", SignatureTokenConsumptionService.class))
                     .requireAndConsume(request.signatureToken(), actor);
             verify(dependency(service, "revisionWorkflowHistoryRepository", RevisionWorkflowHistoryRepository.class))

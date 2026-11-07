@@ -476,7 +476,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
           />
         </div>
 
-        <div className="flex items-end gap-2">
+        <div className="filter-actions flex items-end gap-2">
           <ClearFiltersButton onClearSearch={() => onSearchChange("")} onClear={onClearFilters} />
           {filterTrailing}
         </div>

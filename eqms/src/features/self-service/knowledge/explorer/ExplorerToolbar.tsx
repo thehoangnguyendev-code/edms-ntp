@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, ArrowUp, LayoutGrid, List, LayoutDashboard, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SearchInput } from "@/components/ui/form/SearchInput";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/components/ui/utils";
 import { SORT_OPTIONS, type Crumb, type ExplorerNav, type SortKey, type ViewMode } from "./explorerModel";
 import { FOCUS_RING } from "./explorerStyles";
+import { ExplorerSearchBox } from "./ExplorerSearchBox";
+import type { DocumentSuggestion } from "@/services/api/knowledge";
 
 interface ExplorerToolbarProps {
   crumbs: Crumb[];
@@ -23,6 +24,9 @@ interface ExplorerToolbarProps {
   onUp: () => void;
   onCrumb: (nav: ExplorerNav) => void;
   onSearch: (value: string) => void;
+  /** Search all documents for the typed text now (Enter), without waiting for the pause. */
+  onSubmitSearch: () => void;
+  onOpenSuggestion: (suggestion: DocumentSuggestion) => void;
   onSort: (value: SortKey) => void;
   onView: (value: ViewMode) => void;
   onToggleWidgets: () => void;
@@ -33,7 +37,7 @@ const iconButton = "shrink-0 text-slate-500 hover:text-slate-900 disabled:opacit
 
 export const ExplorerToolbar: React.FC<ExplorerToolbarProps> = ({
   crumbs, canBack, canForward, canUp, search, sort, view, widgetsVisible, widgetsAvailable, searchInputRef,
-  onBack, onForward, onUp, onCrumb, onSearch, onSort, onView, onToggleWidgets, onOpenMenu,
+  onBack, onForward, onUp, onCrumb, onSearch, onSubmitSearch, onOpenSuggestion, onSort, onView, onToggleWidgets, onOpenMenu,
 }) => {
   const pathRef = useRef<HTMLElement | null>(null);
   const pathSignature = crumbs.map((c) => c.label).join("/");
@@ -90,13 +94,12 @@ export const ExplorerToolbar: React.FC<ExplorerToolbarProps> = ({
           className="hidden w-36 shrink-0 sm:block"
         />
 
-        <SearchInput
+        <ExplorerSearchBox
           value={search}
           onChange={onSearch}
-          placeholder="Search all documents"
-          ariaLabel="Search all documents"
           inputRef={searchInputRef}
-          className="min-w-0 flex-1"
+          onSubmit={onSubmitSearch}
+          onOpenSuggestion={onOpenSuggestion}
         />
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5">

@@ -26,6 +26,12 @@ export interface BusinessUnitItem {
   abbreviation: string;
   description?: string;
   isActive: boolean;
+  /** The Head of Unit (a user): may share the whole Unit folder of the Knowledge Base. */
+  headOfUnitId?: string | null;
+  headOfUnitName?: string | null;
+  headOfUnitEmployeeCode?: string | null;
+  /** The colour of the folder in the Knowledge Base explorer (#rrggbb; empty: an automatic colour). */
+  iconColor?: string | null;
   createdDate: string;
   modifiedDate: string;
 }
@@ -45,9 +51,12 @@ export interface DepartmentItem {
   modifiedDate: string;
   departmentHeadId?: string | null;
   departmentHeadName?: string | null;
+  departmentHeadEmployeeCode?: string | null;
   /** Auto-filled from the selected Department Head's phone number when set in the modal, but
    *  stored as its own editable field (not a live join) so it can be overridden. */
   primaryContactPhone?: string | null;
+  /** The colour of the folder in the Knowledge Base explorer (#rrggbb; empty: an automatic colour). */
+  iconColor?: string | null;
 }
 
 // ─── Position ────────────────────────────────────────────────────────────────
@@ -77,6 +86,9 @@ export interface DocumentTypeItem {
   /** Document Name Format used to generate this type's document numbers (Phase 2). */
   nameFormatId?: string | null;
   nameFormatName?: string | null;
+  /** The text and colour of the icon in the Knowledge Base explorer (empty: the Short Code and an automatic colour). */
+  iconLabel?: string | null;
+  iconColor?: string | null;
 }
 
 // Document Sub-Type 

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { EXPAND_CONTENT_MOTION, useExpandTransition } from "./expandMotion";
@@ -17,6 +17,7 @@ import {
   type CustomizableColumn,
 } from "./useTableColumnPreferences";
 import { useColumnReorderMotion, type ColumnMotionHandle } from "./useColumnReorderMotion";
+import { closeMenuRenderGate, menuRenderGateOpen, menuTouchesRow } from "./rowRenderGate";
 
 export type DataTableSortDirection = "asc" | "desc";
 
@@ -175,7 +176,8 @@ export function useCustomColumnLayout<T>(
   const shown = ordered
     .map((column) => byId.get(column.id))
     .filter((column): column is DataTableColumn<T> => column !== undefined);
-  const pinnedIds = isDesktop ? ordered.filter((column) => column.pinned).map((column) => column.id) : [];
+  // A locked column (No.) keeps its place and stays visible, but it is not fixed while the table scrolls sideways: only the columns the person pins are.
+  const pinnedIds = isDesktop ? ordered.filter((column) => column.pinned && !column.locked).map((column) => column.id) : [];
 
   const fixedActionLabel = action ? (typeof action.header === "string" ? action.header : "Action") : null;
 
@@ -235,6 +237,83 @@ function CustomizableDataTable<T>({
   );
 }
 
+interface DataTableRowProps<T> {
+  rowKey: React.Key;
+  row: T;
+  index: number;
+  columns: readonly DataTableColumn<T>[];
+  visibleSelection: boolean;
+  selection?: DataTableSelection<T>;
+  action?: DataTableAction<T>;
+  rowClassName?: string | ((row: T, index: number) => string);
+  onRowClick?: (row: T, index: number) => void;
+  onRowKeyDown?: (event: React.KeyboardEvent<HTMLTableRowElement>, row: T, index: number) => void;
+  rowTabIndex?: number;
+  layoutToken?: number;
+}
+
+function DataTableRow<T>({ row, index, columns, visibleSelection, selection, action, rowClassName, onRowClick, onRowKeyDown, rowTabIndex }: DataTableRowProps<T>) {
+  return (
+    <TableMarkup.Row
+      data-record-stripe={index % 2 === 1 ? "true" : "false"}
+      onClick={() => onRowClick?.(row, index)}
+      onKeyDown={(event) => onRowKeyDown?.(event, row, index)}
+      tabIndex={onRowClick ? rowTabIndex : undefined}
+      className={cn(
+        "transition-colors group hover:bg-slate-50/80",
+        typeof rowClassName === "function" ? rowClassName(row, index) : rowClassName,
+      )}
+    >
+      {visibleSelection && (
+        <TableMarkup.Cell className={cn(CELL_CLASS, selection?.cellClassName)}>
+          {selection?.cell(row, index)}
+        </TableMarkup.Cell>
+      )}
+      {columns.map((column) => (
+        <TableMarkup.Cell
+          key={column.id}
+          data-table-col={column.id}
+          className={cn(
+            CELL_CLASS,
+            typeof column.cellClassName === "function" ? column.cellClassName(row, index) : column.cellClassName,
+          )}
+        >
+          {column.cell(row, index)}
+        </TableMarkup.Cell>
+      ))}
+      {action && (
+        <TableMarkup.Cell
+          data-record-action="true"
+          onClick={(event) => event.stopPropagation()}
+          className={cn(ACTION_CELL_CLASS, action.cellClassName)}
+        >
+          {action.cell(row, index)}
+        </TableMarkup.Cell>
+      )}
+    </TableMarkup.Row>
+  );
+}
+
+/**
+ * A row is rendered again whenever its table is, with one exception (see rowRenderGate): in the render that only opens, moves or closes a row menu,
+ * a row with the same data that the menu does not touch is left as it is. The functions a screen gives (cell, onRowClick, ...) are new on every render,
+ * so they are not compared: that is why this holds only for that one render, in which nothing else changed.
+ */
+function sameRowWhileMenuMoves<T>(previous: DataTableRowProps<T>, next: DataTableRowProps<T>): boolean {
+  return menuRenderGateOpen()
+    && !menuTouchesRow(next.rowKey)
+    && previous.row === next.row
+    && previous.index === next.index
+    && previous.layoutToken === next.layoutToken
+    && previous.visibleSelection === next.visibleSelection
+    && previous.rowClassName === next.rowClassName
+    && previous.columns.length === next.columns.length
+    && previous.columns.every((column, position) => column.id === next.columns[position].id)
+    && Boolean(previous.action) === Boolean(next.action);
+}
+
+const MemoRow = React.memo(DataTableRow, sameRowWhileMenuMoves) as typeof DataTableRow;
+
 function DataTableBase<T>({
   rows,
   columns: columnsProp,
@@ -280,6 +359,9 @@ function DataTableBase<T>({
   const staleRows = isLoading ? settledRows.current : null;
   const showLoading = isLoading && !staleRows;
   const shownRows = staleRows ?? rows;
+
+  // The render that a menu change caused is done: from here on every row is rendered as usual.
+  useLayoutEffect(() => { queueMicrotask(closeMenuRenderGate); });
 
   const [scrollerEl, setScrollerEl] = useState<HTMLDivElement | null>(null);
   const attachScroller = (node: HTMLDivElement | null) => {
@@ -384,47 +466,20 @@ function DataTableBase<T>({
               ) : (
                 shownRows.map((row, index) => (
                   <React.Fragment key={getRowKey(row, index)}>
-                    <TableMarkup.Row
-                      data-record-stripe={index % 2 === 1 ? "true" : "false"}
-                      onClick={() => onRowClick?.(row, index)}
-                      onKeyDown={(event) => onRowKeyDown?.(event, row, index)}
-                      tabIndex={onRowClick ? rowTabIndex : undefined}
-                      className={cn(
-                        "transition-colors group hover:bg-slate-50/80",
-                        typeof rowClassName === "function"
-                          ? rowClassName(row, index)
-                          : rowClassName,
-                      )}
-                    >
-                      {visibleSelection && (
-                        <TableMarkup.Cell className={cn(CELL_CLASS, selection?.cellClassName)}>
-                          {selection?.cell(row, index)}
-                        </TableMarkup.Cell>
-                      )}
-                      {columns.map((column) => (
-                        <TableMarkup.Cell
-                          key={column.id}
-                          data-table-col={column.id}
-                          className={cn(
-                            CELL_CLASS,
-                            typeof column.cellClassName === "function"
-                              ? column.cellClassName(row, index)
-                              : column.cellClassName,
-                          )}
-                        >
-                          {column.cell(row, index)}
-                        </TableMarkup.Cell>
-                      ))}
-                      {action && (
-                        <TableMarkup.Cell
-                          data-record-action="true"
-                          onClick={(event) => event.stopPropagation()}
-                          className={cn(ACTION_CELL_CLASS, action.cellClassName)}
-                        >
-                          {action.cell(row, index)}
-                        </TableMarkup.Cell>
-                      )}
-                    </TableMarkup.Row>
+                    <MemoRow
+                      rowKey={getRowKey(row, index)}
+                      row={row}
+                      index={index}
+                      columns={columns}
+                      visibleSelection={visibleSelection}
+                      selection={selection}
+                      action={action}
+                      rowClassName={rowClassName}
+                      onRowClick={onRowClick}
+                      onRowKeyDown={onRowKeyDown}
+                      rowTabIndex={rowTabIndex}
+                      layoutToken={columnLayout?.reorderToken}
+                    />
                     {/* The detail row opens and closes with a motion. It is mounted only while expanded, so the presence
                         boundary has to be HERE: a boundary inside the detail component would be unmounted with it and
                         could never play the closing motion (nor, with `initial={false}`, the opening one). */}

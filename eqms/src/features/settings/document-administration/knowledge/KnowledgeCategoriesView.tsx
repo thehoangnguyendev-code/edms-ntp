@@ -482,7 +482,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
                 placeholder="Select date range"
                 autoApply
               />
-              <div className="flex items-end gap-2">
+              <div className="filter-actions flex items-end gap-2">
                 <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
                 {knowledgeControl}
               </div>

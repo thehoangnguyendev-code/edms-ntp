@@ -115,4 +115,22 @@ class TrainingSettingsServiceTest {
                 .hasMessage("TRAINING_SETTINGS_INVALID");
         verify(jdbc, never()).update(anyString(), any(Object[].class));
     }
+
+    private TrainingSettingsService.SettingsWrite onlyEntryMode(String mode) {
+        return new TrainingSettingsService.SettingsWrite(1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, mode);
+    }
+
+    @Test void theWayTheTrainingNumberIsGivenIsSavedAndRecorded() {
+        when(actor.getId()).thenReturn(UUID.randomUUID());
+        when(jdbc.queryForMap(anyString())).thenReturn(settings());
+        service.update(actor, onlyEntryMode("MANUAL"));
+        verify(audit).logAs(eq(actor), eq("TRAINING_SETTINGS"), eq("TRAINING_SETTINGS"), any(UUID.class),
+                eq("TRAINING_SETTINGS_UPDATED"), isNull(), isNull(), eq("How the Training Number is given: AUTO -> MANUAL"));
+    }
+
+    @Test void anUnknownWayOfGivingTheTrainingNumberIsRefusedAndNothingIsWritten() {
+        when(jdbc.queryForMap(anyString())).thenReturn(settings());
+        assertThatThrownBy(() -> service.update(actor, onlyEntryMode("RANDOM"))).isInstanceOf(IllegalArgumentException.class).hasMessage("TRAINING_SETTINGS_INVALID");
+        verifyNoInteractions(audit);
+    }
 }

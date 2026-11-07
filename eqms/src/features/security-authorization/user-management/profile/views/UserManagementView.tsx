@@ -303,7 +303,9 @@ export const UserManagementView: React.FC = () => {
     userId: string,
     event: React.MouseEvent<HTMLButtonElement>,
   ) => {
-    if (!capabilityByUserId[userId]) {
+    // The list already carries what this user may do with the account: no request, and the menu opens with its items decided. The request is only
+    // for a row that came without it.
+    if (!users.find((u) => u.id === userId)?.capabilities && !capabilityByUserId[userId]) {
       void loadUserCapabilities(userId);
     }
     handleDropdownToggle(userId, event, { menuWidth: 240, menuHeight: 500 });
@@ -695,7 +697,7 @@ export const UserManagementView: React.FC = () => {
                 placeholder="Select date range"
               />
 
-              <div className="flex items-end gap-2">
+              <div className="filter-actions flex items-end gap-2">
                 <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
                 {customizeDrawer}
               </div>
@@ -1040,7 +1042,9 @@ export const UserManagementView: React.FC = () => {
         position={dropdownPosition}
         user={users.find((u) => u.id === openDropdownId)}
         capabilities={
-          openDropdownId ? capabilityByUserId[openDropdownId] : undefined
+          openDropdownId
+            ? (users.find((u) => u.id === openDropdownId)?.capabilities ?? capabilityByUserId[openDropdownId])
+            : undefined
         }
         onViewProfile={(id) => navigateTo(USER_MANAGEMENT_ROUTES.PROFILE(id))}
         onResetPassword={handleResetPassword}

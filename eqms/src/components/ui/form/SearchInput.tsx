@@ -11,6 +11,8 @@ interface SearchInputProps {
   /** Optional handle to the underlying input (for keyboard shortcuts that focus it). */
   inputRef?: React.Ref<HTMLInputElement>;
   ariaLabel?: string;
+  /** Extra attributes of the input (role, aria-*, key handlers). The value and change handling stay the component's own. */
+  inputProps?: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'className' | 'type'>;
 }
 
 export const SearchInput: React.FC<SearchInputProps> = ({
@@ -21,6 +23,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
   autoFocus,
   inputRef: externalRef,
   ariaLabel,
+  inputProps,
 }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const setRefs = (node: HTMLInputElement | null) => {
@@ -33,6 +36,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
     <div className={cn('relative', className)}>
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
       <input
+        {...inputProps}
         ref={setRefs}
         type="text"
         aria-label={ariaLabel}

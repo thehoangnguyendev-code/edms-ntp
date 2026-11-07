@@ -263,8 +263,8 @@ export const TrainingNotificationsView: React.FC = () => {
                     },
                   ]}
                 >
-                  <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-end">
-                    <div className="sm:col-span-1 lg:col-span-4">
+                  <div className="hidden items-end gap-4 md:grid [grid-template-columns:repeat(auto-fill,minmax(max(15rem,calc((100%-2rem)/3)),1fr))]">
+                    <div>
                       <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -280,13 +280,13 @@ export const TrainingNotificationsView: React.FC = () => {
                         />
                       </div>
                     </div>
-                    <div className="sm:col-span-1 lg:col-span-4">
+                    <div>
                       <Select label="Status" value={statusFilter} onChange={(value) => { setStatusFilter(value as StatusFilter); setCurrentPage(1); }} options={STATUS_OPTIONS} placeholder="All" />
                     </div>
-                    <div className="sm:col-span-1 lg:col-span-4">
+                    <div>
                       <Select label="Channel" value={channelFilter} onChange={(value) => { setChannelFilter(value as ChannelFilter); setCurrentPage(1); }} options={CHANNEL_OPTIONS} placeholder="All" />
                     </div>
-                    <div className="sm:col-span-1 lg:col-span-4">
+                    <div>
                       <DateRangePicker
                         label="Sent Date Range"
                         startDate={sentFromDate}
@@ -296,8 +296,8 @@ export const TrainingNotificationsView: React.FC = () => {
                         placeholder="Select range"
                       />
                     </div>
-                    {/* The two buttons share the row of the date range, on its right. */}
-                    <div className="flex justify-end gap-2 sm:col-span-1 lg:col-span-8">
+                    {/* The last cell, as in User Management: Clear Filters and the Custom Column control side by side. */}
+                    <div className="filter-actions flex items-end gap-2">
                       <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} disabled={!hasActiveFilters} />
                       {control}
                     </div>

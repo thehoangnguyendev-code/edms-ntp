@@ -7,12 +7,14 @@ import { SectionLoading } from "@/components/ui/loading";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { cn } from "@/components/ui/utils";
 import type { KnowledgePortalDocument } from "@/services/api/knowledge";
-import { FileIcon, FolderIcon } from "./ExplorerIcons";
+import { FileIcon, FolderIcon, useFolderColor, useFolderLabel } from "./ExplorerIcons";
+import { Folder } from "@/components/ui/folder-component";
 import { Card, CardHeader } from "@/features/self-service/dashboard/shared/dashboardUi";
 import { FOCUS_RING } from "./explorerStyles";
-import { folderColor, formatFileSize, pluralize, typeBadgeColor, type FolderEntry, type Selection, type SortDir, type SortKey, type ViewMode } from "./explorerModel";
+import { formatFileSize, pluralize, typeBadgeColor, type FolderEntry, type Selection, type SortDir, type SortKey, type ViewMode } from "./explorerModel";
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 
 interface ExplorerItemsProps {
   folders: FolderEntry[];
@@ -28,11 +30,19 @@ interface ExplorerItemsProps {
   highlight?: string;
   /** Touch and narrow screens: a single tap opens a folder because there is no double-click. */
   singleTapOpen: boolean;
+  /** False while the page around the items is changing width (the sidebar opening): the items just follow, they do not each animate to their new place. */
+  layoutAnimations?: boolean;
   onSelect: (selection: Exclude<Selection, null>) => void;
   onOpen: (selection: Exclude<Selection, null>) => void;
   onContextMenu: (event: React.MouseEvent, selection: Exclude<Selection, null>) => void;
   onToggleSubscribe: (key: string) => void;
 }
+
+/** The scrolling frame of a list-view table: drag it sideways to see the columns that do not fit, and it scrolls up and down under a header that stays put. */
+const DragScroll: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { scrollerRef, dragEvents } = useTableDragScroll();
+  return <div ref={scrollerRef} className="max-h-[calc(100dvh-15rem)] overflow-auto custom-scrollbar" {...dragEvents}>{children}</div>;
+};
 
 const GRID = "grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-[repeat(auto-fill,minmax(148px,1fr))]";
 const TILE = "group relative flex cursor-default select-none flex-col items-center gap-1.5 rounded-lg border px-2 pb-2.5 pt-3 text-center transition-[background-color,border-color,box-shadow] duration-200";
@@ -40,7 +50,8 @@ const TILE = "group relative flex cursor-default select-none flex-col items-cent
 // with neighbouring tiles, regardless of whether the title wraps.
 const TILE_NAME = "line-clamp-2 min-h-10 w-full break-words text-xs font-medium leading-tight text-slate-900 md:text-sm";
 /** Header of the shared tables: uppercase, small, bold. */
-const TH = TABLE_STYLES.headerCell9.replace("py-1.5 px-2 sm:py-2.5 sm:px-4", "px-2.5 py-2.5");
+// the header stays at the top of the table frame while its rows scroll
+const TH = cn(TABLE_STYLES.headerCell9.replace("py-1.5 px-2 sm:py-2.5 sm:px-4", "px-2.5 py-2.5"), "sticky top-0 z-20");
 const TH_RIGHT = cn(TH, "text-right");
 
 /** A column header that sorts when pressed; the arrow of the active column shows its direction, as in the shared tables. */
@@ -104,9 +115,11 @@ const itemKeys = (open: () => void, select: () => void) => (e: React.KeyboardEve
 };
 
 export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
-  folders, docs, totalDocs, sort, sortDir, onSortColumn, view, selection, highlight, singleTapOpen, onSelect, onOpen, onContextMenu, onToggleSubscribe,
+  folders, docs, totalDocs, sort, sortDir, onSortColumn, view, selection, highlight, singleTapOpen, layoutAnimations = true, onSelect, onOpen, onContextMenu, onToggleSubscribe,
 }) => {
   const stagger = useStagger();
+  const colorOf = useFolderColor();
+  const labelOf = useFolderLabel();
   const reduceMotion = useReducedMotion();
   const isFolderSelected = (key: string) => selection?.type === "folder" && selection.key === key;
   const isDocSelected = (id: string) => selection?.type === "doc" && selection.id === id;
@@ -130,7 +143,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
               return (
                 <motion.div
                   key={folder.key}
-                  layout={!reduceMotion}
+                  layout={!reduceMotion && layoutAnimations}
                   {...stagger(order++)}
                   role="option"
                   aria-selected={isFolderSelected(folder.key)}
@@ -142,8 +155,8 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
                   onKeyDown={itemKeys(() => onOpen(sel), () => onSelect(sel))}
                   className={cn(TILE, FOCUS_RING, tone(isFolderSelected(folder.key)))}
                 >
-                  <FolderIcon color={folderColor(folder.label)} className="h-14 w-16 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:scale-105" />
-                  <span className={TILE_NAME}><Highlight text={folder.label} term={highlight} /></span>
+                  <Folder color={colorOf(folder.key, folder.label) as `#${string}`} scale={0.2} open={isFolderSelected(folder.key) || undefined} className="h-14 w-16" />
+                  <span className={TILE_NAME} title={folder.label}><Highlight text={labelOf(folder.key, folder.label)} term={highlight} /></span>
                   <span className={TILE_META}>{pluralize(folder.documentCount, "document")}</span>
                   {folder.isKnowledgeBase && (
                     <button
@@ -166,7 +179,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
               );
             })}
           </div> : (
-            <div className="overflow-x-auto">
+            <DragScroll>
               <TableMarkup.Root className="w-full border-collapse">
                 <TableMarkup.Head><TableMarkup.Row className="bg-slate-50 text-left">
                   <TableMarkup.HeaderCell className={cn(TH, "bg-slate-50")}>Name</TableMarkup.HeaderCell>
@@ -177,17 +190,17 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
                   {folders.map((folder) => {
                     const sel = { type: "folder", key: folder.key } as const;
                     const selected = isFolderSelected(folder.key);
-                    return <motion.tr key={folder.key} layout={!reduceMotion} {...stagger(order++)} role="option" aria-selected={selected} tabIndex={0} data-item={`folder:${folder.key}`}
+                    return <motion.tr key={folder.key} layout={!reduceMotion && layoutAnimations} {...stagger(order++)} role="option" aria-selected={selected} tabIndex={0} data-item={`folder:${folder.key}`}
                       onClick={() => (singleTapOpen ? onOpen(sel) : onSelect(sel))} onDoubleClick={() => onOpen(sel)} onContextMenu={(e) => onContextMenu(e, sel)} onKeyDown={itemKeys(() => onOpen(sel), () => onSelect(sel))}
                       className={cn("cursor-default select-none bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500", selected ? "bg-emerald-50" : "hover:bg-slate-50")}>
-                      <TableMarkup.Cell className="px-2.5 py-2"><span className="flex min-w-0 items-center gap-2.5"><FolderIcon color={folderColor(folder.label)} className="h-7 w-8 shrink-0" /><span className="min-w-0"><span className="block truncate text-xs font-medium text-slate-900 md:text-sm"><Highlight text={folder.label} term={highlight} /></span><span className="block text-2xs text-slate-500 sm:hidden">{pluralize(folder.documentCount, "document")}</span></span></span></TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-2.5 py-2"><span className="flex min-w-0 items-center gap-2.5"><FolderIcon color={colorOf(folder.key, folder.label)} className="h-7 w-8 shrink-0" /><span className="min-w-0"><span className="block truncate text-xs font-medium text-slate-900 md:text-sm" title={folder.label}><Highlight text={labelOf(folder.key, folder.label)} term={highlight} /></span><span className="block text-2xs text-slate-500 sm:hidden">{pluralize(folder.documentCount, "document")}</span></span></span></TableMarkup.Cell>
                       <TableMarkup.Cell className="hidden px-2.5 py-2 text-xs text-slate-600 sm:table-cell md:text-sm">{folder.isKnowledgeBase ? "Knowledge Base" : "Folder"}</TableMarkup.Cell>
                       <TableMarkup.Cell className="px-2.5 py-2 text-right text-xs tabular-nums text-slate-600 md:text-sm">{folder.documentCount}</TableMarkup.Cell>
                     </motion.tr>;
                   })}
                 </TableMarkup.Body>
               </TableMarkup.Root>
-            </div>
+            </DragScroll>
           )}
         </Group>
       )}
@@ -202,7 +215,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
                 return (
                   <motion.div
                     key={doc.id}
-                    layout={!reduceMotion}
+                    layout={!reduceMotion && layoutAnimations}
                     {...stagger(order++)}
                     role="option"
                     aria-selected={isDocSelected(doc.id)}
@@ -214,7 +227,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
                     onKeyDown={itemKeys(() => onOpen(sel), () => onSelect(sel))}
                     className={cn(TILE, FOCUS_RING, tone(isDocSelected(doc.id)))}
                   >
-                    <FileIcon type={doc.documentType} className="h-16 w-14 drop-shadow-sm transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:scale-105" />
+                    <FileIcon type={doc.documentType} className="h-12 w-14 drop-shadow-sm transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:scale-105" />
                     <span className={TILE_NAME}><Highlight text={doc.documentName} term={highlight} /></span>
                     <span className={TILE_META}><Highlight text={doc.documentNumber} term={highlight} /></span>
                     <span className="absolute left-1.5 top-1.5 flex gap-0.5">
@@ -226,7 +239,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
               })}
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <DragScroll>
               <TableMarkup.Root className="w-full border-collapse">
                 <TableMarkup.Head>
                   <TableMarkup.Row className="bg-slate-50 text-left">
@@ -248,7 +261,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
                     return (
                       <motion.tr
                         key={doc.id}
-                        layout={!reduceMotion}
+                        layout={!reduceMotion && layoutAnimations}
                         {...stagger(order++)}
                         role="option"
                         aria-selected={selected}
@@ -262,7 +275,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
                       >
                         <TableMarkup.Cell className="px-2.5 py-2">
                           <span className="flex min-w-0 items-center gap-2.5">
-                            <FileIcon type={doc.documentType} className="h-6 w-5 shrink-0" />
+                            <FileIcon type={doc.documentType} className="h-5 w-5 shrink-0" />
                             <span className="min-w-0">
                               <span className="block truncate text-xs font-medium text-slate-900 md:text-sm"><Highlight text={doc.documentName} term={highlight} /></span>
                               <span className="block truncate text-2xs text-slate-500 sm:hidden">{doc.documentNumber}{doc.documentType ? ` · ${doc.documentType}` : ""}</span>
@@ -286,7 +299,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
                   })}
                 </TableMarkup.Body>
               </TableMarkup.Root>
-            </div>
+            </DragScroll>
           )}
         </Group>
       )}

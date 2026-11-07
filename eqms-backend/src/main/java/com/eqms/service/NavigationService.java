@@ -59,7 +59,7 @@ public class NavigationService {
         }
         if (hasPermission(normalizedPermissions, "self_service.knowledge.view")
                 && systemConfigurationService.isFeatureEnabled("feat-edms-kb")) {
-            selfServiceChildren.add(new NavigationItemResponse("knowledge-base", "Knowledge", null, "/self-service/knowledge", false, null));
+            selfServiceChildren.add(new NavigationItemResponse("knowledge-base", "Knowledge", null, "/documents/knowledge/explorer", false, null));
         }
         if (!selfServiceChildren.isEmpty()) {
             menu.add(new NavigationItemResponse("self-service", "Self-Service", "IconLayoutGrid", null, true, selfServiceChildren));

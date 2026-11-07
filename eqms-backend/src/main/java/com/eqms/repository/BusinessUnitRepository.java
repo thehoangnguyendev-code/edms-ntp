@@ -15,4 +15,7 @@ public interface BusinessUnitRepository extends JpaRepository<BusinessUnit, UUID
     Optional<BusinessUnit> findByCodeIgnoreCase(String code);
     List<BusinessUnit> findAllByOrderByNameAsc();
     List<BusinessUnit> findAllByActiveTrueOrderByNameAsc();
+
+    /** The Business Units a user is Head of Unit of. */
+    List<BusinessUnit> findAllByHeadOfUnit_Id(UUID userId);
 }

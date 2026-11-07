@@ -5,7 +5,6 @@ export type RevisionActionCapabilityKey =
   | "replaceSource"
   | "syncToOffice"
   | "syncFromOffice"
-  | "completeAuthoring"
   | "updateDraftMetadata"
   | "openPublishingWorkspace"
   | "submitForReview"
@@ -44,7 +43,6 @@ export const REVISION_ACTION_CAPABILITY_KEYS: RevisionActionCapabilityKey[] = [
   "replaceSource",
   "syncToOffice",
   "syncFromOffice",
-  "completeAuthoring",
   "updateDraftMetadata",
   "openPublishingWorkspace",
   "submitForReview",

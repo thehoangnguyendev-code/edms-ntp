@@ -340,7 +340,7 @@ export const LoggedInUsersView: React.FC = () => {
                 placeholder="Select date range"
               />
 
-              <div className="flex items-end gap-2">
+              <div className="filter-actions flex items-end gap-2">
                 <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
                 {sessionControl}
               </div>

@@ -9,12 +9,9 @@ export const AUTH_PARTNER_BRANDS = [
 
 export const AUTH_UI = {
   pageWrapper:
-    "relative isolate flex min-h-screen min-h-dvh w-full items-center justify-center overflow-hidden bg-[#fefcff] px-3 py-3 sm:px-6 sm:py-8 lg:px-8",
+    "relative isolate flex min-h-screen min-h-dvh w-full items-center justify-center overflow-hidden bg-gray-100/50 px-3 py-3 sm:px-6 sm:py-8 lg:px-8",
 
-  // Option 1: Dreamy Sky Pink (active)
   pageBgBase:
-    "pointer-events-none absolute inset-0 -z-10",
-  pageBgGlow:
     "pointer-events-none absolute inset-0 -z-10",
   pageBgTopo:
     "pointer-events-none absolute inset-0 -z-10",

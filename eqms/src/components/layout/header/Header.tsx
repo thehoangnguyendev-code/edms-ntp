@@ -201,12 +201,12 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
             {/* Breadcrumbs - Desktop/Tablet only, visible when NOT scrolled */}
             {!pinnedTitle && breadcrumbs && breadcrumbs.length > 0 && (
               <div className={cn(
-                "hidden md:flex absolute left-2 items-center min-w-0 transition-all duration-500 ease-out",
+                "hidden md:flex absolute left-2 right-0 items-center min-w-0 transition-all duration-500 ease-out",
                 !showHeaderTitle
                   ? "opacity-100 translate-y-0"
                   : "opacity-0 translate-y-3 pointer-events-none"
               )}>
-                <Breadcrumb items={breadcrumbs} className="mt-0 overflow-hidden" />
+                <Breadcrumb items={breadcrumbs} className="mt-0" />
               </div>
             )}
 

@@ -200,7 +200,7 @@ export const FormModal: React.FC<FormModalProps> = ({
               </div>
             </div>
 
-            <div className="px-4 sm:px-6 py-4 sm:py-5 bg-white overflow-y-auto flex-1 min-h-0">
+            <div className="form-modal-body px-4 sm:px-6 py-4 sm:py-5 bg-white overflow-y-auto flex-1 min-h-0">
               {description && (
                 <div id={descriptionId} className="mb-4 text-xs sm:text-sm text-slate-500 leading-relaxed">{description}</div>
               )}

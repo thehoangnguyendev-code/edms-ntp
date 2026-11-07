@@ -40,6 +40,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final Map<String, String> AUTHENTICATION_ATTEMPT_PATHS = Map.of(
             "/api/auth/login", "login",
             "/api/auth/reauthenticate", "reauthenticate",
+            "/api/auth/reauthenticate/mfa", "reauthenticate-mfa",
             "/api/auth/mfa/verify", "mfa-verify",
             "/api/auth/mfa/send-email-otp", "mfa-send-otp",
             "/api/auth/forgot-password", "forgot-password",
@@ -49,6 +50,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final Set<String> SUCCESSFUL_AUTHENTICATION_PATHS = Set.of(
             "/api/auth/login",
             "/api/auth/reauthenticate",
+            "/api/auth/reauthenticate/mfa",
             "/api/auth/mfa/verify"
     );
 

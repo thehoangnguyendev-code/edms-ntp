@@ -197,6 +197,9 @@ public class ObjectAccessEvaluationService {
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
         return objectAccessRuleRepository.findAllByActiveOrderByPriorityDescNameAsc(true)
                 .stream()
+                // A Department-owned rule is a Knowledge Base share made by its Department Head (KnowledgeVisibilityService), which only ever
+                // grants or refuses VIEW of the Knowledge Base; it must not join the "any ALLOW rule makes the rest a refusal" logic of these rules.
+                .filter(rule -> rule.getOwnerDepartment() == null && rule.getOwnerBusinessUnit() == null)
                 .filter(rule -> rule.getAccessProfiles().isEmpty()
                         || rule.getAccessProfiles().stream()
                         .anyMatch(profile -> profile.getId() != null && profileIds.contains(profile.getId())))
@@ -227,8 +230,22 @@ public class ObjectAccessEvaluationService {
             case "DOCUMENT_TYPE" -> matchesDocumentType(rule, revision == null ? null : revision.getDocumentType(),
                     document == null ? null : document.getDocumentType());
             case "DOCUMENT_STATUS" -> matchesStatus(rule, document, revision);
+            case "DEPARTMENT" -> rule.getResourceId() == null || Objects.equals(rule.getResourceId(),
+                    departmentIdOf(document, revision));
+            case "BUSINESS_UNIT" -> rule.getResourceId() == null || Objects.equals(rule.getResourceId(),
+                    businessUnitIdOf(document, revision));
             default -> false;
         };
+    }
+
+    private static UUID departmentIdOf(DocumentRecord document, DocumentRevisionRecord revision) {
+        Department department = revision != null ? revision.getDepartment() : document == null ? null : document.getDepartment();
+        return department == null ? null : department.getId();
+    }
+
+    private static UUID businessUnitIdOf(DocumentRecord document, DocumentRevisionRecord revision) {
+        BusinessUnit unit = revision != null ? revision.getBusinessUnit() : document == null ? null : document.getBusinessUnit();
+        return unit == null ? null : unit.getId();
     }
 
     private boolean matchesDocumentType(ObjectAccessRule rule, DocumentType revisionType, DocumentType documentType) {

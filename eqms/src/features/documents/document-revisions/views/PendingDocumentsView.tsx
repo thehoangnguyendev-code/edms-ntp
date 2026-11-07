@@ -1,13 +1,8 @@
-import React, { useMemo, useState } from "react";
-import { useLocation } from "react-router-dom";
-import { PortalDropdownMenu } from "@/components/ui/dropdown";
+import React, { useState } from "react";
+import { RevisionRowMenu, revisionMenuActions } from "./RevisionRowMenu";
+import { useRevisionRowActions } from "./useRevisionRowActions";
 import { ROUTES } from "@/app/routes.constants";
-import {
-  Download,
-  Check,
-  CircleCheck,
-  Info,
-} from "lucide-react";
+import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button/Button";
 import { Badge, type BadgeColor } from "@/components/ui/badge";
 import { DocumentFilters } from "@/features/documents/shared/components";
@@ -19,12 +14,9 @@ import { usePortalDropdown, useNavigateWithLoading, useTableDragScroll } from "@
 import { useRevisionServerTable } from "@/features/documents/hooks";
 import { useAuth } from "@/contexts/AuthContext";
 import { RevisionTableView, TableColumn, useRevisionColumnLayout } from "@/features/documents/shared/components";
-import { buildRevisionDetailSnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
 import type { Revision } from "./types";
-import { documentApi } from "@/services/api/documents";
 import { formatRevisionDocumentDisplayLabel } from "@/features/documents/shared/documentDisplay";
 import { getStatusBadgeColor } from "@/utils/status";
-import { IconChecks } from "@tabler/icons-react";
 
 const getBadgeColor = (statusCode?: string, statusLabel?: string): BadgeColor =>
   getStatusBadgeColor(statusLabel, statusCode) ?? "slate";
@@ -53,65 +45,12 @@ const DEFAULT_COLUMNS: TableColumn[] = [
   { id: "action", label: "Action", visible: true, order: 18, locked: true },
 ];
 
-const DropdownMenu: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  position: { top: number; left: number };
-  onAction: (action: string) => void;
-  viewType: ViewType;
-  canReview?: boolean;
-  canApprove?: boolean;
-}> = ({ isOpen, onClose, position, onAction, viewType, canReview, canApprove }) => (
-  <PortalDropdownMenu isOpen={isOpen} onClose={onClose} position={position} minWidth={200}>
-    <div className="py-1">
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onAction("view");
-          onClose();
-        }}
-        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
-      >
-        <Info className="h-4 w-4 flex-shrink-0" />
-        <span className="font-medium">View Details</span>
-      </button>
-      {viewType === "review" && canReview && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onAction("review");
-            onClose();
-          }}
-          className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
-        >
-          <Check className="h-4 w-4 flex-shrink-0" />
-          <span className="font-medium">Review Revision</span>
-        </button>
-      )}
-      {viewType === "approval" && canApprove && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onAction("approve");
-            onClose();
-          }}
-          className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
-        >
-          <IconChecks className="h-4 w-4 flex-shrink-0" />
-          <span className="font-medium">Approve Revision</span>
-        </button>
-      )}
-    </div>
-  </PortalDropdownMenu>
-);
-
 interface PendingDocumentsViewProps {
   viewType: ViewType;
   onViewDocument?: (documentId: string) => void;
 }
 
 export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ viewType, onViewDocument }) => {
-  const location = useLocation();
   const { user } = useAuth();
   const { navigateTo, navigateToPrepared, isNavigating } = useNavigateWithLoading();
   const [columns] = useState<TableColumn[]>(() => [...DEFAULT_COLUMNS]);
@@ -175,13 +114,6 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
     currentUser: user,
   });
 
-  const openRevision = useMemo(
-    () => (openId ? revisions.find((revision) => revision.id === openId) || null : null),
-    [openId, revisions],
-  );
-  const canOpenReviewAction = openRevision ? Boolean(openRevision.canReviewRevision) : false;
-  const canOpenApproveAction = openRevision ? Boolean(openRevision.canApproveRevision) : false;
-
   const startIndex = (currentPage - 1) * itemsPerPage;
 
   const title = viewType === "review" ? "Pending My Review" : "Pending My Approval";
@@ -190,58 +122,11 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
   const fixedStatusValue = viewType === "review" ? "PENDING_REVIEW" : "PENDING_APPROVAL";
   const fixedStatusOptions = [{ label: fixedStatusLabel, value: fixedStatusValue }];
 
-  const preloadRevisionAndNavigate = async (
-    route: string,
-    revisionId: string,
-    from: string,
-  ) => {
-    try {
-      await navigateToPrepared(
-        route,
-        async () => ({
-          ...buildRevisionDetailSnapshotState(await documentApi.getRevisionByIdSnapshot(revisionId)),
-        }),
-        { state: { from, returnTo: `${location.pathname}${location.search}` } },
-      );
-    } catch (error) {
-      console.error("Failed to preload revision before navigation", error);
-      navigateTo(route, { state: { from, returnTo: `${location.pathname}${location.search}` } });
-    }
-  };
-
-  const handleAction = (action: string) => {
-    if (!openId) return;
-
-    close();
-
-    switch (action) {
-      case "view":
-        if (onViewDocument) {
-          onViewDocument(openId);
-        } else {
-          void preloadRevisionAndNavigate(
-            ROUTES.DOCUMENTS.REVISIONS.DETAIL(openId),
-            openId,
-            viewType === "review" ? ROUTES.DOCUMENTS.REVISIONS.PENDING_REVIEW : ROUTES.DOCUMENTS.REVISIONS.PENDING_APPROVAL,
-          );
-        }
-        break;
-      case "review":
-        void preloadRevisionAndNavigate(
-          ROUTES.DOCUMENTS.REVISIONS.REVIEW(openId),
-          openId,
-          ROUTES.DOCUMENTS.REVISIONS.PENDING_REVIEW,
-        );
-        break;
-      case "approve":
-        void preloadRevisionAndNavigate(
-          ROUTES.DOCUMENTS.REVISIONS.APPROVAL(openId),
-          openId,
-          ROUTES.DOCUMENTS.REVISIONS.PENDING_APPROVAL,
-        );
-        break;
-    }
-  };
+  const { viewRevision, runRowAction } = useRevisionRowActions({
+    from: viewType === "review" ? ROUTES.DOCUMENTS.REVISIONS.PENDING_REVIEW : ROUTES.DOCUMENTS.REVISIONS.PENDING_APPROVAL,
+    navigateTo,
+    navigateToPrepared,
+  });
 
   const handleTableDropdownToggle = React.useCallback(
     (id: string, e: React.MouseEvent<Element>) => {
@@ -304,6 +189,7 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
     renderCell,
     expandedRowId,
     onExpandRow: setExpandedRowId,
+    onViewItem: viewRevision,
   });
 
   return (
@@ -454,26 +340,9 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
                 onSort={handleSort}
                 onPageChange={setCurrentPage}
                 onItemsPerPageChange={setItemsPerPage}
-                onMenuAction={handleAction}
                 renderCell={renderCell}
-                getMenuActions={(revision: Revision) => {
-                  const actions = [{ icon: <Info className="h-4 w-4" />, label: "View Details", action: "view" }];
-                  const canReview = Boolean(revision.canReviewRevision);
-                  const canApprove = Boolean(revision.canApproveRevision);
-                  if (viewType === "review" && canReview) {
-                    actions.push({ icon: <Check className="h-4 w-4" />, label: "Review Revision", action: "review" });
-                  } else if (viewType === "approval" && canApprove) {
-                    actions.push({ icon: <CircleCheck className="h-4 w-4" />, label: "Approve Revision", action: "approve" });
-                  }
-                  return actions;
-                }}
-              onViewItem={(id) => {
-                void preloadRevisionAndNavigate(
-                  ROUTES.DOCUMENTS.REVISIONS.DETAIL(id),
-                  id,
-                  viewType === "review" ? ROUTES.DOCUMENTS.REVISIONS.PENDING_REVIEW : ROUTES.DOCUMENTS.REVISIONS.PENDING_APPROVAL,
-                );
-              }}
+                getMenuActions={(revision: Revision) => revisionMenuActions(revision, { publish: false })}
+                onViewItem={viewRevision}
                 scrollerRef={scrollerRef as React.RefObject<HTMLDivElement>}
                 dragEvents={dragEvents}
                 isDragging={isDragging}
@@ -487,14 +356,13 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
         </div>
       </div>
 
-      <DropdownMenu
-        isOpen={!!openId}
+      <RevisionRowMenu
+        revision={openId ? revisions.find((revision) => revision.id === openId) : null}
+        isOpen={openId !== null}
         onClose={close}
         position={position}
-        onAction={handleAction}
-        viewType={viewType}
-        canReview={canOpenReviewAction}
-        canApprove={canOpenApproveAction}
+        onAction={(action, revision) => (action === "view" && onViewDocument ? onViewDocument(revision.id) : runRowAction(action, revision))}
+        publish={false}
       />
     </div>
   );

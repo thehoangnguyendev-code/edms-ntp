@@ -248,19 +248,76 @@ public class KnowledgePortalService {
         return new BrowseResult(List.of(), null, List.of(), sorted.subList(from, Math.min(sorted.size(), from + size)), sorted.size(), safePage, size);
     }
 
+    /** The Effective PDF of a document the user may see in the Knowledge Base. */
     @Transactional(readOnly = true)
-    public List<PortalDocument> search(String query) {
-        UserAccount user = currentUserService.requireCurrentUser();
+    public org.springframework.http.ResponseEntity<byte[]> preview(UUID documentId) {
+        currentUserService.requireCurrentUser();
+        DocumentService.DocumentFileResult result = documentService.previewKnowledgeDocumentFile(documentId);
+        return org.springframework.http.ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.parseMediaType(result.contentType()))
+                .body(result.bytes());
+    }
+
+    /** The fewest characters that start a suggestion; with fewer the list is empty (nothing is searched). */
+    static final int MIN_SUGGEST_LENGTH = 2;
+    static final int MAX_SUGGESTIONS = 10;
+
+    /** How every Business Unit, Department and Document Type is drawn as a folder: its short form, and the colour it was given (null: automatic). */
+    @Transactional(readOnly = true)
+    public List<com.eqms.dto.knowledge.KnowledgePortalDtos.FolderStyle> folderStyles() {
+        currentUserService.requireCurrentUser();
+        return jdbc.query("SELECT id::text AS id, name, code AS abbreviation, icon_color FROM business_units "
+                        + "UNION ALL SELECT id::text, name, code, icon_color FROM departments "
+                        + "UNION ALL SELECT id::text, name, short_code, NULL::varchar FROM document_types",
+                (rs, row) -> new com.eqms.dto.knowledge.KnowledgePortalDtos.FolderStyle(rs.getString("id"), rs.getString("name"),
+                        rs.getString("abbreviation"), rs.getString("icon_color")));
+    }
+
+    /** The icon every Document Type was given, read once by the explorer to draw its document icons. */
+    @Transactional(readOnly = true)
+    public List<com.eqms.dto.knowledge.KnowledgePortalDtos.DocumentTypeIcon> documentTypeIcons() {
+        currentUserService.requireCurrentUser();
+        return jdbc.query("SELECT name, short_code, icon_label, icon_color FROM document_types ORDER BY name",
+                (rs, row) -> new com.eqms.dto.knowledge.KnowledgePortalDtos.DocumentTypeIcon(rs.getString("name"), rs.getString("short_code"),
+                        rs.getString("icon_label"), rs.getString("icon_color")));
+    }
+
+    /**
+     * Auto-complete of the search box. It reads only {@link DocumentService#visibleKnowledgeEntries()} -- the very list the user browses and
+     * searches -- so a document the user cannot see in the Knowledge Base is never suggested, whatever it is called. Matching is on the number
+     * and the name; the number that starts with the text comes first, then a name that starts with it, then the rest.
+     */
+    @Transactional(readOnly = true)
+    public List<com.eqms.dto.knowledge.KnowledgePortalDtos.DocumentSuggestion> suggest(String query, int limit) {
+        currentUserService.requireCurrentUser();
         String q = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
-        if (q.length() < 3) {
-            throw new IllegalArgumentException("Enter at least 3 characters to search");
+        if (q.length() < MIN_SUGGEST_LENGTH) {
+            return List.of();
         }
-        List<KnowledgeEntry> hits = documentService.visibleKnowledgeEntries().stream()
-                .filter(e -> Objects.toString(e.document().getDocumentNumber(), "").toLowerCase(Locale.ROOT).contains(q)
-                        || Objects.toString(e.document().getDocumentName(), "").toLowerCase(Locale.ROOT).contains(q))
-                .limit(50).toList();
-        Map<UUID, long[]> stats = stats(hits.stream().map(e -> e.document().getId()).collect(Collectors.toSet()), user);
-        return hits.stream().map(e -> portalDocument(e, stats.get(e.document().getId()))).toList();
+        int size = Math.max(1, Math.min(limit, MAX_SUGGESTIONS));
+        record Ranked(KnowledgeEntry entry, int rank, String number) {}
+        List<Ranked> hits = new ArrayList<>();
+        for (KnowledgeEntry entry : documentService.visibleKnowledgeEntries()) {
+            String number = Objects.toString(entry.document().getDocumentNumber(), "");
+            String name = Objects.toString(entry.document().getDocumentName(), "");
+            String n = number.toLowerCase(Locale.ROOT);
+            String m = name.toLowerCase(Locale.ROOT);
+            int rank = n.startsWith(q) ? 0 : m.startsWith(q) ? 1 : n.contains(q) ? 2 : m.contains(q) ? 3 : -1;
+            if (rank >= 0) {
+                hits.add(new Ranked(entry, rank, number));
+            }
+        }
+        return hits.stream()
+                .sorted(Comparator.comparingInt(Ranked::rank).thenComparing(Ranked::number, String.CASE_INSENSITIVE_ORDER))
+                .limit(size)
+                .map(h -> {
+                    DocumentRecord d = h.entry().document();
+                    return new com.eqms.dto.knowledge.KnowledgePortalDtos.DocumentSuggestion(
+                            d.getId().toString(), d.getDocumentNumber(), d.getDocumentName(), h.entry().revision().getRevisionNumber(),
+                            d.getDocumentType() == null ? null : d.getDocumentType().getName(),
+                            d.getDepartment() == null ? null : d.getDepartment().getName());
+                })
+                .toList();
     }
 
     // ---- engagement -----------------------------------------------------------------------

@@ -238,7 +238,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
         <div className="space-y-4">
           <div>
             <Checkbox id="sessionTimeoutEnabled" label="Enable Session Timeout" checked={config.sessionTimeoutEnabled ?? true} onChange={(checked) => handleChange('sessionTimeoutEnabled', checked)} />
-            <p className="ml-7 text-xs text-slate-500">Lock inactive sessions for all users. Existing locked sessions still require reauthentication.</p>
+            <p className="ml-7 text-xs text-slate-500">Lock inactive sessions for all users. A locked session is unlocked with the same steps as signing in: the password, then the verification code when the account uses a second factor. A wrong password or code counts toward Account Lockout and is recorded in the Audit Trail.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(config.sessionTimeoutEnabled ?? true) && <div>

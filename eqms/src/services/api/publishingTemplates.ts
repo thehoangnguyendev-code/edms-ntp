@@ -6,7 +6,6 @@ import type {
   PublishingTemplateComponentInspectionResponse,
   PublishingTemplateRequest,
   PublishingTemplateResponse,
-  PublishingTemplateVersionResponse,
 } from "@/features/documents/publishing/types";
 
 export interface PublishingTemplateListParams {
@@ -39,11 +38,6 @@ export const publishingTemplatesApi = {
 
   getTemplate: async (id: string) => {
     const response = await api.get<PublishingTemplateResponse>(`/documents/administration/publishing-templates/${id}`);
-    return response.data;
-  },
-
-  getVersions: async (id: string) => {
-    const response = await api.get<PublishingTemplateVersionResponse[]>(`/documents/administration/publishing-templates/${id}/versions`);
     return response.data;
   },
 
@@ -93,12 +87,6 @@ export const publishingTemplatesApi = {
 
   duplicateTemplate: async (id: string) => {
     const response = await api.post<PublishingTemplateResponse>(`/documents/administration/publishing-templates/${id}/duplicate`);
-    return response.data;
-  },
-
-  /** Server creates an editable copy that supersedes the published template once it is published. */
-  createNewVersion: async (id: string) => {
-    const response = await api.post<PublishingTemplateResponse>(`/documents/administration/publishing-templates/${id}/new-version`);
     return response.data;
   },
 
@@ -184,11 +172,6 @@ export const publishingTemplatesApi = {
     const response = await api.get<Blob>(`/documents/administration/publishing-templates/${id}/components/logo/preview`, {
       responseType: "blob",
     });
-    return response.data;
-  },
-
-  publishTemplate: async (id: string, changeSummary?: string) => {
-    const response = await api.post<PublishingTemplateResponse>(`/documents/administration/publishing-templates/${id}/publish`, { changeSummary });
     return response.data;
   },
 };

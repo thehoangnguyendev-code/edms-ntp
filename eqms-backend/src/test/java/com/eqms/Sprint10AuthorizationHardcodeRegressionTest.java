@@ -277,7 +277,8 @@ class Sprint10AuthorizationHardcodeRegressionTest {
 
         var service = new ObjectAccessRuleService(objectAccessRuleRepository, roleDefinitionRepository,
                 null, null, null,
-                currentUserService, auditTrailService, permissionEvaluationService, securityChangeSignatureService);
+                currentUserService, auditTrailService, permissionEvaluationService, securityChangeSignatureService,
+                null, null);
         assertThatThrownBy(service::listAll).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
     }
 
@@ -287,7 +288,8 @@ class Sprint10AuthorizationHardcodeRegressionTest {
 
         var service = new ObjectAccessRuleService(objectAccessRuleRepository, roleDefinitionRepository,
                 null, null, null,
-                currentUserService, auditTrailService, permissionEvaluationService, securityChangeSignatureService);
+                currentUserService, auditTrailService, permissionEvaluationService, securityChangeSignatureService,
+                null, null);
         assertThatThrownBy(service::listAll).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
     }
 

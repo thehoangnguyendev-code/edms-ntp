@@ -30,16 +30,15 @@ export const SessionTimeoutGuard: React.FC = () => {
     let isActive = true;
     const hydrateSecurityConfig = async () => {
       try {
-        // The full configuration is for people with the Settings > Configuration permission; everyone else reads the session timeout alone.
-        let config: Record<string, any>;
-        if ((user?.permissions ?? []).includes("settings.configuration.view")) {
-          config = await settingsApi.getSystemConfiguration();
-        } else {
-          let cached: Record<string, any> = {};
-          try { cached = JSON.parse(window.localStorage.getItem(SECURITY_CONFIG_STORAGE_KEY) || "{}"); } catch { cached = {}; }
-          const security = await settingsApi.getSecurityConfiguration();
-          config = { ...cached, security: { ...(cached.security ?? {}), sessionTimeoutMinutes: security.sessionTimeoutMinutes, sessionTimeoutEnabled: security.sessionTimeoutEnabled } };
-        }
+        // Only the session timeout is read here, so everyone loads that alone. The full configuration carries the logos and backgrounds
+        // as images (over half a megabyte) and is read by the Configuration screen alone.
+        let cached: Record<string, any> = {};
+        try { cached = JSON.parse(window.localStorage.getItem(SECURITY_CONFIG_STORAGE_KEY) || "{}"); } catch { cached = {}; }
+        const security = await settingsApi.getSecurityConfiguration();
+        const config: Record<string, any> = {
+          ...(cached.documents ? { documents: cached.documents } : {}),
+          security: { ...(cached.security ?? {}), sessionTimeoutMinutes: security.sessionTimeoutMinutes, sessionTimeoutEnabled: security.sessionTimeoutEnabled },
+        };
         if (!isActive) return;
         window.localStorage.setItem(SECURITY_CONFIG_STORAGE_KEY, JSON.stringify(config));
         window.dispatchEvent(new Event("eqms:security-config-updated"));
@@ -64,7 +63,7 @@ export const SessionTimeoutGuard: React.FC = () => {
       document.removeEventListener('visibilitychange', refreshOnVisible);
       window.clearInterval(refreshTimer);
     };
-  }, [isAuthenticated, user?.permissions]);
+  }, [isAuthenticated]);
 
   const sendHeartbeat = useCallback(async (force = false) => {
     if (!isAuthenticated || sessionLockedRef.current) {

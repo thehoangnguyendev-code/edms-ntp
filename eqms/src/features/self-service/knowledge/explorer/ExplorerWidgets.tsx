@@ -8,9 +8,9 @@ import type { RankedCount } from "@/features/self-service/dashboard/shared/dashb
 import { Card, CardHeader, KpiStrip, type KpiCellData } from "@/features/self-service/dashboard/shared/dashboardUi";
 import type { DashboardResource } from "@/features/self-service/dashboard/shared/useDashboardResource";
 import type { KnowledgePortalDocument, KnowledgePortalOverview } from "@/services/api/knowledge";
-import { FileIcon } from "./ExplorerIcons";
+import { FileIcon, useFolderColor, useFolderLabel } from "./ExplorerIcons";
 import { FOCUS_RING } from "./explorerStyles";
-import { folderColor, pluralize, type ExplorerNav } from "./explorerModel";
+import { pluralize, type ExplorerNav } from "./explorerModel";
 
 interface ExplorerWidgetsProps {
   overview: KnowledgePortalOverview;
@@ -81,6 +81,8 @@ const RankedRows: React.FC<{ items: KnowledgePortalDocument[]; value: (d: Knowle
 };
 
 export const ExplorerWidgets: React.FC<ExplorerWidgetsProps> = ({ overview, onSelectDocument, onGo, onToggleSubscribe }) => {
+  const colorOf = useFolderColor();
+  const labelOf = useFolderLabel();
   const subscribed = overview.knowledgeBases.filter((kb) => kb.subscribed);
   const withContent = overview.knowledgeBases.filter((kb) => kb.documentCount > 0).length;
 
@@ -152,7 +154,7 @@ export const ExplorerWidgets: React.FC<ExplorerWidgetsProps> = ({ overview, onSe
               {overview.featured.map((item) => (
                 <li key={item.document.id}>
                   <button type="button" onClick={() => onSelectDocument(item)} className={cn(rowButton, "flex items-center gap-2.5")}>
-                    <FileIcon type={item.document.documentType} className="h-8 w-7 shrink-0 transition-transform group-hover:-rotate-3 group-hover:scale-105" />
+                    <FileIcon type={item.document.documentType} className="h-7 w-7 shrink-0 transition-transform group-hover:-rotate-3 group-hover:scale-105" />
                     <span className="min-w-0">
                       <span className="block truncate text-xs font-medium text-slate-900 group-hover:text-emerald-700 md:text-sm">{item.document.documentName}</span>
                       <span className="block truncate text-2xs text-slate-500 md:text-xs">{item.document.documentNumber}{item.document.department ? ` · ${item.document.department}` : ""}</span>
@@ -178,8 +180,8 @@ export const ExplorerWidgets: React.FC<ExplorerWidgetsProps> = ({ overview, onSe
                     onClick={() => onGo({ kind: "kb", kb: { key: kb.key, label: kb.label }, path: [] })}
                     className={cn("flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-slate-50", FOCUS_RING)}
                   >
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ backgroundColor: folderColor(kb.label) }} aria-hidden="true" />
-                    <span className="min-w-0 truncate text-xs font-medium text-slate-900 md:text-sm">{kb.label}</span>
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ backgroundColor: colorOf(kb.key, kb.label) }} aria-hidden="true" />
+                    <span className="min-w-0 truncate text-xs font-medium text-slate-900 md:text-sm" title={kb.label}>{labelOf(kb.key, kb.label)}</span>
                     <span className="ml-auto shrink-0 text-2xs text-slate-500 md:text-xs">{pluralize(kb.documentCount, "document")}</span>
                   </button>
                   <button

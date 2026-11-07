@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.contentstream.operator.Operator;
+import org.apache.pdfbox.cos.COSBase;
+import org.apache.pdfbox.cos.COSNumber;
+import org.apache.pdfbox.pdfparser.PDFStreamParser;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -86,6 +90,59 @@ class PreviewWatermarkTest {
             try (PDDocument pdf = Loader.loadPDF(marked)) {
                 assertThat(pdf.getNumberOfPages()).isEqualTo(2);
             }
+        }
+    }
+
+    @Test
+    void theAngleIsReadWithinTheRangeAndAMissingOrBadValueIsTheEarlierFortyFiveDegrees() throws Exception {
+        assertThat(PreviewWatermark.angleFor(policy("{}"))).isEqualTo(45);
+        assertThat(PreviewWatermark.angleFor(policy("{\"watermarkAngle\":0}"))).isEqualTo(0);
+        assertThat(PreviewWatermark.angleFor(policy("{\"watermarkAngle\":-30}"))).isEqualTo(-30);
+        assertThat(PreviewWatermark.angleFor(policy("{\"watermarkAngle\":30.4}"))).isEqualTo(30);
+        assertThat(PreviewWatermark.angleFor(policy("{\"watermarkAngle\":500}"))).isEqualTo(90);
+        assertThat(PreviewWatermark.angleFor(policy("{\"watermarkAngle\":-500}"))).isEqualTo(-90);
+        assertThat(PreviewWatermark.angleFor(policy("{\"watermarkAngle\":\"steep\"}"))).isEqualTo(45);
+        assertThat(PreviewWatermark.angleFor(policy("{\"watermarkAngle\":null}"))).isEqualTo(45);
+    }
+
+    @Test
+    void theTextIsDrawnAtTheConfiguredAngleInTheSingleMarkAndInTheGrid() throws Exception {
+        byte[] blank = blankPdf(1);
+        for (String tiled : List.of("false", "true")) {
+            for (int angle : new int[] {0, 30, 45, 90, -45}) {
+                byte[] marked = PreviewWatermark.apply(blank, policy("{\"watermarkTiled\":" + tiled + ",\"watermarkAngle\":" + angle + "}"), CONTEXT);
+                List<Double> drawn = textAngles(marked);
+                assertThat(drawn).as("angles drawn (tiled=%s, angle=%d)", tiled, angle).isNotEmpty();
+                assertThat(drawn).allSatisfy(value -> assertThat(value).isCloseTo((double) angle, org.assertj.core.data.Offset.offset(0.01)));
+            }
+        }
+    }
+
+    @Test
+    void withoutAnAngleTheTextIsDrawnAtFortyFiveDegreesAsBefore() throws Exception {
+        assertThat(textAngles(PreviewWatermark.apply(blankPdf(1), policy("{}"), CONTEXT)))
+                .isNotEmpty().allSatisfy(value -> assertThat(value).isCloseTo(45d, org.assertj.core.data.Offset.offset(0.01)));
+    }
+
+    /** The turn of each text object on the first page, read from its text matrix (a, b): atan2(b, a), in degrees. */
+    private static List<Double> textAngles(byte[] pdfBytes) throws Exception {
+        try (PDDocument pdf = Loader.loadPDF(pdfBytes)) {
+            PDFStreamParser parser = new PDFStreamParser(pdf.getPage(0));
+            List<Double> angles = new java.util.ArrayList<>();
+            List<COSBase> operands = new java.util.ArrayList<>();
+            for (Object token = parser.parseNextToken(); token != null; token = parser.parseNextToken()) {
+                if (token instanceof Operator operator) {
+                    if ("Tm".equals(operator.getName()) && operands.size() >= 6) {
+                        double a = ((COSNumber) operands.get(0)).floatValue();
+                        double b = ((COSNumber) operands.get(1)).floatValue();
+                        angles.add(Math.toDegrees(Math.atan2(b, a)));
+                    }
+                    operands.clear();
+                } else if (token instanceof COSBase base) {
+                    operands.add(base);
+                }
+            }
+            return angles;
         }
     }
 

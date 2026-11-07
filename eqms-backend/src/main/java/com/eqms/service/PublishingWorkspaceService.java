@@ -275,7 +275,7 @@ public class PublishingWorkspaceService {
             DocumentRevisionRecord revision,
             RevisionPublishingMetadata metadata
     ) {
-        PublishingTemplate storedTemplate = resolveTemplate(request == null ? null : request.publishingTemplateId());
+        PublishingTemplate storedTemplate = resolveTemplate(request == null ? null : request.publishingTemplateId(), metadata.getPublishingTemplate());
         metadata.setRevision(revision);
         metadata.setPublishingTemplate(storedTemplate);
         metadata.setPublishingTemplateVersion(storedTemplate == null ? null : storedTemplate.getVersionNumber());
@@ -303,9 +303,6 @@ public class PublishingWorkspaceService {
             UUID requestedByUserId, ConfirmedPublishAuthorization confirmation) {
         UserAccount currentUser = currentUserService.requireCurrentUser(requestedByUserId);
         DocumentRevisionRecord revision = requireReadyRevision(revisionId);
-        if (!electronicSignatureService.hasRevisionSignatureMeaning(revisionId, "PREPARED")) {
-            throw new IllegalStateException("Revision editing must be completed before publishing");
-        }
         RevisionPublishingMetadata metadata = metadataRepository.findByRevision_Id(revisionId)
                 .orElseThrow(() -> new IllegalStateException("Publishing preview has not been generated yet"));
         if (metadata.getPreviewGeneratedAt() == null
@@ -405,6 +402,11 @@ public class PublishingWorkspaceService {
     }
 
     @Transactional(readOnly = true)
+    public java.util.List<com.eqms.dto.publishing.RelatedPublishBlockerResponse> relatedPublishBlockers(UUID revisionId) {
+        return revisionService.relatedPublishBlockers(revisionId);
+    }
+
+    @Transactional(readOnly = true)
     public byte[] getPreviewPdf(UUID revisionId) {
         RevisionPublishingMetadata metadata = metadataRepository.findByRevision_Id(revisionId)
                 .orElseThrow(() -> new IllegalStateException("Publishing preview has not been generated yet"));
@@ -429,12 +431,15 @@ public class PublishingWorkspaceService {
         return revision;
     }
 
-    /** Only the single active Publishing Template may be used; a client-supplied id can only confirm it. */
-    private PublishingTemplate resolveTemplate(String templateId) {
-        PublishingTemplate active = publishingTemplateRepository.findAll().stream()
+    /**
+     * Any Active Publishing Template may be used (several can be Active at once). The id the client sends must be one of them; without an id the
+     * template this revision already used stays, otherwise the first Active one by name.
+     */
+    private PublishingTemplate resolveTemplate(String templateId, PublishingTemplate current) {
+        List<PublishingTemplate> active = publishingTemplateRepository.findAll().stream()
                 .filter(this::isLiveTemplate)
-                .findFirst()
-                .orElse(null);
+                .sorted(java.util.Comparator.comparing(PublishingTemplate::getTemplateName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
         if (StringUtils.hasText(templateId)) {
             UUID requested;
             try {
@@ -442,12 +447,14 @@ public class PublishingWorkspaceService {
             } catch (IllegalArgumentException ex) {
                 throw new IllegalArgumentException("Publishing template not found");
             }
-            if (active == null || !active.getId().equals(requested)) {
-                throw new com.eqms.exception.RevisionLifecycleConflictException("PUBLISHING_TEMPLATE_NOT_ACTIVE",
-                        "Only the active Publishing Template can be used. Reload the workspace to use it.");
-            }
+            return active.stream().filter(template -> template.getId().equals(requested)).findFirst()
+                    .orElseThrow(() -> new com.eqms.exception.RevisionLifecycleConflictException("PUBLISHING_TEMPLATE_NOT_ACTIVE",
+                            "The selected Publishing Template is not Active. Reload the workspace and choose an Active template."));
         }
-        return active;
+        if (current != null && isLiveTemplate(current)) {
+            return current;
+        }
+        return active.isEmpty() ? null : active.getFirst();
     }
 
     private boolean isLiveTemplate(PublishingTemplate template) {
@@ -556,12 +563,12 @@ public class PublishingWorkspaceService {
         if (revision.getSourceUploadedAt() != null && revision.getSourceUploadedAt().isAfter(generated)) {
             return true;
         }
-        PublishingTemplate live = publishingTemplateRepository.findAll().stream().filter(this::isLiveTemplate).findFirst().orElse(null);
         PublishingTemplate used = metadata.getPublishingTemplate();
-        if (live == null || used == null) {
-            return live != used;
+        if (used == null) {
+            return publishingTemplateRepository.findAll().stream().anyMatch(this::isLiveTemplate);
         }
-        return !live.getId().equals(used.getId()) || (live.getUpdatedAt() != null && live.getUpdatedAt().isAfter(generated));
+        // The template this preview was made with must still be Active and unchanged since (it is edited in place now).
+        return !isLiveTemplate(used) || (used.getUpdatedAt() != null && used.getUpdatedAt().isAfter(generated));
     }
 
     private Integer countPages(String path) {
@@ -869,7 +876,9 @@ public class PublishingWorkspaceService {
                 hasPublishedSignature = true;
                 continue;
             }
-            if (!signedMeanings.contains(normalizeMeaning(meaning))) {
+            // The prepared signature of a revision without a PREPARED one is the Author's Submit for Review signature.
+            boolean preparedBySubmission = "PREPARED".equalsIgnoreCase(meaning) && signedMeanings.contains("SUBMITTED_FOR_REVIEW");
+            if (!signedMeanings.contains(normalizeMeaning(meaning)) && !preparedBySubmission) {
                 missingMeanings.add(normalizeMeaning(meaning));
             }
         }

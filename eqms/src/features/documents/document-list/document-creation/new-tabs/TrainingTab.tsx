@@ -1,3 +1,5 @@
+import { ManualNumberField } from "./ManualNumberField";
+import { numberEntryApi } from "@/services/api/numberEntry";
 import React from "react";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { Input, Textarea } from "@/components/ui/form/ResponsiveForm";
@@ -29,6 +31,12 @@ interface TrainingTabProps {
     onPendingParticipantsChange?: (people: ProposedPerson[]) => void;
     /** The list of people proposed for the training of the document. A document imported from paper has no training that opens, so Legacy Import turns it off. */
     showParticipants?: boolean;
+    /** Document Properties > Numbering: AUTO (the server issues the number) or MANUAL (the creator types it). */
+    numberEntryMode?: "AUTO" | "MANUAL";
+    /** The department that organizes the training (its id): the number carries its code. */
+    departmentId?: string;
+    /** Before the number exists: the typed number and whether the server accepts it. */
+    onManualNumberChange?: (typed: string, accepted: boolean) => void;
 }
 
 export const TrainingTab: React.FC<TrainingTabProps> = ({
@@ -40,7 +48,10 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
     documentId,
     pendingParticipants,
     onPendingParticipantsChange,
-    showParticipants = true
+    showParticipants = true,
+    numberEntryMode = "AUTO",
+    departmentId,
+    onManualNumberChange
 }) => {
     const [confirmRemove, setConfirmRemove] = React.useState(false);
     const hasNumber = Boolean(trainingLink?.trainingNumber) && trainingLink?.status !== "CANCELLED";
@@ -132,6 +143,36 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                             )}
                         </div>
                     </div>
+                    {numberEntryMode === "MANUAL" && !isReadOnly && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <ManualNumberField
+                                label="Training Number"
+                                placeholder="For example TRN/DC/26-014"
+                                savedNumber={hasNumber ? trainingLink?.trainingNumber ?? "" : ""}
+                                blockedReason={!departmentId && !hasNumber ? "Choose the Department first: its code is part of the Training Number." : null}
+                                formatHint="TRN/<department code>/<YY>-<NNN>, the department that organizes the training"
+                                runCheck={async (typed) => {
+                                    const answer = await numberEntryApi.checkTrainingNumber({
+                                        departmentId,
+                                        number: typed,
+                                        excludeActivityId: trainingLink?.activityId,
+                                    });
+                                    return { valid: answer.valid, message: answer.message, warning: answer.otherYear };
+                                }}
+                                onValueChange={onManualNumberChange}
+                                loadChangeState={trainingLink?.activityId && hasNumber ? () => numberEntryApi.trainingNumberState(trainingLink.activityId as string) : undefined}
+                                applyChange={
+                                    trainingLink?.activityId
+                                        ? async (typed, reason) => {
+                                              await numberEntryApi.changeTrainingNumber(trainingLink.activityId as string, { number: typed, reason });
+                                              return typed;
+                                          }
+                                        : undefined
+                                }
+                                onChanged={() => window.dispatchEvent(new Event("eqms:training-number-changed"))}
+                            />
+                        </div>
+                    )}
                     {showParticipants && <ProposedParticipantsField documentId={documentId} pending={pendingParticipants} onPendingChange={onPendingParticipantsChange} />}
                 </div>
             ) : (

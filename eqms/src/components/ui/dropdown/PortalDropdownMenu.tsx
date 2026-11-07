@@ -89,10 +89,11 @@ export const PortalDropdownMenu: React.FC<PortalDropdownMenuProps> = ({
           {/* Backdrop (Transparent, clicks outside close the dropdown) */}
           <motion.div
             key="dropdown-backdrop"
-            initial={{ opacity: 0 }}
+            // The backdrop only catches the click outside: it is there at once, so the menu does not wait for it.
+            initial={false}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: 0.1 }}
             className="fixed inset-0 z-40"
             onClick={(e) => {
               e.stopPropagation();
@@ -106,7 +107,7 @@ export const PortalDropdownMenu: React.FC<PortalDropdownMenuProps> = ({
             <motion.div
               key="dropdown-portal-aligned"
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
+              transition={{ duration: 0.12 }}
               className="absolute z-50 pointer-events-auto cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
@@ -148,9 +149,10 @@ export const PortalDropdownMenu: React.FC<PortalDropdownMenuProps> = ({
                     y: isShowAbove ? 6 : -6,
                   }}
                   transition={{
-                    duration: 0.18,
+                    duration: 0.12,
                     ease: [0.16, 1, 0.3, 1],
                   }}
+                  data-eqms-menu="true"
                   className="max-w-[90vw] max-h-[300px] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl cursor-default text-slate-500"
                   style={{
                     minWidth: typeof minWidth === 'number' ? `${minWidth}px` : minWidth,
@@ -172,7 +174,7 @@ export const PortalDropdownMenu: React.FC<PortalDropdownMenuProps> = ({
             <motion.div
               key="dropdown-portal-fallback"
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
+              transition={{ duration: 0.12 }}
               className="absolute z-50 pointer-events-auto"
               style={outerFallbackStyle}
               onClick={(e) => {
@@ -196,9 +198,10 @@ export const PortalDropdownMenu: React.FC<PortalDropdownMenuProps> = ({
                   y: isShowAbove ? 6 : -6,
                 }}
                 transition={{
-                  duration: 0.18,
+                  duration: 0.12,
                   ease: [0.16, 1, 0.3, 1],
                 }}
+                data-eqms-menu="true"
                 className="max-w-[90vw] max-h-[300px] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl text-slate-500"
                 style={{
                   minWidth: typeof minWidth === 'number' ? `${minWidth}px` : minWidth,

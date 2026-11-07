@@ -17,8 +17,9 @@ vi.mock("framer-motion", async (importOriginal) => {
 const stableToast = { showToast: vi.fn() };
 vi.mock("@/components/ui/toast", () => ({ useToast: () => stableToast }));
 vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermissionAlias: () => true }) }));
+const brandingState = vi.hoisted(() => ({ names: "FULL" as "FULL" | "ABBREVIATION", sidebar: undefined as "FULL" | "ABBREVIATION" | undefined }));
 vi.mock("@/components/branding/BrandLogo", () => ({
-  useBranding: () => ({ systemDisplayName: "EQMS Test", systemLogo: "" }),
+  useBranding: () => ({ systemDisplayName: "EQMS Test", systemLogo: "", knowledgeFolderNames: brandingState.names, knowledgeSidebarFolderNames: brandingState.sidebar }),
   BrandLogo: ({ className }: { className?: string }) => <img alt="EQMS Test logo" className={className} />,
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { fullName: "Test User" } }) }));
@@ -29,10 +30,24 @@ const { knowledgeApiMock } = vi.hoisted(() => ({
     browse: vi.fn(),
     search: vi.fn(),
     queryDocuments: vi.fn(),
+    suggest: vi.fn(async () => []),
     recordView: vi.fn(async () => undefined),
     giveFeedback: vi.fn(async () => undefined),
     setFeatured: vi.fn(async () => undefined),
     setSubscribed: vi.fn(async () => undefined),
+    folderStyles: vi.fn(async () => [{ id: "mfg", name: "Manufacturing", abbreviation: "MFG", color: "#e11d48" }]),
+    documentTypeIcons: vi.fn(async () => [{ name: "SOP", shortCode: "SOP", iconLabel: "PROC", iconColor: "#e11d48" }]),
+    sharingManaged: vi.fn(async () => ({ departmentIds: [] as string[], businessUnitIds: [] as string[] })),
+    sharingFolder: vi.fn(),
+    sharingAccess: vi.fn(),
+    sharingOptions: vi.fn(async () => ({ positions: [], departments: [] })),
+    sharingUsers: vi.fn(async () => []),
+    sharingGrant: vi.fn(),
+    sharingRevoke: vi.fn(async () => undefined),
+    sharingPeople: vi.fn(async () => ({ items: [] as unknown[], total: 0 })),
+    sharingRevokeGrantee: vi.fn(async () => undefined),
+    sharingLinks: vi.fn(async () => ({ items: [] as unknown[], total: 0 })),
+    sharingDelegates: vi.fn(async () => ({ items: [] as unknown[], total: 0 })),
   },
 }));
 vi.mock("@/services/api/knowledge", () => ({ knowledgeApi: knowledgeApiMock }));
@@ -85,14 +100,12 @@ const browseDocs = {
   documents: [doc("d1", "Balance calibration"), doc("d2", "HPLC dissolution testing")],
 };
 
-const LocationProbe: React.FC = () => <div>classic-view</div>;
 
 const renderPage = () =>
   render(
     <MemoryRouter initialEntries={["/explorer"]}>
       <Routes>
         <Route path="/explorer" element={<KnowledgeExplorerPage />} />
-        <Route path="/self-service/knowledge" element={<LocationProbe />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -151,12 +164,19 @@ describe("KnowledgeExplorerPage", () => {
     expect(await screen.findByRole("option", { name: /QC Laboratory/ })).toBeTruthy();
   });
 
-  it("selects a document to show its details and opens the preview in a new tab", async () => {
+  // "View Details" of the right-click menu opens the details in a modal (there is no panel on the right any more)
+  const viewDetails = async (name: RegExp) => {
+    fireEvent.contextMenu(await screen.findByRole("option", { name }), { clientX: 30, clientY: 30 });
+    fireEvent.click(await within(await screen.findByRole("menu", { name: "Actions" })).findByText("View Details"));
+    return screen.findByRole("dialog", { name: "Document Details" });
+  };
+
+  it("shows the details of a document in a modal from the right-click menu and opens the preview in a new tab", async () => {
     renderPage();
     fireEvent.doubleClick(await screen.findByRole("option", { name: /Manufacturing/ }));
     fireEvent.doubleClick(await screen.findByRole("option", { name: /QC Laboratory/ }));
-    fireEvent.click(await screen.findByRole("option", { name: /HPLC dissolution testing/ }));
-    const dialog = await screen.findByRole("dialog", { name: "Details" });
+    expect(screen.queryByRole("complementary", { name: "Details" })).toBeNull();
+    const dialog = await viewDetails(/HPLC dissolution testing/);
     expect(within(dialog).getByText("HPLC dissolution testing")).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("button", { name: /Open document/ }));
     expect(knowledgeApiMock.recordView).toHaveBeenCalledWith("d2");
@@ -170,8 +190,7 @@ describe("KnowledgeExplorerPage", () => {
     renderPage();
     fireEvent.doubleClick(await screen.findByRole("option", { name: /Manufacturing/ }));
     fireEvent.doubleClick(await screen.findByRole("option", { name: /QC Laboratory/ }));
-    fireEvent.click(await screen.findByRole("option", { name: /Balance calibration/ }));
-    const dialog = await screen.findByRole("dialog", { name: "Details" });
+    const dialog = await viewDetails(/Balance calibration/);
     fireEvent.click(within(dialog).getByRole("button", { name: /Mark helpful/ }));
     await waitFor(() => expect(knowledgeApiMock.giveFeedback).toHaveBeenCalledWith("d1", true));
     fireEvent.click(within(dialog).getByRole("button", { name: /^Feature$/ }));
@@ -217,7 +236,7 @@ describe("KnowledgeExplorerPage", () => {
     renderPage();
     await screen.findByRole("option", { name: /Manufacturing/ });
     const sidebar = screen.getByRole("navigation", { name: "Knowledge Base navigation" });
-    fireEvent.click(within(sidebar).getByRole("button", { name: /Most viewed/ }));
+    fireEvent.click(within(sidebar).getByRole("button", { name: /Most Viewed/ }));
     await waitFor(() => {
       const items = Array.from(document.querySelectorAll("[data-item]"));
       expect(items.map((o) => o.textContent)).toEqual([expect.stringContaining("Zulu most viewed"), expect.stringContaining("Alpha second")]);
@@ -262,11 +281,102 @@ describe("KnowledgeExplorerPage", () => {
     fireEvent.contextMenu(await screen.findByRole("option", { name: /Balance calibration/ }), { clientX: 40, clientY: 40 });
     const menu = await screen.findByRole("menu", { name: "Actions" });
     expect(within(menu).getAllByRole("button").map((i) => i.textContent)).toEqual([
-      "Open document", "Mark as helpful", "Feature this document", "Copy document number",
+      "Open Document", "View Details", "Mark As Helpful", "Feature This document", "Copy Document Number",
     ]);
-    fireEvent.click(within(menu).getByText("Mark as helpful"));
+    fireEvent.click(within(menu).getByText("Mark As Helpful"));
     await waitFor(() => expect(knowledgeApiMock.giveFeedback).toHaveBeenCalledWith("d1", true));
     await waitFor(() => expect(screen.queryByRole("menu", { name: "Actions" })).toBeNull());
+  });
+
+  describe("sharing, for a Department Head only", () => {
+    const access = (extra: Record<string, unknown> = {}) => ({
+      node: {
+        shareable: true, reason: null, kind: "DOCUMENT", businessUnitId: "bu1", businessUnitName: "Quality Unit", departmentId: "dep1", departmentName: "QC Laboratory",
+        documentTypeId: null, documentId: "d1", label: "SOP.d1 - Balance calibration", canManage: true, level: "DEPARTMENT_HEAD", canExclude: true, canManageDelegates: true, ...extra,
+      },
+      entries: [],
+    });
+
+    it("does not offer Share to a user who heads no Department", async () => {
+      renderPage();
+      fireEvent.doubleClick(await screen.findByRole("option", { name: /Manufacturing/ }));
+      fireEvent.doubleClick(await screen.findByRole("option", { name: /QC Laboratory/ }));
+      fireEvent.contextMenu(await screen.findByRole("option", { name: /Balance calibration/ }), { clientX: 40, clientY: 40 });
+      const menu = await screen.findByRole("menu", { name: "Actions" });
+      expect(within(menu).queryByText(/^Share/)).toBeNull();
+    });
+
+    it("offers Share on a document, opens the dialog and asks the server who has access", async () => {
+      knowledgeApiMock.sharingManaged.mockResolvedValue({ departmentIds: ["dep1"], businessUnitIds: [] });
+      knowledgeApiMock.sharingAccess.mockResolvedValue(access({ kind: "DOCUMENT" }));
+      renderPage();
+      fireEvent.doubleClick(await screen.findByRole("option", { name: /Manufacturing/ }));
+      fireEvent.doubleClick(await screen.findByRole("option", { name: /QC Laboratory/ }));
+      await waitFor(() => expect(knowledgeApiMock.sharingManaged).toHaveBeenCalled());
+      fireEvent.contextMenu(await screen.findByRole("option", { name: /Balance calibration/ }), { clientX: 40, clientY: 40 });
+      const menu = await screen.findByRole("menu", { name: "Actions" });
+      fireEvent.click(await within(menu).findByText("Share"));
+      await waitFor(() => expect(knowledgeApiMock.sharingAccess).toHaveBeenCalledWith(expect.objectContaining({ kind: "DOCUMENT", documentId: "d1" })));
+      expect(await screen.findByText("Who has access")).toBeTruthy();
+      expect(screen.getByText("Nobody except the Heads can see this yet.")).toBeTruthy();
+    });
+
+    it("asks the server what a folder is, with the Knowledge Base and the keys of the levels down to the folder", async () => {
+      knowledgeApiMock.sharingManaged.mockResolvedValue({ departmentIds: ["dep1"], businessUnitIds: [] });
+      knowledgeApiMock.sharingFolder.mockResolvedValue({ shareable: false, reason: "Open a Department folder to share it.", kind: null, businessUnitId: null, businessUnitName: null, departmentId: null, departmentName: null, documentTypeId: null, documentId: null, label: null, canManage: false, level: "NONE", canExclude: false, canManageDelegates: false });
+      renderPage();
+      fireEvent.doubleClick(await screen.findByRole("option", { name: /Manufacturing/ }));
+      const lab = await screen.findByRole("option", { name: /QC Laboratory/ });
+      await waitFor(() => expect(knowledgeApiMock.sharingManaged).toHaveBeenCalled());
+      fireEvent.contextMenu(lab, { clientX: 20, clientY: 20 });
+      const menu = await screen.findByRole("menu", { name: "Actions" });
+      fireEvent.click(await within(menu).findByText("Share..."));
+      await waitFor(() => expect(knowledgeApiMock.sharingFolder).toHaveBeenCalledWith("h1", "mfg", ["lab"]));
+      expect(await screen.findByText("Open a Department folder to share it.")).toBeTruthy();
+      expect(knowledgeApiMock.sharingAccess).not.toHaveBeenCalled();
+    });
+
+    it("shows the shares an item inherits and removes one that is on the item itself", async () => {
+      knowledgeApiMock.sharingManaged.mockResolvedValue({ departmentIds: ["dep1"], businessUnitIds: [] });
+      const entries = [
+        { ruleId: "r1", effect: "ALLOW", scopeKind: "DOCUMENT", scopeLabel: "Document: SOP.d1", inherited: false, removable: true, grantees: ["Position: QC Staff"], chips: [{ label: "Position: QC Staff", canShare: false }], createdBy: "Head", createdByLevel: "DEPARTMENT_HEAD", createdAt: "03/11/2026 10:00", createdByMe: true },
+        { ruleId: "r2", effect: "ALLOW", scopeKind: "DEPARTMENT", scopeLabel: "Whole Department", inherited: true, removable: false, grantees: ["Everyone"], chips: [{ label: "Everyone", canShare: false }], createdBy: null, createdByLevel: "DEPARTMENT_HEAD", createdAt: null, createdByMe: false },
+      ];
+      knowledgeApiMock.sharingAccess.mockResolvedValueOnce({ ...access(), entries }).mockResolvedValue({ ...access(), entries: [entries[1]] });
+      const rows = [
+        { ruleId: "r1", effect: "ALLOW", granteeType: "POSITION", granteeId: "p1", label: "Position: QC Staff", detail: null, canShare: false, inherited: false, removable: true, scopeLabel: "Document: SOP.d1", createdBy: "Head", createdByLevel: "DEPARTMENT_HEAD", createdAt: "03/11/2026 10:00", createdByMe: true },
+        { ruleId: "r2", effect: "ALLOW", granteeType: "EVERYONE", granteeId: null, label: "Everyone", detail: null, canShare: false, inherited: true, removable: false, scopeLabel: "Whole Department", createdBy: null, createdByLevel: "DEPARTMENT_HEAD", createdAt: null, createdByMe: false },
+      ];
+      knowledgeApiMock.sharingPeople.mockResolvedValue({ items: rows, total: 2 });
+      renderPage();
+      fireEvent.doubleClick(await screen.findByRole("option", { name: /Manufacturing/ }));
+      fireEvent.doubleClick(await screen.findByRole("option", { name: /QC Laboratory/ }));
+      await waitFor(() => expect(knowledgeApiMock.sharingManaged).toHaveBeenCalled());
+      fireEvent.contextMenu(await screen.findByRole("option", { name: /Balance calibration/ }), { clientX: 40, clientY: 40 });
+      fireEvent.click(await within(await screen.findByRole("menu", { name: "Actions" })).findByText("Share"));
+      expect(await screen.findByText("Position: QC Staff")).toBeTruthy();
+      expect(screen.getByText(/From Whole Department/)).toBeTruthy();
+      expect(screen.getByText("Inherited")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Remove Position: QC Staff" }));
+      // the confirmation dialog has its own Remove button, the last one in the page
+      const removeButtons = await screen.findAllByRole("button", { name: "Remove" });
+      expect(removeButtons.length).toBeGreaterThan(0);
+      fireEvent.click(removeButtons[removeButtons.length - 1]);
+      await waitFor(() => expect(knowledgeApiMock.sharingRevokeGrantee).toHaveBeenCalledWith("r1", "POSITION", "p1"));
+    });
+  });
+
+  it("opens straight at the folder a link points to", async () => {
+    // a link made by a Head leads here: ?kb=<key>&kbLabel=<name>&path=<key>&hierarchyId=<id>
+    render(
+      <MemoryRouter initialEntries={["/documents/knowledge/explorer?kb=mfg&kbLabel=Manufacturing&path=lab&hierarchyId=h1"]}>
+        <Routes>
+          <Route path="/documents/knowledge/explorer" element={<KnowledgeExplorerPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(knowledgeApiMock.browse).toHaveBeenCalledWith("h1", "mfg", ["lab"], expect.objectContaining({ page: 1 })));
+    expect(await screen.findByRole("option", { name: /Balance calibration/ })).toBeTruthy();
   });
 
   it("offers subscribe on a knowledge base folder and closes the menu with Escape", async () => {
@@ -283,12 +393,6 @@ describe("KnowledgeExplorerPage", () => {
     const nav = await screen.findByRole("navigation", { name: "Knowledge Base navigation" });
     expect(within(nav).getByAltText("EQMS Test logo")).toBeTruthy();
     expect(within(nav).getByRole("heading", { name: "Knowledge Base" })).toBeTruthy();
-  });
-
-  it("links back to the classic view", async () => {
-    renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: /Open classic view/ }));
-    expect(await screen.findByText("classic-view")).toBeTruthy();
   });
 
   it("opens a folder with a single tap on touch devices", async () => {
@@ -353,6 +457,75 @@ describe("KnowledgeExplorerPage document table", () => {
     await waitFor(() => expect(lastCall()?.[3]).toMatchObject({ sortBy: "size", sortDirection: "desc", page: 1, limit: 20 }));
     fireEvent.click(within(screen.getByRole("columnheader", { name: /^Size/i })).getByRole("button"));
     await waitFor(() => expect(lastCall()?.[3]).toMatchObject({ sortBy: "size", sortDirection: "asc" }));
+  });
+
+  it("pages the number of documents the user chose (up to 100) and remembers it", async () => {
+    window.localStorage.setItem("eqms.knowledgeExplorer.pageSize", "100");
+    try {
+      renderPage();
+      await openLab();
+      const lastCall = () => knowledgeApiMock.browse.mock.calls.filter((call) => call[2]?.length === 1).at(-1);
+      expect(lastCall()?.[3]).toMatchObject({ page: 1, limit: 100 });
+    } finally {
+      window.localStorage.removeItem("eqms.knowledgeExplorer.pageSize");
+    }
+  });
+
+  it("draws the folder of a Business Unit in the colour it was given and the others in an automatic one", async () => {
+    renderPage();
+    const mfg = await screen.findByRole("option", { name: /Manufacturing/ });
+    await waitFor(() => expect(mfg.querySelector("svg rect")?.getAttribute("fill")).toBe("#e11d48"));
+    const quality = screen.getByRole("option", { name: /Quality/ });
+    expect(quality.querySelector("svg rect")?.getAttribute("fill")).not.toBe("#e11d48");
+  });
+
+  it("shakes the icon of a Quick access button once when it is pressed", async () => {
+    renderPage();
+    const sidebar = await screen.findByRole("navigation", { name: "Knowledge Base navigation" });
+    const button = within(sidebar).getByRole("button", { name: /Most Viewed/ });
+    const before = button.querySelector("span.inline-flex");
+    fireEvent.click(button);
+    // a new element for each press: the animation starts again
+    await waitFor(() => expect(within(sidebar).getByRole("button", { name: /Most Viewed/ }).querySelector("span.inline-flex")).not.toBe(before));
+  });
+
+  it("names the folders by their abbreviation when the administrator chose that, and keeps the full name as the tooltip", async () => {
+    brandingState.names = "ABBREVIATION";
+    try {
+      renderPage();
+      const mfg = await screen.findByRole("option", { name: /MFG/ });
+      expect(mfg.querySelector("[title='Manufacturing']")).not.toBeNull();
+      // a folder without an abbreviation keeps its name
+      expect(screen.getByRole("option", { name: /Quality/ })).toBeTruthy();
+    } finally {
+      brandingState.names = "FULL";
+    }
+  });
+
+  it("names the folders of the sidebar on their own: abbreviated in the sidebar while the layout keeps the full name", async () => {
+    brandingState.names = "FULL";
+    brandingState.sidebar = "ABBREVIATION";
+    try {
+      renderPage();
+      expect(await screen.findByRole("option", { name: /Manufacturing/ })).toBeTruthy();
+      const sidebar = await screen.findByRole("navigation", { name: "Knowledge Base navigation" });
+      await waitFor(() => expect(within(sidebar).getByText("MFG")).toBeTruthy());
+      expect(within(sidebar).queryByText("Manufacturing")).toBeNull();
+    } finally {
+      brandingState.sidebar = undefined;
+    }
+  });
+
+  it("names the folders by their full name by default", async () => {
+    renderPage();
+    expect(await screen.findByRole("option", { name: /Manufacturing/ })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /MFG/ })).toBeNull();
+  });
+
+  it("asks once for the icons the Document Types were designed with", async () => {
+    renderPage();
+    await openLab();
+    expect(knowledgeApiMock.documentTypeIcons).toHaveBeenCalledTimes(1);
   });
 
   it("pages twenty at a time from the server and starts again from page one after a sort", async () => {

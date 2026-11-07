@@ -248,6 +248,19 @@ export interface PublishingWorkspaceRequest {
   enableCover?: boolean | null;
   enableHeader?: boolean | null;
   enableFooter?: boolean | null;
+  /** Publish although a Related Document is not ready for publishing; that document is left unchanged. */
+  forcePublishRelated?: boolean | null;
+}
+
+/** A Related Document whose revision in progress has not reached Ready for Publishing yet. */
+export interface RelatedPublishBlocker {
+  documentId: string;
+  documentNumber: string;
+  documentName?: string | null;
+  revisionId?: string | null;
+  revisionNumber?: string | null;
+  statusCode?: string | null;
+  statusLabel?: string | null;
 }
 
 export interface PublishingTemplateComponentInspectionResponse {

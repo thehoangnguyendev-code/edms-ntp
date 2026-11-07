@@ -34,7 +34,6 @@ const defaultSettings: ElectronicSignatureSettings = {
 
 const ESIGN_TABS = [
   { id: "timestamp", label: "Signature Timestamp" },
-  { id: "display", label: "Signature Display" },
   { id: "meanings", label: "Signature Meanings" },
 ];
 
@@ -55,7 +54,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showTimestampWarning, setShowTimestampWarning] = useState(false);
-  const [tab, setTab] = useState<"timestamp" | "display" | "meanings">("timestamp");
+  const [tab, setTab] = useState<"timestamp" | "meanings">("timestamp");
 
   const breadcrumbItems = useMemo(
     () => electronicSignatureSettingsBreadcrumbs(navigateTo),
@@ -229,7 +228,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
             </div>
             <div className="flex flex-wrap gap-2">
               {[
-                ["PREPARED", "Complete Editing"],
+                ["PREPARED", "Prepared (earlier revisions)"],
                 ["SUBMITTED_FOR_REVIEW", "Submit for Review"],
                 ["REVIEWED", "Complete Review"],
                 ["APPROVED", "Complete Approval"],
@@ -252,7 +251,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
       </FormSection>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <TabNav tabs={ESIGN_TABS} activeTab={tab} onChange={(id) => setTab(id as "timestamp" | "display" | "meanings")} ariaLabel="Electronic signature configuration" />
+        <TabNav tabs={ESIGN_TABS} activeTab={tab} onChange={(id) => setTab(id as "timestamp" | "meanings")} ariaLabel="Electronic signature configuration" />
         <div className="space-y-4 p-4 md:p-5">
           {tab === "timestamp" && (
             <>
@@ -300,9 +299,9 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
               </p>
             )}
           </FormSection>
+          <SignatureDisplay />
             </>
           )}
-          {tab === "display" && <SignatureDisplay />}
           {tab === "meanings" && (
             <SignatureMeaningsTable
               meanings={settings.meanings}

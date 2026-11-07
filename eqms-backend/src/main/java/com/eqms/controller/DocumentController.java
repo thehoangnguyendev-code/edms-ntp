@@ -49,12 +49,15 @@ public class DocumentController {
     private final DocumentService documentService;
     private final RevisionService revisionService;
     private final RevisionUpgradeSessionService revisionUpgradeSessionService;
+    private final com.eqms.service.DocumentNumberService documentNumberService;
 
     public DocumentController(
             DocumentService documentService,
             RevisionService revisionService,
-            RevisionUpgradeSessionService revisionUpgradeSessionService
+            RevisionUpgradeSessionService revisionUpgradeSessionService,
+            com.eqms.service.DocumentNumberService documentNumberService
     ) {
+        this.documentNumberService = documentNumberService;
         this.documentService = documentService;
         this.revisionService = revisionService;
         this.revisionUpgradeSessionService = revisionUpgradeSessionService;
@@ -300,6 +303,31 @@ public class DocumentController {
         return ResponseEntity.ok(documentService.createLegacyImportDocumentAndRevisions(
                 documentJson, revisionsJson, files, trainingScans == null ? java.util.List.of() : trainingScans, legacyJustification, signatureToken
         ));
+    }
+
+    /** Manual numbering: is the number being typed valid and free? (the Document Type decides its start) */
+    @GetMapping("/number/check")
+    public ResponseEntity<com.eqms.service.DocumentNumberService.Check> checkDocumentNumber(
+            @RequestParam(value = "documentTypeId", required = false) java.util.UUID documentTypeId,
+            @RequestParam(value = "number", required = false) String number,
+            @RequestParam(value = "excludeDocumentId", required = false) java.util.UUID excludeDocumentId
+    ) {
+        return ResponseEntity.ok(documentNumberService.check(documentTypeId, number, excludeDocumentId));
+    }
+
+    @GetMapping("/{id}/number-state")
+    public ResponseEntity<com.eqms.service.DocumentNumberService.State> getDocumentNumberState(@PathVariable java.util.UUID id) {
+        return ResponseEntity.ok(documentNumberService.state(id));
+    }
+
+    public record DocumentNumberChangeRequest(String documentNumber, String reason) {}
+
+    @PutMapping("/{id}/number")
+    public ResponseEntity<java.util.Map<String, String>> changeDocumentNumber(
+            @PathVariable java.util.UUID id, @RequestBody DocumentNumberChangeRequest request
+    ) {
+        var document = documentNumberService.change(id, request.documentNumber(), request.reason());
+        return ResponseEntity.ok(java.util.Map.of("documentNumber", document.getDocumentNumber()));
     }
 
     @PostMapping

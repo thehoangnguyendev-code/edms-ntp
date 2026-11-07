@@ -183,7 +183,6 @@ export interface RevisionDetailResponse {
   storageSyncStatus?: string | null;
   storageLastSyncedAt?: string | null;
   canEditFileOnline?: boolean;
-  canCompleteEditing?: boolean;
   canOpenPublishingWorkspace?: boolean;
   canReviewRevision?: boolean;
   canApproveRevision?: boolean;

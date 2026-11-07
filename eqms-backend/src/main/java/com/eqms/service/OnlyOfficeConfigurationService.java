@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import com.eqms.service.editprovider.EditMode;
 import org.springframework.util.StringUtils;
 
 /**
@@ -153,6 +154,84 @@ public class OnlyOfficeConfigurationService {
                 booleanValue(viewer, "showRightMenu", false),
                 booleanValue(viewer, "showFileName", true)
         );
+    }
+
+    /** The saved "viewer" settings as they are, for what is read on each opening (the mode of a stage, the watermark); empty when never set. */
+    public JsonNode getViewerSettings() {
+        JsonNode viewer = systemConfigurationRepository.findByConfigKey(DEFAULT_CONFIG_KEY)
+                .map(SystemConfiguration::getGeneralConfig)
+                .map(this::extractOnlyOfficeNode)
+                .map(node -> node.get("viewer"))
+                .orElse(null);
+        return viewer == null || viewer.isNull() ? com.fasterxml.jackson.databind.node.MissingNode.getInstance() : viewer;
+    }
+
+    /**
+     * How a reviewer or an approver opens the file in OnlyOffice at a stage that has a person act on it: Pending Review and Pending Approval. Set in Settings >
+     * Configuration > Preview File > OnlyOffice Preview. Until it is set, Pending Review is Review (track changes) and Pending Approval is Comment Only, as it was.
+     */
+    public EditMode editModeForStage(String statusCode) {
+        JsonNode viewer = getViewerSettings();
+        if ("PENDING_REVIEW".equalsIgnoreCase(statusCode)) {
+            return stageMode(viewer, "pendingReviewMode", EditMode.REVIEW);
+        }
+        if ("PENDING_APPROVAL".equalsIgnoreCase(statusCode)) {
+            return stageMode(viewer, "pendingApprovalMode", EditMode.COMMENT_ONLY);
+        }
+        throw new IllegalArgumentException("No configurable OnlyOffice mode for status " + statusCode);
+    }
+
+    private static EditMode stageMode(JsonNode viewer, String field, EditMode fallback) {
+        String value = viewer == null || viewer.path(field).isMissingNode() || viewer.path(field).isNull() ? null : viewer.path(field).asText();
+        if ("REVIEW".equals(value)) {
+            return EditMode.REVIEW;
+        }
+        if ("COMMENT_ONLY".equals(value)) {
+            return EditMode.COMMENT_ONLY;
+        }
+        return fallback;
+    }
+
+    /** Checks the "viewer" block of a configuration save; a block or a field that is missing is fine. */
+    public static void validateViewerSettings(JsonNode general) {
+        JsonNode backup = general == null ? null : general.get("backupSettings");
+        JsonNode onlyOffice = backup == null ? null : backup.get("onlyOffice");
+        JsonNode viewer = onlyOffice == null ? null : onlyOffice.get("viewer");
+        if (viewer == null || viewer.isNull()) {
+            return;
+        }
+        if (!viewer.isObject()) {
+            throw new IllegalArgumentException("OnlyOffice viewer settings must be an object");
+        }
+        for (String flag : java.util.List.of("showPluginsTab", "showRightMenu", "showFileName", "watermarkEnabled", "watermarkShowViewerName",
+                "watermarkShowEmployeeCode", "watermarkShowOpenedAt", "watermarkTiled", "editorAllowDownload", "editorAllowPrint")) {
+            JsonNode value = viewer.get(flag);
+            if (value != null && !value.isNull() && !value.isBoolean()) {
+                throw new IllegalArgumentException("OnlyOffice viewer " + flag + " must be true or false");
+            }
+        }
+        for (String field : java.util.List.of("pendingReviewMode", "pendingApprovalMode")) {
+            JsonNode value = viewer.get(field);
+            if (value != null && !value.isNull() && (!value.isTextual() || !java.util.Set.of("REVIEW", "COMMENT_ONLY").contains(value.asText()))) {
+                throw new IllegalArgumentException("OnlyOffice viewer " + field + " must be REVIEW or COMMENT_ONLY");
+            }
+        }
+        JsonNode text = viewer.get("watermarkText");
+        if (text != null && !text.isNull() && (!text.isTextual() || text.asText().trim().length() > 120)) {
+            throw new IllegalArgumentException("OnlyOffice viewer watermark text must be at most 120 characters");
+        }
+        JsonNode strength = viewer.get("watermarkStrength");
+        if (strength != null && !strength.isNull() && (!strength.isTextual() || !java.util.Set.of("light", "standard", "strong").contains(strength.asText()))) {
+            throw new IllegalArgumentException("OnlyOffice viewer watermark strength must be light, standard, or strong");
+        }
+        JsonNode colour = viewer.get("watermarkColor");
+        if (colour != null && !colour.isNull() && (!colour.isTextual() || !colour.asText().matches("^#[0-9A-Fa-f]{6}$"))) {
+            throw new IllegalArgumentException("OnlyOffice viewer watermark colour must be a hex colour such as #B3B3F5");
+        }
+        JsonNode angle = viewer.get("watermarkAngle");
+        if (angle != null && !angle.isNull() && (!angle.isInt() || angle.asInt() < -90 || angle.asInt() > 90)) {
+            throw new IllegalArgumentException("OnlyOffice viewer watermark angle must be a whole number of degrees from -90 to 90");
+        }
     }
 
     private OnlyOfficeConfiguration mergeWithEnvironment(JsonNode savedNode) {

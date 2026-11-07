@@ -155,6 +155,7 @@ export const TrainingPropertiesView: React.FC = () => {
         selfReadingReminderFirstDays: settings.selfReadingReminderFirstDays,
         selfReadingReminderSecondDays: settings.selfReadingReminderSecondDays,
         makeupReminderDays: settings.makeupReminderDays,
+        trainingNumberEntryMode: settings.trainingNumberEntryMode,
         // only the forms whose pattern was changed are sent; the default pattern is sent as empty (the default is then used)
         downloadFileNames: Object.fromEntries(settings.downloadFileNames.filter((f) => f.pattern !== original?.downloadFileNames.find((o) => o.form === f.form)?.pattern).map((f) => [f.form, f.pattern === f.defaultPattern ? "" : f.pattern])),
         version: settings.version,
@@ -228,6 +229,32 @@ export const TrainingPropertiesView: React.FC = () => {
             disabled={!canManage}
             onChange={(v) => patch({ documentTrainingDaysDefault: v })}
           />
+        </FormSection>
+        <FormSection title="Training Number" icon={<FileText className="h-4 w-4" />} className="h-full">
+          <div className="space-y-2">
+            <Select
+              label="How the Training Number is given"
+              value={settings.trainingNumberEntryMode ?? "AUTO"}
+              disabled={!canManage}
+              onChange={(value) => patch({ trainingNumberEntryMode: value === "MANUAL" ? "MANUAL" : "AUTO" })}
+              options={[
+                { value: "AUTO", label: "Automatic" },
+                { value: "MANUAL", label: "Manual" },
+              ]}
+            />
+            <p className="text-xs text-slate-500">
+              {settings.trainingNumberEntryMode === "MANUAL"
+                ? "The person creating the document types the number."
+                : "The system issues the number when Requires Training is saved."}
+            </p>
+          </div>
+          {settings.trainingNumberEntryMode === "MANUAL" && (
+            <p className="mt-3 text-xs text-slate-500">
+              The number is typed as TRN/&lt;department code&gt;/&lt;YY&gt;-&lt;NNN&gt;. The screen warns at once when it is already used, and warns (without refusing) when the
+              year is not the current one. It can be changed, with a reason, until the training opens. A training created without that screen (for example by upgrading a
+              revision) still gets a number from the system, which can then be changed the same way.
+            </p>
+          )}
         </FormSection>
         <FormSection title="Scheduling" icon={<CalendarClock className="h-4 w-4" />} className="h-full">
           <div className="flex items-start justify-between gap-4">

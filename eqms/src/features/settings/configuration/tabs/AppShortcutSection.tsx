@@ -274,11 +274,6 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
           >
             <div className="space-y-1">
               <p>
-                <strong>When people see the change.</strong> After Save Changes,
-                every new shortcut gets the new icon and the open application
-                updates at once.
-              </p>
-              <p>
                 A shortcut that is already on a phone is kept by the phone
                 itself: Android refreshes it by itself the next time it checks
                 (usually within a few days), while an iPhone keeps the old icon

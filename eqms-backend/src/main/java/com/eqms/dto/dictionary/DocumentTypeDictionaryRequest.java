@@ -18,6 +18,14 @@ public record DocumentTypeDictionaryRequest(
          * "Standard" default for a new type) -- see DocumentComponentResolver#isEligibleAsDocumentNumberFormat
          * for why only a narrow set of Formats are actually accepted here.
          */
-        UUID nameFormatId
+        UUID nameFormatId,
+        /** The text on the band of the Knowledge Base icon (up to 6 characters); empty means the Short Code. */
+        String iconLabel,
+        /** The colour of the Knowledge Base icon as #rrggbb; empty means a colour chosen from the palette. */
+        String iconColor
 ) {
+    /** Compatibility constructor for callers compiled before the icon existed. */
+    public DocumentTypeDictionaryRequest(String name, String shortCode, Integer currentSequence, String description, Boolean isActive, UUID nameFormatId) {
+        this(name, shortCode, currentSequence, description, isActive, nameFormatId, null, null);
+    }
 }

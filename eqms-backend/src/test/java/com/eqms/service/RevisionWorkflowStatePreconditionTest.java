@@ -82,33 +82,31 @@ class RevisionWorkflowStatePreconditionTest {
     }
 
     @Test
-    void completeAuthoring_alreadyCompleted_denied() {
-        DocumentRevisionRecord r = revision("DRAFT");
-        r.setEditingStatus("COMPLETED");
-        r.setSourceLocked(true);
-        Optional<String> reason = newService().checkStatePrecondition(
-                r, RevisionWorkflowAction.COMPLETE_AUTHORING, RevisionWorkflowAuthorizationContext.of(r));
-        assertThat(reason).contains("EDITING_ALREADY_COMPLETED");
-    }
-
-    @Test
-    void submitForReview_editingNotCompleted_denied() {
+    void submitForReview_draftWithOpenSource_allowed_submitIsWhatLocksIt() {
         DocumentRevisionRecord r = revision("DRAFT");
         r.setEditingStatus("IN_PROGRESS");
         r.setSourceLocked(false);
         Optional<String> reason = newService().checkStatePrecondition(
                 r, RevisionWorkflowAction.SUBMIT_FOR_REVIEW, RevisionWorkflowAuthorizationContext.of(r));
-        assertThat(reason).contains("EDITING_NOT_COMPLETED");
+        assertThat(reason).isEmpty();
     }
 
     @Test
-    void submitForReview_editingCompletedAndLocked_noPreconditionViolation() {
+    void submitForReview_legacyDraftAlreadyLocked_stillAllowed() {
         DocumentRevisionRecord r = revision("DRAFT");
         r.setEditingStatus("COMPLETED");
         r.setSourceLocked(true);
         Optional<String> reason = newService().checkStatePrecondition(
                 r, RevisionWorkflowAction.SUBMIT_FOR_REVIEW, RevisionWorkflowAuthorizationContext.of(r));
         assertThat(reason).isEmpty();
+    }
+
+    @Test
+    void submitForReview_notDraft_denied() {
+        DocumentRevisionRecord r = revision("PENDING_REVIEW");
+        Optional<String> reason = newService().checkStatePrecondition(
+                r, RevisionWorkflowAction.SUBMIT_FOR_REVIEW, RevisionWorkflowAuthorizationContext.of(r));
+        assertThat(reason).contains("INVALID_WORKFLOW_STATE");
     }
 
     @Test

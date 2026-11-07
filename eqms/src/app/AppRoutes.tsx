@@ -36,9 +36,9 @@ import { SessionTimeoutGuard } from '@/features/auth/components';
 const DashboardView = lazy(() => import('@/features/self-service/dashboard').then(m => ({ default: m.DashboardView })));
 const ControlledCopyPreviewView = lazy(() => import('@/features/documents/controlled-copies').then(m => ({ default: m.ControlledCopyPreviewView })));
 const KnowledgeExplorerPage = lazy(() => import('@/features/self-service/knowledge/explorer/KnowledgeExplorerPage').then(m => ({ default: m.KnowledgeExplorerPage })));
+const KnowledgeLinkPage = lazy(() => import('@/features/self-service/knowledge/KnowledgeLinkPage').then(m => ({ default: m.KnowledgeLinkPage })));
 const KnowledgeDocumentPreviewPage = lazy(() => import('@/features/self-service/knowledge/KnowledgeDocumentPreviewPage').then(m => ({ default: m.KnowledgeDocumentPreviewPage })));
 const OnlyOfficeEditorPage = lazy(() => import('@/features/documents/shared/pages/OnlyOfficeEditorPage').then(m => ({ default: m.OnlyOfficeEditorPage })));
-const KnowledgeView = lazy(() => import('@/features/self-service/knowledge').then(m => ({ default: m.KnowledgeView })));
 const NotificationsView = lazy(() => import('@/features/notifications').then(m => ({ default: m.NotificationsView })));
 const CalendarView = lazy(() => import('@/features/calendar/CalendarView').then(m => ({ default: m.CalendarView })));
 
@@ -52,7 +52,7 @@ export const AppRoutes: React.FC = () => {
   const HOME_PAGE_ROUTES: Record<string, string> = {
     DASHBOARD: ROUTES.DASHBOARD,
     NOTIFICATIONS: ROUTES.NOTIFICATIONS,
-    KNOWLEDGE: ROUTES.SELF_SERVICE.KNOWLEDGE,
+    KNOWLEDGE: ROUTES.DOCUMENTS.KNOWLEDGE_EXPLORER,
   };
 
   const resolvePostAuthRoute = (permissions?: string[], maintenanceMode?: boolean, homePage?: string) => {
@@ -280,10 +280,22 @@ export const AppRoutes: React.FC = () => {
       <Route
         path={ROUTES.DOCUMENTS.KNOWLEDGE_EXPLORER}
         element={
-          <ProtectedRoute requiredPermissions={["documents.module.view"]}>
+          <ProtectedRoute requiredPermissions={["documents.module.view", "self_service.knowledge.view"]}>
             <SessionTimeoutGuard />
             <Suspense fallback={<LoadingFallback />}>
               <KnowledgeExplorerPage />
+            </Suspense>
+          </ProtectedRoute>
+        }
+      />
+      {/* A link made by a Head: any signed-in user may open it; the server decides (token, expiry, revoked, Knowledge permission). */}
+      <Route
+        path="/documents/knowledge/link/:token"
+        element={
+          <ProtectedRoute>
+            <SessionTimeoutGuard />
+            <Suspense fallback={<LoadingFallback />}>
+              <KnowledgeLinkPage />
             </Suspense>
           </ProtectedRoute>
         }
@@ -416,7 +428,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="calendar" element={<ProtectedRoute><Suspense fallback={<LoadingFallback />}><CalendarView /></Suspense></ProtectedRoute>} />
         {/* Self-Service > Knowledge -- moved out of the Documents module; Dashboard above is also
             a Self-Service child but keeps its long-standing top-level /dashboard path. */}
-        <Route path="self-service/knowledge" element={<ProtectedRoute requiredPermissions={["self_service.knowledge.view"]}><Suspense fallback={<LoadingFallback />}><KnowledgeView /></Suspense></ProtectedRoute>} />
+        {/* the address of the old Knowledge Base page (bookmarks, e-mails already sent) leads to the Explorer */}
+        <Route path="self-service/knowledge" element={<Navigate to={ROUTES.DOCUMENTS.KNOWLEDGE_EXPLORER} replace />} />
 
         {/* ===== DOMAIN MODULES ===== */}
         {documentRoutes(navigate)}

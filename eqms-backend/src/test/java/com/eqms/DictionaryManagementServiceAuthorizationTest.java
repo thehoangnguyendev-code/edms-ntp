@@ -171,7 +171,7 @@ class DictionaryManagementServiceAuthorizationTest {
     void createBusinessUnit_withoutManage_isDenied() {
         denyManage();
         assertThrows(AccessDeniedException.class, () ->
-                service.createBusinessUnit(new BusinessUnitDictionaryRequest("Unit", "UNT", null, true)));
+                service.createBusinessUnit(new BusinessUnitDictionaryRequest("Unit", "UNT", null, true, null)));
         verifyNoInteractions(businessUnitRepository);
     }
 
@@ -180,7 +180,7 @@ class DictionaryManagementServiceAuthorizationTest {
         denyManage();
         UUID id = UUID.randomUUID();
         assertThrows(AccessDeniedException.class, () ->
-                service.updateBusinessUnit(id, new BusinessUnitDictionaryRequest("Unit", "UNT", null, true)));
+                service.updateBusinessUnit(id, new BusinessUnitDictionaryRequest("Unit", "UNT", null, true, null)));
         verify(businessUnitRepository, never()).findById(any());
     }
 
@@ -303,7 +303,17 @@ class DictionaryManagementServiceAuthorizationTest {
     void createBusinessUnit_withViewOnly_isStillDenied() {
         when(permissionEvaluationService.hasPermission(eq(actor), anyString())).thenReturn(false);
         assertThrows(AccessDeniedException.class, () ->
-                service.createBusinessUnit(new BusinessUnitDictionaryRequest("Unit", "UNT", null, true)));
+                service.createBusinessUnit(new BusinessUnitDictionaryRequest("Unit", "UNT", null, true, null)));
+    }
+
+    // ── The colour of the folder in the Knowledge Base: a real colour, or nothing ──────────────
+
+    @Test
+    void folderColour_ofABusinessUnit_mustBeARealColour() {
+        grantManage();
+        assertThrows(IllegalArgumentException.class, () ->
+                service.createBusinessUnit(new BusinessUnitDictionaryRequest("Unit", "UNT", null, true, null, "red")));
+        verify(businessUnitRepository, never()).save(any());
     }
 
     // ── Manage implies allowed through the gate (proceeds to real business logic) ─────────────

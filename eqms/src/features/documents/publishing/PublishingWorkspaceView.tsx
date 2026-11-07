@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FullPageLoading, Loading } from "@/components/ui/loading";
 import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
+import { AlertModal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { useNavigateWithLoading } from "@/hooks/useNavigateWithLoading";
 import { useRevisionActionCapabilities } from "@/hooks/useRevisionActionCapabilities";
@@ -19,12 +20,12 @@ import { ROUTES } from "@/app/routes.constants";
 import { publishingWorkspace as publishingWorkspaceBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs/documents";
 import { documentApi } from "@/services/api/documents";
 import { publishingTemplatesApi } from "@/services/api/publishingTemplates";
-import type { PublishingPlaceholderGroupResponse, PublishingTemplateResponse, PublishingWorkspaceResponse } from "./types";
+import type { PublishingPlaceholderGroupResponse, PublishingTemplateResponse, PublishingWorkspaceResponse, RelatedPublishBlocker } from "./types";
 import { waitForPublishingJob } from "./waitForPublishingJob";
 import { buildRevisionDetailNavigationState, buildRevisionWorkspaceSourceState } from "@/features/documents/shared/navigationContext";
 import { buildPreviewVersionCacheBuster, replaceObjectUrlPreview, revokeObjectUrl } from "@/features/documents/shared/previewHelpers";
 import { cn } from "@/components/ui/utils";
-import { BORDER_RADIUS, COLORS, COMPONENT_PRESETS, PADDING, SHADOW, TYPOGRAPHY } from "@/config/ui-standards";
+import { BORDER_RADIUS, COLORS, COMPONENT_PRESETS, PADDING, TYPOGRAPHY } from "@/config/ui-standards";
 import { IconBookmark, IconFileOrientation, IconFileTypePdf } from "@tabler/icons-react";
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 
@@ -134,6 +135,11 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
   const [savingAction, setSavingAction] = useState<"preview" | "publish" | null>(null);
   const [publishingJobPolling, setPublishingJobPolling] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  // Related Documents that are not ready to publish together; the person may choose to publish without them (Force Publish).
+  const [relatedBlockers, setRelatedBlockers] = useState<RelatedPublishBlocker[]>([]);
+  const [showRelatedBlockersModal, setShowRelatedBlockersModal] = useState(false);
+  const [forcePublishRelated, setForcePublishRelated] = useState(false);
+  const [checkingRelated, setCheckingRelated] = useState(false);
   const skipAutoRefreshRef = useRef(true);
   const [previewRefreshLoading, setPreviewRefreshLoading] = useState(false);
   const [componentPreviewLoadingMap, setComponentPreviewLoadingMap] = useState<Record<"cover" | "header" | "footer", boolean>>({
@@ -683,6 +689,32 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
     }
   };
 
+  // Ask which Related Documents are not ready before the person signs, so the warning names them and offers Force Publish.
+  const handlePublishClick = async () => {
+    setForcePublishRelated(false);
+    setCheckingRelated(true);
+    try {
+      const blockers = await documentApi.getRelatedPublishBlockers(revisionId);
+      if (blockers.length > 0) {
+        setRelatedBlockers(blockers);
+        setShowRelatedBlockersModal(true);
+        return;
+      }
+    } catch (error) {
+      // The server checks again when the signed command is accepted, so a failed look-up never lets a publish through.
+      console.error("Failed to check Related Documents before publishing", error);
+    } finally {
+      setCheckingRelated(false);
+    }
+    setShowPublishModal(true);
+  };
+
+  const handleForcePublishRelated = () => {
+    setShowRelatedBlockersModal(false);
+    setForcePublishRelated(true);
+    setShowPublishModal(true);
+  };
+
   const handlePublishConfirm = async (signature: { reason: string; signatureToken?: string }) => {
     const rangeError = validatePageRangeDraft();
     if (rangeError) {
@@ -699,6 +731,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         changeSummary: changeSummary || undefined,
         signatureToken: signature.signatureToken || undefined,
         reason: signature.reason || undefined,
+        forcePublishRelated: forcePublishRelated || undefined,
         ...buildPageRangePayload(),
       });
 
@@ -752,7 +785,18 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
       });
     } catch (error) {
       console.error("Failed to publish revision", error);
-      showToast({ type: "error", title: "Publish Revision", message: extractApiMessage(error, "Couldn't publish revision.") });
+      if ((error as any)?.response?.data?.error?.code === "RELATED_DOCUMENTS_NOT_READY") {
+        // A Related Document changed after the check: show the current list again (the signature was not used).
+        try {
+          setRelatedBlockers(await documentApi.getRelatedPublishBlockers(revisionId));
+        } catch {
+          setRelatedBlockers([]);
+        }
+        setForcePublishRelated(false);
+        setShowRelatedBlockersModal(true);
+      } else {
+        showToast({ type: "error", title: "Publish Revision", message: extractApiMessage(error, "Couldn't publish revision.") });
+      }
     } finally {
       setSaving(false);
       setSavingAction(null);
@@ -796,15 +840,61 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
       )}
 
 
+      <AlertModal
+        isOpen={showRelatedBlockersModal}
+        onClose={() => setShowRelatedBlockersModal(false)}
+        onConfirm={handleForcePublishRelated}
+        title="Related Documents Not Ready"
+        type="warning"
+        confirmText="Force Publish"
+        cancelText="Cancel"
+        showCancel
+        description={
+          <div className="space-y-3">
+            <p className="font-semibold text-slate-900">
+              These Related Documents have a revision in progress that has not reached Ready for Publishing:
+            </p>
+            <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+              {relatedBlockers.map((blocker) => (
+                <div key={`${blocker.documentId}-${blocker.revisionId ?? ""}`} className="flex items-start justify-between gap-3">
+                  <span>
+                    {blocker.documentNumber}
+                    {blocker.documentName ? ` - ${blocker.documentName}` : ""}
+                  </span>
+                  <span className="whitespace-nowrap font-semibold text-amber-600">
+                    Revision {blocker.revisionNumber || "-"} · {blocker.statusLabel || blocker.statusCode || "-"}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500">
+              Force Publish publishes this revision without them. They stay unchanged and keep their own revision in progress.
+              The choice and these documents are recorded in the audit trail; you will be asked for a reason and your e-signature.
+            </p>
+          </div>
+        }
+      />
+
       <ESignatureModal
         isOpen={showPublishModal}
-        onClose={() => setShowPublishModal(false)}
+        onClose={() => {
+          setShowPublishModal(false);
+          setForcePublishRelated(false);
+        }}
         onConfirm={handlePublishConfirm}
-        actionTitle="Publish Revision to Effective"
+        actionTitle={forcePublishRelated ? "Force Publish Revision to Effective" : "Publish Revision to Effective"}
         meaningDisplayName="Published"
         meaningCode="PUBLISHED"
         changes={[
           { action: "Update Status", oldValue: "Ready for Publishing", newValue: "Effective", category: "status" },
+          ...(forcePublishRelated
+            ? relatedBlockers.map((blocker) => ({
+                action: "Related Document not published",
+                oldValue: "-",
+                newValue: `${blocker.documentNumber}${blocker.documentName ? ` - ${blocker.documentName}` : ""} (Revision ${blocker.revisionNumber || "-"}, ${blocker.statusLabel || blocker.statusCode || "-"})`,
+                category: "status" as const,
+              }))
+            : []),
         ]}
         targetDetails={{
           code: revision?.documentNumber || "",
@@ -829,12 +919,12 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
             </Button>
             <Button
               onClick={() => {
-                setShowPublishModal(true);
+                void handlePublishClick();
               }}
               size="sm"
               variant="default"
               className="gap-2 whitespace-nowrap"
-              disabled={!canPublish || isPublishingJobActive}
+              disabled={!canPublish || isPublishingJobActive || checkingRelated}
             >
               {isPublishingJobActive ? "Publishing..." : "Publish"}
             </Button>
@@ -861,7 +951,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
                     { value: "__none__", label: "No Template (body only)" },
                     ...templates.map((template: PublishingTemplateResponse) => ({
                       value: template.id || "",
-                      label: `${template.templateName || "Untitled"}${template.documentType ? ` - ${template.documentType}` : ""} - v${template.versionNumber || 1}`,
+                      label: `${template.templateName || "Untitled"}${template.documentType ? ` - ${template.documentType}` : ""}`,
                     })),
                   ]}
                 />
@@ -985,7 +1075,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
           <FormSection title="PDF Preview" icon={<IconFileTypePdf className="h-4 w-4" />}>
             <div className="space-y-4">
               {previewUrl ? (
-                <div className={cn(COLORS.bg.primary, SHADOW.sm, "overflow-hidden border border-slate-200")}>
+                <div className={cn(COLORS.bg.primary, "overflow-hidden")}>
                   <DocumentPdfViewer
                     fileUrl={previewUrl}
                     height="calc(100vh - 240px)"

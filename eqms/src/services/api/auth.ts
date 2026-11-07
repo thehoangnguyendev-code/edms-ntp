@@ -248,9 +248,18 @@ export const authApi = {
     return response.data;
   },
 
-  /** POST /auth/reauthenticate */
-  reauthenticate: async (data: { password: string }): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/auth/reauthenticate', data);
+  /**
+   * POST /auth/reauthenticate. A correct password of an account that uses a second factor does not unlock the session: the answer is a challenge
+   * (mfaRequired) that belongs to this locked session, and reauthenticateMfa gives the code.
+   */
+  reauthenticate: async (data: { password: string }): Promise<AuthResponse | LoginChallengeResponse> => {
+    const response = await apiClient.post<AuthResponse | LoginChallengeResponse>('/auth/reauthenticate', data);
+    return response.data;
+  },
+
+  /** POST /auth/reauthenticate/mfa: the code of the challenge that the correct password returned; unlocks the session. */
+  reauthenticateMfa: async (data: { mfaToken: string; otp: string; method: MfaMethod }): Promise<AuthResponse> => {
+    const response = await apiClient.post<AuthResponse>('/auth/reauthenticate/mfa', { ...data, rememberDevice: false });
     return response.data;
   },
 

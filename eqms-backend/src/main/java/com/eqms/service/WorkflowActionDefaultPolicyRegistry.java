@@ -62,27 +62,18 @@ public final class WorkflowActionDefaultPolicyRegistry {
                 "System default: only the assigned revision author may upload or replace the source file.",
                 List.of(actor(WorkflowActorType.AUTHOR)));
 
-        addRev(m, "COMPLETE_AUTHORING", "DRAFT",
-                "documents.revision.complete_authoring",
-                "System default: only the revision author may complete authoring.",
-                List.of(actor(WorkflowActorType.AUTHOR)));
-
         addRev(m, "OPEN_PUBLISHING_WORKSPACE", "READY_FOR_PUBLISHING",
                 "documents.revision.open_publishing_workspace",
                 "System default: a user granted publishing workspace access may open it.",
                 List.of(permission("documents.revision.open_publishing_workspace")));
 
-        // Deliberately NOT DCO/DOCUMENT_CONTROLLER here. Who submits for review is a business
-        // decision, not a system default — it lives as DATA in
-        // V345__set_submit_for_review_actor_to_document_controller.sql, changeable via the
-        // Workflow Authorization UI without a deploy. "Reset to System Default" must fall back
-        // to a neutral, permission-only actor (pre-V345 behaviour), not silently re-bind the
-        // policy to whichever Access Profile happened to be chosen when this was last written —
-        // otherwise the "default" itself becomes an undocumented hard-coded business assumption.
+        // The revision Author submits for review (Complete Editing no longer exists: Submit locks the source and signs).
+        // Who else may submit, for example Document Control, is business configuration: add that Access Profile or permission
+        // as an actor of this policy in Workflow Authorization, without a deploy.
         addRev(m, "SUBMIT_FOR_REVIEW", "DRAFT",
                 "documents.revision.submit_review",
-                "System default: a user granted revision submission may submit the revision for review.",
-                List.of(permission("documents.revision.submit_review")));
+                "System default: the revision Author, granted revision submission, may submit the revision for review.",
+                List.of(actor(WorkflowActorType.AUTHOR)));
 
         // Review-snapshot generation is now fully system-triggered (submitForReview requests it
         // automatically; RevisionSnapshotRetryScheduler retries failures) -- there is no manual

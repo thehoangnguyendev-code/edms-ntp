@@ -133,7 +133,7 @@ export const ActorPickerModal: React.FC<ActorPickerModalProps> = ({
           <input
             value={query}
             onChange={(event) => updateQuery(event.target.value)}
-            placeholder="Search name, email, employee code, department..."
+            placeholder="Search name, email, employee ID, department..."
             className="block w-full pl-10 pr-10 h-9 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-all placeholder:text-slate-400"
           />
           {query && (
@@ -185,7 +185,7 @@ export const ActorPickerModal: React.FC<ActorPickerModalProps> = ({
               <TableEmptyState
                
                 title="No users found"
-                description={query ? "Try a different name, email, employee code, or department." : "There are no active users available."}
+                description={query ? "Try a different name, email, employee ID, or department." : "There are no active users available."}
               />
             ) : (
               <>

@@ -1,4 +1,4 @@
-/* Only ordinary data rows are striped. Explicit row colors and spanning detail/group rows keep their meaning. */
+/* Stripe table data rows only; form controls, cards and non-table lists keep their own backgrounds. Explicit row colors and spanning detail/group rows keep their meaning. */
 html[data-alternating-records="true"] :is(
   table[data-record-table] > tbody > tr[data-record-stripe="true"],
   table:not([data-record-table]) > tbody > tr:nth-child(even of tr:not(:has(> td[colspan])))
@@ -11,17 +11,6 @@ html[data-alternating-records="true"] :is(table[data-record-table] > tbody > tr[
 html[data-alternating-records="true"] table[data-record-table] > tbody > tr[data-record-stripe="true"]:not([class^="bg-"]):not([class*=" bg-"]):not([aria-selected="true"]):not([data-state="selected"]) > td[data-record-action],
 html[data-alternating-records="true"] :is(table[data-record-table] > tbody > tr[data-record-stripe="true"], table:not([data-record-table]) > tbody > tr:nth-child(even of tr:not(:has(> td[colspan])))):not([class^="bg-"]):not([class*=" bg-"]):not([aria-selected="true"]):not([data-state="selected"]) > td.bg-white {
   background-color: var(--record-stripe-color) !important;
-}
-
-html[data-alternating-records="true"] :is([data-record-list], ul.divide-y, ol.divide-y):not(nav *):not([role="menu"]):not([role="listbox"]) > li:nth-child(even):not([class^="bg-"]):not([class*=" bg-"]):not([aria-selected="true"]):not([data-state="selected"]) {
-  background-color: var(--record-stripe-color);
-}
-
-/* Record rows also appear as divided form/drawer lists, or white cards in a drawer. */
-html[data-alternating-records="true"] div.divide-y:not([role="menu"]):not([role="listbox"]) > :is(div, label):nth-child(even of :is(div, label)):not([class^="bg-"]):not([class*=" bg-"]):not([aria-selected="true"]):not([data-state="selected"]),
-html[data-alternating-records="true"] :is(ul[class*="space-y-"], ol[class*="space-y-"]):not(nav *):not([role="menu"]):not([role="listbox"]):has(> li[class*="rounded"]) > li.bg-white:nth-child(even):not([aria-selected="true"]):not([data-state="selected"]),
-html[data-alternating-records="true"] :is(ul[class*="space-y-"], ol[class*="space-y-"]):not(nav *):not([role="menu"]):not([role="listbox"]):has(> li[class*="rounded"]) > li:nth-child(even):not([class^="bg-"]):not([class*=" bg-"]):not([aria-selected="true"]):not([data-state="selected"]) {
-  background-color: var(--record-stripe-color);
 }
 
 /* Vertical column lines, switched on in Configuration > General > Record Lists. Pinned cells draw their own right edge; a cell before the pinned Action column leaves it that edge. Rich-text content is left alone. */

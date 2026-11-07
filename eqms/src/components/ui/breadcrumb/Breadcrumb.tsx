@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useRef } from "react";
 import { IconLayoutGrid, IconChevronRight } from "@tabler/icons-react";
 import { cn } from "@/components/ui/utils";
+import { useFitLevel } from "@/components/ui/useFitLevel";
 
 // --- Types ---
 export interface BreadcrumbItem {
@@ -16,7 +17,7 @@ interface BreadcrumbProps {
   /** Array of breadcrumb items from root to current page.
    *  The first item is always rendered as the Dashboard icon.
    *  The last item (or item with isActive) gets bold styling.
-   *  Middle items collapse to "..." on small screens.
+   *  Middle items collapse to "..." when the room is short, and the last one is cut with an ellipsis when it is still too long.
    */
   items: BreadcrumbItem[];
   /** Additional className for the root container */
@@ -36,8 +37,13 @@ interface BreadcrumbProps {
  */
 const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className }) => {
   const safeItems = items.filter(Boolean) as BreadcrumbItem[];
+  const rootRef = useRef<HTMLDivElement>(null);
+  // The room, not the screen, decides: 0 = every label, 1 = the middle ones as "...", 2 = also the last one cut short.
+  const level = useFitLevel(rootRef, 3, safeItems.map((item) => item.label).join("|"));
+  const collapseMiddle = level >= 1;
+  const cutLast = level >= 2;
   return (
-    <div className={cn("flex items-center gap-1 text-slate-500 mt-1 text-sm whitespace-nowrap overflow-x-auto", className)}>
+    <div ref={rootRef} className={cn("flex w-full min-w-0 items-center gap-1 text-slate-500 mt-1 text-sm whitespace-nowrap overflow-hidden", className)}>
       {safeItems.map((item, index) => {
         const isFirst = index === 0;
         const isLast = index === safeItems.length - 1;
@@ -58,30 +64,29 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className }) => {
                   )}
                   aria-label="Dashboard"
                 >
-                  <IconLayoutGrid className="h-4 w-4" />
+                  <IconLayoutGrid className="h-4 w-4 shrink-0" />
                 </button>
               ) : (
-                <IconLayoutGrid className={cn("h-4 w-4", isActive && "text-slate-600")} />
+                <IconLayoutGrid className={cn("h-4 w-4 shrink-0", isActive && "text-slate-600")} />
               )
             ) : isActive ? (
               // Active/last item: bold & slate color
-              <span className="text-slate-600 font-medium">{item.label}</span>
+              <span title={item.label} className={cn("text-slate-600 font-medium", cutLast ? "min-w-0 shrink truncate" : "shrink-0")}>{item.label}</span>
             ) : isMiddle && item.onClick ? (
               // Middle clickable item
               <>
-                <button
-                  onClick={item.onClick}
-                  className="hidden lg:inline hover:text-emerald-600 transition-colors"
-                >
-                  {item.label}
-                </button>
-                <span className="lg:hidden">...</span>
+                {collapseMiddle ? (
+                  <button onClick={item.onClick} title={item.label} className="shrink-0 hover:text-emerald-600 transition-colors">...</button>
+                ) : (
+                  <button onClick={item.onClick} className="shrink-0 hover:text-emerald-600 transition-colors">
+                    {item.label}
+                  </button>
+                )}
               </>
             ) : (
               // Middle non-clickable item
               <>
-                <span className="hidden lg:inline">{item.label}</span>
-                <span className="lg:hidden">...</span>
+                <span title={item.label} className="shrink-0">{collapseMiddle ? "..." : item.label}</span>
               </>
             )}
 

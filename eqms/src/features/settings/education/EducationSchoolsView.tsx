@@ -344,7 +344,7 @@ export const EducationSchoolsView: React.FC = () => {
                 onEndDateChange={(value) => setModifiedTo(toApiDate(value))}
                 onApply={({ startDate, endDate }) => { setModifiedFrom(toApiDate(startDate)); setModifiedTo(toApiDate(endDate)); }}
                 placeholder="Select date range" />
-            <div className="flex items-end gap-2">
+            <div className="filter-actions flex items-end gap-2">
               <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
               {schoolControl}
             </div>

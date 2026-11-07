@@ -54,15 +54,13 @@ class WorkspaceManagedRevisionPolicyTest {
                 "DOCUMENT_REVISION", "SUBMIT_FOR_REVIEW", "DRAFT");
 
         assertThat(policy).isNotNull();
-        // Deliberately permission-only, NOT DCO/DOCUMENT_CONTROLLER: who submits for review is a
-        // business decision that lives as DATA in V345, not a hard-coded system default. "Reset
-        // to System Default" must fall back to this neutral actor, never silently re-bind to a
-        // specific Access Profile. Also deliberately its OWN dedicated permission, not the
-        // catch-all documents.workspace.manage (V347).
+        // The Author submits by default (Complete Editing is retired). Deliberately NOT DCO/DOCUMENT_CONTROLLER: adding Document
+        // Control back is business configuration in Workflow Authorization, never a hard-coded system default. The permission
+        // is its OWN dedicated one, not the catch-all documents.workspace.manage (V347).
         assertThat(policy.requiredPermissionCode()).isEqualTo("documents.revision.submit_review");
         assertThat(policy.actors()).singleElement().satisfies(actor -> {
-            assertThat(actor.actorType()).isEqualTo(WorkflowActorType.PERMISSION);
-            assertThat(actor.actorCode()).isEqualTo("documents.revision.submit_review");
+            assertThat(actor.actorType()).isEqualTo(WorkflowActorType.AUTHOR);
+            assertThat(actor.actorCode()).isNull();
         });
     }
 }

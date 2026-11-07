@@ -997,6 +997,14 @@ public class DocumentService {
         return !documentRepository.existsByDocumentNumber(documentNumber.trim());
     }
 
+    /** Manual numbering (Document Properties): checks and changes a typed Document Number. Absent in a unit test that builds this service by hand = AUTO. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private DocumentNumberService documentNumberService;
+
+    /** Knowledge Base sharing. Absent in a unit test that builds this service by hand = every user sees the documents of their own Department. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private KnowledgeVisibilityService knowledgeVisibilityService;
+
     /** Training Management (optional): sees a document draft that requires training so that its first revision gets a Training Number. */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private TrainingRevisionHooks trainingHooks;
@@ -1024,7 +1032,7 @@ public class DocumentService {
         recordStakeholderHistory(document, document.getAuthor(), "AUTHOR");
         saveDraftAssignments(document, request);
         if (trainingNumber && trainingHooks != null) {
-            trainingHooks.onDocumentSaved(document, currentUser);
+            trainingHooks.onDocumentSaved(document, currentUser, request.manualTrainingNumber());
         }
         auditTrailService.logAs(
                 currentUser,
@@ -1144,7 +1152,7 @@ public class DocumentService {
         documentRepository.save(document);
         saveDraftAssignments(document, request);
         if (trainingHooks != null) {
-            trainingHooks.onDocumentSaved(document, currentUser);
+            trainingHooks.onDocumentSaved(document, currentUser, request.manualTrainingNumber());
         }
         auditTrailService.logAs(
                 currentUser,
@@ -1618,8 +1626,8 @@ public class DocumentService {
             return "Cannot configure the next revision: revision " + inProgress.getRevisionNumber()
                     + " has already been uploaded to Office Online for editing.";
         }
-        // completeEditing() locks the source and records the Author's PREPARED e-signature while the
-        // revision status stays DRAFT, and it does NOT require an Office Online working copy (a
+        // A Draft whose source was locked by the retired Complete Editing step (editingStatus=COMPLETED /
+        // sourceLocked=true, the Author's PREPARED e-signature recorded) stays DRAFT and needs no Office Online working copy (a
         // MinIO-only source revision reaches editingStatus=COMPLETED / sourceLocked=true with no
         // storageItemId). syncDraftRevisionWithDocument() then refuses to propagate later changes to
         // such a Draft, so allowing them here would silently diverge the Document from the revision
@@ -2321,8 +2329,8 @@ public class DocumentService {
     }
 
     /**
-     * The documents the current user may see in the Knowledge portal: Effective, non-template, scoped
-     * to the user's own Department unless they may view every department (DC-XF-68).
+     * The documents the current user may see in the Knowledge portal: Effective, non-template, scoped by the Knowledge Base visibility
+     * setting unless the user holds the Knowledge Base view-all permission (DC-XF-68).
      */
     @Transactional(readOnly = true)
     public List<KnowledgeEntry> visibleKnowledgeEntries() {
@@ -2333,17 +2341,42 @@ public class DocumentService {
         // string), same cross-department bypass every other object-access check in this codebase
         // already grants DCO/Document Admin.
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        boolean canViewAllDepartments = documentAuthorizationService.canViewAllDocuments(currentUser);
+        // the Knowledge Base has its own "view all" (never the one of Document Control): it sees every Effective document, whatever a Head excluded
+        boolean canViewAllDepartments = permissionEvaluationService.hasPermission(currentUser, KnowledgeVisibilityService.KNOWLEDGE_VIEW_ALL_PERMISSION);
         UUID currentUserDepartmentId = canViewAllDepartments ? null : resolveUserDepartmentId(currentUser);
+        String knowledgeMode = systemConfigurationService.getKnowledgeVisibilityMode();
+        boolean wholeUnit = SystemConfigurationService.KNOWLEDGE_VISIBILITY_OWN_BUSINESS_UNIT.equals(knowledgeMode);
+        boolean everything = SystemConfigurationService.KNOWLEDGE_VISIBILITY_ALL.equals(knowledgeMode);
+        UUID currentUserBusinessUnitId = canViewAllDepartments || !wholeUnit ? null : resolveUserBusinessUnitId(currentUser);
 
-        List<DocumentRecord> activeDocuments = documentRepository.findAllByStatus_CodeOrderByDepartment_CodeAscDocumentNameAsc("ACTIVE")
-                .stream()
-                .filter(document -> !document.isTemplate())
-                .filter(document -> canViewAllDepartments
-                        || (currentUserDepartmentId != null
-                                && document.getDepartment() != null
-                                && currentUserDepartmentId.equals(document.getDepartment().getId())))
-                .toList();
+        List<DocumentRecord> activeDocuments;
+        if (!canViewAllDepartments && knowledgeVisibilityService != null
+                && SystemConfigurationService.KNOWLEDGE_VISIBILITY_SHARING.equals(systemConfigurationService.getKnowledgeVisibilityMode())) {
+            // Sharing: what the Department Heads shared is the only authority (closed by default), so an Exclude cannot be bypassed here and
+            // a person a Head shared with sees the Effective documents shared, whatever their own Department. One decision for a list and
+            // for a direct open (KnowledgeVisibilityService).
+            activeDocuments = documentRepository.findAll(
+                    (root, query, cb) -> cb.and(
+                            cb.equal(root.get("status").get("code"), "ACTIVE"),
+                            knowledgeVisibilityService.visibilityPredicate(currentUser, root, cb)),
+                    org.springframework.data.domain.Sort.by("department.code", "documentName")).stream()
+                    .filter(document -> !document.isTemplate())
+                    .toList();
+        } else {
+            activeDocuments = documentRepository.findAllByStatus_CodeOrderByDepartment_CodeAscDocumentNameAsc("ACTIVE")
+                    .stream()
+                    .filter(document -> !document.isTemplate())
+                    .filter(document -> canViewAllDepartments || everything
+                            || (wholeUnit
+                                    ? currentUserBusinessUnitId != null
+                                            && document.getDepartment() != null
+                                            && document.getDepartment().getBusinessUnit() != null
+                                            && currentUserBusinessUnitId.equals(document.getDepartment().getBusinessUnit().getId())
+                                    : currentUserDepartmentId != null
+                                            && document.getDepartment() != null
+                                            && currentUserDepartmentId.equals(document.getDepartment().getId())))
+                    .toList();
+        }
         if (activeDocuments.isEmpty()) {
             return List.of();
         }
@@ -2601,7 +2634,22 @@ public class DocumentService {
     /** Resolves the current user's own Department to its stable id -- user.getDepartment() only
      *  stores the Department's code (a mutable display value), matching the resolution convention
      *  already used elsewhere in this codebase (DepartmentRepository.findByCodeIgnoreCase). */
-    private UUID resolveUserDepartmentId(UserAccount user) {
+    /** The Business Unit of the user's Department; null when the user has no Department, or it belongs to no Unit. */
+    UUID resolveUserBusinessUnitId(UserAccount user) {
+        UUID departmentId = resolveUserDepartmentId(user);
+        if (departmentId == null) {
+            return null;
+        }
+        return departmentRepository.findById(departmentId)
+                .map(Department::getBusinessUnit)
+                .map(com.eqms.entity.BusinessUnit::getId)
+                .orElse(null);
+    }
+
+    UUID resolveUserDepartmentId(UserAccount user) {
+        if (user != null && user.getDepartmentId() != null) {
+            return user.getDepartmentId();
+        }
         if (user == null || !StringUtils.hasText(user.getDepartment())) {
             return null;
         }
@@ -2612,6 +2660,18 @@ public class DocumentService {
                 .or(() -> departmentRepository.findByNameIgnoreCase(value))
                 .map(Department::getId)
                 .orElse(null);
+    }
+
+    /** The id comparisons of a lookup filter. Only a text id can be compared as text: lower() of a UUID column is an SQL error (HTTP 500). */
+    private static jakarta.persistence.criteria.Predicate idMatches(
+            jakarta.persistence.criteria.CriteriaBuilder cb, jakarta.persistence.criteria.Path<?> idPath, String normalized) {
+        if (UUID.class.equals(idPath.getJavaType())) {
+            return cb.disjunction();
+        }
+        return cb.or(
+                cb.equal(cb.lower(idPath.as(String.class)), normalized),
+                cb.equal(cb.lower(idPath.as(String.class)), normalized.replace("-", "_")),
+                cb.equal(cb.lower(idPath.as(String.class)), normalized.replace("_", "-")));
     }
 
     private void addLookupPredicate(
@@ -2631,9 +2691,7 @@ public class DocumentService {
             return;
         }
         predicates.add(cb.or(
-                cb.equal(cb.lower(idPath.as(String.class)), normalized),
-                cb.equal(cb.lower(idPath.as(String.class)), normalized.replace("-", "_")),
-                cb.equal(cb.lower(idPath.as(String.class)), normalized.replace("_", "-")),
+                idMatches(cb, idPath, normalized),
                 cb.equal(cb.lower(namePath), normalized),
                 cb.equal(cb.lower(namePath), normalized.replace("-", " ")),
                 cb.equal(cb.lower(namePath), normalized.replace("_", " "))
@@ -3300,7 +3358,18 @@ public class DocumentService {
                 // the Legacy Import screen's revision-creation step, not here -- this Document
                 // draft alone stays fully valid at the configured seed even before that step runs.
                 document.setVersion(systemConfigurationService.getRevisionNumberSeed());
+            } else if (StringUtils.hasText(request.manualDocumentNumber())) {
+                // The creator typed the number (Document Properties > Document Number entry = MANUAL): same rule and duplicate check
+                // as the live check on the screen, repeated here because the server is the one that decides.
+                if (documentNumberService == null || !documentNumberService.isManual()) {
+                    throw new IllegalArgumentException("Document numbers are generated by the system; a Document Number cannot be typed.");
+                }
+                document.setDocumentNumber(documentNumberService.requireValid(documentType, request.manualDocumentNumber(), null));
+                document.setVersion(systemConfigurationService.getRevisionNumberSeed());
             } else {
+                if (documentNumberService != null && documentNumberService.isManual()) {
+                    throw new IllegalArgumentException("Enter the Document Number: document numbers are typed by hand.");
+                }
                 document.setDocumentNumber(generateDocumentNumber(documentType, department));
                 document.setVersion(systemConfigurationService.getRevisionNumberSeed());
             }
@@ -4276,6 +4345,60 @@ public class DocumentService {
         );
 
         return new DocumentFileResult(bytes, fileName, "application/pdf");
+    }
+
+    /**
+     * The PDF of the Effective revision of a document, opened from the Knowledge Base. With Knowledge Base visibility "Sharing" the
+     * document must be one the user may see there (shared by its Department Head, or the user is that Head or a view-all holder); the
+     * Knowledge permission is then all that is needed, because only Effective documents are listed. A document the user may not see is
+     * answered exactly like one that does not exist. With "Own Department" the Document Control preview rules apply as before.
+     */
+    @Transactional(readOnly = true)
+    public DocumentFileResult previewKnowledgeDocumentFile(UUID documentId) {
+        String knowledgeMode = systemConfigurationService.getKnowledgeVisibilityMode();
+        boolean listedByKnowledge = SystemConfigurationService.KNOWLEDGE_VISIBILITY_ALL.equals(knowledgeMode)
+                || SystemConfigurationService.KNOWLEDGE_VISIBILITY_OWN_BUSINESS_UNIT.equals(knowledgeMode)
+                || (SystemConfigurationService.KNOWLEDGE_VISIBILITY_SHARING.equals(knowledgeMode) && knowledgeVisibilityService != null);
+        if (!listedByKnowledge) {
+            return previewDocumentFile(documentId);
+        }
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        KnowledgeEntry entry = visibleKnowledgeEntries().stream()
+                .filter(e -> e.document().getId().equals(documentId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Document not found"));
+        DocumentRecord document = entry.document();
+        DocumentRevisionRecord revision = entry.revision();
+        String previewPath = publishingMetadataRepository.findByRevision_Id(revision.getId())
+                .map(m -> m.getPublishedPdfPath())
+                .filter(org.springframework.util.StringUtils::hasText)
+                .orElseThrow(() -> new IllegalArgumentException("No effective published document available"));
+        byte[] bytes;
+        try {
+            bytes = fileStorageService.readFile(previewPath);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to read document preview file", ex);
+        }
+        if (isPdfBytes(bytes) && systemConfigurationService.isDocumentWatermarkEnabled()) {
+            try {
+                bytes = applyPreviewWatermark(bytes, currentUser);
+            } catch (IOException ex) {
+                // a view without the watermark is never sent: it is what tells who let a screenshot out
+                log.warn("Failed to apply watermark to Knowledge preview for document {}: {}", documentId, ex.getMessage());
+                throw new IllegalStateException("PREVIEW_WATERMARK_FAILED", ex);
+            }
+        }
+        auditTrailService.logAs(
+                currentUser,
+                "DOCUMENT",
+                document.getDocumentNumber() + " - " + document.getDocumentName(),
+                document.getId(),
+                "PREVIEW",
+                revision.getStatus() == null ? null : revision.getStatus().getCode(),
+                revision.getStatus() == null ? null : revision.getStatus().getCode(),
+                "Viewed revision preview " + revision.getRevisionNumber() + " from the Knowledge Base"
+        );
+        return new DocumentFileResult(bytes, "preview.pdf", "application/pdf");
     }
 
     private void verifyRevisionChecksum(byte[] bytes, DocumentRevisionRecord revision) throws IOException {

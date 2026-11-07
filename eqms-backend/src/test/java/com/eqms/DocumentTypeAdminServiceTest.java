@@ -67,6 +67,17 @@ class DocumentTypeAdminServiceTest {
     }
 
     @Test
+    void invalidIconTextOrColour_isRejectedBeforeReachingTheDatabase() {
+        assertThrows(IllegalArgumentException.class, () -> service.createDocumentType(
+                new DocumentTypeDictionaryRequest("Type A", "OKC", 0, null, true, null, "TOOLONG1", null)));
+        assertThrows(IllegalArgumentException.class, () -> service.createDocumentType(
+                new DocumentTypeDictionaryRequest("Type A", "OKC", 0, null, true, null, "A B", null)));
+        assertThrows(IllegalArgumentException.class, () -> service.createDocumentType(
+                new DocumentTypeDictionaryRequest("Type A", "OKC", 0, null, true, null, "OK", "red")));
+        verify(typeRepository, never()).save(any());
+    }
+
+    @Test
     void overlongName_isRejectedBeforeReachingTheDatabase() {
         assertThrows(IllegalArgumentException.class,
                 () -> service.createDocumentType(typeRequest("N".repeat(121), "OKC")));

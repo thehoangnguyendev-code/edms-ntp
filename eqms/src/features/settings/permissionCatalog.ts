@@ -48,6 +48,13 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     module: "self_service",
     group: "self_service_access",
   },
+  {
+    code: "self_service.knowledge.view_all",
+    label: "View All Documents in the Knowledge Base",
+    description: "See every Effective document in the Knowledge Base, in every visibility mode and whatever a Head shared or excluded (for the person who audits the system, such as the DCO or compliance). Only the Knowledge Base: it changes nothing in Document Control. View Knowledge is still needed to open the Knowledge Base.",
+    module: "self_service",
+    group: "self_service_access",
+  },
 
   // ─── Document Control ───────────────────────────────────────────────────────
   {
@@ -240,13 +247,6 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     code: "documents.revision.reject_approval",
     label: "Reject Approval",
     description: "Reject an assigned approval and return the revision to the configured prior stage.",
-    module: "documents",
-    group: "revision_workflow",
-  },
-  {
-    code: "documents.revision.complete_authoring",
-    label: "Complete Authoring",
-    description: "Complete authoring for a draft revision before it is submitted for review.",
     module: "documents",
     group: "revision_workflow",
   },
@@ -830,6 +830,13 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     code: "security.object_rules.manage",
     label: "Manage Object Access Rules",
     description: "Create, update, deactivate, and delete object access rules.",
+    module: "security-authorization",
+    group: "object_access",
+  },
+  {
+    code: "security.object_rules.share_knowledge_any_department",
+    label: "Share Knowledge Base of Any Department",
+    description: "Decide who sees the folders and documents of ANY Department in the Knowledge Base, from the Knowledge explorer (for example to share a document with trainees for self-reading training). It only shares: it does not change Document Control, and a person still needs the Knowledge permission to open the Knowledge Base. Assign it to the profile of the person designated as DCO.",
     module: "security-authorization",
     group: "object_access",
   },

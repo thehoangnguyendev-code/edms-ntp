@@ -38,7 +38,8 @@ describe("ImageWatermarkTab", () => {
   it("asks the server for the preview of the draft after a change, and shows the picture it sends back", async () => {
     const onChange = vi.fn();
     const { rerender } = render(<ImageWatermarkTab config={general()} onChange={onChange} />);
-    fireEvent.click(await screen.findByRole("radio", { name: "Bottom Right" }));
+    fireEvent.click((await screen.findAllByRole("combobox", { name: "Position" }))[0]);
+    fireEvent.click(await screen.findByRole("option", { name: "Bottom Right" }));
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ imageWatermark: { controlledCopyEvidence: { position: "BOTTOM_RIGHT" } } }));
 
     rerender(<ImageWatermarkTab config={general({ controlledCopyEvidence: { position: "BOTTOM_RIGHT", showUploadedBy: true, showUploadedAt: true, opacityPercent: 55 } })} onChange={onChange} />);
@@ -46,11 +47,44 @@ describe("ImageWatermarkTab", () => {
     expect(await screen.findByAltText("Controlled Copy Destruction Evidence watermark preview")).toHaveAttribute("src", "blob:preview");
   });
 
-  it("keeps the choice of the corner on the radio group", async () => {
+  it("offers the four corners in a Select that shows the saved one", async () => {
     render(<ImageWatermarkTab config={general({ controlledCopyEvidence: { position: "TOP_RIGHT" } })} onChange={vi.fn()} />);
-    const group = (await screen.findAllByRole("radiogroup", { name: "Watermark position" }))[0];
-    expect(group.querySelector('[aria-checked="true"]')).toHaveTextContent("Top Right");
-    expect(group.querySelectorAll('[role="radio"]')).toHaveLength(4);
+    const select = (await screen.findAllByRole("combobox", { name: "Position" }))[0];
+    expect(select).toHaveTextContent("Top Right");
+    expect(screen.queryByRole("radiogroup")).toBeNull();
+    fireEvent.click(select);
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["Top Left", "Top Right", "Bottom Left", "Bottom Right"]);
+  });
+
+  it("asks for the time zone only when the upload time is stamped, +07:00 by default, and sends the choice to the preview", async () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<ImageWatermarkTab config={general()} onChange={onChange} />);
+    expect(screen.queryByRole("combobox", { name: "Upload Time Zone" })).toBeNull();
+
+    rerender(<ImageWatermarkTab config={general({ controlledCopyEvidence: { showUploadedAt: true } })} onChange={onChange} />);
+    const zone = (await screen.findAllByRole("combobox", { name: "Upload Time Zone" }))[0];
+    expect(zone).toHaveTextContent("UTC+7");
+    expect(screen.getByText("Printed with the time, for example 02/11/2026 11:20:43 (UTC+7).")).toBeInTheDocument();
+    await waitFor(() => expect(lastDraft("controlledCopyEvidence")).toMatchObject({ showUploadedAt: true, utcOffset: "+07:00" }));
+
+    fireEvent.click(zone);
+    fireEvent.click(await screen.findByRole("option", { name: "UTC+5:30" }));
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ imageWatermark: { controlledCopyEvidence: { showUploadedAt: true, utcOffset: "+05:30" } } }));
+
+    rerender(<ImageWatermarkTab config={general({ controlledCopyEvidence: { showUploadedAt: true, utcOffset: "-03:30" } })} onChange={onChange} />);
+    await waitFor(() => expect(lastDraft("controlledCopyEvidence")).toMatchObject({ utcOffset: "-03:30" }));
+    expect((await screen.findAllByRole("combobox", { name: "Upload Time Zone" }))[0]).toHaveTextContent("UTC-3:30");
+  });
+
+  it("has the time zone on the specimen signature too, and every offset the server accepts", async () => {
+    render(<ImageWatermarkTab config={general({ specimenSignature: { enabled: true, showUploadedAt: true } })} onChange={vi.fn()} />);
+    const zone = await screen.findByRole("combobox", { name: "Upload Time Zone" });
+    fireEvent.click(zone);
+    const labels = (await screen.findAllByRole("option")).map((option) => option.textContent);
+    expect(labels).toContain("UTC-12");
+    expect(labels).toContain("UTC+5:45");
+    expect(labels).toContain("UTC+14");
+    expect(labels).toHaveLength(40);
   });
 
   it("does not ask for a preview when nothing would be stamped, and says so", async () => {

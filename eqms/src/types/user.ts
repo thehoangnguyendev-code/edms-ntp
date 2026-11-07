@@ -1,3 +1,4 @@
+import type { UserActionCapabilitiesResponse } from '@/services/api/settings';
 import type { UserRoleLabel } from './roles';
 
 export type UserStatus = "Active" | "Inactive" | "Pending" | "Suspended" | "Terminated";
@@ -29,6 +30,8 @@ export interface EducationItem {
 
 export interface User {
   id: string;
+  /** What the signed-in user may do with this account, sent with the list so the row menu opens with its items decided. Absent outside the list. */
+  capabilities?: UserActionCapabilitiesResponse;
   employeeCode: string;
   fullName: string;
   username: string;

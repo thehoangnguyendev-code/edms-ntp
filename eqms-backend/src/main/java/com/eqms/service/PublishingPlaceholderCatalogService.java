@@ -38,7 +38,7 @@ public class PublishingPlaceholderCatalogService {
      */
     private java.util.List<PublishingPlaceholderGroupResponse> signatureGroups() {
         String[][] steps = {
-                {"PREPARED", "Prepared (complete editing)"}, {"REVIEWED", "Reviewed"}, {"APPROVED", "Approved"}, {"PUBLISHED", "Published"}
+                {"PREPARED", "Prepared (the Author's submission signature)"}, {"REVIEWED", "Reviewed"}, {"APPROVED", "Approved"}, {"PUBLISHED", "Published"}
         };
         String frame = "Name, then Electronically and the meaning (Electronically approved), then the date and time.";
         java.util.List<PublishingPlaceholderItemResponse> items = new java.util.ArrayList<>();

@@ -34,9 +34,10 @@ public class CalendarTaskProjectionService {
                     Set.of("REVIEW_COMPLETE", "REVIEW_REJECT"), "PENDING_REVIEW", "Review document", "review/");
             case "document-approval" -> new Task("APPROVAL", "APPROVER", RevisionWorkflowAction.COMPLETE_APPROVAL,
                     Set.of("APPROVE_COMPLETE", "APPROVE_REJECT"), "PENDING_APPROVAL", "Approve document", "approval/");
+            // Authoring ends when the revision is submitted for review (there is no separate Complete Editing step).
             case "document-edit-online-notification", "document-review-rejected", "document-approval-rejected" ->
-                    new Task("AUTHORING", "CO_AUTHOR", RevisionWorkflowAction.COMPLETE_AUTHORING,
-                    Set.of("COMPLETE_EDITING"), "DRAFT", "Continue authoring", "edit/");
+                    new Task("AUTHORING", "CO_AUTHOR", RevisionWorkflowAction.SUBMIT_FOR_REVIEW,
+                    Set.of("SUBMIT_FOR_REVIEW"), "DRAFT", "Continue authoring", "edit/");
             case "document-ready-for-submission" -> new Task("SUBMISSION", "AUTHOR", RevisionWorkflowAction.SUBMIT_FOR_REVIEW,
                     Set.of("SUBMIT_FOR_REVIEW"), "DRAFT", "Submit for review", "");
             case "document-ready-for-publishing" -> new Task("PUBLISHING", "PUBLISHER", RevisionWorkflowAction.OPEN_PUBLISHING_WORKSPACE,

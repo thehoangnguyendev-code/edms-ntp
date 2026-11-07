@@ -284,7 +284,7 @@ export const EngineHealthTab: React.FC = () => {
             label="Mismatches only"
           />
         </div>
-        <div className="flex items-end gap-2">
+        <div className="filter-actions flex items-end gap-2">
           <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
           {engineControl}
         </div>

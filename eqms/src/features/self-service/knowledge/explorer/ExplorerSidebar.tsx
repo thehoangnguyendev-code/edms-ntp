@@ -1,21 +1,20 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Bell, ChevronLeft, ChevronRight, Eye, Home, LayoutPanelLeft, Star, ThumbsUp } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, Eye, Home, Star, ThumbsUp } from "lucide-react";
 import { BrandLogo } from "@/components/branding/BrandLogo";
-import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/components/ui/utils";
 import type { KnowledgePortalOverview } from "@/services/api/knowledge";
 import { ExplorerLibraryTree } from "./ExplorerLibraryTree";
 import { FOCUS_RING, GROUP_LABEL } from "./explorerStyles";
-import { folderColor, type ExplorerNav, type SmartKey } from "./explorerModel";
+import { type ExplorerNav, type SmartKey } from "./explorerModel";
+import { useFolderColor } from "./ExplorerIcons";
 
 interface ExplorerSidebarProps {
   overview: KnowledgePortalOverview | null;
   nav: ExplorerNav;
   onGo: (nav: ExplorerNav) => void;
   onHierarchyChange: (id: string) => void;
-  onOpenClassic: () => void;
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
 }
@@ -23,8 +22,8 @@ interface ExplorerSidebarProps {
 const QUICK: { key: SmartKey | "home"; label: string; Icon: React.ElementType }[] = [
   { key: "home", label: "Home", Icon: Home },
   { key: "featured", label: "Featured", Icon: Star },
-  { key: "viewed", label: "Most viewed", Icon: Eye },
-  { key: "useful", label: "Most helpful", Icon: ThumbsUp },
+  { key: "viewed", label: "Most Viewed", Icon: Eye },
+  { key: "useful", label: "Most Helpful", Icon: ThumbsUp },
   { key: "subscribed", label: "Subscribed", Icon: Bell },
 ];
 
@@ -35,8 +34,11 @@ const itemClass = (active: boolean) =>
     active ? "bg-emerald-50 text-emerald-700" : "text-slate-600 hover:bg-emerald-50/70 hover:text-emerald-700",
   );
 
-export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav, onGo, onHierarchyChange, onOpenClassic, collapsed = false, onToggleCollapsed }) => {
+export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav, onGo, onHierarchyChange, collapsed = false, onToggleCollapsed }) => {
   const reduceMotion = useReducedMotion();
+  const colorOf = useFolderColor();
+  // each press of a Quick access button shakes its icon once (the number of presses is the key, so the animation starts again)
+  const [shakes, setShakes] = useState<Record<string, number>>({});
   const counts: Partial<Record<SmartKey, number>> = {
     featured: overview?.featured.length ?? 0,
     viewed: overview?.mostViewed.length ?? 0,
@@ -83,10 +85,10 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
       </div>
 
       <div className={cn("flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-3.5 custom-scrollbar", collapsed ? "px-2" : "px-2.5")}>
-        {!collapsed && <h2 className="px-2.5 text-base font-semibold text-slate-900 md:text-sm">Knowledge Base</h2>}
+        <h2 className={cn("overflow-hidden whitespace-nowrap px-2.5 text-base font-semibold text-slate-900 transition-[max-height,opacity,margin] duration-300 md:text-sm", collapsed ? "-mb-4 max-h-0 opacity-0" : "max-h-8 opacity-100 delay-100")}>Knowledge Base</h2>
 
         <div>
-          {!collapsed && <p className={cn(GROUP_LABEL, "px-2.5 pb-1")}>Quick access</p>}
+          <p className={cn(GROUP_LABEL, "overflow-hidden whitespace-nowrap px-2.5 transition-[max-height,opacity,padding] duration-300", collapsed ? "max-h-0 pb-0 opacity-0" : "max-h-6 pb-1 opacity-100 delay-100")}>Quick access</p>
           <ul className="space-y-0.5">
             {QUICK.map(({ key, label, Icon }) => {
               const count = key === "home" ? undefined : counts[key];
@@ -94,14 +96,16 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
                 <li key={key}>
                   <button
                     type="button"
-                    onClick={() => onGo(key === "home" ? { kind: "home" } : { kind: "smart", key })}
+                    onClick={() => { setShakes((current) => ({ ...current, [key]: (current[key] ?? 0) + 1 })); onGo(key === "home" ? { kind: "home" } : { kind: "smart", key }); }}
                     aria-current={isActive(key) ? "page" : undefined}
-                    className={cn(itemClass(isActive(key)), collapsed && "justify-center px-2")}
+                    className={cn(itemClass(isActive(key)), collapsed && "justify-center gap-0 px-2 md:gap-0 md:px-2")}
                     title={collapsed ? label : undefined}
                   >
-                    <Icon className="h-5 w-5 shrink-0 md:h-4 md:w-4" aria-hidden="true" />
-                    {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
-                    {!collapsed && count !== undefined && <span className="text-xs tabular-nums text-slate-400">{count}</span>}
+                    <span key={shakes[key] ?? 0} className={cn("inline-flex shrink-0", shakes[key] && "explorer-icon-shake")}>
+                      <Icon className="h-5 w-5 shrink-0 md:h-4 md:w-4" aria-hidden="true" />
+                    </span>
+                    <span className={cn("min-w-0 truncate whitespace-nowrap transition-[max-width,opacity] duration-300", collapsed ? "max-w-0 flex-none opacity-0" : "max-w-[16rem] flex-1 opacity-100 delay-100")}>{label}</span>
+                    {count !== undefined && <span className={cn("overflow-hidden text-xs tabular-nums text-slate-400 transition-[max-width,opacity] duration-300", collapsed ? "max-w-0 opacity-0" : "max-w-[4rem] opacity-100 delay-100")}>{count}</span>}
                   </button>
                 </li>
               );
@@ -109,7 +113,7 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
           </ul>
         </div>
 
-        {collapsed ? (
+        {collapsed && (
           <div className="border-t border-slate-100 pt-3" aria-label="Knowledge Bases">
             <ul className="space-y-1">
               {overview?.knowledgeBases.map((kb) => {
@@ -130,7 +134,7 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
                     >
                       <span
                         className={cn("h-3 w-3 rounded-[4px] ring-1 ring-inset ring-black/5", active && "ring-2 ring-emerald-500 ring-offset-1")}
-                        style={{ backgroundColor: folderColor(kb.label) }}
+                        style={{ backgroundColor: colorOf(kb.key, kb.label) }}
                         aria-hidden="true"
                       />
                     </button>
@@ -139,7 +143,8 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
               })}
             </ul>
           </div>
-        ) : <div className="min-h-0">
+        )}
+        <div className={cn("min-h-0", collapsed && "hidden")}>
           <p className={cn(GROUP_LABEL, "px-2.5 pb-1")}>
             Library{overview?.determinatorLabel ? ` · by ${overview.determinatorLabel}` : ""}
           </p>
@@ -161,14 +166,7 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
           ) : (
             <ExplorerLibraryTree overview={overview} nav={nav} onGo={onGo} />
           )}
-        </div>}
-      </div>
-
-      <div className={cn("shrink-0 border-t border-slate-100", collapsed ? "p-2" : "p-2.5")}>
-        <Button variant="outline" size="sm" fullWidth={!collapsed} onClick={onOpenClassic} aria-label="Open classic view" title={collapsed ? "Open classic view" : undefined} className={cn("gap-2", collapsed && "w-full px-0")}>
-          <LayoutPanelLeft className="h-4 w-4" aria-hidden="true" />
-          {!collapsed && "Open classic view"}
-        </Button>
+        </div>
       </div>
     </nav>
   );

@@ -53,6 +53,10 @@ type ApiBusinessUnit = {
   createdDate: string;
   modifiedDate: string;
   departmentCount: number;
+  headOfUnitId?: string | null;
+  headOfUnitName?: string | null;
+  headOfUnitEmployeeCode?: string | null;
+  iconColor?: string | null;
 };
 
 type ApiDepartment = {
@@ -67,7 +71,9 @@ type ApiDepartment = {
   positionCount: number;
   departmentHeadId?: string | null;
   departmentHeadName?: string | null;
+  departmentHeadEmployeeCode?: string | null;
   primaryContactPhone?: string | null;
+  iconColor?: string | null;
 };
 
 type ApiPosition = {
@@ -94,6 +100,8 @@ type ApiDocumentType = {
   modifiedDate: string;
   nameFormatId?: string | null;
   nameFormatName?: string | null;
+  iconLabel?: string | null;
+  iconColor?: string | null;
 };
 
 type ApiDocumentSubType = {
@@ -140,6 +148,8 @@ export type DictionaryBusinessUnitPayload = {
   abbreviation: string;
   description?: string;
   isActive: boolean;
+  headOfUnitId?: string | null;
+  iconColor?: string | null;
 };
 
 export type DictionaryDepartmentPayload = {
@@ -150,6 +160,7 @@ export type DictionaryDepartmentPayload = {
   isActive: boolean;
   departmentHeadId?: string | null;
   primaryContactPhone?: string | null;
+  iconColor?: string | null;
 };
 
 export type DictionaryPositionPayload = {
@@ -167,6 +178,8 @@ export type DictionaryDocumentTypePayload = {
   description?: string;
   isActive: boolean;
   nameFormatId?: string | null;
+  iconLabel?: string | null;
+  iconColor?: string | null;
 };
 
 export type DictionaryDocumentSubTypePayload = {
@@ -197,6 +210,10 @@ const mapBusinessUnit = (item: ApiBusinessUnit): BusinessUnitItem => ({
   isActive: item.isActive,
   createdDate: item.createdDate,
   modifiedDate: item.modifiedDate,
+  headOfUnitId: item.headOfUnitId ?? null,
+  headOfUnitName: item.headOfUnitName ?? null,
+  headOfUnitEmployeeCode: item.headOfUnitEmployeeCode ?? null,
+  iconColor: item.iconColor ?? null,
 });
 
 const mapDepartment = (item: ApiDepartment): DepartmentItem => ({
@@ -210,7 +227,9 @@ const mapDepartment = (item: ApiDepartment): DepartmentItem => ({
   modifiedDate: item.modifiedDate,
   departmentHeadId: item.departmentHeadId ?? null,
   departmentHeadName: item.departmentHeadName ?? null,
+  departmentHeadEmployeeCode: item.departmentHeadEmployeeCode ?? null,
   primaryContactPhone: item.primaryContactPhone ?? null,
+  iconColor: item.iconColor ?? null,
 });
 
 const mapPosition = (item: ApiPosition): PositionItem => ({
@@ -237,6 +256,8 @@ const mapDocumentType = (item: ApiDocumentType): DocumentTypeItem => ({
   modifiedDate: item.modifiedDate,
   nameFormatId: item.nameFormatId ?? null,
   nameFormatName: item.nameFormatName ?? null,
+  iconLabel: item.iconLabel ?? null,
+  iconColor: item.iconColor ?? null,
 });
 
 const mapDocumentSubType = (item: ApiDocumentSubType): DocumentSubTypeItem => ({

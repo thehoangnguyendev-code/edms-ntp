@@ -7,6 +7,7 @@ import { BrowserNotificationBridge } from '@/components/notifications/BrowserNot
 import { RateLimitNoticeListener } from '@/components/system/RateLimitNoticeListener';
 import { RecordStripeStyles } from '@/components/branding/RecordStripeStyles';
 import { PageBackgroundStyles } from '@/components/branding/PageBackgroundStyles';
+import { MenuColorStyles } from '@/components/branding/MenuColorStyles';
 
 const App: React.FC = () => {
 
@@ -17,6 +18,7 @@ const App: React.FC = () => {
           <SystemLocalizationLoader />
           <RecordStripeStyles />
           <PageBackgroundStyles />
+          <MenuColorStyles />
           <RateLimitNoticeListener />
           <BrowserNotificationBridge />
           <AppRoutes />

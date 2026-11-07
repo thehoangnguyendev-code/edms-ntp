@@ -150,10 +150,10 @@ class RevisionWorkflowAuthorizationServiceCutoverTest {
     @Test
     void require_onDenial_logsAudit() {
         when(authorizationEngineService.authorize(any(AuthorizationRequest.class)))
-                .thenReturn(AuthorizationDecision.deny("EDITING_ALREADY_COMPLETED", "documents.revision.complete_authoring", "DRAFT"));
+                .thenReturn(AuthorizationDecision.deny("INVALID_WORKFLOW_STATE", "documents.revision.submit_review", "DRAFT"));
 
         try {
-            newService().require(user, revision, RevisionWorkflowAction.COMPLETE_AUTHORING, context);
+            newService().require(user, revision, RevisionWorkflowAction.SUBMIT_FOR_REVIEW, context);
         } catch (WorkflowAuthorizationDeniedException ignored) {
         }
 

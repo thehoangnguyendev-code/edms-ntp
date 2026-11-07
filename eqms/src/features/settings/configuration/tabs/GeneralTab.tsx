@@ -3,7 +3,7 @@ import { FormSection } from '@/components/ui/form/FormSection';
 import { GeneralConfig } from '../types';
 import { Select } from '@/components/ui/select/Select';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
-import { Palette, Globe, Wrench, ImageIcon, PanelTop, PanelLeft, BookOpen } from 'lucide-react';
+import { Palette, Globe, Wrench, ImageIcon, PanelTop, PanelLeft } from 'lucide-react';
 import { IconAddressBook } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
@@ -14,6 +14,7 @@ import { AppShortcutSection } from './AppShortcutSection';
 import { ColorPickerInput } from '@/components/ui/color-picker/ColorPickerInput';
 import { DEFAULT_ALTERNATING_RECORD_COLOR } from '@/config/record-stripes';
 import { PageBackgroundEditor } from './PageBackgroundEditor';
+import { DEFAULT_MENU_COLOR } from '@/config/menu-colors';
 import type { PageBackground } from '@/config/page-background';
 
 interface GeneralTabProps {
@@ -82,7 +83,6 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
           animationsEnabled: config.appearance?.animationsEnabled ?? true,
           theme: config.appearance?.theme ?? 'light',
           showSidebarUserProfile: config.appearance?.showSidebarUserProfile ?? false,
-          knowledgeExplorerEnabled: config.appearance?.knowledgeExplorerEnabled ?? false,
           compactDesktopFilters: config.appearance?.compactDesktopFilters ?? false,
           toastPosition: config.appearance?.toastPosition ?? 'top-right',
           systemSidebarCollapsedLogo: value,
@@ -105,9 +105,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
         animationsEnabled: config.appearance?.animationsEnabled ?? true,
         theme: config.appearance?.theme ?? 'light',
         systemSidebarCollapsedLogo: config.appearance?.systemSidebarCollapsedLogo ?? config.systemSidebarCollapsedLogo,
-        showSidebarUserProfile: config.appearance?.showSidebarUserProfile ?? false,
-          knowledgeExplorerEnabled: config.appearance?.knowledgeExplorerEnabled ?? false,
-        compactDesktopFilters: config.appearance?.compactDesktopFilters ?? false,
+        showSidebarUserProfile: config.appearance?.showSidebarUserProfile ?? false,        compactDesktopFilters: config.appearance?.compactDesktopFilters ?? false,
         toastPosition: config.appearance?.toastPosition ?? 'top-right',
         [key]: value,
       },
@@ -328,11 +326,38 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
             </div>
           </div>
           <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Dropdown Menus</p>
+            <p className="mb-3 text-xs text-slate-500">Colours of the text and of the icons in the items of every dropdown (action) menu, for every user. A red item (such as Terminate or Delete) keeps its own colour. Applies after Save Changes.</p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {(['menuTextColor', 'menuIconColor'] as const).map((field) => (
+                <div key={field} className="flex items-end gap-2">
+                  <div className="min-w-0 flex-1">
+                    <ColorPickerInput label={field === 'menuTextColor' ? 'Menu text color' : 'Menu icon color'} value={config.appearance?.[field] || DEFAULT_MENU_COLOR}
+                      onChange={(value) => handleAppearanceChange(field, value)} />
+                  </div>
+                  <Button type="button" size="sm" variant="outline" disabled={!config.appearance?.[field]} onClick={() => handleAppearanceChange(field, '')}>Use default</Button>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 w-56 rounded-xl border border-slate-200 bg-white py-1 shadow-sm" aria-label="Menu preview">
+              {['View/Edit Profile', 'Reset Password', 'Suspend Account'].map((label) => (
+                <div key={label} className="flex items-center gap-2 px-3 py-2 text-xs font-medium" style={{ color: config.appearance?.menuTextColor || DEFAULT_MENU_COLOR }}>
+                  <span className="h-4 w-4 rounded-sm border-2" style={{ borderColor: config.appearance?.menuIconColor || DEFAULT_MENU_COLOR }} aria-hidden="true" />
+                  {label}
+                </div>
+              ))}
+              <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-500">
+                <span className="h-4 w-4 rounded-sm border-2 border-red-500" aria-hidden="true" />
+                Terminate Account
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Page Backgrounds</p>
-            <p className="mb-3 text-xs text-slate-500">Choose backgrounds for the main workspace and authentication screens. Use light colors to keep page text readable. Changes apply after saving.</p>
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
               <PageBackgroundEditor title="Main Layout" value={config.appearance?.mainBackground} onChange={(value) => handleAppearanceChange('mainBackground', value)} />
               <PageBackgroundEditor title="Authentication" allowImage value={config.appearance?.authBackground} onChange={(value) => handleAppearanceChange('authBackground', value)} />
+              <PageBackgroundEditor title="Knowledge Base" value={config.appearance?.knowledgeBackground} onChange={(value) => handleAppearanceChange('knowledgeBackground', value)} />
             </div>
           </div>
           <div className="border-t border-slate-100 pt-4">
@@ -355,16 +380,37 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
           </div>
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Knowledge Base</p>
-            <Checkbox
-              id="knowledgeExplorerEnabled"
-              label="Open the Knowledge Base in the new Explorer experience"
-              checked={config.appearance?.knowledgeExplorerEnabled??false}
-              onChange={(checked) => handleAppearanceChange('knowledgeExplorerEnabled',checked)}
-            />
-            <p className="ml-7 mt-1 text-xs text-slate-500">
-              When enabled, choosing Knowledge Base in the menu opens a file-manager style explorer with widgets in a new browser tab.
-              When disabled, the classic Knowledge Base page opens in the current tab. Takes effect for every signed-in user right after you save.
-            </p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Select
+                label="Folder names in the layout"
+                value={config.appearance?.knowledgeFolderNames ?? 'FULL'}
+                enableSearch={false}
+                onChange={(val) => handleAppearanceChange('knowledgeFolderNames', val)}
+                options={[
+                  { label: 'Full name', value: 'FULL' },
+                  { label: 'Abbreviation', value: 'ABBREVIATION' },
+                ]}
+              />
+              <Select
+                label="Folder names in the sidebar"
+                value={config.appearance?.knowledgeSidebarFolderNames ?? config.appearance?.knowledgeFolderNames ?? 'FULL'}
+                enableSearch={false}
+                onChange={(val) => handleAppearanceChange('knowledgeSidebarFolderNames', val)}
+                options={[
+                  { label: 'Full name', value: 'FULL' },
+                  { label: 'Abbreviation', value: 'ABBREVIATION' },
+                ]}
+              />
+            </div>
+            <div className="mt-4">
+              <Checkbox
+                id="knowledgeOpenInNewTab"
+                label="Open the Knowledge Base in a new browser tab"
+                checked={config.appearance?.knowledgeOpenInNewTab ?? true}
+                onChange={(checked) => handleAppearanceChange('knowledgeOpenInNewTab', checked)}
+              />
+              <p className="ml-7 mt-1 text-xs text-slate-500">Off: the Knowledge Base replaces the page you are on.</p>
+            </div>
           </div>
         </div>
       </FormSection>

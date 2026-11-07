@@ -426,7 +426,7 @@ export const PositionsTab = React.forwardRef<
             />
           </div>
 
-          <div className="flex items-end gap-2">
+          <div className="filter-actions flex items-end gap-2">
             <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
             {positionsControl}
           </div>

@@ -53,6 +53,10 @@ public class LoginChallenge {
     @Column(name = "consumed_at")
     private Instant consumedAt;
 
+    /** The locked session this challenge unlocks; null for a sign-in challenge. */
+    @Column(name = "session_id")
+    private UUID sessionId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -77,6 +81,14 @@ public class LoginChallenge {
 
     public boolean isExpired() {
         return otpExpiresAt.isBefore(Instant.now());
+    }
+
+    public UUID getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(UUID sessionId) {
+        this.sessionId = sessionId;
     }
 
     public UUID getId() {

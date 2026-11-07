@@ -44,10 +44,13 @@ it("puts Clear Filters and Custom Column side by side in the last cell of the de
   const clear = screen.getByRole("button", { name: "Clear Filters" });
   const custom = screen.getByRole("button", { name: "Custom Column" });
   expect(clear.parentElement).toBe(custom.parentElement);
-  expect(clear.parentElement).toHaveClass("flex", "items-end", "gap-2");
-  // That cell is the last item of the grid that also holds Search and the filters.
+  // The two buttons stay on one line in a cell that measures itself: when it is narrow Custom Column keeps its icon only (see utilities.css).
+  expect(clear.parentElement).toHaveClass("filter-actions", "flex", "items-end", "gap-2");
+  expect(clear.parentElement).not.toHaveClass("flex-wrap");
+  // That cell is the last item of the grid that also holds Search and the filters. The grid has as many columns as the room allows, not as the screen suggests.
   const grid = clear.parentElement!.parentElement!;
-  expect(grid).toHaveClass("md:grid", "lg:grid-cols-3");
+  // User Management's grid: three columns at most (measured on the card), fewer when the room is short.
+  expect(grid).toHaveClass("md:grid", "[grid-template-columns:repeat(auto-fill,minmax(max(15rem,calc((100%-2rem)/3)),1fr))]");
   expect(grid.lastElementChild).toBe(clear.parentElement);
   expect(grid).toContainElement(screen.getByRole("combobox", { name: "Status" }));
   fireEvent.click(clear);

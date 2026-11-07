@@ -68,8 +68,20 @@ public class AuthController {
     }
 
     @PostMapping("/reauthenticate")
-    public ResponseEntity<AuthResponse> reauthenticate(@Valid @RequestBody ReauthenticateRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
-        AuthResponse authResponse = authService.reauthenticate(request, httpRequest);
+    public ResponseEntity<?> reauthenticate(@Valid @RequestBody ReauthenticateRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        Object result = authService.reauthenticate(request, httpRequest);
+        if (result instanceof LoginChallengeResponse challenge) {
+            // The password was right but the account uses a second factor: the session stays locked until the code is given.
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(challenge);
+        }
+        AuthResponse authResponse = (AuthResponse) result;
+        setTokenCookies(httpResponse, authResponse.accessToken(), authResponse.refreshToken(), authResponse.expiresIn());
+        return ResponseEntity.ok(authResponse);
+    }
+
+    @PostMapping("/reauthenticate/mfa")
+    public ResponseEntity<AuthResponse> reauthenticateWithMfa(@Valid @RequestBody VerifyMfaRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        AuthResponse authResponse = authService.verifyReauthenticationMfa(request, httpRequest);
         setTokenCookies(httpResponse, authResponse.accessToken(), authResponse.refreshToken(), authResponse.expiresIn());
         return ResponseEntity.ok(authResponse);
     }

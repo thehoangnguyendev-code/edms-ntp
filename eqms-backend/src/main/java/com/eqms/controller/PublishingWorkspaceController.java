@@ -48,6 +48,13 @@ public class PublishingWorkspaceController {
                 .body(service.getPreviewPdf(id));
     }
 
+    /** Related Documents that keep this revision from publishing together with them; asked before the person signs. */
+    @GetMapping("/related-blockers")
+    public ResponseEntity<java.util.List<com.eqms.dto.publishing.RelatedPublishBlockerResponse>> getRelatedBlockers(@PathVariable UUID id) {
+        requirePublishPermission();
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.relatedPublishBlockers(id));
+    }
+
     @GetMapping("/jobs/{jobId}")
     public ResponseEntity<com.eqms.dto.publishing.PublishingJobStatusResponse> getJobStatus(
             @PathVariable UUID id,@PathVariable UUID jobId) {

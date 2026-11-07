@@ -174,20 +174,7 @@ public class RevisionWorkflowAuthorizationService {
         boolean isReadyForPublishing = "READY_FOR_PUBLISHING".equalsIgnoreCase(currentStatus);
         boolean isEffective          = "EFFECTIVE".equalsIgnoreCase(currentStatus);
 
-        String editingStatus = context == null ? null : context.getString("editingStatus");
-        boolean sourceLocked = context != null && context.getBool("sourceLocked", false);
-
         return switch (action) {
-            case COMPLETE_AUTHORING -> {
-                if (!isDraft) yield stateError(action, revisionId, currentStatus, "DRAFT");
-                if ("COMPLETED".equalsIgnoreCase(editingStatus)) yield WorkflowAuthorizationDecision.denied(
-                        "EDITING_ALREADY_COMPLETED", "Revision editing is already completed.",
-                        null, action, revisionId, currentStatus);
-                if (sourceLocked) yield WorkflowAuthorizationDecision.denied(
-                        "SOURCE_ALREADY_LOCKED", "The revision source is already locked.",
-                        null, action, revisionId, currentStatus);
-                yield null;
-            }
             case OPEN_PUBLISHING_WORKSPACE -> {
                 if (!isReadyForPublishing) yield stateError(action, revisionId, currentStatus, "READY_FOR_PUBLISHING");
                 // A controlled-document template is kept and used as its Word file, never composed into a
@@ -201,11 +188,8 @@ public class RevisionWorkflowAuthorizationService {
                 yield null;
             }
             case SUBMIT_FOR_REVIEW -> {
+                // Submitting is what locks the source: there is no separate "complete editing" step before it.
                 if (!isDraft) yield stateError(action, revisionId, currentStatus, "DRAFT");
-                if (!"COMPLETED".equalsIgnoreCase(editingStatus) || !sourceLocked)
-                    yield WorkflowAuthorizationDecision.denied("EDITING_NOT_COMPLETED",
-                            "Revision editing must be completed and source locked before submitting for review.",
-                            null, action, revisionId, currentStatus);
                 yield null;
             }
             case GENERATE_REVIEW_SNAPSHOT -> {

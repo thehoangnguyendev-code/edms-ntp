@@ -62,6 +62,61 @@ public class ObjectAccessRule {
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
+    /** The Department that owns this rule. Its Department Head manages it; it only ever grants or refuses VIEW of records
+     *  of that Department. NULL: an ordinary rule managed under Security & Authorization. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_department_id")
+    private Department ownerDepartment;
+
+    /** The Business Unit that owns the rule (a share of the whole Unit, made by its Head of Unit). Mutually exclusive with the owner Department. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_business_unit_id")
+    private BusinessUnit ownerBusinessUnit;
+
+    /** Who made the share, by authority at that time (ADMIN, UNIT_HEAD, DEPARTMENT_HEAD, DELEGATE): it decides who may remove it. */
+    @Column(name = "created_authority", length = 20)
+    private String createdAuthority;
+
+    /** Individual users the rule is for, besides Access Profiles. A rule with neither applies to everyone. */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "object_access_rule_users",
+            joinColumns = @JoinColumn(name = "object_access_rule_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id"))
+    @org.hibernate.annotations.BatchSize(size = 50)
+    private Set<UserAccount> granteeUsers = new LinkedHashSet<>();
+
+    /** The rule is for every user of the owner Department (users.department_id = owner). Only for a Department-owned rule. */
+    @Column(name = "grantee_whole_department", nullable = false)
+    private boolean granteeWholeDepartment;
+
+    /** Positions (job titles) the rule is for: every user whose Position is one of them. */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "object_access_rule_positions",
+            joinColumns = @JoinColumn(name = "object_access_rule_id"),
+            inverseJoinColumns = @JoinColumn(name = "position_id"))
+    @org.hibernate.annotations.BatchSize(size = 50)
+    private Set<Position> granteePositions = new LinkedHashSet<>();
+
+    /** The rule is for every user who may open the Knowledge Base. Only for a Department-owned rule. */
+    @Column(name = "grantee_everyone", nullable = false)
+    private boolean granteeEveryone;
+
+    /** Other Departments the rule is for: every user whose Department (foreign key) is one of them. */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "object_access_rule_departments",
+            joinColumns = @JoinColumn(name = "object_access_rule_id"),
+            inverseJoinColumns = @JoinColumn(name = "department_id"))
+    @org.hibernate.annotations.BatchSize(size = 50)
+    private Set<Department> granteeDepartments = new LinkedHashSet<>();
+
+    /** The documents of a rule of the target DOCUMENT (a Department rule that names specific documents). */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "object_access_rule_documents",
+            joinColumns = @JoinColumn(name = "object_access_rule_id"),
+            inverseJoinColumns = @JoinColumn(name = "document_id"))
+    @org.hibernate.annotations.BatchSize(size = 50)
+    private Set<DocumentRecord> documents = new LinkedHashSet<>();
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private UserAccount createdBy;
@@ -113,4 +168,23 @@ public class ObjectAccessRule {
     public void setUpdatedBy(UserAccount updatedBy) { this.updatedBy = updatedBy; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+
+    public BusinessUnit getOwnerBusinessUnit() { return ownerBusinessUnit; }
+    public void setOwnerBusinessUnit(BusinessUnit ownerBusinessUnit) { this.ownerBusinessUnit = ownerBusinessUnit; }
+    public String getCreatedAuthority() { return createdAuthority; }
+    public void setCreatedAuthority(String createdAuthority) { this.createdAuthority = createdAuthority; }
+    public Department getOwnerDepartment() { return ownerDepartment; }
+    public void setOwnerDepartment(Department ownerDepartment) { this.ownerDepartment = ownerDepartment; }
+    public Set<DocumentRecord> getDocuments() { return documents; }
+    public void setDocuments(Set<DocumentRecord> documents) { this.documents = documents; }
+    public boolean isGranteeEveryone() { return granteeEveryone; }
+    public void setGranteeEveryone(boolean granteeEveryone) { this.granteeEveryone = granteeEveryone; }
+    public Set<Department> getGranteeDepartments() { return granteeDepartments; }
+    public void setGranteeDepartments(Set<Department> granteeDepartments) { this.granteeDepartments = granteeDepartments == null ? new LinkedHashSet<>() : new LinkedHashSet<>(granteeDepartments); }
+    public boolean isGranteeWholeDepartment() { return granteeWholeDepartment; }
+    public void setGranteeWholeDepartment(boolean granteeWholeDepartment) { this.granteeWholeDepartment = granteeWholeDepartment; }
+    public Set<Position> getGranteePositions() { return granteePositions; }
+    public void setGranteePositions(Set<Position> granteePositions) { this.granteePositions = granteePositions == null ? new LinkedHashSet<>() : new LinkedHashSet<>(granteePositions); }
+    public Set<UserAccount> getGranteeUsers() { return granteeUsers; }
+    public void setGranteeUsers(Set<UserAccount> granteeUsers) { this.granteeUsers = granteeUsers; }
 }

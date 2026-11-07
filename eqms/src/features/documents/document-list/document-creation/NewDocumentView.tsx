@@ -1,3 +1,4 @@
+import { numberEntryApi } from "@/services/api/numberEntry";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
@@ -625,11 +626,37 @@ export const NewDocumentView: React.FC = () => {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  // Manual numbering (Document Properties > Numbering): AUTO = the server gives the number, MANUAL = the creator types it.
+  const [numberModes, setNumberModes] = useState<{ document: "AUTO" | "MANUAL"; training: "AUTO" | "MANUAL" }>({ document: "AUTO", training: "AUTO" });
+  const [manualDocumentNumber, setManualDocumentNumber] = useState({ value: "", accepted: false });
+  const [manualTrainingNumber, setManualTrainingNumber] = useState({ value: "", accepted: false });
+  const [trainingLinkReload, setTrainingLinkReload] = useState(0);
+  useEffect(() => {
+    const reload = () => setTrainingLinkReload((n) => n + 1);
+    window.addEventListener("eqms:training-number-changed", reload);
+    return () => window.removeEventListener("eqms:training-number-changed", reload);
+  }, []);
+
+  // How the Training Number is given is a Training Properties setting.
+  useEffect(() => {
+    let mounted = true;
+    numberEntryApi
+      .trainingNumberMode()
+      .then((mode) => mounted && setNumberModes((prev) => ({ ...prev, training: mode })))
+      .catch(() => undefined);
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     const loadDocumentSettings = async () => {
       try {
         const documentsConfig = await settingsApi.getDocumentsOperationalConfig();
+        if (mounted) {
+          setNumberModes((prev) => ({ ...prev, document: documentsConfig?.documentNumberEntryMode === "MANUAL" ? "MANUAL" : "AUTO" }));
+        }
         const maxSize = Number(documentsConfig?.maxFileSizeMB);
         if (mounted && Number.isFinite(maxSize) && maxSize > 0) {
           setMaxRevisionFileSizeMB(maxSize);
@@ -732,7 +759,7 @@ export const NewDocumentView: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [documentId, lastSavedPayload]);
+  }, [documentId, lastSavedPayload, trainingLinkReload]);
   const [auditTrailRows, setAuditTrailRows] = useState<any[]>([]);
 
   const getPayload = () => {
@@ -1573,6 +1600,32 @@ export const NewDocumentView: React.FC = () => {
       });
       return false;
     }
+    // Typed numbers (manual numbering): the server checks them again, but a number the screen already knows is refused is not sent.
+    const typesDocumentNumber = !documentId && numberModes.document === "MANUAL";
+    const hasTrainingNumber = Boolean(trainingLink?.trainingNumber) && trainingLink?.status !== "CANCELLED";
+    const typesTrainingNumber = numberModes.training === "MANUAL" && !formData.isTemplate && trainingConfig.isRequired && !hasTrainingNumber;
+    if (typesDocumentNumber && !manualDocumentNumber.accepted) {
+      setShowSaveModal(false);
+      setActiveTab("general");
+      showToast({
+        type: "warning",
+        title: "Document Number",
+        message: "Enter a valid Document Number that is not already used before saving.",
+        duration: 4000,
+      });
+      return false;
+    }
+    if (typesTrainingNumber && !manualTrainingNumber.accepted) {
+      setShowSaveModal(false);
+      setActiveTab("training");
+      showToast({
+        type: "warning",
+        title: "Training Number",
+        message: "Enter a valid Training Number that is not already used before saving.",
+        duration: 4000,
+      });
+      return false;
+    }
     if (action === "save") {
       setShowSaveModal(false);
     }
@@ -1630,6 +1683,8 @@ export const NewDocumentView: React.FC = () => {
           : {}),
         relatedDocumentIds: relationshipDocs.map((doc) => String(doc.id)).filter(Boolean),
         correlatedDocumentIds: correlatedDocuments.map((doc) => String(doc.id)).filter(Boolean),
+        manualDocumentNumber: typesDocumentNumber ? manualDocumentNumber.value : undefined,
+        manualTrainingNumber: typesTrainingNumber ? manualTrainingNumber.value : undefined,
       };
 
       if (documentId && lastSavedPayload && isPayloadEqual(payload, lastSavedPayload)) {
@@ -2097,6 +2152,11 @@ export const NewDocumentView: React.FC = () => {
               canManageTemplates={canManageTemplates}
               suggestedDocumentCode={suggestedDocumentCode}
               documentNumber={documentNumber}
+              numberEntryMode={numberModes.document}
+              documentTypeId={resolveLookupValue(formData.type, documentTypeLookupOptions) || undefined}
+              documentId={documentId}
+              onManualNumberChange={(value, accepted) => setManualDocumentNumber({ value, accepted })}
+              onDocumentNumberChanged={(newNumber) => setDocumentNumber(newNumber)}
               createdDateTime={createdDateTime}
               openedBy={openedBy}
               authorOptions={workflowUsers.map(toSelectOption)}
@@ -2131,6 +2191,9 @@ export const NewDocumentView: React.FC = () => {
               data={trainingConfig}
               onChange={setTrainingConfig}
               trainingLink={trainingLink}
+              numberEntryMode={numberModes.training}
+              departmentId={resolveLookupValue(formData.department, departmentOptions) || undefined}
+              onManualNumberChange={(value, accepted) => setManualTrainingNumber({ value, accepted })}
               documentId={documentId}
               pendingParticipants={pendingParticipants}
               onPendingParticipantsChange={setPendingParticipants}
@@ -2548,7 +2611,9 @@ export const NewDocumentView: React.FC = () => {
         title={saveAction === "next-step" ? "Save & Proceed to Next Step?" : "Save Document?"}
         description={
           saveAction === "next-step"
-            ? "This will create the document and generate Document Number. You can then add Reviewers and Approvers."
+            ? (numberModes.document === "MANUAL"
+              ? "This will create the document with the Document Number you typed. You can then add Reviewers and Approvers."
+              : "This will create the document and generate Document Number. You can then add Reviewers and Approvers.")
             : "Are you sure you want to save this document?"
         }
         confirmText={saveAction === "next-step" ? "Save & Next" : "Save"}

@@ -195,10 +195,10 @@ class WorkflowActionPolicyMultiWorkflowTest {
     // ── Validation — Revision (unchanged) ────────────────────────────────────
 
     @Test
-    void revisionPolicy_authorAllowedForCompleteAuthoring() {
+    void revisionPolicy_authorAllowedForUploadSource() {
         service.validateActors(
                 List.of(new WorkflowActionPolicyActorRequest(WorkflowActorType.AUTHOR, null)),
-                "DOCUMENT_REVISION", "COMPLETE_AUTHORING", "documents.revision.complete_authoring");
+                "DOCUMENT_REVISION", "UPLOAD_SOURCE", "documents.revision.upload_source");
     }
 
     @Test

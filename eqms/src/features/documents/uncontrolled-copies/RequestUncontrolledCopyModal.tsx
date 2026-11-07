@@ -15,6 +15,12 @@ import {
 } from "@/services/api/uncontrolledCopy";
 import { UncontrolledCopyMarkingPreview } from "./UncontrolledCopyMarkingPreview";
 
+/** The document part of the number of an Uncontrolled Copy, as the server writes it: cut at every dot, dash, underscore or space, an EXT part left out, joined with dots (SOP-0007 gives SOP.0007). */
+export const uncontrolledCopyBaseCode = (documentNumber?: string | null) => {
+  const parts = (documentNumber ?? "").trim().split(/[.\-_\s]+/).filter((part) => part && part.toUpperCase() !== "EXT");
+  return parts.length ? parts.join(".") : "DOC";
+};
+
 const FIELD_INPUT =
   "w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 disabled:text-slate-500";
 
@@ -310,7 +316,7 @@ export const RequestUncontrolledCopyModal: React.FC<{
                 marking={context.marking}
                 mandatoryText={context.mandatoryWatermarkText}
                 recipientLabel={previewRecipientLabel}
-                copyNumberLabel={`UC-${context.documentNumber ?? "DOC"}-###`}
+                copyNumberLabel={`UCC.${uncontrolledCopyBaseCode(context.documentNumber)}.###`}
               />
             ) : (
               <div className="flex h-full min-h-[200px] items-center justify-center rounded-xl border border-dashed border-slate-200 p-4 text-center text-xs text-slate-400">

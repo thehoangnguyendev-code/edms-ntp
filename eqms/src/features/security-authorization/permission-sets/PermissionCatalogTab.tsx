@@ -182,7 +182,7 @@ export const PermissionCatalogTab: React.FC = () => {
           </div>
         </div>
         <Select label="Module" value={moduleFilter} onChange={setModuleFilter} options={moduleOptions} />
-        <div className="flex items-end gap-2">
+        <div className="filter-actions flex items-end gap-2">
           <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
           {catalogControl}
         </div>

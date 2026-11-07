@@ -187,6 +187,7 @@ public class SystemConfigurationService {
                 : onlyOfficeConfigurationService.mergeGeneralConfigForStorage(request.general(), config.getGeneralConfig());
         validateDesktopFilterConfig(nextGeneral);
         validateAlternatingRecordColors(nextGeneral);
+        validateMenuColors(nextGeneral);
         validateTableColumnDividers(nextGeneral);
         validatePageBackgrounds(nextGeneral);
         JsonNode videoBackground = nextGeneral.path("appearance").path("authBackground");
@@ -194,10 +195,12 @@ public class SystemConfigurationService {
         validateToastPosition(nextGeneral);
         validateToastDuration(nextGeneral);
         validateTrainingMaterialsLayout(nextGeneral);
+        validateKnowledgeFolderNames(nextGeneral);
         validateSystemHeaderTitle(nextGeneral);
         validateFooter(nextGeneral);
         PwaBrandingService.validate(nextGeneral);
         ImageWatermarkService.validate(nextGeneral);
+        OnlyOfficeConfigurationService.validateViewerSettings(nextGeneral);
         nextGeneral = withDisplayFormat(nextGeneral);
         config.setGeneralConfig(nextGeneral);
         config.setSecurityConfig(defaultIfNull(request.security(), config.getSecurityConfig()));
@@ -364,16 +367,19 @@ public class SystemConfigurationService {
                         ? textValue(appearance, "systemSidebarCollapsedLogo")
                         : textValue(general, "systemSidebarCollapsedLogo"),
                 appearance != null && appearance.path("showSidebarUserProfile").asBoolean(false),
-                appearance != null && appearance.path("knowledgeExplorerEnabled").asBoolean(false),
                 appearance != null && appearance.path("compactDesktopFilters").asBoolean(false),
                 appearance != null && appearance.path("alternatingRecordColors").asBoolean(false),
                 alternatingRecordColor(appearance),
                 appearance != null && appearance.path("tableColumnDividers").asBoolean(false),
                 publicPageBackground(appearance, "mainBackground"),
                 publicPageBackground(appearance, "authBackground"),
+                publicPageBackground(appearance, "knowledgeBackground"),
                 toastPosition(appearance),
                 toastDurationSeconds(appearance),
                 trainingMaterialsLayout(appearance),
+                knowledgeFolderNames(appearance),
+                knowledgeSidebarFolderNames(appearance),
+                appearance == null || appearance.path("knowledgeOpenInNewTab").asBoolean(true),
                 textValue(general, "systemFavicon"),
                 textValue(general, "systemFooterLeft"),
                 textValue(general, "systemFooterRight"),
@@ -382,7 +388,9 @@ public class SystemConfigurationService {
                 systemHeaderTitle(general),
                 readStringMap(general == null ? null : general.get("navigationLabelOverrides")),
                 pwaBranding.hasCustomIcon(pwaSource(general)) ? pwaBranding.version(pwaSource(general)) : "",
-                blankToNull(textValue(general, PwaBrandingService.SHORT_NAME_FIELD))
+                blankToNull(textValue(general, PwaBrandingService.SHORT_NAME_FIELD)),
+                optionalHexColor(appearance, "menuTextColor"),
+                optionalHexColor(appearance, "menuIconColor")
         );
     }
 
@@ -490,6 +498,31 @@ public class SystemConfigurationService {
         return value != null && TRAINING_MATERIALS_LAYOUTS.contains(value) ? value : DEFAULT_TRAINING_MATERIALS_LAYOUT;
     }
 
+    /** Machine values only; the admin UI owns the labels. Missing or unknown values fall back to the full name. */
+    static final java.util.Set<String> KNOWLEDGE_FOLDER_NAMES = java.util.Set.of("FULL", "ABBREVIATION");
+    static final String DEFAULT_KNOWLEDGE_FOLDER_NAMES = "FULL";
+
+    String knowledgeFolderNames(JsonNode appearance) {
+        String value = appearance == null ? null : textValue(appearance, "knowledgeFolderNames");
+        return value != null && KNOWLEDGE_FOLDER_NAMES.contains(value) ? value : DEFAULT_KNOWLEDGE_FOLDER_NAMES;
+    }
+
+    /** The sidebar has its own choice; until the administrator makes it, it names the folders as the layout does. */
+    String knowledgeSidebarFolderNames(JsonNode appearance) {
+        String value = appearance == null ? null : textValue(appearance, "knowledgeSidebarFolderNames");
+        return value != null && KNOWLEDGE_FOLDER_NAMES.contains(value) ? value : knowledgeFolderNames(appearance);
+    }
+
+    static void validateKnowledgeFolderNames(JsonNode general) {
+        JsonNode appearance = general == null ? null : general.get("appearance");
+        for (String field : new String[] {"knowledgeFolderNames", "knowledgeSidebarFolderNames"}) {
+            JsonNode names = appearance == null ? null : appearance.get(field);
+            if (names != null && !names.isNull() && (!names.isTextual() || !KNOWLEDGE_FOLDER_NAMES.contains(names.asText()))) {
+                throw new IllegalArgumentException(field + " must be one of " + KNOWLEDGE_FOLDER_NAMES);
+            }
+        }
+    }
+
     static void validateTrainingMaterialsLayout(JsonNode general) {
         JsonNode appearance = general == null ? null : general.get("appearance");
         JsonNode layout = appearance == null ? null : appearance.get("trainingMaterialsLayout");
@@ -511,6 +544,24 @@ public class SystemConfigurationService {
         JsonNode compact = appearance == null ? null : appearance.get("compactDesktopFilters");
         if (compact != null && !compact.isBoolean()) {
             throw new IllegalArgumentException("compactDesktopFilters must be true or false");
+        }
+    }
+
+    /** A colour the administrator chose as "#RRGGBB", or null when the field is missing, empty or not a colour (the built-in colour is then used). */
+    static String optionalHexColor(JsonNode appearance, String field) {
+        JsonNode color = appearance == null ? null : appearance.get(field);
+        return color != null && color.isTextual() && color.asText().matches("^#[0-9a-fA-F]{6}$") ? color.asText() : null;
+    }
+
+    /** menuTextColor and menuIconColor (Appearance > Dropdown Menus): empty (use the built-in colour) or a six-digit hex colour. */
+    static void validateMenuColors(JsonNode general) {
+        JsonNode appearance = general == null ? null : general.get("appearance");
+        for (String field : new String[] {"menuTextColor", "menuIconColor"}) {
+            JsonNode color = appearance == null ? null : appearance.get(field);
+            if (color == null || color.isNull()) continue;
+            if (!color.isTextual() || (!color.asText().isEmpty() && !color.asText().matches("^#[0-9a-fA-F]{6}$"))) {
+                throw new IllegalArgumentException(field + " must be empty or a six-digit hex color");
+            }
         }
     }
 
@@ -555,6 +606,7 @@ public class SystemConfigurationService {
         JsonNode appearance = general == null ? null : general.get("appearance");
         validatePageBackground(appearance == null ? null : appearance.get("mainBackground"), "mainBackground");
         validatePageBackground(appearance == null ? null : appearance.get("authBackground"), "authBackground");
+        validatePageBackground(appearance == null ? null : appearance.get("knowledgeBackground"), "knowledgeBackground");
     }
 
     private static void validatePageBackground(JsonNode value, String field) {
@@ -693,6 +745,18 @@ public class SystemConfigurationService {
         return digits >= 1 && digits <= 9 ? digits : 4;
     }
 
+    /** How a Document Number is given (Document Properties): "AUTO" (the system generates it, the default) or "MANUAL" (the creator types it). */
+    @Transactional(readOnly = true)
+    public String getDocumentNumberEntryMode() {
+        return entryMode("documentNumberEntryMode");
+    }
+
+    private String entryMode(String key) {
+        JsonNode documents = requireConfiguration().getDocumentsConfig();
+        JsonNode value = documents == null ? null : documents.get(key);
+        return value != null && value.isTextual() && "MANUAL".equals(value.asText()) ? "MANUAL" : "AUTO";
+    }
+
     /**
      * The 4 Document Master participant roles -- one independent on/off setting each (Document
      * Properties > Protection & Distribution) -- whose REMOVED holder keeps read-only visibility of
@@ -768,6 +832,17 @@ public class SystemConfigurationService {
     /** Every holder of the base view permission sees every record. */
     public static final String DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION = "ALL_WITH_VIEW_PERMISSION";
 
+    /** Knowledge Base visibility (a separate setting from Record Visibility): a user sees the Effective documents of their own Department (the default). */
+    public static final String KNOWLEDGE_VISIBILITY_OWN_DEPARTMENT = "OWN_DEPARTMENT";
+    /** Knowledge Base visibility: a user sees the Effective documents of every Department of the Business Unit their own Department belongs to. */
+    public static final String KNOWLEDGE_VISIBILITY_OWN_BUSINESS_UNIT = "OWN_BUSINESS_UNIT";
+    /** Knowledge Base visibility: a user sees the Effective documents of the whole system. */
+    public static final String KNOWLEDGE_VISIBILITY_ALL = "ALL";
+    /** Knowledge Base visibility: a user sees only what the Department Head of a document's Department shared with them. Closed by default. */
+    public static final String KNOWLEDGE_VISIBILITY_SHARING = "SHARING";
+    static final java.util.Set<String> KNOWLEDGE_VISIBILITY_MODES = java.util.Set.of(
+            KNOWLEDGE_VISIBILITY_OWN_DEPARTMENT, KNOWLEDGE_VISIBILITY_OWN_BUSINESS_UNIT, KNOWLEDGE_VISIBILITY_ALL, KNOWLEDGE_VISIBILITY_SHARING);
+
     /**
      * Record visibility mode for Document Control. Missing, blank or unrecognised values resolve to
      * PARTICIPANTS_ONLY, the restrictive default, so a corrupt value can never widen access.
@@ -781,6 +856,19 @@ public class SystemConfigurationService {
             return DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION;
         }
         return DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY;
+    }
+
+    /**
+     * How the Knowledge Base decides who sees a document: OWN_DEPARTMENT (the default, today's behaviour), OWN_BUSINESS_UNIT (the whole Business Unit
+     * of the user), ALL (every Effective document) or SHARING (what the Heads shared). Only SHARING has anything to share: in the others the
+     * Share menu does not exist. A missing or unknown value is OWN_DEPARTMENT.
+     */
+    @Transactional(readOnly = true)
+    public String getKnowledgeVisibilityMode() {
+        JsonNode documents = requireConfiguration().getDocumentsConfig();
+        JsonNode value = documents == null ? null : documents.get("knowledgeVisibilityMode");
+        return value != null && value.isTextual() && KNOWLEDGE_VISIBILITY_MODES.contains(value.asText())
+                ? value.asText() : KNOWLEDGE_VISIBILITY_OWN_DEPARTMENT;
     }
 
     public static final String EFFECTIVE_DATE_AFTER_APPROVAL = "AFTER_APPROVAL";
@@ -1361,8 +1449,7 @@ public class SystemConfigurationService {
                 "compactMode": false,
                 "showBreadcrumbs": true,
                 "sidebarDefaultCollapsed": false,
-                "animationsEnabled": true,
-                "knowledgeExplorerEnabled": false
+                "animationsEnabled": true
               }
             }
             """));
@@ -1653,6 +1740,11 @@ public class SystemConfigurationService {
                 && !java.util.Set.of(EFFECTIVE_DATE_AFTER_APPROVAL, EFFECTIVE_DATE_AFTER_PUBLISH).contains(basisNotRequired.asText())) {
             throw new IllegalArgumentException("Effective Date basis (Non-Required Training) must be AFTER_APPROVAL or AFTER_PUBLISH");
         }
+        JsonNode entryMode = documents.get("documentNumberEntryMode");
+        if (entryMode != null && !entryMode.isNull()
+                && (!entryMode.isTextual() || !java.util.Set.of("AUTO", "MANUAL").contains(entryMode.asText()))) {
+            throw new IllegalArgumentException("Number entry mode must be AUTO or MANUAL");
+        }
         JsonNode seed = documents.get("revisionNumberSeed");
         if (seed != null && !seed.isNull() && !java.util.Set.of("0.0.1", "0.1").contains(seed.asText())) {
             throw new IllegalArgumentException("Revision number seed must be 0.0.1 or 0.1");
@@ -1663,6 +1755,11 @@ public class SystemConfigurationService {
                         DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY, DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION)
                         .contains(visibilityMode.asText()))) {
             throw new IllegalArgumentException("Record visibility must be PARTICIPANTS_ONLY or ALL_WITH_VIEW_PERMISSION");
+        }
+        JsonNode knowledgeMode = documents.get("knowledgeVisibilityMode");
+        if (knowledgeMode != null && !knowledgeMode.isNull()
+                && (!knowledgeMode.isTextual() || !KNOWLEDGE_VISIBILITY_MODES.contains(knowledgeMode.asText()))) {
+            throw new IllegalArgumentException("Knowledge Base visibility must be one of " + new java.util.TreeSet<>(KNOWLEDGE_VISIBILITY_MODES));
         }
         for (String flag : java.util.List.of("enableWatermark", "allowDownload", "parallelReviewEnabled", "parallelApprovalEnabled",
                 "retainVisibilityForRemovedAuthor", "retainVisibilityForRemovedCoAuthor",
@@ -1692,6 +1789,10 @@ public class SystemConfigurationService {
             if (strength != null && !strength.isNull()
                     && (!strength.isTextual() || !java.util.Set.of("light", "standard", "strong").contains(strength.asText()))) {
                 throw new IllegalArgumentException("PDF preview watermark strength must be light, standard, or strong");
+            }
+            JsonNode angle = pdfPreview.get("watermarkAngle");
+            if (angle != null && !angle.isNull() && (!angle.isInt() || angle.asInt() < -90 || angle.asInt() > 90)) {
+                throw new IllegalArgumentException("PDF preview watermark angle must be a whole number of degrees from -90 to 90");
             }
             JsonNode color = pdfPreview.get("watermarkColor");
             if (color != null && !color.isNull() && (!color.isTextual() || !color.asText().matches("^#[0-9A-Fa-f]{6}$"))) {

@@ -11,21 +11,31 @@ export interface PublicBranding {
   compactDesktopFilters?: boolean;
   alternatingRecordColors?: boolean;
   alternatingRecordColor?: string;
+  /** "#RRGGBB" colours of the text and icons of dropdown menu items; null or missing: built-in colours. */
+  menuTextColor?: string | null;
+  menuIconColor?: string | null;
   tableColumnDividers?: boolean;
   mainBackground?: PageBackground | null;
   authBackground?: PageBackground | null;
+  /** Background of the Knowledge Base explorer: a colour or a gradient. */
+  knowledgeBackground?: PageBackground | null;
   /** Machine value: center | top-right | top-left | bottom-right | bottom-left. */
   toastPosition?: 'center' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
   /** How long a system message stays on screen, in seconds (2 to 60). */
   toastDurationSeconds?: number;
   /** How the materials of a training are drawn: TABLE (default) or TILES. Chosen by the administrator. */
   trainingMaterialsLayout?: 'TABLE' | 'TILES';
+  /** How the folders of the Knowledge Base are named: FULL (the name, default) or ABBREVIATION. Chosen by the administrator. */
+  knowledgeFolderNames?: 'FULL' | 'ABBREVIATION';
+  /** How the folders are named in the sidebar of the Knowledge Base (follows knowledgeFolderNames until the administrator chooses). */
+  knowledgeSidebarFolderNames?: 'FULL' | 'ABBREVIATION';
+  /** The Knowledge Base menu opens the Explorer in a new browser tab (true, also when nothing was set) or in the current tab. */
+  knowledgeOpenInNewTab?: boolean;
   systemDisplayName: string;
   systemLogo: string;
   systemSidebarCollapsedLogo?: string;
   showSidebarUserProfile?: boolean;
   /** Administrator switch: the Knowledge Base menu opens the explorer experience in a new tab. */
-  knowledgeExplorerEnabled?: boolean;
   systemFavicon: string;
   systemFooterLeft?: string | null;
   systemFooterRight?: string | null;

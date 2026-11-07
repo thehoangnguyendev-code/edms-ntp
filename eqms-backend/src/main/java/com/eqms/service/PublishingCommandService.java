@@ -51,7 +51,7 @@ public class PublishingCommandService {
                 org.springframework.util.StringUtils.hasText(request.changeSummary()) ? request.changeSummary() : request.reason())) {
             throw new IllegalArgumentException("Signing reason is required");
         }
-        var bundle = store.publishBundle(revisions.capturePublishConfirmationBundle(revisionId, actor));
+        var bundle = store.publishBundle(revisions.capturePublishConfirmationBundle(revisionId, actor, Boolean.TRUE.equals(request.forcePublishRelated())));
         String binding = store.contentBinding(revisionId);
         UUID confirmationId = signatures.requireAndConsume(request.signatureToken(), actor);
         consumedTokens.flush(); // Materialize the nonce before the command FK is inserted through JDBC.
@@ -110,16 +110,17 @@ public class PublishingCommandService {
                 jobs.markCompleted(jobId,"Publishing workspace preview generated successfully.");
                 return true;
             }
-            var bundle = store.publishBundle(revisions.capturePublishConfirmationBundle(revisionId, actor));
+            var request = mapper.readValue(row.get("payload").toString(), PublishingWorkspaceRequest.class);
+            boolean forceRelated = Boolean.TRUE.equals(request.forcePublishRelated());
+            var bundle = store.publishBundle(revisions.capturePublishConfirmationBundle(revisionId, actor, forceRelated));
             if (!mapper.readTree(row.get("bundle").toString()).equals(mapper.readTree(store.json(bundle)))
                     || !row.get("content_binding").equals(store.contentBinding(revisionId))) {
                 throw new IllegalStateException("PUBLISH_CONFIRMATION_STALE: content changed; confirm and sign again");
             }
-            var request = mapper.readValue(row.get("payload").toString(), PublishingWorkspaceRequest.class);
             Instant confirmedAt = ((java.sql.Timestamp)row.get("confirmed_at")).toInstant();
             Map<String,String> context=mapper.readValue(row.get("confirmation_context").toString(),
                     mapper.getTypeFactory().constructMapType(Map.class,String.class,String.class));
-            var confirmation = new ConfirmedPublishAuthorization((UUID)row.get("confirmation_id"), userId, confirmedAt, bundle.keySet(),context);
+            var confirmation = new ConfirmedPublishAuthorization((UUID)row.get("confirmation_id"), userId, confirmedAt, bundle.keySet(),context,forceRelated);
             jobs.markProcessing(jobId, "Executing confirmed publishing command");
             workspace.completeConfirmedPublish(revisionId, request, userId, confirmation);
             jobs.markCompleted(jobId, "Publishing completed successfully.");

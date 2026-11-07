@@ -23,6 +23,7 @@ RUN apt-get update \
         ffmpeg \
         fontconfig \
         fonts-dejavu-core \
+        fonts-liberation \
         tzdata \
     && rm -rf /var/lib/apt/lists/*
 

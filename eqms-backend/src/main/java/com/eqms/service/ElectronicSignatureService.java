@@ -361,6 +361,13 @@ public class ElectronicSignatureService {
             ElectronicSignature signature = signatureRepository
                     .findFirstByRevision_IdAndMeaningIgnoreCaseAndStatusOrderBySignedAtDesc(revisionId, meaning, "SIGNED")
                     .orElse(null);
+            if (signature == null && "PREPARED".equals(meaning)) {
+                // Complete Editing, which recorded PREPARED, no longer exists: the Author's Submit for Review signature is the
+                // "prepared" signature of a revision that has no PREPARED one. A revision that has one keeps printing it.
+                signature = signatureRepository
+                        .findFirstByRevision_IdAndMeaningIgnoreCaseAndStatusOrderBySignedAtDesc(revisionId, "SUBMITTED_FOR_REVIEW", "SIGNED")
+                        .orElse(null);
+            }
             if (signature == null) {
                 signature = syntheticSignatureFromParticipant(
                         firstParticipantForMeaning(revision, meaning),

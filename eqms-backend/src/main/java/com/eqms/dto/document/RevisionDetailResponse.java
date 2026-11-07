@@ -90,7 +90,6 @@ public record RevisionDetailResponse(
         List<RevisionHistoryResponse> history,
         List<SignatureResponse> signatures,
         boolean canEditFileOnline,
-        boolean canCompleteEditing,
         boolean canOpenPublishingWorkspace,
         boolean canReviewRevision,
         boolean canApproveRevision,

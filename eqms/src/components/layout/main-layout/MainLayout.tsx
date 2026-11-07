@@ -176,24 +176,24 @@ const MainLayoutContent: React.FC = () => {
 
     const hydrateSecurityConfig = async () => {
       try {
-        let config: Record<string, any>;
+        // The app reads only the operational Documents policy (PDF preview options, download/print) and the session timeout from this
+        // cache, so everyone loads just those two small sections. The full configuration carries the logos and backgrounds as images
+        // (over half a megabyte) and is read by the Configuration screen alone.
+        const documents = await settingsApi.getDocumentsOperationalConfig();
+        const security = await settingsApi.getSecurityConfiguration().catch(() => undefined);
+        let cached: Record<string, any> = {};
         try {
-          // Only people who hold the Settings > Configuration permission may read the full configuration; everyone else reads the session timeout alone.
-          if (!(user?.permissions ?? []).includes('settings.configuration.view')) throw new Error('no configuration access');
-          config = await settingsApi.getSystemConfiguration();
+          cached = JSON.parse(window.localStorage.getItem(SECURITY_CONFIG_STORAGE_KEY) || '{}');
         } catch {
-          // Users without Settings > Configuration access still need the operational Documents policy
-          // (PDF preview options, download/print) -- keep the last cached sections and refresh only that one.
-          const documents = await settingsApi.getDocumentsOperationalConfig();
-          const security = await settingsApi.getSecurityConfiguration().catch(() => undefined);
-          let cached: Record<string, any> = {};
-          try {
-            cached = JSON.parse(window.localStorage.getItem(SECURITY_CONFIG_STORAGE_KEY) || '{}');
-          } catch {
-            cached = {};
-          }
-          config = { ...cached, documents, ...(security ? { security: { ...(cached.security ?? {}), sessionTimeoutMinutes: security.sessionTimeoutMinutes, sessionTimeoutEnabled: security.sessionTimeoutEnabled } } : {}) };
+          cached = {};
         }
+        const config: Record<string, any> = {
+          documents,
+          security: {
+            ...(cached.security ?? {}),
+            ...(security ? { sessionTimeoutMinutes: security.sessionTimeoutMinutes, sessionTimeoutEnabled: security.sessionTimeoutEnabled } : {}),
+          },
+        };
         if (!isActive) {
           return;
         }
@@ -218,7 +218,7 @@ const MainLayoutContent: React.FC = () => {
       document.removeEventListener('visibilitychange', refreshOnVisible);
       window.clearInterval(refreshTimer);
     };
-  }, [isAuthenticated, user?.permissions]);
+  }, [isAuthenticated]);
 
   const sendHeartbeat = useCallback(async (force = false) => {
     if (!isAuthenticated || sessionLockedRef.current) {

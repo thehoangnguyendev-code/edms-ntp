@@ -739,7 +739,7 @@ export const AccessProfileListView: React.FC = () => {
                 placeholder="Select last updated range"
               />
             </div>
-            <div className="flex items-end gap-2">
+            <div className="filter-actions flex items-end gap-2">
               <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
               {profileControl}
             </div>

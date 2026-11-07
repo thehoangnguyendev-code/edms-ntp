@@ -10,6 +10,10 @@ public record BusinessUnitDictionaryResponse(
         boolean isActive,
         String createdDate,
         String modifiedDate,
-        long departmentCount
+        long departmentCount,
+        UUID headOfUnitId,
+        String headOfUnitName,
+        String headOfUnitEmployeeCode,
+        String iconColor
 ) {
 }

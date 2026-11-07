@@ -96,8 +96,11 @@ const buildRevisionColumns = <T extends RevisionRow>(options: RevisionColumnOpti
         ? undefined
         : { direction: sortConfig.key === column.id ? sortConfig.direction : undefined, onSort: () => onSort(column.id) },
       cell: (item, index) =>
-        column.id === "documentNumber" && onViewItem ? (
-          <span className="cursor-pointer hover:underline" onClick={() => onViewItem(item.id)}>
+        (column.id === "documentNumber" || column.id === "revisionNumber") && onViewItem ? (
+          <span
+            className={cn("cursor-pointer hover:underline", column.id === "revisionNumber" && "font-medium text-emerald-600")}
+            onClick={() => onViewItem(item.id)}
+          >
             {renderCell(column, item, index)}
           </span>
         ) : (
@@ -148,7 +151,7 @@ interface RevisionTableViewProps<
   onSort: (key: string) => void;
   onPageChange: (page: number) => void;
   onItemsPerPageChange?: (itemsPerPage: number) => void;
-  onMenuAction: (action: string, id: string) => void;
+  onMenuAction?: (action: string, id: string) => void;
 
   // Customization
   renderCell: (column: TableColumn, item: T, index: number) => React.ReactNode;
@@ -198,7 +201,6 @@ const RevisionTableViewInner = <
     onSort,
     onPageChange,
     onItemsPerPageChange,
-    onMenuAction,
     renderCell,
     getMenuActions,
     shouldShowExpandIcon,

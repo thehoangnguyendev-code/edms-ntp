@@ -36,6 +36,10 @@ public final class PreviewWatermark {
     static final String DEFAULT_TEXT = "FOR PREVIEW ONLY";
     static final String DEFAULT_COLOR = "#B3B3F5";
     static final int MAX_TEXT = 120;
+    /** The turn of the watermark, in degrees counter-clockwise from the line of the page (0 = along the page, 45 = rising to the right, as it has always been drawn). */
+    static final int DEFAULT_ANGLE = 45;
+    static final int MIN_ANGLE = -90;
+    static final int MAX_ANGLE = 90;
     private static final ZoneId SYSTEM_ZONE = DateTimeFormatUtils.ZONE;
     private static final DateTimeFormatter OPENED_AT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(SYSTEM_ZONE);
 
@@ -58,6 +62,15 @@ public final class PreviewWatermark {
             case "strong" -> 0.30f;
             default -> 0.18f;
         };
+    }
+
+    /** The angle of the setting, kept within the range the screen offers; a missing or non-numeric value is the default, so a bad setting never stops a preview from opening. */
+    static int angleFor(JsonNode policy) {
+        JsonNode value = policy.path("watermarkAngle");
+        if (!value.isNumber()) {
+            return DEFAULT_ANGLE;
+        }
+        return (int) Math.max(MIN_ANGLE, Math.min(MAX_ANGLE, Math.round(value.asDouble())));
     }
 
     /**
@@ -112,6 +125,7 @@ public final class PreviewWatermark {
         float alpha = alphaFor(policy.path("watermarkStrength").asText("standard"));
         float[] colour = rgbFor(policy.path("watermarkColor").asText(DEFAULT_COLOR));
         boolean tiled = policy.path("watermarkTiled").asBoolean(false);
+        int angle = angleFor(policy);
         try (PDDocument pdf = Loader.loadPDF(pdfBytes); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             PDType1Font mainFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
             for (PDPage page : pdf.getPages()) {
@@ -129,9 +143,9 @@ public final class PreviewWatermark {
                     contentStream.setGraphicsStateParameters(graphicsState);
                     contentStream.setNonStrokingColor(colour[0], colour[1], colour[2]);
                     if (tiled) {
-                        drawGrid(contentStream, mainFont, lines, pageSize);
+                        drawGrid(contentStream, mainFont, lines, pageSize, angle);
                     } else {
-                        drawBlock(contentStream, mainFont, lines, pageSize.getWidth() / 2f, pageSize.getHeight() / 2f, SINGLE_SIZE);
+                        drawBlock(contentStream, mainFont, lines, pageSize.getWidth() / 2f, pageSize.getHeight() / 2f, SINGLE_SIZE, angle);
                     }
                 }
             }
@@ -141,12 +155,12 @@ public final class PreviewWatermark {
     }
 
     /**
-     * Repeats the block on a lattice that is turned by the same 45 degrees as the text: the copies sit in straight rows that run
+     * Repeats the block on a lattice that is turned by the same angle as the text: the copies sit in straight rows that run
      * along the text, so every row is parallel and the spacing is even across the page.
      */
-    private static void drawGrid(PDPageContentStream contentStream, PDType1Font font, List<String> lines, PDRectangle pageSize) throws IOException {
-        double cos = Math.cos(Math.toRadians(45));
-        double sin = Math.sin(Math.toRadians(45));
+    private static void drawGrid(PDPageContentStream contentStream, PDType1Font font, List<String> lines, PDRectangle pageSize, int angle) throws IOException {
+        double cos = Math.cos(Math.toRadians(angle));
+        double sin = Math.sin(Math.toRadians(angle));
         double centreX = pageSize.getWidth() / 2d;
         double centreY = pageSize.getHeight() / 2d;
         // Along the text, and across the rows (perpendicular to it).
@@ -162,18 +176,18 @@ public final class PreviewWatermark {
                 if (x < -EDGE || x > pageSize.getWidth() + EDGE || y < -EDGE || y > pageSize.getHeight() + EDGE) {
                     continue;
                 }
-                drawBlock(contentStream, font, lines, (float) x, (float) y, TILE_SIZE);
+                drawBlock(contentStream, font, lines, (float) x, (float) y, TILE_SIZE, angle);
             }
         }
     }
 
     /**
-     * One copy of the block, turned 45 degrees about its centre. Every line is placed on its own, at an absolute position in the
+     * One copy of the block, turned by the angle about its centre. Every line is placed on its own, at an absolute position in the
      * turned frame, so each line is centred on the same axis rather than drifting by the offset of the lines above it.
      */
-    private static void drawBlock(PDPageContentStream contentStream, PDType1Font font, List<String> lines, float centreX, float centreY, float mainSize) throws IOException {
-        double cos = Math.cos(Math.toRadians(45));
-        double sin = Math.sin(Math.toRadians(45));
+    private static void drawBlock(PDPageContentStream contentStream, PDType1Font font, List<String> lines, float centreX, float centreY, float mainSize, int angle) throws IOException {
+        double cos = Math.cos(Math.toRadians(angle));
+        double sin = Math.sin(Math.toRadians(angle));
         float detailSize = detailSizeFor(mainSize);
         float lineGap = detailSize * 1.5f;
         // Local (along the text, across it) position of each line; the block's centre is the origin.

@@ -18,6 +18,16 @@ public final class KnowledgePortalDtos {
     public record PortalDocument(KnowledgeBaseDocumentResponse document, long views, long helpfulVotes,
                                  boolean featured, Boolean myFeedback, Long sizeBytes, String myLastOpenedAt) {}
 
+    /** One line of the search box's drop-down: a document the user may open in the Knowledge Base. */
+    public record DocumentSuggestion(String id, String documentNumber, String documentName, String revisionNumber,
+                                     String documentType, String department) {}
+
+    /** How a folder of the explorer is drawn: the colour a Business Unit or a Department was given (null: automatic) and the short form of its name. `id` is the key the folder carries. */
+    public record FolderStyle(String id, String name, String abbreviation, String color) {}
+
+    /** The icon of a Document Type in the explorer: the type's name (what a document carries), its Short Code, and the icon the Document Type was given. */
+    public record DocumentTypeIcon(String name, String shortCode, String iconLabel, String iconColor) {}
+
     public record KnowledgeBaseCard(String key, String label, int documentCount, boolean subscribed) {}
 
     public record PortalOverview(

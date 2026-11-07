@@ -27,6 +27,7 @@ import type {
   PublishingTemplateVersionResponse,
   PublishingWorkspaceRequest,
   PublishingWorkspaceResponse,
+  RelatedPublishBlocker,
 } from '@/features/documents/publishing/types';
 import type {
   RevisionActionCapabilitiesResponse,
@@ -1250,16 +1251,6 @@ export const documentApi = {
     return response.data;
   },
 
-  /** POST /revisions/:revisionId/complete-editing */
-  completeRevisionEditing: async (
-    revisionId: string,
-    data?: { comment?: string; reason?: string; signatureToken?: string }
-  ) => {
-    const response = await api.post<RevisionDetailResponse>(`${REVISIONS_ENDPOINT}/${revisionId}/complete-editing`, data ?? {});
-    clearRevisionDetailCaches(revisionId);
-    clearDocumentDetailCaches(response.data.documentId);
-    return response.data;
-  },
 
   /** POST /revisions/:revisionId/submit */
   submitRevisionForReview: async (
@@ -1378,6 +1369,12 @@ export const documentApi = {
     clearRevisionDetailCaches(revisionId);
     clearDocumentDetailCaches(response.data.revisionId);
     return response.data;
+  },
+
+  /** GET /revisions/:revisionId/publishing-workspace/related-blockers  Related Documents that are not ready to publish together */
+  getRelatedPublishBlockers: async (revisionId: string) => {
+    const response = await api.get<RelatedPublishBlocker[]>(`${REVISIONS_ENDPOINT}/${revisionId}/publishing-workspace/related-blockers`);
+    return response.data ?? [];
   },
 
   publishFromPublishingWorkspace: async (revisionId: string, data?: PublishingWorkspaceRequest) => {

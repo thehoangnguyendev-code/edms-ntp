@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { WarningBanner } from '@/components/ui/banner/WarningBanner';
 import { getApiErrorMessage } from '@/utils/apiError';
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -7,12 +6,14 @@ import {
   AlignCenter,
   AlignJustify,
   AlignLeft,
+  Bold,
+  Italic,
+  Underline,
   AlignRight,
   Check,
   ChevronDown,
   Copy,
   Eye,
-  FilePlusCorner,
   GalleryHorizontalEnd,
   Info,
   Loader2,
@@ -292,7 +293,6 @@ export const PublishingTemplateEditorView: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] =
     useState<PublishingTemplateResponse | null>(null);
-  const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
   const [activeSlot, setActiveSlot] = useState<string>("cover:PORTRAIT");
   const [slotPreviewUrl, setSlotPreviewUrl] = useState<string | null>(null);
   const [slotPreviewKey, setSlotPreviewKey] = useState<string | null>(null);
@@ -536,15 +536,10 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
     ].join("::");
 
   const buildTemplatePayload = () => {
-    const currentStatus = String(template?.status || "").toUpperCase();
-    const templateIsLive = currentStatus === "ACTIVE" || currentStatus === "PUBLISHED";
-    // Only the Publish flow may transition a template into Active — a plain save must
-    // never send status=ACTIVE unless the template is already live, or the backend guard rejects it.
-    const safeStatus = form.status === "ACTIVE" && !templateIsLive ? (template?.status || "INACTIVE") : form.status;
     return {
     templateName: form.templateName.trim(),
     description: form.description || null,
-    status: safeStatus,
+    status: form.status,
     publishingMode: form.publishingMode,
     coverOrientation: null,
     bodyOrientation: null,
@@ -946,6 +941,10 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
 
   const openStyleModal = (placeholder: string, componentType: ComponentType, layout: LayoutType) => {
     setSelectedStylePlaceholder(placeholder);
+    // The style belongs to the slot of the chip that was clicked. The preview, the signature of the preview and the saved style must all
+    // refer to that slot, not to whichever slot happened to be shown before (a style saved on the cover while the Header chip was open
+    // looked saved and then "went back").
+    setActiveSlot(slotKey(componentType, layout));
     setStyleModalSlot({ componentType, layout });
     setPendingControlledCopyVisible(null);
     setStyleModalOpen(true);
@@ -1032,57 +1031,6 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
     }
   };
 
-  const currentTemplateStatus = String(template?.status || "").toUpperCase();
-  const templateIsLive = currentTemplateStatus === "ACTIVE" || currentTemplateStatus === "PUBLISHED";
-  const willPublish = form.status === "ACTIVE" && !templateIsLive;
-
-  const handleSaveOrPublish = async () => {
-    setPublishConfirmOpen(false);
-    if (willPublish) {
-      // Persist all other field edits first (this bug existed before: publishing an existing
-      // template skipped re-saving unsaved form changes) — buildTemplatePayload() keeps status
-      // at its current safe value here, the publishTemplate() call below does the real activation.
-      const saved = await handleSave({ redirectAfterCreate: false });
-      if (!saved?.id) {
-        return;
-      }
-      setIsSaving(true);
-      try {
-        const published = await publishingTemplatesApi.publishTemplate(
-          saved.id,
-          `Published publishing template "${saved.templateName || "Untitled Template"}" from template editor.`,
-        );
-        setTemplate(published);
-        showToast({
-          type: "success",
-          title: "Published",
-          message: "Publishing template published successfully.",
-        });
-      } catch (error) {
-        console.error("Failed to publish publishing template", error);
-        showToast({
-          type: "error",
-          title: "Publish failed",
-          message: (error as any)?.response?.data?.error?.message
-            || (error as any)?.response?.data?.message
-            || "Unable to publish template.",
-        });
-      } finally {
-        setIsSaving(false);
-      }
-    } else {
-      await handleSave();
-    }
-  };
-
-  const handleSaveOrPublishClick = () => {
-    if (willPublish) {
-      setPublishConfirmOpen(true);
-      return;
-    }
-    void handleSaveOrPublish();
-  };
-
   const handleDelete = async () => {
     if (!template?.id) return;
     setIsSaving(true);
@@ -1104,32 +1052,6 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
     } finally {
       setIsSaving(false);
       setDeleteTarget(null);
-    }
-  };
-
-  const handleCreateNewVersion = async () => {
-    if (!template?.id) return;
-    setIsSaving(true);
-    try {
-      const created = await publishingTemplatesApi.createNewVersion(template.id);
-      showToast({
-        type: "success",
-        title: "New version created",
-        message: "Edit the new version, then publish it to replace the current template.",
-      });
-      navigate(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(created.id || ""), {
-        replace: true,
-        state: locationState || undefined,
-      });
-    } catch (error) {
-      console.error("Failed to create a new template version", error);
-      showToast({
-        type: "error",
-        title: "Could not create a new version",
-        message: getApiErrorMessage(error, "Unable to create a new version."),
-      });
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -1440,8 +1362,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
     try {
       await publishingTemplatesApi.savePlaceholderStyles(template.id, [
         {
-          componentType: activeSlotMeta.componentType,
-          layout: activeSlotMeta.layout.toLowerCase(),
+          componentType: styleModalSlot?.componentType ?? activeSlotMeta.componentType,
+          layout: (styleModalSlot?.layout ?? activeSlotMeta.layout).toLowerCase(),
           placeholderKey,
           placeholderToken: placeholderToken(selectedStylePlaceholder),
           placeholderType,
@@ -1497,8 +1419,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
     try {
       await publishingTemplatesApi.deletePlaceholderStyle(
         template.id,
-        activeSlotMeta.componentType,
-        activeSlotMeta.layout.toLowerCase(),
+        styleModalSlot?.componentType ?? activeSlotMeta.componentType,
+        (styleModalSlot?.layout ?? activeSlotMeta.layout).toLowerCase(),
         normalizePlaceholderKey(selectedStylePlaceholder),
       );
       await refreshPlaceholderStyles(template.id);
@@ -1555,21 +1477,6 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         description={`Are you sure you want to delete the ${deleteSlotTarget ? `${layoutLabel(deleteSlotTarget.layout)} ${deleteSlotTarget.componentType}` : "selected"} file? This cannot be undone.`}
         confirmText="Delete"
         type="warning"
-      />
-
-      <AlertModal
-        isOpen={publishConfirmOpen}
-        onClose={() => setPublishConfirmOpen(false)}
-        onConfirm={() => void handleSaveOrPublish()}
-        title="Publish Template"
-        description={
-          template?.templateName
-            ? `Publish "${template.templateName}" now? This will create a published version and record the action in the audit trail.`
-            : "Publish this template now? This will create a published version and record the action in the audit trail."
-        }
-        confirmText="Publish"
-        type="confirm"
-        isLoading={isSaving}
       />
 
       {/* Placeholder Style Modal */}
@@ -1689,10 +1596,10 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                 </div>
               </div>
 
-              {/* Typography */}
+              {/* Font: the controls of Word's Font and Paragraph groups, in the same order (family, size, colour, then Bold / Italic / Underline and alignment as icon buttons) */}
               <div>
-                <p className="mb-2.5 text-2xs font-semibold uppercase tracking-wide text-slate-400">Typography</p>
-                <div className="grid grid-cols-2 gap-3 items-end">
+                <p className="mb-2.5 text-2xs font-semibold uppercase tracking-wide text-slate-400">Font</p>
+                <div className="grid grid-cols-1 gap-3 items-end sm:grid-cols-3">
                   <Select
                     label="Font family"
                     value={styleForm.fontFamily || ""}
@@ -1715,52 +1622,53 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                     value={styleForm.color || DEFAULT_BLACK_HEX}
                     onChange={(color) => setStyleForm((c) => ({ ...c, color }))}
                   />
-                  <div className="space-y-1">
-                    <span className={TYPOGRAPHY.formLabel}>Alignment</span>
-                    <div className="flex h-9 overflow-hidden rounded-lg border border-slate-200">
-                      {([
-                        { value: "LEFT", icon: AlignLeft, title: "Left" },
-                        { value: "CENTER", icon: AlignCenter, title: "Center" },
-                        { value: "RIGHT", icon: AlignRight, title: "Right" },
-                        { value: "BOTH", icon: AlignJustify, title: "Justify" },
-                      ] as { value: string; icon: React.ElementType; title: string }[]).map(({ value, icon: Icon, title }) => {
-                        const active = styleForm.alignment === value;
-                        return (
-                          <button
-                            key={value}
-                            type="button"
-                            title={title}
-                            onClick={() => setStyleForm((c) => ({ ...c, alignment: active ? "" : value }))}
-                            className={`flex flex-1 items-center justify-center border-r last:border-r-0 border-slate-200 transition-colors ${active ? "bg-emerald-50 text-emerald-600" : "bg-white text-slate-500 hover:bg-slate-50"}`}
-                          >
-                            <Icon className="h-4 w-4" />
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
                 </div>
-              </div>
-
-              {/* Formatting */}
-              <div>
-                <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-slate-400">Formatting</p>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-0 divide-y divide-slate-100">
-                  {([
-                    ["bold", "Bold"],
-                    ["italic", "Italic"],
-                    ["underline", "Underline"],
-                    ["preserveLineBreaks", "Keep line breaks"],
-                  ] as [keyof PublishingPlaceholderStyleConfig, string][]).map(([key, label]) => (
-                    <label key={key} className="flex items-center justify-between gap-3 py-2 text-xs sm:text-sm font-medium text-slate-700 capitalize">
-                      <span>{label}</span>
-                      <Switch
-                        size="sm"
-                        checked={Boolean(styleForm[key])}
-                        onChange={(checked) => setStyleForm((c) => ({ ...c, [key]: checked }))}
-                      />
-                    </label>
-                  ))}
+                <div className="mt-3 flex flex-wrap items-center gap-2" role="toolbar" aria-label="Text formatting">
+                  <div className="flex h-9 overflow-hidden rounded-lg border border-slate-200">
+                    {([
+                      { key: "bold", icon: Bold, title: "Bold" },
+                      { key: "italic", icon: Italic, title: "Italic" },
+                      { key: "underline", icon: Underline, title: "Underline" },
+                    ] as { key: "bold" | "italic" | "underline"; icon: React.ElementType; title: string }[]).map(({ key, icon: Icon, title }) => {
+                      const active = Boolean(styleForm[key]);
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          title={title}
+                          aria-label={title}
+                          aria-pressed={active}
+                          onClick={() => setStyleForm((c) => ({ ...c, [key]: !active }))}
+                          className={`flex w-10 items-center justify-center border-r border-slate-200 transition-colors last:border-r-0 ${active ? "bg-emerald-50 text-emerald-600" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex h-9 overflow-hidden rounded-lg border border-slate-200">
+                    {([
+                      { value: "LEFT", icon: AlignLeft, title: "Align left" },
+                      { value: "CENTER", icon: AlignCenter, title: "Center" },
+                      { value: "RIGHT", icon: AlignRight, title: "Align right" },
+                      { value: "BOTH", icon: AlignJustify, title: "Justify" },
+                    ] as { value: string; icon: React.ElementType; title: string }[]).map(({ value, icon: Icon, title }) => {
+                      const active = styleForm.alignment === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          title={title}
+                          aria-label={title}
+                          aria-pressed={active}
+                          onClick={() => setStyleForm((c) => ({ ...c, alignment: active ? "" : value }))}
+                          className={`flex w-10 items-center justify-center border-r border-slate-200 transition-colors last:border-r-0 ${active ? "bg-emerald-50 text-emerald-600" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -1790,6 +1698,14 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                       value={styleForm.maxLines ?? ""}
                       onChange={(e) => setStyleForm((c) => ({ ...c, maxLines: e.target.value ? Number(e.target.value) : null }))}
                       placeholder="No limit"
+                    />
+                  </label>
+                  <label className="flex h-9 items-center justify-between gap-3 text-xs font-medium text-slate-700 sm:text-sm">
+                    <span>Keep line breaks</span>
+                    <Switch
+                      size="sm"
+                      checked={Boolean(styleForm.preserveLineBreaks)}
+                      onChange={(checked) => setStyleForm((c) => ({ ...c, preserveLineBreaks: checked }))}
                     />
                   </label>
                 </div>
@@ -1858,11 +1774,11 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
             <Button
               size="sm"
               variant="outline-emerald"
-              onClick={handleSaveOrPublishClick}
+              onClick={() => void handleSave()}
               disabled={isSaving}
               className="gap-2"
             >
-              {willPublish ? "Publish Template" : "Save Changes"}
+              Save Changes
             </Button>
             {isEditMode && (
               <>
@@ -1891,16 +1807,6 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                     <button
                       onClick={() => {
                         closeHeaderMenu();
-                        handleCreateNewVersion();
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
-                    >
-                      <FilePlusCorner className="h-4 w-4 flex-shrink-0" />
-                      <span className="font-medium text-slate-500">Create New version</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        closeHeaderMenu();
                         handleDuplicate();
                       }}
                       className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
@@ -1926,14 +1832,6 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         }
       />
 
-      {isEditMode && template?.publishedAt && (
-        <WarningBanner
-          variant="info"
-          title="Published template is read-only"
-          description="Documents and controlled copies were composed with this template, so it can no longer be edited. Use “Create new version” in the actions menu, edit that copy, then publish it to replace this template."
-        />
-      )}
-
       <div className="flex flex-col gap-4 lg:gap-6 xl:flex-row xl:items-start">
         <div className="min-w-0 space-y-4 xl:flex-1">
           <FormSection
@@ -1958,18 +1856,6 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                 />
               </div>
               <div>
-                <label className={COMPONENT_PRESETS.formLabel}>
-                  Version Template
-                </label>
-                <Input
-                  value={String(template?.versionNumber ?? 1)}
-                  readOnly
-                  disabled
-                  aria-readonly="true"
-                  className="bg-slate-50 text-slate-700"
-                />
-              </div>
-              <div>
                 <label className={COMPONENT_PRESETS.formLabel}>Status</label>
                 <Select
                   value={form.status}
@@ -1982,11 +1868,9 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                   ]}
                   placeholder="Select status"
                 />
-                {willPublish && (
-                  <p className="mt-1 text-2xs text-slate-400">
-                    Selecting Active will publish this template — click "Publish Template" to create a versioned, audited release.
-                  </p>
-                )}
+                <p className="mt-1 text-2xs text-slate-400">
+                  Any number of templates can be Active at once; whoever publishes a document chooses one. A template needs the files its Publishing Mode calls for before it can be Active.
+                </p>
               </div>
               <div>
                 <label className={COMPONENT_PRESETS.formLabel}>

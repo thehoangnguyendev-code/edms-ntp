@@ -3,6 +3,8 @@ package com.eqms.controller;
 import com.eqms.dto.configuration.PublicBrandingResponse;
 import com.eqms.service.PwaBrandingService;
 import com.eqms.service.SystemConfigurationService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.CacheControl;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,15 +12,21 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+
 @RestController
 @RequestMapping("/branding")
 public class PublicBrandingController {
     private final SystemConfigurationService systemConfigurationService;
     private final PwaBrandingService pwaBranding;
+    private final ObjectMapper objectMapper;
 
-    public PublicBrandingController(SystemConfigurationService systemConfigurationService, PwaBrandingService pwaBranding) {
+    public PublicBrandingController(SystemConfigurationService systemConfigurationService, PwaBrandingService pwaBranding, ObjectMapper objectMapper) {
         this.systemConfigurationService = systemConfigurationService;
         this.pwaBranding = pwaBranding;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -51,11 +59,28 @@ public class PublicBrandingController {
                         : ResponseEntity.status(org.springframework.http.HttpStatus.FOUND).header("Location", "/icons/apple-touch-icon.png").<byte[]>build());
     }
 
+    /**
+     * Branding carries the logos and backgrounds as images, so it is large (hundreds of kilobytes) and every open screen asks again
+     * every few seconds. It holds nothing private, so it is revalidated by its ETag instead of being refused to every cache: a
+     * browser that already has the current branding gets a 304 with no body, and a changed branding gets a new ETag at once.
+     */
     @GetMapping
     public ResponseEntity<PublicBrandingResponse> getBranding() {
+        PublicBrandingResponse branding = systemConfigurationService.getPublicBranding();
         return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(systemConfigurationService.getPublicBranding());
+                .cacheControl(CacheControl.noCache())
+                .eTag("\"" + contentVersion(branding) + "\"")
+                .body(branding);
+    }
+
+    /** A digest of the exact content that is sent, so the ETag changes if and only if the branding the browser would draw changes. */
+    private String contentVersion(PublicBrandingResponse branding) {
+        try {
+            byte[] json = objectMapper.writeValueAsBytes(branding);
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(json));
+        } catch (JsonProcessingException | NoSuchAlgorithmException e) {
+            throw new IllegalStateException("Cannot version the public branding", e);
+        }
     }
 
     @GetMapping("/logo")

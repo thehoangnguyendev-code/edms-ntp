@@ -131,7 +131,7 @@ export const DistributionInformationTab: React.FC<DistributionInformationTabProp
                     <TableMarkup.HeaderCell className="py-2 px-3 text-center text-2xs md:text-xs font-semibold text-slate-600 w-10">No.</TableMarkup.HeaderCell>
                     <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Document Number</TableMarkup.HeaderCell>
                     <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Recipient</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className={TABLE_STYLES.cell17}>Employee Code</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.cell17}>Employee ID</TableMarkup.HeaderCell>
                     <TableMarkup.HeaderCell className={TABLE_STYLES.cell17}>Department</TableMarkup.HeaderCell>
                     <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Email</TableMarkup.HeaderCell>
                     <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Status</TableMarkup.HeaderCell>

@@ -51,9 +51,10 @@ public class DocumentsWorkflowDefinitionProvider implements WorkflowDefinitionPr
         Map<String, Set<WorkflowActorType>> actors = new HashMap<>();
         actors.put("UPDATE_DRAFT_METADATA", workspaceManagers);
         actors.put("UPLOAD_SOURCE", EnumSet.of(WorkflowActorType.AUTHOR));
-        actors.put("COMPLETE_AUTHORING", EnumSet.of(WorkflowActorType.AUTHOR));
         actors.put("OPEN_PUBLISHING_WORKSPACE", workspaceManagers);
-        actors.put("SUBMIT_FOR_REVIEW", workspaceManagers);
+        // The Author submits by default; Document Control (an Access Profile or permission) is added as an actor when the business wants it.
+        actors.put("SUBMIT_FOR_REVIEW", EnumSet.of(WorkflowActorType.AUTHOR, WorkflowActorType.PERMISSION,
+                WorkflowActorType.ACCESS_PROFILE));
         actors.put("GENERATE_REVIEW_SNAPSHOT", workspaceManagers);
         actors.put("REGENERATE_SNAPSHOT", workspaceManagers);
         actors.put("COMPLETE_REVIEW", EnumSet.of(WorkflowActorType.ASSIGNED_REVIEWER));

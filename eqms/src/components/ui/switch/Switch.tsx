@@ -10,6 +10,8 @@ interface SwitchProps {
    * If true, uses a fixed small size. If false or omitted, uses responsive size (sm on mobile, md on desktop)
    */
   size?: 'sm' | 'responsive';
+  /** The name a screen reader announces for the switch (the visible text next to it is not linked to it). */
+  'aria-label'?: string;
 }
 
 export const Switch: React.FC<SwitchProps> = ({
@@ -18,6 +20,7 @@ export const Switch: React.FC<SwitchProps> = ({
   disabled = false,
   className,
   size = 'responsive',
+  'aria-label': ariaLabel,
 }) => {
   const isSm = size === 'sm';
 
@@ -37,6 +40,7 @@ export const Switch: React.FC<SwitchProps> = ({
         className
       )}
       role="switch"
+      aria-label={ariaLabel}
       aria-checked={checked}
       disabled={disabled}
     >

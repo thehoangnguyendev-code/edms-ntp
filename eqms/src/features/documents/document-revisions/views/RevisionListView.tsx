@@ -1,11 +1,11 @@
 import React, { useState } from "react";
+import { RevisionRowMenu, revisionMenuActions } from "./RevisionRowMenu";
+import { useRevisionRowActions } from "./useRevisionRowActions";
 import { useLocation } from "react-router-dom";
-import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { ROUTES } from '@/app/routes.constants';
 import {
   Download,
   FilePlusCorner,
-  FileStack,
   Globe,
   Goal,
 } from "lucide-react";
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button/Button';
 import { Badge, type BadgeColor } from '@/components/ui/badge';
 import { DocumentFilters } from "@/features/documents/shared/components";
 import { cn } from '@/components/ui/utils';
-import { IconInfoCircle, IconChecks, IconCheck, IconChalkboardTeacher, IconPencilMinus, IconArrowBarToRight, IconBrandTelegram, IconShare2, IconChecklist, IconArrowBadgeRight, IconArrowUpRight } from "@tabler/icons-react";
+import { IconChalkboardTeacher, IconArrowBarToRight, IconShare2, IconArrowBadgeRight } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { revisionList } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { SectionLoading, FullPageLoading } from "@/components/ui/loading/Loading";
@@ -22,7 +22,6 @@ import { useRevisionServerTable } from "@/features/documents/hooks";
 import { useAuth } from "@/contexts/AuthContext";
 import { RevisionTableView, TableColumn, useRevisionColumnLayout } from "@/features/documents/shared/components";
 import { documentApi } from "@/services/api/documents";
-import { buildRevisionDetailSnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { useToast } from "@/components/ui/toast";
@@ -139,35 +138,6 @@ export const RevisionListView: React.FC = () => {
 
   const startIndex = (currentPage - 1) * itemsPerPage;
 
-  const preloadRevisionAndNavigate = async (
-    route: string,
-    revisionId: string,
-    from: string,
-    extraState?: Record<string, unknown>,
-  ) => {
-    try {
-      await navigateToPrepared(
-        route,
-        async () => ({
-          ...buildRevisionDetailSnapshotState(await documentApi.getRevisionByIdSnapshot(revisionId)),
-        }),
-        { state: { from, returnTo: `${location.pathname}${location.search}`, ...(extraState ?? {}) } },
-      );
-    } catch (error) {
-      console.error("Failed to preload revision before navigation", error);
-      navigateTo(route, { state: { from, returnTo: `${location.pathname}${location.search}`, ...(extraState ?? {}) } });
-    }
-  };
-
-  // Handlers
-  const handleViewRevision = (id: string) => {
-    void preloadRevisionAndNavigate(
-      ROUTES.DOCUMENTS.REVISIONS.DETAIL(id),
-      id,
-      ROUTES.DOCUMENTS.REVISIONS.ALL,
-    );
-  };
-
   const handleNewRevision = (revision: Revision) => {
     const parentDocumentId = String((revision as any).documentId || (revision as any).parentDocumentId || revision.documentNumber || revision.id);
     close();
@@ -210,42 +180,6 @@ export const RevisionListView: React.FC = () => {
           type: revision.type,
         }),
       }),
-    });
-  };
-
-  const handlePrintControlledCopy = (revision: Revision) => {
-    const parentDocumentId = String((revision as any).documentId || (revision as any).parentDocumentId || revision.documentNumber || revision.id);
-    const relatedDocuments = revision.hasRelatedDocuments
-      ? [
-        {
-          id: revision.id,
-          documentId: parentDocumentId,
-          revisionName: revision.revisionName,
-          revisionNumber: revision.revisionNumber,
-          status: revision.state as any,
-          isParent: true,
-        },
-      ]
-      : [];
-
-    close();
-    navigateTo(ROUTES.DOCUMENTS.CONTROLLED_COPIES.REQUEST, {
-      state: {
-        documentId: parentDocumentId,
-        revisionName: revision.revisionName,
-        documentVersion: revision.revisionNumber,
-        revisionId: revision.id,
-        parentDocumentId,
-        sourceRevisionId: revision.id,
-        relatedDocuments,
-        from: ROUTES.DOCUMENTS.REVISIONS.ALL,
-        workspaceState: {
-          from: ROUTES.DOCUMENTS.REVISIONS.ALL,
-          returnTo: ROUTES.DOCUMENTS.REVISIONS.ALL,
-          parentDocumentId,
-          sourceRevisionId: revision.id,
-        },
-      },
     });
   };
 
@@ -315,79 +249,29 @@ export const RevisionListView: React.FC = () => {
     }
   };
 
-  const handleMenuAction = (action: string, id: string) => {
-    close();
-
-    switch (action) {
-      case "edit":
-        navigateTo(ROUTES.DOCUMENTS.REVISIONS.EDIT(id), {
-          state: {
-            from: ROUTES.DOCUMENTS.REVISIONS.ALL,
-            revisionId: id,
-            editMode: true,
-          },
-        });
-        break;
-      case "view":
-        void preloadRevisionAndNavigate(
-          ROUTES.DOCUMENTS.REVISIONS.DETAIL(id),
-          id,
-          ROUTES.DOCUMENTS.REVISIONS.ALL,
-        );
-        break;
-      case "review":
-        void preloadRevisionAndNavigate(
-          ROUTES.DOCUMENTS.REVISIONS.REVIEW(id),
-          id,
-          ROUTES.DOCUMENTS.REVISIONS.ALL,
-        );
-        break;
-      case "approve":
-        void preloadRevisionAndNavigate(
-          ROUTES.DOCUMENTS.REVISIONS.APPROVAL(id),
-          id,
-          ROUTES.DOCUMENTS.REVISIONS.ALL,
-        );
-        break;
-      case "training":
-        void preloadRevisionAndNavigate(
-          ROUTES.DOCUMENTS.REVISIONS.TRAINING(id),
-          id,
-          ROUTES.DOCUMENTS.REVISIONS.ALL,
-          {
-            workspaceState: {
-              activeTab: "training",
-            },
-          },
-        );
-        break;
-      case "publish": {
-        // A controlled-document template has no Publishing Workspace: it is published directly (signature,
-        // then Effective) and stays as its Word file.
-        const templateRevision = revisions.find((item) => item.id === id);
-        if (templateRevision?.isTemplate) {
-          setSelectedRevisionForPublish(templateRevision);
-          setShowESignModal(true);
-          break;
-        }
-        navigateTo(ROUTES.DOCUMENTS.REVISIONS.PUBLISHING(id), {
-          state: {
-            from: location.pathname + location.search,
-            returnTo: location.pathname + location.search,
-            workspaceReturnPath: location.pathname + location.search,
-          },
-        });
-        break;
-      }
-      default:
-        break;
+  // A controlled-document template has no Publishing Workspace: it is published directly (signature,
+  // then Effective) and stays as its Word file.
+  const handlePublish = (revision: Revision) => {
+    if (revision.isTemplate) {
+      setSelectedRevisionForPublish(revision);
+      setShowESignModal(true);
+      return;
     }
+    navigateTo(ROUTES.DOCUMENTS.REVISIONS.PUBLISHING(revision.id), {
+      state: {
+        from: location.pathname + location.search,
+        returnTo: location.pathname + location.search,
+        workspaceReturnPath: location.pathname + location.search,
+      },
+    });
   };
 
-  // The server has already evaluated permission, assignment, scope and lifecycle state.
-  // Do not add a client-side permission fallback here, otherwise the list can expose an
-  // action that the mutation endpoint correctly rejects.
-  const canEditDraftRevision = (revision: Revision) => Boolean(revision.canEditRevision);
+  const { viewRevision, runRowAction } = useRevisionRowActions({
+    from: ROUTES.DOCUMENTS.REVISIONS.ALL,
+    navigateTo,
+    navigateToPrepared,
+    onPublish: handlePublish,
+  });
 
   // Render column cell
   const renderCell = (
@@ -405,15 +289,7 @@ export const RevisionListView: React.FC = () => {
           </span>
         );
       case "revisionNumber":
-        return canEditDraftRevision(revision) ? (
-          <button
-            type="button"
-            onClick={() => handleMenuAction("edit", revision.id)}
-            className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline underline-offset-2"
-          >
-            {revision.revisionNumber}
-          </button>
-        ) : revision.revisionNumber;
+        return revision.revisionNumber;
       case "created":
         return revision.created;
       case "openedBy":
@@ -472,6 +348,7 @@ export const RevisionListView: React.FC = () => {
     renderCell,
     expandedRowId,
     onExpandRow: setExpandedRowId,
+    onViewItem: viewRevision,
   });
 
   return (
@@ -624,34 +501,9 @@ export const RevisionListView: React.FC = () => {
                 onSort={handleSort}
                 onPageChange={setCurrentPage}
                 onItemsPerPageChange={setItemsPerPage}
-                onMenuAction={handleMenuAction}
                 renderCell={renderCell}
-                getMenuActions={(revision: Revision) => {
-                  const actions = [];
-                  const canReview = Boolean(revision.canReviewRevision);
-                  const canApprove = Boolean(revision.canApproveRevision);
-                  const canCompleteTraining = Boolean(revision.canCompleteTraining);
-                  if (canEditDraftRevision(revision) || Boolean(revision.canSubmitForReview)) {
-                    actions.push({ icon: <IconCheck className="h-4 w-4" />, label: "Edit Revision", action: "edit" });
-                  }
-                  if (revision.state !== "Draft") {
-                    actions.push({ icon: <IconCheck className="h-4 w-4" />, label: "View", action: "view" });
-                  }
-                  if (revision.state === "Pending Review" && canReview) {
-                    actions.push({ icon: <IconChecks className="h-4 w-4" />, label: "Review", action: "review" });
-                  }
-                  if (revision.state === "Pending Approval" && canApprove) {
-                    actions.push({ icon: <IconChecks className="h-4 w-4" />, label: "Approve", action: "approve" });
-                  }
-                  if (revision.state === "Pending Training" && canCompleteTraining) {
-                    actions.push({ icon: <IconChecks className="h-4 w-4" />, label: "Training", action: "training" });
-                  }
-                  if (Boolean(revision.canPublishRevision)) {
-                    actions.push({ icon: <IconBrandTelegram className="h-4 w-4" />, label: "Publish Revision", action: "publish" });
-                  }
-                  return actions;
-                }}
-                onViewItem={handleViewRevision}
+                getMenuActions={revisionMenuActions}
+                onViewItem={viewRevision}
                 scrollerRef={scrollerRef}
                 dragEvents={dragEvents}
                 isDragging={isDragging}
@@ -665,114 +517,13 @@ export const RevisionListView: React.FC = () => {
         </div>
       </div>
 
-      {/* Dropdown Menu (Portal) */}
-      {openId && (() => {
-        const currentRevision = revisions.find(r => r.id === openId);
-        if (!currentRevision) return null;
-
-        const canReview = Boolean(currentRevision.canReviewRevision);
-        const canApprove = Boolean(currentRevision.canApproveRevision);
-        const isPendingReview = currentRevision.state === "Pending Review" && canReview;
-        const isPendingApproval = currentRevision.state === "Pending Approval" && canApprove;
-        const isPendingTraining = currentRevision.state === "Pending Training" && Boolean(currentRevision.canCompleteTraining);
-        const isReadyForPublishing = currentRevision.state === "Ready for Publishing";
-        const isEffective = currentRevision.state === "Effective";
-        // Author (still editing) and DCO (Author already completed editing, DCO needs to Submit
-        // for Review) land on the exact same page (RevisionCreateView) -- same as the initial
-        // document creation flow, the page itself shows only the actions the current user's
-        // capability allows, so a single "Edit Revision" entry point covers both.
-        const isDraft = canEditDraftRevision(currentRevision) || Boolean(currentRevision.canSubmitForReview);
-
-        return (
-          <PortalDropdownMenu isOpen={openId !== null} onClose={close} position={position} minWidth={200}>
-            <div className="py-1">
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleMenuAction("view", openId);
-                }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-              >
-                <IconInfoCircle className="h-4 w-4 text-slate-500" />
-                <span>View Details</span>
-              </button>
-                            {isDraft && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMenuAction("edit", openId);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-                >
-                  <IconPencilMinus className="h-4 w-4 text-slate-500" />
-                  <span>Edit Revision</span>
-                </button>
-              )}
-              {isPendingReview && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMenuAction("review", openId);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-                >
-                  <IconCheck className="h-4 w-4 text-slate-500" />
-                  <span>Review Revision</span>
-                </button>
-              )}
-              {isPendingApproval && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMenuAction("approve", openId);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-                >
-                  <IconChecks className="h-4 w-4 text-slate-500" />
-                  <span>Approve Revision</span>
-                </button>
-              )}
-              {isPendingTraining && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMenuAction("training", openId);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-                >
-                  <IconChecklist className="h-4 w-4 text-slate-500" />
-                  <span>Training Revision</span>
-                </button>
-              )}
-              {isEffective && currentRevision && Boolean(currentRevision.canRequestControlledCopy) && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePrintControlledCopy(currentRevision);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-                >
-                  <FileStack className="h-4 w-4 text-slate-500" />
-                  <span>Request Controlled Copy</span>
-                </button>
-              )}
-              {Boolean(currentRevision.canPublishRevision) && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMenuAction("publish", openId);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-                >
-                  <IconArrowUpRight className="h-4 w-4 text-slate-500" />
-                  <span>Publish Revision</span>
-                </button>
-              )}
-            </div>
-          </PortalDropdownMenu>
-        );
-      })()}
+      <RevisionRowMenu
+        revision={openId ? revisions.find((revision) => revision.id === openId) : null}
+        isOpen={openId !== null}
+        onClose={close}
+        position={position}
+        onAction={runRowAction}
+      />
 
       {/* E-Signature Modal for Publish action */}
       <ESignatureModal

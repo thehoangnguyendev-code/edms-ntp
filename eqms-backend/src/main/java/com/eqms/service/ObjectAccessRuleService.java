@@ -41,6 +41,8 @@ public class ObjectAccessRuleService {
     private final AuditTrailService auditTrailService;
     private final PermissionEvaluationService permissionEvaluationService;
     private final SecurityChangeSignatureService securityChangeSignatureService;
+    private final com.eqms.repository.DepartmentRepository departmentRepository;
+    private final com.eqms.repository.BusinessUnitRepository businessUnitRepository;
 
     public ObjectAccessRuleService(
             ObjectAccessRuleRepository ruleRepository,
@@ -51,7 +53,9 @@ public class ObjectAccessRuleService {
             CurrentUserService currentUserService,
             AuditTrailService auditTrailService,
             PermissionEvaluationService permissionEvaluationService,
-            SecurityChangeSignatureService securityChangeSignatureService) {
+            SecurityChangeSignatureService securityChangeSignatureService,
+            com.eqms.repository.DepartmentRepository departmentRepository,
+            com.eqms.repository.BusinessUnitRepository businessUnitRepository) {
         this.ruleRepository = ruleRepository;
         this.roleRepository = roleRepository;
         this.documentSubTypeRepository = documentSubTypeRepository;
@@ -61,13 +65,15 @@ public class ObjectAccessRuleService {
         this.auditTrailService = auditTrailService;
         this.permissionEvaluationService = permissionEvaluationService;
         this.securityChangeSignatureService = securityChangeSignatureService;
+        this.departmentRepository = departmentRepository;
+        this.businessUnitRepository = businessUnitRepository;
     }
 
     @Transactional
     public List<ObjectAccessRuleResponse> listAll() {
         requireView();
         return ruleRepository.findAllByOrderByPriorityDescNameAsc()
-                .stream().map(this::toResponse).toList();
+                .stream().filter(r -> r.getOwnerDepartment() == null && r.getOwnerBusinessUnit() == null).map(this::toResponse).toList();
     }
 
     /** Server-side list: search, filters, sort and pagination resolved here. */
@@ -79,7 +85,7 @@ public class ObjectAccessRuleService {
         requireView();
         String q = search == null ? "" : search.trim().toLowerCase(java.util.Locale.ROOT);
         java.util.List<ObjectAccessRuleResponse> filtered = ruleRepository.findAllByOrderByPriorityDescNameAsc()
-                .stream().map(this::toResponse)
+                .stream().filter(r -> r.getOwnerDepartment() == null && r.getOwnerBusinessUnit() == null).map(this::toResponse)
                 .filter(r -> {
                     if (org.springframework.util.StringUtils.hasText(resourceType)
                             && !"ALL".equalsIgnoreCase(resourceType) && !r.resourceType().equals(resourceType)) return false;
@@ -112,6 +118,11 @@ public class ObjectAccessRuleService {
     public ObjectAccessRuleOptionsResponse getOptions() {
         requireView();
         Map<String, List<String>> resourceValues = Map.of(
+                ObjectResourceType.DEPARTMENT.name(),
+                departmentRepository.findAllByActiveTrueOrderByNameAsc().stream().map(d -> d.getName()).toList(),
+                ObjectResourceType.BUSINESS_UNIT.name(),
+                businessUnitRepository.findAll().stream().map(b -> b.getName())
+                        .sorted(String.CASE_INSENSITIVE_ORDER).toList(),
                 ObjectResourceType.DOCUMENT_CATEGORY.name(),
                 documentSubTypeRepository.findAllByOrderByNameAsc().stream()
                         .map(s -> s.getName()).distinct().toList(),
@@ -263,13 +274,31 @@ public class ObjectAccessRuleService {
         validateResourceType(req.resourceType());
         validateActions(req.actions());
         validateEffect(req.effect());
-        validateResourceTarget(req.resourceType(), req.resourceId());
+        // Department and Business Unit are matched by id. The form lists names, so a name is resolved to its id here.
+        UUID resolvedId = req.resourceId();
+        String resolvedName = req.resourceName();
+        if (resolvedId == null && org.springframework.util.StringUtils.hasText(resolvedName)) {
+            final String lookupName = resolvedName.trim();
+            if (ObjectResourceType.DEPARTMENT.name().equals(req.resourceType())) {
+                var department = departmentRepository.findByNameIgnoreCase(lookupName)
+                        .orElseThrow(() -> new IllegalArgumentException("Department not found: " + lookupName));
+                resolvedId = department.getId();
+                resolvedName = department.getName();
+            } else if (ObjectResourceType.BUSINESS_UNIT.name().equals(req.resourceType())) {
+                var unit = businessUnitRepository.findAll().stream()
+                        .filter(b -> b.getName() != null && b.getName().equalsIgnoreCase(lookupName)).findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException("Business Unit not found: " + lookupName));
+                resolvedId = unit.getId();
+                resolvedName = unit.getName();
+            }
+        }
+        validateResourceTarget(req.resourceType(), resolvedId);
 
         rule.setName(req.name());
         rule.setDescription(req.description());
         rule.setResourceType(req.resourceType());
-        rule.setResourceId(req.resourceId());
-        rule.setResourceName(req.resourceName());
+        rule.setResourceId(resolvedId);
+        rule.setResourceName(resolvedName);
         rule.setActions(req.actions());
         rule.setEffect(req.effect() != null ? req.effect() : "ALLOW");
         rule.setPriority(req.priority());
@@ -325,6 +354,9 @@ public class ObjectAccessRuleService {
             // Document status is keyed by a business code, while the rule model stores UUID resource IDs.
             // Status rules therefore use resourceName and must not supply resourceId.
             case DOCUMENT_STATUS -> false;
+            case DEPARTMENT -> departmentRepository.findById(resourceId).isPresent();
+            case BUSINESS_UNIT -> businessUnitRepository.findById(resourceId).isPresent();
+            case DOCUMENT -> false;
         };
         if (!exists) {
             throw new IllegalArgumentException("Resource does not exist for type " + resourceType + ": " + resourceId);
@@ -332,7 +364,9 @@ public class ObjectAccessRuleService {
     }
 
     private ObjectAccessRule require(UUID id) {
+        // A rule that belongs to a Department is a Knowledge Base share made by its Department Head; it is not managed here.
         return ruleRepository.findById(id)
+                .filter(r -> r.getOwnerDepartment() == null && r.getOwnerBusinessUnit() == null)
                 .orElseThrow(() -> new IllegalArgumentException("Object access rule not found: " + id));
     }
 

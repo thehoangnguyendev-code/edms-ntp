@@ -9,13 +9,13 @@
 export type ControlledCopyUsagePurpose = "READ_AND_COMPLY" | "RECORD_KEEPING";
 
 export const USAGE_PURPOSE_LABELS: Record<ControlledCopyUsagePurpose, string> = {
-  READ_AND_COMPLY: "Read and comply",
+  READ_AND_COMPLY: "Read and Comply",
   RECORD_KEEPING: "Record-keeping",
 };
 
 export const USAGE_PURPOSE_DESCRIPTIONS: Record<ControlledCopyUsagePurpose, string> = {
   READ_AND_COMPLY:
-    "Work instructions, standards, equipment lists. Read and follow only: nothing is written on it. Recalled without a scan.",
+    "Work instructions, SOP, equipment lists. Read and follow only: nothing is written on it. Recalled without a scan.",
   RECORD_KEEPING:
     "Logbooks, plans, report and data forms. Written on by hand and kept as a Record. Recalled by scanning it.",
 };

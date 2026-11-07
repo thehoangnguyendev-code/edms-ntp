@@ -101,7 +101,7 @@ class CalendarTaskProjectionServiceTest {
     }
     @Test void authoringTaskCompletesOnlyWithAuthoringEvidence() {
         notice.setType("document-edit-online-notification"); when(workflow.isRevisionAuthor(user, revision)).thenReturn(true);
-        when(history.findAllByRevision_IdOrderByCreatedAtAsc(id)).thenReturn(List.of(action(user, received.plusSeconds(1), "COMPLETE_EDITING")));
+        when(history.findAllByRevision_IdOrderByCreatedAtAsc(id)).thenReturn(List.of(action(user, received.plusSeconds(1), "SUBMIT_FOR_REVIEW")));
         assertEquals("COMPLETED", result().taskStatus()); assertEquals("AUTHORING", result().kind());
     }
     @Test void approvalTaskUsesApprovalHistoryAndRoute() {

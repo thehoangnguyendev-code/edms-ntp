@@ -111,7 +111,7 @@ public class RevisionBusinessRulesTest {
 
     @Test
     void uploadRevisionFile_deniesDirectApiCallAfterEditingAlreadyCompleted() {
-        // Regression for the gap where completeEditing() locks the source (editingStatus
+        // Regression for the gap where a locked source (set by the retired Complete Editing step; editingStatus
         // "COMPLETED", sourceLocked=true) while status stays "DRAFT" -- requireRevisionStatus(...,
         // "DRAFT") alone does not catch this. A direct POST /revisions/{id}/upload call (bypassing
         // the FE hint that already hides the button via canUploadRevisionSource) must still be
@@ -744,7 +744,7 @@ public class RevisionBusinessRulesTest {
 
         // Related Document Setup -- its latest revision is DRAFT: a revision is in progress but
         // has not yet reached Ready for Publishing, so the batch publish must be blocked outright
-        // (no Force Publish path exists any more).
+        // (unless the signer confirmed a Force Publish, which only the Publishing Workspace command carries).
         DocumentRecord relatedDoc = new DocumentRecord();
         relatedDoc.setId(UUID.randomUUID());
         relatedDoc.setDocumentNumber("FORM-001");
@@ -779,6 +779,82 @@ public class RevisionBusinessRulesTest {
             revisionService.publishRevision(revisionId, request);
         });
         verify(revisionRepository, never()).save(revision);
+    }
+
+    private DocumentRevisionRecord readyPrimaryWithDraftRelated(UUID revisionId) {
+        makeDocumentActive();
+        DocumentRevisionRecord revision = new DocumentRevisionRecord();
+        revision.setId(revisionId);
+        revision.setRevisionNumber("1.0.1");
+        revision.setDocument(document);
+        RevisionStatusDefinition ready = new RevisionStatusDefinition();
+        ready.setCode("READY_FOR_PUBLISHING");
+        revision.setStatus(ready);
+
+        DocumentRecord relatedDoc = new DocumentRecord();
+        relatedDoc.setId(UUID.randomUUID());
+        relatedDoc.setDocumentNumber("FORM-001");
+        relatedDoc.setDocumentName("Related Form");
+        DocumentRelation relation = new DocumentRelation();
+        relation.setSourceDocument(document);
+        relation.setTargetDocument(relatedDoc);
+        relation.setRelationType("RELATED");
+        DocumentRevisionRecord relatedRevision = new DocumentRevisionRecord();
+        relatedRevision.setId(UUID.randomUUID());
+        relatedRevision.setDocument(relatedDoc);
+        relatedRevision.setRevisionNumber("2.0.0");
+        RevisionStatusDefinition draft = new RevisionStatusDefinition();
+        draft.setCode("DRAFT");
+        draft.setLabel("Draft");
+        relatedRevision.setStatus(draft);
+
+        lenient().when(revisionRepository.findByIdForUpdate(revisionId)).thenReturn(Optional.of(revision));
+        lenient().when(revisionRepository.findById(revisionId)).thenReturn(Optional.of(revision));
+        when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
+        when(documentRelationRepository.findAllBySourceDocument_IdAndRelationType(document.getId(), "RELATED"))
+                .thenReturn(List.of(relation));
+        when(revisionRepository.findFirstByDocument_IdOrderByCreatedAtDesc(relatedDoc.getId()))
+                .thenReturn(Optional.of(relatedRevision));
+        return revision;
+    }
+
+    @Test
+    public void capturePublishConfirmationBundle_withoutForce_namesTheRelatedDocumentAndItsRevision() {
+        UUID revisionId = UUID.randomUUID();
+        readyPrimaryWithDraftRelated(revisionId);
+
+        RelatedDocumentsNotEffectiveException ex = assertThrows(RelatedDocumentsNotEffectiveException.class,
+                () -> org.springframework.test.util.ReflectionTestUtils.invokeMethod(revisionService, "capturePublishConfirmationBundle", revisionId, currentUser, false));
+
+        assertEquals(1, ex.getDetails().size());
+        assertEquals("FORM-001 - Related Form", ex.getDetails().get(0).field());
+        assertTrue(ex.getDetails().get(0).message().contains("Revision 2.0.0"));
+        assertTrue(ex.getDetails().get(0).message().contains("Draft"));
+        assertTrue(ex.getMessage().contains("FORM-001 - Related Form"));
+    }
+
+    @Test
+    public void capturePublishConfirmationBundle_withForce_leavesTheNotReadyRelatedDocumentOut() {
+        UUID revisionId = UUID.randomUUID();
+        readyPrimaryWithDraftRelated(revisionId);
+
+        java.util.Map<UUID, String> bundle = org.springframework.test.util.ReflectionTestUtils.invokeMethod(revisionService, "capturePublishConfirmationBundle", revisionId, currentUser, true);
+
+        assertEquals(java.util.Set.of(revisionId), bundle.keySet());
+    }
+
+    @Test
+    public void relatedPublishBlockers_listsDocumentNameAndRevisionNumber() {
+        UUID revisionId = UUID.randomUUID();
+        readyPrimaryWithDraftRelated(revisionId);
+
+        var blockers = revisionService.relatedPublishBlockers(revisionId);
+
+        assertEquals(1, blockers.size());
+        assertEquals("FORM-001", blockers.get(0).documentNumber());
+        assertEquals("Related Form", blockers.get(0).documentName());
+        assertEquals("2.0.0", blockers.get(0).revisionNumber());
+        assertEquals("DRAFT", blockers.get(0).statusCode());
     }
 
     @Test

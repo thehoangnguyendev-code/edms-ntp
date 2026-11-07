@@ -11,6 +11,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { AUTH_UI } from "./auth-ui";
 import { AuthBackLink, AuthLayout, AuthTopBackButton } from "./components";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
+import { OtpInput } from "@/components/ui/otp-input";
 
 // ============================================================================
 // CONSTANTS & CONFIGURATION
@@ -55,7 +56,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
   // ========================================================================
 
   const [method, setMethod] = useState<'email' | 'app' | null>(null);
-  const [otp, setOtp] = useState<string[]>(new Array(OTP_LENGTH).fill(""));
+  const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
@@ -78,7 +79,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
     ? { duration: 0 }
     : { duration: 0.2, ease: "easeOut" as const };
 
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const otpRef = useRef<HTMLDivElement>(null);
   const emailMethodInitiatedRef = useRef(false);
 
   const requestEmailCode = useCallback(async () => {
@@ -132,13 +133,6 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
     };
   }, [resendTimer]);
 
-  // Focus first input on mount
-  useEffect(() => {
-    if (inputRefs.current[0]) {
-      inputRefs.current[0].focus();
-    }
-  }, []);
-
   useEffect(() => {
     if (method !== 'email') {
       emailMethodInitiatedRef.current = false;
@@ -157,50 +151,6 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
   // EVENT HANDLERS
   // ========================================================================
 
-  const handleOtpChange = (index: number, value: string) => {
-    if (isNaN(Number(value)) && value !== "") return;
-
-    const newOtp = [...otp];
-    // Take only the last character if multiple characters are pasted/typed
-    newOtp[index] = value.substring(value.length - 1);
-    setOtp(newOtp);
-    setError("");
-
-    // Move to next input if value is entered
-    if (value && index < OTP_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Move to previous input on backspace if current is empty
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData
-      .getData("text")
-      .replace(/\D/g, '')
-      .slice(0, OTP_LENGTH)
-      .split("");
-    const newOtp = [...otp];
-
-    pastedData.forEach((char, index) => {
-      if (!isNaN(Number(char))) {
-        newOtp[index] = char;
-      }
-    });
-
-    setOtp(newOtp);
-
-    // Focus the last filled input or the first empty one
-    const lastIndex = Math.min(pastedData.length, OTP_LENGTH - 1);
-    inputRefs.current[lastIndex]?.focus();
-  };
-
   const handleResend = useCallback(async () => {
     if (!canResend || isSendingEmail) return;
     await requestEmailCode();
@@ -209,7 +159,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      const code = otp.join("");
+      const code = otp;
 
       if (code.length < OTP_LENGTH) {
         setError("Please enter all 6 digits");
@@ -251,8 +201,8 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
 
       setError(result.error || "Invalid verification code. Please try again.");
       setErrorModalOpen(true);
-      setOtp(new Array(OTP_LENGTH).fill(""));
-      inputRefs.current[0]?.focus();
+      setOtp("");
+      otpRef.current?.querySelector("input")?.focus();
     },
     [method, onVerify, otp, rememberDevice]
   );
@@ -377,57 +327,25 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                       </div>
                     )}
 
-                    <motion.div
-                      className="grid grid-cols-6 gap-2 sm:gap-3"
-                      onPaste={handlePaste}
-                      animate={error ? { x: [-10, 10, -10, 10, 0] } : {}}
-                      transition={{ duration: 0.4, ease: "easeInOut" }}
-                    >
-                      {otp.map((digit, index) => (
-                        <motion.div
-                          key={index}
-                          initial={prefersReducedMotion ? { opacity: 1, scale: 1 } : { opacity: 0, y: 10, scale: 0.9 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          transition={{
-                            type: "spring",
-                            stiffness: 300,
-                            damping: 20,
-                            delay: index * 0.05
-                          }}
-                        >
-                          <motion.input
-                            ref={(el) => {
-                              inputRefs.current[index] = el;
-                            }}
-                            type="text"
-                            inputMode="numeric"
-                            autoComplete="one-time-code"
-                            maxLength={1}
-                            value={digit}
-                            whileFocus={{ scale: 1.05 }}
-                            animate={digit ? { scale: [1, 1.1, 1] } : {}}
-                            transition={{ duration: 0.15 }}
-                            onChange={(e) => handleOtpChange(index, e.target.value)}
-                            onKeyDown={(e) => handleKeyDown(index, e)}
-                            disabled={isLoading}
-                            aria-label={`Verification code digit ${index + 1}`}
-                            className={cn(
-                              "otp-input h-16 w-full rounded-[12px] border text-center font-bold outline-none leading-normal transition-all",
-                              "focus:ring-1 focus:ring-emerald-600",
-                              digit
-                                ? "border-emerald-600 bg-emerald-50/20 text-emerald-900"
-                                : "border-slate-200 bg-white focus:border-emerald-600",
-                              isSuccess && "border-emerald-500 bg-emerald-500/10"
-                            )}
-                          />
-                        </motion.div>
-                      ))}
-                    </motion.div>
+                    {/* The code is checked only when the person presses "Verify Account": the input has no onComplete on purpose. */}
+                    <div ref={otpRef} className="flex justify-center">
+                      <OtpInput
+                        length={OTP_LENGTH}
+                        size="md"
+                        value={otp}
+                        onChange={(value) => { setOtp(value); setError(""); }}
+                        status={isSuccess ? "success" : error ? "error" : "idle"}
+                        disabled={isLoading}
+                        autoFocus
+                        aria-label="Verification code"
+                        slotClassName="max-[399px]:size-10 focus-visible:ring-emerald-600/60"
+                      />
+                    </div>
 
                     <Button
                       type="submit"
                       className={cn(AUTH_UI.submitButton, "mt-4")}
-                      disabled={isLoading || otp.join("").length < OTP_LENGTH}
+                      disabled={isLoading || otp.length < OTP_LENGTH}
                     >
                       Verify Account
                     </Button>
@@ -464,7 +382,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                       <AuthBackLink
                         onClick={() => {
                           setMethod(null);
-                          setOtp(new Array(OTP_LENGTH).fill(""));
+                          setOtp("");
                           setError("");
                         }}
                         label="Change verification method"

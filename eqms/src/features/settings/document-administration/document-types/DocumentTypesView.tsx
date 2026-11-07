@@ -29,6 +29,9 @@ import type { DocumentNameFormatItem } from "@/features/settings/document-admini
 import { useDictionaryServerTable } from "@/features/settings/dictionaries/hooks/useDictionaryServerTable";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { FileIcon } from "@/features/self-service/knowledge/explorer/ExplorerIcons";
+import { typeColor } from "@/features/self-service/knowledge/explorer/explorerModel";
+import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput";
 
 type ResultModalState = {
   isOpen: boolean;
@@ -44,6 +47,8 @@ type DocumentTypeFormData = {
   description: string;
   isActive: boolean;
   nameFormatId: string | null;
+  iconLabel: string;
+  iconColor: string;
 };
 
 /**
@@ -156,6 +161,8 @@ export const DocumentTypesView: React.FC = () => {
         description: item.description,
         isActive: !item.isActive,
         nameFormatId: item.nameFormatId,
+        iconLabel: item.iconLabel,
+        iconColor: item.iconColor,
       });
       setShowToggleModal(false);
       reload();
@@ -212,6 +219,7 @@ export const DocumentTypesView: React.FC = () => {
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cell: (item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
     { id: "name", header: "Document Type Name", label: "Document Type Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
     { id: "shortCode", header: "Short Code", label: "Short Code", cell: (item) => <Badge color="emerald" size="sm">{item.shortCode}</Badge> },
+    { id: "icon", header: "Icon", label: "Icon", cell: (item) => <FileIcon type={item.name} label={item.iconLabel || item.shortCode} color={item.iconColor || undefined} className="h-7 w-7" /> },
     { id: "currentSequence", header: "Document Number Sequence", label: "Document Number Sequence", cell: (item) => (<div className="flex flex-col gap-0.5 sm:gap-1"><span className="font-medium text-slate-900">{item.lastIssuedDocumentNumber ?? "No number issued"}</span><span className="text-2xs sm:text-xs text-slate-500">Next: {item.nextDocumentNumber ?? "-"}</span></div>) },
     { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
     { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>) },
@@ -575,6 +583,8 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
     description: item?.description || "",
     isActive: item?.isActive ?? true,
     nameFormatId: item?.nameFormatId ?? null,
+    iconLabel: item?.iconLabel ?? "",
+    iconColor: item?.iconColor ?? "",
   });
   const [isSaving, setIsSaving] = useState(false);
   const [eligibleFormats, setEligibleFormats] = useState<DocumentNameFormatItem[]>([]);
@@ -604,6 +614,8 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
         description: item.description || "",
         isActive: item.isActive,
         nameFormatId: item.nameFormatId ?? null,
+        iconLabel: item.iconLabel ?? "",
+        iconColor: item.iconColor ?? "",
       });
     } else {
       setFormData({
@@ -613,9 +625,15 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
         description: "",
         isActive: true,
         nameFormatId: null,
+        iconLabel: "",
+        iconColor: "",
       });
     }
   }, [item, isOpen]);
+
+  // the text on the icon follows the Short Code until the person types their own
+  const defaultIconText = formData.shortCode.toUpperCase().replace(/[^A-Z0-9_/-]/g, "").slice(0, 6);
+  const iconText = formData.iconLabel || defaultIconText;
 
   const handleSubmit = async () => {
     setIsSaving(true);
@@ -623,6 +641,8 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
       await onSave({
         ...formData,
         shortCode: formData.shortCode.toUpperCase(),
+        // the same as the Short Code means "follow it"
+        iconLabel: formData.iconLabel === defaultIconText ? "" : formData.iconLabel,
       });
       onClose();
     } finally {
@@ -718,6 +738,29 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
           <p className="mt-1 text-xs text-slate-500">
             Only formats composed of Document Type + Serial Number are eligible for real numbering today. Manage the full catalog under Document Name Formats.
           </p>
+        </div>
+
+        <div>
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Knowledge Base Icon</label>
+          <div className="flex flex-wrap items-center gap-3">
+            <FileIcon type={formData.name} label={iconText} color={formData.iconColor || undefined} className="h-12 w-[3.25rem] shrink-0 drop-shadow-sm" />
+            <input
+              type="text"
+              aria-label="Icon text"
+              value={iconText}
+              onChange={(e) => setFormData({ ...formData, iconLabel: e.target.value.toUpperCase().replace(/[^A-Z0-9_/-]/g, "").slice(0, 6) })}
+              maxLength={6}
+              className="h-9 w-28 px-3 border border-slate-200 rounded-lg text-sm uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Text"
+              disabled={isSaving}
+            />
+            <div className="w-36">
+              <ColorPickerInput value={formData.iconColor || typeColor(formData.name)} onChange={(color) => setFormData({ ...formData, iconColor: color.toLowerCase() })} disabled={isSaving} />
+            </div>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setFormData({ ...formData, iconLabel: "", iconColor: "" })} disabled={isSaving || (!formData.iconLabel && !formData.iconColor)}>
+              Default
+            </Button>
+          </div>
         </div>
 
         <div>

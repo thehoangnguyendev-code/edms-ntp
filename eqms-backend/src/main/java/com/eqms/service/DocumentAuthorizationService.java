@@ -573,35 +573,6 @@ public class DocumentAuthorizationService {
                 && permissionEvaluationService.hasPermission(user, "documents.revision.upload_source");
     }
 
-    public boolean canCompleteRevisionEditing(UserAccount user, DocumentRevisionRecord revision) {
-        if (user == null || user.getId() == null || revision == null) {
-            return false;
-        }
-        String revisionStatus = revision.getStatus() == null ? null : revision.getStatus().getCode();
-        if (!"DRAFT".equalsIgnoreCase(revisionStatus)) {
-            return false;
-        }
-        if (revision.isSourceLocked()) {
-            return false;
-        }
-        UUID currentUserId = user.getId();
-        UUID authorId = revision.getAuthor() == null ? null : revision.getAuthor().getId();
-        if (Objects.equals(authorId, currentUserId)) {
-            return true;
-        }
-        return revisionWorkflowParticipantRepository
-                .findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(revision.getId(), "CO_AUTHOR")
-                .stream()
-                .anyMatch(participant -> participant.getUser() != null
-                        && currentUserId.equals(participant.getUser().getId()));
-    }
-
-    public void requireCanCompleteRevisionEditing(UserAccount user, DocumentRevisionRecord revision) {
-        if (!canCompleteRevisionEditing(user, revision)) {
-            throw new AccessDeniedException("Only the assigned Author or Co-Author can complete editing the revision.");
-        }
-    }
-
     public boolean canOpenPublishingWorkspace(UserAccount user, DocumentRevisionRecord revision) {
         if (user == null || user.getId() == null || revision == null) {
             return false;

@@ -2804,10 +2804,7 @@ public class ControlledCopyService {
         if (StringUtils.hasText(normalizedDocumentNumber)) {
             long candidateSequence = Math.max(sequence, 1);
             while (candidateSequence <= 999L) {
-                String candidate = "CC."
-                        + normalizedDocumentNumber
-                        + "."
-                        + String.format(Locale.ROOT, "%03d", candidateSequence);
+                String candidate = CopyNumberFormat.controlled(normalizedDocumentNumber, candidateSequence);
                 if (controlledCopyRepository.findByControlledCopyNumber(candidate).isEmpty()) {
                     return candidate;
                 }
@@ -2873,15 +2870,7 @@ public class ControlledCopyService {
     }
 
     private String normalizeControlledCopyBaseCode(String value) {
-        if (!StringUtils.hasText(value)) {
-            return "";
-        }
-        List<String> segments = Arrays.stream(value.trim().split("[.\\-_\\s]+"))
-                .filter(StringUtils::hasText)
-                .map(String::trim)
-                .filter(segment -> !"EXT".equalsIgnoreCase(segment))
-                .toList();
-        return String.join(".", segments);
+        return CopyNumberFormat.baseCode(value);
     }
 
     private String normalize(String value) {

@@ -77,6 +77,39 @@ public class OnlyOfficeDocumentEditService {
      * document-server-to-EQMS calls (source file fetch + save callback), since those requests
      * carry no EQMS session.
      */
+    /** The mode the administrator set for a stage that has a reviewer or an approver acting on the file (Pending Review, Pending Approval). */
+    public EditMode configuredModeFor(String statusCode) {
+        return configurationService.editModeForStage(statusCode);
+    }
+
+    /**
+     * The traceability watermark of the read-only viewer, made for this opening: the viewer's name and employee code and the time now. Nothing is added when the
+     * administrator did not switch it on. The Document Server draws it on every page; the stored file does not change.
+     */
+    private void applyViewerWatermark(ObjectNode documentNode, UserAccount currentUser) {
+        ObjectNode mark = OnlyOfficeViewWatermark.build(objectMapper, configurationService.getViewerSettings(),
+                new PreviewWatermark.Context(
+                        StringUtils.hasText(currentUser.getFullName()) ? currentUser.getFullName() : currentUser.getUsername(),
+                        currentUser.getEmployeeCode(),
+                        java.time.Instant.now()));
+        if (mark != null) {
+            ObjectNode options = documentNode.has("options") && documentNode.get("options").isObject() ? (ObjectNode) documentNode.get("options") : documentNode.putObject("options");
+            options.set("watermark_on_draw", mark);
+        }
+    }
+
+    /** The interface theme every session opens with: Modern Light ("theme-white", exists from Document Server 9.0). A person who picked another theme keeps it in their browser; this is only the default. */
+    static final String DEFAULT_UI_THEME = "theme-white";
+
+    private static void applyDefaultTheme(ObjectNode customization) {
+        customization.put("uiTheme", DEFAULT_UI_THEME);
+    }
+
+    /** A switch of the editing sessions: on until the administrator turns it off. */
+    private static boolean editorFlag(com.fasterxml.jackson.databind.JsonNode viewerSettings, String field) {
+        return viewerSettings == null || viewerSettings.path(field).isMissingNode() || viewerSettings.path(field).isNull() || viewerSettings.path(field).asBoolean(true);
+    }
+
     public ObjectNode buildEditorConfig(DocumentRevisionRecord revision, EditMode mode, UserAccount currentUser) {
         OnlyOfficeConfigurationService.OnlyOfficeConfiguration config = configurationService.getEffectiveConfiguration();
         if (!config.enabled() || !StringUtils.hasText(config.jwtSecret())) {
@@ -105,8 +138,11 @@ public class OnlyOfficeDocumentEditService {
         permissions.put("edit", mode == EditMode.EDIT);
         permissions.put("review", mode == EditMode.REVIEW);
         permissions.put("comment", mode != EditMode.VIEW);
-        permissions.put("download", mode != EditMode.VIEW);
-        permissions.put("print", mode != EditMode.VIEW);
+        // The Download and Print buttons, the File menu entries and Ctrl+P go with these two: when the administrator turns them off (Preview File > OnlyOffice Preview) the
+        // Document Server hides them and refuses the shortcut. The read-only viewer never has them.
+        com.fasterxml.jackson.databind.JsonNode viewerSettings = configurationService.getViewerSettings();
+        permissions.put("download", mode != EditMode.VIEW && editorFlag(viewerSettings, "editorAllowDownload"));
+        permissions.put("print", mode != EditMode.VIEW && editorFlag(viewerSettings, "editorAllowPrint"));
         documentNode.set("permissions", permissions);
 
         ObjectNode editorConfigNode = objectMapper.createObjectNode();
@@ -118,6 +154,10 @@ public class OnlyOfficeDocumentEditService {
         editorConfigNode.set("user", user);
 
         ObjectNode customization = objectMapper.createObjectNode();
+        applyDefaultTheme(customization);
+        // The Plugins tab (draw.io and the other bundled plugins) is offered only to a person who edits. A reviewer or commenter works inside the tracked-changes
+        // rules and a plugin inserts or rewrites content outside them; the read-only viewer takes its own setting (applyViewerOptions).
+        customization.put("plugins", mode == EditMode.EDIT);
         if (mode == EditMode.REVIEW) {
             customization.put("forcesave", true);
             ObjectNode review = objectMapper.createObjectNode();
@@ -129,6 +169,7 @@ public class OnlyOfficeDocumentEditService {
             // Which parts of OnlyOffice's toolbar the read-only viewer shows is an admin setting
             // (Settings > Configuration > OnlyOffice > Document viewer toolbar).
             applyViewerOptions(customization, configurationService.getViewerOptions());
+            applyViewerWatermark(documentNode, currentUser);
         }
         // Logo is referenced by URL (supplied by the browser as ?logoUrl=, pointing at
         // /branding/logo). Embedding the stored data: URI made the signed config huge and caused
@@ -185,7 +226,9 @@ public class OnlyOfficeDocumentEditService {
         user.put("name", currentUser.getFullName());
         editorConfigNode.set("user", user);
         ObjectNode customization = objectMapper.createObjectNode();
+        applyDefaultTheme(customization);
         applyViewerOptions(customization, configurationService.getViewerOptions());
+        applyViewerWatermark(documentNode, currentUser);
         String logoUrl = requestedLogoUrl();
         if (StringUtils.hasText(logoUrl) && systemConfigurationService.getPublicBranding().systemLogo() != null) {
             ObjectNode logo = objectMapper.createObjectNode();
@@ -239,6 +282,7 @@ public class OnlyOfficeDocumentEditService {
         user.put("name", currentUser.getFullName());
         editorConfigNode.set("user", user);
         ObjectNode customization = objectMapper.createObjectNode();
+        applyDefaultTheme(customization);
         // Save in the editor sends the file to the activity at once, not only when the last person leaves.
         customization.put("forcesave", true);
         String logoUrl = requestedLogoUrl();

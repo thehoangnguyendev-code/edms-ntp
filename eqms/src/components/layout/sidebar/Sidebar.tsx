@@ -215,22 +215,22 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { user, logout } = useAuth();
     const favorites = useSidebarFavorites(user?.id);
-    const { showSidebarUserProfile, knowledgeExplorerEnabled } = useBranding();
-    // With the Explorer enabled, Knowledge Base opens in a new tab: the current page is not left,
+    const { showSidebarUserProfile, knowledgeOpenInNewTab } = useBranding();
+    // the administrator chooses (Configuration > General): a new tab (also when nothing was set) or the current one
+    const knowledgeInNewTab = knowledgeOpenInNewTab !== false;
+    // Knowledge Base opens the Explorer in a new tab: the current page is not left,
     // so the unsaved-changes guard does not apply and the router is not involved.
-    const opensInNewTab = useCallback(
-      (item: NavItem) => item.id === KNOWLEDGE_BASE_NAV_ID && knowledgeExplorerEnabled === true,
-      [knowledgeExplorerEnabled],
-    );
+    // Opened in the current tab it is a navigation like any other (and the guard applies).
+    const opensInNewTab = useCallback((item: NavItem) => item.id === KNOWLEDGE_BASE_NAV_ID && knowledgeInNewTab, [knowledgeInNewTab]);
     const onNavigate = useCallback(
       (id: string) => {
-        if (id === KNOWLEDGE_BASE_NAV_ID && knowledgeExplorerEnabled === true) {
+        if (id === KNOWLEDGE_BASE_NAV_ID && knowledgeInNewTab) {
           openKnowledgeExplorer();
           return;
         }
         onNavigateToItem(id);
       },
-      [knowledgeExplorerEnabled, onNavigateToItem],
+      [knowledgeInNewTab, onNavigateToItem],
     );
     const [authorizedNavigationIds, setAuthorizedNavigationIds] = useState<Set<string> | null>(null);
     const [navigationLabels, setNavigationLabels] = useState<Map<string, string>>(new Map());

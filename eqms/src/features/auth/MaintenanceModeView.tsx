@@ -37,19 +37,9 @@ export const MaintenanceModeView: React.FC = () => {
   }, [navigate]);
 
   return (
-    <div data-auth-layout data-auth-maintenance className="relative isolate flex min-h-screen min-h-dvh w-full flex-col items-center justify-center overflow-hidden bg-[#fefcff] px-6 py-12">
+    <div data-auth-layout data-auth-maintenance className="relative isolate flex min-h-screen min-h-dvh w-full flex-col items-center justify-center overflow-hidden bg-gray-100/50 px-6 py-12">
       <AuthVideoBackground />
-      {/* Background radial gradients matching AuthLayout */}
-      <div
-        data-auth-glow
-        className="pointer-events-none absolute inset-0 -z-10"
-        style={{
-          backgroundImage: `
-            radial-gradient(circle at 30% 70%, rgba(173, 216, 230, 0.35), transparent 60%),
-            radial-gradient(circle at 70% 30%, rgba(255, 182, 193, 0.4), transparent 60%)`,
-        }}
-      />
-
+      {/* Light grey (bg-gray-100/50) by default, as the sign-in page. */}
       {/* Brand Logo */}
       <div className="mb-16 flex items-center justify-center">
         <BrandLogo className="h-10 w-auto object-contain" />

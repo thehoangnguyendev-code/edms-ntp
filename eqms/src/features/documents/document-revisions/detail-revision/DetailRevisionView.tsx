@@ -361,7 +361,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       currentRevision?.workingNotesEditable,
     ],
   );
-  const reloadRevisionPreview = React.useCallback(
+  const loadRevisionPreview = React.useCallback(
     async (detail: RevisionDetailResponse | null | undefined) => {
       const requestSequence = ++previewRequestSequenceRef.current;
       if (!detail) {
@@ -424,6 +424,30 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     },
     [revisionId],
   );
+
+  // The PDF is the heaviest request of this page, and only the Document tab shows it, so it is asked for only while that tab is
+  // open. While another tab is showing, the revision whose preview is wanted is remembered (the newest one wins) and fetched
+  // the moment the Document tab opens.
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+  const deferredPreviewRef = useRef<{ detail: RevisionDetailResponse | null | undefined } | null>(null);
+  const reloadRevisionPreview = React.useCallback(
+    async (detail: RevisionDetailResponse | null | undefined) => {
+      if (activeTabRef.current !== "document") {
+        deferredPreviewRef.current = { detail };
+        return;
+      }
+      deferredPreviewRef.current = null;
+      await loadRevisionPreview(detail);
+    },
+    [loadRevisionPreview],
+  );
+  React.useLayoutEffect(() => {
+    if (activeTab !== "document" || !deferredPreviewRef.current) return;
+    const { detail } = deferredPreviewRef.current;
+    deferredPreviewRef.current = null;
+    void loadRevisionPreview(detail);
+  }, [activeTab, loadRevisionPreview]);
 
   // The server generates the watermark for every preview response. Re-fetch only the open
   // Document tab after an administrator changes that policy; the page and its workflow state

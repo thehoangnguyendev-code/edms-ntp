@@ -9,5 +9,7 @@ import java.util.UUID;
 
 public interface PublishingTemplateComponentRepository extends JpaRepository<PublishingTemplateComponent, UUID> {
     List<PublishingTemplateComponent> findByTemplate_IdOrderByComponentTypeAscLayoutAsc(UUID templateId);
+    /** Components stored before placeholder detection existed; their list was never computed. */
+    List<PublishingTemplateComponent> findByDetectedPlaceholdersIsNull();
     Optional<PublishingTemplateComponent> findByTemplate_IdAndComponentTypeIgnoreCaseAndLayoutIgnoreCase(UUID templateId, String componentType, String layout);
 }

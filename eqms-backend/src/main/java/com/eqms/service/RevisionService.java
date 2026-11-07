@@ -826,8 +826,8 @@ public class RevisionService {
                 : document.getPeriodicReviewCycle();
         LocalDate validUntil = calculateValidUntil(effectiveDate, periodicReviewCycle, revision.getValidUntil());
 
-        // Same immutable-source invariant Complete Editing normally establishes -- Legacy Import
-        // skips Complete Editing entirely, so it must set this itself before the revision becomes
+        // Same immutable-source invariant Submit for Review normally establishes -- Legacy Import
+        // skips Submit for Review entirely, so it must set this itself before the revision becomes
         // Effective.
         revision.setEditingStatus("COMPLETED");
         revision.setSourceLocked(true);
@@ -1381,7 +1381,7 @@ public class RevisionService {
      * this the lock could land first and the trailing save would be dropped -- the file every
      * later stage (snapshot PDF, reviewers) reads would silently miss the Author's work. Runs
      * OUTSIDE any transaction on purpose: the save-callback needs the revision row that
-     * {@link #completeEditing} locks. Fails closed if edits cannot be confirmed saved.
+     * {@link #submitForReview} locks. Fails closed if edits cannot be confirmed saved.
      */
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public void flushOnlyOfficeEditsBeforeLock(UUID revisionId) {
@@ -1415,7 +1415,7 @@ public class RevisionService {
             }
         }
         throw new RevisionLifecycleConflictException("ONLYOFFICE_SAVE_NOT_CONFIRMED",
-                "Your latest edits are still being saved. Wait a few seconds and try Complete Editing again.");
+                "Your latest edits are still being saved. Wait a few seconds and try again.");
     }
 
     public OnlyOfficeDocumentEditService.Capacity getOnlyOfficeCapacity() {
@@ -1454,87 +1454,6 @@ public class RevisionService {
                 log.warn("Could not close OnlyOffice session {}: {}", key, ex.toString());
             }
         }
-    }
-
-    @Transactional
-    public RevisionDetailResponse completeEditing(UUID revisionId, RevisionWorkflowActionRequest request) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        // Row-locked: races getOfficeOnlineEditLink() for the same revision -- see
-        // requireRevisionForUpdate's javadoc.
-        DocumentRevisionRecord revision = requireRevisionForUpdate(revisionId);
-        // Author-only + documents.revision.complete_authoring, per the COMPLETE_AUTHORING
-        // workflow_action_policy and explicit product decision (Co-Author does not complete
-        // editing) â€” replaces the old Author/Co-Author, no-permission-required check.
-        revisionWorkflowAuthorizationService.require(
-                currentUser,
-                revision,
-                RevisionWorkflowAction.COMPLETE_AUTHORING,
-                com.eqms.dto.security.RevisionWorkflowAuthorizationContext.of(revision)
-        );
-        requireRevisionStatus(revision, "DRAFT");
-        requireRevisionSourceFile(revision);
-        requireValidSignatureToken(request, currentUser, "complete editing");
-
-        // OnlyOffice keeps MinIO current on every save via its push callback (see
-        // RevisionService#applyOnlyOfficeCallback) -- there is no separate "pull the latest edit"
-        // or "revoke remote access" step needed here the way Graph's pull model required; status
-        // alone (no longer DRAFT once sourceLocked below) is what stops further OnlyOffice edits,
-        // enforced by RevisionActionCapabilityService#hasOfficeWorkspace / getOnlyOfficeEditConfig.
-        revision.setEditingStatus("COMPLETED");
-        revision.setSourceLocked(true);
-        revisionRepository.save(revision);
-
-        recordElectronicSignature(revision, currentUser, request, "PREPARED", "DRAFT", "DRAFT");
-        recordRevisionHistory(
-                revision,
-                "COMPLETE_EDITING",
-                "DRAFT",
-                "DRAFT",
-                "Author completed editing and locked the revision for publishing preparation",
-                currentUser
-        );
-        auditTrailService.logAs(
-                currentUser,
-                "REVISION",
-                revision.getRevisionName(),
-                revision.getId(),
-                "COMPLETE_EDITING",
-                "DRAFT",
-                "DRAFT",
-                "Author completed editing, recorded the PREPARED signature, and revoked Office Online edit access.",
-                List.of(
-                        new AuditTrailChangeResponse("Prepared Signature", "-", "Recorded"),
-                        new AuditTrailChangeResponse("Source Editing", "Unlocked", "Locked"),
-                        new AuditTrailChangeResponse("SharePoint Edit Link", "Active", "Revoked")
-                )
-        );
-        publishRevisionWorkflowUpdateAfterCommit(revision, "COMPLETE_EDITING");
-        notifyDcoRevisionReadyForSubmission(revision, currentUser);
-        return toDetailResponse(revision);
-    }
-
-    /**
-     * T-P1-4 (F-08/Q1): recipients are resolved from the live SUBMIT_FOR_REVIEW policy actors
-     * (DCO/DOCUMENT_CONTROLLER access profiles as of V345), not hard-coded, so this notification
-     * automatically stays correct if the actor is reconfigured later via the Workflow
-     * Authorization admin UI.
-     */
-    private void notifyDcoRevisionReadyForSubmission(DocumentRevisionRecord revision, UserAccount actor) {
-        List<UserAccount> recipients = resolvePolicyAccessProfileRecipients(
-                RevisionWorkflowAction.SUBMIT_FOR_REVIEW,
-                revision.getStatus() == null ? "DRAFT" : revision.getStatus().getCode(),
-                revision.getDocument() == null || revision.getDocument().getDocumentType() == null
-                        ? null
-                        : revision.getDocument().getDocumentType().getId()
-        );
-        sendRevisionHandoverNotification(
-                EmailTemplateTypeUtils.DOCUMENT_READY_FOR_SUBMISSION_NOTIFICATION,
-                revision,
-                actor,
-                recipients,
-                "COMPLETE_EDITING",
-                null
-        );
     }
 
     /**
@@ -1596,48 +1515,14 @@ public class RevisionService {
         }
     }
 
-    /**
-     * Resolves the runtime actors of the given workflow action, when they are ACCESS_PROFILE
-     * actors, to the Active users currently holding one of those profiles. Deliberately does not
-     * hard-code any profile code so recipients follow the DB policy configuration.
-     */
-    private List<UserAccount> resolvePolicyAccessProfileRecipients(
-            RevisionWorkflowAction action, String fromStatus, UUID documentTypeId
-    ) {
-        Optional<WorkflowActionPolicy> policyOpt = workflowActionPolicyService.resolvePolicy(action, fromStatus, documentTypeId);
-        if (policyOpt.isEmpty()) {
-            return List.of();
-        }
-        List<WorkflowActionPolicyActor> actors = policyOpt.get().getActors();
-        if (actors == null || actors.isEmpty()) {
-            return List.of();
-        }
-        List<String> profileCodes = actors.stream()
-                .filter(a -> a.getActorType() == WorkflowActorType.ACCESS_PROFILE)
-                .map(WorkflowActionPolicyActor::getActorCode)
-                .filter(StringUtils::hasText)
-                .distinct()
-                .toList();
-        if (profileCodes.isEmpty()) {
-            return List.of();
-        }
-        List<UUID> userIds = userAccessProfileRepository.findUserIdsByProfileCodes(profileCodes);
-        if (userIds.isEmpty()) {
-            return List.of();
-        }
-        return userAccountRepository.findAllById(userIds).stream()
-                .filter(u -> u.getStatus() == UserStatus.Active)
-                .toList();
-    }
-
     @Transactional
     public RevisionDetailResponse submitForReview(UUID revisionId, RevisionWorkflowActionRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        // Row-locked: races completeEditing()/syncEditedFileFromOfficeOnline() for the same
+        // Row-locked: races submitForReview()/syncEditedFileFromOfficeOnline() for the same
         // revision -- both also call syncEditedFileFromOfficeOnlineToMinio(), which downloads the
         // current Office Online content and overwrites revision.filePath/sourceFileChecksum. Two
         // such calls interleaving without a lock (e.g. a double-submit, or Submit racing an
-        // in-flight Complete Editing) is a lost-update race on our own DB writes -- the same class
+        // in-flight Submit for Review) is a lost-update race on our own DB writes -- the same class
         // of issue already fixed for the Reviewer/Approver actions earlier this session.
         DocumentRevisionRecord revision = requireRevisionForUpdate(revisionId);
         // documents.workspace.manage specifically (DCO), matching the SUBMIT_FOR_REVIEW
@@ -1670,10 +1555,14 @@ public class RevisionService {
                                 + "revision was created; re-open the revision to re-sync before submitting for review");
             }
         }
-        if (!electronicSignatureService.hasRevisionSignatureMeaning(revision, "PREPARED")) {
-            throw new IllegalStateException("Revision editing must be completed before submitting for review");
-        }
+        requireRevisionSourceFile(revision);
         requireValidSignatureToken(request, currentUser, "submit for review");
+
+        // Submitting is what ends authoring: lock the source so what the reviewers read is what was submitted
+        // (this used to be the separate Complete Editing step). The Author's PREPARED signature is no longer collected;
+        // the SUBMITTED_FOR_REVIEW signature below is the one signature of this step.
+        revision.setEditingStatus("COMPLETED");
+        revision.setSourceLocked(true);
 
         // No review PDF snapshot any more: reviewers/approvers view the working file directly in the
         // read-only OnlyOffice viewer (see getOnlyOfficeViewConfig), so submitting triggers no conversion.
@@ -2049,13 +1938,10 @@ public class RevisionService {
         validatePublishableRevision(revision);
 
         RelatedPublishBatchResolution batchResolution = resolveRelatedPublishBatch(document);
-        if (!batchResolution.blocking().isEmpty()) {
-            String message = "One or more Related Documents have a revision in progress that has not yet reached "
-                    + "Ready for Publishing. This document cannot be published until they do, so the whole package "
-                    + "publishes together.\n\n"
-                    + batchResolution.blockMessagePlain()
-                    + "\nBring the listed document(s) to Ready for Publishing first, then publish again.";
-            throw new RelatedDocumentsNotEffectiveException(message, batchResolution.blocking());
+        // Only a publish the signer confirmed with "force" may go ahead without a Related Document that is not ready.
+        boolean forcedWithoutRelated = !batchResolution.blocking().isEmpty() && confirmation != null && confirmation.forceRelated;
+        if (!batchResolution.blocking().isEmpty() && !forcedWithoutRelated) {
+            throw new RelatedDocumentsNotEffectiveException(relatedNotReadyMessage(batchResolution), batchResolution.blocking());
         }
         List<DocumentRevisionRecord> relatedRevisionsToPublish = batchResolution.ready();
         // Batch publishing never grants authority the actor does not already hold: each
@@ -2076,6 +1962,25 @@ public class RevisionService {
         List<DocumentRevisionRecord> bundle = new java.util.ArrayList<>();
         bundle.add(revision);
         bundle.addAll(relatedRevisionsToPublish);
+
+        if (forcedWithoutRelated) {
+            auditTrailService.logAs(
+                    currentUser,
+                    "REVISION",
+                    revision.getRevisionName(),
+                    revision.getId(),
+                    "FORCE_PUBLISH_RELATED_NOT_READY",
+                    "READY_FOR_PUBLISHING",
+                    "READY_FOR_PUBLISHING",
+                    "Published although Related Documents were not ready for publishing; they were left unchanged. Reason: "
+                            + firstNonBlank(request == null ? null : request.reason(), request == null ? null : request.comment(), "-"),
+                    batchResolution.blockers().stream()
+                            .map(blocker -> new AuditTrailChangeResponse("Related Document not published", "-",
+                                    blocker.documentNumber() + " - " + firstNonBlank(blocker.documentName(), "-")
+                                            + " (Revision " + blocker.revisionNumber() + ", " + blocker.statusLabel() + ")"))
+                            .toList()
+            );
+        }
 
         EffectiveDateResolution resolution = resolveEffectiveDate(bundle, publishedAt);
         String basisLabel = switch (resolution.basis()) {
@@ -2109,12 +2014,33 @@ public class RevisionService {
         return toDetailResponse(revision);
     }
 
-    /** Locks and snapshots the exact related publication bundle; no signature is applied here. */
+    private String relatedNotReadyMessage(RelatedPublishBatchResolution resolution) {
+        return "One or more Related Documents have a revision in progress that has not yet reached "
+                + "Ready for Publishing. This document cannot be published together with them until they do, "
+                + "so the whole package publishes together.\n\n"
+                + resolution.blockMessagePlain()
+                + "\nBring the listed document(s) to Ready for Publishing first, then publish again.";
+    }
+
+    /** The Related Documents that keep this revision from publishing together with them (empty when none). Read only. */
+    @Transactional(readOnly = true)
+    public List<com.eqms.dto.publishing.RelatedPublishBlockerResponse> relatedPublishBlockers(UUID revisionId) {
+        var revision = requireRevision(revisionId);
+        return resolveRelatedPublishBatch(requireDocument(revision.getDocument().getId())).blockers();
+    }
+
+    /**
+     * Locks and snapshots the exact related publication bundle; no signature is applied here. With {@code forceRelated}
+     * the signer chose to publish although a Related Document is not ready: that document is left out of the bundle
+     * and untouched, and the audit of the publication names it.
+     */
     @Transactional
-    Map<UUID, String> capturePublishConfirmationBundle(UUID revisionId, UserAccount actor) {
+    Map<UUID, String> capturePublishConfirmationBundle(UUID revisionId, UserAccount actor, boolean forceRelated) {
         var revision = requireRevisionForUpdate(revisionId);
         var resolution = resolveRelatedPublishBatch(requireDocument(revision.getDocument().getId()));
-        if (!resolution.blocking().isEmpty()) throw new IllegalStateException("Related documents are not ready for publishing");
+        if (!resolution.blocking().isEmpty() && !forceRelated) {
+            throw new RelatedDocumentsNotEffectiveException(relatedNotReadyMessage(resolution), resolution.blocking());
+        }
         var bundle = new java.util.ArrayList<DocumentRevisionRecord>();
         bundle.add(revision);
         bundle.addAll(resolution.ready());
@@ -2394,7 +2320,8 @@ public class RevisionService {
     private record RelatedPublishBatchResolution(
             List<DocumentRevisionRecord> ready,
             List<ApiErrorResponse.ErrorDetail> blocking,
-            String blockMessagePlain
+            String blockMessagePlain,
+            List<com.eqms.dto.publishing.RelatedPublishBlockerResponse> blockers
     ) {}
 
     /**
@@ -2411,6 +2338,7 @@ public class RevisionService {
         List<DocumentRelation> relatedRelations = documentRelationRepository.findAllBySourceDocument_IdAndRelationType(document.getId(), "RELATED");
         List<DocumentRevisionRecord> ready = new java.util.ArrayList<>();
         List<ApiErrorResponse.ErrorDetail> blocking = new java.util.ArrayList<>();
+        List<com.eqms.dto.publishing.RelatedPublishBlockerResponse> blockers = new java.util.ArrayList<>();
         StringBuilder blockMessageBuilder = new StringBuilder();
 
         for (DocumentRelation relation : relatedRelations) {
@@ -2428,13 +2356,22 @@ public class RevisionService {
             }
             if (!"READY_FOR_PUBLISHING".equals(latestStatus)) {
                 String statusLabel = latestRelatedRevision.getStatus().getLabel();
-                blocking.add(new ApiErrorResponse.ErrorDetail(relatedDoc.getDocumentNumber(), statusLabel));
-                blockMessageBuilder.append(relatedDoc.getDocumentNumber()).append(" - ").append(statusLabel).append("\n");
+                // The exact document (number and name) and the revision that holds it back, so the person can find it.
+                String documentLabel = StringUtils.hasText(relatedDoc.getDocumentName())
+                        ? relatedDoc.getDocumentNumber() + " - " + relatedDoc.getDocumentName()
+                        : relatedDoc.getDocumentNumber();
+                String revisionNumber = latestRelatedRevision.getRevisionNumber();
+                String statusText = "Revision " + revisionNumber + " \u00b7 " + statusLabel;
+                blocking.add(new ApiErrorResponse.ErrorDetail(documentLabel, statusText));
+                blockers.add(new com.eqms.dto.publishing.RelatedPublishBlockerResponse(
+                        relatedDoc.getId().toString(), relatedDoc.getDocumentNumber(), relatedDoc.getDocumentName(),
+                        latestRelatedRevision.getId() == null ? null : latestRelatedRevision.getId().toString(), revisionNumber, latestStatus, statusLabel));
+                blockMessageBuilder.append(documentLabel).append(" - ").append(statusText).append("\n");
                 continue;
             }
             ready.add(latestRelatedRevision);
         }
-        return new RelatedPublishBatchResolution(ready, blocking, blockMessageBuilder.toString());
+        return new RelatedPublishBatchResolution(ready, blocking, blockMessageBuilder.toString(), blockers);
     }
 
     private void validatePublishableRevision(DocumentRevisionRecord revision) {
@@ -2758,9 +2695,9 @@ public class RevisionService {
     }
 
     /**
-     * A Draft revision whose Author already signed COMPLETE_AUTHORING (editingStatus=="COMPLETED")
+     * A Draft revision whose source is already locked (editingStatus=="COMPLETED", e.g. one created before Complete Editing was retired)
      * must not have its metadata/participants silently mutated anymore -- status alone stays "DRAFT"
-     * at that point (completeEditing() never advances it), so requireRevisionStatus(revision,
+     * at that point (the lock never advances it), so requireRevisionStatus(revision,
      * "DRAFT") alone is not sufficient to block edits after authoring is complete.
      */
     private void requireRevisionNotCompletedEditing(DocumentRevisionRecord revision) {
@@ -2779,10 +2716,10 @@ public class RevisionService {
      * readable (deleted object, corrupted path, storage outage) -- so this reuses
      * {@link #resolveRevisionSourceFile}, the same helper {@code refreshPreviewFromUploadedFile}
      * relies on, which actually materializes the object from storage and confirms it exists on
-     * disk before Complete Editing is allowed to proceed.
+     * disk before Submit for Review is allowed to proceed.
      */
     private void requireRevisionSourceFile(DocumentRevisionRecord revision) {
-        requireRevisionSourceFile(revision, "Complete Editing");
+        requireRevisionSourceFile(revision, "Submit for Review");
     }
 
     /**
@@ -3137,7 +3074,7 @@ public class RevisionService {
             variables.put("documentTitle", Objects.toString(document.getDocumentName(), ""));
             variables.put("revisionNumber", Objects.toString(revision.getRevisionNumber(), ""));
             variables.put("knowledgeBase", Objects.toString(document.getKnowledgeBase(), ""));
-            variables.put("actionUrl", "/self-service/knowledge");
+            variables.put("actionUrl", "/documents/knowledge/explorer");
             knowledgeNotificationDispatcher.dispatch("knowledge.document_published", recipients, variables);
         } catch (Exception ex) {
             log.warn("Knowledge subscriber notification failed for revision {}", revision.getId(), ex);
@@ -3814,28 +3751,26 @@ public class RevisionService {
 
       /**
        * Detail response used to fill the publishing header/footer/cover placeholders. While a revision is
-       * still Ready for Publishing, publishing will change its revision number (next major version) and set
-       * its Effective Date; rendering the preview with today's values would show "Code: SOP.10110.1" and
-       * "Effective date: -" for a document that will read ".2" and a real date once published. So for that
-       * stage the response carries the values publishing WILL produce (nothing is persisted). Any other
-       * stage is rendered as stored.
+       * still Ready for Publishing, publishing will change its revision number (next major version);
+       * rendering the preview with today's value would show "Code: SOP.10110.1" for a document that will read
+       * ".2" once published. So for that stage the response carries the revision number publishing WILL produce
+       * (nothing is persisted). The Effective Date is not projected: the revision is not effective yet, so it
+       * stays empty. Any other stage is rendered as stored.
        */
       public RevisionDetailResponse buildDetailResponseForRendering(DocumentRevisionRecord revision) {
           String status = revision == null || revision.getStatus() == null ? null : revision.getStatus().getCode();
           if (revision == null || !"READY_FOR_PUBLISHING".equalsIgnoreCase(status)) {
               return toDetailResponse(revision);
           }
-          Instant projectedPublishedAt = Instant.now();
-          LocalDate projectedEffectiveDate = calculateEffectiveDate(revision, projectedPublishedAt);
-          Integer periodicReviewCycle = revision.getPeriodicReviewCycle() != null
-                  ? revision.getPeriodicReviewCycle()
-                  : (revision.getDocument() == null ? null : revision.getDocument().getPeriodicReviewCycle());
+          // Only the revision number is projected. The Effective Date (and the Valid Until derived from it) is left as
+          // stored, i.e. empty, until publishing succeeds: the published PDF is composed again after the revision is
+          // Effective, so it then carries the real date.
           return toDetailResponse(
                   revision,
                   null,
                   promoteToNextMajorVersion(revision.getRevisionNumber()),
-                  projectedEffectiveDate,
-                  calculateValidUntil(projectedEffectiveDate, periodicReviewCycle, revision.getValidUntil()));
+                  null,
+                  null);
       }
 
       private RevisionDetailResponse toDetailResponse(DocumentRevisionRecord revision) {
@@ -3918,7 +3853,6 @@ public class RevisionService {
         String workingNotesStage = resolveWorkingNoteStage(revision);
         boolean workingNotesEditable = canWriteWorkingNotes(revision, currentUser);
         boolean canEditFileOnline = documentAuthorizationService.canEditRevisionFileOnline(currentUser, revision);
-        boolean canCompleteEditing = canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_AUTHORING);
         boolean canOpenPublishingWorkspace = documentAuthorizationService.canOpenPublishingWorkspace(currentUser, revision);
         boolean canReviewRevision = canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_REVIEW);
         boolean canApproveRevision = canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_APPROVAL);
@@ -4035,7 +3969,6 @@ public class RevisionService {
                 history,
                 buildRevisionSignatures(revision),
                 canEditFileOnline,
-                canCompleteEditing,
                 canOpenPublishingWorkspace,
                 canReviewRevision,
                 canApproveRevision,
@@ -4322,7 +4255,7 @@ public class RevisionService {
                 .findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(document.getId(), "DRAFT")
                 .orElse(null);
         if (draft == null || "COMPLETED".equals(draft.getEditingStatus())) {
-            // A Draft whose Author already signed COMPLETE_AUTHORING must not be silently
+            // A Draft whose source is already locked must not be silently
             // re-synced from later Document Master workflow-configuration changes -- see
             // requireRevisionNotCompletedEditing() for the equivalent guard on the direct
             // updateRevision() edit path.
@@ -5108,8 +5041,8 @@ public class RevisionService {
     /**
      * Resolves the caller's edit permission/mode exactly like the Graph edit/review link methods
      * above (Draft -> full edit for Author/Co-Author via {@code canEditRevisionFileOnline};
-     * Pending Review/Pending Approval -> comment-only for the assigned Reviewer/Approver via
-     * {@code canCurrentUserPerformWorkflowAction}) and, once permitted, builds the OnlyOffice
+     * Pending Review/Pending Approval -> Review or Comment Only, as configured, for the assigned
+     * Reviewer/Approver via {@code canCurrentUserPerformWorkflowAction}) and, once permitted, builds the OnlyOffice
      * editor config for that mode. Kept as a single entry point so both providers stay gated by
      * the same lifecycle rules instead of each provider re-implementing its own check.
      */
@@ -5125,11 +5058,12 @@ public class RevisionService {
         } else if ("PENDING_REVIEW".equalsIgnoreCase(status)
                 && (canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_REVIEW)
                 || canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.REJECT_REVIEW))) {
-            mode = com.eqms.service.editprovider.EditMode.REVIEW;
+            // Review (track changes) or Comment Only: set in Settings > Configuration > Preview File > OnlyOffice Preview.
+            mode = onlyOfficeDocumentEditService.configuredModeFor("PENDING_REVIEW");
         } else if ("PENDING_APPROVAL".equalsIgnoreCase(status)
                 && (canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_APPROVAL)
                 || canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.REJECT_APPROVAL))) {
-            mode = com.eqms.service.editprovider.EditMode.COMMENT_ONLY;
+            mode = onlyOfficeDocumentEditService.configuredModeFor("PENDING_APPROVAL");
         } else {
             throw new AccessDeniedException("Online editing is not available for this revision at its current stage for this user");
         }
@@ -5550,7 +5484,7 @@ public class RevisionService {
     /**
      * Renders the immutable, source-only PDF used by the Review/Approval workflow from the
      * revision's currently-locked source file. Used by {@link RevisionSnapshotAsyncService} to
-     * generate the review snapshot asynchronously after "Complete Editing".
+     * generate the review snapshot asynchronously after "Submit for Review".
      */
     public byte[] renderReviewSnapshotSource(UUID revisionId) throws IOException {
         DocumentRevisionRecord revision = requireRevisionForSnapshot(revisionId);
@@ -6000,7 +5934,7 @@ public class RevisionService {
 
     /** Same lookup, but row-locked (PESSIMISTIC_WRITE) for the two call sites that race each
      *  other over the same "is this revision's source still editable" decision:
-     *  {@link #completeEditing} (locks the source + revokes Office Online edit access) and
+     *  {@link #submitForReview} (locks the source + revokes Office Online edit access) and
      *  {@link #getOfficeOnlineEditLink} (grants it). Holding the row lock for the duration of
      *  each transaction means whichever commits first is guaranteed the other sees its result
      *  before deciding, instead of both reading the pre-lock state concurrently. */
@@ -6065,6 +5999,18 @@ public class RevisionService {
         };
     }
 
+    /** The id comparisons of a lookup filter. Only a text id can be compared as text: lower() of a UUID column is an SQL error (HTTP 500). */
+    private static jakarta.persistence.criteria.Predicate idMatches(
+            jakarta.persistence.criteria.CriteriaBuilder cb, jakarta.persistence.criteria.Path<?> idPath, String normalized) {
+        if (UUID.class.equals(idPath.getJavaType())) {
+            return cb.disjunction();
+        }
+        return cb.or(
+                cb.equal(cb.lower(idPath.as(String.class)), normalized),
+                cb.equal(cb.lower(idPath.as(String.class)), normalized.replace("-", "_")),
+                cb.equal(cb.lower(idPath.as(String.class)), normalized.replace("_", "-")));
+    }
+
     private void addLookupPredicate(
             List<Predicate> predicates,
             jakarta.persistence.criteria.CriteriaBuilder cb,
@@ -6083,9 +6029,7 @@ public class RevisionService {
             return;
         }
         predicates.add(cb.or(
-                cb.equal(cb.lower(idPath.as(String.class)), normalized),
-                cb.equal(cb.lower(idPath.as(String.class)), normalized.replace("-", "_")),
-                cb.equal(cb.lower(idPath.as(String.class)), normalized.replace("_", "-")),
+                idMatches(cb, idPath, normalized),
                 cb.equal(cb.lower(namePath), normalized),
                 cb.equal(cb.lower(namePath), normalized.replace("-", " ")),
                 cb.equal(cb.lower(namePath), normalized.replace("_", " ")),

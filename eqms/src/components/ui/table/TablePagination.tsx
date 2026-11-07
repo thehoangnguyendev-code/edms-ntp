@@ -1,7 +1,8 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useRef } from 'react';
 import { Button } from '../button/Button';
 import { Select } from '../select/Select';
 import { cn } from '../utils';
+import { useFitLevel } from '../useFitLevel';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 
 export interface TablePaginationProps {
@@ -14,17 +15,13 @@ export interface TablePaginationProps {
   onItemsPerPageChange?: (itemsPerPage: number) => void;
   className?: string;
   showItemCount?: boolean;
-  /** Clickable page numbers between Previous/Next (hidden on narrow/mobile layouts). Default true. */
+  /** Clickable page numbers between Previous/Next (shown only while there is room; otherwise "3/113"). Default true. */
   showPageNumbers?: boolean;
   showItemsPerPageSelector?: boolean;
   itemsPerPageOptions?: number[];
 }
 
-// Page numbers only ever render at lg+ (desktop) -- see the `hidden lg:flex` wrapper below -- so
-// this can target the Previous/Next buttons' actual lg+ rendered height directly: Button's own
-// `size="sm"` class list is `h-9 md:h-9 ...`, and since lg is always >= md, `md:h-9` (36px) is
-// always the winning height whenever these are visible. Wider padding/min-width so 3-digit page
-// numbers (e.g. 137) sit comfortably.
+// Height of the Previous/Next buttons (h-7 = 28px at every size), with a wider padding and min-width so 3-digit page numbers (e.g. 137) sit comfortably.
 const PAGE_BTN_BASE = 'h-9 min-w-[2.25rem] px-3 text-sm font-medium rounded-lg border transition-all flex items-center justify-center';
 const PAGE_BTN_ACTIVE = 'bg-emerald-600 text-white border-emerald-600';
 const PAGE_BTN_INACTIVE = 'text-slate-700 bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300';
@@ -97,54 +94,67 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
     [itemsPerPageOptions]
   );
 
+  const rootRef = useRef<HTMLDivElement>(null);
+  // Nothing here ever wraps: when the room is short the pagination gives up detail, in this order, and never by the width of the screen
+  // (the sidebar and a modal take a different share of the same screen). 0 = everything; 1 = the page numbers become "3/113"; 2 = Previous
+  // and Next become arrows; 3 = "results" is dropped; 4 = the word "Show:" is dropped too.
+  const level = useFitLevel(rootRef, 5, `${totalItems}|${currentPage}|${totalPages}|${itemsPerPage}|${showPageNumbers}|${showItemCount}|${showItemsPerPageSelector}`);
+
   if (totalPages === 0) return null;
+
+  const numbered = showPageNumbers && level === 0;
+  const arrows = level >= 2;
 
   return (
     <div
+      ref={rootRef}
       className={cn(
-        'flex items-center justify-between gap-2 sm:gap-3 md:gap-4 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 border-t border-slate-200 bg-white',
+        'flex w-full min-w-0 items-center justify-between gap-2 sm:gap-3 md:gap-4 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 border-t border-slate-200 bg-white overflow-hidden whitespace-nowrap',
         className
       )}
     >
       {/* Left: Item count + per-page selector */}
-      <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3 md:gap-4">
         {showItemCount && (
-          <div className="text-[10px] sm:text-xs md:text-sm text-slate-600">
+          <div className="text-xs md:text-sm text-slate-600">
             <span className="font-medium text-slate-900">{startItem}</span> -{' '}
             <span className="font-medium text-slate-900">{endItem}</span> of{' '}
             <span className="font-medium text-slate-900">{totalItems}</span>
-            <span className="hidden sm:inline"> results</span>
+            {level < 3 && <span> results</span>}
           </div>
         )}
 
         {showItemsPerPageSelector && onItemsPerPageChange && (
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <span className="text-[10px] sm:text-xs md:text-sm text-slate-600 whitespace-nowrap">Show:</span>
+            {level < 4 && <span className="text-xs md:text-sm text-slate-600 whitespace-nowrap">Show:</span>}
             <Select
               value={itemsPerPage}
               onChange={handleItemsPerPageChange}
               options={perPageOptions}
               className="w-16 sm:w-20"
-              triggerClassName="min-h-0 py-0 px-2 h-6 sm:h-7 md:h-8 text-[10px] sm:text-xs md:text-sm"
+              triggerClassName="min-h-0 py-0 px-2 h-7 md:h-8 text-xs md:text-sm"
               enableSearch={false}
               disabled={isLoading}
+              aria-label="Rows per page"
             />
           </div>
         )}
       </div>
 
       {/* Right: Navigation */}
-      <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
-        <Button variant="outline" size="icon-sm" className="sm:hidden h-7 w-7" onClick={goPrev} disabled={currentPage === 1 || isLoading}>
-          <IconChevronLeft className="h-4 w-4" />
-        </Button>
-        <Button variant="outline" size="sm" className="hidden sm:flex h-7 px-2.5" onClick={goPrev} disabled={currentPage === 1 || isLoading}>
-          Previous
-        </Button>
+      <div className="flex shrink-0 items-center gap-1 sm:gap-1.5 md:gap-2">
+        {arrows ? (
+          <Button variant="outline" size="icon-sm" className="h-7 w-7" onClick={goPrev} disabled={currentPage === 1 || isLoading} aria-label="Previous page">
+            <IconChevronLeft className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" className="flex h-7 px-2.5" onClick={goPrev} disabled={currentPage === 1 || isLoading}>
+            Previous
+          </Button>
+        )}
 
-        {/* Desktop only -- collapses to the "current/total" text below on tablet and mobile. */}
-        {showPageNumbers && (
-          <div className="hidden lg:flex items-center gap-1">
+        {numbered && (
+          <div className="flex items-center gap-1">
             {pageNumbers.map((page, index) =>
               page === 'ellipsis' ? (
                 <React.Fragment key={`ellipsis-${index}`}>{ELLIPSIS}</React.Fragment>
@@ -161,18 +171,21 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           </div>
         )}
 
-        {showPageNumbers && (
-          <span className="lg:hidden text-[10px] text-slate-500 px-1.5">
+        {showPageNumbers && !numbered && (
+          <span className="text-xs text-slate-500 px-1.5" aria-label={`Page ${currentPage} of ${totalPages}`}>
             {currentPage}/{totalPages}
           </span>
         )}
 
-        <Button variant="outline" size="icon-sm" className="sm:hidden h-7 w-7" onClick={goNext} disabled={currentPage === totalPages || isLoading}>
-          <IconChevronRight className="h-4 w-4" />
-        </Button>
-        <Button variant="outline" size="sm" className="hidden sm:flex h-7 px-2.5" onClick={goNext} disabled={currentPage === totalPages || isLoading}>
-          Next
-        </Button>
+        {arrows ? (
+          <Button variant="outline" size="icon-sm" className="h-7 w-7" onClick={goNext} disabled={currentPage === totalPages || isLoading} aria-label="Next page">
+            <IconChevronRight className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" className="flex h-7 px-2.5" onClick={goNext} disabled={currentPage === totalPages || isLoading}>
+            Next
+          </Button>
+        )}
       </div>
     </div>
   );

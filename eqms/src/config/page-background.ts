@@ -8,7 +8,7 @@ export function pageBackgroundCss(value?: PageBackground | null): string | undef
   if (!value || !['solid', 'linear', 'radial', 'conic', 'image', 'video'].includes(value.mode) || !Array.isArray(value.colors)
     || value.colors.length < 2 || value.colors.length > 5 || value.colors.some((color) => !/^#[0-9a-f]{6}$/i.test(color))
     || !Number.isInteger(value.angle) || value.angle < 0 || value.angle > 360) return undefined;
-  if (value.mode === 'video') return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value.videoId ?? '') ? '#fefcff' : undefined;
+  if (value.mode === 'video') return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value.videoId ?? '') ? '#ffffff' : undefined;
   if (value.mode === 'image') {
     if (!value.image || value.image.length > 1400000 || !/^data:image\/(png|jpeg|webp);base64,[a-z0-9+/]+={0,2}$/i.test(value.image) || !/^#[0-9a-f]{6}$/i.test(value.overlayColor ?? '#000000') || !Number.isInteger(value.overlayOpacity ?? 0) || (value.overlayOpacity ?? 0) < 0 || (value.overlayOpacity ?? 0) > 100 || !['cover', 'contain', 'repeat'].includes(value.imageFit ?? 'cover')) return undefined;
     const opacity = (value.overlayOpacity ?? 0) / 100;

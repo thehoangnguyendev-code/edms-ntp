@@ -12,12 +12,28 @@ import type { GeneralConfig, ImageWatermarkSettings } from "../types";
 
 /** The settings of a purpose that was never set up: evidence keeps the earlier behaviour (the system logo at the top left), a specimen signature is not stamped. */
 export const WATERMARK_DEFAULTS: Record<ImageWatermarkTarget, Required<Omit<ImageWatermarkSettings, "logoData">>> = {
-  controlledCopyEvidence: { enabled: true, showLogo: true, logoSource: "SYSTEM", showUploadedBy: false, showUploadedAt: false, position: "TOP_LEFT", sizePercent: 20, opacityPercent: 100, marginPercent: 3, textBackground: true },
-  specimenSignature: { enabled: false, showLogo: true, logoSource: "SYSTEM", showUploadedBy: false, showUploadedAt: false, position: "TOP_LEFT", sizePercent: 20, opacityPercent: 100, marginPercent: 3, textBackground: true },
+  controlledCopyEvidence: { enabled: true, showLogo: true, logoSource: "SYSTEM", showUploadedBy: false, showUploadedAt: false, utcOffset: "+07:00", position: "TOP_LEFT", sizePercent: 20, opacityPercent: 100, marginPercent: 3, textBackground: true },
+  specimenSignature: { enabled: false, showLogo: true, logoSource: "SYSTEM", showUploadedBy: false, showUploadedAt: false, utcOffset: "+07:00", position: "TOP_LEFT", sizePercent: 20, opacityPercent: 100, marginPercent: 3, textBackground: true },
 };
 
 export const LOGO_MAX_BYTES = 2 * 1024 * 1024;
 const PREVIEW_DELAY_MS = 400;
+
+/** Every time zone offset in use, as the server accepts it: -12:00 to +14:00. The label is how the stamp prints it. */
+export const UTC_OFFSETS: Array<{ value: string; label: string }> = (() => {
+  const list: Array<{ value: string; label: string }> = [];
+  const zones = [-720, -660, -600, -570, -540, -480, -420, -360, -300, -270, -240, -210, -180, -120, -60, 0, 60, 120, 180, 210, 240, 270, 300, 330, 345, 360, 390, 420, 480, 525, 540, 570, 600, 630, 660, 720, 765, 780, 825, 840];
+  for (const minutes of zones) {
+    const hours = Math.floor(Math.abs(minutes) / 60);
+    const rest = Math.abs(minutes) % 60;
+    const sign = minutes < 0 ? "-" : "+";
+    list.push({
+      value: `${sign}${String(hours).padStart(2, "0")}:${String(rest).padStart(2, "0")}`,
+      label: `UTC${sign}${hours}${rest ? `:${String(rest).padStart(2, "0")}` : ""}`,
+    });
+  }
+  return list;
+})();
 
 const POSITIONS: Array<{ value: ImageWatermarkPosition; label: string }> = [
   { value: "TOP_LEFT", label: "Top Left" },
@@ -146,7 +162,6 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
                         <p className="mt-1 text-xs text-slate-500">PNG or JPEG, up to 2 MB.</p>
                       </div>
                     )}
-                    {settings.logoSource === "SYSTEM" && <p className="self-end text-xs text-slate-500">The logo set in General. A logo that is not a PNG or JPEG is left out.</p>}
                   </div>
                 )}
                 {logoError && <p role="alert" className="ml-7 mt-1 text-xs text-red-600">{logoError}</p>}
@@ -159,6 +174,18 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
                   <Checkbox id={`watermark-${target}-at`} label="Upload time" checked={settings.showUploadedAt} onChange={(showUploadedAt) => set({ showUploadedAt })} />
                 </div>
                 <p className="mt-1.5 text-xs text-slate-500">The server writes the name of the signed-in user and its own clock, so neither can be changed by the person who uploads.</p>
+                {settings.showUploadedAt && (
+                  <div className="mt-3 sm:max-w-xs">
+                    <Select
+                      label="Upload Time Zone"
+                      value={settings.utcOffset}
+                      enableSearch={false}
+                      onChange={(utcOffset) => set({ utcOffset: String(utcOffset) })}
+                      options={UTC_OFFSETS}
+                    />
+                    <p className="mt-1 text-xs text-slate-500">Printed with the time, for example 02/11/2026 11:20:43 ({UTC_OFFSETS.find((zone) => zone.value === settings.utcOffset)?.label ?? "UTC+7"}).</p>
+                  </div>
+                )}
                 {(settings.showUploadedBy || settings.showUploadedAt) && (
                   <div className="mt-2">
                     <Checkbox id={`watermark-${target}-bg`} label="Light panel behind the text" checked={settings.textBackground} onChange={(textBackground) => set({ textBackground })} />
@@ -166,25 +193,14 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
                 )}
               </div>
 
-              <div>
-                <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">Position</p>
-                <div role="radiogroup" aria-label="Watermark position" className="grid grid-cols-2 gap-2 sm:max-w-sm">
-                  {POSITIONS.map((position) => (
-                    <button
-                      key={position.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={settings.position === position.value}
-                      onClick={() => set({ position: position.value })}
-                      className={cn(
-                        "rounded-lg border px-3 py-2 text-left text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40",
-                        settings.position === position.value ? "border-emerald-500 bg-emerald-50 font-medium text-emerald-800" : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300",
-                      )}
-                    >
-                      {position.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="sm:max-w-xs">
+                <Select
+                  label="Position"
+                  value={settings.position}
+                  enableSearch={false}
+                  onChange={(position) => set({ position: position as ImageWatermarkPosition })}
+                  options={POSITIONS}
+                />
               </div>
 
               <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
@@ -241,11 +257,6 @@ export const ImageWatermarkTab: React.FC<TabProps> = ({ config, onChange }) => {
   const setTarget = (target: ImageWatermarkTarget, value: ImageWatermarkSettings) => onChange({ ...config, imageWatermark: { ...watermark, [target]: value } });
   return (
     <div className="space-y-4 p-4 md:p-5">
-      <WarningBanner
-        variant="info"
-        title="How the watermark works"
-        description="The server stamps the picture when it receives it, and keeps the picture as it was uploaded beside the stamped one. People see the stamped picture; the original can be opened by those who compare it, and each opening is written to the Audit Trail. A change here applies to the pictures uploaded after it is saved: pictures already stored are not stamped again. Only PNG and JPEG pictures are accepted."
-      />
       <ImageWatermarkCard
         target="controlledCopyEvidence"
         title="Controlled Copy Destruction Evidence"

@@ -1,4 +1,7 @@
-import { IconInfoCircle, IconUserShield } from "@tabler/icons-react";
+import {
+  IconInfoCircle,
+  IconUserShield,
+} from "@tabler/icons-react";
 /**
  * Navigation Configuration
  * Defines the application navigation structure
@@ -71,6 +74,7 @@ import {
   IconServerCog,
   IconViewfinder,
   IconTableOptions,
+  IconEye,
 } from "@tabler/icons-react";
 import { NavItem } from "@/types";
 import { ROUTES } from "./routes.constants";
@@ -113,6 +117,7 @@ export const ICON_MAP: Record<string, React.ComponentType<any>> = {
   IconScale,
   IconLock,
   IconActivity,
+  IconEye,
 };
 
 // ============================================================================
@@ -154,8 +159,8 @@ const CORE_NAV: NavItem[] = [
       },
       {
         id: "knowledge-base",
-        label: "Knowledge",
-        path: ROUTES.SELF_SERVICE.KNOWLEDGE,
+        label: "Knowledge Base",
+        path: ROUTES.DOCUMENTS.KNOWLEDGE_EXPLORER,
         allowedPermissions: ["self_service.knowledge.view"],
       },
     ],
@@ -269,47 +274,142 @@ const FOUNDATION_MODULES: NavItem[] = [
         label: "My Training",
         allowedPermissions: ["training.self.view"],
         children: [
-          { id: "my-tasks", label: "My Tasks", path: ROUTES.TRAINING.MY_TASKS, allowedPermissions: ["training.self.view"] },
-          { id: "my-records", label: "My Records", path: ROUTES.TRAINING.MY_RECORDS, allowedPermissions: ["training.self.view"] },
+          {
+            id: "my-tasks",
+            label: "My Tasks",
+            path: ROUTES.TRAINING.MY_TASKS,
+            allowedPermissions: ["training.self.view"],
+          },
+          {
+            id: "my-records",
+            label: "My Records",
+            path: ROUTES.TRAINING.MY_RECORDS,
+            allowedPermissions: ["training.self.view"],
+          },
         ],
       },
       {
         id: "training-planning",
         label: "Training Programme",
-        allowedPermissions: ["training.requirement.view", "training.activity.view", "training.matrix.view", "training.assessment.design", "training.assessment.approve"],
+        allowedPermissions: [
+          "training.requirement.view",
+          "training.activity.view",
+          "training.matrix.view",
+          "training.assessment.design",
+          "training.assessment.approve",
+        ],
         children: [
-          { id: "training-requirements", label: "Training Requirements", path: ROUTES.TRAINING.REQUIREMENTS, allowedPermissions: ["training.requirement.view"] },
-          { id: "training-activities", label: "Training Activities", path: ROUTES.TRAINING.ACTIVITIES, allowedPermissions: ["training.activity.view"] },
-          { id: "training-matrices", label: "Training Matrix", path: ROUTES.TRAINING.MATRIX, allowedPermissions: ["training.matrix.view"] },
-          { id: "training-assessments", label: "Training Assessments", path: ROUTES.TRAINING.ASSESSMENTS, allowedPermissions: ["training.assessment.design", "training.assessment.approve"] },
-          { id: "training-document-impact-assessment", label: "Document Impact Assessment", path: ROUTES.TRAINING.DOCUMENT_IMPACT_ASSESSMENT, allowedPermissions: ["training.matrix.view"] },
+          {
+            id: "training-requirements",
+            label: "Training Requirements",
+            path: ROUTES.TRAINING.REQUIREMENTS,
+            allowedPermissions: ["training.requirement.view"],
+          },
+          {
+            id: "training-activities",
+            label: "Training Activities",
+            path: ROUTES.TRAINING.ACTIVITIES,
+            allowedPermissions: ["training.activity.view"],
+          },
+          {
+            id: "training-matrices",
+            label: "Training Matrix",
+            path: ROUTES.TRAINING.MATRIX,
+            allowedPermissions: ["training.matrix.view"],
+          },
+          {
+            id: "training-assessments",
+            label: "Training Assessments",
+            path: ROUTES.TRAINING.ASSESSMENTS,
+            allowedPermissions: [
+              "training.assessment.design",
+              "training.assessment.approve",
+            ],
+          },
+          {
+            id: "training-document-impact-assessment",
+            label: "Document Impact Assessment",
+            path: ROUTES.TRAINING.DOCUMENT_IMPACT_ASSESSMENT,
+            allowedPermissions: ["training.matrix.view"],
+          },
         ],
       },
       {
         id: "training-people",
         label: "Personnel Qualification",
-        allowedPermissions: ["training.job_assignment.view", "training.signature.view", "training.signature.manage", "training.signature.confirm", "training.self.view"],
+        allowedPermissions: [
+          "training.job_assignment.view",
+          "training.signature.view",
+          "training.signature.manage",
+          "training.signature.confirm",
+          "training.self.view",
+        ],
         children: [
-          { id: "training-job-assignments", label: "Job Assignments", path: ROUTES.TRAINING.JOB_ASSIGNMENTS, allowedPermissions: ["training.job_assignment.view"] },
-          { id: "training-personnel-reviews", label: "Training Reviews", path: ROUTES.TRAINING.PERSONNEL_REVIEWS, allowedPermissions: ["training.job_assignment.view"] },
+          {
+            id: "training-job-assignments",
+            label: "Job Assignments",
+            path: ROUTES.TRAINING.JOB_ASSIGNMENTS,
+            allowedPermissions: ["training.job_assignment.view"],
+          },
+          {
+            id: "training-personnel-reviews",
+            label: "Training Reviews",
+            path: ROUTES.TRAINING.PERSONNEL_REVIEWS,
+            allowedPermissions: ["training.job_assignment.view"],
+          },
           {
             id: "training-specimen-signatures",
             label: "Specimen Signatures",
             path: ROUTES.TRAINING.SPECIMEN_SIGNATURES,
-            allowedPermissions: ["training.signature.view", "training.signature.manage", "training.signature.confirm", "training.self.view"],
+            allowedPermissions: [
+              "training.signature.view",
+              "training.signature.manage",
+              "training.signature.confirm",
+              "training.self.view",
+            ],
           },
         ],
       },
       {
         id: "training-records-compliance",
         label: "Training Records & Compliance",
-        allowedPermissions: ["training.record.view", "training.compliance.view", "training.record.export", "training.activity.view"],
+        allowedPermissions: [
+          "training.record.view",
+          "training.compliance.view",
+          "training.record.export",
+          "training.activity.view",
+        ],
         children: [
-          { id: "training-records", label: "Training Records", path: ROUTES.TRAINING.RECORDS, allowedPermissions: ["training.record.view"] },
-          { id: "training-compliance", label: "Training Compliance", path: ROUTES.TRAINING.COMPLIANCE, allowedPermissions: ["training.compliance.view"] },
-          { id: "training-number-allocation-log", label: "Training Number Allocation Log", path: ROUTES.TRAINING.NUMBER_ALLOCATION_LOG, allowedPermissions: ["training.compliance.view"] },
-          { id: "training-record-exports", label: "Training Record Exports", path: ROUTES.TRAINING.RECORD_EXPORTS, allowedPermissions: ["training.record.export"] },
-          { id: "training-legacy-evidence", label: "Legacy Training Evidence", path: ROUTES.TRAINING.LEGACY_EVIDENCE, allowedPermissions: ["training.activity.view"] },
+          {
+            id: "training-records",
+            label: "Training Records",
+            path: ROUTES.TRAINING.RECORDS,
+            allowedPermissions: ["training.record.view"],
+          },
+          {
+            id: "training-compliance",
+            label: "Training Compliance",
+            path: ROUTES.TRAINING.COMPLIANCE,
+            allowedPermissions: ["training.compliance.view"],
+          },
+          {
+            id: "training-number-allocation-log",
+            label: "Training Number Allocation Log",
+            path: ROUTES.TRAINING.NUMBER_ALLOCATION_LOG,
+            allowedPermissions: ["training.compliance.view"],
+          },
+          {
+            id: "training-record-exports",
+            label: "Training Record Exports",
+            path: ROUTES.TRAINING.RECORD_EXPORTS,
+            allowedPermissions: ["training.record.export"],
+          },
+          {
+            id: "training-legacy-evidence",
+            label: "Legacy Training Evidence",
+            path: ROUTES.TRAINING.LEGACY_EVIDENCE,
+            allowedPermissions: ["training.activity.view"],
+          },
         ],
       },
     ],
@@ -389,23 +489,70 @@ const SYSTEM_MODULES: NavItem[] = [
         id: "backup-group",
         label: "Backup",
         children: [
-          { id: "backup-backups", label: "Backup History", path: ROUTES.BACKUP_RESTORE.BACKUPS },
-          { id: "backup-verifications", label: "Backup Verification Results", path: ROUTES.BACKUP_RESTORE.BACKUP_VERIFICATIONS },
-          { id: "backup-schedules", label: "Backup Schedules", path: ROUTES.BACKUP_RESTORE.BACKUP_SCHEDULES },
-          { id: "backup-exports", label: "Export Requests", path: ROUTES.BACKUP_RESTORE.EXPORTS },
-          { id: "backup-alerts", label: "Backup Alerts & Recipients", path: ROUTES.BACKUP_RESTORE.ALERTS, allowedPermissions: ["backup.admin.alerts.view"] },
+          {
+            id: "backup-backups",
+            label: "Backup History",
+            path: ROUTES.BACKUP_RESTORE.BACKUPS,
+          },
+          {
+            id: "backup-verifications",
+            label: "Backup Verification Results",
+            path: ROUTES.BACKUP_RESTORE.BACKUP_VERIFICATIONS,
+          },
+          {
+            id: "backup-schedules",
+            label: "Backup Schedules",
+            path: ROUTES.BACKUP_RESTORE.BACKUP_SCHEDULES,
+          },
+          {
+            id: "backup-exports",
+            label: "Export Requests",
+            path: ROUTES.BACKUP_RESTORE.EXPORTS,
+          },
+          {
+            id: "backup-alerts",
+            label: "Backup Alerts & Recipients",
+            path: ROUTES.BACKUP_RESTORE.ALERTS,
+            allowedPermissions: ["backup.admin.alerts.view"],
+          },
         ],
       },
       {
         id: "restore-group",
         label: "Restore",
         children: [
-          { id: "backup-restores", label: "Restore Requests", path: ROUTES.BACKUP_RESTORE.RESTORES },
-          { id: "restore-verifications", label: "Restore Verification Reports", path: ROUTES.BACKUP_RESTORE.RESTORE_VERIFICATIONS },
-          { id: "restore-history", label: "Restore History & Evidence", path: ROUTES.BACKUP_RESTORE.RESTORE_HISTORY },
-          { id: "backup-inspections", label: "Backup Inspections", path: ROUTES.BACKUP_RESTORE.INSPECTIONS },
-          { id: "restore-rules", label: "Restore Approval & Execution Rules", path: ROUTES.BACKUP_RESTORE.RESTORE_RULES, allowedPermissions: ["backup.admin.restore_controls.view"] },
-          { id: "backup-dr-drills", label: "Disaster Recovery Drills", path: ROUTES.BACKUP_RESTORE.DR_DRILLS, allowedPermissions: ["backup.admin.disaster_recovery.view"] },
+          {
+            id: "backup-restores",
+            label: "Restore Requests",
+            path: ROUTES.BACKUP_RESTORE.RESTORES,
+          },
+          {
+            id: "restore-verifications",
+            label: "Restore Verification Reports",
+            path: ROUTES.BACKUP_RESTORE.RESTORE_VERIFICATIONS,
+          },
+          {
+            id: "restore-history",
+            label: "Restore History & Evidence",
+            path: ROUTES.BACKUP_RESTORE.RESTORE_HISTORY,
+          },
+          {
+            id: "backup-inspections",
+            label: "Backup Inspections",
+            path: ROUTES.BACKUP_RESTORE.INSPECTIONS,
+          },
+          {
+            id: "restore-rules",
+            label: "Restore Approval & Execution Rules",
+            path: ROUTES.BACKUP_RESTORE.RESTORE_RULES,
+            allowedPermissions: ["backup.admin.restore_controls.view"],
+          },
+          {
+            id: "backup-dr-drills",
+            label: "Disaster Recovery Drills",
+            path: ROUTES.BACKUP_RESTORE.DR_DRILLS,
+            allowedPermissions: ["backup.admin.disaster_recovery.view"],
+          },
         ],
       },
     ],
@@ -835,13 +982,19 @@ const SYSTEM_MODULES: NavItem[] = [
             id: "training-admin-properties",
             label: "Training Properties",
             path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.PROPERTIES,
-            allowedPermissions: ["training.admin.properties.view", "training.settings.view"],
+            allowedPermissions: [
+              "training.admin.properties.view",
+              "training.settings.view",
+            ],
           },
           {
             id: "training-admin-code-rules",
             label: "Training Code Rules",
             path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.CODE_RULES,
-            allowedPermissions: ["training.admin.properties.view", "training.settings.view"],
+            allowedPermissions: [
+              "training.admin.properties.view",
+              "training.settings.view",
+            ],
           },
           {
             id: "training-admin-vendors",
@@ -890,7 +1043,10 @@ const SYSTEM_MODULES: NavItem[] = [
             id: "report-admin-properties",
             label: "Report Properties",
             path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.PROPERTIES,
-            allowedPermissions: ["reports.properties.view", "reports.properties.manage"],
+            allowedPermissions: [
+              "reports.properties.view",
+              "reports.properties.manage",
+            ],
           },
           {
             id: "report-admin-types",

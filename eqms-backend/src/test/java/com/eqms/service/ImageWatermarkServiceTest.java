@@ -44,7 +44,7 @@ class ImageWatermarkServiceTest {
     }
 
     private static ImageWatermarkService.Settings settings(ImageWatermarkService.Position position, int size, int opacity, boolean uploader, boolean time, boolean logo) {
-        return new ImageWatermarkService.Settings(true, logo, "SYSTEM", null, uploader, time, position, size, opacity, 3, true, logo ? logo() : null);
+        return new ImageWatermarkService.Settings(true, logo, "SYSTEM", null, uploader, time, "+07:00", position, size, opacity, 3, true, logo ? logo() : null);
     }
 
     private static BufferedImage read(byte[] bytes) throws Exception { return ImageIO.read(new ByteArrayInputStream(bytes)); }
@@ -106,7 +106,7 @@ class ImageWatermarkServiceTest {
     @Test
     void aSwitchedOffTargetReturnsTheOriginalWithTheReason() throws Exception {
         byte[] original = picture(400, 300, "png", Color.WHITE);
-        ImageWatermarkService.Settings off = new ImageWatermarkService.Settings(false, true, "SYSTEM", null, true, true, ImageWatermarkService.Position.TOP_LEFT, 20, 100, 3, true, logo());
+        ImageWatermarkService.Settings off = new ImageWatermarkService.Settings(false, true, "SYSTEM", null, true, true, "+07:00", ImageWatermarkService.Position.TOP_LEFT, 20, 100, 3, true, logo());
         ImageWatermarkService.Result result = service.apply(off, original, stamp);
         assertThat(result.applied()).isFalse();
         assertThat(result.bytes()).isEqualTo(original);
@@ -170,6 +170,38 @@ class ImageWatermarkServiceTest {
                 "{\"specimenSignature\":{\"logoData\":\"data:image/svg+xml;base64,AAAA\"}}",
                 "{\"specimenSignature\":{\"enabled\":\"yes\"}}"}) {
             assertThatThrownBy(() -> ImageWatermarkService.validate(node("{\"imageWatermark\":" + bad + "}")), bad).isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    @Test
+    void theUploadTimeIsPrintedWithItsTimeZoneAndTheSiteZoneIsTheDefault() throws Exception {
+        Instant at = Instant.parse("2026-11-02T04:20:43Z");
+        assertThat(ImageWatermarkService.uploadedAtText(at, "+07:00")).isEqualTo("02/11/2026 11:20:43 (UTC+7)");
+        assertThat(ImageWatermarkService.uploadedAtText(at, "+00:00")).isEqualTo("02/11/2026 04:20:43 (UTC+0)");
+        assertThat(ImageWatermarkService.uploadedAtText(at, "+05:30")).isEqualTo("02/11/2026 09:50:43 (UTC+5:30)");
+        assertThat(ImageWatermarkService.uploadedAtText(at, "+05:45")).isEqualTo("02/11/2026 10:05:43 (UTC+5:45)");
+        assertThat(ImageWatermarkService.uploadedAtText(at, "-03:30")).isEqualTo("02/11/2026 00:50:43 (UTC-3:30)");
+        assertThat(ImageWatermarkService.uploadedAtText(at, "+14:00")).isEqualTo("02/11/2026 18:20:43 (UTC+14)");
+        assertThat(ImageWatermarkService.parse(ImageWatermarkService.Target.SPECIMEN_SIGNATURE, null, null).utcOffset()).isEqualTo("+07:00");
+        assertThat(ImageWatermarkService.parse(ImageWatermarkService.Target.SPECIMEN_SIGNATURE, node("{\"utcOffset\":\"-05:00\"}"), null).utcOffset()).isEqualTo("-05:00");
+        assertThat(ImageWatermarkService.parse(ImageWatermarkService.Target.SPECIMEN_SIGNATURE, node("{\"utcOffset\":\"+99:00\"}"), null).utcOffset()).isEqualTo("+07:00");
+    }
+
+    @Test
+    void theStampedPictureCarriesTheTimeZoneOfTheSetting() throws Exception {
+        byte[] original = picture(1200, 800, "png", Color.WHITE);
+        ImageWatermarkService.Settings seven = settings(ImageWatermarkService.Position.TOP_LEFT, 40, 100, false, true, false);
+        ImageWatermarkService.Settings london = new ImageWatermarkService.Settings(true, false, "SYSTEM", null, false, true, "+00:00", ImageWatermarkService.Position.TOP_LEFT, 40, 100, 3, true, null);
+        // the text is drawn from the time of the upload in the zone of the setting: the same moment in another zone is another picture
+        assertThat(service.apply(seven, original, stamp).bytes()).isNotEqualTo(service.apply(london, original, stamp).bytes());
+    }
+
+    @Test
+    void aSaveRejectsAnOffsetThatIsNotATimeZone() throws Exception {
+        ImageWatermarkService.validate(node("{\"imageWatermark\":{\"specimenSignature\":{\"utcOffset\":\"+05:45\"}}}"));
+        for (String bad : new String[] {"\"UTC+7\"", "\"+15:00\"", "\"-13:00\"", "\"+07:15\"", "7", "\"Asia/Ho_Chi_Minh\""}) {
+            assertThatThrownBy(() -> ImageWatermarkService.validate(node("{\"imageWatermark\":{\"controlledCopyEvidence\":{\"utcOffset\":" + bad + "}}}")), bad)
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 

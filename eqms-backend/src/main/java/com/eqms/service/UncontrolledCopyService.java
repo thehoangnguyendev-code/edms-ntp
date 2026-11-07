@@ -1233,12 +1233,13 @@ public class UncontrolledCopyService {
     }
 
     private String nextUncontrolledCopyNumber(DocumentRecord document) {
-        String base = "UC-" + firstNonBlank(normalize(document.getDocumentNumber()), "DOC").replaceAll("\\s+", "");
+        // Like a Controlled Copy, with a U in front: UCC.SOP.0007.001 (owner decision 2026-11-02). Copies numbered before keep the number they were given.
+        String base = firstNonBlank(CopyNumberFormat.baseCode(document.getDocumentNumber()), "DOC");
         long sequence = uncontrolledCopyRepository.countByDocument_Id(document.getId()) + 1;
-        String candidate = base + "-" + String.format("%03d", sequence);
+        String candidate = CopyNumberFormat.uncontrolled(base, sequence);
         while (uncontrolledCopyRepository.existsByUncontrolledCopyNumber(candidate)) {
             sequence++;
-            candidate = base + "-" + String.format("%03d", sequence);
+            candidate = CopyNumberFormat.uncontrolled(base, sequence);
         }
         return candidate;
     }

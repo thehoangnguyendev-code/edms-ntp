@@ -1,6 +1,5 @@
 package com.eqms.service;
 
-import com.eqms.util.DateTimeFormatUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -27,6 +26,8 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -66,7 +67,7 @@ public class ImageWatermarkService {
     public enum Position { TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT }
 
     /** The settings of one target, with the defaults filled in. {@code logo} is the picture to stamp, or null when there is none or it cannot be read. */
-    public record Settings(boolean enabled, boolean showLogo, String logoSource, String logoData, boolean showUploadedBy, boolean showUploadedAt,
+    public record Settings(boolean enabled, boolean showLogo, String logoSource, String logoData, boolean showUploadedBy, boolean showUploadedAt, String utcOffset,
                            Position position, int sizePercent, int opacityPercent, int marginPercent, boolean textBackground, BufferedImage logo) { }
 
     public record Stamp(String uploadedBy, Instant uploadedAt) { }
@@ -123,12 +124,42 @@ public class ImageWatermarkService {
         try { position = Position.valueOf(n.path("position").asText("TOP_LEFT")); } catch (IllegalArgumentException e) { position = Position.TOP_LEFT; }
         return new Settings(
                 n.path("enabled").asBoolean(target.enabledByDefault), showLogo, source, data,
-                n.path("showUploadedBy").asBoolean(false), n.path("showUploadedAt").asBoolean(false), position,
+                n.path("showUploadedBy").asBoolean(false), n.path("showUploadedAt").asBoolean(false), offsetOf(n.path("utcOffset")), position,
                 clamp(n.path("sizePercent").asInt(DEFAULT_SIZE_PERCENT), MIN_SIZE_PERCENT, MAX_SIZE_PERCENT),
                 clamp(n.path("opacityPercent").asInt(MAX_OPACITY_PERCENT), MIN_OPACITY_PERCENT, MAX_OPACITY_PERCENT),
                 clamp(n.path("marginPercent").asInt(DEFAULT_MARGIN_PERCENT), MIN_MARGIN_PERCENT, MAX_MARGIN_PERCENT),
                 n.path("textBackground").asBoolean(true),
                 showLogo ? readLogo(logoUri) : null);
+    }
+
+    /** The time zone of the upload time, as an offset from UTC written "+07:00". Until it is set the stamp shows UTC+7, the time zone of the site. */
+    public static final String DEFAULT_UTC_OFFSET = "+07:00";
+    private static final java.util.regex.Pattern UTC_OFFSET = java.util.regex.Pattern.compile("^([+-])(0\\d|1[0-4]):(00|30|45)$");
+    private static final DateTimeFormatter UPLOADED_AT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+
+    private static String offsetOf(JsonNode value) {
+        return value.isTextual() && validOffset(value.asText()) ? value.asText() : DEFAULT_UTC_OFFSET;
+    }
+
+    /** An offset from -12:00 to +14:00 whose minutes are 00, 30 or 45, which is every time zone in use. */
+    static boolean validOffset(String value) {
+        java.util.regex.Matcher m = UTC_OFFSET.matcher(value);
+        if (!m.matches()) return false;
+        int minutes = Integer.parseInt(m.group(2)) * 60 + Integer.parseInt(m.group(3));
+        return "+".equals(m.group(1)) ? minutes <= 14 * 60 : minutes <= 12 * 60;
+    }
+
+    /** The name of a zone for the stamp: UTC+7, UTC+5:30, UTC-3:30, UTC+0. */
+    static String offsetLabel(String offset) {
+        ZoneOffset zone = ZoneOffset.of(offset);
+        int total = zone.getTotalSeconds() / 60;
+        int hours = Math.abs(total) / 60, minutes = Math.abs(total) % 60;
+        return "UTC" + (total < 0 ? "-" : "+") + hours + (minutes == 0 ? "" : ":" + String.format(Locale.ROOT, "%02d", minutes));
+    }
+
+    /** The upload time the way the stamp prints it, with its time zone: 02/11/2026 11:20:43 (UTC+7). */
+    static String uploadedAtText(Instant at, String offset) {
+        return UPLOADED_AT.format(at.atOffset(ZoneOffset.of(offset))) + " (" + offsetLabel(offset) + ")";
     }
 
     private static int clamp(int value, int min, int max) { return Math.max(min, Math.min(max, value)); }
@@ -158,6 +189,10 @@ public class ImageWatermarkService {
         for (String flag : List.of("enabled", "showLogo", "showUploadedBy", "showUploadedAt", "textBackground")) {
             JsonNode value = node.get(flag);
             if (value != null && !value.isNull() && !value.isBoolean()) throw new IllegalArgumentException("imageWatermark." + key + "." + flag + " must be true or false");
+        }
+        JsonNode offset = node.get("utcOffset");
+        if (offset != null && !offset.isNull() && (!offset.isTextual() || !validOffset(offset.asText()))) {
+            throw new IllegalArgumentException("imageWatermark." + key + ".utcOffset must be an offset from UTC such as +07:00, from -12:00 to +14:00");
         }
         JsonNode source = node.get("logoSource");
         if (source != null && !source.isNull() && (!source.isTextual() || !LOGO_SOURCES.contains(source.asText()))) {
@@ -216,7 +251,7 @@ public class ImageWatermarkService {
 
         List<String> lines = new ArrayList<>();
         if (settings.showUploadedBy() && stamp != null && StringUtils.hasText(stamp.uploadedBy())) lines.add("Uploaded By: " + stamp.uploadedBy().trim());
-        if (settings.showUploadedAt() && stamp != null && stamp.uploadedAt() != null) lines.add("Uploaded At: " + DateTimeFormatUtils.formatDateTime(stamp.uploadedAt()));
+        if (settings.showUploadedAt() && stamp != null && stamp.uploadedAt() != null) lines.add("Uploaded At: " + uploadedAtText(stamp.uploadedAt(), settings.utcOffset()));
 
         String note = draw(canvas, settings, lines);
         if (note != null && !note.startsWith("Text left out")) return unchanged(original, decoded, hash, note);

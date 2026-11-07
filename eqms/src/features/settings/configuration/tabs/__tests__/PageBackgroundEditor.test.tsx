@@ -67,3 +67,34 @@ it('uploads a supported auth image and rejects unsupported files', async () => {
   await waitFor(() => expect(screen.getByRole('button', { name: /Replace image/i })).toBeTruthy());
   expect(screen.queryByRole('alert')).toBeNull();
 });
+
+it('shows Remove as an icon only, and the move arrows as bordered buttons', async () => {
+  render(<Example />);
+  fireEvent.click(screen.getByRole('combobox', { name: 'Main Layout background style' }));
+  fireEvent.click(await screen.findByRole('option', { name: 'Linear gradient' }));
+  fireEvent.click(screen.getByRole('button', { name: /Add color/i }));
+
+  const remove = screen.getByRole('button', { name: 'Remove color 3' });
+  expect(remove.textContent?.trim()).toBe(''); // no word, only the icon
+  expect(remove).toHaveAttribute('title', 'Remove color 3');
+  expect(remove.querySelector('svg')).not.toBeNull();
+  expect(screen.queryByText('Remove')).toBeNull();
+
+  for (const name of ['Move color 1 right', 'Move color 2 left']) {
+    const arrow = screen.getByRole('button', { name });
+    expect(arrow.className).toContain('border'); // the outline variant: a border, not a bare icon
+    expect(arrow.className).not.toContain('hover:bg-transparent');
+    expect(arrow.querySelector('svg')).not.toBeNull();
+  }
+});
+
+it('shows System default as the light grey bg-gray-100/50, for the sign-in page and for the main layout', () => {
+  const noop = () => undefined;
+  const { rerender } = render(<PageBackgroundEditor title="Authentication" allowImage value={{ ...DEFAULT_PAGE_BACKGROUND, mode: 'default' }} onChange={noop} />);
+  expect(screen.getByLabelText('Authentication background preview').getAttribute('style')).toContain('rgba(243, 244, 246, 0.5)'); // bg-gray-100/50
+  expect(screen.getByText('The built-in Authentication background: light grey (bg-gray-100/50). Choose another style to replace it.')).toBeTruthy();
+
+  rerender(<PageBackgroundEditor title="Main Layout" value={{ ...DEFAULT_PAGE_BACKGROUND, mode: 'default' }} onChange={noop} />);
+  expect(screen.getByLabelText('Main Layout background preview').getAttribute('style')).toContain('rgba(243, 244, 246, 0.5)'); // bg-gray-100/50
+  expect(screen.getByText('The built-in Main Layout background: light grey (bg-gray-100/50). Choose another style to replace it.')).toBeTruthy();
+});

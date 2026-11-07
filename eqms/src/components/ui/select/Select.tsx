@@ -33,6 +33,8 @@ export interface SelectProps {
   disabled?: boolean;
   maxVisibleRows?: number;
   rowHeight?: number;
+  /** Keep each option on one line, cut with an ellipsis and the full text as a tooltip. Off by default: options wrap as before. */
+  truncateOptions?: boolean;
   isLoading?: boolean;
   loadingText?: string;
   /** Async search function - called when user types */
@@ -59,6 +61,7 @@ export const Select: React.FC<SelectProps> = ({
   disabled = false,
   maxVisibleRows = 5,
   rowHeight = 40,
+  truncateOptions = false,
   isLoading = false,
   loadingText = "Loading options...",
   onSearch,
@@ -468,7 +471,7 @@ export const Select: React.FC<SelectProps> = ({
                             )}
                             style={{ height: rowHeight }}
                           >
-                            <span className="flex-1 text-left">{option.label}</span>
+                            <span className={cn("flex-1 text-left", truncateOptions && "min-w-0 truncate")} title={truncateOptions ? option.label : undefined}>{option.label}</span>
                             <span className="flex items-center gap-2 shrink-0 ml-2">
                               {option.icon}
                               {isSelected && (
@@ -501,7 +504,7 @@ export const Select: React.FC<SelectProps> = ({
                         )}
                         style={{ height: rowHeight }}
                       >
-                        <span className="flex-1 text-left">{option.label}</span>
+                        <span className={cn("flex-1 text-left", truncateOptions && "min-w-0 truncate")} title={truncateOptions ? option.label : undefined}>{option.label}</span>
                         <span className="flex items-center gap-2 shrink-0 ml-2">
                           {option.icon}
                           {isSelected && (

@@ -115,7 +115,6 @@ class RevisionActionCapabilityServiceTest {
 
     private static String seededRequiredPermissionCode(RevisionWorkflowAction action) {
         return switch (action) {
-            case COMPLETE_AUTHORING -> "documents.revision.complete_authoring";
             // V347: split out of the former catch-all documents.workspace.manage.
             case UPDATE_DRAFT_METADATA -> "documents.revision.update_draft_metadata";
             case OPEN_PUBLISHING_WORKSPACE -> "documents.revision.open_publishing_workspace";
@@ -149,7 +148,6 @@ class RevisionActionCapabilityServiceTest {
                 "replaceSource",
                 "syncToOffice",
                 "syncFromOffice",
-                "completeAuthoring",
                 "updateDraftMetadata",
                 "openPublishingWorkspace",
                 "submitForReview",

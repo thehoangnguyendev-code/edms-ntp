@@ -180,21 +180,6 @@ public class RevisionController {
         return ResponseEntity.ok(revisionService.updateRevision(id, request));
     }
 
-    @PostMapping("/{id}/complete-editing")
-    public ResponseEntity<RevisionDetailResponse> completeEditing(
-            @PathVariable UUID id,
-            @RequestBody(required = false) RevisionWorkflowActionRequest request
-    ) {
-        java.util.List<String> editorKeys = new java.util.ArrayList<>();
-        editorKeys.add(revisionService.onlyOfficeSessionKey(id));
-        revisionService.flushOnlyOfficeEditsBeforeLock(id);
-        editorKeys.add(revisionService.onlyOfficeSessionKey(id));
-        var result = revisionService.completeEditing(id, request);
-        // Close open OnlyOffice editors now that the stage changed, so the UI reflects it immediately.
-        revisionService.dropOnlyOfficeSessions(editorKeys);
-        return ResponseEntity.ok(result);
-    }
-
     @PostMapping("/{id}/submit-review")
     public ResponseEntity<RevisionDetailResponse> submitForReview(
             @PathVariable UUID id,
@@ -202,6 +187,8 @@ public class RevisionController {
     ) {
         java.util.List<String> editorKeys = new java.util.ArrayList<>();
         editorKeys.add(revisionService.onlyOfficeSessionKey(id));
+        // Submitting locks the source, so the Author's latest editor saves must be in storage first.
+        revisionService.flushOnlyOfficeEditsBeforeLock(id);
         editorKeys.add(revisionService.onlyOfficeSessionKey(id));
         var result = revisionService.submitForReview(id, request);
         // Close open OnlyOffice editors now that the stage changed, so the UI reflects it immediately.

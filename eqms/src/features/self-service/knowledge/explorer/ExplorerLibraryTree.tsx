@@ -3,7 +3,8 @@ import { Bell } from "lucide-react";
 import { Files, FolderItem, FolderPanel, FolderTrigger, SubFiles } from "@/components/ui/files";
 import { knowledgeApi } from "@/services/api/knowledge";
 import type { KnowledgePortalOverview } from "@/services/api/knowledge";
-import { folderColor, type ExplorerNav } from "./explorerModel";
+import type { ExplorerNav } from "./explorerModel";
+import { useFolderColor, useFolderLabel } from "./ExplorerIcons";
 
 interface ExplorerLibraryTreeProps {
   overview: KnowledgePortalOverview;
@@ -29,6 +30,8 @@ const idOf = (kb: string, path: string[]) => JSON.stringify([kb, ...path]);
  */
 export const ExplorerLibraryTree: React.FC<ExplorerLibraryTreeProps> = ({ overview, nav, onGo }) => {
   const hierarchyId = overview.selectedHierarchyId;
+  const colorOf = useFolderColor();
+  const labelOf = useFolderLabel("sidebar");
   const [open, setOpen] = useState<string[]>([]);
   const [loaded, setLoaded] = useState<Record<string, Loaded>>({});
   const requested = useRef(new Set<string>());
@@ -93,7 +96,7 @@ export const ExplorerLibraryTree: React.FC<ExplorerLibraryTreeProps> = ({ overvi
             onSelect={() => onGo({ kind: "kb", kb, path: childPath })}
             trailing={<span className="text-xs tabular-nums text-slate-400">{folder.documentCount}</span>}
           >
-            {folder.label}
+            {labelOf(folder.key, folder.label)}
           </FolderTrigger>
           <FolderPanel>
             <SubFiles>{renderFolders(kb, childPath)}</SubFiles>
@@ -116,7 +119,7 @@ export const ExplorerLibraryTree: React.FC<ExplorerLibraryTreeProps> = ({ overvi
               onOpen={() => load(kb.key, [])}
               onPrefetch={() => load(kb.key, [])}
               onSelect={() => onGo({ kind: "kb", kb: target, path: [] })}
-              icon={<span className="h-2.5 w-2.5 rounded-[3px]" style={{ backgroundColor: folderColor(kb.label) }} />}
+              icon={<span className="h-2.5 w-2.5 rounded-[3px]" style={{ backgroundColor: colorOf(kb.key, kb.label) }} />}
               trailing={
                 <>
                   {kb.subscribed && <Bell className="h-4 w-4 shrink-0 text-emerald-600 md:h-3 md:w-3" aria-label="Subscribed" />}
@@ -124,7 +127,7 @@ export const ExplorerLibraryTree: React.FC<ExplorerLibraryTreeProps> = ({ overvi
                 </>
               }
             >
-              {kb.label}
+              {labelOf(kb.key, kb.label)}
             </FolderTrigger>
             <FolderPanel>
               <SubFiles>{renderFolders(target, [])}</SubFiles>

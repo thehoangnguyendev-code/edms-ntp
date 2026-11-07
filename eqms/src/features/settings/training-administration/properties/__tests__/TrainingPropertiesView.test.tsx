@@ -19,6 +19,23 @@ beforeEach(() => { window.matchMedia = window.matchMedia ?? ((query: string) => 
 afterEach(cleanup);
 
 describe("TrainingPropertiesView", () => {
+  it("saves the manual training number machine value selected from the shared dropdown", async () => {
+    updateSettings.mockClear();
+    updateSettings.mockResolvedValue({ ...settings, trainingNumberEntryMode: "MANUAL", version: 2 });
+    render(<MemoryRouter><TrainingPropertiesView /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("tab", { name: "Document Training" }));
+    const numbering = await screen.findByRole("combobox", { name: "How the Training Number is given" });
+    expect(numbering).toHaveTextContent("Automatic");
+    fireEvent.click(numbering);
+    fireEvent.click(screen.getByRole("option", { name: "Manual" }));
+    expect(numbering).toHaveTextContent("Manual");
+    expect(screen.getByText("The person creating the document types the number.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    const confirmations = await screen.findAllByRole("button", { name: "Save Changes" });
+    fireEvent.click(confirmations[confirmations.length - 1]);
+    await vi.waitFor(() => expect(updateSettings).toHaveBeenCalledWith(expect.objectContaining({ trainingNumberEntryMode: "MANUAL" })));
+  });
+
   it("shows one subject per tab, each with a sentence that says what it governs", async () => {
     render(<MemoryRouter><TrainingPropertiesView /></MemoryRouter>);
 

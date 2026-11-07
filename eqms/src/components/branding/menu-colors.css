@@ -1,0 +1,10 @@
+/* Colours of the items of every dropdown (action) menu (PortalDropdownMenu marks its card with data-eqms-menu). An item in a red, rose, amber or orange
+   colour (Terminate, Delete, a warning) keeps its own colour, and a disabled item keeps its dimmed look. */
+html[data-menu-text-color="custom"] [data-eqms-menu="true"] :is(button, a, [role="menuitem"]):not(:disabled):not(:is([class*="text-red"], [class*="text-rose"], [class*="text-amber"], [class*="text-orange"])),
+html[data-menu-text-color="custom"] [data-eqms-menu="true"] :is(button, a, [role="menuitem"]):not(:disabled):not(:is([class*="text-red"], [class*="text-rose"], [class*="text-amber"], [class*="text-orange"])) :is(span, p, div):not(:is([class*="text-red"], [class*="text-rose"], [class*="text-amber"], [class*="text-orange"])) {
+  color: var(--menu-text-color);
+}
+
+html[data-menu-icon-color="custom"] [data-eqms-menu="true"] :is(button, a, [role="menuitem"]):not(:disabled):not(:is([class*="text-red"], [class*="text-rose"], [class*="text-amber"], [class*="text-orange"])) svg {
+  color: var(--menu-icon-color);
+}

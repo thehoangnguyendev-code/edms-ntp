@@ -2,9 +2,13 @@ import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, Search, X, Check, ChevronUp, ChevronDown, MoreVertical } from "lucide-react";
+import { Plus, Search, X, Check, ChevronUp, ChevronDown, MoreVertical, UserSearch } from "lucide-react";
 import { IconFilter2, IconInfoCircle, IconX } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
+import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
+import { KnowledgeSharesPanel } from "./KnowledgeSharesPanel";
+import { KnowledgeLinksPanel } from "./KnowledgeLinksPanel";
+import { CheckKnowledgeAccessModal } from "./CheckKnowledgeAccessModal";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { useToast } from "@/components/ui/toast/Toast";
@@ -43,9 +47,19 @@ const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 const inputClass = "w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400";
 const textareaClass = "w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400 resize-none";
 
+const PAGE_TABS: TabItem[] = [
+  { id: "campaigns", label: "Campaigns" },
+  { id: "shares", label: "Knowledge Shares" },
+  { id: "links", label: "Knowledge Links" },
+];
+
 export const AccessReviewView: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  /** Campaigns of the periodic review, or what the Department Heads shared in the Knowledge Base. */
+  const [pageTab, setPageTab] = useState<"campaigns" | "shares" | "links">(searchParams.get("tab") === "shares" ? "shares" : searchParams.get("tab") === "links" ? "links" : "campaigns");
+  /** Effective Access of the Knowledge Base: why a user can or cannot see a document (opened from the page title). */
+  const [checkAccessOpen, setCheckAccessOpen] = useState(false);
   useLocalizationPreferences();
   const { showToast } = useToast();
   const { hasPermissionAlias } = usePermissions();
@@ -343,7 +357,14 @@ export const AccessReviewView: React.FC = () => {
         title="Access Review"
         breadcrumbItems={accessReviewBreadcrumb(navigate)}
         actions={
-          canManage ? (
+          pageTab === "shares" ? (
+            canView ? (
+              <Button size="sm" variant="default" className="whitespace-nowrap gap-2" onClick={() => setCheckAccessOpen(true)}>
+                <UserSearch className="h-4 w-4" />
+                Check Access
+              </Button>
+            ) : undefined
+          ) : canManage ? (
             <Button size="sm" className="whitespace-nowrap gap-2" onClick={openCreateModal}>
               <Plus className="h-4 w-4" />
               New Campaign
@@ -356,8 +377,19 @@ export const AccessReviewView: React.FC = () => {
         <div className="rounded-xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm">
           <TableEmptyState title="Permission denied" description="You do not have permission to view access reviews." />
         </div>
+      ) : pageTab === "shares" ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col flex-1">
+          <TabNav tabs={PAGE_TABS} activeTab={pageTab} onChange={(id) => setPageTab(id === "shares" ? "shares" : id === "links" ? "links" : "campaigns")} variant="underline" />
+          <KnowledgeSharesPanel />
+        </div>
+      ) : pageTab === "links" ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col flex-1">
+          <TabNav tabs={PAGE_TABS} activeTab={pageTab} onChange={(id) => setPageTab(id === "shares" ? "shares" : id === "links" ? "links" : "campaigns")} variant="underline" />
+          <KnowledgeLinksPanel />
+        </div>
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
+          <TabNav tabs={PAGE_TABS} activeTab={pageTab} onChange={(id) => setPageTab(id === "shares" ? "shares" : id === "links" ? "links" : "campaigns")} variant="underline" />
           <div className="p-4 md:p-5 flex-1 flex flex-col">
 
             {/* Mobile: search + filter drawer */}
@@ -456,7 +488,7 @@ export const AccessReviewView: React.FC = () => {
               <Select label="Status" value={statusFilter} onChange={(v) => { setStatusFilter(String(v)); setCurrentPage(1); }} options={statusOptions} />
               <DateRangePicker label="Created Date Range" startDate={createdFrom} endDate={createdTo} onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }} placeholder="Select created date range" autoApply />
               <DateRangePicker label="Last Updated Range" startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }} placeholder="Select last updated range" autoApply />
-              <div className="flex items-end gap-2">
+              <div className="filter-actions flex items-end gap-2">
                 <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
                 {campaignControl}
               </div>
@@ -507,6 +539,8 @@ export const AccessReviewView: React.FC = () => {
           </div>
         </div>
       )}
+
+      <CheckKnowledgeAccessModal isOpen={checkAccessOpen} onClose={() => setCheckAccessOpen(false)} />
 
       {/* Mobile filter drawer */}
       <FilterDrawer

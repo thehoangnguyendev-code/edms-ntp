@@ -161,6 +161,14 @@ public class PublishingTemplate {
         }
     }
 
+    /**
+     * Marks the template as changed now. A style or file edit that leaves every column of this row as it was (the same person saving again) would
+     * otherwise not be written, @PreUpdate would not run, and the "Updated" time and the workspace's stale-preview check would not move.
+     */
+    public void touch() {
+        this.updatedAt = Instant.now();
+    }
+
     @PreUpdate
     void onUpdate() {
         updatedAt = Instant.now();

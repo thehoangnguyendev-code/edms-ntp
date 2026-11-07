@@ -39,7 +39,7 @@ export const UncontrolledCopyMarkingPreview: React.FC<{
   recipientLabel?: string;
   copyNumberLabel?: string;
   mandatoryText?: string;
-}> = ({ marking, recipientLabel = "Recipient name", copyNumberLabel = "UC-DOC-001", mandatoryText = MANDATORY_WATERMARK_TEXT }) => {
+}> = ({ marking, recipientLabel = "Recipient name", copyNumberLabel = "UCC.DOC.001", mandatoryText = MANDATORY_WATERMARK_TEXT }) => {
   const issuedAt = displayDateTime(new Date());
   const titleText = (marking.watermarkText || "").trim() || mandatoryText;
   const watermarkLines = [

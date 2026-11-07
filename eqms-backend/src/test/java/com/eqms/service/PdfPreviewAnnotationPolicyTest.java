@@ -32,6 +32,32 @@ class PdfPreviewAnnotationPolicyTest {
     }
 
     @Test
+    void acceptsAWatermarkAngleFromMinusNinetyToNinetyDegreesAndALegacyMissingOne() throws Exception {
+        for (String json : new String[] {"{}", "{\"pdfPreview\":{\"watermarkAngle\":-90}}", "{\"pdfPreview\":{\"watermarkAngle\":0}}",
+                "{\"pdfPreview\":{\"watermarkAngle\":45}}", "{\"pdfPreview\":{\"watermarkAngle\":90}}", "{\"pdfPreview\":{\"watermarkAngle\":null}}"}) {
+            var documents = mapper.readTree(json);
+            assertDoesNotThrow(() -> ReflectionTestUtils.invokeMethod(service, "validateDocumentsConfig", documents));
+        }
+    }
+
+    @Test
+    void rejectsAWatermarkAngleOutsideTheRangeOrNotAWholeNumber() throws Exception {
+        for (String value : new String[] {"91", "-91", "45.5", "\"45\"", "true", "[]"}) {
+            var documents = mapper.readTree("{\"pdfPreview\":{\"watermarkAngle\":" + value + "}}");
+            var error = assertThrows(IllegalArgumentException.class,
+                    () -> ReflectionTestUtils.invokeMethod(service, "validateDocumentsConfig", documents));
+            assertEquals("PDF preview watermark angle must be a whole number of degrees from -90 to 90", error.getMessage());
+        }
+    }
+
+    @Test
+    void aChangeOfTheAngleRefreshesThePreviewsThatAreOpen() throws Exception {
+        var before = mapper.readTree("{\"pdfPreview\":{\"watermarkAngle\":45}}");
+        var after = mapper.readTree("{\"pdfPreview\":{\"watermarkAngle\":30}}");
+        assertTrue(SystemConfigurationService.hasDocumentsPreviewChange(before, after));
+    }
+
+    @Test
     void annotationChangesTriggerExistingGlobalPreviewInvalidation() throws Exception {
         var before = mapper.readTree("{\"pdfPreview\":{\"allowAnnotations\":false}}");
         var after = mapper.readTree("{\"pdfPreview\":{\"allowAnnotations\":true}}");

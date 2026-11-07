@@ -43,7 +43,7 @@ public class WorkflowActionPolicyService {
 
     /** Actions that must always have at least one active policy (deactivation safety). */
     private static final Set<String> CRITICAL_ACTIONS = Set.of(
-            "COMPLETE_AUTHORING", "SUBMIT_FOR_REVIEW",
+            "SUBMIT_FOR_REVIEW",
             "COMPLETE_REVIEW", "REJECT_REVIEW",
             "COMPLETE_APPROVAL", "REJECT_APPROVAL",
             "PUBLISH"
@@ -942,7 +942,6 @@ public class WorkflowActionPolicyService {
         static String action(String code) {
             return switch (code) {
                 // Document Revision actions
-                case "COMPLETE_AUTHORING"         -> "Complete Authoring";
                 case "OPEN_PUBLISHING_WORKSPACE"  -> "Open Publishing Workspace";
                 case "SUBMIT_FOR_REVIEW"          -> "Submit for Review";
                 case "GENERATE_REVIEW_SNAPSHOT"   -> "Generate Review Snapshot";

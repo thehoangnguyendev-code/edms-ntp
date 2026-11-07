@@ -153,9 +153,7 @@ public class AuthService {
         resetLoginFailures(user);
         user.setLastLoginAt(Instant.now());
 
-        List<MfaFactor> enabledFactors = mfaFactorRepository.findAllByUserIdAndEnabledTrue(user.getId());
-
-        boolean hasAppMfa = user.isMfaEnabled() && enabledFactors.stream().anyMatch(f -> MfaMethod.app.equals(f.getMethod()));
+        boolean hasAppMfa = hasAppMfa(user);
         boolean hasEmailMfa = user.isMfaEmailFallbackEnabled();
 
         // Challenge MFA only when at least one verification method is available.
@@ -202,7 +200,8 @@ public class AuthService {
         return buildAuthResponse(user, session);
     }
 
-    @Transactional
+    // noRollbackFor: a wrong code is an expected outcome; its failure counter, lockout and audit entries must persist although this method throws.
+    @Transactional(noRollbackFor = UnauthorizedException.class)
     public MfaVerificationOutcome verifyMfa(VerifyMfaRequest request, HttpServletRequest httpRequest) {
         LoginChallenge challenge = challengeRepository.findByMfaTokenHash(tokenService.hashToken(request.mfaToken()))
                 .orElseThrow(() -> new UnauthorizedException("MFA challenge not found or expired"));
@@ -212,22 +211,25 @@ public class AuthService {
         }
 
         UserAccount user = challenge.getUser();
+        if (challenge.getSessionId() != null) {
+            // A challenge made to unlock a session cannot sign anybody in.
+            throw new UnauthorizedException("MFA challenge not found or expired");
+        }
+        rejectLockedAccount(user);
         String method = request.method().toLowerCase(Locale.ROOT);
 
-        if ("email".equals(method)) {
-            if (challenge.getOtpHash() == null || !passwordEncoder.matches(request.otp(), challenge.getOtpHash())) {
-                challenge.setAttemptCount(challenge.getAttemptCount() + 1);
-                throw new UnauthorizedException("Invalid verification code");
-            }
-        } else if ("app".equals(method)) {
-            MfaFactor factor = mfaFactorRepository.findByUserIdAndMethod(user.getId(), MfaMethod.app)
-                    .orElseThrow(() -> new UnauthorizedException("Authenticator app is not configured"));
-            if (!factor.isEnabled() || !totpService.verify(factor.getSecretEncrypted(), request.otp())) {
-                challenge.setAttemptCount(challenge.getAttemptCount() + 1);
-                throw new UnauthorizedException("Invalid verification code");
-            }
-        } else {
-            throw new IllegalArgumentException("Unsupported MFA method: " + request.method());
+        if (!otpMatches(user, challenge, method, request.otp())) {
+            throw failedVerificationCode(user, challenge, method, httpRequest, "mfa_verification_failed",
+                    () -> trailService.logAs(
+                            user,
+                            "USER",
+                            user.getFullName() == null || user.getFullName().isBlank() ? user.getUsername() : user.getFullName(),
+                            user.getId(),
+                            "LOGIN",
+                            null,
+                            "REVOKED",
+                            "Verification code is incorrect (" + method + ")"
+                    ));
         }
 
         challenge.setConsumedAt(Instant.now());
@@ -361,8 +363,14 @@ public class AuthService {
         }
     }
 
-    @Transactional
-    public AuthResponse reauthenticate(ReauthenticateRequest request, HttpServletRequest httpRequest) {
+    /**
+     * Unlocks an idle-locked session. The password comes first; when the account uses a second factor (the same test as signing in), a correct password
+     * does not unlock: it returns a challenge that belongs to this session, and {@link #verifyReauthenticationMfa} unlocks it. A wrong password counts toward
+     * the same account lockout as at sign-in, and every wrong entry is written to the Audit Trail.
+     */
+    // noRollbackFor: see login().
+    @Transactional(noRollbackFor = UnauthorizedException.class)
+    public Object reauthenticate(ReauthenticateRequest request, HttpServletRequest httpRequest) {
         AuthenticatedUser principal = currentUserService.requireAuthenticatedPrincipal();
         UserAccount user = currentUserService.requireCurrentUser();
         AuthSession session = sessionRepository.findById(principal.sessionId())
@@ -371,35 +379,69 @@ public class AuthService {
         if (session.getStatus() != AuthSession.SessionStatus.LOCKED) {
             throw new UnauthorizedException("Session is not locked");
         }
+        rejectLockedAccount(user);
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             session.setFailedReauthCount(session.getFailedReauthCount() + 1);
-            auditService.log(
-                    "session_reauth_failed",
-                    user,
-                    auditDetails("sessionId", session.getId(), "failedReauthCount", session.getFailedReauthCount()),
-                    clientIp(httpRequest),
-                    userAgent(httpRequest)
-            );
-            auditService.log(
-                    "session_logout_after_reauth_failed",
-                    user,
-                    auditDetails("sessionId", session.getId()),
-                    clientIp(httpRequest),
-                    userAgent(httpRequest)
-            );
-            trailService.logSafely(
-                    "SESSION",
-                    "Session",
-                    session.getId(),
-                    "SESSION_REAUTH_FAILED",
-                    null,
-                    null,
-                    "Password re-authentication failed"
-            );
-            throw new UnauthorizedException("Password is incorrect");
+            String message = registerFailedAttempt(user, httpRequest, "Password", () -> {
+                auditService.log(
+                        "session_reauth_failed",
+                        user,
+                        auditDetails("sessionId", session.getId(), "factor", "password", "failedReauthCount", session.getFailedReauthCount()),
+                        clientIp(httpRequest),
+                        userAgent(httpRequest)
+                );
+                trailService.logSafely("SESSION", "Session", session.getId(), "SESSION_REAUTH_FAILED", null, null, "Password re-authentication failed");
+            });
+            revokeSessionIfAccountLockedOut(user, session, httpRequest);
+            throw new UnauthorizedException(message);
         }
 
+        List<String> methods = availableMfaMethods(user);
+        if (!methods.isEmpty()) {
+            auditService.log("session_reauth_password_verified", user, auditDetails("sessionId", session.getId(), "methods", methods), clientIp(httpRequest), userAgent(httpRequest));
+            trailService.logSafely("SESSION", "Session", session.getId(), "SESSION_REAUTH_PASSWORD_VERIFIED", "LOCKED", "LOCKED", "Password verified; verification code required to unlock");
+            return createLoginChallenge(user, methods, httpRequest, session.getId());
+        }
+        return completeReauthentication(user, session, httpRequest, "Session re-authenticated successfully");
+    }
+
+    /** The second step of unlocking: the code of the challenge that the correct password returned. */
+    @Transactional(noRollbackFor = UnauthorizedException.class)
+    public AuthResponse verifyReauthenticationMfa(VerifyMfaRequest request, HttpServletRequest httpRequest) {
+        AuthenticatedUser principal = currentUserService.requireAuthenticatedPrincipal();
+        UserAccount user = currentUserService.requireCurrentUser();
+        AuthSession session = sessionRepository.findById(principal.sessionId())
+                .orElseThrow(() -> new UnauthorizedException("Session not found"));
+        if (session.getStatus() != AuthSession.SessionStatus.LOCKED) {
+            throw new UnauthorizedException("Session is not locked");
+        }
+        rejectLockedAccount(user);
+
+        LoginChallenge challenge = challengeRepository.findByMfaTokenHash(tokenService.hashToken(request.mfaToken()))
+                .orElseThrow(() -> new UnauthorizedException("MFA challenge not found or expired"));
+        if (challenge.getConsumedAt() != null || challenge.isExpired()
+                || !session.getId().equals(challenge.getSessionId())
+                || !user.getId().equals(challenge.getUser().getId())) {
+            throw new UnauthorizedException("MFA challenge not found or expired");
+        }
+
+        String method = request.method().toLowerCase(Locale.ROOT);
+        if (!otpMatches(user, challenge, method, request.otp())) {
+            session.setFailedReauthCount(session.getFailedReauthCount() + 1);
+            UnauthorizedException failure = failedVerificationCode(user, challenge, method, httpRequest, "session_reauth_failed",
+                    () -> trailService.logSafely("SESSION", "Session", session.getId(), "SESSION_REAUTH_FAILED", null, null,
+                            "Verification code re-authentication failed (" + method + ")"));
+            revokeSessionIfAccountLockedOut(user, session, httpRequest);
+            throw failure;
+        }
+
+        challenge.setConsumedAt(Instant.now());
+        return completeReauthentication(user, session, httpRequest, "Session re-authenticated with password and verification code");
+    }
+
+    private AuthResponse completeReauthentication(UserAccount user, AuthSession session, HttpServletRequest httpRequest, String detail) {
+        resetLoginFailures(user);
         session.setStatus(AuthSession.SessionStatus.ACTIVE);
         session.setLockedAt(null);
         session.setFailedReauthCount(0);
@@ -416,21 +458,74 @@ public class AuthService {
                 clientIp(httpRequest),
                 userAgent(httpRequest)
         );
-        trailService.logSafely(
-                "SESSION",
-                "Session",
-                session.getId(),
-                "SESSION_REAUTH_SUCCESS",
-                "LOCKED",
-                "ACTIVE",
-                "Session re-authenticated successfully"
-        );
+        trailService.logSafely("SESSION", "Session", session.getId(), "SESSION_REAUTH_SUCCESS", "LOCKED", "ACTIVE", detail);
         return new AuthResponse(
                 toAuthUserResponse(user, session.getId()),
                 tokenService.createAccessToken(user, session.getId()),
                 newRefreshToken,
                 accessTokenTtlMinutes * 60
         );
+    }
+
+    /** An account that the failed attempts have locked cannot unlock a session or give a code: the same refusal as at sign-in. */
+    private void rejectLockedAccount(UserAccount user) {
+        if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(Instant.now())) {
+            throw new UnauthorizedException("Account is locked. Please contact administrator.");
+        }
+    }
+
+    /** When the wrong entry was the one that locked the account, the session it was made on ends too. */
+    private void revokeSessionIfAccountLockedOut(UserAccount user, AuthSession session, HttpServletRequest httpRequest) {
+        if (user.getLockedUntil() == null || !user.getLockedUntil().isAfter(Instant.now())) {
+            return;
+        }
+        session.setRevokedAt(Instant.now());
+        session.setStatus(AuthSession.SessionStatus.REVOKED);
+        session.setCurrentSession(false);
+        auditService.log("session_revoked_after_lockout", user, auditDetails("sessionId", session.getId()), clientIp(httpRequest), userAgent(httpRequest));
+        trailService.logSafely("SESSION", "Session", session.getId(), "SESSION_REVOKED", "LOCKED", "REVOKED", "Session ended: the account was locked after too many failed attempts");
+    }
+
+    private boolean hasAppMfa(UserAccount user) {
+        return user.isMfaEnabled() && mfaFactorRepository.findAllByUserIdAndEnabledTrue(user.getId()).stream().anyMatch(f -> MfaMethod.app.equals(f.getMethod()));
+    }
+
+    /** The second-factor methods this account can use; empty when it uses none. The same test as signing in. */
+    private List<String> availableMfaMethods(UserAccount user) {
+        List<String> methods = new java.util.ArrayList<>();
+        if (hasAppMfa(user)) {
+            methods.add("app");
+        }
+        if (user.isMfaEmailFallbackEnabled()) {
+            methods.add("email");
+        }
+        return methods;
+    }
+
+    private boolean otpMatches(UserAccount user, LoginChallenge challenge, String method, String otp) {
+        if ("email".equals(method)) {
+            return challenge.getOtpHash() != null && passwordEncoder.matches(otp, challenge.getOtpHash());
+        }
+        if ("app".equals(method)) {
+            MfaFactor factor = mfaFactorRepository.findByUserIdAndMethod(user.getId(), MfaMethod.app)
+                    .orElseThrow(() -> new UnauthorizedException("Authenticator app is not configured"));
+            return factor.isEnabled() && totpService.verify(factor.getSecretEncrypted(), otp);
+        }
+        throw new IllegalArgumentException("Unsupported MFA method: " + method);
+    }
+
+    /**
+     * A wrong verification code: it counts toward the same account lockout as a wrong password, and is written to the Audit Trail with the method and the number of
+     * the attempt on this challenge. {@code trailEntry} writes the entry of the Audit Trail that belongs to the flow (sign-in or unlock).
+     */
+    private UnauthorizedException failedVerificationCode(UserAccount user, LoginChallenge challenge, String method, HttpServletRequest request, String auditAction, Runnable trailEntry) {
+        challenge.setAttemptCount(challenge.getAttemptCount() + 1);
+        String message = registerFailedAttempt(user, request, "Verification code", () -> {
+            auditService.log(auditAction, user, auditDetails("username", user.getUsername(), "factor", "verification_code", "method", method, "attempt", challenge.getAttemptCount()),
+                    clientIp(request), userAgent(request));
+            trailEntry.run();
+        });
+        return new UnauthorizedException(message);
     }
 
     @Transactional
@@ -1035,6 +1130,27 @@ public class AuthService {
     }
 
     private String handleFailedLogin(UserAccount user, HttpServletRequest request) {
+        return registerFailedAttempt(user, request, "Password", () -> {
+            auditService.log("login_failed", user, auditDetails("username", user.getUsername()), clientIp(request), userAgent(request));
+            trailService.logAs(
+                    user,
+                    "USER",
+                    user.getFullName() == null || user.getFullName().isBlank() ? user.getUsername() : user.getFullName(),
+                    user.getId(),
+                    "LOGIN",
+                    null,
+                    "REVOKED",
+                    "Password is incorrect"
+            );
+        });
+    }
+
+    /**
+     * One wrong entry of a factor (the password or the verification code), at sign-in or when unlocking a session: it counts toward the account lockout of the Security
+     * configuration (Enable Account Lockout, Maximum Login Attempts), and {@code attemptLog} writes the record of the attempt itself before the lockout is recorded.
+     * Returns what the person is told.
+     */
+    private String registerFailedAttempt(UserAccount user, HttpServletRequest request, String factor, Runnable attemptLog) {
         user.setFailedLoginCount(user.getFailedLoginCount() + 1);
         com.fasterxml.jackson.databind.JsonNode security = systemConfigurationService.requireConfiguration().getSecurityConfig();
         boolean lockoutEnabled = security != null && security.path("enableAccountLockout").asBoolean(true);
@@ -1045,17 +1161,7 @@ public class AuthService {
             user.setLockedUntil(Instant.now().plus(36500, java.time.temporal.ChronoUnit.DAYS));
             notificationDispatcher.dispatch("security.account_locked", List.of(user), Map.of());
         }
-        auditService.log("login_failed", user, auditDetails("username", user.getUsername()), clientIp(request), userAgent(request));
-        trailService.logAs(
-                user,
-                "USER",
-                user.getFullName() == null || user.getFullName().isBlank() ? user.getUsername() : user.getFullName(),
-                user.getId(),
-                "LOGIN",
-                null,
-                "REVOKED",
-                "Password is incorrect"
-        );
+        attemptLog.run();
         // The above "LOGIN"/REVOKED entry is written for every wrong-password attempt and looks
         // identical whether or not this was the attempt that crossed the threshold -- an admin
         // reading the trail can't tell "just another wrong password" from "system auto-locked
@@ -1084,11 +1190,11 @@ public class AuthService {
             if (remaining == 0) {
                 return "Account is locked after too many failed login attempts. Please contact an administrator.";
             }
-            return "Password is incorrect. You have " + remaining
+            return factor + " is incorrect. You have " + remaining
                     + " login attempt" + (remaining == 1 ? "" : "s")
                     + " remaining before your account is locked.";
         }
-        return "Password is incorrect";
+        return factor + " is incorrect";
     }
 
     private void resetLoginFailures(UserAccount user) {
@@ -1097,6 +1203,11 @@ public class AuthService {
     }
 
     private LoginChallengeResponse createLoginChallenge(UserAccount user, List<String> availableMethods, HttpServletRequest request) {
+        return createLoginChallenge(user, availableMethods, request, null);
+    }
+
+    /** {@code sessionId} binds the challenge to the locked session it unlocks; null for a sign-in. */
+    private LoginChallengeResponse createLoginChallenge(UserAccount user, List<String> availableMethods, HttpServletRequest request, UUID sessionId) {
         String rawChallengeToken = tokenService.createRefreshToken();
         String rawOtp = generateOtp();
 
@@ -1107,9 +1218,10 @@ public class AuthService {
         challenge.setMaskedEmail(maskEmail(user.getEmail()));
         challenge.setOtpHash(passwordEncoder.encode(rawOtp));
         challenge.setOtpExpiresAt(Instant.now().plusSeconds(loginChallengeTtlMinutes * 60));
+        challenge.setSessionId(sessionId);
         challengeRepository.save(challenge);
 
-        auditService.log("login_challenge_created", user, auditDetails(
+        auditService.log(sessionId == null ? "login_challenge_created" : "session_reauth_challenge_created", user, auditDetails(
                 "methods", challenge.getAvailableMethods()
         ), clientIp(request), userAgent(request));
 
@@ -1120,7 +1232,7 @@ public class AuthService {
                 challenge.getMaskedEmail(),
                 user.getUsername(),
                 loginChallengeTtlMinutes * 60,
-                user.isMfaRememberDeviceEnabled()
+                sessionId == null && user.isMfaRememberDeviceEnabled() // a trusted device never skips the code that unlocks a session
         );
     }
 

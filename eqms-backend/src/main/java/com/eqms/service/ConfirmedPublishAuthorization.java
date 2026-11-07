@@ -10,10 +10,18 @@ final class ConfirmedPublishAuthorization {
     final UUID userId;
     final Instant confirmedAt;
     final java.util.Map<String,String> context;
+    /** The signer chose to publish although a Related Document is not ready; it is part of what was confirmed. */
+    final boolean forceRelated;
     private final Set<UUID> revisions;
 
     ConfirmedPublishAuthorization(UUID confirmationId, UUID userId, Instant confirmedAt, Set<UUID> revisions,
             java.util.Map<String,String> context) {
+        this(confirmationId, userId, confirmedAt, revisions, context, false);
+    }
+
+    ConfirmedPublishAuthorization(UUID confirmationId, UUID userId, Instant confirmedAt, Set<UUID> revisions,
+            java.util.Map<String,String> context, boolean forceRelated) {
+        this.forceRelated = forceRelated;
         this.confirmationId = java.util.Objects.requireNonNull(confirmationId);
         this.userId = java.util.Objects.requireNonNull(userId);
         this.confirmedAt = java.util.Objects.requireNonNull(confirmedAt);

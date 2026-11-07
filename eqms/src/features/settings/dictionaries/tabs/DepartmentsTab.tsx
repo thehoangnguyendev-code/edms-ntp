@@ -29,6 +29,10 @@ import { extractApiMessage } from "../utils";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { FolderIcon } from "@/features/self-service/knowledge/explorer/ExplorerIcons";
+import { folderColor } from "@/features/self-service/knowledge/explorer/explorerModel";
+import { FolderColorField } from "../FolderColorField";
+import { userOptionLabel } from "../userOptionLabel";
 
 export const DepartmentsTab = React.forwardRef<
   { openAddModal: () => void },
@@ -174,6 +178,9 @@ export const DepartmentsTab = React.forwardRef<
         businessUnit: item.businessUnit,
         description: item.description,
         isActive: !item.isActive,
+        departmentHeadId: item.departmentHeadId || null,
+        primaryContactPhone: item.primaryContactPhone || null,
+        iconColor: item.iconColor || null,
       })
       .then((updated) => {
         setShowToggleModal(false);
@@ -264,6 +271,7 @@ export const DepartmentsTab = React.forwardRef<
     { id: "name", header: "Department Name", label: "Department Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cellClassName: "font-medium text-slate-900", cell: (item) => item.name },
     { id: "abbreviation", header: "Abbreviation", label: "Abbreviation", sort: { direction: sortConfig.key === "abbreviation" ? sortConfig.direction : undefined, onSort: () => handleSort("abbreviation") }, cell: (item) => <Badge color="blue" size="sm">{item.abbreviation}</Badge> },
     { id: "businessUnit", header: "Business Unit", label: "Business Unit", sort: { direction: sortConfig.key === "businessUnit" ? sortConfig.direction : undefined, onSort: () => handleSort("businessUnit") }, cell: (item) => item.businessUnit },
+    { id: "icon", header: "Folder", label: "Folder", cell: (item) => <FolderIcon color={item.iconColor || folderColor(item.name)} className="h-6 w-7" /> },
     { id: "primaryContactPhone", header: "Primary Contact", label: "Primary Contact", sort: { direction: sortConfig.key === "primaryContactPhone" ? sortConfig.direction : undefined, onSort: () => handleSort("primaryContactPhone") }, cellClassName: "text-slate-700", cell: (item) => item.primaryContactPhone || "-" },
     { id: "departmentHeadName", header: "Department Head", label: "Department Head", cellClassName: "text-slate-700", cell: (item) => item.departmentHeadName || "-" },
     { id: "description", header: "Description", label: "Description", sort: { direction: sortConfig.key === "description" ? sortConfig.direction : undefined, onSort: () => handleSort("description") }, cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
@@ -460,7 +468,7 @@ export const DepartmentsTab = React.forwardRef<
             />
           </div>
 
-          <div className="flex items-end gap-2">
+          <div className="filter-actions flex items-end gap-2">
             <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
             {deptControl}
           </div>
@@ -562,6 +570,7 @@ export const DepartmentsTab = React.forwardRef<
             isActive: data.isActive,
             departmentHeadId: data.departmentHeadId || null,
             primaryContactPhone: data.primaryContactPhone || null,
+            iconColor: data.iconColor || null,
           };
           try {
             const saved =
@@ -774,8 +783,9 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
     businessUnit: (item?.businessUnit || "Corporate") as BusinessUnit,
     isActive: item?.isActive ?? true,
     departmentHeadId: item?.departmentHeadId || "",
-    departmentHeadLabel: item?.departmentHeadName || "",
+    departmentHeadLabel: item?.departmentHeadName ? userOptionLabel(item.departmentHeadEmployeeCode, item.departmentHeadName) : "",
     primaryContactPhone: item?.primaryContactPhone || "",
+    iconColor: item?.iconColor || "",
   });
   const [isSaving, setIsSaving] = useState(false);
   // Populated as the admin searches for a Department Head -- keyed by user id, so selecting a
@@ -792,8 +802,9 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
         businessUnit: item.businessUnit,
         isActive: item.isActive,
         departmentHeadId: item.departmentHeadId || "",
-        departmentHeadLabel: item.departmentHeadName || "",
+        departmentHeadLabel: item.departmentHeadName ? userOptionLabel(item.departmentHeadEmployeeCode, item.departmentHeadName) : "",
         primaryContactPhone: item.primaryContactPhone || "",
+        iconColor: item.iconColor || "",
       });
     } else {
       setFormData({
@@ -805,6 +816,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
         departmentHeadId: "",
         departmentHeadLabel: "",
         primaryContactPhone: "",
+        iconColor: "",
       });
     }
   }, [item, isOpen]);
@@ -820,7 +832,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
         .filter((u: any) => u.fullName && u.id)
         .map((u: any) => {
           phoneByUserIdRef.current.set(u.id, u.phone || "");
-          return { label: `${u.fullName} (${u.username})`, value: u.id };
+          return { label: userOptionLabel(u.employeeCode, u.fullName, u.username), value: u.id };
         });
     },
     [],
@@ -910,7 +922,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-4">
           <div>
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
               Department Head
@@ -971,6 +983,8 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
             disabled={isSaving}
           />
         </div>
+
+        <FolderColorField name={formData.name} value={formData.iconColor} onChange={(iconColor) => setFormData({ ...formData, iconColor })} disabled={isSaving} />
 
         <div className="flex items-center gap-3">
           <Checkbox

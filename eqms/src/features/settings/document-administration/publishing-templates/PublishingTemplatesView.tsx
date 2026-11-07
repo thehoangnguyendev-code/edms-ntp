@@ -22,7 +22,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { formatDateTimeLong } from "@/utils/format";
 import type { PublishingTemplateResponse } from "@/features/documents/publishing/types";
 import { extractApiMessage } from "@/features/settings/dictionaries/utils";
-import { IconBrandTelegram, IconFilter2, IconPencilMinus } from "@tabler/icons-react";
+import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { DesktopSelectFilters } from '@/components/ui/filter/DesktopSelectFilters';
 import { useBranding } from '@/components/branding/BrandLogo';
@@ -53,12 +53,10 @@ const PUBLISHING_MODE_OPTIONS = [
 const tableColumns = [
   { id: "templateName", label: "Template Name", sortable: true, className: "min-w-[240px]" },
   { id: "publishingMode", label: "Publishing Mode", sortable: true, className: "min-w-[190px]" },
-  { id: "versionNumber", label: "Version", sortable: true, className: "min-w-[110px]" },
   { id: "status", label: "Status", sortable: true, className: "min-w-[130px]" },
   { id: "components", label: "Configured Files", sortable: false, className: "min-w-[220px]" },
   { id: "createdBy", label: "Created By", sortable: true, className: "min-w-[160px]" },
   { id: "updatedAt", label: "Updated", sortable: true, className: "min-w-[180px]" },
-  { id: "publishedAt", label: "Published", sortable: true, className: "min-w-[180px]" },
   { id: "action", label: "Action", sortable: false, className: "w-20 text-center" },
 ];
 
@@ -206,7 +204,7 @@ export const PublishingTemplatesView: React.FC = () => {
     try {
       await publishingTemplatesApi.toggleStatus(id);
       await refreshAfterMutation();
-      showToast({ type: "success", title: "Status updated", message: "Publishing template status updated." });
+      showToast({ type: "success", title: "Status updated", message: "Publishing template status updated. Any number of templates can be Active at once." });
     } catch (error) {
       console.error("Failed to toggle publishing template status", error);
       showToast({ type: "error", title: "Update failed", message: getApiErrorMessage(error, "Unable to update publishing template status.") });
@@ -227,20 +225,6 @@ export const PublishingTemplatesView: React.FC = () => {
     } finally {
       setIsSaving(false);
       setDeleteTarget(null);
-    }
-  };
-
-  const handlePublish = async (id: string) => {
-    setIsSaving(true);
-    try {
-      await publishingTemplatesApi.publishTemplate(id, "Publishing template published from admin screen");
-      await refreshAfterMutation();
-      showToast({ type: "success", title: "Published", message: "Publishing template published." });
-    } catch (error) {
-      console.error("Failed to publish publishing template", error);
-      showToast({ type: "error", title: "Publish failed", message: getApiErrorMessage(error, "Unable to publish publishing template.") });
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -282,12 +266,10 @@ export const PublishingTemplatesView: React.FC = () => {
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell40, cell: (item, index) => startIndex + index + 1 },
     { id: "templateName", header: "Template Name", label: "Template Name", sort: { direction: sortConfig.key === "templateName" ? sortConfig.direction : undefined, onSort: () => handleSort("templateName") }, cell: (item) => (<><button type="button" onClick={() => navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(item.id || ""))} className="font-medium text-emerald-700 hover:underline">{item.templateName || "-"}</button>{item.description && (<p className="mt-0.5 max-w-[320px] truncate text-2xs text-slate-500">{item.description}</p>)}</>) },
     { id: "publishingMode", header: "Publishing Mode", label: "Publishing Mode", sort: { direction: sortConfig.key === "publishingMode" ? sortConfig.direction : undefined, onSort: () => handleSort("publishingMode") }, cellClassName: "text-slate-700", cell: (item) => formatPublishingMode(item.publishingMode) },
-    { id: "versionNumber", header: "Version", label: "Version", sort: { direction: sortConfig.key === "versionNumber" ? sortConfig.direction : undefined, onSort: () => handleSort("versionNumber") }, cellClassName: "text-slate-700", cell: (item) => item.versionNumber ?? 1 },
     { id: "status", header: "Status", label: "Status", sort: { direction: sortConfig.key === "status" ? sortConfig.direction : undefined, onSort: () => handleSort("status") }, cell: (item) => (<Badge color={getStatusColor(item.status)} size="sm">{formatStatus(item.status)}</Badge>) },
     { id: "components", header: "Configured Files", label: "Configured Files", cell: (item) => (<><span className="font-medium text-slate-900">{configuredFileCount(item)}</span><span className="ml-1 text-slate-500">files</span></>) },
     { id: "createdBy", header: "Created By", label: "Created By", sort: { direction: sortConfig.key === "createdBy" ? sortConfig.direction : undefined, onSort: () => handleSort("createdBy") }, cellClassName: "text-slate-700", cell: (item) => item.createdBy || "-" },
     { id: "updatedAt", header: "Updated", label: "Updated", sort: { direction: sortConfig.key === "updatedAt" ? sortConfig.direction : undefined, onSort: () => handleSort("updatedAt") }, cellClassName: "text-slate-600", cell: (item) => item.updatedAt ? formatDateTimeLong(item.updatedAt) : "-" },
-    { id: "publishedAt", header: "Published", label: "Published", sort: { direction: sortConfig.key === "publishedAt" ? sortConfig.direction : undefined, onSort: () => handleSort("publishedAt") }, cellClassName: "text-slate-600", cell: (item) => item.publishedAt ? formatDateTimeLong(item.publishedAt) : "-" },
   ];
   const publishingTemplatesAction: DataTableAction<Row> = {
     header: "Action",
@@ -301,8 +283,7 @@ export const PublishingTemplatesView: React.FC = () => {
     <div className="py-1">
       <DropdownMenuItem icon={<IconPencilMinus className="h-4 w-4" />} onClick={() => { navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(item.id || "")); close(); }}>Edit Template</DropdownMenuItem>
       <DropdownMenuItem icon={<Copy className="h-4 w-4" />} onClick={() => { void handleDuplicate(item.id || ""); close(); }}>Duplicate</DropdownMenuItem>
-      <DropdownMenuItem icon={<ToggleLeft className="h-4 w-4" />} onClick={() => { void handleToggle(item.id || ""); close(); }}>Change Status</DropdownMenuItem>
-      <DropdownMenuItem icon={<IconBrandTelegram className="h-4 w-4" />} onClick={() => { void handlePublish(item.id || ""); close(); }}>Publish Template</DropdownMenuItem>
+      <DropdownMenuItem icon={<ToggleLeft className="h-4 w-4" />} onClick={() => { void handleToggle(item.id || ""); close(); }}>{String(item.status || "").toUpperCase() === "ACTIVE" ? "Deactivate" : "Activate"}</DropdownMenuItem>
       <DropdownMenuItem icon={<Trash2 className="h-4 w-4" />} onClick={() => { setDeleteTarget(item); close(); }}>Delete</DropdownMenuItem>
     </div>
   </PortalDropdownMenu>
@@ -454,7 +435,7 @@ export const PublishingTemplatesView: React.FC = () => {
               </div>
 
               {/* Clear Filters */}
-              <div className="flex items-end gap-2">
+              <div className="filter-actions flex items-end gap-2">
                 <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
                 {publishingTemplatesControl}
               </div>

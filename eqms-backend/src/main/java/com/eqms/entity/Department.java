@@ -50,6 +50,10 @@ public class Department {
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
+    /** The colour of the folder in the Knowledge Base explorer as #rrggbb; an automatic colour when empty. */
+    @Column(name = "icon_color", length = 7)
+    private String iconColor;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -142,6 +146,14 @@ public class Department {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public String getIconColor() {
+        return iconColor;
+    }
+
+    public void setIconColor(String iconColor) {
+        this.iconColor = iconColor;
     }
 
     public Instant getCreatedAt() {

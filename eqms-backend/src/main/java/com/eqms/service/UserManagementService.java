@@ -286,11 +286,17 @@ public class UserManagementService {
         Set<UUID> activeSessionUserIds = activeSessionUserIds(pageUserIds);
         Set<UUID> onlineUserIds = onlineSessionUserIds(pageUserIds);
         Map<UUID, List<String>> accessProfileNamesByUser = batchAccessProfileNames(pageUserIds);
+        // The row menu needs what the signed-in user may do with each account. The permissions are the same for every row, so each is read once for
+        // the page; only the lock of the account differs per row. The menu then opens without a request of its own.
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        Map<String, Boolean> heldPermissions = new HashMap<>();
 
         List<UserManagementResponse> users = result.getContent()
                 .stream()
                 .map(user -> toResponse(user, false, activeSessionUserIds.contains(user.getId()), onlineUserIds.contains(user.getId()),
-                        accessProfileNamesByUser.getOrDefault(user.getId(), List.of())))
+                        accessProfileNamesByUser.getOrDefault(user.getId(), List.of()),
+                        buildCapabilities(user.getId(), isLockedOut(user),
+                                code -> heldPermissions.computeIfAbsent(code, c -> permissionEvaluationService.hasPermission(currentUser, c)))))
                 .toList();
 
         return new PageResponse<>(
@@ -1021,27 +1027,36 @@ public class UserManagementService {
     public com.eqms.dto.user.UserActionCapabilitiesResponse getUserCapabilities(UUID id) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         UserAccount targetUser = requireUser(id);
+        Map<String, Boolean> heldPermissions = new HashMap<>();
+        return buildCapabilities(id, isLockedOut(targetUser),
+                code -> heldPermissions.computeIfAbsent(code, c -> permissionEvaluationService.hasPermission(currentUser, c)));
+    }
 
+    private static boolean isLockedOut(UserAccount user) {
+        return user.getLockedUntil() != null && user.getLockedUntil().isAfter(Instant.now());
+    }
+
+    /** The one place that decides the row actions, for the list and for the single-account endpoint: the permission checks are given as a function so a caller can read each permission once. */
+    private com.eqms.dto.user.UserActionCapabilitiesResponse buildCapabilities(UUID id, boolean isLockedOut, java.util.function.Predicate<String> has) {
         Map<String, com.eqms.dto.user.UserActionCapabilitiesResponse.ActionCapability> actions = new LinkedHashMap<>();
-        actions.put("view", userCapability(currentUser, "settings.user.view"));
+        actions.put("view", userCapability(has, "settings.user.view"));
         // Profile editing is a first-class row action.  The UI consumes this
         // capability to enable section edits, avatar changes and profile saves.
         // Keep it backed by the same permission used by the mutation endpoints
         // instead of inferring editability from a role name.
-        actions.put("edit", userCapability(currentUser, "settings.user.edit"));
-        actions.put("resetPassword", userCapability(currentUser, "settings.user.reset_password"));
-        actions.put("suspend", userCapability(currentUser, "settings.user.edit"));
-        actions.put("terminate", userCapability(currentUser, "settings.user.edit"));
-        actions.put("reinstate", userCapability(currentUser, "settings.user.edit"));
-        actions.put("forceLogout", userCapability(currentUser, "settings.user.force_logout"));
-        boolean isLockedOut = targetUser.getLockedUntil() != null && targetUser.getLockedUntil().isAfter(Instant.now());
-        actions.put("unlock", userCapability(currentUser, "settings.user.edit", isLockedOut, "Account is not currently locked."));
+        actions.put("edit", userCapability(has, "settings.user.edit"));
+        actions.put("resetPassword", userCapability(has, "settings.user.reset_password"));
+        actions.put("suspend", userCapability(has, "settings.user.edit"));
+        actions.put("terminate", userCapability(has, "settings.user.edit"));
+        actions.put("reinstate", userCapability(has, "settings.user.edit"));
+        actions.put("forceLogout", userCapability(has, "settings.user.force_logout"));
+        actions.put("unlock", userCapability(has, "settings.user.edit", isLockedOut, "Account is not currently locked."));
 
         return new com.eqms.dto.user.UserActionCapabilitiesResponse(id.toString(), actions);
     }
 
-    private com.eqms.dto.user.UserActionCapabilitiesResponse.ActionCapability userCapability(UserAccount currentUser, String permissionCode) {
-        boolean allowed = permissionEvaluationService.hasPermission(currentUser, permissionCode);
+    private com.eqms.dto.user.UserActionCapabilitiesResponse.ActionCapability userCapability(java.util.function.Predicate<String> has, String permissionCode) {
+        boolean allowed = has.test(permissionCode);
         return new com.eqms.dto.user.UserActionCapabilitiesResponse.ActionCapability(
                 allowed,
                 allowed ? null : "You do not have permission to perform this action.",
@@ -1050,8 +1065,8 @@ public class UserManagementService {
     }
 
     private com.eqms.dto.user.UserActionCapabilitiesResponse.ActionCapability userCapability(
-            UserAccount currentUser, String permissionCode, boolean statusEligible, String statusIneligibleReason) {
-        if (!permissionEvaluationService.hasPermission(currentUser, permissionCode)) {
+            java.util.function.Predicate<String> has, String permissionCode, boolean statusEligible, String statusIneligibleReason) {
+        if (!has.test(permissionCode)) {
             return new com.eqms.dto.user.UserActionCapabilitiesResponse.ActionCapability(
                     false, "You do not have permission to perform this action.", permissionCode);
         }
@@ -1760,6 +1775,11 @@ public class UserManagementService {
 
     private UserManagementResponse toResponse(UserAccount user, boolean includeDetails, boolean inSession, boolean online,
             List<String> accessProfileNames) {
+        return toResponse(user, includeDetails, inSession, online, accessProfileNames, null);
+    }
+
+    private UserManagementResponse toResponse(UserAccount user, boolean includeDetails, boolean inSession, boolean online,
+            List<String> accessProfileNames, com.eqms.dto.user.UserActionCapabilitiesResponse capabilities) {
         List<String> permissions = permissionCodesForUser(user);
         List<EducationResponse> educations = includeDetails ? getEducations(user.getId()) : List.of();
         List<CertificationResponse> certifications = includeDetails ? getCertifications(user.getId()) : List.of();
@@ -1822,7 +1842,8 @@ public class UserManagementService {
                 user.getTerminationReason(),
                 DateTimeFormatUtils.formatDate(user.getTerminationDate()),
                 user.getHomePage(),
-                user.isMfaRequiredByAdmin()
+                user.isMfaRequiredByAdmin(),
+                capabilities
         );
     }
 
@@ -2108,6 +2129,7 @@ public class UserManagementService {
         user.setRoleName(LEGACY_ROLE_NAME_MARKER);
         user.setBusinessUnit(requireBusinessUnit(request.businessUnit()));
         user.setDepartment(requireDepartment(request.businessUnit(), request.department()));
+        syncDepartmentId(user);
         user.setPosition(requirePosition(request.businessUnit(), request.department(), request.position()));
         user.setStatus(requireStatus(request.status()));
         user.setDateOfBirth(parseDateStrictOptional(request.dateOfBirth(), "Date of Birth", false));
@@ -2139,7 +2161,10 @@ public class UserManagementService {
         if (request.email() != null) user.setEmail(normalizeRequired(request.email(), "Email"));
         if (request.phone() != null) user.setPhone(normalizePhone(request.phone()));
         if (request.businessUnit() != null) user.setBusinessUnit(requireBusinessUnit(request.businessUnit()));
-        if (request.department() != null) user.setDepartment(requireDepartment(request.businessUnit() != null ? request.businessUnit() : user.getBusinessUnit(), request.department()));
+        if (request.department() != null) {
+            user.setDepartment(requireDepartment(request.businessUnit() != null ? request.businessUnit() : user.getBusinessUnit(), request.department()));
+            syncDepartmentId(user);
+        }
         if (request.position() != null) user.setPosition(requirePosition(
                 request.businessUnit() != null ? request.businessUnit() : user.getBusinessUnit(),
                 request.department() != null ? request.department() : user.getDepartment(),
@@ -2544,6 +2569,11 @@ public class UserManagementService {
                 .or(() -> businessUnitRepository.findByCodeIgnoreCase(normalized))
                 .map(BusinessUnit::getName)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid business unit"));
+    }
+
+    /** Keeps the Department foreign key in step with the validated Department name just stored on the user. */
+    private void syncDepartmentId(UserAccount user) {
+        user.setDepartmentId(departmentRepository.findByNameIgnoreCase(user.getDepartment()).map(Department::getId).orElse(null));
     }
 
     private String requireDepartment(String businessUnitValue, String value) {

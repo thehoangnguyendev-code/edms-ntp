@@ -112,19 +112,20 @@ export const Radio: React.FC<RadioProps> = ({
             </p>
           )}
         </div>
-        <div
+        <svg
+          viewBox="0 0 20 20"
+          aria-hidden="true"
           className={cn(
-            'relative ml-4 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0',
+            'ml-4 block h-5 w-5 shrink-0 transition-colors',
             checked
-              ? 'bg-white border-emerald-600'
-              : 'bg-white border-slate-200 hover:border-emerald-400',
-            disabled && !checked && 'hover:border-slate-200'
+              ? 'text-emerald-600'
+              : 'text-slate-200 hover:text-emerald-400',
+            disabled && !checked && 'hover:text-slate-200'
           )}
         >
-          {checked && (
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-in fade-in zoom-in-75 duration-200" />
-          )}
-        </div>
+          <circle cx="10" cy="10" r="9" fill="white" stroke="currentColor" strokeWidth="2" />
+          {checked && <circle cx="10" cy="10" r="5" fill="currentColor" />}
+        </svg>
       </label>
     );
   }

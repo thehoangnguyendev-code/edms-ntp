@@ -1,0 +1,2594 @@
+[
+ {
+  "id": "S1.DCO",
+  "name": "documents only, no revision yet: dco.test1",
+  "ok": true,
+  "detail": "documents only, no revision yet: dco.test1 sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.ADMIN",
+  "name": "documents only, no revision yet: user.a.test",
+  "ok": true,
+  "detail": "documents only, no revision yet: user.a.test sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.AUTHOR",
+  "name": "documents only, no revision yet: author.test1",
+  "ok": true,
+  "detail": "documents only, no revision yet: author.test1 sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.COAUTHOR",
+  "name": "documents only, no revision yet: coauthor.test1",
+  "ok": true,
+  "detail": "documents only, no revision yet: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.REVIEWER",
+  "name": "documents only, no revision yet: reviewer.test1",
+  "ok": true,
+  "detail": "documents only, no revision yet: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.APPROVER",
+  "name": "documents only, no revision yet: approver.test1",
+  "ok": true,
+  "detail": "documents only, no revision yet: approver.test1 sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.HEAD",
+  "name": "documents only, no revision yet: reviewer.test2",
+  "ok": true,
+  "detail": "documents only, no revision yet: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.G1A",
+  "name": "documents only, no revision yet: coauthor.test2",
+  "ok": true,
+  "detail": "documents only, no revision yet: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.G1B",
+  "name": "documents only, no revision yet: trainee.test1",
+  "ok": true,
+  "detail": "documents only, no revision yet: trainee.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.G2A",
+  "name": "documents only, no revision yet: trainee.test2",
+  "ok": true,
+  "detail": "documents only, no revision yet: trainee.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.G2B",
+  "name": "documents only, no revision yet: trainer.test1",
+  "ok": true,
+  "detail": "documents only, no revision yet: trainer.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.DCO",
+  "name": "revision 1 in Draft: dco.test1",
+  "ok": true,
+  "detail": "revision 1 in Draft: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.ADMIN",
+  "name": "revision 1 in Draft: user.a.test",
+  "ok": true,
+  "detail": "revision 1 in Draft: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.AUTHOR",
+  "name": "revision 1 in Draft: author.test1",
+  "ok": true,
+  "detail": "revision 1 in Draft: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.COAUTHOR",
+  "name": "revision 1 in Draft: coauthor.test1",
+  "ok": true,
+  "detail": "revision 1 in Draft: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.REVIEWER",
+  "name": "revision 1 in Draft: reviewer.test1",
+  "ok": true,
+  "detail": "revision 1 in Draft: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.APPROVER",
+  "name": "revision 1 in Draft: approver.test1",
+  "ok": true,
+  "detail": "revision 1 in Draft: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.HEAD",
+  "name": "revision 1 in Draft: reviewer.test2",
+  "ok": true,
+  "detail": "revision 1 in Draft: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.G1A",
+  "name": "revision 1 in Draft: coauthor.test2",
+  "ok": true,
+  "detail": "revision 1 in Draft: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.G1B",
+  "name": "revision 1 in Draft: trainee.test1",
+  "ok": true,
+  "detail": "revision 1 in Draft: trainee.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.G2A",
+  "name": "revision 1 in Draft: trainee.test2",
+  "ok": true,
+  "detail": "revision 1 in Draft: trainee.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.G2B",
+  "name": "revision 1 in Draft: trainer.test1",
+  "ok": true,
+  "detail": "revision 1 in Draft: trainer.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "F-A.0",
+  "name": "SOP Sampling of raw materials: the Author completes the editing",
+  "ok": true,
+  "detail": "{\"id\":\"9488ef96-4f04-4ef0-b914-10c5786cd459\",\"documentId\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"originalDocument\":{\"id\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"documentNumber\":\"SOP.10413\",\"documentName\":\"DV-TEST SOP Sampling of raw materials\",\"displayName\":\"SOP.10413 - DV-TEST SOP Sampling of raw "
+ },
+ {
+  "id": "F-A.1",
+  "name": "SOP Sampling of raw materials: the DCO submits it for review",
+  "ok": true,
+  "detail": "{\"id\":\"9488ef96-4f04-4ef0-b914-10c5786cd459\",\"documentId\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"originalDocument\":{\"id\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"documentNumber\":\"SOP.10413\",\"documentName\":\"DV-TEST SOP Sampling of raw materials\",\"displayName\":\"SOP.10413 - DV-TEST SOP Sampling of raw "
+ },
+ {
+  "id": "S3.state",
+  "name": "revision of document A is Pending Review",
+  "ok": true,
+  "detail": "Pending Review"
+ },
+ {
+  "id": "S3.DCO",
+  "name": "A and B, A is Pending Review: dco.test1",
+  "ok": true,
+  "detail": "A and B, A is Pending Review: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S3.ADMIN",
+  "name": "A and B, A is Pending Review: user.a.test",
+  "ok": true,
+  "detail": "A and B, A is Pending Review: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S3.AUTHOR",
+  "name": "A and B, A is Pending Review: author.test1",
+  "ok": true,
+  "detail": "A and B, A is Pending Review: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S3.COAUTHOR",
+  "name": "A and B, A is Pending Review: coauthor.test1",
+  "ok": true,
+  "detail": "A and B, A is Pending Review: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S3.REVIEWER",
+  "name": "A and B, A is Pending Review: reviewer.test1",
+  "ok": true,
+  "detail": "A and B, A is Pending Review: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S3.APPROVER",
+  "name": "A and B, A is Pending Review: approver.test1",
+  "ok": true,
+  "detail": "A and B, A is Pending Review: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S3.HEAD",
+  "name": "A and B, A is Pending Review: reviewer.test2",
+  "ok": true,
+  "detail": "A and B, A is Pending Review: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S3.G1A",
+  "name": "A and B, A is Pending Review: coauthor.test2",
+  "ok": true,
+  "detail": "A and B, A is Pending Review: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S3.G1B",
+  "name": "A and B, A is Pending Review: trainee.test1",
+  "ok": true,
+  "detail": "A and B, A is Pending Review: trainee.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S3.G2A",
+  "name": "A and B, A is Pending Review: trainee.test2",
+  "ok": true,
+  "detail": "A and B, A is Pending Review: trainee.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S3.G2B",
+  "name": "A and B, A is Pending Review: trainer.test1",
+  "ok": true,
+  "detail": "A and B, A is Pending Review: trainer.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "F-A.2",
+  "name": "SOP Sampling of raw materials: the Reviewer completes the review",
+  "ok": true,
+  "detail": "{\"id\":\"9488ef96-4f04-4ef0-b914-10c5786cd459\",\"documentId\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"originalDocument\":{\"id\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"documentNumber\":\"SOP.10413\",\"documentName\":\"DV-TEST SOP Sampling of raw materials\",\"displayName\":\"SOP.10413 - DV-TEST SOP Sampling of raw "
+ },
+ {
+  "id": "S4.state",
+  "name": "revision of document A is Pending Approval",
+  "ok": true,
+  "detail": "Pending Approval"
+ },
+ {
+  "id": "S4.DCO",
+  "name": "A and B, A is Pending Approval: dco.test1",
+  "ok": true,
+  "detail": "A and B, A is Pending Approval: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.ADMIN",
+  "name": "A and B, A is Pending Approval: user.a.test",
+  "ok": true,
+  "detail": "A and B, A is Pending Approval: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.AUTHOR",
+  "name": "A and B, A is Pending Approval: author.test1",
+  "ok": true,
+  "detail": "A and B, A is Pending Approval: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.COAUTHOR",
+  "name": "A and B, A is Pending Approval: coauthor.test1",
+  "ok": true,
+  "detail": "A and B, A is Pending Approval: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.REVIEWER",
+  "name": "A and B, A is Pending Approval: reviewer.test1",
+  "ok": true,
+  "detail": "A and B, A is Pending Approval: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.APPROVER",
+  "name": "A and B, A is Pending Approval: approver.test1",
+  "ok": true,
+  "detail": "A and B, A is Pending Approval: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.HEAD",
+  "name": "A and B, A is Pending Approval: reviewer.test2",
+  "ok": true,
+  "detail": "A and B, A is Pending Approval: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.G1A",
+  "name": "A and B, A is Pending Approval: coauthor.test2",
+  "ok": true,
+  "detail": "A and B, A is Pending Approval: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.G1B",
+  "name": "A and B, A is Pending Approval: trainee.test1",
+  "ok": true,
+  "detail": "A and B, A is Pending Approval: trainee.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.G2A",
+  "name": "A and B, A is Pending Approval: trainee.test2",
+  "ok": true,
+  "detail": "A and B, A is Pending Approval: trainee.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.G2B",
+  "name": "A and B, A is Pending Approval: trainer.test1",
+  "ok": true,
+  "detail": "A and B, A is Pending Approval: trainer.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "F-A.3",
+  "name": "SOP Sampling of raw materials: the Approver approves",
+  "ok": true,
+  "detail": "{\"id\":\"9488ef96-4f04-4ef0-b914-10c5786cd459\",\"documentId\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"originalDocument\":{\"id\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"documentNumber\":\"SOP.10413\",\"documentName\":\"DV-TEST SOP Sampling of raw materials\",\"displayName\":\"SOP.10413 - DV-TEST SOP Sampling of raw "
+ },
+ {
+  "id": "F-A.4",
+  "name": "SOP Sampling of raw materials: the DCO publishes it (status Effective)",
+  "ok": true,
+  "detail": "[]"
+ },
+ {
+  "id": "F-B.0",
+  "name": "Instruction Weighing room cleaning: the Author completes the editing",
+  "ok": true,
+  "detail": "{\"id\":\"22c279a8-8e55-4f43-a57b-02d9c7a6229d\",\"documentId\":\"de94cd86-2461-4c96-8c36-355f3fafa9bc\",\"originalDocument\":{\"id\":\"de94cd86-2461-4c96-8c36-355f3fafa9bc\",\"documentNumber\":\"INS.0004\",\"documentName\":\"DV-TEST Instruction Weighing room cleaning\",\"displayName\":\"INS.0004 - DV-TEST Instruction Weigh"
+ },
+ {
+  "id": "F-B.1",
+  "name": "Instruction Weighing room cleaning: the DCO submits it for review",
+  "ok": true,
+  "detail": "{\"id\":\"22c279a8-8e55-4f43-a57b-02d9c7a6229d\",\"documentId\":\"de94cd86-2461-4c96-8c36-355f3fafa9bc\",\"originalDocument\":{\"id\":\"de94cd86-2461-4c96-8c36-355f3fafa9bc\",\"documentNumber\":\"INS.0004\",\"documentName\":\"DV-TEST Instruction Weighing room cleaning\",\"displayName\":\"INS.0004 - DV-TEST Instruction Weigh"
+ },
+ {
+  "id": "F-B.2",
+  "name": "Instruction Weighing room cleaning: the Reviewer completes the review",
+  "ok": true,
+  "detail": "{\"id\":\"22c279a8-8e55-4f43-a57b-02d9c7a6229d\",\"documentId\":\"de94cd86-2461-4c96-8c36-355f3fafa9bc\",\"originalDocument\":{\"id\":\"de94cd86-2461-4c96-8c36-355f3fafa9bc\",\"documentNumber\":\"INS.0004\",\"documentName\":\"DV-TEST Instruction Weighing room cleaning\",\"displayName\":\"INS.0004 - DV-TEST Instruction Weigh"
+ },
+ {
+  "id": "F-B.3",
+  "name": "Instruction Weighing room cleaning: the Approver approves",
+  "ok": true,
+  "detail": "{\"id\":\"22c279a8-8e55-4f43-a57b-02d9c7a6229d\",\"documentId\":\"de94cd86-2461-4c96-8c36-355f3fafa9bc\",\"originalDocument\":{\"id\":\"de94cd86-2461-4c96-8c36-355f3fafa9bc\",\"documentNumber\":\"INS.0004\",\"documentName\":\"DV-TEST Instruction Weighing room cleaning\",\"displayName\":\"INS.0004 - DV-TEST Instruction Weigh"
+ },
+ {
+  "id": "F-B.4",
+  "name": "Instruction Weighing room cleaning: the DCO publishes it (status Effective)",
+  "ok": true,
+  "detail": "[]"
+ },
+ {
+  "id": "S5.state",
+  "name": "both revisions are Effective",
+  "ok": true,
+  "detail": "('Effective', 'Effective')"
+ },
+ {
+  "id": "S5.DCO",
+  "name": "A and B Effective: dco.test1",
+  "ok": true,
+  "detail": "A and B Effective: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S5.ADMIN",
+  "name": "A and B Effective: user.a.test",
+  "ok": true,
+  "detail": "A and B Effective: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S5.AUTHOR",
+  "name": "A and B Effective: author.test1",
+  "ok": true,
+  "detail": "A and B Effective: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S5.COAUTHOR",
+  "name": "A and B Effective: coauthor.test1",
+  "ok": true,
+  "detail": "A and B Effective: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S5.REVIEWER",
+  "name": "A and B Effective: reviewer.test1",
+  "ok": true,
+  "detail": "A and B Effective: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S5.APPROVER",
+  "name": "A and B Effective: approver.test1",
+  "ok": true,
+  "detail": "A and B Effective: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S5.HEAD",
+  "name": "A and B Effective: reviewer.test2",
+  "ok": true,
+  "detail": "A and B Effective: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S5.G1A",
+  "name": "A and B Effective: coauthor.test2",
+  "ok": true,
+  "detail": "A and B Effective: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S5.G1B",
+  "name": "A and B Effective: trainee.test1",
+  "ok": true,
+  "detail": "A and B Effective: trainee.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S5.G2A",
+  "name": "A and B Effective: trainee.test2",
+  "ok": true,
+  "detail": "A and B Effective: trainee.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S5.G2B",
+  "name": "A and B Effective: trainer.test1",
+  "ok": true,
+  "detail": "A and B Effective: trainer.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.DCO",
+  "name": "no rule yet; G1B, G2A, G2B also lack the module permission: dco.test1",
+  "ok": true,
+  "detail": "no rule yet; G1B, G2A, G2B also lack the module permission: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.ADMIN",
+  "name": "no rule yet; G1B, G2A, G2B also lack the module permission: user.a.test",
+  "ok": true,
+  "detail": "no rule yet; G1B, G2A, G2B also lack the module permission: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.AUTHOR",
+  "name": "no rule yet; G1B, G2A, G2B also lack the module permission: author.test1",
+  "ok": true,
+  "detail": "no rule yet; G1B, G2A, G2B also lack the module permission: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.COAUTHOR",
+  "name": "no rule yet; G1B, G2A, G2B also lack the module permission: coauthor.test1",
+  "ok": true,
+  "detail": "no rule yet; G1B, G2A, G2B also lack the module permission: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.REVIEWER",
+  "name": "no rule yet; G1B, G2A, G2B also lack the module permission: reviewer.test1",
+  "ok": true,
+  "detail": "no rule yet; G1B, G2A, G2B also lack the module permission: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.APPROVER",
+  "name": "no rule yet; G1B, G2A, G2B also lack the module permission: approver.test1",
+  "ok": true,
+  "detail": "no rule yet; G1B, G2A, G2B also lack the module permission: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.HEAD",
+  "name": "no rule yet; G1B, G2A, G2B also lack the module permission: reviewer.test2",
+  "ok": true,
+  "detail": "no rule yet; G1B, G2A, G2B also lack the module permission: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.G1A",
+  "name": "no rule yet; G1B, G2A, G2B also lack the module permission: coauthor.test2",
+  "ok": true,
+  "detail": "no rule yet; G1B, G2A, G2B also lack the module permission: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.G1B",
+  "name": "no rule yet; G1B, G2A, G2B also lack the module permission: trainee.test1",
+  "ok": true,
+  "detail": "no rule yet; G1B, G2A, G2B also lack the module permission: trainee.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.G2A",
+  "name": "no rule yet; G1B, G2A, G2B also lack the module permission: trainee.test2",
+  "ok": true,
+  "detail": "no rule yet; G1B, G2A, G2B also lack the module permission: trainee.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.G2B",
+  "name": "no rule yet; G1B, G2A, G2B also lack the module permission: trainer.test1",
+  "ok": true,
+  "detail": "no rule yet; G1B, G2A, G2B also lack the module permission: trainer.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.1",
+  "name": "the Head creates the two rules (signed, audited)",
+  "ok": true,
+  "detail": "(200, '{\"id\":\"8d87a257-83d0-438a-b4b6-24ac813b929b\",\"name\":\"DV-TEST group 1 sees SOP\",\"description\":\"DV-TEST\",\"effect\":\"ALLOW\",\"priority\":10,\"active\":true,\"r', 200, '{\"id\":\"53665bf2-4ec4-427e-98b3-158267bc5aec\",\"name\":\"DV-TEST group 2 sees Instruction\",\"description\":\"DV-TEST\",\"effect\":\"ALLOW\",\"priority\":10,\"active\"')"
+ },
+ {
+  "id": "S7.DCO",
+  "name": "rules exist, but only G1A already holds the module permission: dco.test1",
+  "ok": true,
+  "detail": "rules exist, but only G1A already holds the module permission: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.ADMIN",
+  "name": "rules exist, but only G1A already holds the module permission: user.a.test",
+  "ok": true,
+  "detail": "rules exist, but only G1A already holds the module permission: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.AUTHOR",
+  "name": "rules exist, but only G1A already holds the module permission: author.test1",
+  "ok": true,
+  "detail": "rules exist, but only G1A already holds the module permission: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.COAUTHOR",
+  "name": "rules exist, but only G1A already holds the module permission: coauthor.test1",
+  "ok": true,
+  "detail": "rules exist, but only G1A already holds the module permission: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.REVIEWER",
+  "name": "rules exist, but only G1A already holds the module permission: reviewer.test1",
+  "ok": true,
+  "detail": "rules exist, but only G1A already holds the module permission: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.APPROVER",
+  "name": "rules exist, but only G1A already holds the module permission: approver.test1",
+  "ok": true,
+  "detail": "rules exist, but only G1A already holds the module permission: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.HEAD",
+  "name": "rules exist, but only G1A already holds the module permission: reviewer.test2",
+  "ok": true,
+  "detail": "rules exist, but only G1A already holds the module permission: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.G1A",
+  "name": "rules exist, but only G1A already holds the module permission: coauthor.test2",
+  "ok": true,
+  "detail": "rules exist, but only G1A already holds the module permission: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.G1B",
+  "name": "rules exist, but only G1A already holds the module permission: trainee.test1",
+  "ok": true,
+  "detail": "rules exist, but only G1A already holds the module permission: trainee.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.G2A",
+  "name": "rules exist, but only G1A already holds the module permission: trainee.test2",
+  "ok": true,
+  "detail": "rules exist, but only G1A already holds the module permission: trainee.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.G2B",
+  "name": "rules exist, but only G1A already holds the module permission: trainer.test1",
+  "ok": true,
+  "detail": "rules exist, but only G1A already holds the module permission: trainer.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.2",
+  "name": "a person named in a rule but without the module permission still sees nothing (G1B, G2A, G2B above)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "id": "S8.DCO",
+  "name": "module permission granted: dco.test1",
+  "ok": true,
+  "detail": "module permission granted: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S8.ADMIN",
+  "name": "module permission granted: user.a.test",
+  "ok": true,
+  "detail": "module permission granted: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S8.AUTHOR",
+  "name": "module permission granted: author.test1",
+  "ok": true,
+  "detail": "module permission granted: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S8.COAUTHOR",
+  "name": "module permission granted: coauthor.test1",
+  "ok": true,
+  "detail": "module permission granted: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S8.REVIEWER",
+  "name": "module permission granted: reviewer.test1",
+  "ok": true,
+  "detail": "module permission granted: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S8.APPROVER",
+  "name": "module permission granted: approver.test1",
+  "ok": true,
+  "detail": "module permission granted: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S8.HEAD",
+  "name": "module permission granted: reviewer.test2",
+  "ok": true,
+  "detail": "module permission granted: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S8.G1A",
+  "name": "module permission granted: coauthor.test2",
+  "ok": true,
+  "detail": "module permission granted: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S8.G1B",
+  "name": "module permission granted: trainee.test1",
+  "ok": true,
+  "detail": "module permission granted: trainee.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S8.G2A",
+  "name": "module permission granted: trainee.test2",
+  "ok": true,
+  "detail": "module permission granted: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S8.G2B",
+  "name": "module permission granted: trainer.test1",
+  "ok": true,
+  "detail": "module permission granted: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.1",
+  "name": "the Head creates a Deny rule for a status",
+  "ok": true,
+  "detail": "(200, '{\"id\":\"980ff5a9-3260-478f-b45a-feb40b4832f5\",\"name\":\"DV-TEST G1B must not see Effective\",\"description\":\"DV-TEST\",\"effect\":\"DENY\",\"priority\":50,\"active')"
+ },
+ {
+  "id": "S9.DCO",
+  "name": "Deny EFFECTIVE for G1B: dco.test1",
+  "ok": true,
+  "detail": "Deny EFFECTIVE for G1B: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.ADMIN",
+  "name": "Deny EFFECTIVE for G1B: user.a.test",
+  "ok": true,
+  "detail": "Deny EFFECTIVE for G1B: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.AUTHOR",
+  "name": "Deny EFFECTIVE for G1B: author.test1",
+  "ok": true,
+  "detail": "Deny EFFECTIVE for G1B: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.COAUTHOR",
+  "name": "Deny EFFECTIVE for G1B: coauthor.test1",
+  "ok": true,
+  "detail": "Deny EFFECTIVE for G1B: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.REVIEWER",
+  "name": "Deny EFFECTIVE for G1B: reviewer.test1",
+  "ok": true,
+  "detail": "Deny EFFECTIVE for G1B: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.APPROVER",
+  "name": "Deny EFFECTIVE for G1B: approver.test1",
+  "ok": true,
+  "detail": "Deny EFFECTIVE for G1B: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.HEAD",
+  "name": "Deny EFFECTIVE for G1B: reviewer.test2",
+  "ok": true,
+  "detail": "Deny EFFECTIVE for G1B: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.G1A",
+  "name": "Deny EFFECTIVE for G1B: coauthor.test2",
+  "ok": true,
+  "detail": "Deny EFFECTIVE for G1B: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.G1B",
+  "name": "Deny EFFECTIVE for G1B: trainee.test1",
+  "ok": true,
+  "detail": "Deny EFFECTIVE for G1B: trainee.test1 sees revisions/documents/controlled/uncontrolled = (0, 1, 0, 0); expected (0,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.G2A",
+  "name": "Deny EFFECTIVE for G1B: trainee.test2",
+  "ok": true,
+  "detail": "Deny EFFECTIVE for G1B: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.G2B",
+  "name": "Deny EFFECTIVE for G1B: trainer.test1",
+  "ok": true,
+  "detail": "Deny EFFECTIVE for G1B: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.DCO",
+  "name": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: dco.test1",
+  "ok": true,
+  "detail": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.ADMIN",
+  "name": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: user.a.test",
+  "ok": true,
+  "detail": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.AUTHOR",
+  "name": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: author.test1",
+  "ok": true,
+  "detail": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.COAUTHOR",
+  "name": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: coauthor.test1",
+  "ok": true,
+  "detail": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.REVIEWER",
+  "name": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: reviewer.test1",
+  "ok": true,
+  "detail": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.APPROVER",
+  "name": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: approver.test1",
+  "ok": true,
+  "detail": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.HEAD",
+  "name": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: reviewer.test2",
+  "ok": true,
+  "detail": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.G1A",
+  "name": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: coauthor.test2",
+  "ok": true,
+  "detail": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.G1B",
+  "name": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: trainee.test1",
+  "ok": true,
+  "detail": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: trainee.test1 sees revisions/documents/controlled/uncontrolled = (2, 1, 0, 0); expected (2,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.G2A",
+  "name": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: trainee.test2",
+  "ok": true,
+  "detail": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.G2B",
+  "name": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: trainer.test1",
+  "ok": true,
+  "detail": "Allow EFFECTIVE (90) over the Deny (50): the status rule opens every Effective revision of the Department to G1B: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.d",
+  "name": "the Head deletes a rule",
+  "ok": true,
+  "detail": "82914eeb-f5a1-4edc-9ba7-88e9fe37535f"
+ },
+ {
+  "id": "S10.d",
+  "name": "the Head deletes a rule",
+  "ok": true,
+  "detail": "980ff5a9-3260-478f-b45a-feb40b4832f5"
+ },
+ {
+  "id": "S10b.DCO",
+  "name": "both status rules deleted: back to the groups: dco.test1",
+  "ok": true,
+  "detail": "both status rules deleted: back to the groups: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10b.ADMIN",
+  "name": "both status rules deleted: back to the groups: user.a.test",
+  "ok": true,
+  "detail": "both status rules deleted: back to the groups: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10b.AUTHOR",
+  "name": "both status rules deleted: back to the groups: author.test1",
+  "ok": true,
+  "detail": "both status rules deleted: back to the groups: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10b.COAUTHOR",
+  "name": "both status rules deleted: back to the groups: coauthor.test1",
+  "ok": true,
+  "detail": "both status rules deleted: back to the groups: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10b.REVIEWER",
+  "name": "both status rules deleted: back to the groups: reviewer.test1",
+  "ok": true,
+  "detail": "both status rules deleted: back to the groups: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10b.APPROVER",
+  "name": "both status rules deleted: back to the groups: approver.test1",
+  "ok": true,
+  "detail": "both status rules deleted: back to the groups: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10b.HEAD",
+  "name": "both status rules deleted: back to the groups: reviewer.test2",
+  "ok": true,
+  "detail": "both status rules deleted: back to the groups: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10b.G1A",
+  "name": "both status rules deleted: back to the groups: coauthor.test2",
+  "ok": true,
+  "detail": "both status rules deleted: back to the groups: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10b.G1B",
+  "name": "both status rules deleted: back to the groups: trainee.test1",
+  "ok": true,
+  "detail": "both status rules deleted: back to the groups: trainee.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10b.G2A",
+  "name": "both status rules deleted: back to the groups: trainee.test2",
+  "ok": true,
+  "detail": "both status rules deleted: back to the groups: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10b.G2B",
+  "name": "both status rules deleted: back to the groups: trainer.test1",
+  "ok": true,
+  "detail": "both status rules deleted: back to the groups: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S11.1",
+  "name": "an employee who is not the Head cannot make a rule for the Department (403)",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Only the Department Head of this Department may manage who s')"
+ },
+ {
+  "id": "S11.2",
+  "name": "the Head of Quality Control cannot read or change the rules of Quality Assurance (403)",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Only the Department Head of this Department may manage who s')"
+ },
+ {
+  "id": "S11.3",
+  "name": "an employee sees no Department to manage",
+  "ok": true,
+  "detail": "(200, '[]')"
+ },
+ {
+  "id": "S12.DCO",
+  "name": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: dco.test1",
+  "ok": true,
+  "detail": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12.ADMIN",
+  "name": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: user.a.test",
+  "ok": true,
+  "detail": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12.AUTHOR",
+  "name": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: author.test1",
+  "ok": true,
+  "detail": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12.COAUTHOR",
+  "name": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: coauthor.test1",
+  "ok": true,
+  "detail": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12.REVIEWER",
+  "name": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: reviewer.test1",
+  "ok": true,
+  "detail": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12.APPROVER",
+  "name": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: approver.test1",
+  "ok": true,
+  "detail": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12.HEAD",
+  "name": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: reviewer.test2",
+  "ok": true,
+  "detail": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12.G1A",
+  "name": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: coauthor.test2",
+  "ok": true,
+  "detail": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12.G1B",
+  "name": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: trainee.test1 [FIRST ATTEMPT: wrong expectation, see S12r]",
+  "ok": false,
+  "detail": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: trainee.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12.G2A",
+  "name": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: trainee.test2 [FIRST ATTEMPT: wrong expectation, see S12r]",
+  "ok": false,
+  "detail": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12.G2B",
+  "name": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: trainer.test1 [FIRST ATTEMPT: wrong expectation, see S12r]",
+  "ok": false,
+  "detail": "profile DV Document Viewer limited to Logistics: G1B, G2A, G2B are named but out of scope; G1A (another profile) is unaffected: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12b.DCO",
+  "name": "scope removed: they see again: dco.test1",
+  "ok": true,
+  "detail": "scope removed: they see again: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12b.ADMIN",
+  "name": "scope removed: they see again: user.a.test",
+  "ok": true,
+  "detail": "scope removed: they see again: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12b.AUTHOR",
+  "name": "scope removed: they see again: author.test1",
+  "ok": true,
+  "detail": "scope removed: they see again: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12b.COAUTHOR",
+  "name": "scope removed: they see again: coauthor.test1",
+  "ok": true,
+  "detail": "scope removed: they see again: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12b.REVIEWER",
+  "name": "scope removed: they see again: reviewer.test1",
+  "ok": true,
+  "detail": "scope removed: they see again: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12b.APPROVER",
+  "name": "scope removed: they see again: approver.test1",
+  "ok": true,
+  "detail": "scope removed: they see again: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12b.HEAD",
+  "name": "scope removed: they see again: reviewer.test2",
+  "ok": true,
+  "detail": "scope removed: they see again: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12b.G1A",
+  "name": "scope removed: they see again: coauthor.test2",
+  "ok": true,
+  "detail": "scope removed: they see again: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12b.G1B",
+  "name": "scope removed: they see again: trainee.test1",
+  "ok": true,
+  "detail": "scope removed: they see again: trainee.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12b.G2A",
+  "name": "scope removed: they see again: trainee.test2",
+  "ok": true,
+  "detail": "scope removed: they see again: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12b.G2B",
+  "name": "scope removed: they see again: trainer.test1",
+  "ok": true,
+  "detail": "scope removed: they see again: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.1",
+  "name": "the Head deletes the rule of group 1",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "id": "S13.DCO",
+  "name": "group 1 rule gone: dco.test1",
+  "ok": true,
+  "detail": "group 1 rule gone: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.ADMIN",
+  "name": "group 1 rule gone: user.a.test",
+  "ok": true,
+  "detail": "group 1 rule gone: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.AUTHOR",
+  "name": "group 1 rule gone: author.test1",
+  "ok": true,
+  "detail": "group 1 rule gone: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.COAUTHOR",
+  "name": "group 1 rule gone: coauthor.test1",
+  "ok": true,
+  "detail": "group 1 rule gone: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.REVIEWER",
+  "name": "group 1 rule gone: reviewer.test1",
+  "ok": true,
+  "detail": "group 1 rule gone: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.APPROVER",
+  "name": "group 1 rule gone: approver.test1",
+  "ok": true,
+  "detail": "group 1 rule gone: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.HEAD",
+  "name": "group 1 rule gone: reviewer.test2",
+  "ok": true,
+  "detail": "group 1 rule gone: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.G1A",
+  "name": "group 1 rule gone: coauthor.test2",
+  "ok": true,
+  "detail": "group 1 rule gone: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.G1B",
+  "name": "group 1 rule gone: trainee.test1",
+  "ok": true,
+  "detail": "group 1 rule gone: trainee.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.G2A",
+  "name": "group 1 rule gone: trainee.test2",
+  "ok": true,
+  "detail": "group 1 rule gone: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.G2B",
+  "name": "group 1 rule gone: trainer.test1",
+  "ok": true,
+  "detail": "group 1 rule gone: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13b.DCO",
+  "name": "the module permission of G2A withdrawn: dco.test1",
+  "ok": true,
+  "detail": "the module permission of G2A withdrawn: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13b.ADMIN",
+  "name": "the module permission of G2A withdrawn: user.a.test",
+  "ok": true,
+  "detail": "the module permission of G2A withdrawn: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13b.AUTHOR",
+  "name": "the module permission of G2A withdrawn: author.test1",
+  "ok": true,
+  "detail": "the module permission of G2A withdrawn: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13b.COAUTHOR",
+  "name": "the module permission of G2A withdrawn: coauthor.test1",
+  "ok": true,
+  "detail": "the module permission of G2A withdrawn: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13b.REVIEWER",
+  "name": "the module permission of G2A withdrawn: reviewer.test1",
+  "ok": true,
+  "detail": "the module permission of G2A withdrawn: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13b.APPROVER",
+  "name": "the module permission of G2A withdrawn: approver.test1",
+  "ok": true,
+  "detail": "the module permission of G2A withdrawn: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13b.HEAD",
+  "name": "the module permission of G2A withdrawn: reviewer.test2",
+  "ok": true,
+  "detail": "the module permission of G2A withdrawn: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13b.G1A",
+  "name": "the module permission of G2A withdrawn: coauthor.test2",
+  "ok": true,
+  "detail": "the module permission of G2A withdrawn: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13b.G1B",
+  "name": "the module permission of G2A withdrawn: trainee.test1",
+  "ok": true,
+  "detail": "the module permission of G2A withdrawn: trainee.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13b.G2A",
+  "name": "the module permission of G2A withdrawn: trainee.test2",
+  "ok": true,
+  "detail": "the module permission of G2A withdrawn: trainee.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13b.G2B",
+  "name": "the module permission of G2A withdrawn: trainer.test1",
+  "ok": true,
+  "detail": "the module permission of G2A withdrawn: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12r.DCO",
+  "name": "all their profiles limited to Logistics: they are named but out of scope: dco.test1",
+  "ok": true,
+  "detail": "all their profiles limited to Logistics: they are named but out of scope: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12r.ADMIN",
+  "name": "all their profiles limited to Logistics: they are named but out of scope: user.a.test",
+  "ok": true,
+  "detail": "all their profiles limited to Logistics: they are named but out of scope: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12r.AUTHOR",
+  "name": "all their profiles limited to Logistics: they are named but out of scope: author.test1",
+  "ok": true,
+  "detail": "all their profiles limited to Logistics: they are named but out of scope: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12r.COAUTHOR",
+  "name": "all their profiles limited to Logistics: they are named but out of scope: coauthor.test1",
+  "ok": true,
+  "detail": "all their profiles limited to Logistics: they are named but out of scope: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12r.REVIEWER",
+  "name": "all their profiles limited to Logistics: they are named but out of scope: reviewer.test1",
+  "ok": true,
+  "detail": "all their profiles limited to Logistics: they are named but out of scope: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12r.APPROVER",
+  "name": "all their profiles limited to Logistics: they are named but out of scope: approver.test1",
+  "ok": true,
+  "detail": "all their profiles limited to Logistics: they are named but out of scope: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12r.HEAD",
+  "name": "all their profiles limited to Logistics: they are named but out of scope: reviewer.test2",
+  "ok": true,
+  "detail": "all their profiles limited to Logistics: they are named but out of scope: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12r.G1A",
+  "name": "all their profiles limited to Logistics: they are named but out of scope: coauthor.test2",
+  "ok": true,
+  "detail": "all their profiles limited to Logistics: they are named but out of scope: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12r.G1B",
+  "name": "all their profiles limited to Logistics: they are named but out of scope: trainee.test1",
+  "ok": true,
+  "detail": "all their profiles limited to Logistics: they are named but out of scope: trainee.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12r.G2A",
+  "name": "all their profiles limited to Logistics: they are named but out of scope: trainee.test2",
+  "ok": true,
+  "detail": "all their profiles limited to Logistics: they are named but out of scope: trainee.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12r.G2B",
+  "name": "all their profiles limited to Logistics: they are named but out of scope: trainer.test1",
+  "ok": true,
+  "detail": "all their profiles limited to Logistics: they are named but out of scope: trainer.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12s.DCO",
+  "name": "limits removed: they see again: dco.test1",
+  "ok": true,
+  "detail": "limits removed: they see again: dco.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12s.ADMIN",
+  "name": "limits removed: they see again: user.a.test",
+  "ok": true,
+  "detail": "limits removed: they see again: user.a.test sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12s.AUTHOR",
+  "name": "limits removed: they see again: author.test1",
+  "ok": true,
+  "detail": "limits removed: they see again: author.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12s.COAUTHOR",
+  "name": "limits removed: they see again: coauthor.test1",
+  "ok": true,
+  "detail": "limits removed: they see again: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12s.REVIEWER",
+  "name": "limits removed: they see again: reviewer.test1",
+  "ok": true,
+  "detail": "limits removed: they see again: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12s.APPROVER",
+  "name": "limits removed: they see again: approver.test1",
+  "ok": true,
+  "detail": "limits removed: they see again: approver.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12s.HEAD",
+  "name": "limits removed: they see again: reviewer.test2",
+  "ok": true,
+  "detail": "limits removed: they see again: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12s.G1A",
+  "name": "limits removed: they see again: coauthor.test2",
+  "ok": true,
+  "detail": "limits removed: they see again: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12s.G1B",
+  "name": "limits removed: they see again: trainee.test1",
+  "ok": true,
+  "detail": "limits removed: they see again: trainee.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12s.G2A",
+  "name": "limits removed: they see again: trainee.test2",
+  "ok": true,
+  "detail": "limits removed: they see again: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S12s.G2B",
+  "name": "limits removed: they see again: trainer.test1",
+  "ok": true,
+  "detail": "limits removed: they see again: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S14.1",
+  "name": "the DCO upgrades the Effective revision of document A to a new revision",
+  "ok": true,
+  "detail": "{\"id\":\"b17e61fb-f84e-4c3f-9132-d692ab02e23d\",\"documentId\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"originalDocument\":{\"id\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"documentNumber\":\"SOP.10413\",\"documentName\":\"DV-TEST SOP Sampling of raw materials\",\"displayName\":\"SOP.10413 - DV-TEST SOP Sampling of raw "
+ },
+ {
+  "id": "S14.2",
+  "name": "revision 2 is a Draft",
+  "ok": true,
+  "detail": "Draft"
+ },
+ {
+  "id": "S14.DCO",
+  "name": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: dco.test1",
+  "ok": true,
+  "detail": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: dco.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S14.ADMIN",
+  "name": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: user.a.test",
+  "ok": true,
+  "detail": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: user.a.test sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S14.AUTHOR",
+  "name": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: author.test1",
+  "ok": true,
+  "detail": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: author.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S14.COAUTHOR",
+  "name": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: coauthor.test1",
+  "ok": true,
+  "detail": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S14.REVIEWER",
+  "name": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: reviewer.test1",
+  "ok": true,
+  "detail": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S14.APPROVER",
+  "name": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: approver.test1",
+  "ok": true,
+  "detail": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: approver.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S14.HEAD",
+  "name": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: reviewer.test2",
+  "ok": true,
+  "detail": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S14.G1A",
+  "name": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: coauthor.test2",
+  "ok": true,
+  "detail": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (2, 1, 0, 0); expected (2,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S14.G1B",
+  "name": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: trainee.test1",
+  "ok": true,
+  "detail": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: trainee.test1 sees revisions/documents/controlled/uncontrolled = (2, 1, 0, 0); expected (2,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S14.G2A",
+  "name": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: trainee.test2",
+  "ok": true,
+  "detail": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S14.G2B",
+  "name": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: trainer.test1",
+  "ok": true,
+  "detail": "revision 2 in Draft: the flow and the Head see it; group 1 sees both revisions of the SOP (rule: every SOP); group 2 sees the Instruction: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S15.1",
+  "name": "the Head creates a Deny rule on the status Draft",
+  "ok": true,
+  "detail": "{\"id\":\"cf25b8f8-144a-42f3-ab81-15d24c36aa99\",\"name\":\"DV-TEST G1B must not see Draft\",\"description\":\"DV-TEST\",\"effect\":\"DENY\",\"priority\":50,\"active\":tr"
+ },
+ {
+  "id": "S15.DCO",
+  "name": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: dco.test1",
+  "ok": true,
+  "detail": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: dco.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S15.ADMIN",
+  "name": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: user.a.test",
+  "ok": true,
+  "detail": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: user.a.test sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S15.AUTHOR",
+  "name": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: author.test1",
+  "ok": true,
+  "detail": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: author.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S15.COAUTHOR",
+  "name": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: coauthor.test1",
+  "ok": true,
+  "detail": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S15.REVIEWER",
+  "name": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: reviewer.test1",
+  "ok": true,
+  "detail": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S15.APPROVER",
+  "name": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: approver.test1",
+  "ok": true,
+  "detail": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: approver.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S15.HEAD",
+  "name": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: reviewer.test2",
+  "ok": true,
+  "detail": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S15.G1A",
+  "name": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: coauthor.test2",
+  "ok": true,
+  "detail": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (2, 1, 0, 0); expected (2,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S15.G1B",
+  "name": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: trainee.test1",
+  "ok": true,
+  "detail": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: trainee.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S15.G2A",
+  "name": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: trainee.test2",
+  "ok": true,
+  "detail": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S15.G2B",
+  "name": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: trainer.test1",
+  "ok": true,
+  "detail": "Deny DRAFT for G1B: G1B keeps the document and revision 1, loses revision 2: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S15.2",
+  "name": "the Head deletes the Deny rule",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "id": "S16.complete-editing",
+  "name": "revision 2: AUTHOR complete-editing",
+  "ok": true,
+  "detail": "{\"id\":\"b17e61fb-f84e-4c3f-9132-d692ab02e23d\",\"documentId\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"originalDocument\":{\"id\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"documentNumber\":\"SOP.10413\",\"documentName\":\"DV-TEST SOP Sampling of raw materials\",\"displayName\":\"SOP.10413 - DV-TEST SOP Sampling of raw "
+ },
+ {
+  "id": "S16.submit-review",
+  "name": "revision 2: DCO submit-review",
+  "ok": true,
+  "detail": "{\"id\":\"b17e61fb-f84e-4c3f-9132-d692ab02e23d\",\"documentId\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"originalDocument\":{\"id\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"documentNumber\":\"SOP.10413\",\"documentName\":\"DV-TEST SOP Sampling of raw materials\",\"displayName\":\"SOP.10413 - DV-TEST SOP Sampling of raw "
+ },
+ {
+  "id": "S16.review/complete",
+  "name": "revision 2: REVIEWER review/complete",
+  "ok": true,
+  "detail": "{\"id\":\"b17e61fb-f84e-4c3f-9132-d692ab02e23d\",\"documentId\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"originalDocument\":{\"id\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"documentNumber\":\"SOP.10413\",\"documentName\":\"DV-TEST SOP Sampling of raw materials\",\"displayName\":\"SOP.10413 - DV-TEST SOP Sampling of raw "
+ },
+ {
+  "id": "S16.approve/complete",
+  "name": "revision 2: APPROVER approve/complete",
+  "ok": true,
+  "detail": "{\"id\":\"b17e61fb-f84e-4c3f-9132-d692ab02e23d\",\"documentId\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"originalDocument\":{\"id\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"documentNumber\":\"SOP.10413\",\"documentName\":\"DV-TEST SOP Sampling of raw materials\",\"displayName\":\"SOP.10413 - DV-TEST SOP Sampling of raw "
+ },
+ {
+  "id": "S16.pub",
+  "name": "revision 2 is published (status Effective)",
+  "ok": true,
+  "detail": "[]"
+ },
+ {
+  "id": "S16.obs",
+  "name": "revision 1 is no longer Effective (Obsolete)",
+  "ok": true,
+  "detail": "Obsoleted"
+ },
+ {
+  "id": "S16.DCO",
+  "name": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: dco.test1",
+  "ok": true,
+  "detail": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: dco.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.ADMIN",
+  "name": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: user.a.test",
+  "ok": true,
+  "detail": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: user.a.test sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.AUTHOR",
+  "name": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: author.test1",
+  "ok": true,
+  "detail": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: author.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.COAUTHOR",
+  "name": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: coauthor.test1",
+  "ok": true,
+  "detail": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.REVIEWER",
+  "name": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: reviewer.test1",
+  "ok": true,
+  "detail": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.APPROVER",
+  "name": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: approver.test1",
+  "ok": true,
+  "detail": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: approver.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.HEAD",
+  "name": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: reviewer.test2",
+  "ok": true,
+  "detail": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.G1A",
+  "name": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: coauthor.test2",
+  "ok": true,
+  "detail": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (2, 1, 0, 0); expected (2,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.G1B",
+  "name": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: trainee.test1",
+  "ok": true,
+  "detail": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: trainee.test1 sees revisions/documents/controlled/uncontrolled = (2, 1, 0, 0); expected (2,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.G2A",
+  "name": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: trainee.test2",
+  "ok": true,
+  "detail": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.G2B",
+  "name": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: trainer.test1",
+  "ok": true,
+  "detail": "revision 2 Effective, revision 1 Obsolete: nobody loses or gains: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17.1",
+  "name": "the DCO requests a Controlled Copy for G2B",
+  "ok": true,
+  "detail": "{\"id\":\"da972af3-17a7-44d6-ba9f-2e3f8845e3c7\",\"controlledCopyNumber\":\"CC.SOP.10413.001\",\"createdDate\":\"02/11/2026\",\"createdTime\":\"23:28:37\",\"openedBy\":null,\"name\":\"DV-TEST SOP Sampling of raw materials - 2.0.0 - Controlled Copy 1\",\"status\":\"Ready for Distribution\",\"statusCode\":\"READY_FOR_DISTRIBUTION"
+ },
+ {
+  "id": "S17.DCO",
+  "name": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: dco.test1",
+  "ok": true,
+  "detail": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: dco.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 1, 0); expected (3,2,1,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17.ADMIN",
+  "name": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: user.a.test",
+  "ok": true,
+  "detail": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: user.a.test sees revisions/documents/controlled/uncontrolled = (3, 2, 1, 0); expected (3,2,1,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17.AUTHOR",
+  "name": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: author.test1",
+  "ok": true,
+  "detail": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: author.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17.COAUTHOR",
+  "name": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: coauthor.test1",
+  "ok": true,
+  "detail": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17.REVIEWER",
+  "name": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: reviewer.test1",
+  "ok": true,
+  "detail": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17.APPROVER",
+  "name": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: approver.test1",
+  "ok": true,
+  "detail": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: approver.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17.HEAD",
+  "name": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: reviewer.test2",
+  "ok": true,
+  "detail": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17.G1A",
+  "name": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: coauthor.test2",
+  "ok": true,
+  "detail": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (2, 1, 0, 0); expected (2,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17.G1B",
+  "name": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: trainee.test1",
+  "ok": true,
+  "detail": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: trainee.test1 sees revisions/documents/controlled/uncontrolled = (2, 1, 1, 0); expected (2,1,1,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17.G2A",
+  "name": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: trainee.test2",
+  "ok": true,
+  "detail": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17.G2B",
+  "name": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: trainer.test1",
+  "ok": true,
+  "detail": "Controlled Copy: view-all (DCO, ADMIN), the recipient G2B, and group 1 (SOP rule + module permission). The Head and G1A lack the base View permission of copies: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 1, 0); expected (1,1,1,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17b.DCO",
+  "name": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: dco.test1",
+  "ok": true,
+  "detail": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: dco.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 1, 0); expected (3,2,1,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17b.ADMIN",
+  "name": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: user.a.test",
+  "ok": true,
+  "detail": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: user.a.test sees revisions/documents/controlled/uncontrolled = (3, 2, 1, 0); expected (3,2,1,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17b.AUTHOR",
+  "name": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: author.test1",
+  "ok": true,
+  "detail": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: author.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17b.COAUTHOR",
+  "name": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: coauthor.test1",
+  "ok": true,
+  "detail": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17b.REVIEWER",
+  "name": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: reviewer.test1",
+  "ok": true,
+  "detail": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17b.APPROVER",
+  "name": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: approver.test1",
+  "ok": true,
+  "detail": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: approver.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17b.HEAD",
+  "name": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: reviewer.test2",
+  "ok": true,
+  "detail": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17b.G1A",
+  "name": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: coauthor.test2",
+  "ok": true,
+  "detail": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (2, 1, 0, 0); expected (2,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17b.G1B",
+  "name": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: trainee.test1",
+  "ok": true,
+  "detail": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: trainee.test1 sees revisions/documents/controlled/uncontrolled = (2, 1, 1, 0); expected (2,1,1,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17b.G2A",
+  "name": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: trainee.test2",
+  "ok": true,
+  "detail": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S17b.G2B",
+  "name": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: trainer.test1",
+  "ok": true,
+  "detail": "the owner switched off \"the recipient always sees the copy\": G2B (not in the SOP rule) loses it: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S18.1",
+  "name": "the DCO requests an Uncontrolled Copy for G2A",
+  "ok": true,
+  "detail": "{\"id\":\"5a48bf89-bec3-4fb1-961a-0001229ead1e\",\"uncontrolledCopyNumber\":\"UCC.SOP.10413.001\",\"documentId\":\"1624e963-4415-434b-8aa6-5e6832eb04b8\",\"documentNumber\":\"SOP.10413\",\"documentTitle\":\"DV-TEST SOP Sampling of raw materials\",\"revisionId\":\"b17e61fb-f84e-4c3f-9132-d692ab02e23d\",\"revisionNumber\":\"2.0"
+ },
+ {
+  "id": "S18.DCO",
+  "name": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): dco.test1",
+  "ok": true,
+  "detail": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): dco.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 1, 1); expected (3,2,1,1); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S18.ADMIN",
+  "name": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): user.a.test",
+  "ok": true,
+  "detail": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): user.a.test sees revisions/documents/controlled/uncontrolled = (3, 2, 1, 1); expected (3,2,1,1); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S18.AUTHOR",
+  "name": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): author.test1",
+  "ok": true,
+  "detail": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): author.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S18.COAUTHOR",
+  "name": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): coauthor.test1",
+  "ok": true,
+  "detail": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): coauthor.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S18.REVIEWER",
+  "name": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): reviewer.test1",
+  "ok": true,
+  "detail": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): reviewer.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S18.APPROVER",
+  "name": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): approver.test1",
+  "ok": true,
+  "detail": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): approver.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S18.HEAD",
+  "name": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): reviewer.test2",
+  "ok": true,
+  "detail": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): reviewer.test2 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S18.G1A",
+  "name": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): coauthor.test2",
+  "ok": true,
+  "detail": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): coauthor.test2 sees revisions/documents/controlled/uncontrolled = (2, 1, 0, 0); expected (2,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S18.G1B",
+  "name": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): trainee.test1",
+  "ok": true,
+  "detail": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): trainee.test1 sees revisions/documents/controlled/uncontrolled = (2, 1, 1, 1); expected (2,1,1,1); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S18.G2A",
+  "name": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): trainee.test2",
+  "ok": true,
+  "detail": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 1); expected (1,1,0,1); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S18.G2B",
+  "name": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): trainer.test1",
+  "ok": true,
+  "detail": "Uncontrolled Copy: view-all, the recipient G2A, group 1 (SOP rule): trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 1, 0); expected (1,1,1,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19.DCO",
+  "name": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: dco.test1",
+  "ok": true,
+  "detail": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: dco.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19.ADMIN",
+  "name": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: user.a.test",
+  "ok": true,
+  "detail": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: user.a.test sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19.AUTHOR",
+  "name": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: author.test1",
+  "ok": true,
+  "detail": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: author.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19.COAUTHOR",
+  "name": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: coauthor.test1",
+  "ok": true,
+  "detail": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19.REVIEWER",
+  "name": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: reviewer.test1",
+  "ok": true,
+  "detail": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19.APPROVER",
+  "name": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: approver.test1",
+  "ok": true,
+  "detail": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: approver.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19.HEAD",
+  "name": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: reviewer.test2",
+  "ok": true,
+  "detail": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19.G1A",
+  "name": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: coauthor.test2",
+  "ok": true,
+  "detail": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (2, 1, 0, 0); expected (2,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19.G1B",
+  "name": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: trainee.test1",
+  "ok": true,
+  "detail": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: trainee.test1 sees revisions/documents/controlled/uncontrolled = (2, 1, 0, 0); expected (2,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19.G2A",
+  "name": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: trainee.test2",
+  "ok": true,
+  "detail": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19.G2B",
+  "name": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: trainer.test1",
+  "ok": true,
+  "detail": "participants lose the automatic right: only view-all (DCO, ADMIN), the Head and the rules remain: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19b.DCO",
+  "name": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: dco.test1",
+  "ok": true,
+  "detail": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: dco.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19b.ADMIN",
+  "name": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: user.a.test",
+  "ok": true,
+  "detail": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: user.a.test sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19b.AUTHOR",
+  "name": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: author.test1",
+  "ok": true,
+  "detail": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: author.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19b.COAUTHOR",
+  "name": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: coauthor.test1",
+  "ok": true,
+  "detail": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19b.REVIEWER",
+  "name": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: reviewer.test1",
+  "ok": true,
+  "detail": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19b.APPROVER",
+  "name": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: approver.test1",
+  "ok": true,
+  "detail": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: approver.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19b.HEAD",
+  "name": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: reviewer.test2",
+  "ok": true,
+  "detail": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19b.G1A",
+  "name": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: coauthor.test2",
+  "ok": true,
+  "detail": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (2, 1, 0, 0); expected (2,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19b.G1B",
+  "name": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: trainee.test1",
+  "ok": true,
+  "detail": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: trainee.test1 sees revisions/documents/controlled/uncontrolled = (2, 1, 0, 0); expected (2,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19b.G2A",
+  "name": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: trainee.test2",
+  "ok": true,
+  "detail": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S19b.G2B",
+  "name": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: trainer.test1",
+  "ok": true,
+  "detail": "the Head convenience switched off: the Head of the Department sees only what the rules and a part in the flow give: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20a.DCO",
+  "name": "Participants only: the flow and view-all; the Head and the groups see nothing: dco.test1",
+  "ok": true,
+  "detail": "Participants only: the flow and view-all; the Head and the groups see nothing: dco.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20a.ADMIN",
+  "name": "Participants only: the flow and view-all; the Head and the groups see nothing: user.a.test",
+  "ok": true,
+  "detail": "Participants only: the flow and view-all; the Head and the groups see nothing: user.a.test sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20a.AUTHOR",
+  "name": "Participants only: the flow and view-all; the Head and the groups see nothing: author.test1",
+  "ok": true,
+  "detail": "Participants only: the flow and view-all; the Head and the groups see nothing: author.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20a.COAUTHOR",
+  "name": "Participants only: the flow and view-all; the Head and the groups see nothing: coauthor.test1",
+  "ok": true,
+  "detail": "Participants only: the flow and view-all; the Head and the groups see nothing: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20a.REVIEWER",
+  "name": "Participants only: the flow and view-all; the Head and the groups see nothing: reviewer.test1",
+  "ok": true,
+  "detail": "Participants only: the flow and view-all; the Head and the groups see nothing: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20a.APPROVER",
+  "name": "Participants only: the flow and view-all; the Head and the groups see nothing: approver.test1",
+  "ok": true,
+  "detail": "Participants only: the flow and view-all; the Head and the groups see nothing: approver.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20a.HEAD",
+  "name": "Participants only: the flow and view-all; the Head and the groups see nothing: reviewer.test2",
+  "ok": true,
+  "detail": "Participants only: the flow and view-all; the Head and the groups see nothing: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20a.G1A",
+  "name": "Participants only: the flow and view-all; the Head and the groups see nothing: coauthor.test2",
+  "ok": true,
+  "detail": "Participants only: the flow and view-all; the Head and the groups see nothing: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20a.G1B",
+  "name": "Participants only: the flow and view-all; the Head and the groups see nothing: trainee.test1",
+  "ok": true,
+  "detail": "Participants only: the flow and view-all; the Head and the groups see nothing: trainee.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20a.G2A",
+  "name": "Participants only: the flow and view-all; the Head and the groups see nothing: trainee.test2",
+  "ok": true,
+  "detail": "Participants only: the flow and view-all; the Head and the groups see nothing: trainee.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20a.G2B",
+  "name": "Participants only: the flow and view-all; the Head and the groups see nothing: trainer.test1",
+  "ok": true,
+  "detail": "Participants only: the flow and view-all; the Head and the groups see nothing: trainer.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20b.DCO",
+  "name": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): dco.test1",
+  "ok": true,
+  "detail": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): dco.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20b.ADMIN",
+  "name": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): user.a.test",
+  "ok": true,
+  "detail": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): user.a.test sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20b.AUTHOR",
+  "name": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): author.test1",
+  "ok": true,
+  "detail": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): author.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20b.COAUTHOR",
+  "name": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): coauthor.test1",
+  "ok": true,
+  "detail": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): coauthor.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20b.REVIEWER",
+  "name": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): reviewer.test1",
+  "ok": true,
+  "detail": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): reviewer.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20b.APPROVER",
+  "name": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): approver.test1",
+  "ok": true,
+  "detail": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): approver.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20b.HEAD",
+  "name": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): reviewer.test2",
+  "ok": true,
+  "detail": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): reviewer.test2 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20b.G1A",
+  "name": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): coauthor.test2",
+  "ok": true,
+  "detail": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): coauthor.test2 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20b.G1B",
+  "name": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): trainee.test1",
+  "ok": true,
+  "detail": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): trainee.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20b.G2A",
+  "name": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): trainee.test2",
+  "ok": true,
+  "detail": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): trainee.test2 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S20b.G2B",
+  "name": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): trainer.test1",
+  "ok": true,
+  "detail": "Everyone with the View permission: every holder of the View permission sees all documents (all eleven hold it now): trainer.test1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S21.ADMIN",
+  "name": "Knowledge Base of user.a.test: SOP SOP.10413 listed, Instruction INS.0004 listed",
+  "ok": true,
+  "detail": "['INS.0004', 'SOP.10413']"
+ },
+ {
+  "id": "S21.HEAD",
+  "name": "Knowledge Base of reviewer.test2: SOP SOP.10413 listed, Instruction INS.0004 listed",
+  "ok": true,
+  "detail": "['INS.0004', 'SOP.10413']"
+ },
+ {
+  "id": "S21.AUTHOR",
+  "name": "Knowledge Base of author.test1: SOP SOP.10413 listed, Instruction INS.0004 listed",
+  "ok": true,
+  "detail": "['INS.0004', 'SOP.10413']"
+ },
+ {
+  "id": "S21.G1A",
+  "name": "Knowledge Base of coauthor.test2: SOP SOP.10413 listed, Instruction INS.0004 absent",
+  "ok": true,
+  "detail": "['SOP.10413']"
+ },
+ {
+  "id": "S21.G1B",
+  "name": "Knowledge Base of trainee.test1: SOP SOP.10413 listed, Instruction INS.0004 absent",
+  "ok": true,
+  "detail": "['SOP.10413']"
+ },
+ {
+  "id": "S21.G2A",
+  "name": "Knowledge Base of trainee.test2: SOP SOP.10413 absent, Instruction INS.0004 listed",
+  "ok": true,
+  "detail": "['INS.0004']"
+ },
+ {
+  "id": "S21.G2B",
+  "name": "Knowledge Base of trainer.test1: SOP SOP.10413 absent, Instruction INS.0004 listed",
+  "ok": true,
+  "detail": "['INS.0004']"
+ },
+ {
+  "id": "S23.1",
+  "name": "the Head deletes the rule \"every SOP\" of group 1",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "id": "S23.DCO",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: dco.test1",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: dco.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.ADMIN",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: user.a.test",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: user.a.test sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.AUTHOR",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: author.test1",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: author.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.COAUTHOR",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: coauthor.test1",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.REVIEWER",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: reviewer.test1",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.APPROVER",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: approver.test1",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: approver.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.HEAD",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: reviewer.test2",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.G1A",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: coauthor.test2",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.G1B",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: trainee.test1",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: trainee.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.G2A",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: trainee.test2",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.G2B",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: trainer.test1",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.DCO",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: dco.test1",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: dco.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.ADMIN",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: user.a.test",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: user.a.test sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.AUTHOR",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: author.test1",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: author.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.COAUTHOR",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: coauthor.test1",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.REVIEWER",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: reviewer.test1",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.APPROVER",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: approver.test1",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: approver.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.HEAD",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: reviewer.test2",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.G1A",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: coauthor.test2",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.G1B",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: trainee.test1",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: trainee.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.G2A",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: trainee.test2",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S23.G2B",
+  "name": "ten SOPs and one Instruction of the Department; group 1 has no rule: trainer.test1",
+  "ok": true,
+  "detail": "ten SOPs and one Instruction of the Department; group 1 has no rule: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S24.1",
+  "name": "the Head creates the two rules of specific documents",
+  "ok": true,
+  "detail": "(200, '{\"id\":\"bd9e7d1c-5a73-496b-913e-5c5f9e825805\",\"name\":\"DV-TEST A sees SOP 1 and 2\",\"description\":\"DV-TEST\",\"effect\":\"ALLOW\",\"priority\":10,\"active\":true,\"resourceType\":\"DOCUMENT\",\"resourceId\":null,\"resou', 200, '{\"id\":\"5f056cad-043b-48af-9c82-49119cac2372\",\"name\":\"DV-TEST B sees SOP 3, 4 and 5\",\"description\":\"DV-TEST\",\"effect\":\"ALLOW\",\"priority\":10,\"active\":true,\"resourceType\":\"DOCUMENT\",\"resourceId\":null,\"re')"
+ },
+ {
+  "id": "S24.DCO",
+  "name": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: dco.test1",
+  "ok": true,
+  "detail": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: dco.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S24.ADMIN",
+  "name": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: user.a.test",
+  "ok": true,
+  "detail": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: user.a.test sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S24.AUTHOR",
+  "name": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: author.test1",
+  "ok": true,
+  "detail": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: author.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S24.COAUTHOR",
+  "name": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: coauthor.test1",
+  "ok": true,
+  "detail": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S24.REVIEWER",
+  "name": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: reviewer.test1",
+  "ok": true,
+  "detail": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S24.APPROVER",
+  "name": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: approver.test1",
+  "ok": true,
+  "detail": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: approver.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S24.HEAD",
+  "name": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: reviewer.test2",
+  "ok": true,
+  "detail": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S24.G1A",
+  "name": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: coauthor.test2",
+  "ok": true,
+  "detail": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S24.G1B",
+  "name": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: trainee.test1",
+  "ok": true,
+  "detail": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: trainee.test1 sees revisions/documents/controlled/uncontrolled = (3, 3, 0, 0); expected (3,3,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S24.G2A",
+  "name": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: trainee.test2",
+  "ok": true,
+  "detail": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S24.G2B",
+  "name": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: trainer.test1",
+  "ok": true,
+  "detail": "A sees SOP 1+2 only, B sees SOP 3+4+5 only; the other SOPs stay closed to both: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S25.1",
+  "name": "the Head creates a Deny rule for one document",
+  "ok": true,
+  "detail": "{\"id\":\"bd9a7ab7-0cd7-4e75-b6c4-9e2b19063fec\",\"name\":\"DV-TEST B must not see SOP 4\",\"description\":\"DV-TEST\",\"effect\":\"DENY\",\"priority\":50,\"active\":true,\"resourceType\":\"DOCUMENT\",\"resourceId\":null,\"reso"
+ },
+ {
+  "id": "S25.DCO",
+  "name": "B loses SOP 4 only: dco.test1",
+  "ok": true,
+  "detail": "B loses SOP 4 only: dco.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S25.ADMIN",
+  "name": "B loses SOP 4 only: user.a.test",
+  "ok": true,
+  "detail": "B loses SOP 4 only: user.a.test sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S25.AUTHOR",
+  "name": "B loses SOP 4 only: author.test1",
+  "ok": true,
+  "detail": "B loses SOP 4 only: author.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S25.COAUTHOR",
+  "name": "B loses SOP 4 only: coauthor.test1",
+  "ok": true,
+  "detail": "B loses SOP 4 only: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S25.REVIEWER",
+  "name": "B loses SOP 4 only: reviewer.test1",
+  "ok": true,
+  "detail": "B loses SOP 4 only: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S25.APPROVER",
+  "name": "B loses SOP 4 only: approver.test1",
+  "ok": true,
+  "detail": "B loses SOP 4 only: approver.test1 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S25.HEAD",
+  "name": "B loses SOP 4 only: reviewer.test2",
+  "ok": true,
+  "detail": "B loses SOP 4 only: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (10, 9, 0, 0); expected (10,9,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S25.G1A",
+  "name": "B loses SOP 4 only: coauthor.test2",
+  "ok": true,
+  "detail": "B loses SOP 4 only: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S25.G1B",
+  "name": "B loses SOP 4 only: trainee.test1",
+  "ok": true,
+  "detail": "B loses SOP 4 only: trainee.test1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S25.G2A",
+  "name": "B loses SOP 4 only: trainee.test2",
+  "ok": true,
+  "detail": "B loses SOP 4 only: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S25.G2B",
+  "name": "B loses SOP 4 only: trainer.test1",
+  "ok": true,
+  "detail": "B loses SOP 4 only: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S25.2",
+  "name": "the Head deletes the Deny rule",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "id": "S26.DCO",
+  "name": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: dco.test1",
+  "ok": true,
+  "detail": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: dco.test1 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S26.ADMIN",
+  "name": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: user.a.test",
+  "ok": true,
+  "detail": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: user.a.test sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S26.AUTHOR",
+  "name": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: author.test1",
+  "ok": true,
+  "detail": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: author.test1 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S26.COAUTHOR",
+  "name": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: coauthor.test1",
+  "ok": true,
+  "detail": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S26.REVIEWER",
+  "name": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: reviewer.test1",
+  "ok": true,
+  "detail": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S26.APPROVER",
+  "name": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: approver.test1",
+  "ok": true,
+  "detail": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: approver.test1 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S26.HEAD",
+  "name": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: reviewer.test2",
+  "ok": true,
+  "detail": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S26.G1A",
+  "name": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: coauthor.test2",
+  "ok": true,
+  "detail": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S26.G1B",
+  "name": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: trainee.test1",
+  "ok": true,
+  "detail": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: trainee.test1 sees revisions/documents/controlled/uncontrolled = (3, 3, 0, 0); expected (3,3,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S26.G2A",
+  "name": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: trainee.test2",
+  "ok": true,
+  "detail": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S26.G2B",
+  "name": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: trainer.test1",
+  "ok": true,
+  "detail": "SOP 7 is new: only the flow, the Head and view-all see it; A and B do not: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S27.1",
+  "name": "a document of another Department cannot be named (400)",
+  "ok": true,
+  "detail": "(400, '{\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"A rule of this Department can name only documents of this Department\",\"details\":[]}}')"
+ },
+ {
+  "id": "S27.2",
+  "name": "more than 200 documents are refused (400)",
+  "ok": true,
+  "detail": "(400, '{\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"A rule can name at most 200 documents; use a Document Type or the whole Department for more\",\"details\":[]}}')"
+ },
+ {
+  "id": "S27.3",
+  "name": "a rule of specific documents without a document is refused (400)",
+  "ok": true,
+  "detail": "(400, '{\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Choose at least one document\",\"details\":[]}}')"
+ },
+ {
+  "id": "S27.4",
+  "name": "an unknown document is refused (400)",
+  "ok": true,
+  "detail": "(400, '{\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"A chosen document does not exist\",\"details\":[]}}')"
+ },
+ {
+  "id": "S28.1",
+  "name": "a search by name finds the document of the Department",
+  "ok": true,
+  "detail": "(200, \"[{'id': '40ecec30-8fb9-48a6-b670-99488a640ab1', 'documentNumber': 'SOP.10417', 'documentName': 'DV-TEST SOP number 4 of Quality Control'}]\")"
+ },
+ {
+  "id": "S28.2",
+  "name": "a search without text returns at most the limit",
+  "ok": true,
+  "detail": "(200, 5)"
+ },
+ {
+  "id": "S28.3",
+  "name": "the character % is searched as text, not as a wildcard",
+  "ok": true,
+  "detail": "(200, '[]')"
+ },
+ {
+  "id": "S28.4",
+  "name": "a user who is not the Head cannot search (403)",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Only the Department Head of this Department may manage who s')"
+ },
+ {
+  "id": "S28.5",
+  "name": "every document found belongs to Quality Control",
+  "ok": true,
+  "detail": "{'Quality Control'}"
+ },
+ {
+  "id": "S29.1",
+  "name": "the Head names document A (SOP of the run) for B",
+  "ok": true,
+  "detail": "{\"id\":\"fb04b329-2f84-45a5-8322-d8ece11518ba\",\"name\":\"DV-TEST B may see everything of the SOP of the run\",\"description\":\"DV-TEST\",\"effect\":\"ALLOW\",\"pri"
+ },
+ {
+  "id": "S29.DCO",
+  "name": "B also sees document A, its revisions and its two copies; the recipients still see their copy: dco.test1",
+  "ok": true,
+  "detail": "B also sees document A, its revisions and its two copies; the recipients still see their copy: dco.test1 sees revisions/documents/controlled/uncontrolled = (11, 10, 1, 1); expected (11,10,1,1); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S29.ADMIN",
+  "name": "B also sees document A, its revisions and its two copies; the recipients still see their copy: user.a.test",
+  "ok": true,
+  "detail": "B also sees document A, its revisions and its two copies; the recipients still see their copy: user.a.test sees revisions/documents/controlled/uncontrolled = (11, 10, 1, 1); expected (11,10,1,1); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S29.AUTHOR",
+  "name": "B also sees document A, its revisions and its two copies; the recipients still see their copy: author.test1",
+  "ok": true,
+  "detail": "B also sees document A, its revisions and its two copies; the recipients still see their copy: author.test1 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S29.COAUTHOR",
+  "name": "B also sees document A, its revisions and its two copies; the recipients still see their copy: coauthor.test1",
+  "ok": true,
+  "detail": "B also sees document A, its revisions and its two copies; the recipients still see their copy: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S29.REVIEWER",
+  "name": "B also sees document A, its revisions and its two copies; the recipients still see their copy: reviewer.test1",
+  "ok": true,
+  "detail": "B also sees document A, its revisions and its two copies; the recipients still see their copy: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S29.APPROVER",
+  "name": "B also sees document A, its revisions and its two copies; the recipients still see their copy: approver.test1",
+  "ok": true,
+  "detail": "B also sees document A, its revisions and its two copies; the recipients still see their copy: approver.test1 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S29.HEAD",
+  "name": "B also sees document A, its revisions and its two copies; the recipients still see their copy: reviewer.test2",
+  "ok": true,
+  "detail": "B also sees document A, its revisions and its two copies; the recipients still see their copy: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S29.G1A",
+  "name": "B also sees document A, its revisions and its two copies; the recipients still see their copy: coauthor.test2",
+  "ok": true,
+  "detail": "B also sees document A, its revisions and its two copies; the recipients still see their copy: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S29.G1B",
+  "name": "B also sees document A, its revisions and its two copies; the recipients still see their copy: trainee.test1",
+  "ok": true,
+  "detail": "B also sees document A, its revisions and its two copies; the recipients still see their copy: trainee.test1 sees revisions/documents/controlled/uncontrolled = (5, 4, 1, 1); expected (5,4,1,1); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S29.G2A",
+  "name": "B also sees document A, its revisions and its two copies; the recipients still see their copy: trainee.test2",
+  "ok": true,
+  "detail": "B also sees document A, its revisions and its two copies; the recipients still see their copy: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 1); expected (1,1,0,1); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S29.G2B",
+  "name": "B also sees document A, its revisions and its two copies; the recipients still see their copy: trainer.test1",
+  "ok": true,
+  "detail": "B also sees document A, its revisions and its two copies; the recipients still see their copy: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 1, 0); expected (1,1,1,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S29.2",
+  "name": "the Head deletes the rule",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "id": "S30",
+  "name": "the Head deletes a rule of specific documents",
+  "ok": true,
+  "detail": "bd9e7d1c-5a73-496b-913e-5c5f9e825805"
+ },
+ {
+  "id": "S30",
+  "name": "the Head deletes a rule of specific documents",
+  "ok": true,
+  "detail": "5f056cad-043b-48af-9c82-49119cac2372"
+ },
+ {
+  "id": "S30z.DCO",
+  "name": "no rule of group 1 left: group 1 sees nothing again: dco.test1",
+  "ok": true,
+  "detail": "no rule of group 1 left: group 1 sees nothing again: dco.test1 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S30z.ADMIN",
+  "name": "no rule of group 1 left: group 1 sees nothing again: user.a.test",
+  "ok": true,
+  "detail": "no rule of group 1 left: group 1 sees nothing again: user.a.test sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S30z.AUTHOR",
+  "name": "no rule of group 1 left: group 1 sees nothing again: author.test1",
+  "ok": true,
+  "detail": "no rule of group 1 left: group 1 sees nothing again: author.test1 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S30z.COAUTHOR",
+  "name": "no rule of group 1 left: group 1 sees nothing again: coauthor.test1",
+  "ok": true,
+  "detail": "no rule of group 1 left: group 1 sees nothing again: coauthor.test1 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S30z.REVIEWER",
+  "name": "no rule of group 1 left: group 1 sees nothing again: reviewer.test1",
+  "ok": true,
+  "detail": "no rule of group 1 left: group 1 sees nothing again: reviewer.test1 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S30z.APPROVER",
+  "name": "no rule of group 1 left: group 1 sees nothing again: approver.test1",
+  "ok": true,
+  "detail": "no rule of group 1 left: group 1 sees nothing again: approver.test1 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S30z.HEAD",
+  "name": "no rule of group 1 left: group 1 sees nothing again: reviewer.test2",
+  "ok": true,
+  "detail": "no rule of group 1 left: group 1 sees nothing again: reviewer.test2 sees revisions/documents/controlled/uncontrolled = (11, 10, 0, 0); expected (11,10,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S30z.G1A",
+  "name": "no rule of group 1 left: group 1 sees nothing again: coauthor.test2",
+  "ok": true,
+  "detail": "no rule of group 1 left: group 1 sees nothing again: coauthor.test2 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S30z.G1B",
+  "name": "no rule of group 1 left: group 1 sees nothing again: trainee.test1",
+  "ok": true,
+  "detail": "no rule of group 1 left: group 1 sees nothing again: trainee.test1 sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S30z.G2A",
+  "name": "no rule of group 1 left: group 1 sees nothing again: trainee.test2",
+  "ok": true,
+  "detail": "no rule of group 1 left: group 1 sees nothing again: trainee.test2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S30z.G2B",
+  "name": "no rule of group 1 left: group 1 sees nothing again: trainer.test1",
+  "ok": true,
+  "detail": "no rule of group 1 left: group 1 sees nothing again: trainer.test1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ }
+]

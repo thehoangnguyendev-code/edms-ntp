@@ -123,6 +123,7 @@ public class PublishingPlaceholderStyleService {
         // A workspace uses the template timestamp as part of its preview identity.
         // Touching the template makes a style-only edit observable to every workspace.
         template.setUpdatedBy(currentUser.getFullName());
+        template.touch();
         templateRepository.save(template);
         return responses;
     }
@@ -163,6 +164,7 @@ public class PublishingPlaceholderStyleService {
             );
         });
         template.setUpdatedBy(currentUser.getFullName());
+        template.touch();
         templateRepository.save(template);
     }
 

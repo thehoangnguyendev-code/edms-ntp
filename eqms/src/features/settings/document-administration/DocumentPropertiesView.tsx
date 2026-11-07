@@ -17,11 +17,15 @@ import { documentNameFormatApi } from "@/services/api";
 import { documentProperties } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { ROUTES } from "@/app/routes.constants";
 import type { DocumentNameFormatItem } from "./document-name-formats/documentNameFormatTypes";
-import { IconApiBook, IconFileTextShield, IconTableSpark } from "@tabler/icons-react";
+import { IconApiBook, IconTableSpark } from "@tabler/icons-react";
 
 type RevisionSeed = "0.0.1" | "0.1";
 /** Stable machine values stored by the server -- never the translated labels below. */
 type DocumentVisibilityMode = "PARTICIPANTS_ONLY" | "ALL_WITH_VIEW_PERMISSION";
+/** How the Knowledge Base decides who sees a document: the Effective documents of the user's own Department, or what the Department Heads shared. */
+type KnowledgeVisibilityMode = "OWN_DEPARTMENT" | "OWN_BUSINESS_UNIT" | "ALL" | "SHARING";
+/** How a Document Number / Training Number is given: the system generates it, or the person who creates the document types it. */
+type NumberEntryMode = "AUTO" | "MANUAL";
 type EffectiveDateBasis = "AFTER_APPROVAL" | "AFTER_TRAINING" | "AFTER_PUBLISH";
 type EffectiveDateBasisNoTraining = "AFTER_APPROVAL" | "AFTER_PUBLISH";
 
@@ -49,6 +53,8 @@ interface DocumentPolicy {
   /** Zero-padding width for the Serial Number component (e.g. 4 → "0007"). Defaults to 4 when
    *  unset. Only affects new document numbers generated going forward. */
   serialNumberDigits?: number;
+  /** Who gives the Document Number: the system (default) or the creator. Manual numbers follow the Document Type's code and the digits above. */
+  documentNumberEntryMode?: NumberEntryMode;
   /** When true, every assigned Reviewer may act in any order instead of the default
    *  one-at-a-time sequence. The mode is frozen on each Revision when it is submitted, so
    *  toggling it only affects Revisions submitted afterwards. */
@@ -83,11 +89,19 @@ interface DocumentPolicy {
   retainVisibilityForRemovedApprover?: boolean;
   /** Who may see Document Control records. Missing/unknown values behave as PARTICIPANTS_ONLY. */
   documentVisibilityMode?: DocumentVisibilityMode;
+  /** Knowledge Base visibility; a separate setting from Record Visibility. */
+  knowledgeVisibilityMode?: KnowledgeVisibilityMode;
   [key: string]: unknown;
 }
 
 const DEFAULT_DOCUMENT_VISIBILITY_MODE: DocumentVisibilityMode = "PARTICIPANTS_ONLY";
 
+const KNOWLEDGE_VISIBILITY_OPTIONS: { value: KnowledgeVisibilityMode; label: string }[] = [
+  { value: "OWN_DEPARTMENT", label: "Own Department (a user sees the Effective documents of their Department)" },
+  { value: "OWN_BUSINESS_UNIT", label: "Own Business Unit (a user sees the Effective documents of their whole Business Unit)" },
+  { value: "ALL", label: "Everything (a user sees every Effective document of the system)" },
+  { value: "SHARING", label: "Sharing (the Heads share folders and documents)" },
+];
 const RETAIN_VISIBILITY_ROLE_FIELDS = [
   "retainVisibilityForRemovedAuthor",
   "retainVisibilityForRemovedCoAuthor",
@@ -234,8 +248,12 @@ export const DocumentPropertiesView: React.FC = () => {
 
       {!loading && !error && documents && (
         <div className="space-y-4">
+          {/* Who can see what: one section, the two settings side by side (one under the other on a narrower screen) */}
+          <FormSection title="Visibility" icon={<IconTableSpark className="h-4 w-4" />}>
+          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:items-start">
           {/* 0. Who can see which records -- first, because it changes what every user sees in Document Control */}
-          <FormSection title="Record Visibility" icon={<IconTableSpark className="h-4 w-4" />}>
+          <Group title="Record Visibility">
             {(() => {
               const participantsOnly =
                 (documents.documentVisibilityMode ?? DEFAULT_DOCUMENT_VISIBILITY_MODE) === "PARTICIPANTS_ONLY";
@@ -271,6 +289,7 @@ export const DocumentPropertiesView: React.FC = () => {
                       }
                     />
                   </div>
+
                   <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-800">
                     Regardless of this switch, users who hold <strong>View All Document Records</strong>,{" "}
                     <strong>View All Controlled Copies</strong> or <strong>View All Uncontrolled Copies</strong> always see
@@ -288,6 +307,111 @@ export const DocumentPropertiesView: React.FC = () => {
                 </div>
               );
             })()}
+          </Group>
+
+          {/* Knowledge Base: who sees which Effective document in the Knowledge explorer (separate from Record Visibility) */}
+          <Group title="Knowledge Base Visibility">
+            <div className="space-y-4">
+              <div>
+                <Select
+                  label="Who can see documents in the Knowledge Base"
+                  disabled={!canManage}
+                  value={documents.knowledgeVisibilityMode ?? "OWN_DEPARTMENT"}
+                  onChange={(value) => patch({ knowledgeVisibilityMode: String(value) as KnowledgeVisibilityMode })}
+                  options={KNOWLEDGE_VISIBILITY_OPTIONS}
+                  enableSearch={false}
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  {(documents.knowledgeVisibilityMode ?? "OWN_DEPARTMENT") === "SHARING" ? (
+                    <>
+                      <strong>Sharing.</strong> Closed by default: a user sees an Effective document in the Knowledge Base only when the{" "}
+                      <strong>Head</strong> of its Department or Business Unit shared it with them (a folder or a document, right-click &gt;
+                      Share), or when they are that Head. A Head can share with people, Positions, other Departments or everyone.
+                      The user still needs the Knowledge permission. This does not change Document Control.
+                    </>
+                  ) : documents.knowledgeVisibilityMode === "OWN_BUSINESS_UNIT" ? (
+                    <>
+                      <strong>Own Business Unit.</strong> A user sees the Effective documents of every Department of the Business Unit their
+                      own Department belongs to. Everybody who may see a document already sees it, so there is no Share menu.
+                    </>
+                  ) : documents.knowledgeVisibilityMode === "ALL" ? (
+                    <>
+                      <strong>Everything.</strong> A user sees every Effective document of the system. There is nothing to share, so there is
+                      no Share menu.
+                    </>
+                  ) : (
+                    <>
+                      <strong>Own Department.</strong> A user sees the Effective documents of their own Department in the Knowledge Base,
+                      as before. There is nothing to share, so there is no Share menu. Switch to Sharing when the Heads are ready to decide
+                      who sees what.
+                    </>
+                  )}
+                </p>
+              </div>
+              <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-800">
+                Who may share (only under Sharing): the <strong>Department Head</strong> named on a Department and the{" "}
+                <strong>Head of Unit</strong> named on a Business Unit, in Dictionaries. Being named is the whole grant: only the administrator
+                edits Dictionaries, so there is no permission to assign. The person designated as DCO shares any Department through the
+                permission <strong>Share Knowledge Base of Any Department</strong>, assigned to an Access Profile at{" "}
+                <button
+                  type="button"
+                  onClick={() => navigate(ROUTES.SECURITY.ACCESS_PROFILES)}
+                  className="font-medium underline underline-offset-2 hover:text-sky-900"
+                >
+                  Security & Authorization &gt; Access Profiles
+                </button>
+                . Whoever holds <strong>View All Documents in the Knowledge Base</strong> always sees every Effective document in every mode,
+                whatever a Head shared or excluded; it is a Knowledge Base permission of its own and changes nothing in Document Control.
+              </div>
+            </div>
+          </Group>
+          </div>
+
+          {/* Access kept after a role is removed: part of the same visibility rules */}
+            <Group title="Retain visibility for removed participants">
+              <p className="text-xs text-slate-500">
+                When a user is removed from one of these roles on a Document (e.g. via "Edit Revision for Upgrade"), they keep
+                read-only visibility of it based on having held that role before. Pick which roles this applies to; each is
+                independent. If none are checked, a removed participant with no other role on the Document loses visibility
+                immediately (default).
+                {(documents.documentVisibilityMode ?? DEFAULT_DOCUMENT_VISIBILITY_MODE) === "ALL_WITH_VIEW_PERMISSION"
+                  ? " Not applicable while everyone with the View permission sees every record."
+                  : ""}
+              </p>
+              {(() => {
+                const retainDisabled = !canManage
+                  || (documents.documentVisibilityMode ?? DEFAULT_DOCUMENT_VISIBILITY_MODE) === "ALL_WITH_VIEW_PERMISSION";
+                const checkedCount = RETAIN_VISIBILITY_ROLE_FIELDS.filter((field) => !!documents[field]).length;
+                const allChecked = checkedCount === RETAIN_VISIBILITY_ROLE_FIELDS.length;
+                return (
+                  <>
+                    <Checkbox
+                      id="retainVisibilityForRemovedParticipants-all"
+                      label="All roles"
+                      disabled={retainDisabled}
+                      checked={allChecked}
+                      indeterminate={checkedCount > 0 && !allChecked}
+                      onChange={(checked) =>
+                        patch(Object.fromEntries(RETAIN_VISIBILITY_ROLE_FIELDS.map((field) => [field, checked])))
+                      }
+                    />
+                    <div className="ml-7 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {RETAIN_VISIBILITY_ROLE_OPTIONS.map(({ field, label }) => (
+                        <Checkbox
+                          key={field}
+                          id={field}
+                          label={label}
+                          disabled={retainDisabled}
+                          checked={!!documents[field]}
+                          onChange={(checked) => patch({ [field]: checked })}
+                        />
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
+            </Group>
+          </div>
           </FormSection>
 
           {/* 1. How documents are identified and dated */}
@@ -323,6 +447,29 @@ export const DocumentPropertiesView: React.FC = () => {
                   disabled={!canManage}
                   onChange={(v) => patch({ serialNumberDigits: v })}
                 />
+                <div className="space-y-2">
+                  <Select
+                    label="How the Document Number is given"
+                    value={documents.documentNumberEntryMode ?? "AUTO"}
+                    disabled={!canManage}
+                    onChange={(value) => patch({ documentNumberEntryMode: String(value) as NumberEntryMode })}
+                    options={[
+                      { value: "AUTO", label: "Automatic" },
+                      { value: "MANUAL", label: "Manual" },
+                    ]}
+                  />
+                  <p className="text-xs text-slate-500">
+                    {documents.documentNumberEntryMode === "MANUAL"
+                      ? "The person creating the Document types the number."
+                      : "The system generates the number when the Document is first saved."}
+                  </p>
+                </div>
+                {documents.documentNumberEntryMode === "MANUAL" && (
+                  <p className="text-xs text-slate-500">
+                    The number is the Document Type's code, a dot and exactly the digits set above (for example SOP.0008). The screen warns at once when it is
+                    already used. It can be changed, with a reason, only while the Document is a Draft with no source file stored.
+                  </p>
+                )}
               </Group>
 
               <Group title="Revision number">
@@ -394,7 +541,7 @@ export const DocumentPropertiesView: React.FC = () => {
                   </p>
                 </Group>
 
-                <p className="md:col-span-2 xl:col-span-2 text-xs text-slate-500">
+                <p className="col-span-full text-xs text-slate-500">
                   Effective Date = the chosen event + the configured calendar days (0 = the same day). It is fixed when
                   the DCO publishes, using the rule in force for that document at that moment, and the rule used is
                   recorded in the Audit Trail. A date earlier than the publish day means the document is effective from
@@ -510,55 +657,6 @@ export const DocumentPropertiesView: React.FC = () => {
                   documents. These values only change how many are shown and how far back views count.
                 </p>
               </Group>
-            </div>
-          </FormSection>
-
-          {/* 4. Who can see records, and access after removal */}
-          <FormSection title="Protection & Distribution" icon={<IconFileTextShield className="h-4 w-4" />}>
-            <div className="space-y-4">
-            <Group title="Retain visibility for removed participants">
-              <p className="text-xs text-slate-500">
-                When a user is removed from one of these roles on a Document (e.g. via "Edit Revision for Upgrade"), they keep
-                read-only visibility of it based on having held that role before. Pick which roles this applies to; each is
-                independent. If none are checked, a removed participant with no other role on the Document loses visibility
-                immediately (default).
-                {(documents.documentVisibilityMode ?? DEFAULT_DOCUMENT_VISIBILITY_MODE) === "ALL_WITH_VIEW_PERMISSION"
-                  ? " Not applicable while the Record Visibility switch is off."
-                  : ""}
-              </p>
-              {(() => {
-                const retainDisabled = !canManage
-                  || (documents.documentVisibilityMode ?? DEFAULT_DOCUMENT_VISIBILITY_MODE) === "ALL_WITH_VIEW_PERMISSION";
-                const checkedCount = RETAIN_VISIBILITY_ROLE_FIELDS.filter((field) => !!documents[field]).length;
-                const allChecked = checkedCount === RETAIN_VISIBILITY_ROLE_FIELDS.length;
-                return (
-                  <>
-                    <Checkbox
-                      id="retainVisibilityForRemovedParticipants-all"
-                      label="All roles"
-                      disabled={retainDisabled}
-                      checked={allChecked}
-                      indeterminate={checkedCount > 0 && !allChecked}
-                      onChange={(checked) =>
-                        patch(Object.fromEntries(RETAIN_VISIBILITY_ROLE_FIELDS.map((field) => [field, checked])))
-                      }
-                    />
-                    <div className="ml-7 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      {RETAIN_VISIBILITY_ROLE_OPTIONS.map(({ field, label }) => (
-                        <Checkbox
-                          key={field}
-                          id={field}
-                          label={label}
-                          disabled={retainDisabled}
-                          checked={!!documents[field]}
-                          onChange={(checked) => patch({ [field]: checked })}
-                        />
-                      ))}
-                    </div>
-                  </>
-                );
-              })()}
-            </Group>
             </div>
           </FormSection>
         </div>

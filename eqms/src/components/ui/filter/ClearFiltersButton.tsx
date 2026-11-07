@@ -25,7 +25,7 @@ export function ClearFiltersButton({ onClearSearch, onClear, disabled, className
       size="sm"
       onClick={clearSearchAndFilters(onClearSearch, onClear)}
       disabled={disabled}
-      className={cn("h-9 gap-2 whitespace-nowrap px-4 font-medium transition-all duration-200 hover:border-red-600 hover:bg-red-600 hover:text-white disabled:opacity-40", className)}
+      className={cn("h-9 shrink-0 gap-2 whitespace-nowrap px-4 font-medium transition-all duration-200 hover:border-red-600 hover:bg-red-600 hover:text-white disabled:opacity-40", className)}
     >
       Clear Filters
     </Button>

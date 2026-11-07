@@ -38,6 +38,17 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
     private final TrainingSettingsService settings;
     @PersistenceContext
     private EntityManager entityManager;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.eqms.service.PermissionEvaluationService permissions;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.eqms.auth.CurrentUserService currentUsers;
+
+    /** What the person typed during this document save (empty string = a screen that offers the field but nothing was typed); null outside such a save. */
+    private static final ThreadLocal<String> TYPED_NUMBER = new ThreadLocal<>();
+
+    private boolean manualNumbers() {
+        return "MANUAL".equals(settings.trainingNumberEntryMode());
+    }
 
     /** Lazy: the evidence service reaches Document Control's signature code, which reaches this door back. */
     private final TrainingLegacyEvidenceService legacyEvidence;
@@ -56,6 +67,20 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
     // ------------------------------------------------------------------------------------------------------------------------------------------
 
     @Override
+    public void onDocumentSaved(DocumentRecord document, UserAccount actor, String typedTrainingNumber) {
+        boolean typed = typedTrainingNumber != null && !typedTrainingNumber.isBlank();
+        if (typed && !manualNumbers()) {
+            throw new IllegalArgumentException("Training numbers are issued by the system; a Training Number cannot be typed.");
+        }
+        TYPED_NUMBER.set(typed ? typedTrainingNumber.trim() : "");
+        try {
+            onDocumentSaved(document, actor);
+        } finally {
+            TYPED_NUMBER.remove();
+        }
+    }
+
+    @Override
     public void onDocumentSaved(DocumentRecord document, UserAccount actor) {
         if (document == null || document.getId() == null || document.isTemplate()) return;
         // The document row must exist before the activity row points at it.
@@ -69,6 +94,10 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
             if (pending.isEmpty()) {
                 // A document that another one lists as related goes with it: it takes the Training Number of that one when its revision is created, not a number of its own.
                 if (leadFor(document.getId()).isPresent()) return;
+                // A screen that lets the person type the number (manual mode) must have received one: the system does not pick it instead.
+                if (manualNumbers() && TYPED_NUMBER.get() != null && TYPED_NUMBER.get().isEmpty()) {
+                    throw new IllegalArgumentException("Enter the Training Number: training numbers are typed by hand.");
+                }
                 createForDocument(document, null, document.getTrainingPeriodDays(), actor);
                 pending = store.pendingByDocument(document.getId());
             } else {
@@ -386,10 +415,76 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         recordSignatories(justApproved, id, approvedOn);
     }
 
+    /** The statuses of an activity whose Training Number may still be changed by hand: it has not opened, so nothing outside has used the number. */
+    private static final Set<String> NUMBER_CHANGEABLE = Set.of("RESERVED", "PLANNED");
+
+    public String entryMode() {
+        return manualNumbers() ? "MANUAL" : "AUTO";
+    }
+
+    public record NumberState(boolean manual, boolean editable, String reasonCode, String message, UUID departmentId) {}
+
+    private NumberState numberState(UUID activityId, UserAccount actor) {
+        Optional<Map<String, Object>> found = store.activity(activityId);
+        if (found.isEmpty()) throw new IllegalArgumentException("Training activity not found");
+        Map<String, Object> activity = found.get();
+        UUID department = (UUID) activity.get("organizer_department_id");
+        if (!manualNumbers()) return new NumberState(false, false, "TRAINING_NUMBER_MANUAL_OFF", "Training numbers are issued by the system.", department);
+        if (activity.get("parent_activity_id") != null || !NUMBER_CHANGEABLE.contains(String.valueOf(activity.get("status")))) {
+            return new NumberState(true, false, "TRAINING_NUMBER_LOCKED", "The Training Number can no longer be changed: the training has opened.", department);
+        }
+        UUID documentId = (UUID) activity.get("document_id");
+        boolean allowed = documentId == null;
+        if (documentId != null) {
+            List<Map<String, Object>> rows = jdbc.queryForList("select author_user_id, owner_user_id from documents where id=?", documentId);
+            if (!rows.isEmpty()) {
+                allowed = actor.getId().equals(rows.getFirst().get("author_user_id")) || actor.getId().equals(rows.getFirst().get("owner_user_id"))
+                        || (permissions != null && permissions.hasPermission(actor, "documents.workspace.manage"));
+            }
+        }
+        if (!allowed) return new NumberState(true, false, "TRAINING_NUMBER_NOT_ALLOWED", "You are not allowed to change this Training Number.", department);
+        return new NumberState(true, true, null, null, department);
+    }
+
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public NumberState numberState(UUID activityId) {
+        return numberState(activityId, currentUsers.requireCurrentUser());
+    }
+
+    /** Changes the Training Number of an activity that has not opened (and of its revision), for a reason that goes to the Audit Trail. */
+    @org.springframework.transaction.annotation.Transactional
+    public void changeNumber(UUID activityId, String typed, String reason) {
+        UserAccount actor = currentUsers.requireCurrentUser();
+        NumberState state = numberState(activityId, actor);
+        if (!state.editable()) {
+            if ("TRAINING_NUMBER_NOT_ALLOWED".equals(state.reasonCode())) throw new org.springframework.security.access.AccessDeniedException(state.message());
+            throw new IllegalStateException(state.reasonCode() + ": " + state.message());
+        }
+        if (reason == null || reason.isBlank()) throw new IllegalArgumentException("A reason is required to change the Training Number.");
+        TrainingNumberService.Check check = numbers.check(state.departmentId(), typed, activityId);
+        if (!check.valid()) throw new IllegalArgumentException(check.message());
+        Map<String, Object> activity = store.activity(activityId).orElseThrow();
+        String old = String.valueOf(activity.get("training_number"));
+        if (old.equalsIgnoreCase(check.number())) return;
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("^TRN/[A-Z0-9]+/([0-9]{2})-([0-9]+)$").matcher(check.number());
+        m.matches();
+        jdbc.update("update training_activities set training_number=?, base_number=?, year=?, serial=?, version=version+1, updated_at=now() where id=?",
+                check.number(), check.number(), 2000 + Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), activityId);
+        jdbc.update("update document_revisions set training_number=? where training_activity_id=?", check.number(), activityId);
+        numbers.reserveFromPaper(check.number());
+        store.event(TrainingStore.OBJECT_ACTIVITY, activityId, activityId, "NUMBER_CHANGED", Map.of("from", old, "to", check.number()), actor.getId());
+        store.auditActivity(actor, store.activity(activityId).orElseThrow(), "TRAINING_NUMBER_CHANGED", String.valueOf(activity.get("status")), String.valueOf(activity.get("status")),
+                "Training Number changed by hand. Reason: " + reason.trim(),
+                java.util.List.of(new com.eqms.dto.audittrail.AuditTrailChangeResponse("Training Number", old, check.number())));
+    }
+
     private void createForDocument(DocumentRecord document, DocumentRevisionRecord revision, int days, UserAccount actor) {
         if (document.getDepartment() == null || document.getDepartment().getId() == null) throw new IllegalArgumentException("TRAINING_DEPARTMENT_NOT_FOUND");
         UUID id = UUID.randomUUID();
-        TrainingNumberService.Issued issued = numbers.issueRoot(document.getDepartment().getId());
+        String typedNumber = TYPED_NUMBER.get();
+        TrainingNumberService.Issued issued = typedNumber != null && !typedNumber.isEmpty()
+                ? numbers.useTyped(document.getDepartment().getId(), typedNumber, null)
+                : numbers.issueRoot(document.getDepartment().getId());
         boolean first = revision == null
                 ? Boolean.TRUE
                 : jdbc.queryForObject("select count(*) from document_revisions where document_id=? and id<>?", Integer.class, document.getId(), revision.getId()) == 0;

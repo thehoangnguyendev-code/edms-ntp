@@ -554,7 +554,8 @@ public class DictionaryManagementService {
     }
 
     private String describeBusinessUnit(BusinessUnit businessUnit) {
-        return businessUnit == null ? null : businessUnit.getName() + " (" + safeText(businessUnit.getCode()) + ")";
+        return businessUnit == null ? null : businessUnit.getName() + " (" + safeText(businessUnit.getCode()) + ")"
+                + (businessUnit.getHeadOfUnit() == null ? "" : ", Head of Unit: " + businessUnit.getHeadOfUnit().getFullName());
     }
 
     private String describeDepartment(Department department) {
@@ -590,6 +591,10 @@ public class DictionaryManagementService {
         businessUnit.setCode(normalizeCode(request.abbreviation()));
         businessUnit.setDescription(trimToNull(request.description()));
         businessUnit.setActive(request.isActive() == null || request.isActive());
+        businessUnit.setIconColor(normalizeIconColor(request.iconColor()));
+        businessUnit.setHeadOfUnit(request.headOfUnitId() == null ? null
+                : userAccountRepository.findById(request.headOfUnitId())
+                        .orElseThrow(() -> new EntityNotFoundException("Selected Head of Unit user not found")));
     }
 
     private void applyDepartment(Department department, DepartmentDictionaryRequest request, BusinessUnit businessUnit) {
@@ -602,6 +607,19 @@ public class DictionaryManagementService {
                 : userAccountRepository.findById(request.departmentHeadId())
                         .orElseThrow(() -> new EntityNotFoundException("Selected Department Head user not found")));
         department.setPrimaryContactPhone(trimToNull(request.primaryContactPhone()));
+        department.setIconColor(normalizeIconColor(request.iconColor()));
+    }
+
+    /** The colour of a folder as #rrggbb; empty means an automatic colour. */
+    private String normalizeIconColor(String value) {
+        String color = trimToNull(value);
+        if (color == null) {
+            return null;
+        }
+        if (!color.matches("#[0-9a-fA-F]{6}")) {
+            throw new IllegalArgumentException("Folder colour must be a colour such as #2563eb");
+        }
+        return color.toLowerCase(java.util.Locale.ROOT);
     }
 
     private void applyPosition(Position position, PositionDictionaryRequest request, BusinessUnit businessUnit, Department department) {
@@ -665,7 +683,11 @@ public class DictionaryManagementService {
                 businessUnit.isActive(),
                 formatDateTime(businessUnit.getCreatedAt()),
                 formatDateTime(businessUnit.getUpdatedAt()),
-                departmentRepository.countByBusinessUnit_Id(businessUnit.getId())
+                departmentRepository.countByBusinessUnit_Id(businessUnit.getId()),
+                businessUnit.getHeadOfUnit() == null ? null : businessUnit.getHeadOfUnit().getId(),
+                businessUnit.getHeadOfUnit() == null ? null : businessUnit.getHeadOfUnit().getFullName(),
+                businessUnit.getHeadOfUnit() == null ? null : businessUnit.getHeadOfUnit().getEmployeeCode(),
+                businessUnit.getIconColor()
         );
     }
 
@@ -682,7 +704,9 @@ public class DictionaryManagementService {
                 positionRepository.countByDepartment_Id(department.getId()),
                 department.getDepartmentHead() == null ? null : department.getDepartmentHead().getId(),
                 department.getDepartmentHead() == null ? null : department.getDepartmentHead().getFullName(),
-                department.getPrimaryContactPhone()
+                department.getDepartmentHead() == null ? null : department.getDepartmentHead().getEmployeeCode(),
+                department.getPrimaryContactPhone(),
+                department.getIconColor()
         );
     }
 

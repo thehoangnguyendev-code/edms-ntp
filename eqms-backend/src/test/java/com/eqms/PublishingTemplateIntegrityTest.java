@@ -27,7 +27,6 @@ class PublishingTemplateIntegrityTest {
 
     @Mock com.eqms.repository.PublishingTemplateRepository templateRepository;
     @Mock com.eqms.repository.PublishingTemplateComponentRepository componentRepository;
-    @Mock com.eqms.repository.PublishingTemplateVersionRepository versionRepository;
     @Mock com.eqms.service.FileStorageService fileStorageService;
     @Mock com.eqms.auth.CurrentUserService currentUserService;
     @Mock com.eqms.service.AuditTrailService auditTrailService;
@@ -47,24 +46,6 @@ class PublishingTemplateIntegrityTest {
         template.setHeaderPageFrom(2);
         template.setFooterPageFrom(2);
         return template;
-    }
-
-    @Test
-    void publishedTemplate_cannotBeEdited() {
-        PublishingTemplate published = template(Instant.now());
-        when(templateRepository.findById(published.getId())).thenReturn(Optional.of(published));
-
-        RevisionLifecycleConflictException ex = assertThrows(RevisionLifecycleConflictException.class,
-                () -> service.requireEditable(published.getId()));
-        assertEquals("PUBLISHING_TEMPLATE_PUBLISHED_IMMUTABLE", ex.getCode());
-    }
-
-    @Test
-    void unpublishedTemplate_canBeEdited() {
-        PublishingTemplate draft = template(null);
-        when(templateRepository.findById(draft.getId())).thenReturn(Optional.of(draft));
-
-        service.requireEditable(draft.getId());
     }
 
     @Test

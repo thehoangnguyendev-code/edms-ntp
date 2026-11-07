@@ -76,12 +76,6 @@ public class PublishingTemplateController {
         return ResponseEntity.ok(service.getTemplate(id));
     }
 
-    @GetMapping("/{id}/versions")
-    public ResponseEntity<List<PublishingTemplateVersionResponse>> getVersions(@PathVariable UUID id) {
-        requireViewPermission();
-        return ResponseEntity.ok(service.getVersionHistory(id));
-    }
-
     @GetMapping("/placeholders")
     public ResponseEntity<PublishingPlaceholderCatalogResponse> getAvailablePlaceholders(
             @RequestParam(required = false) String search
@@ -106,7 +100,6 @@ public class PublishingTemplateController {
             @RequestBody List<PublishingPlaceholderStyleRequest> request
     ) {
         requireEditPermission();
-        service.requireEditable(id);
         return ResponseEntity.ok(placeholderStyleService.upsertStyles(id, request));
     }
 
@@ -118,7 +111,6 @@ public class PublishingTemplateController {
             @PathVariable String placeholderKey
     ) {
         requireEditPermission();
-        service.requireEditable(id);
         placeholderStyleService.deleteStyle(id, componentType, layout, placeholderKey);
         return ResponseEntity.noContent().build();
     }
@@ -139,12 +131,6 @@ public class PublishingTemplateController {
     public ResponseEntity<PublishingTemplateResponse> duplicateTemplate(@PathVariable UUID id) {
         requireEditPermission();
         return ResponseEntity.ok(service.duplicateTemplate(id));
-    }
-
-    @PostMapping("/{id}/new-version")
-    public ResponseEntity<PublishingTemplateResponse> createNewVersion(@PathVariable UUID id) {
-        requireEditPermission();
-        return ResponseEntity.ok(service.createNewVersion(id));
     }
 
     @PostMapping("/{id}/toggle-status")
@@ -228,15 +214,6 @@ public class PublishingTemplateController {
     ) {
         requireViewPermission();
         return ResponseEntity.ok(inspectionService.inspectComponent(id, componentType, layout, revisionId));
-    }
-
-    @PostMapping("/{id}/publish")
-    public ResponseEntity<PublishingTemplateResponse> publishTemplate(
-            @PathVariable UUID id,
-            @RequestBody(required = false) java.util.Map<String, String> request
-    ) {
-        requireEditPermission();
-        return ResponseEntity.ok(service.publishTemplate(id, request == null ? null : request.get("changeSummary")));
     }
 
     private void requireViewPermission() {

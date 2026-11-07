@@ -51,7 +51,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
       )}
     >
       {/* Title + Breadcrumb */}
-      <div className="w-full sm:w-auto sm:flex-1 min-w-0 overflow-hidden flex items-start gap-3">
+      {/* The title asks for 20rem; when the actions do not fit beside it (a narrow content area next to the open sidebar), they wrap under it instead of squeezing the title. */}
+      <div className="w-full sm:w-auto sm:flex-[1_1_20rem] min-w-0 overflow-hidden flex items-start gap-3">
         {onBack && (
           <button 
             type="button"
@@ -70,7 +71,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
 
       {/* Actions */}
       {actions && (
-        <div className="flex items-center flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
+        <div className="flex items-center flex-wrap gap-2 w-full sm:w-auto sm:ml-auto justify-start sm:justify-end">
           {actions}
         </div>
       )}

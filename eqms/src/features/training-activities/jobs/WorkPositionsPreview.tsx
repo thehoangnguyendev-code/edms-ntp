@@ -61,7 +61,7 @@ export function WorkPositionsPreview({ assignmentId, personId, personName, posit
           <FilterSearchInput aria-label="Search work positions" value={search} onChange={(value) => { setSearch(value); setPage(1); setResults([]); setHasMore(false); }} placeholder="Search work positions…" />
         </div>
         <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4" aria-busy={loading}>
-          {results.length > 0 && <ol data-record-list className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+          {results.length > 0 && <ol className="divide-y divide-slate-100 rounded-lg border border-slate-200">
             {results.map((position, index) => <li key={position.id} className="flex items-start gap-3 px-3 py-3"><span className="w-7 shrink-0 text-right text-sm font-medium leading-5 tabular-nums text-slate-500">{index + 1}.</span><div className="min-w-0 flex-1"><p className="break-words text-sm font-medium leading-5 text-slate-800">{position.name}</p>{position.department && <p className="mt-1 text-xs text-slate-500">{position.department}</p>}</div>{position.carried && <Badge color="slate">Held before</Badge>}</li>)}
           </ol>}
           {loading && <SectionLoading text="Loading work positions…" />}

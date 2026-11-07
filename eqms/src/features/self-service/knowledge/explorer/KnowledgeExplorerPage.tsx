@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Bell, BellOff, Copy, ExternalLink, FolderOpen, Sparkles, Star, ThumbsUp } from "lucide-react";
-import { ROUTES } from "@/app/routes.constants";
+import { Bell, BellOff, Copy, ExternalLink, FolderOpen, Info, Share2, Sparkles, Star, ThumbsUp } from "lucide-react";
 import { useBranding } from "@/components/branding/BrandLogo";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/components/ui/utils";
@@ -13,13 +12,17 @@ import {
   type KnowledgeBrowseResult,
   type KnowledgePortalDocument,
   type KnowledgePortalOverview,
+  type SharingManaged,
 } from "@/services/api/knowledge";
 import { ExplorerContextMenu, type ContextMenuAction } from "./ExplorerContextMenu";
-import { ExplorerInspector, type InspectorTarget } from "./ExplorerInspector";
+import { ExplorerDetailsModal } from "./ExplorerDetailsModal";
+import type { InspectorTarget } from "./ExplorerInspector";
+import { FolderStylesProvider, TypeIconsProvider, folderStyleKeys, typeIconKey, type FolderStyleOf, type TypeIcon } from "./ExplorerIcons";
 import { ExplorerEmpty, ExplorerItems, ExplorerLoading } from "./ExplorerItems";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { ExplorerSidebar } from "./ExplorerSidebar";
 import { ExplorerToolbar } from "./ExplorerToolbar";
+import { ShareDialog, type ShareTarget } from "./ShareDialog";
 import { ExplorerWidgets } from "./ExplorerWidgets";
 import {
   buildCrumbs,
@@ -27,7 +30,8 @@ import {
   navKey,
   parentOf,
   DEFAULT_SORT_DIR,
-  PAGE_SIZE,
+  PAGE_SIZE_OPTIONS,
+  DEFAULT_PAGE_SIZE,
   serverSortKey,
   sortFolders,
   SMART_LABELS,
@@ -38,7 +42,8 @@ import {
   type SortKey,
   type ViewMode,
 } from "./explorerModel";
-import { openKnowledgePreview } from "./openExplorer";
+import { openKnowledgePreview, openKnowledgeSuggestion } from "./openExplorer";
+import { pageBackgroundCss } from "@/config/page-background";
 import { useMediaQuery } from "./useMediaQuery";
 import { APP_SIDEBAR_COLLAPSED_WIDTH, APP_SIDEBAR_WIDTH } from "@/components/layout/sidebar/sidebarWidths";
 
@@ -46,6 +51,7 @@ const VIEW_STORAGE_KEY = "eqms.knowledgeExplorer.view";
 const WIDGETS_STORAGE_KEY = "eqms.knowledgeExplorer.widgets";
 
 const SIDEBAR_STORAGE_KEY = "eqms.knowledgeExplorer.sidebar";
+const PAGE_SIZE_STORAGE_KEY = "eqms.knowledgeExplorer.pageSize";
 const MIN_SEARCH_LENGTH = 3;
 
 const readStored = (key: string): string | null => {
@@ -63,7 +69,8 @@ type Status = "loading" | "ready" | "error";
 interface MenuState { x: number; y: number; selection: Exclude<Selection, null> }
 
 export const KnowledgeExplorerPage: React.FC = () => {
-  const navigate = useNavigate();
+  // A link made by a Head opens the explorer at a folder: ?kb=<key>&kbLabel=<name>&path=<key>,<key>&hierarchyId=<id>
+  const [searchParams] = useSearchParams();
   const reduceMotion = useReducedMotion();
   const { showToast } = useToast();
   const { user } = useAuth();
@@ -71,17 +78,21 @@ export const KnowledgeExplorerPage: React.FC = () => {
   const branding = useBranding();
   const canFeature = hasPermissionAlias("documents.admin.knowledge_categories.manage");
 
-  const isWide = useMediaQuery("(min-width: 1280px)");
   const isMedium = useMediaQuery("(min-width: 768px)");
   const isTouch = useMediaQuery("(pointer: coarse)");
   const singleTapOpen = isTouch || !isMedium;
 
-  const [hierarchyId, setHierarchyId] = useState<string | undefined>(undefined);
+  const [hierarchyId, setHierarchyId] = useState<string | undefined>(() => searchParams.get("hierarchyId") ?? undefined);
   const [overview, setOverview] = useState<KnowledgePortalOverview | null>(null);
   const [overviewStatus, setOverviewStatus] = useState<Status>("loading");
   const [overviewVersion, setOverviewVersion] = useState(0);
 
-  const [history, setHistory] = useState<{ stack: ExplorerNav[]; index: number }>({ stack: [{ kind: "home" }], index: 0 });
+  const [history, setHistory] = useState<{ stack: ExplorerNav[]; index: number }>(() => {
+    const kbKey = searchParams.get("kb");
+    if (!kbKey) return { stack: [{ kind: "home" }], index: 0 };
+    const path = (searchParams.get("path") ?? "").split(",").filter(Boolean);
+    return { stack: [{ kind: "home" }, { kind: "kb", kb: { key: kbKey, label: searchParams.get("kbLabel") ?? kbKey }, path }], index: 1 };
+  });
   const nav = history.stack[history.index];
   const [direction, setDirection] = useState<1 | -1>(1);
 
@@ -103,24 +114,75 @@ export const KnowledgeExplorerPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>(() => (readStored(VIEW_STORAGE_KEY) === "list" ? "list" : "grid"));
   const [widgetsVisible, setWidgetsVisible] = useState<boolean>(() => readStored(WIDGETS_STORAGE_KEY) !== "off");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readStored(SIDEBAR_STORAGE_KEY) === "collapsed");
+  // While the sidebar opens or closes the main column changes width every frame; the items must follow it, not each animate to a new place.
+  const [sidebarMoving, setSidebarMoving] = useState(false);
+  const sidebarMovingTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(sidebarMovingTimer.current), []);
 
   const [selection, setSelection] = useState<Selection>(null);
-  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [typeIcons, setTypeIcons] = useState<ReadonlyMap<string, TypeIcon>>(new Map());
+  const [folderStyles, setFolderStyles] = useState<ReadonlyMap<string, FolderStyleOf>>(new Map());
+  const [pageSize, setPageSize] = useState<number>(() => {
+    const stored = Number(readStored(PAGE_SIZE_STORAGE_KEY));
+    return PAGE_SIZE_OPTIONS.includes(stored) ? stored : DEFAULT_PAGE_SIZE;
+  });
   const [menuOpen, setMenuOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<MenuState | null>(null);
+  /** The Departments the user may share (a Department Head); empty for everyone else, who then never see "Share". */
+  const [managed, setManaged] = useState<SharingManaged>({ departmentIds: [], businessUnitIds: [] });
+  const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null);
+  const canShare = managed.departmentIds.length > 0 || managed.businessUnitIds.length > 0;
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    knowledgeApi.sharingManaged().then((result) => { if (alive) setManaged(result); }).catch(() => { if (alive) setManaged({ departmentIds: [], businessUnitIds: [] }); });
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => { document.title = `${branding.systemDisplayName || "EQMS"} · Knowledge Base`; }, [branding.systemDisplayName]);
 
   const explorerGridTemplateColumns = useMemo(() => {
     if (!isMedium) return "minmax(0, 1fr)";
     const sidebarWidth = sidebarCollapsed ? `${APP_SIDEBAR_COLLAPSED_WIDTH}px` : `${APP_SIDEBAR_WIDTH}px`;
-    return isWide ? `${sidebarWidth} minmax(0, 1fr) 22rem` : `${sidebarWidth} minmax(0, 1fr)`;
-  }, [isMedium, isWide, sidebarCollapsed]);
+    return `${sidebarWidth} minmax(0, 1fr)`;
+  }, [isMedium, sidebarCollapsed]);
 
   // ---- data -------------------------------------------------------------------------------
+  // the colour and the abbreviation of each Business Unit, Department and Document Type, as folders (Dictionaries); read once
+  useEffect(() => {
+    let alive = true;
+    knowledgeApi.folderStyles()
+      .then((list) => {
+        if (!alive) return;
+        const styles = new Map<string, FolderStyleOf>();
+        list.forEach((f) => {
+          const [byId, byName] = folderStyleKeys(f.id, f.name);
+          const style = { color: f.color, abbreviation: f.abbreviation };
+          styles.set(byId, style);
+          if (!styles.has(byName)) styles.set(byName, style);
+        });
+        setFolderStyles(styles);
+      })
+      .catch(() => { /* the automatic colours and the full names are used */ });
+    return () => { alive = false; };
+  }, []);
+
+  // the icon each Document Type was designed with (Document Types administration); read once
+  useEffect(() => {
+    let alive = true;
+    knowledgeApi.documentTypeIcons()
+      .then((list) => {
+        if (!alive) return;
+        setTypeIcons(new Map(list.map((t) => [typeIconKey(t.name), { label: t.iconLabel, color: t.iconColor, shortCode: t.shortCode }])));
+      })
+      .catch(() => { /* the automatic icons are used */ });
+    return () => { alive = false; };
+  }, []);
+
   useEffect(() => {
     let alive = true;
     knowledgeApi.overview(hierarchyId)
@@ -138,7 +200,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
     if (nav.kind !== "kb") { setBrowse(null); setBrowseStatus("ready"); return undefined; }
     let alive = true;
     setBrowseStatus("loading");
-    knowledgeApi.browse(activeHierarchyId, nav.kb.key, nav.path, { page, limit: PAGE_SIZE, sortBy: serverSortKey(sort), sortDirection: sortDir })
+    knowledgeApi.browse(activeHierarchyId, nav.kb.key, nav.path, { page, limit: pageSize, sortBy: serverSortKey(sort), sortDirection: sortDir })
       .then((result) => { if (alive) { setBrowse(result); setBrowseStatus("ready"); } })
       .catch((error) => {
         if (!alive) return;
@@ -146,7 +208,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
         showToast({ type: "error", title: "Failed to load", message: errorMessage(error, "Unable to open this folder.") });
       });
     return () => { alive = false; };
-  }, [nav, activeHierarchyId, browseVersion, page, sort, sortDir, showToast]);
+  }, [nav, activeHierarchyId, browseVersion, page, pageSize, sort, sortDir, showToast]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -161,13 +223,13 @@ export const KnowledgeExplorerPage: React.FC = () => {
     if (!searchTerm && !collection) { setSearchResults([]); setSearchTotal(0); setSearchStatus("ready"); return undefined; }
     let alive = true;
     setSearchStatus("loading");
-    knowledgeApi.queryDocuments({ search: searchTerm || undefined, collection: searchTerm ? undefined : collection, page, limit: PAGE_SIZE,
+    knowledgeApi.queryDocuments({ search: searchTerm || undefined, collection: searchTerm ? undefined : collection, page, limit: pageSize,
       sortBy: sortTouched ? serverSortKey(sort) : !searchTerm && collection ? (collection === "useful" ? "helpful" : "views") : "name",
       sortDirection: sortTouched ? sortDir : !searchTerm && collection ? "desc" : "asc" })
       .then((result) => { if (alive) { setSearchResults(result.documents); setSearchTotal(result.totalDocuments); setSearchStatus("ready"); } })
       .catch(() => { if (alive) { setSearchResults([]); setSearchTotal(0); setSearchStatus("error"); } });
     return () => { alive = false; };
-  }, [searchTerm, searchVersion, nav, page, sort, sortDir, sortTouched]);
+  }, [searchTerm, searchVersion, nav, page, pageSize, sort, sortDir, sortTouched]);
 
   const refreshAll = useCallback(() => {
     setOverviewVersion((v) => v + 1);
@@ -178,7 +240,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
   // ---- navigation -------------------------------------------------------------------------
   const clearTransient = useCallback(() => {
     setSelection(null);
-    setInspectorOpen(false);
+    setDetailsOpen(false);
     setMenuOpen(false);
     setContextMenu(null);
     setSearchInput("");
@@ -264,7 +326,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
   const loading = searching ? !shortQuery && (searchPending || searchStatus === "loading") : smartDocuments ? searchStatus === "loading" : nav.kind === "kb" ? browseStatus === "loading" && !browse : overviewStatus === "loading";
   const failed = searching ? !shortQuery && !searchPending && searchStatus === "error" : smartDocuments ? searchStatus === "error" : nav.kind === "kb" ? browseStatus === "error" : overviewStatus === "error";
   const itemCount = content.folders.length + content.totalDocs;
-  const totalPages = Math.max(1, Math.ceil(content.totalDocs / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(content.totalDocs / pageSize));
   // The list shrank (another search, a refresh): never sit on a page that no longer exists.
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
 
@@ -280,7 +342,21 @@ export const KnowledgeExplorerPage: React.FC = () => {
   }, [chooseSort, sort, sortDir]);
   const showWidgets = nav.kind === "home" && !searchInput && widgetsVisible && overview !== null && overviewStatus === "ready";
 
-  const crumbs = buildCrumbs(nav, browse?.path, searchActive ? searchTerm : searching ? searchInput.trim() : undefined);
+  const folderStylesValue = useMemo(() => ({
+    styles: folderStyles,
+    abbreviate: branding.knowledgeFolderNames === "ABBREVIATION",
+    abbreviateSidebar: (branding.knowledgeSidebarFolderNames ?? branding.knowledgeFolderNames) === "ABBREVIATION",
+  }), [folderStyles, branding.knowledgeFolderNames, branding.knowledgeSidebarFolderNames]);
+  const builtCrumbs = buildCrumbs(nav, browse?.path, searchActive ? searchTerm : searching ? searchInput.trim() : undefined);
+  // the folders of the path are named as the folders themselves are (full name or abbreviation); the full name stays the label of the crumb for the title
+  const crumbs = nav.kind === "kb" && !searching && folderStylesValue.abbreviate
+    ? builtCrumbs.map((crumb, index) => {
+        if (index === 0) return crumb;
+        const key = browse?.path?.[index - 1]?.key ?? nav.kb.key;
+        const style = folderStylesValue.styles.get(folderStyleKeys(key, crumb.label)[0]) ?? folderStylesValue.styles.get(folderStyleKeys(key, crumb.label)[1]);
+        return style?.abbreviation ? { ...crumb, label: style.abbreviation } : crumb;
+      })
+    : builtCrumbs;
   const locationTitle = searching ? "Search results" : nav.kind === "home" ? "Knowledge Base" : nav.kind === "smart" ? SMART_LABELS[nav.key] : crumbs[crumbs.length - 1]?.label ?? nav.kb.label;
 
   // ---- actions ----------------------------------------------------------------------------
@@ -302,7 +378,6 @@ export const KnowledgeExplorerPage: React.FC = () => {
 
   const select = useCallback((sel: Exclude<Selection, null>) => {
     setSelection(sel);
-    if (sel.type === "doc") setInspectorOpen(true);
   }, []);
 
   const selectDocument = useCallback((item: KnowledgePortalDocument) => select({ type: "doc", id: item.document.id }), [select]);
@@ -350,6 +425,18 @@ export const KnowledgeExplorerPage: React.FC = () => {
     }
   }, [showToast]);
 
+  const shareFolder = useCallback((folder: FolderEntry) => {
+    if (folder.isKnowledgeBase) {
+      setShareTarget({ kind: "folder", hierarchyId: activeHierarchyId, knowledgeBase: folder.key, path: [], label: folder.label });
+    } else if (nav.kind === "kb") {
+      setShareTarget({ kind: "folder", hierarchyId: activeHierarchyId, knowledgeBase: nav.kb.key, path: [...nav.path, folder.key], label: folder.label });
+    }
+  }, [activeHierarchyId, nav]);
+
+  const shareDocument = useCallback((item: KnowledgePortalDocument) => {
+    setShareTarget({ kind: "document", documentId: item.document.id, label: `${item.document.documentNumber} - ${item.document.documentName}` });
+  }, []);
+
   const openContextMenu = useCallback((event: React.MouseEvent, sel: Exclude<Selection, null>) => {
     event.preventDefault();
     setSelection(sel);
@@ -362,7 +449,13 @@ export const KnowledgeExplorerPage: React.FC = () => {
     if (sel.type === "folder") {
       const folder = content.folders.find((f) => f.key === sel.key);
       if (!folder) return [];
-      const actions: ContextMenuAction[] = [{ id: "open", label: "Open folder", icon: <FolderOpen className="h-4 w-4" />, onSelect: () => openSelection(sel) }];
+      const actions: ContextMenuAction[] = [
+        { id: "open", label: "Open folder", icon: <FolderOpen className="h-4 w-4" />, onSelect: () => openSelection(sel) },
+        { id: "details", label: "View Details", icon: <Info className="h-4 w-4" />, onSelect: () => setDetailsOpen(true) },
+      ];
+      if (canShare) {
+        actions.push({ id: "share", label: "Share...", icon: <Share2 className="h-4 w-4" />, separatorBefore: true, onSelect: () => shareFolder(folder) });
+      }
       if (folder.isKnowledgeBase) {
         actions.push({ id: "subscribe", label: folder.subscribed ? "Unsubscribe" : "Subscribe to new documents", icon: folder.subscribed ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />, onSelect: () => void toggleSubscribe(folder.key) });
       }
@@ -371,13 +464,15 @@ export const KnowledgeExplorerPage: React.FC = () => {
     const item = knownDocuments.get(sel.id);
     if (!item) return [];
     const actions: ContextMenuAction[] = [
-      { id: "open", label: "Open document", icon: <ExternalLink className="h-4 w-4" />, onSelect: () => openSelection(sel) },
-      { id: "helpful", label: item.myFeedback ? "Remove my helpful vote" : "Mark as helpful", icon: <ThumbsUp className="h-4 w-4" />, onSelect: () => void toggleHelpful(item) },
+      { id: "open", label: "Open Document", icon: <ExternalLink className="h-4 w-4" />, onSelect: () => openSelection(sel) },
+      { id: "details", label: "View Details", icon: <Info className="h-4 w-4" />, onSelect: () => setDetailsOpen(true) },
+      { id: "helpful", label: item.myFeedback ? "Remove My Helpful Vote" : "Mark As Helpful", icon: <ThumbsUp className="h-4 w-4" />, onSelect: () => void toggleHelpful(item) },
     ];
-    if (canFeature) actions.push({ id: "feature", label: item.featured ? "Remove from Featured" : "Feature this document", icon: <Star className="h-4 w-4" />, onSelect: () => void toggleFeatured(item) });
-    actions.push({ id: "copy", label: "Copy document number", icon: <Copy className="h-4 w-4" />, separatorBefore: true, onSelect: () => void copyNumber(item) });
+    if (canFeature) actions.push({ id: "feature", label: item.featured ? "Remove From Featured" : "Feature This document", icon: <Star className="h-4 w-4" />, onSelect: () => void toggleFeatured(item) });
+    if (canShare) actions.push({ id: "share", label: "Share", icon: <Share2 className="h-4 w-4" />, separatorBefore: true, onSelect: () => shareDocument(item) });
+    actions.push({ id: "copy", label: "Copy Document Number", icon: <Copy className="h-4 w-4" />, separatorBefore: true, onSelect: () => void copyNumber(item) });
     return actions;
-  }, [contextMenu, content.folders, knownDocuments, canFeature, openSelection, toggleSubscribe, toggleHelpful, toggleFeatured, copyNumber]);
+  }, [contextMenu, content.folders, knownDocuments, canFeature, canShare, openSelection, shareFolder, shareDocument, toggleSubscribe, toggleHelpful, toggleFeatured, copyNumber]);
 
   // ---- keyboard ---------------------------------------------------------------------------
   const orderedKeys = useMemo(() => [
@@ -392,7 +487,6 @@ export const KnowledgeExplorerPage: React.FC = () => {
     if (event.key === "Escape") {
       if (contextMenu) { setContextMenu(null); return; }
       if (menuOpen) { setMenuOpen(false); return; }
-      if (inspectorOpen && !isWide) { setInspectorOpen(false); return; }
       if (searchInput) { setSearchInput(""); setSearchTerm(""); return; }
       return;
     }
@@ -405,7 +499,6 @@ export const KnowledgeExplorerPage: React.FC = () => {
     const current = orderedKeys.findIndex((o) => selection && o.sel.type === selection.type && (selection.type === "doc" ? o.sel.type === "doc" && o.sel.id === selection.id : o.sel.type === "folder" && o.sel.key === selection.key));
     const next = orderedKeys[current < 0 ? 0 : (current + step + orderedKeys.length) % orderedKeys.length];
     setSelection(next.sel);
-    if (next.sel.type === "doc" && isWide) setInspectorOpen(true);
     const el = scrollRef.current?.querySelector<HTMLElement>(`[data-item="${next.id.replace(/"/g, '\\"')}"]`);
     el?.focus({ preventScroll: true });
     el?.scrollIntoView?.({ block: "nearest" });
@@ -424,28 +517,19 @@ export const KnowledgeExplorerPage: React.FC = () => {
     return { type: "location", title: locationTitle, itemCount };
   })();
 
-  const inspector = (overlay: boolean) => (
-    <ExplorerInspector
-      target={inspectorTarget}
-      canFeature={canFeature}
-      onOpenDocument={openKnowledgePreview}
-      onOpenFolder={(folder) => go(folderTarget(folder))}
-      onToggleHelpful={(item) => void toggleHelpful(item)}
-      onToggleFeatured={(item) => void toggleFeatured(item)}
-      onToggleSubscribe={(key) => void toggleSubscribe(key)}
-      onClose={overlay ? () => setInspectorOpen(false) : undefined}
-    />
-  );
-
   const renderSidebar = (collapsed = false) => (
     <ExplorerSidebar
       overview={overview}
       nav={nav}
       onGo={go}
       onHierarchyChange={(id) => { setHierarchyId(id); go({ kind: "home" }); }}
-      onOpenClassic={() => navigate(ROUTES.SELF_SERVICE.KNOWLEDGE)}
       collapsed={collapsed}
-      onToggleCollapsed={() => setSidebarCollapsed((current) => { const next = !current; writeStored(SIDEBAR_STORAGE_KEY, next ? "collapsed" : "expanded"); return next; })}
+      onToggleCollapsed={() => {
+        setSidebarMoving(true);
+        window.clearTimeout(sidebarMovingTimer.current);
+        sidebarMovingTimer.current = window.setTimeout(() => setSidebarMoving(false), 520);
+        setSidebarCollapsed((current) => { const next = !current; writeStored(SIDEBAR_STORAGE_KEY, next ? "collapsed" : "expanded"); return next; });
+      }}
     />
   );
 
@@ -472,11 +556,13 @@ export const KnowledgeExplorerPage: React.FC = () => {
   })();
 
   return (
+    <TypeIconsProvider value={typeIcons}>
+    <FolderStylesProvider value={folderStylesValue}>
     <div className="flex h-[100dvh] w-full overflow-hidden bg-white" onKeyDown={onKeyDown}>
       <motion.div
         initial={false}
         animate={{ gridTemplateColumns: explorerGridTemplateColumns }}
-        transition={{ gridTemplateColumns: reduceMotion ? { duration: 0 } : { duration: 0.56, ease: [0.22, 1, 0.36, 1] } }}
+        transition={{ gridTemplateColumns: reduceMotion ? { duration: 0 } : { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
         className="grid min-h-0 w-full flex-1 grid-cols-1 overflow-hidden bg-white"
         style={{
           willChange: "grid-template-columns",
@@ -502,13 +588,15 @@ export const KnowledgeExplorerPage: React.FC = () => {
             onUp={goUp}
             onCrumb={go}
             onSearch={setSearchInput}
+            onSubmitSearch={() => { const typed = searchInput.trim(); if (typed.length >= MIN_SEARCH_LENGTH) setSearchTerm(typed); }}
+            onOpenSuggestion={openKnowledgeSuggestion}
             onSort={(value) => chooseSort(value)}
             onView={(mode) => { setViewMode(mode); writeStored(VIEW_STORAGE_KEY, mode); }}
             onToggleWidgets={() => setWidgetsVisible((v) => { writeStored(WIDGETS_STORAGE_KEY, v ? "off" : "on"); return !v; })}
             onOpenMenu={() => setMenuOpen(true)}
           />
 
-          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 custom-scrollbar md:px-4" onClick={(e) => { if (!(e.target as HTMLElement).closest("[data-item],button,select,input,section")) setSelection(null); }}>
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 custom-scrollbar md:px-4" style={{ background: pageBackgroundCss(branding.knowledgeBackground) }} onClick={(e) => { if (!(e.target as HTMLElement).closest("[data-item],button,select,input,section")) setSelection(null); }}>
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={`${navKey(nav)}|${searching ? "s" : ""}`}
@@ -556,6 +644,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
                     selection={selection}
                     highlight={searchActive ? searchTerm : undefined}
                     singleTapOpen={singleTapOpen}
+                    layoutAnimations={!sidebarMoving}
                     onSelect={select}
                     onOpen={openSelection}
                     onContextMenu={openContextMenu}
@@ -572,10 +661,11 @@ export const KnowledgeExplorerPage: React.FC = () => {
                 currentPage={page}
                 totalPages={totalPages}
                 totalItems={content.totalDocs}
-                itemsPerPage={PAGE_SIZE}
+                itemsPerPage={pageSize}
+                itemsPerPageOptions={PAGE_SIZE_OPTIONS}
                 isLoading={loading}
                 onPageChange={setPage}
-                showItemsPerPageSelector={false}
+                onItemsPerPageChange={(size) => { setPageSize(size); writeStored(PAGE_SIZE_STORAGE_KEY, String(size)); setPage(1); }}
               />
             </div>
           )}
@@ -587,7 +677,6 @@ export const KnowledgeExplorerPage: React.FC = () => {
           </div>
         </section>
 
-        {isWide && <aside className="min-h-0 border-l border-slate-200" aria-label="Details">{inspector(false)}</aside>}
       </motion.div>
 
       <AnimatePresence>
@@ -609,30 +698,26 @@ export const KnowledgeExplorerPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {!isWide && inspectorOpen && selection && (
-          <div className="fixed inset-0 z-50">
-            <motion.div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setInspectorOpen(false)} />
-            <motion.aside
-              className={isMedium
-                ? "absolute inset-y-0 right-0 w-80 max-w-full bg-white shadow-xl"
-                : "absolute inset-x-0 bottom-0 max-h-[85%] overflow-hidden rounded-t-2xl bg-white shadow-xl"}
-              initial={reduceMotion ? false : isMedium ? { x: "100%" } : { y: "100%" }}
-              animate={{ x: 0, y: 0 }}
-              exit={isMedium ? { x: "100%" } : { y: "100%" }}
-              transition={{ duration: reduceMotion ? 0 : 0.28, ease: [0.2, 0.8, 0.2, 1] }}
-              role="dialog"
-              aria-label="Details"
-            >
-              {inspector(true)}
-            </motion.aside>
-          </div>
-        )}
-      </AnimatePresence>
-
       {contextMenu && contextActions.length > 0 && (
         <ExplorerContextMenu x={contextMenu.x} y={contextMenu.y} actions={contextActions} onClose={() => setContextMenu(null)} />
       )}
+
+      <ExplorerDetailsModal
+        target={detailsOpen ? inspectorTarget : null}
+        canFeature={canFeature}
+        onClose={() => setDetailsOpen(false)}
+        onShareDocument={canShare ? shareDocument : undefined}
+        onShareFolder={canShare ? shareFolder : undefined}
+        onOpenDocument={openKnowledgePreview}
+        onOpenFolder={(folder) => go(folderTarget(folder))}
+        onToggleHelpful={(item) => void toggleHelpful(item)}
+        onToggleFeatured={(item) => void toggleFeatured(item)}
+        onToggleSubscribe={(key) => void toggleSubscribe(key)}
+      />
+
+      <ShareDialog target={shareTarget} onClose={() => setShareTarget(null)} />
     </div>
+    </FolderStylesProvider>
+    </TypeIconsProvider>
   );
 };

@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { FileWarning, FileText } from "lucide-react";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
-import { documentApi } from "@/services/api/documents";
+import { knowledgeApi } from "@/services/api/knowledge";
 import { useAuth } from "@/contexts/AuthContext";
 import logo from "@/assets/images/logo_nobg.png";
 import { displayDateTime } from "@/utils/format";
@@ -55,7 +55,7 @@ export const KnowledgeDocumentPreviewPage: React.FC = () => {
     let active = true;
     setIsLoading(true);
     setLoadError(false);
-    documentApi
+    knowledgeApi
       .previewDocument(documentId)
       .then((blob) => {
         if (!active) return;

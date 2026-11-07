@@ -76,7 +76,7 @@ class PublishingCommandDatabaseTest {
         workspace=mock(PublishingWorkspaceService.class); users=mock(CurrentUserService.class);
         when(users.requireCurrentUser(actor.getId())).thenReturn(actor);
         when(permissions.hasPermission(actor,"documents.revision.publish")).thenReturn(true);
-        when(revisions.capturePublishConfirmationBundle(revisionId,actor)).thenReturn(Map.of(revisionId,"version-1:sha"));
+        when(revisions.capturePublishConfirmationBundle(revisionId,actor,false)).thenReturn(Map.of(revisionId,"version-1:sha"));
         when(signatures.requireAndConsume(anyString(),eq(actor))).thenAnswer(call -> {
             jdbc.update("insert into used_signature_tokens(token_id,user_id) values(?,?)",nonce,actor.getId());
             return nonce;
@@ -140,7 +140,7 @@ class PublishingCommandDatabaseTest {
 
     @Test void changedBundleAndRevokedPermissionCannotUseStoredConfirmation() {
         var job=service.acceptPublish(revisionId,actor.getId(),request());
-        when(revisions.capturePublishConfirmationBundle(revisionId,actor)).thenReturn(Map.of(revisionId,"version-2:sha"));
+        when(revisions.capturePublishConfirmationBundle(revisionId,actor,false)).thenReturn(Map.of(revisionId,"version-2:sha"));
         assertThrows(IllegalStateException.class,()->service.execute(job.getId(),actor.getId()));
         when(permissions.hasPermission(actor,"documents.revision.publish")).thenReturn(false);
         assertThrows(org.springframework.security.access.AccessDeniedException.class,()->service.execute(job.getId(),actor.getId()));

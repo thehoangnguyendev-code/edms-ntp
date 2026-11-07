@@ -124,14 +124,16 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
       <Button
         type="button"
         variant="outline"
-        size="sm"
+        size="icon-sm"
         aria-haspopup="dialog"
         disabled={disabled || saving}
         onClick={openDrawer}
-        className="gap-2 whitespace-nowrap"
+        title="Custom Column"
+        aria-label="Custom Column"
+        className="h-9 w-9 shrink-0 md:h-9 md:w-9"
       >
-        <SlidersHorizontal className="h-4 w-4" />
-        Custom Column
+        {/* Icon only: the name is the tooltip and what a screen reader reads. As high as the buttons beside it in a filter row (Filter, Clear Filters: h-9); the icon-sm size has no horizontal padding, so the icon cannot be squeezed. */}
+        <SlidersHorizontal className="h-4 w-4 shrink-0" />
       </Button>
 
       {open && (

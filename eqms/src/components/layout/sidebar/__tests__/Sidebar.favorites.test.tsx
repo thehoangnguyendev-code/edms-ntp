@@ -7,7 +7,7 @@ const prefs = vi.hoisted(() => ({ get: vi.fn(), save: vi.fn() }));
 
 vi.mock("@/components/branding/BrandLogo", () => ({
   BrandLogo: () => <span>logo</span>,
-  useBranding: () => ({ showSidebarUserProfile: false, knowledgeExplorerEnabled: false }),
+  useBranding: () => ({ showSidebarUserProfile: false }),
 }));
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { id: "u1", permissions: ["documents.module.view"] }, logout: vi.fn() }),

@@ -92,7 +92,7 @@ public class EffectiveAccessDiagnosisService {
 
     private boolean requiresESignature(RevisionWorkflowAction action) {
         return switch (action) {
-            case COMPLETE_AUTHORING, SUBMIT_FOR_REVIEW, COMPLETE_REVIEW, REJECT_REVIEW,
+            case SUBMIT_FOR_REVIEW, COMPLETE_REVIEW, REJECT_REVIEW,
                     COMPLETE_APPROVAL, REJECT_APPROVAL, COMPLETE_TRAINING, PUBLISH,
                     CANCEL, UPGRADE_REVISION -> true;
             default -> false;

@@ -144,62 +144,6 @@ class NotificationHandoverTest {
     }
 
     @Test
-    void completeEditing_notifiesUsersHoldingCurrentSubmitForReviewPolicyActors() {
-        UserAccount dcoUser = new UserAccount();
-        dcoUser.setId(UUID.randomUUID());
-        dcoUser.setStatus(UserStatus.Active);
-
-        when(workflowActionPolicyService.resolvePolicy(eq(RevisionWorkflowAction.SUBMIT_FOR_REVIEW), eq("DRAFT"), any()))
-                .thenReturn(Optional.of(policyWithAccessProfileActors("DCO", "DOCUMENT_CONTROLLER")));
-        when(userAccessProfileRepository.findUserIdsByProfileCodes(List.of("DCO", "DOCUMENT_CONTROLLER")))
-                .thenReturn(List.of(dcoUser.getId()));
-        when(userAccountRepository.findAllById(List.of(dcoUser.getId()))).thenReturn(List.of(dcoUser));
-        when(emailNotificationService.buildDocumentVariables(any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(Map.of());
-
-        revisionService.completeEditing(revision.getId(), new RevisionWorkflowActionRequest("done", "done", "token"));
-
-        ArgumentCaptor<Collection<UserAccount>> recipientsCaptor = captorForRecipients();
-        verify(emailNotificationService).sendDocumentWorkflowNotification(
-                eq("document-ready-for-submission"), recipientsCaptor.capture(), any());
-        assertThat(recipientsCaptor.getValue()).containsExactly(dcoUser);
-    }
-
-    @Test
-    void completeEditing_recipientsFollowPolicyActorChange_notHardCoded() {
-        UserAccount newActorUser = new UserAccount();
-        newActorUser.setId(UUID.randomUUID());
-        newActorUser.setStatus(UserStatus.Active);
-
-        // A different Access Profile code is now configured as the SUBMIT_FOR_REVIEW actor.
-        when(workflowActionPolicyService.resolvePolicy(eq(RevisionWorkflowAction.SUBMIT_FOR_REVIEW), eq("DRAFT"), any()))
-                .thenReturn(Optional.of(policyWithAccessProfileActors("QUALITY_REVIEWER")));
-        when(userAccessProfileRepository.findUserIdsByProfileCodes(List.of("QUALITY_REVIEWER")))
-                .thenReturn(List.of(newActorUser.getId()));
-        when(userAccountRepository.findAllById(List.of(newActorUser.getId()))).thenReturn(List.of(newActorUser));
-        when(emailNotificationService.buildDocumentVariables(any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(Map.of());
-
-        revisionService.completeEditing(revision.getId(), new RevisionWorkflowActionRequest("done", "done", "token"));
-
-        ArgumentCaptor<Collection<UserAccount>> recipientsCaptor = captorForRecipients();
-        verify(emailNotificationService).sendDocumentWorkflowNotification(
-                eq("document-ready-for-submission"), recipientsCaptor.capture(), any());
-        assertThat(recipientsCaptor.getValue()).containsExactly(newActorUser);
-        verify(userAccessProfileRepository, never()).findUserIdsByProfileCodes(List.of("DCO", "DOCUMENT_CONTROLLER"));
-    }
-
-    @Test
-    void completeEditing_noConfiguredPolicy_sendsNoNotification() {
-        when(workflowActionPolicyService.resolvePolicy(eq(RevisionWorkflowAction.SUBMIT_FOR_REVIEW), eq("DRAFT"), any()))
-                .thenReturn(Optional.empty());
-
-        revisionService.completeEditing(revision.getId(), new RevisionWorkflowActionRequest("done", "done", "token"));
-
-        verify(emailNotificationService, never()).sendDocumentWorkflowNotification(anyString(), any(), any());
-    }
-
-    @Test
     void cancelRevision_notifiesAuthorAndCoAuthorsWithCancelReason() {
         UserAccount dco = new UserAccount();
         dco.setId(UUID.randomUUID());

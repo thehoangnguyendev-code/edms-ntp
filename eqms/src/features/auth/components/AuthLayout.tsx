@@ -30,17 +30,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ left, right: _right }) =
   return (
     <div className={AUTH_UI.pageWrapper} role="main" data-auth-layout>
       <AuthVideoBackground />
-      {/* Option 1: Dreamy Sky Pink (active) */}
-      <div
-        data-auth-glow
-        className={AUTH_UI.pageBgGlow}
-        style={{
-          backgroundImage: `
-            radial-gradient(circle at 30% 70%, rgba(173, 216, 230, 0.35), transparent 60%),
-            radial-gradient(circle at 70% 30%, rgba(255, 182, 193, 0.4), transparent 60%)`,
-        }}
-      />
-
+      {/* The default is the light grey of the main layout (bg-gray-100/50): the page itself (AUTH_UI.pageWrapper). A background chosen in Configuration replaces it. */}
       {/* Option 2: Aurora Ribbon (commented for later use) */}
       {/*
       <div className={AUTH_UI.pageBgBase} />

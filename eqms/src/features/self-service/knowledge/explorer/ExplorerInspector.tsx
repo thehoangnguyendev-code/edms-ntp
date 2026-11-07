@@ -1,14 +1,15 @@
 import React from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Bell, BellOff, ExternalLink, Star, ThumbsUp, X } from "lucide-react";
+import { Bell, BellOff, ExternalLink, Share2, Star, ThumbsUp, X } from "lucide-react";
 import { VisualBackdrop } from "@/components/ui/animated-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import { Card, CardHeader } from "@/features/self-service/dashboard/shared/dashboardUi";
 import type { KnowledgePortalDocument } from "@/services/api/knowledge";
-import { FileIcon, FolderIcon } from "./ExplorerIcons";
-import { folderColor, pluralize, typeBadgeColor, typeColor, type FolderEntry } from "./explorerModel";
+import { FileIcon, FolderIcon, useFolderColor, useFolderLabel, useTypeIcon } from "./ExplorerIcons";
+import { Folder } from "@/components/ui/folder-component";
+import { pluralize, typeBadgeColor, type FolderEntry } from "./explorerModel";
 
 export type InspectorTarget =
   | { type: "doc"; item: KnowledgePortalDocument }
@@ -18,6 +19,9 @@ export type InspectorTarget =
 interface ExplorerInspectorProps {
   target: InspectorTarget;
   canFeature: boolean;
+  /** Present only for a Department Head: opens the sharing of a document or a folder. */
+  onShareDocument?: (item: KnowledgePortalDocument) => void;
+  onShareFolder?: (folder: FolderEntry) => void;
   onOpenDocument: (item: KnowledgePortalDocument) => void;
   onOpenFolder: (folder: FolderEntry) => void;
   onToggleHelpful: (item: KnowledgePortalDocument) => void;
@@ -41,6 +45,15 @@ const Preview: React.FC<{ children: React.ReactNode; glow?: string }> = ({ child
   </Card>
 );
 
+const TypePreview: React.FC<{ type?: string | null }> = ({ type }) => {
+  const { color } = useTypeIcon(type);
+  return (
+    <Preview glow={color}>
+      <FileIcon type={type} className="relative h-[4.75rem] w-[5.25rem] drop-shadow-lg" />
+    </Preview>
+  );
+};
+
 const Title: React.FC<{ title: string; subtitle: string }> = ({ title, subtitle }) => (
   <div>
     <h3 className="break-words text-sm font-semibold leading-snug text-slate-900 md:text-base">{title}</h3>
@@ -49,9 +62,11 @@ const Title: React.FC<{ title: string; subtitle: string }> = ({ title, subtitle 
 );
 
 export const ExplorerInspector: React.FC<ExplorerInspectorProps> = ({
-  target, canFeature, onOpenDocument, onOpenFolder, onToggleHelpful, onToggleFeatured, onToggleSubscribe, onClose,
+  target, canFeature, onShareDocument, onShareFolder, onOpenDocument, onOpenFolder, onToggleHelpful, onToggleFeatured, onToggleSubscribe, onClose,
 }) => {
   const reduceMotion = useReducedMotion();
+  const colorOf = useFolderColor();
+  const labelOf = useFolderLabel();
   const key = target.type === "doc" ? `doc:${target.item.document.id}` : target.type === "folder" ? `folder:${target.folder.key}` : "location";
 
   return (
@@ -75,9 +90,7 @@ export const ExplorerInspector: React.FC<ExplorerInspectorProps> = ({
             const doc = item.document;
             return (
               <>
-                <Preview glow={typeColor(doc.documentType)}>
-                  <FileIcon type={doc.documentType} className="relative h-24 w-[5.25rem] drop-shadow-lg" />
-                </Preview>
+                <TypePreview type={doc.documentType} />
                 <Title title={doc.documentName} subtitle={`${doc.documentNumber}${doc.revisionNumber ? ` · ${doc.revisionNumber}` : ""}`} />
                 <div className="flex flex-wrap gap-1.5">
                   <Badge color={typeBadgeColor(doc.documentType)} size="sm">{doc.documentType || "Document"}</Badge>
@@ -99,6 +112,11 @@ export const ExplorerInspector: React.FC<ExplorerInspectorProps> = ({
                   <Button size="sm" fullWidth onClick={() => onOpenDocument(item)} className="gap-1.5">
                    Open document
                   </Button>
+                  {onShareDocument && (
+                    <Button size="sm" fullWidth variant="outline" onClick={() => onShareDocument(item)} className="gap-1.5">
+                      <Share2 className="h-4 w-4" /> Share...
+                    </Button>
+                  )}
                   <div className="flex gap-2">
                     <Button size="sm" variant={item.myFeedback ? "outline-emerald" : "outline"} aria-pressed={!!item.myFeedback} onClick={() => onToggleHelpful(item)} className="flex-1 gap-1.5">
                       <ThumbsUp className="h-4 w-4" /> {item.myFeedback ? "Helpful" : "Mark helpful"}
@@ -117,11 +135,16 @@ export const ExplorerInspector: React.FC<ExplorerInspectorProps> = ({
           {target.type === "folder" && (
             <>
               <Preview>
-                <FolderIcon color={folderColor(target.folder.label)} className="h-20 w-24 drop-shadow-lg" />
+                <Folder color={colorOf(target.folder.key, target.folder.label) as `#${string}`} scale={0.36} className="h-24 w-32" />
               </Preview>
-              <Title title={target.folder.label} subtitle={`${target.folder.isKnowledgeBase ? "Knowledge Base" : "Folder"} · ${pluralize(target.folder.documentCount, "document")}`} />
+              <Title title={labelOf(target.folder.key, target.folder.label)} subtitle={`${target.folder.isKnowledgeBase ? "Knowledge Base" : "Folder"} · ${pluralize(target.folder.documentCount, "document")}`} />
               <div className="mt-auto flex flex-col gap-2">
                 <Button size="sm" fullWidth onClick={() => onOpenFolder(target.folder)}>Open folder</Button>
+                {onShareFolder && (
+                  <Button size="sm" fullWidth variant="outline" onClick={() => onShareFolder(target.folder)} className="gap-1.5">
+                    <Share2 className="h-4 w-4" /> Share...
+                  </Button>
+                )}
                 {target.folder.isKnowledgeBase && (
                   <Button size="sm" fullWidth variant={target.folder.subscribed ? "outline-emerald" : "outline"} aria-pressed={!!target.folder.subscribed} onClick={() => onToggleSubscribe(target.folder.key)} className="gap-1.5">
                     {target.folder.subscribed ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}

@@ -52,7 +52,7 @@ export function PersonJobRolesPanel() {
   return (
     <div className="flex min-w-0 flex-col gap-4 md:gap-6">
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      <ReportListToolbar framed={false} searchPlaceholder="Search name, employee code or Work Position…" search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
+      <ReportListToolbar framed={false} searchPlaceholder="Search name, employee ID or Work Position…" search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
         filters={filters} dates={[]} hasActiveFilters={Boolean(held || departmentFilter || roleFilter || table.searchQuery)} onClear={() => { setHeld(""); setDepartmentFilter(""); setRoleFilter(""); table.setSearchQuery(""); table.setCurrentPage(1); }} customControl={control}>
         <div aria-busy={table.isLoading}>
         <DataTable rows={table.items} getRowKey={(r) => r.personId} isLoading={table.isLoading && !hasLoaded} loadingContent={<SectionLoading text="Loading people…" />} columns={columns} columnLayout={layout}

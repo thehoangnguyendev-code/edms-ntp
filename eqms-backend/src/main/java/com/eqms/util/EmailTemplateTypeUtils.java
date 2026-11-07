@@ -32,6 +32,10 @@ public final class EmailTemplateTypeUtils {
     public static final String DOCUMENT_REVIEW_REJECTED_NOTIFICATION = "document-review-rejected";
     public static final String DOCUMENT_APPROVAL_REJECTED_NOTIFICATION = "document-approval-rejected";
 
+    // A person who may share on behalf of a Department Head or a Head of Unit shared, took a share away or made a link in the Knowledge Base:
+    // the Head is told.
+    public static final String KNOWLEDGE_SHARE_NOTIFICATION = "knowledge-share-notification";
+
     private static final Set<String> ALLOWED_TYPES = Set.of(
             "password-reset",
             "user-welcome",
@@ -57,6 +61,7 @@ public final class EmailTemplateTypeUtils {
             CONTROLLED_COPY_CANCELLATION_NOTIFICATION,
             CONTROLLED_COPY_RECALL_NOTIFICATION,
             CONTROLLED_COPY_OBSOLETED_NOTIFICATION,
+            KNOWLEDGE_SHARE_NOTIFICATION,
             "preference-notification",
             "supplier-notification",
             "equipment-maintenance",

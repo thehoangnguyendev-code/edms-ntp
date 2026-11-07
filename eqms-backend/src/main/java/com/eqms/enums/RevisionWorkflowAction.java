@@ -3,7 +3,6 @@ package com.eqms.enums;
 public enum RevisionWorkflowAction {
     UPDATE_DRAFT_METADATA,
     UPLOAD_SOURCE,
-    COMPLETE_AUTHORING,
     OPEN_PUBLISHING_WORKSPACE,
     GENERATE_REVIEW_SNAPSHOT,
     SUBMIT_FOR_REVIEW,

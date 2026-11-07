@@ -15,6 +15,15 @@ import java.util.List;
 public interface DocumentRecordRepository extends JpaRepository<DocumentRecord, UUID>, JpaSpecificationExecutor<DocumentRecord> {
     boolean existsByDocumentNumber(String documentNumber);
 
+    java.util.Optional<DocumentRecord> findFirstByDocumentNumberIgnoreCase(String documentNumber);
+
+    /** True when any revision of the document already holds a stored source file (the storage keys carry the Document Number). */
+    @Query(value = """
+            SELECT EXISTS (SELECT 1 FROM document_revisions r WHERE r.document_id = :documentId
+                           AND (r.source_file_checksum IS NOT NULL OR r.source_storage_object_key IS NOT NULL OR r.file_path IS NOT NULL))
+            """, nativeQuery = true)
+    boolean hasStoredSourceFile(@Param("documentId") UUID documentId);
+
     /**
      * TBR-DOC-015 concurrency mechanism: a row-level lock on the Document Master, taken by
      * DocumentService.obsoleteDocument's final precondition re-check and by

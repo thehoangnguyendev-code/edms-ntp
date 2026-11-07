@@ -48,6 +48,14 @@ public class DocumentType {
     @JoinColumn(name = "name_format_id")
     private DocumentNameFormat nameFormat;
 
+    /** The text on the band of the Knowledge Base icon; the Short Code when empty. */
+    @Column(name = "icon_label", length = 6)
+    private String iconLabel;
+
+    /** The colour of the Knowledge Base icon as #rrggbb; a colour from the palette when empty. */
+    @Column(name = "icon_color", length = 7)
+    private String iconColor;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -124,6 +132,22 @@ public class DocumentType {
 
     public void setNameFormat(DocumentNameFormat nameFormat) {
         this.nameFormat = nameFormat;
+    }
+
+    public String getIconLabel() {
+        return iconLabel;
+    }
+
+    public void setIconLabel(String iconLabel) {
+        this.iconLabel = iconLabel;
+    }
+
+    public String getIconColor() {
+        return iconColor;
+    }
+
+    public void setIconColor(String iconColor) {
+        this.iconColor = iconColor;
     }
 
     public Instant getCreatedAt() {

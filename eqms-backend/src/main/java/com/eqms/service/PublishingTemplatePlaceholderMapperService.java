@@ -68,7 +68,7 @@ public class PublishingTemplatePlaceholderMapperService {
             case "documentname", "document_name" -> mapping(placeholder, "documentName", "Document Name", applyTransform(valueOrDash(revision == null ? null : revision.documentName()), transform), "Revision metadata");
             case "revisionnumber", "revision_number" -> mapping(placeholder, "revisionNumber", "Revision Number", applyTransform(valueOrDash(revision == null ? null : revision.revisionNumber()), transform), "Revision metadata");
             case "revisionname", "revision_name" -> mapping(placeholder, "revisionName", "Revision Name", applyTransform(valueOrDash(revision == null ? null : revision.revisionName()), transform), "Revision metadata");
-            case "effectivedate", "effective_date" -> mapping(placeholder, "effectiveDate", "Effective Date", applyTransform(dateValue(revision == null ? null : revision.effectiveDate()), transform), "Revision metadata");
+            case "effectivedate", "effective_date" -> mapping(placeholder, "effectiveDate", "Effective Date", applyTransform(StringUtils.hasText(revision == null ? null : revision.effectiveDate()) ? dateValue(revision.effectiveDate()) : "", transform), "Revision metadata");
             case "reviewdate", "review_date" -> mapping(placeholder, "reviewDate", "Review Date", applyTransform(valueOrDash(revision == null ? null : revision.reviewDate()), transform), "Revision metadata");
             case "validuntil", "valid_until" -> mapping(placeholder, "validUntil", "Valid Until", applyTransform(valueOrDash(revision == null ? null : revision.validUntil()), transform), "Revision metadata");
             case "author", "authorname", "preparedby", "prepared_by" -> mapping(placeholder, "author", "Author", applyTransform(valueOrDash(revision == null ? null : revision.author()), transform), "Revision participants");
@@ -297,7 +297,7 @@ public class PublishingTemplatePlaceholderMapperService {
 
     private String electronicSignatureBlockLabel(String meaning) {
         String label = switch (meaning == null ? "" : meaning.trim().toUpperCase(Locale.ROOT)) {
-            case "PREPARED" -> "Prepared / Complete Editing signature block";
+            case "PREPARED" -> "Prepared signature block";
             case "SUBMITTED_FOR_REVIEW" -> "Submitted for review signature block";
             case "REVIEWED" -> "Reviewed signature block";
             case "APPROVED" -> "Approved signature block";

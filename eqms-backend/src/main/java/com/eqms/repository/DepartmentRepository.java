@@ -14,6 +14,10 @@ public interface DepartmentRepository extends JpaRepository<Department, UUID>, J
     Optional<Department> findByCode(String code);
     Optional<Department> findByCodeIgnoreCase(String code);
     List<Department> findAllByOrderByNameAsc();
+
+    /** The Departments whose Department Head is this user (a user may head several). */
+    List<Department> findAllByDepartmentHead_Id(java.util.UUID userId);
     List<Department> findAllByActiveTrueOrderByNameAsc();
     long countByBusinessUnit_Id(UUID businessUnitId);
+    List<Department> findAllByBusinessUnit_Id(UUID businessUnitId);
 }

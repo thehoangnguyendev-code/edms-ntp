@@ -28,6 +28,26 @@ export interface OnlyOfficeViewerConfig {
   showRightMenu?: boolean;
   /** Hiding the name uses OnlyOffice's compact header layout. */
   showFileName?: boolean;
+  /** How the assigned reviewer opens the file at Pending Review: Review Mode (track changes) or Comment Only. Review Mode when never set. */
+  pendingReviewMode?: 'REVIEW' | 'COMMENT_ONLY';
+  /** How the assigned approver opens the file at Pending Approval. Comment Only when never set. */
+  pendingApprovalMode?: 'REVIEW' | 'COMMENT_ONLY';
+  /** Whether a person who edits, reviews or comments sees the Download buttons and menu entries. On when never set; the read-only viewer never has them. */
+  editorAllowDownload?: boolean;
+  /** Whether such a person can print (the Print buttons, the menu entry and Ctrl+P). On when never set. */
+  editorAllowPrint?: boolean;
+  /** Draw the traceability watermark on every page of the read-only viewer. Off when never set. */
+  watermarkEnabled?: boolean;
+  /** The text and what is printed about the viewer: the same settings as the PDF preview watermark. */
+  watermarkText?: string;
+  watermarkShowViewerName?: boolean;
+  watermarkShowOpenedAt?: boolean;
+  watermarkShowEmployeeCode?: boolean;
+  watermarkTiled?: boolean;
+  watermarkColor?: string;
+  watermarkStrength?: 'light' | 'standard' | 'strong';
+  /** Whole degrees, -90 to 90, counter-clockwise; 45 when never set. */
+  watermarkAngle?: number;
 }
 
 export interface OnlyOfficeStorageConfig {
@@ -51,8 +71,13 @@ export type ToastPosition = 'center' | 'top-right' | 'top-left' | 'bottom-right'
 export interface AppearanceSettings {
   mainBackground?: PageBackground | null;
   authBackground?: PageBackground | null;
+  /** Background of the Knowledge Base explorer: a colour or a gradient. */
+  knowledgeBackground?: PageBackground | null;
   alternatingRecordColors?: boolean;
   alternatingRecordColor?: string;
+  /** Colour of the text and of the icons of the items of every dropdown (action) menu, "#RRGGBB". Empty or missing: the built-in colour. */
+  menuTextColor?: string;
+  menuIconColor?: string;
   /** Vertical lines between the columns of every table. */
   tableColumnDividers?: boolean;
   /** Desktop Search + two-column draft filter panel. */
@@ -63,11 +88,16 @@ export interface AppearanceSettings {
   toastDurationSeconds?: number;
   /** How the materials of a training are drawn on every Training screen: a table (default) or tiles. */
   trainingMaterialsLayout?: 'TABLE' | 'TILES';
+  /** How the folders of the Knowledge Base are named: the full name (default) or its abbreviation. */
+  knowledgeFolderNames?: 'FULL' | 'ABBREVIATION';
+  /** How the folders are named in the sidebar of the Knowledge Base; follows `knowledgeFolderNames` until chosen. */
+  knowledgeSidebarFolderNames?: 'FULL' | 'ABBREVIATION';
+  /** The Knowledge Base menu opens the Explorer in a new browser tab (default) or in the current tab. */
+  knowledgeOpenInNewTab?: boolean;
   systemSidebarCollapsedLogo?: string;
   /** When enabled by an administrator, show the signed-in user's profile at the bottom of the sidebar. */
   showSidebarUserProfile?: boolean;
   /** When enabled, the Knowledge Base menu opens the explorer experience in a new browser tab. */
-  knowledgeExplorerEnabled?: boolean;
   theme: 'light' | 'dark' | 'auto';
   primaryColor: string;
   compactMode: boolean;
@@ -89,6 +119,8 @@ export interface ImageWatermarkSettings {
   showUploadedBy?: boolean;
   /** The time of the upload, as the server clock gives it. */
   showUploadedAt?: boolean;
+  /** The time zone the upload time is printed in, as an offset from UTC such as "+07:00" (-12:00 to +14:00). +07:00 when never set. */
+  utcOffset?: string;
   position?: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT';
   /** Width of the whole stamp as a share of the picture width, 5 to 40. */
   sizePercent?: number;
@@ -211,6 +243,8 @@ export interface PdfPreviewConfig {
   watermarkTiled?: boolean;
   /** Colour of the watermark, as a hex value such as #B3B3F5. */
   watermarkColor?: string;
+  /** Turn of the watermark in whole degrees, counter-clockwise from the line of the page: -90 to 90. 45 (rising to the right) when never set. */
+  watermarkAngle?: number;
   /** How visible the watermark is: light, standard (the original), or strong. */
   watermarkStrength?: 'light' | 'standard' | 'strong';
 }

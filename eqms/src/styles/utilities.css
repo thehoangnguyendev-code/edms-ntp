@@ -304,3 +304,35 @@
 .overscroll-y-none {
   overscroll-behavior-y: none !important;
 }
+
+/* ===================================
+   RESPONSIVE GUARDS
+   =================================== */
+
+/* A grid in a modal body that has no columns of its own gets one implicit column that is as wide as its widest content, so a table or a drop
+   zone made the whole grid wider than the modal and its right side was cut off. One column that may shrink, and items that may shrink with it
+   (a table keeps its own horizontal scroll), keeps every field inside the modal on a tablet and on a phone. */
+.form-modal-body .grid:not([class*="grid-cols"]):not([class*="grid-flow"]):not([class*="grid-template"]):not([class*="auto-cols"]):not([style*="grid-template"]) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.form-modal-body .grid:not([class*="grid-cols"]):not([class*="grid-flow"]):not([class*="grid-template"]):not([class*="auto-cols"]):not([style*="grid-template"]) > * {
+  min-width: 0;
+}
+
+/* The cell of a filter grid that holds Clear Filters and the Custom Column icon: the two buttons stay on ONE line whatever the width of the cell,
+   and never wrap under each other. */
+.filter-actions {
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+/* Quick access of the Knowledge Base explorer: the icon of a button shakes once when the button is pressed. */
+@keyframes explorer-icon-shake {
+  0% { transform: rotate(0); }
+  20% { transform: rotate(-16deg); }
+  40% { transform: rotate(13deg); }
+  60% { transform: rotate(-9deg); }
+  80% { transform: rotate(5deg); }
+  100% { transform: rotate(0); }
+}
+.explorer-icon-shake { animation: explorer-icon-shake 0.5s ease-in-out; transform-origin: 50% 60%; }

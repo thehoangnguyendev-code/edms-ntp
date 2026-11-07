@@ -253,8 +253,8 @@ class WorkflowActionPolicyServiceTest {
     void createPolicy_invalidActorForAction_throws() {
         WorkflowActionPolicyCreateRequest req = new WorkflowActionPolicyCreateRequest(
                 "DOCUMENT_CONTROL", "DOCUMENT_REVISION", "REVISION",
-                "COMPLETE_AUTHORING", "DRAFT", null,
-                "documents.revision.complete_authoring", 100, true, null,
+                "UPLOAD_SOURCE", "DRAFT", null,
+                "documents.revision.upload_source", 100, true, null,
                 List.of(new WorkflowActionPolicyActorRequest(WorkflowActorType.OWNER, null)),
                 null);
 
@@ -292,12 +292,12 @@ class WorkflowActionPolicyServiceTest {
     }
 
     @Test
-    void createPolicy_authorCannotSubmitForReview_throws() {
+    void createPolicy_ownerCannotSubmitForReview_throws() {
         WorkflowActionPolicyCreateRequest req = new WorkflowActionPolicyCreateRequest(
                 "DOCUMENT_CONTROL", "DOCUMENT_REVISION", "REVISION",
                 "SUBMIT_FOR_REVIEW", "DRAFT", null,
                 "documents.revision.submit_review", 100, true, null,
-                List.of(new WorkflowActionPolicyActorRequest(WorkflowActorType.AUTHOR, null)),
+                List.of(new WorkflowActionPolicyActorRequest(WorkflowActorType.OWNER, null)),
                 null);
 
         assertThatThrownBy(() -> service.createPolicy(req, null))
@@ -560,13 +560,11 @@ class WorkflowActionPolicyServiceTest {
 
         WorkflowActionPolicyResponse resp = service.resetToSystemDefault(policyId, null, null, null);
 
-        // Who submits for review is business DATA (V345), not a system default. Reset restores
-        // the neutral permission-only actor, never a specific Access Profile such as DCO. V347
-        // also split this into its own dedicated permission, not the catch-all
-        // documents.workspace.manage.
+        // The Author submits for review by default (Complete Editing is retired). Reset restores that actor, never a
+        // specific Access Profile such as DCO: adding one back is business configuration in Workflow Authorization.
         assertThat(resp.actors()).singleElement().satisfies(a -> {
-            assertThat(a.actorType()).isEqualTo(WorkflowActorType.PERMISSION);
-            assertThat(a.actorCode()).isEqualTo("documents.revision.submit_review");
+            assertThat(a.actorType()).isEqualTo(WorkflowActorType.AUTHOR);
+            assertThat(a.actorCode()).isNull();
         });
     }
 
@@ -597,14 +595,14 @@ class WorkflowActionPolicyServiceTest {
     // ── isActorTypeAllowed ────────────────────────────────────────────────────
 
     @Test
-    void isActorTypeAllowed_authorForCompleteAuthoring_true() {
-        assertThat(service.isActorTypeAllowed(RevisionWorkflowAction.COMPLETE_AUTHORING,
+    void isActorTypeAllowed_authorForUploadSource_true() {
+        assertThat(service.isActorTypeAllowed(RevisionWorkflowAction.UPLOAD_SOURCE,
                 WorkflowActorType.AUTHOR)).isTrue();
     }
 
     @Test
-    void isActorTypeAllowed_ownerForCompleteAuthoring_false() {
-        assertThat(service.isActorTypeAllowed(RevisionWorkflowAction.COMPLETE_AUTHORING,
+    void isActorTypeAllowed_ownerForUploadSource_false() {
+        assertThat(service.isActorTypeAllowed(RevisionWorkflowAction.UPLOAD_SOURCE,
                 WorkflowActorType.OWNER)).isFalse();
     }
 
@@ -640,9 +638,9 @@ class WorkflowActionPolicyServiceTest {
         assertThat(opts.actorTypes()).anyMatch(a -> "AUTHOR".equals(a.value()) && !a.requiresActorCode());
         assertThat(opts.actorTypes()).anyMatch(a -> "ACCESS_PROFILE".equals(a.value()) && a.requiresActorCode());
         assertThat(opts.actions()).isNotEmpty();
-        // COMPLETE_AUTHORING should only allow AUTHOR
+        // UPLOAD_SOURCE should only allow AUTHOR
         assertThat(opts.actions())
-                .anyMatch(a -> "COMPLETE_AUTHORING".equals(a.value())
+                .anyMatch(a -> "UPLOAD_SOURCE".equals(a.value())
                         && a.allowedActorTypes().contains("AUTHOR")
                         && !a.allowedActorTypes().contains("DCO"));
     }

@@ -25,7 +25,6 @@ export const ROUTES = {
 
   // Self-Service
   SELF_SERVICE: {
-    KNOWLEDGE: '/self-service/knowledge',
   },
 
   // Documents
@@ -41,6 +40,8 @@ export const ROUTES = {
     // not the Self-Service Knowledge page.
     KNOWLEDGE_EXPLORER: '/documents/knowledge/explorer',
     KNOWLEDGE_PREVIEW: (id: string) => `/documents/knowledge/preview/${id}`,
+    /** A link made by a Head: the person who opens it, signed in, is given what it points to. */
+    KNOWLEDGE_LINK: (token: string) => `/documents/knowledge/link/${token}`,
     SNAPSHOT_HISTORY_PREVIEW: (revisionId: string, historyId: string) =>
       `/documents/revisions/${revisionId}/snapshot-history/${historyId}/preview`,
 
