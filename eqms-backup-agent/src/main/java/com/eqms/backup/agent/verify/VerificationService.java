@@ -62,12 +62,29 @@ public class VerificationService {
     }
 
     public Outcome verifyV1(String backupNumber, String actor) {
-        List<Check> checks = new ArrayList<>();
+        return verifyV1(backupNumber, actor, percent -> { });
+    }
+
+    /** {@code progress} receives how far the check has got (0-100): by bytes read while the files are hashed, by steps for the rest. */
+    public Outcome verifyV1(String backupNumber, String actor, java.util.function.IntConsumer progress) {
+        return verifyV1(backupNumber, actor, progress, check -> { });
+    }
+
+    /** {@code onCheck} is told of each check the moment it is finished, in the order they run. */
+    public Outcome verifyV1(String backupNumber, String actor, java.util.function.IntConsumer progress, java.util.function.Consumer<Check> onCheck) {
+        List<Check> checks = new ArrayList<>() {
+            @Override
+            public boolean add(Check check) {
+                boolean added = super.add(check);
+                onCheck.accept(check);
+                return added;
+            }
+        };
         Map<String, Object> run = repository.runByBackupNumber(backupNumber).orElseThrow(() -> new IllegalArgumentException("Unknown backup " + backupNumber));
         java.util.UUID runId = (java.util.UUID) run.get("id");
         checks.add(new Check("RUN_COMPLETED", "COMPLETED".equals(run.get("status")), "status " + run.get("status")));
         if ("COMPLETED".equals(run.get("status"))) {
-            runChecks(backupNumber, runId, checks);
+            runChecks(backupNumber, runId, checks, progress);
         }
         boolean ok = checks.stream().allMatch(Check::ok);
         String result = ok ? "VERIFIED" : "FAILED";
@@ -84,7 +101,7 @@ public class VerificationService {
         return new Outcome(backupNumber, result, checks);
     }
 
-    private void runChecks(String backupNumber, java.util.UUID runId, List<Check> checks) {
+    private void runChecks(String backupNumber, java.util.UUID runId, List<Check> checks, java.util.function.IntConsumer progress) {
         Optional<Map<String, Object>> location = jdbc.queryForList("select path from backup_set_location where run_id = ? order by target_code limit 1", runId).stream().findFirst();
         Optional<Map<String, Object>> manifestRow = jdbc.queryForList(
                 "select manifest_text, manifest_sha256, signature_base64, previous_manifest_sha256 from backup_manifest where run_id = ?", runId).stream().findFirst();
@@ -97,6 +114,7 @@ public class VerificationService {
         String manifestSha = (String) manifestRow.get().get("manifest_sha256");
         String signature = (String) manifestRow.get().get("signature_base64");
         String previous = (String) manifestRow.get().get("previous_manifest_sha256");
+        progress.accept(5);
 
         boolean present = Files.isDirectory(dir);
         checks.add(new Check("SET_PRESENT", present, present ? "found" : "the backup folder is missing"));
@@ -115,6 +133,7 @@ public class VerificationService {
         String sigOnDisk = readOrNull(dir.resolve("manifest.sig"));
         checks.add(new Check("MANIFEST_SIGNATURE", signatureOk && signature.trim().equals(sigOnDisk == null ? null : sigOnDisk.trim()),
                 signatureOk ? "valid" : "the signature does not verify"));
+        progress.accept(10);
 
         // 3. files listed in the manifest
         JsonNode manifest;
@@ -125,6 +144,10 @@ public class VerificationService {
             return;
         }
         List<String> sums = new ArrayList<>();
+        long totalBytes = 1;
+        for (JsonNode component : manifest.path("components")) totalBytes += Math.max(0, component.path("sizeBytes").asLong());
+        final long hashTotal = totalBytes;
+        long[] hashed = {0};
         boolean filesOk = true;
         String firstProblem = null;
         for (JsonNode component : manifest.path("components")) {
@@ -134,7 +157,10 @@ public class VerificationService {
             try {
                 if (!Files.isRegularFile(path)) throw new IOException("missing");
                 long size = Files.size(path);
-                String sha = sha256(path);
+                String sha = sha256(path, read -> {
+                    hashed[0] += read;
+                    progress.accept(10 + (int) Math.min(50, 50 * hashed[0] / hashTotal));
+                });
                 sums.add(sha + "  " + file);
                 if (size != component.path("sizeBytes").asLong() || !sha.equals(component.path("sha256").asText())) {
                     filesOk = false;
@@ -157,7 +183,8 @@ public class VerificationService {
             Path envRoot = dir.getParent().getParent().getParent();
             int checked = 0;
             String problem = null;
-            for (BackupRepository.Blob blob : repository.blobsUpTo(runId)) {
+            var blobList = repository.blobsUpTo(runId);
+            for (BackupRepository.Blob blob : blobList) {
                 Path file = envRoot.resolve(blob.path());
                 try {
                     if (!Files.isRegularFile(file) || Files.size(file) != blob.cipherSize()) {
@@ -170,10 +197,12 @@ public class VerificationService {
                     problem = problem == null ? blob.path() + " cannot be read" : problem;
                 }
                 checked++;
+                progress.accept(60 + (int) (20L * checked / Math.max(1, blobList.size())));
             }
             checks.add(new Check("OBJECTS_PRESENT", problem == null, problem == null ? checked + " stored document version(s) present" : problem));
         }
 
+        progress.accept(80);
         // 4. SHA256SUMS agrees
         String sumsFile = readOrNull(dir.resolve("SHA256SUMS"));
         boolean sumsOk = sumsFile != null && sums.stream().allMatch(line -> sumsFile.contains(line)) && sumsFile.contains(manifestSha + "  manifest.json");
@@ -186,6 +215,7 @@ public class VerificationService {
         boolean chainOk = java.util.Objects.equals(expectedPrevious, previous);
         checks.add(new Check("CHAIN_TO_PREVIOUS", chainOk, chainOk ? (previous == null ? "first backup" : "follows the previous backup") : "does not follow the previous backup"));
 
+        progress.accept(90);
         // 6. encrypted to the expected key, without decrypting
         List<String> keyIds = new ArrayList<>();
         manifest.path("encryption").path("encryptionKeyIds").forEach(n -> keyIds.add(n.asText().toUpperCase()));
@@ -211,6 +241,7 @@ public class VerificationService {
         }
         checks.add(new Check("ENCRYPTED_FOR_KEY", encrypted, encDetail));
 
+        progress.accept(95);
         // 7. the ledger recorded this exact manifest
         boolean ledgerOk = ledger.all().stream().anyMatch(e -> "BACKUP_COMPLETED".equals(e.event()) && backupNumber.equals(e.ref())
                 && e.dataJson().contains("\"manifestSha256\":\"" + manifestSha + "\""));
@@ -218,11 +249,19 @@ public class VerificationService {
     }
 
     static String sha256(Path path) throws IOException {
+        return sha256(path, read -> { });
+    }
+
+    /** Reads the file in blocks and tells {@code onRead} how many bytes each block was, so a long check can report real progress. */
+    static String sha256(Path path, java.util.function.LongConsumer onRead) throws IOException {
         try (InputStream in = Files.newInputStream(path)) {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] buffer = new byte[1 << 16];
             int read;
-            while ((read = in.read(buffer)) >= 0) digest.update(buffer, 0, read);
+            while ((read = in.read(buffer)) >= 0) {
+                digest.update(buffer, 0, read);
+                onRead.accept(read);
+            }
             return HexFormat.of().formatHex(digest.digest());
         } catch (java.security.NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);

@@ -51,7 +51,7 @@ describe("Reset to default", () => {
 });
 
 describe("Custom Column drawer", () => {
-  it("does not list the Expand column of the table, only the columns a person arranges", async () => {
+  it("lists Expand as a structural column with its own pin control", async () => {
     const withExpand: DataTableColumn<Row>[] = [{ id: "expand", header: "", label: "Expand", locked: true, cell: () => "+" }, ...columns];
     render(<ToastProvider><DataTable rows={rows} columns={withExpand} getRowKey={(r) => r.id} customizable={{ tableKey: "t2" }} /></ToastProvider>);
     await waitFor(() => expect(screen.getAllByRole("columnheader").length).toBeGreaterThan(3));
@@ -60,7 +60,8 @@ describe("Custom Column drawer", () => {
     await screen.findByRole("button", { name: "Reset to Default" });
 
     expect(screen.getAllByText("No.").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Expand")).toBeNull();
+    expect(screen.getByText("Expand")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pin Expand" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getAllByRole("columnheader").length).toBe(5);
   });
 });

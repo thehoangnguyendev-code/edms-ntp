@@ -49,6 +49,7 @@ public class AccessProfileService {
     private final EffectivePermissionService effectivePermissionService;
     private final SodConstraintRepository sodConstraintRepo;
     private final PermissionSetService permissionSetService;
+    private final com.eqms.repository.AuditLogRepository auditLogRepository;
 
     public AccessProfileService(
             RoleDefinitionRepository roleRepo,
@@ -64,7 +65,8 @@ public class AccessProfileService {
             SecurityChangeSignatureService securityChangeSignatureService,
             EffectivePermissionService effectivePermissionService,
             SodConstraintRepository sodConstraintRepo,
-            PermissionSetService permissionSetService) {
+            PermissionSetService permissionSetService,
+            com.eqms.repository.AuditLogRepository auditLogRepository) {
         this.roleRepo = roleRepo;
         this.permSetRepo = permSetRepo;
         this.permissionSetItemRepo = permissionSetItemRepo;
@@ -79,29 +81,48 @@ public class AccessProfileService {
         this.effectivePermissionService = effectivePermissionService;
         this.sodConstraintRepo = sodConstraintRepo;
         this.permissionSetService = permissionSetService;
+        this.auditLogRepository = auditLogRepository;
     }
 
     // ── Migration report (master plan 18.3) ──────────────────────────────────
 
+    /** Largest list of unassigned users the report carries: the screen needs the count, not thousands of rows. */
+    static final int MIGRATION_REPORT_UNASSIGNED_LIMIT = 50;
+
+    /**
+     * Coverage of Access Profiles among ACTIVE users. Suspended, terminated and other non-active accounts cannot sign in, so they are not a gap
+     * (the report used to count every account, which turned test fixtures into a permanent red banner), and the profiles are read in one batch
+     * instead of one query per user.
+     */
     @Transactional(readOnly = true)
     public AccessProfileMigrationReportResponse getMigrationReport() {
         requireView();
-        List<UserAccount> users = userRepo.findAll();
+        List<UserAccount> users = userRepo.findAllByStatus(UserStatus.Active);
+        Set<UUID> usersWithAProfile = new HashSet<>();
+        if (!users.isEmpty()) {
+            List<UUID> ids = users.stream().map(UserAccount::getId).toList();
+            for (int from = 0; from < ids.size(); from += 500) {
+                uapRepo.findByUserIdInOrderByAssignedAtAsc(ids.subList(from, Math.min(from + 500, ids.size())))
+                        .forEach(link -> usersWithAProfile.add(link.getUserId()));
+            }
+        }
         long withProfile = 0;
         long superAdmins = 0;
         long withoutAnyPermission = 0;
-        long inactiveWithActiveAccess = 0;
+        long withoutProfile = 0;
         List<AccessProfileMigrationReportResponse.UnassignedUser> unassignedUsers = new ArrayList<>();
 
         for (UserAccount user : users) {
             var effective = effectivePermissionService.getEffectivePermissionResult(user);
-            boolean hasProfile = !uapRepo.findByUserId(user.getId()).isEmpty();
-            if (hasProfile) {
+            if (usersWithAProfile.contains(user.getId())) {
                 withProfile++;
             } else {
-                unassignedUsers.add(new AccessProfileMigrationReportResponse.UnassignedUser(
-                        user.getId(), user.getUsername(), user.getFullName(),
-                        user.getStatus() != null ? user.getStatus().name() : null));
+                withoutProfile++;
+                if (unassignedUsers.size() < MIGRATION_REPORT_UNASSIGNED_LIMIT) {
+                    unassignedUsers.add(new AccessProfileMigrationReportResponse.UnassignedUser(
+                            user.getId(), user.getUsername(), user.getFullName(),
+                            user.getStatus() != null ? user.getStatus().name() : null));
+                }
             }
             if (effective.systemSuperAdmin()) {
                 superAdmins++;
@@ -109,16 +130,12 @@ public class AccessProfileService {
             if (!effective.systemSuperAdmin() && effective.permissionCodes().isEmpty()) {
                 withoutAnyPermission++;
             }
-            boolean isActiveUser = user.getStatus() != null && "Active".equalsIgnoreCase(user.getStatus().name());
-            boolean hasAccess = effective.systemSuperAdmin() || !effective.permissionCodes().isEmpty();
-            if (!isActiveUser && hasAccess) {
-                inactiveWithActiveAccess++;
-            }
         }
 
+        // inactiveUsersWithActiveAccess: only a non-active account can count, and those are no longer scanned; the field is kept for the contract and is 0 here.
         return new AccessProfileMigrationReportResponse(
-                users.size(), withProfile, unassignedUsers.size(), superAdmins,
-                withoutAnyPermission, inactiveWithActiveAccess, true, unassignedUsers);
+                users.size(), withProfile, withoutProfile, superAdmins,
+                withoutAnyPermission, 0, true, unassignedUsers);
     }
 
     // ── List ──────────────────────────────────────────────────────────────────
@@ -234,31 +251,6 @@ public class AccessProfileService {
     }
 
     // ── Create ────────────────────────────────────────────────────────────────
-
-    public AccessProfileDetailResponse createProfile(AccessProfileRequest req) {
-        UserAccount actor = requireManage();
-        securityChangeSignatureService.requireValidToken(actor, req.signatureToken());
-        RoleDefinition role = new RoleDefinition();
-        role.setCode(req.code() != null ? req.code() : generateCode(req.name()));
-        role.setName(req.name());
-        role.setDescription(req.description());
-        role.setType(req.type() != null ? req.type() : "CUSTOM");
-        role.setActive(req.active());
-        role.setSystem(false);
-        role.setBusinessUnitScope(req.businessUnitScope());
-        role.setDepartmentScope(req.departmentScope());
-        role = roleRepo.save(role);
-        linkBaselinePersonalWorkspace(role.getId(), actor);
-        ElectronicSignature esig = securityChangeSignatureService.record(actor, req.signatureToken(),
-                SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
-                ENTITY_TYPE, role.getId(), role.getName(), req.reason(),
-                null, "Created access profile " + safeCode(role));
-        auditTrailService.logAs(actor, ENTITY_TYPE, role.getName(), role.getId(),
-                "ACCESS_PROFILE_CREATED", null, role.isActive() ? "Active" : "Inactive",
-                withReason("Created access profile " + safeCode(role), req.reason()), List.of(), esig == null ? null : esig.getId());
-        permissionEvaluationService.clearCache();
-        return toDetailResponse(role);
-    }
 
     /**
      * Atomic "create access profile in one shot" for the setup wizard: profile + optional
@@ -1022,14 +1014,37 @@ public class AccessProfileService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> queryAssignedUsers(UUID profileId, int page, int limit) {
-        var all = getAssignedUsers(profileId).stream()
-                .sorted(Comparator.comparing(AccessProfileDetailResponse.AssignedUserSummary::fullName,
-                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)).thenComparing(AccessProfileDetailResponse.AssignedUserSummary::id))
+        return queryAssignedUsers(profileId, page, limit, null, null, null);
+    }
+
+    /**
+     * One page of the users assigned to a profile, searched and sorted on the server. `assignedIds` always lists every
+     * assigned user (not only the page or the matches), because the edit screen builds its add/remove difference from it.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> queryAssignedUsers(UUID profileId, int page, int limit, String search, String sortBy, String sortDir) {
+        var everyone = getAssignedUsers(profileId);
+        String term = search == null ? "" : search.trim().toLowerCase(java.util.Locale.ROOT);
+        var matches = term.isEmpty() ? everyone : everyone.stream()
+                .filter(u -> java.util.stream.Stream.of(u.fullName(), u.employeeCode(), u.email(), u.department(), u.status())
+                        .anyMatch(v -> v != null && v.toLowerCase(java.util.Locale.ROOT).contains(term)))
                 .toList();
+        Comparator<AccessProfileDetailResponse.AssignedUserSummary> byName = Comparator.comparing(
+                AccessProfileDetailResponse.AssignedUserSummary::fullName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+        Comparator<AccessProfileDetailResponse.AssignedUserSummary> order = switch (sortBy == null ? "" : sortBy) {
+            case "employeeCode" -> Comparator.comparing(AccessProfileDetailResponse.AssignedUserSummary::employeeCode, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "email" -> Comparator.comparing(AccessProfileDetailResponse.AssignedUserSummary::email, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "department" -> Comparator.comparing(AccessProfileDetailResponse.AssignedUserSummary::department, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "status" -> Comparator.comparing(AccessProfileDetailResponse.AssignedUserSummary::status, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "assignedAt" -> Comparator.comparing(AccessProfileDetailResponse.AssignedUserSummary::assignedAt, Comparator.nullsLast(Comparator.naturalOrder()));
+            default -> byName;
+        };
+        if ("desc".equalsIgnoreCase(sortDir)) order = order.reversed();
+        var all = matches.stream().sorted(order.thenComparing(byName).thenComparing(AccessProfileDetailResponse.AssignedUserSummary::id)).toList();
         int safePage = Math.max(1, page), size = Math.max(1, Math.min(100, limit));
         int start = (int) Math.min((long) (safePage - 1) * size, all.size());
         return Map.of("data", all.subList(start, Math.min(start + size, all.size())),
-                "assignedIds", all.stream().map(AccessProfileDetailResponse.AssignedUserSummary::id).toList(),
+                "assignedIds", everyone.stream().map(AccessProfileDetailResponse.AssignedUserSummary::id).toList(),
                 "pagination", new com.eqms.dto.user.PaginationResponse(safePage, size, all.size(), (int) Math.ceil((double) all.size() / size)));
     }
 
@@ -1144,22 +1159,22 @@ public class AccessProfileService {
 
     private RoleDefinition requireRole(UUID id) {
         return roleRepo.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Access profile not found: " + id));
+                .orElseThrow(() -> new NoSuchElementException("Access profile not found"));
     }
 
     private RoleDefinition requireRoleForConfigurationUpdate(UUID id) {
         return roleRepo.findByIdForUpdate(id)
-                .orElseThrow(() -> new NoSuchElementException("Access profile not found: " + id));
+                .orElseThrow(() -> new NoSuchElementException("Access profile not found"));
     }
 
     private PermissionSet requirePermissionSet(UUID id) {
         return permSetRepo.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Permission set not found: " + id));
+                .orElseThrow(() -> new NoSuchElementException("Permission set not found"));
     }
 
     private UserAccount requireUser(UUID id) {
         return userRepo.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("User not found: " + id));
+                .orElseThrow(() -> new NoSuchElementException("User not found"));
     }
 
     private void requireView() {
@@ -1379,7 +1394,7 @@ public class AccessProfileService {
     private String userLabel(UserAccount user) {
         if (user == null) return "-";
         String name = user.getFullName() != null ? user.getFullName() : user.getUsername();
-        return name + " (" + user.getId() + ")";
+        return user.getUsername() != null && !user.getUsername().equals(name) ? name + " (" + user.getUsername() + ")" : name;
     }
 
     private AccessProfileResponse toSummaryResponse(RoleDefinition role) {
@@ -1388,12 +1403,13 @@ public class AccessProfileService {
         long userCount = uapRepo.countByAccessProfileId(role.getId());
         return new AccessProfileResponse(
                 role.getId(), role.getCode(), role.getName(), role.getDescription(),
-                role.getType(), role.isActive(), role.isSystem(),
+                role.getType(), role.isActive(), role.isSystem(), role.isTestData(),
                 role.getBusinessUnitScope(), role.getDepartmentScope(),
                 (int) psCount,
                 wfRoles.size(),
                 (int) userCount,
                 wfRoles.stream().map(AccessProfileWorkflowRole::getWorkflowRole).toList(),
+                documentControlVisibility(role.getId()),
                 role.getCreatedAt(), role.getUpdatedAt(),
                 formatCreatedAtDisplay(role.getCreatedAt())
         );
@@ -1423,11 +1439,36 @@ public class AccessProfileService {
 
         return new AccessProfileDetailResponse(
                 role.getId(), role.getCode(), role.getName(), role.getDescription(),
-                role.getType(), role.isActive(), role.isSystem(),
+                role.getType(), role.isActive(), role.isSystem(), role.isTestData(),
                 role.getBusinessUnitScope(), role.getDepartmentScope(),
-                psList, wfRoles, users,
-                role.getCreatedAt(), role.getUpdatedAt()
+                psList, wfRoles, documentControlVisibility(role.getId()), users,
+                role.getCreatedAt(), role.getUpdatedAt(), createdBy(role.getId())
         );
+    }
+
+    /** The user who created or duplicated the profile, read from the audit trail (the profile row does not store it). */
+    private String createdBy(UUID profileId) {
+        List<com.eqms.entity.AuditLog> history = auditLogRepository.findAllByEntityTypeAndEntityIdOrderByCreatedAtDesc(ENTITY_TYPE, profileId);
+        for (int i = history.size() - 1; i >= 0; i--) {
+            com.eqms.entity.AuditLog entry = history.get(i);
+            if ("ACCESS_PROFILE_CREATED".equals(entry.getAction()) || "ACCESS_PROFILE_DUPLICATED".equals(entry.getAction())) {
+                String name = entry.getUserFullName();
+                return name != null && !name.isBlank() ? name : entry.getUsername();
+            }
+        }
+        return null;
+    }
+
+    /** The Document Control visibility the profile grants, from every permission of every set attached to it. */
+    private String documentControlVisibility(UUID profileId) {
+        Set<String> codes = new HashSet<>();
+        for (AccessProfilePermissionSet assignment : appSetRepo.findByAccessProfileId(profileId)) {
+            if (assignment.getPermissionSetId() == null) continue;
+            for (var item : permissionSetItemRepo.findAllByPermissionSet_Id(assignment.getPermissionSetId())) {
+                if (item.getPermission() != null) codes.add(item.getPermission().getCode());
+            }
+        }
+        return DocumentControlVisibility.classify(codes);
     }
 
     private AccessProfileDetailResponse.PermissionSetSummary toPermSetSummary(PermissionSet ps) {
@@ -1440,7 +1481,7 @@ public class AccessProfileService {
     private AccessProfileDetailResponse.AssignedUserSummary toUserSummary(UserAccount user, java.time.Instant assignedAt) {
         if (user == null) return null;
         return new AccessProfileDetailResponse.AssignedUserSummary(
-                user.getId(), user.getFullName(), user.getEmail(),
+                user.getId(), user.getFullName(), user.getEmployeeCode(), user.getEmail(),
                 user.getDepartment(),
                 user.getStatus() != null ? user.getStatus().name() : null,
                 assignedAt);

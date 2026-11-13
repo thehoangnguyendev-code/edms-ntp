@@ -83,14 +83,6 @@ export const STEP_LABEL: Record<string, string> = {
   REQUIREMENT_REVIEW: "Review of the training requirement",
   REQUIREMENT_APPROVE: "Approval of the training requirement",
 };
-export const CONFIRMATION_LABEL: Record<string, string> = {
-  ATTENDEE_LIST_PREPARED: "Attendee list confirmed",
-  TRAINER_ATTENDANCE: "Attendance confirmed by the trainer",
-  HEAD_SELF_READING: "Self-reading verified",
-  CONTENT_REVIEWED: "Content reviewed",
-  CONTENT_APPROVED: "Content approved",
-  QA_COMPLETION: "Completion confirmed by QA",
-};
 
 export const when = (value?: string | null) => (value ? displayDateTime(value) : "—");
 /** What the e-signature modal shows before the person signs: the status the record is in now and the status it will be after the signature. */

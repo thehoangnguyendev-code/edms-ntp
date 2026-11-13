@@ -189,8 +189,9 @@ public class DocumentAuthorizationService {
         return documentMasterWorkflowAuthorizationService.isAllowed(user, document, actionCode);
     }
 
+    /** Opening a revision is an OPERATION: it follows the workspace-management permission, not the view-everything bundle (a person who may only look must not be able to act; owner decision 2026-11-08). */
     public boolean canManageRevisionWorkspace(UserAccount user) {
-        return canViewAllDocuments(user);
+        return canManageDocumentWorkspace(user);
     }
 
     public boolean canPublishRevision(UserAccount user) {
@@ -232,6 +233,11 @@ public class DocumentAuthorizationService {
         UUID currentUserId = user.getId();
         UUID authorId = document.getAuthor() == null ? null : document.getAuthor().getId();
         if (Objects.equals(authorId, currentUserId)) {
+            return true;
+        }
+        // The person who created the Document always sees it (the creator is normally the single DCO).
+        UUID ownerId = document.getOwner() == null ? null : document.getOwner().getId();
+        if (Objects.equals(ownerId, currentUserId)) {
             return true;
         }
         if (documentWorkflowParticipantRepository
@@ -301,6 +307,13 @@ public class DocumentAuthorizationService {
         if (Objects.equals(authorId, currentUserId)) {
             return true;
         }
+        // The creator of the Document (and of this revision) sees its revisions.
+        UUID revisionOwnerId = revision.getOwner() == null ? null : revision.getOwner().getId();
+        UUID documentOwnerId = revision.getDocument() == null || revision.getDocument().getOwner() == null
+                ? null : revision.getDocument().getOwner().getId();
+        if (Objects.equals(revisionOwnerId, currentUserId) || Objects.equals(documentOwnerId, currentUserId)) {
+            return true;
+        }
 
         if (revisionWorkflowParticipantRepository
                 .findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(revision.getId(), "CO_AUTHOR")
@@ -339,6 +352,7 @@ public class DocumentAuthorizationService {
         UUID userId = user.getId();
         List<Predicate> visible = new ArrayList<>();
         visible.add(cb.equal(root.get("author").get("id"), userId));
+        visible.add(cb.equal(root.get("owner").get("id"), userId));
 
         Subquery<UUID> documentParticipant = query.subquery(UUID.class);
         var documentParticipantRoot = documentParticipant.from(DocumentWorkflowParticipant.class);
@@ -376,6 +390,8 @@ public class DocumentAuthorizationService {
         UUID userId = user.getId();
         List<Predicate> visible = new ArrayList<>();
         visible.add(cb.equal(root.get("author").get("id"), userId));
+        visible.add(cb.equal(root.get("owner").get("id"), userId));
+        visible.add(cb.equal(root.get("document").get("owner").get("id"), userId));
 
         Subquery<UUID> revisionParticipant = query.subquery(UUID.class);
         var revisionParticipantRoot = revisionParticipant.from(RevisionWorkflowParticipant.class);

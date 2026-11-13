@@ -2,15 +2,6 @@ import type { SelectOption } from "@/components/ui/select/Select";
 import type { LegacyImportTabId } from "../legacy-import-tabs/LegacyImportTabNavigation";
 import { emptyLegacyTrainingEvidence, type LegacyTrainingEvidenceValue } from "../legacy-import-tabs/LegacyTrainingEvidence";
 
-// The middle Revision workflow steps never run for Legacy Import -- every historical revision was
-// already reviewed/approved outside the system.
-export const SKIPPED_STEPS = [
-  "Pending Review",
-  "Pending Approval",
-  "Pending Training",
-  "Ready for Publishing",
-];
-
 export const LEGACY_TRAINING_NUMBER = /^[A-Za-z0-9/._-]{1,40}$/;
 export const FIELD_LABEL = "text-xs sm:text-sm font-medium text-slate-700";
 export const FIELD_INPUT =

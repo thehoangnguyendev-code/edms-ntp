@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping({"/security/object-access-rules", "/settings/object-access-rules"})
+@RequestMapping("/security/object-access-rules")
 public class ObjectAccessRuleController {
 
     private final ObjectAccessRuleService service;

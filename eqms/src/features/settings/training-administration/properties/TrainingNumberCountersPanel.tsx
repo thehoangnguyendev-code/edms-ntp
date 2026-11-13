@@ -7,12 +7,11 @@ import { Select } from "@/components/ui/select/Select";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
 import { dictionaryApi } from "@/services/api/dictionary";
 import { trainingError, trainingSettingsApi, type TrainingNumberCounter } from "@/services/api/trainingActivities";
 
-const INPUT = "w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500";
+const INPUT = "w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500";
 
 /**
  * The counters of the Training Numbers (TRN/DC/YY-XXX): for each department and year, the last serial that was issued. At go-live the Administrator raises a counter to the last serial of the
@@ -97,7 +96,7 @@ export function TrainingNumberCountersPanel({ canManage }: { canManage: boolean 
         rows={rows}
         getRowKey={(r) => `${r.departmentId}-${r.year}`}
         isLoading={loading}
-        loadingContent={<SectionLoading text="Loading…" />}
+
         columns={columns}
         emptyState={<TableEmptyState title="No counter yet" description="A counter is made when the first Training Number of a department and year is issued." />}
         pagination={
@@ -144,7 +143,7 @@ export function TrainingNumberCountersPanel({ canManage }: { canManage: boolean 
               {/* Three lines, fixed: the person cannot drag it to another size; a long reason scrolls inside it. */}
               <textarea
                 rows={3}
-                className="block w-full resize-none overflow-y-auto rounded-lg border border-slate-200 px-3.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="block w-full resize-none overflow-y-auto rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 value={raising.reason}
                 onChange={(e) => setRaising({ ...raising, reason: e.target.value })}
               />

@@ -13,7 +13,7 @@ import { Fact } from "@/features/backup-restore/components/Fact";
 import { backupRestoreApi, type BackupTargetInfo, type EncryptionFacts, type TargetTestResult } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
-import { MediaRegisterPanel } from "./MediaRegisterPanel";
+import { ManualCopyPanel } from "./ManualCopyPanel";
 import { MEDIUM_LABEL } from "./policyLabels";
 
 const STEP_LABEL: Record<string, string> = {
@@ -25,8 +25,8 @@ const STEP_LABEL: Record<string, string> = {
 
 const TABS: TabItem[] = [
   { id: "targets", label: "Targets" },
+  { id: "manual-copy", label: "Manual Copy" },
   { id: "encryption", label: "Encryption" },
-  { id: "media", label: "Offline Media" },
 ];
 
 /** The result of a test run from this page: passed, or failed at the first step that did not work. */
@@ -45,15 +45,14 @@ const Part: React.FC<{ children: React.ReactNode }> = ({ children }) => <div cla
 
 /**
  * Backup Storage & Encryption: where backups are copied to and a test that proves each copy works, how they are protected, and the
- * offline media that a backup package can be written to. One tab for each part. Targets and encryption are read from the Backup Agent;
- * nothing here shows a key or a credential. Export requests are not here: they are in Backup > Export Requests.
+ * how they are protected. One tab for each part. Targets and encryption are read from the Backup Agent;
+ * nothing here shows a key or a credential.
  */
 export const BackupStorageView: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
   const canTest = hasPermission("backup.admin.storage.test");
-  const canManage = hasPermission("backup.media.manage");
 
   const [targets, setTargets] = useState<BackupTargetInfo[] | undefined>();
   const [targetsError, setTargetsError] = useState("");
@@ -61,7 +60,6 @@ export const BackupStorageView: React.FC = () => {
   const [encryptionError, setEncryptionError] = useState("");
   const [results, setResults] = useState<Record<string, TargetTestResult>>({});
   const [testing, setTesting] = useState("");
-  const [registering, setRegistering] = useState(false);
 
   const requested = searchParams.get("tab");
   const active = TABS.find((tab) => tab.id === requested)?.id ?? "targets";
@@ -174,20 +172,10 @@ export const BackupStorageView: React.FC = () => {
     </>
   );
 
-  const mediaTab = <MediaRegisterPanel registering={registering} onRegisterClose={() => setRegistering(false)} />;
-
-  const content = active === "encryption" ? encryptionTab : active === "media" ? mediaTab : targetsTab;
-
-  // The Register Medium action sits in the page header, on the same row as the title, as on the other screens.
-  const headerActions =
-    active === "media" && canManage ? (
-      <Button size="sm" variant="default" onClick={() => setRegistering(true)} className="whitespace-nowrap">
-        Register Medium
-      </Button>
-    ) : undefined;
+  const content = active === "encryption" ? encryptionTab : active === "manual-copy" ? <ManualCopyPanel /> : targetsTab;
 
   return (
-    <BackupAdminLivePage title="Backup Storage & Encryption" actions={headerActions}>
+    <BackupAdminLivePage title="Backup Storage & Encryption">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <TabNav tabs={TABS} activeTab={active} onChange={(id) => setSearchParams({ tab: id }, { replace: true })} layoutId="backup-storage-tab" ariaLabel="Backup storage" />
         <div className="p-4 md:p-5 space-y-6">{content}</div>

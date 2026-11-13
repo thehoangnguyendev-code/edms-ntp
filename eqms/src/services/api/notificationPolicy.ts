@@ -1,8 +1,9 @@
 import { api } from './client';
 
-export type ComplianceGroup = 'GMP_MANDATORY' | 'COMPLIANCE' | 'OPTIONAL';
 export type PolicyStatus = 'ACTIVE' | 'DRAFT' | 'DISABLED';
 export type DigestMode = 'IMMEDIATE' | 'DAILY_DIGEST' | 'WEEKLY_DIGEST';
+/** The two wordings of a notification a person can edit. */
+export type NotificationChannel = 'IN_APP' | 'EMAIL';
 
 export interface PageResponse<T> {
   data: T[];
@@ -14,31 +15,25 @@ export interface PageResponse<T> {
   };
 }
 
-export interface NotificationPolicySummary {
-  eventCode: string;
-  name: string;
-  description: string | null;
-  module: string;
-  priority: string;
-  complianceGroup: ComplianceGroup;
-  mandatory: boolean;
-  policyStatus: PolicyStatus;
-  escalationEnabled: boolean;
-  updatedAt: string;
-}
-
 export interface RecipientRule {
   type: string;
   value?: string;
+  /** The channels this recipient is reached on (IN_APP, EMAIL); absent means every channel the notification is sent on. */
+  channels?: string[];
 }
 
 export interface NotificationTemplateVersion {
   id: string;
+  channel: NotificationChannel | 'ESCALATION';
   versionNumber: number;
   status: string;
   title: string | null;
   summary: string | null;
+  subject: string | null;
+  body: string | null;
   actionUrlTemplate: string | null;
+  /** The words on the button of the email. */
+  actionLabel: string | null;
   variablesUsed: string | null;
   changeSummary: string | null;
   createdByName: string | null;
@@ -51,13 +46,12 @@ export interface NotificationPolicyDetail {
   description: string | null;
   module: string;
   priority: string;
-  complianceGroup: ComplianceGroup;
   relatedAction: string | null;
   dataObject: string | null;
+  supportedChannels: string;
   availableVariables: string | null;
-  mandatory: boolean;
-  mandatoryReason: string | null;
   policyStatus: PolicyStatus;
+  enabledChannels: string;
   recipientRules: RecipientRule[];
   digestMode: DigestMode;
   quietHoursStart: string | null;
@@ -68,6 +62,19 @@ export interface NotificationPolicyDetail {
   updatedByName: string | null;
   updatedAt: string;
   activeTemplates: NotificationTemplateVersion[];
+  /** The icon (lucide:Name or tabler:Name) and the tone of its colour chosen for the in-app notification; null means the icon of its kind. */
+  icon: string | null;
+  iconTone: string | null;
+}
+
+/** One placeholder an event offers: the token to copy, what it stands for, and an example of what it becomes. */
+export interface NotificationVariable {
+  name: string;
+  token: string;
+  label: string;
+  sample: string;
+  /** The module whose senders fill the placeholder in; empty where it is not known. */
+  module?: string | null;
 }
 
 export interface UpdateNotificationPolicyPayload {
@@ -79,108 +86,85 @@ export interface UpdateNotificationPolicyPayload {
   escalationEnabled?: boolean;
   escalationAfterMinutes?: number | null;
   escalationRecipientRules?: RecipientRule[];
+  /** The channels it is sent on: a subset of the channels the event supports, at least one. */
+  enabledChannels?: string[];
+  /** The "Updated" time of the notification as it was when this person opened it; a change saved by someone else since refuses this one. */
+  expectedUpdatedAt?: string;
 }
 
 export interface UpdateNotificationTemplatePayload {
   title?: string | null;
   summary?: string | null;
+  subject?: string | null;
+  body?: string | null;
   actionUrlTemplate?: string | null;
+  actionLabel?: string | null;
   changeSummary?: string | null;
+  /** See UpdateNotificationPolicyPayload.expectedUpdatedAt. */
+  expectedUpdatedAt?: string;
 }
 
 export interface NotificationPreviewPayload {
+  channel?: NotificationChannel;
   title?: string | null;
   summary?: string | null;
+  subject?: string | null;
+  body?: string | null;
   actionUrlTemplate?: string | null;
+  actionLabel?: string | null;
 }
 
 export interface NotificationPreviewResult {
   renderedTitle: string | null;
   renderedSummary: string | null;
+  renderedSubject: string | null;
+  renderedBody: string | null;
   renderedActionUrl: string | null;
-}
-
-export interface CreateNotificationEventPayload {
-  code: string;
-  name: string;
-  description?: string | null;
-  module: string;
-  priority: string;
-  complianceGroup: ComplianceGroup;
-  relatedAction?: string | null;
-  dataObject?: string | null;
-  availableVariables?: string | null;
-  actionUrlTemplate?: string | null;
-  mandatory: boolean;
-  mandatoryReason?: string | null;
-}
-
-export interface NotificationPolicyListParams {
-  search?: string;
-  module?: string;
-  complianceGroup?: string;
-  status?: string;
-  sortBy?: string;
-  sortDirection?: 'asc' | 'desc';
-  page?: number;
-  limit?: number;
+  /** The whole mail (frame, message, button) for the email channel; null for in-app. */
+  renderedHtml: string | null;
 }
 
 const ENDPOINT = '/notification-policies';
-const CHANNEL = 'IN_APP';
+const event = (eventCode: string) => `${ENDPOINT}/${encodeURIComponent(eventCode)}`;
 
+/**
+ * The notifications of the system are fixed: a person edits their wording and their channels, but never creates or deletes one (the code
+ * that raises an event is what makes it real), so there is no create or delete here.
+ */
 export const notificationPolicyApi = {
-  list: async (params?: NotificationPolicyListParams) => {
-    const response = await api.get<PageResponse<NotificationPolicySummary>>(ENDPOINT, { params });
+  getDetail: async (eventCode: string) => {
+    const response = await api.get<NotificationPolicyDetail>(event(eventCode));
     return response.data;
   },
 
-  getDetail: async (eventCode: string) => {
-    const response = await api.get<NotificationPolicyDetail>(`${ENDPOINT}/${encodeURIComponent(eventCode)}`);
+  variables: async (eventCode: string) => {
+    const response = await api.get<NotificationVariable[]>(`${event(eventCode)}/variables`);
     return response.data;
   },
 
   updatePolicy: async (eventCode: string, payload: UpdateNotificationPolicyPayload) => {
-    const response = await api.put<NotificationPolicyDetail>(`${ENDPOINT}/${encodeURIComponent(eventCode)}`, payload);
+    const response = await api.put<NotificationPolicyDetail>(event(eventCode), payload);
     return response.data;
   },
 
-  updateTemplate: async (eventCode: string, payload: UpdateNotificationTemplatePayload) => {
-    const response = await api.put<NotificationTemplateVersion>(
-      `${ENDPOINT}/${encodeURIComponent(eventCode)}/templates/${CHANNEL}`,
-      payload,
-    );
+  /** Sends the published email, with example values, to one address. */
+  /** Chooses the icon and the colour of the in-app notification; empty values go back to the icon of its kind. */
+  updateAppearance: async (eventCode: string, icon: string | null, iconTone: string | null, expectedUpdatedAt?: string) => {
+    const response = await api.put<NotificationPolicyDetail>(`${event(eventCode)}/appearance`, { icon, iconTone, expectedUpdatedAt });
     return response.data;
   },
 
-  getHistory: async (eventCode: string) => {
-    const response = await api.get<NotificationTemplateVersion[]>(
-      `${ENDPOINT}/${encodeURIComponent(eventCode)}/templates/${CHANNEL}/history`,
-    );
-    return response.data;
+  testSend: async (eventCode: string, to: string) => {
+    await api.post(`${event(eventCode)}/test-send`, { to });
   },
 
-  restoreVersion: async (eventCode: string, versionId: string) => {
-    const response = await api.post<NotificationTemplateVersion>(
-      `${ENDPOINT}/${encodeURIComponent(eventCode)}/templates/${CHANNEL}/restore/${versionId}`,
-    );
+  updateTemplate: async (eventCode: string, channel: NotificationChannel, payload: UpdateNotificationTemplatePayload) => {
+    const response = await api.put<NotificationTemplateVersion>(`${event(eventCode)}/templates/${channel}`, payload);
     return response.data;
   },
 
   preview: async (eventCode: string, payload: NotificationPreviewPayload) => {
-    const response = await api.post<NotificationPreviewResult>(`${ENDPOINT}/${encodeURIComponent(eventCode)}/preview`, {
-      channel: CHANNEL,
-      ...payload,
-    });
+    const response = await api.post<NotificationPreviewResult>(`${event(eventCode)}/preview`, { channel: 'IN_APP', ...payload });
     return response.data;
-  },
-
-  create: async (payload: CreateNotificationEventPayload) => {
-    const response = await api.post<NotificationPolicySummary>(ENDPOINT, payload);
-    return response.data;
-  },
-
-  remove: async (eventCode: string) => {
-    await api.delete(`${ENDPOINT}/${encodeURIComponent(eventCode)}`);
   },
 };

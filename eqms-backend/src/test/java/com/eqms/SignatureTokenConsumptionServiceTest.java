@@ -64,7 +64,7 @@ class SignatureTokenConsumptionServiceTest {
         // attempt for the same token (a different HTTP request/transaction replaying it) -- no
         // TransactionSynchronizationManager resource is bound outside a real Spring transaction in
         // this unit test, so the repository is hit again exactly like a real replay would be.
-        when(usedSignatureTokenRepository.save(any()))
+        when(usedSignatureTokenRepository.saveAndFlush(any()))
                 .thenThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint"));
 
         assertThrows(UnauthorizedException.class, () -> service.requireAndConsume("raw-jwt", user));
@@ -76,14 +76,14 @@ class SignatureTokenConsumptionServiceTest {
         try {
             assertEquals(tokenId, service.requireAndConsume("raw-jwt", user));
             assertEquals(tokenId, service.requireAndConsume("raw-jwt", user));
-            org.mockito.Mockito.verify(usedSignatureTokenRepository, org.mockito.Mockito.times(1)).save(any());
+            org.mockito.Mockito.verify(usedSignatureTokenRepository, org.mockito.Mockito.times(1)).saveAndFlush(any());
             for (var hook : org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations()) {
                 hook.afterCompletion(org.springframework.transaction.support.TransactionSynchronization.STATUS_COMMITTED);
             }
         } finally {
             org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
         }
-        when(usedSignatureTokenRepository.save(any())).thenThrow(new DataIntegrityViolationException("duplicate nonce"));
+        when(usedSignatureTokenRepository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("duplicate nonce"));
         assertThrows(UnauthorizedException.class, () -> service.requireAndConsume("raw-jwt", user));
     }
 
@@ -98,9 +98,28 @@ class SignatureTokenConsumptionServiceTest {
                 assertThrows(UnauthorizedException.class,()->service.requireAndConsume("raw-jwt",user));
             } finally {hooks.forEach(org.springframework.transaction.support.TransactionSynchronization::resume);}
             assertEquals(tokenId,service.requireAndConsume("raw-jwt",user));
-            org.mockito.Mockito.verify(usedSignatureTokenRepository,org.mockito.Mockito.times(1)).save(any());
+            org.mockito.Mockito.verify(usedSignatureTokenRepository,org.mockito.Mockito.times(1)).saveAndFlush(any());
             hooks.forEach(hook->hook.afterCompletion(org.springframework.transaction.support.TransactionSynchronization.STATUS_COMMITTED));
         } finally {org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();}
+    }
+
+    /**
+     * SIGNATURE-TOKEN-REPLAY-2026-11-12: with a real repository the id is assigned by the code, so save() did a merge and a second use raised nothing; the mock above
+     * hid it. A token whose row exists is refused before anything is written, and a use that loses a race at the insert is refused too.
+     */
+    @Test
+    void aTokenWhoseRowAlreadyExistsIsRefusedAndNothingIsWritten() {
+        when(usedSignatureTokenRepository.existsById(tokenId)).thenReturn(true);
+
+        assertThrows(UnauthorizedException.class, () -> service.requireAndConsume("raw-jwt", user));
+        org.mockito.Mockito.verify(usedSignatureTokenRepository, org.mockito.Mockito.never()).saveAndFlush(any());
+    }
+
+    @Test
+    void theFirstUseIsWrittenWithAFlushedInsert() {
+        assertEquals(tokenId, service.requireAndConsume("raw-jwt", user));
+        org.mockito.Mockito.verify(usedSignatureTokenRepository).existsById(tokenId);
+        org.mockito.Mockito.verify(usedSignatureTokenRepository).saveAndFlush(any());
     }
 
     @Test

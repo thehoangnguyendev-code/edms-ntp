@@ -6,6 +6,8 @@ public record NotificationPreviewResponse(
         String renderedSummary,
         String renderedSubject,
         String renderedBody,
-        String renderedActionUrl
+        String renderedActionUrl,
+        /** The whole mail (frame, message, button) for the email channel; null for in-app. */
+        String renderedHtml
 ) {
 }

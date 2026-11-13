@@ -1,21 +1,20 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CalendarClock, FileText, ListChecks, ShieldCheck, Warehouse } from "lucide-react";
-import { IconServer2 } from "@tabler/icons-react";
+import { IconCopy, IconServer2 } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { FormSection } from "@/components/ui/form";
-import { FormField, Textarea } from "@/components/ui/form/ResponsiveForm";
+import { FormField, Input, Textarea } from "@/components/ui/form/ResponsiveForm";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { TimePicker } from "@/components/ui/datetime-picker/TimePicker";
-import { ReadOnlyField } from "@/components/ui/form/ReadOnlyField";
 import { Select } from "@/components/ui/select/Select";
 import { Switch } from "@/components/ui/switch/Switch";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { useToast } from "@/components/ui/toast/Toast";
 import { ROUTES } from "@/app/routes.constants";
-import { backupRestoreApi, type BackupTargetInfo, type PolicyGate, type PolicyMedium, type PolicyTarget } from "@/services/api/backupRestore";
+import { backupRestoreApi, readPolicyBody, type BackupTargetInfo, type ManualCopy, type PolicyGate, type PolicyMedium, type PolicyTarget } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
 import { GateTable } from "./BackupPolicyDetailView";
@@ -26,7 +25,6 @@ interface TargetChoice {
   included: boolean;
   medium: PolicyMedium;
   offsite: boolean;
-  immutable: boolean;
 }
 
 const FOLDER_MEDIA: PolicyMedium[] = ["SERVER_FOLDER", "NETWORK_SHARE", "REMOVABLE_MEDIA"];
@@ -37,26 +35,18 @@ const mediaFor = (info: BackupTargetInfo): PolicyMedium[] => (info.code === "T1"
  * What the 3-2-1-1 rule says about the choices made so far. It mirrors the rule the Backup Agent applies, so a person sees the
  * outcome while choosing; the Agent decides again when the version is proposed and when it is activated.
  */
-export const previewGate = (choices: TargetChoice[]): PolicyGate => {
+export const previewGate = (choices: TargetChoice[], manual: boolean = false): PolicyGate => {
   const picked = choices.filter((c) => c.included);
-  const media = new Set(picked.map((c) => c.medium));
+  const media = new Set<string>(picked.map((c) => c.medium));
+  if (manual) media.add("MANUAL_COPY");
   const offsite = picked.filter((c) => c.offsite).map((c) => c.info.code);
-  const immutable = picked.filter((c) => c.immutable).map((c) => c.info.code);
-  const unlocked = picked.filter((c) => c.immutable && !c.info.immutable).map((c) => c.info.code);
-  const copies = 1 + picked.length;
+  const copies = 1 + picked.length + (manual ? 1 : 0);
   const conditions = [
-    { code: "COPIES", ok: copies >= 3, relaxed: false, pending: false, detail: `${copies} copies of the data (the live system plus ${picked.length} target(s)); at least 3 are required` },
+    { code: "COPIES", ok: copies >= 3, relaxed: false, pending: false, detail: `${copies} copies of the data (the live system plus ${picked.length} target(s)${manual ? " plus the manual copy" : ""}); at least 3 are required` },
     { code: "MEDIA", ok: media.size >= 2, relaxed: false, pending: false, detail: `${media.size} kind(s) of medium; at least 2 are required` },
-    { code: "OFFSITE", ok: offsite.length > 0, relaxed: false, pending: false, detail: offsite.length ? `Declared off-site: ${offsite.join(", ")}` : "No target is declared off-site; at least 1 is required" },
-    { code: "IMMUTABLE", ok: immutable.length > 0, relaxed: false, pending: false, detail: immutable.length ? `Declared immutable: ${immutable.join(", ")}` : "No target is declared immutable; at least 1 is required" },
-    {
-      code: "IMMUTABLE_CONFIGURED",
-      ok: unlocked.length === 0,
-      relaxed: false,
-      pending: false,
-      detail: unlocked.length ? `Declared immutable but not configured as immutable on the Backup Agent: ${unlocked.join(", ")}` : "Every target declared immutable is configured as immutable",
-    },
-    { code: "TARGETS_WORK", ok: false, relaxed: false, pending: true, detail: "Every target is written, read back and, if immutable, asked to refuse a delete when the policy is activated" },
+    { code: "OFFSITE", ok: offsite.length > 0 || manual, relaxed: false, pending: false, detail: offsite.length > 0 || manual ? `Declared off-site: ${[...offsite, ...(manual ? ["the manual copy"] : [])].join(", ")}` : "No target is declared off-site; at least 1 is required" },
+    { code: "IMMUTABLE", ok: manual, relaxed: false, pending: false, detail: manual ? "Held out of the server's reach: the manual copy" : "No manual offline copy is declared; at least 1 copy out of the server's reach is required" },
+    { code: "TARGETS_WORK", ok: false, relaxed: false, pending: true, detail: "Every target is written and read back when the policy is activated" },
   ];
   return { passed: conditions.every((c) => c.ok || c.pending), enforced: true, conditions };
 };
@@ -80,7 +70,7 @@ const ScopeRow: React.FC<{ title: string; note: string; checked: boolean; disabl
   </div>
 );
 
-/** Propose a new policy version. Nothing changes until another person approves it with an electronic signature. */
+/** Propose a new policy version. Nothing changes until an administrator activates it with an electronic signature. */
 export const NewBackupPolicyView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -89,7 +79,11 @@ export const NewBackupPolicyView: React.FC = () => {
   const [documents, setDocuments] = useState(true);
   const [dbEnabled, setDbEnabled] = useState(true);
   const [time, setTime] = useState("02:00");
+  /** The files at a time of their own, or (off) in the same run as the database. */
+  const [filesOwn, setFilesOwn] = useState(false);
+  const [filesTime, setFilesTime] = useState("03:00");
   const [reason, setReason] = useState("");
+  const [manual, setManual] = useState<ManualCopy>({ declared: false, description: "", everyDays: 7 });
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
@@ -105,6 +99,17 @@ export const NewBackupPolicyView: React.FC = () => {
             return [];
           }
         })();
+        const currentManual = active.data[0] ? readPolicyBody(active.data[0]).manualCopy : null;
+        if (currentManual) setManual(currentManual);
+        if (active.data[0]) {
+          const current = readPolicyBody(active.data[0]);
+          if (current.time) setTime(current.time);
+          setDbEnabled(current.enabled);
+          if (current.filesTime) {
+            setFilesOwn(true);
+            setFilesTime(current.filesTime);
+          }
+        }
         setChoices(
           targets.map((info) => {
             const existing = current.find((t) => t.code === info.code);
@@ -113,7 +118,6 @@ export const NewBackupPolicyView: React.FC = () => {
               included: info.code === "T1" || !!existing,
               medium: existing?.medium ?? mediaFor(info)[0],
               offsite: existing?.offsite ?? false,
-              immutable: existing?.immutable ?? false,
             };
           }),
         );
@@ -125,8 +129,11 @@ export const NewBackupPolicyView: React.FC = () => {
   }, []);
 
   const change = (code: string, patch: Partial<TargetChoice>) => setChoices((prev) => prev?.map((c) => (c.info.code === code ? { ...c, ...patch } : c)) ?? prev);
-  const gate = useMemo(() => (choices ? previewGate(choices) : null), [choices]);
-  const timeOk = /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
+  const gate = useMemo(() => (choices ? previewGate(choices, manual.declared) : null), [choices, manual.declared]);
+  const clock = /^([01]\d|2[0-3]):[0-5]\d$/;
+  const ownSchedule = documents && filesOwn;
+  const timeOk = clock.test(time) && (!ownSchedule || clock.test(filesTime));
+  const manualOk = !manual.declared || (manual.description.trim().length > 0 && Number.isInteger(manual.everyDays) && manual.everyDays >= 1 && manual.everyDays <= 365);
   const parent = { label: "Backup Policy", path: ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY };
 
   const submit = async () => {
@@ -136,16 +143,20 @@ export const NewBackupPolicyView: React.FC = () => {
     try {
       const created = await backupRestoreApi.proposePolicy({
         scope: { components: documents ? ["DATABASE", "OBJECT_STORE"] : ["DATABASE"] },
-        schedule: { database: { enabled: dbEnabled, frequency: "DAILY", time, type: "FULL" } },
+        schedule: {
+          database: { enabled: dbEnabled, frequency: "DAILY", time, type: "FULL" },
+          ...(ownSchedule ? { files: { enabled: true, frequency: "DAILY" as const, time: filesTime, type: "FULL" as const } } : {}),
+        },
         retention: { mode: "PERMANENT" },
         targets: {
           targets: choices
             .filter((c) => c.included)
-            .map((c) => ({ code: c.info.code, medium: c.medium, offsite: c.offsite, immutable: c.immutable })),
+            .map((c) => ({ code: c.info.code, medium: c.medium, offsite: c.offsite, immutable: false })),
+          ...(manual.declared ? { manualCopy: { declared: true, description: manual.description.trim(), everyDays: manual.everyDays } } : {}),
         },
         reason: reason.trim(),
       });
-      showToast({ type: "success", title: "Policy version proposed", message: `Version ${created.version} is waiting for approval by another person.` });
+      showToast({ type: "success", title: "Policy version proposed", message: `Version ${created.version} is a draft. Activate it with your electronic signature.` });
       navigate(ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY_DETAIL(created.version));
     } catch (e) {
       showToast({ type: "error", title: "The version was not proposed", message: policyErrorMessage(e, "The request was refused.") });
@@ -159,7 +170,7 @@ export const NewBackupPolicyView: React.FC = () => {
       <Button variant="outline-emerald" size="sm" onClick={() => navigate(parent.path)} className="whitespace-nowrap touch-manipulation">
         Cancel
       </Button>
-      <Button variant="outline-emerald" size="sm" disabled={saving || !choices || !reason.trim() || !timeOk} onClick={() => setConfirming(true)} className="whitespace-nowrap touch-manipulation">
+      <Button variant="outline-emerald" size="sm" disabled={saving || !choices || !reason.trim() || !timeOk || !manualOk} onClick={() => setConfirming(true)} className="whitespace-nowrap touch-manipulation">
         {saving ? "Proposing…" : "Propose Version"}
       </Button>
     </>
@@ -185,23 +196,23 @@ export const NewBackupPolicyView: React.FC = () => {
 
   return (
     <BackupAdminLivePage title="Propose Policy Change" parent={parent} actions={actions}>
-      <WarningBanner variant="info" description="Proposing creates a draft only. The running policy does not change until another person approves the draft with an electronic signature." />
+      <WarningBanner variant="info" description="Proposing creates a draft only. The running policy does not change until the draft is activated with an electronic signature." />
 
       <div className="grid grid-cols-1 gap-4 md:gap-6 xl:grid-cols-2">
         <FormSection title="What Is Backed Up" icon={<ListChecks className="h-4 w-4" />} description="The data each backup copies.">
           <div className="space-y-3">
-            <ScopeRow title={COMPONENT_LABEL.DATABASE} note="Required: every backup contains the database." checked disabled />
+            <ScopeRow title={COMPONENT_LABEL.DATABASE} note="Required: every backup contains the database, with everything stored in it: settings, users, audit trail, and the images, videos and large objects kept in database columns." checked disabled />
             <ScopeRow
               title={COMPONENT_LABEL.OBJECT_STORE}
-              note="Every stored version of every document is copied once, encrypted."
+              note="Every stored version of every file in the three document buckets (documents, revisions, templates, controlled copies, executed records, reports, training files, and the pictures inside documents) is copied once, encrypted."
               checked={documents}
               onChange={setDocuments}
             />
           </div>
         </FormSection>
 
-        <FormSection title="Schedule and Retention" icon={<CalendarClock className="h-4 w-4" />} description="When the database is backed up, and for how long it is kept.">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <FormSection title="Schedule" icon={<CalendarClock className="h-4 w-4" />} description="When the database and the files are backed up. Backups are kept permanently.">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Group title="Database backup">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm text-slate-700">{dbEnabled ? "Daily" : "Switched off"}</span>
@@ -212,9 +223,16 @@ export const NewBackupPolicyView: React.FC = () => {
               <TimePicker value={time} onChange={setTime} disabled={!dbEnabled} />
               <p className="text-xs text-slate-500">Used when the database backup is switched on.</p>
             </Group>
-            <Group title="Retention">
-              <ReadOnlyField value="Permanently" />
-              <p className="text-xs text-slate-500">Fixed by decision BR-2.</p>
+            <Group title="Files backup">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-slate-700">{!documents ? "Not part of the policy" : filesOwn ? "At its own time" : "With the database"}</span>
+                <Switch checked={ownSchedule} size="sm" disabled={!documents} aria-label="Files at their own time" onChange={setFilesOwn} />
+              </div>
+              <p className="text-xs text-slate-500">Off: the files are copied in the same run as the database. On: the database and the files are backed up in two separate runs.</p>
+            </Group>
+            <Group title="Files time of day">
+              <TimePicker value={filesTime} onChange={setFilesTime} disabled={!ownSchedule} />
+              <p className="text-xs text-slate-500">Used when the files have their own time.</p>
             </Group>
           </div>
         </FormSection>
@@ -223,7 +241,7 @@ export const NewBackupPolicyView: React.FC = () => {
       <FormSection
         title="Backup Targets"
         icon={<IconServer2 className="h-4 w-4" />}
-        description="T1 is where every backup is written first. Declare which of the others are in another location or cannot be changed."
+        description="T1 is where every backup is written first. Declare which of the others are in another location."
         headerRight={<Badge color="slate" size="sm">{included} of {choices.length} used</Badge>}
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -236,7 +254,6 @@ export const NewBackupPolicyView: React.FC = () => {
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-900">{c.info.code}</p>
                     <p className="break-all font-mono text-xs text-slate-500">{c.info.location}</p>
-                    {c.info.immutable && <Badge color="slate" size="sm" className="mt-1">Configured as immutable</Badge>}
                   </div>
                   <Switch
                     checked={c.included}
@@ -257,14 +274,30 @@ export const NewBackupPolicyView: React.FC = () => {
                   <span>Off-site</span>
                   <Switch checked={c.offsite} size="sm" disabled={locked} aria-label={`${c.info.code} off-site`} onChange={(offsite) => change(c.info.code, { offsite })} />
                 </div>
-                <div className="flex items-center justify-between gap-3 text-sm text-slate-700">
-                  <span>Immutable</span>
-                  <Switch checked={c.immutable} size="sm" disabled={locked} aria-label={`${c.info.code} immutable`} onChange={(immutable) => change(c.info.code, { immutable })} />
-                </div>
               </div>
             );
           })}
         </div>
+      </FormSection>
+
+      <FormSection
+        title="Manual Copy"
+        icon={<IconCopy className="h-4 w-4" />}
+        description="A copy you make yourself and keep away from the server, for example on a disk in a safe. The Backup Agent cannot see it, so it is declared here and never tested."
+        headerRight={<Switch checked={manual.declared} size="sm" aria-label="Use a manual copy" onChange={(declared) => setManual((m) => ({ ...m, declared }))} />}
+      >
+        {manual.declared ? (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField label="Where it is kept and who makes it" required>
+              <Input value={manual.description} maxLength={500} onChange={(event) => setManual((m) => ({ ...m, description: event.target.value }))} placeholder="For example: USB disk in the quality safe, copied by the quality manager" />
+            </FormField>
+            <FormField label="Made every (days)" required hint="From 1 to 365.">
+              <Input type="number" min={1} max={365} value={String(manual.everyDays)} onChange={(event) => setManual((m) => ({ ...m, everyDays: Number(event.target.value) }))} />
+            </FormField>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-600">No manual copy is declared.</p>
+        )}
       </FormSection>
 
       <FormSection
@@ -290,7 +323,7 @@ export const NewBackupPolicyView: React.FC = () => {
         title="Propose This Policy Version?"
         description={
           <p className="text-sm text-slate-600">
-            The version is saved as a draft and waits for another person to approve it with an electronic signature. The running policy does not change. This action will be recorded in the Audit Trail.
+            The version is saved as a draft and waits to be activated with an electronic signature. The running policy does not change. This action will be recorded in the Audit Trail.
           </p>
         }
         confirmText="Propose Version"

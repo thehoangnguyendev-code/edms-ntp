@@ -42,7 +42,23 @@ describe("mergeSavedColumns", () => {
     ]);
     expect(merged[0].id).toBe("no");
     expect(merged[0].visible).toBe(true);
-    expect(merged[0].pinned).toBe(true);
+    expect(merged[0].pinned).toBe(false);
+  });
+
+  it("round-trips independent pins for No. and Expand without permitting them to move or hide", () => {
+    const structural: CustomizableColumn[] = [
+      { id: "expand", label: "Expand", visible: true, order: 0, locked: true },
+      ...defaults.map((column) => ({ ...column, order: column.order + 1 })),
+    ];
+    const merged = mergeSavedColumns(structural, [
+      { id: "expand", visible: false, order: 20, pinned: true },
+      { id: "no", visible: false, order: 21, pinned: false },
+    ]);
+    expect(merged.slice(0, 2).map(({ id, visible, pinned }) => ({ id, visible, pinned }))).toEqual([
+      { id: "expand", visible: true, pinned: true },
+      { id: "no", visible: true, pinned: false },
+    ]);
+    expect(mergeSavedColumns(structural, toSavedColumns(merged))).toEqual(merged);
   });
 });
 

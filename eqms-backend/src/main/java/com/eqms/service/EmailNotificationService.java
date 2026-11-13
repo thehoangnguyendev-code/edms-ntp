@@ -125,8 +125,7 @@ public class EmailNotificationService {
             payload.put("fullName", recipientEmail.trim());
             payload.put("displayName", recipientEmail.trim());
             payload.put("userName", recipientEmail.trim());
-            if (!isPolicyManaged(variables) && recipientUser != null
-                    && NotificationPreferenceUtils.canReceiveInAppNotification(objectMapper, recipientUser, resolveModuleKey(normalizedType))) {
+            if (!isPolicyManaged(variables) && recipientUser != null) {
                 recordInboxNotificationFromTemplate(
                         template,
                         recipientUser,
@@ -141,10 +140,6 @@ public class EmailNotificationService {
                 EmailService emailService = emailServiceProvider.getIfAvailable();
                 if (emailService == null) {
                     log.warn("EmailService is not available. Skipping controlled copy notification to {}", recipientEmail);
-                    continue;
-                }
-                if (recipientUser != null && !NotificationPreferenceUtils.canReceiveEmailNotification(objectMapper, recipientUser, resolveModuleKey(normalizedType))) {
-                    log.debug("Skipping email notification for {} because email notifications are disabled for this module.", recipientEmail);
                     continue;
                 }
                 if(queueFencedDelivery(template,recipientEmail.trim(),payload,"CONTROLLED_COPY",true))continue;
@@ -573,10 +568,65 @@ public class EmailNotificationService {
         return sendToRecipients(templateType, recipients, variables, null);
     }
 
+    /**
+     * A message of a type that is also a registry event ({@link LegacyMessageEvents}) goes through the event: its policy (on or off, channels, recipients, timing)
+     * and its wording apply. Null means "not sent this way", and the caller sends the message as it always did: the type has no event, the event is not in the
+     * registry yet, or the sender already names a registry event of its own. A false or true answer is final.
+     */
+    private Boolean sendThroughRegistry(String normalizedType, Collection<UserAccount> recipients, Map<String, String> variables) {
+        var legacy = LegacyMessageEvents.forMessageType(normalizedType);
+        if (legacy.isEmpty() || isPolicyManaged(variables)) {
+            return null;
+        }
+        NotificationDispatcher dispatcher = notificationDispatcherProvider.getIfAvailable();
+        if (dispatcher == null) {
+            return null;
+        }
+        boolean sentAny = false;
+        boolean first = true;
+        for (UserAccount recipient : recipients) {
+            if (recipient == null) {
+                continue;
+            }
+            Map<String, String> payload = buildUserVariables(recipient, null, variables);
+            // older messages write the comment of the action as {comment}; the senders give it as workflowComment
+            if (!StringUtils.hasText(payload.get("comment")) && StringUtils.hasText(payload.get("workflowComment"))) {
+                payload.put("comment", payload.get("workflowComment"));
+            }
+            if (!StringUtils.hasText(payload.get("actionUrl"))) {
+                payload.put("actionUrl", firstText(payload, "actionUrl", "documentUrl", "revisionUrl", "controlledCopyUrl", "controlledCopyPreviewUrl", "officeEditUrl"));
+            }
+            NotificationDispatcher.Outcome outcome = dispatcher.dispatch(legacy.get().code(), List.of(recipient), payload);
+            if (outcome != null && "NOT_REGISTERED".equals(outcome.blocked())) {
+                if (first) {
+                    return null;   // the event is not in the registry (no active message when the system started): send as before
+                }
+                continue;
+            }
+            first = false;
+            sentAny = sentAny || (outcome != null && (outcome.inAppSent() || outcome.emailSent()));
+        }
+        return sentAny;
+    }
+
+    private static String firstText(Map<String, String> values, String... keys) {
+        for (String key : keys) {
+            String value = values.get(key);
+            if (StringUtils.hasText(value)) {
+                return value.trim();
+            }
+        }
+        return "";
+    }
+
     private boolean sendToRecipients(String templateType, Collection<UserAccount> recipients, Map<String, String> variables, String eventDomain) {
         String normalizedType = EmailTemplateTypeUtils.normalize(templateType);
         if (!StringUtils.hasText(normalizedType) || recipients == null || recipients.isEmpty()) {
             return false;
+        }
+        Boolean throughRegistry = sendThroughRegistry(normalizedType, recipients, variables);
+        if (throughRegistry != null) {
+            return throughRegistry;
         }
         EmailTemplate template = templateRepository
                 .findTopByTypeIgnoreCaseAndStatusIgnoreCaseOrderByUpdatedDateDesc(normalizedType, "Active")
@@ -591,11 +641,9 @@ public class EmailNotificationService {
             if (recipient == null) {
                 continue;
             }
-            boolean mandatoryNotification = variables != null && "true".equals(variables.get("notificationMandatory"));
-            String moduleKey = resolveModuleKey(normalizedType);
             Map<String, String> payload = buildUserVariables(recipient, null, variables);
             dispatchPolicyNotification(recipient, payload);
-            if (!isPolicyManaged(variables) && (mandatoryNotification || NotificationPreferenceUtils.canReceiveInAppNotification(objectMapper, recipient, moduleKey))) {
+            if (!isPolicyManaged(variables)) {
                 recordInboxNotificationFromTemplate(
                         template,
                         recipient,
@@ -614,10 +662,6 @@ public class EmailNotificationService {
                 EmailService emailService = emailServiceProvider.getIfAvailable();
                 if (emailService == null) {
                     log.warn("EmailService is not available. Skipping {} notification to {}", eventDomain, recipient.getEmail());
-                    continue;
-                }
-                if (!mandatoryNotification && !NotificationPreferenceUtils.canReceiveEmailNotification(objectMapper, recipient, moduleKey)) {
-                    log.debug("Skipping email notification for {} because email notifications are disabled for this module.", recipient.getEmail());
                     continue;
                 }
                 boolean userSent = false;
@@ -908,7 +952,7 @@ public class EmailNotificationService {
         metadata.put("outboxLegacyTemplateId",template.getId().toString());
         metadata.put("outboxLegacyCountUsage",Boolean.toString(countUsage));
         emailOutboxProvider.getObject().enqueue(recipient,renderer.renderTemplateText(template.getSubject(),payload),
-                renderer.renderTemplateContent(template,payload),template.getType(),domain,metadata,true);
+                renderer.renderTemplateContent(template,payload),template.getType(),domain,metadata);
         return true;
     }
 
@@ -1125,11 +1169,7 @@ public class EmailNotificationService {
     }
 
     private List<String> resolveRecipientEmails(UserAccount recipient) {
-        if (recipient == null || !recipient.isEmailNotificationsEnabled()) {
-            return List.of();
-        }
-
-        if (!StringUtils.hasText(recipient.getEmail())) {
+        if (recipient == null || !StringUtils.hasText(recipient.getEmail())) {
             return List.of();
         }
         return List.of(recipient.getEmail().trim());

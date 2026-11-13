@@ -37,12 +37,6 @@ export function LineStatus({ line }: { line: { lineStatus: string; activityId?: 
 /** A month as MM/yyyy (the planned month of a line). */
 const monthText = (value: string) => `${value.slice(5, 7)}/${value.slice(0, 4)}`;
 
-const REQUIREMENT_STEPS = [
-  { status: "DRAFT", label: "Draft" },
-  { status: "PENDING_REVIEW", label: "Pending Review" },
-  { status: "PENDING_APPROVAL", label: "Pending Approval" },
-  { status: "APPROVED", label: "Approved" },
-];
 
 type DraftLine = { plannedMonth: string; topicText?: string | null; documentId?: string | null; title: string; code?: string | null };
 type Dialog = "addTopic" | "addDocument" | "submit" | "review" | "reject" | { postpone: string } | { qa: string } | undefined;
@@ -173,8 +167,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
         title={title}
         breadcrumbItems={crumbs}
         onBack={goBack}
-        steps={REQUIREMENT_STEPS.map((x) => x.label)}
-        currentStepIndex={Math.max(0, REQUIREMENT_STEPS.findIndex((x) => x.status === req.status))}
+        workflow={req.workflow}
         tabs={tabs}
         activeTab={tab}
         onTab={setTab}

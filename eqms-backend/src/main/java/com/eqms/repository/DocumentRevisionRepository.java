@@ -14,6 +14,9 @@ import java.util.UUID;
 import java.util.Collection;
 
 public interface DocumentRevisionRepository extends JpaRepository<DocumentRevisionRecord, UUID>, JpaSpecificationExecutor<DocumentRevisionRecord> {
+
+    /** Navigation: the user is the Author of at least one Revision. */
+    boolean existsByAuthor_Id(UUID userId);
     List<DocumentRevisionRecord> findAllByDocument_IdOrderByCreatedAtDesc(UUID documentId);
     List<DocumentRevisionRecord> findAllByDocument_IdOrderByCreatedAtAsc(UUID documentId);
 

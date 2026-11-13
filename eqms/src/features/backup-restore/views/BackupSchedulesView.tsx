@@ -127,7 +127,12 @@ export const BackupSchedulesView: React.FC = () => {
       header: "Component",
       label: "Component",
       sort: sortFor("component"),
-      cell: (row) => <span className="font-medium text-slate-900">{COMPONENT_LABEL[row.component as BackupComponentKey] ?? row.component}</span>,
+      cell: (row) => (
+        <div>
+          <span className="font-medium text-slate-900">{COMPONENT_LABEL[row.component as BackupComponentKey] ?? row.component}</span>
+          {row.note ? <span className="block text-xs text-slate-500">{row.note}</span> : null}
+        </div>
+      ),
     },
     { id: "type", header: "Backup type", label: "Backup type", sort: sortFor("type"), cell: (row) => dash(row.type) },
     { id: "frequency", header: "Frequency", label: "Frequency", sort: sortFor("frequency"), cell: (row) => dash(row.frequency) },
@@ -145,7 +150,6 @@ export const BackupSchedulesView: React.FC = () => {
 
   return (
     <BackupRestorePage title="Backup Schedules" group="Backup" preview={false}>
-      <WarningBanner variant="info" description="This list is read only. Change a schedule in System Administration > Backup & Restore Administration > Backup Policy." />
       {policyError && <WarningBanner variant="error" title="Unable to read the backup schedule" description={policyError} />}
       {policy && (
         <FormSection title="Schedule" icon={<IconCalendarTime className="h-4 w-4" />}>

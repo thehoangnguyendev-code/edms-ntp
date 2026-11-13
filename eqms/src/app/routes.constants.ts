@@ -21,7 +21,6 @@ export const ROUTES = {
 
   // Notifications
   NOTIFICATIONS: '/notifications',
-  CALENDAR: '/calendar',
 
   // Self-Service
   SELF_SERVICE: {
@@ -148,7 +147,6 @@ export const ROUTES = {
     ANALYTICS: '/report/analytics',
     TEMPLATES: '/report/templates',
     HISTORY: '/report/history',
-    RUN_PREVIEW: '/report/runs/preview',
     SCHEDULED: '/report/scheduled',
   },
 
@@ -163,18 +161,7 @@ export const ROUTES = {
     BACKUPS: '/backup-restore/backups',
     BACKUP_DETAIL: (backupNumber: string) => `/backup-restore/backups/${encodeURIComponent(backupNumber)}`,
     BACKUP_SCHEDULES: '/backup-restore/backups/schedules',
-    EXPORTS: '/backup-restore/backups/exports',
-    BACKUP_VERIFICATIONS: '/backup-restore/backups/verifications',
-    RESTORES: '/backup-restore/restores',
-    RESTORE_NEW: '/backup-restore/restores/new',
-    RESTORE_DETAIL: (restoreNumber: string) => `/backup-restore/restores/${encodeURIComponent(restoreNumber)}`,
-    RESTORE_EXECUTION: (restoreNumber: string) => `/backup-restore/restores/${encodeURIComponent(restoreNumber)}/execution`,
-    RESTORE_VERIFICATIONS: '/backup-restore/restores/verification-reports',
-    RESTORE_HISTORY: '/backup-restore/restores/history',
-    INSPECTIONS: '/backup-restore/restores/inspections',
-    ALERTS: '/backup-restore/alerts',
-    RESTORE_RULES: '/backup-restore/restore-rules',
-    DR_DRILLS: '/backup-restore/dr-drills',
+    PRODUCTION_RESTORES: '/backup-restore/production-restores',
   },
 
   // Settings
@@ -194,14 +181,16 @@ export const ROUTES = {
     EDUCATION_SCHOOLS_NEW: '/settings/education/schools/new',
     EDUCATION_SCHOOLS_EDIT: (id: string) => `/settings/education/schools/${id}/edit`,
     CONFIGURATION: '/settings/configuration',
-    EMAIL_TEMPLATES: '/settings/email-templates',
-    EMAIL_TEMPLATES_NEW: '/settings/email-templates/new',
-    EMAIL_TEMPLATES_EDIT: (id: string) => `/settings/email-templates/edit/${id}`,
     ANNOUNCEMENTS: '/settings/announcements',
     ANNOUNCEMENTS_NEW: '/settings/announcements/new',
     ANNOUNCEMENTS_EDIT: (id: string) => `/settings/announcements/edit/${id}`,
     ELECTRONIC_SIGNATURE: '/settings/electronic-signature',
-    NOTIFICATION_POLICY: '/settings/notification-policy',
+    NOTIFICATIONS: '/settings/notifications',
+    NOTIFICATIONS_EVENT: (eventCode: string) => `/settings/notifications/events/${encodeURIComponent(eventCode)}`,
+    NOTIFICATIONS_EVENT_EMAIL: (eventCode: string) => `/settings/notifications/events/${encodeURIComponent(eventCode)}/email`,
+    NOTIFICATIONS_EMAIL: (id: string) => `/settings/notifications/emails/${id}`,
+    NOTIFICATIONS_EMAIL_DESIGN: '/settings/notifications/email-design',
+    NOTIFICATIONS_IN_APP_DESIGN: '/settings/notifications/in-app-design',
     SYSTEM_INFO: '/settings/system-info',
     REPORT_CONFIGURATION: '/settings/report-configuration',
     REPORT_ADMINISTRATION: {
@@ -219,8 +208,7 @@ export const ROUTES = {
       POLICY_DETAIL: (version: number | string) => `/settings/administration/backup/policy/${version}`,
       STORAGE: '/settings/administration/backup/storage',
       MEDIUM_DETAIL: (id: string) => `/settings/administration/backup/storage/media/${id}`,
-      /** Restore rules, verification & drills, and retention & legal hold, one tab each (?tab=restore-rules | verification | retention). */
-      CONTROLS: '/settings/administration/backup/controls',
+      /** Verification, and retention & legal hold, one tab each (?tab=verification | retention). */
       ALERTS: '/settings/administration/backup/alerts',
       DISASTER_RECOVERY: '/settings/administration/backup/disaster-recovery',
     },
@@ -251,9 +239,7 @@ export const ROUTES = {
     PERMISSION_SETS: '/security/permission-sets',
     WORKFLOW_ROLE_CATALOG: '/security/advanced/workflow-roles',
     WORKFLOW_AUTHORIZATION: '/security/lifecycle-policies',
-    LIFECYCLE_POLICIES_TRANSITIONS: '/security/lifecycle-policies/transitions',
-    LIFECYCLE_POLICIES_CAPABILITIES: '/security/lifecycle-policies/capabilities',
-    POLICY_RESOLVER: '/security/lifecycle-policies/policy-resolver',
+    POLICY_RESOLVER: '/security/authorization-diagnostics?tab=resolver',
     AUTHORIZATION_DIAGNOSTICS: '/security/authorization-diagnostics',
     OBJECT_RULES: '/security/object-rules',
     SOD: '/security/sod',
@@ -362,11 +348,6 @@ export const TRANSACTIONAL_SUFFIXES: readonly string[] = [
 export const TRANSACTIONAL_SEGMENTS: readonly string[] = [
   'pending-review',
   'pending-approval',
-] as const;
-
-// Keep this for backward compat — union of all three strategies
-export const TRANSACTIONAL_PATH_PREFIXES: readonly string[] = [
-  ...TRANSACTIONAL_PREFIXES,
 ] as const;
 
 /**

@@ -15,6 +15,9 @@ import java.util.UUID;
 import java.time.Instant;
 
 public interface ControlledCopyRepository extends JpaRepository<ControlledCopyRecord, UUID>, JpaSpecificationExecutor<ControlledCopyRecord> {
+
+    /** Navigation: the user is the named recipient of at least one Controlled Copy. */
+    boolean existsByRecipientUser_Id(UUID userId);
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update ControlledCopyRecord c set c.downloadCount = c.downloadCount + 1, c.lastDownloadedAt = :now where c.id = :id and (:once = false or c.downloadCount < 1)")
     int consumeDownload(@Param("id") UUID id, @Param("now") Instant now, @Param("once") boolean once);

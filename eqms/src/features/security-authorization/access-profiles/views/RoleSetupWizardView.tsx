@@ -12,11 +12,14 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/components/ui/utils";
 import { useDebounce } from "@/hooks";
+import { usePermissions } from "@/hooks/usePermissions";
+import { getApiErrorMessage } from "@/utils/apiError";
 import { PermissionSplitExplorer } from "@/features/security-authorization/shared/explorer/PermissionSplitExplorer";
 import { usePermissionCatalog } from "@/features/security-authorization/shared/usePermissionCatalog";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { useScopeOptions } from "@/features/security-authorization/access-profiles/shared/useScopeOptions";
 import { scopeListToString } from "@/features/security-authorization/access-profiles/views/tabs/accessProfileDetailShared";
+import { withKnowledgePermission } from "@/features/security-authorization/access-profiles/shared/documentControlVisibility";
 import { MultiSelect } from "@/components/ui/select/MultiSelect";
 import { Select } from "@/components/ui/select/Select";
 import { accessProfiles as accessProfilesBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
@@ -87,6 +90,8 @@ export const RoleSetupWizardView: React.FC = () => {
   const [selectedSetDetails, setSelectedSetDetails] = useState<Map<string, PermissionSetResponse>>(new Map());
   const { permissionGroups, isLoading: catalogLoading } = usePermissionCatalog();
   const [customCodes, setCustomCodes] = useState<Set<string>>(new Set());
+  // Every user must reach the Knowledge Base (the server refuses it without the permission), so a new profile has it unless the administrator unticks it.
+  const [includeKnowledge, setIncludeKnowledge] = useState(true);
 
   // ── Step 3: workflow roles ────────────────────────────────────────────────
   const [workflowRoles, setWorkflowRoles] = useState<WorkflowRoleCatalogEntry[]>([]);
@@ -103,6 +108,10 @@ export const RoleSetupWizardView: React.FC = () => {
   // ── Step 5: initial users (optional) ──────────────────────────────────────
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
+  // Listing users needs settings.user.view. Without it the step is informational only: the profile
+  // is created unassigned and users are assigned later (the wizard route itself only needs update + assign).
+  const { hasPermissionAlias } = usePermissions();
+  const canListUsers = hasPermissionAlias("settings.user.view");
   const [userSearch, setUserSearch] = useState("");
   const [userBusinessUnitFilter, setUserBusinessUnitFilter] = useState("All");
   const [userDepartmentFilter, setUserDepartmentFilter] = useState("All");
@@ -164,6 +173,11 @@ export const RoleSetupWizardView: React.FC = () => {
 
   useEffect(() => {
     let active = true;
+    if (!canListUsers) {
+      setAllUsers([]);
+      setUsersLoading(false);
+      return () => { active = false; };
+    }
     setUsersLoading(true);
     settingsApi
       .getUsers({
@@ -180,7 +194,7 @@ export const RoleSetupWizardView: React.FC = () => {
       .catch(() => { if (active) showToast({ type: "error", message: "Failed to load users" }); })
       .finally(() => { if (active) setUsersLoading(false); });
     return () => { active = false; };
-  }, [debouncedUserSearch, showToast, userBusinessUnitFilter, userDepartmentFilter]);
+  }, [canListUsers, debouncedUserSearch, showToast, userBusinessUnitFilter, userDepartmentFilter]);
 
   const toggleUser = (user: User) => {
     setSelectedUserIds((prev) => {
@@ -269,7 +283,11 @@ export const RoleSetupWizardView: React.FC = () => {
           active: true,
           businessUnitScope: scopeListToString(businessUnits),
           departmentScope: scopeListToString(departments),
-          permissionCodes: permissionMode === "custom" ? [...customCodes] : [],
+          permissionCodes: withKnowledgePermission(
+            permissionMode === "custom" ? customCodes : [],
+            permissionMode === "existing" ? [...selectedSetDetails.values()].flatMap((set) => set.permissionCodes ?? []) : [],
+            includeKnowledge,
+          ),
           permissionSetIds: permissionMode === "existing" ? [...selectedSetIds] : [],
           workflowRoles: [...selectedRoleCodes],
           userIds: [...selectedUserIds],
@@ -288,7 +306,7 @@ export const RoleSetupWizardView: React.FC = () => {
       showToast({
         type: "error",
         title: "Access Profile creation failed",
-        message: e?.response?.data?.message ?? "Unexpected error — nothing was created.",
+        message: getApiErrorMessage(e, "Unexpected error — nothing was created."),
       });
     } finally {
       setCreating(false);
@@ -371,6 +389,13 @@ export const RoleSetupWizardView: React.FC = () => {
           description="Pick one or more existing permission sets, or build a custom set by ticking individual permissions."
           contentClassName="p-4 md:p-5"
         >
+          <div className="mb-4">
+            <Checkbox
+              checked={includeKnowledge}
+              onChange={setIncludeKnowledge}
+              label="Allow reading Effective documents in the Knowledge Base"
+            />
+          </div>
           <TabNav
             tabs={PERMISSION_MODE_TABS}
             activeTab={permissionMode}
@@ -618,7 +643,11 @@ export const RoleSetupWizardView: React.FC = () => {
             ) : (
               <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
                 {allUsers.length === 0 && (
-                  <p className="p-4 text-sm text-slate-400">No users match your search.</p>
+                  <p className="p-4 text-sm text-slate-400">
+                    {canListUsers
+                      ? "No users match your search."
+                      : "You do not have permission to list users. The Access Profile will be created unassigned; assign users later from the profile's Assigned Users tab."}
+                  </p>
                 )}
                 {allUsers.map((u) => (
                   <label

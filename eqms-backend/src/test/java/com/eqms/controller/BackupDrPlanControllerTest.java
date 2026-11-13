@@ -118,6 +118,60 @@ class BackupDrPlanControllerTest {
     }
 
     @Test
+    void onlyTheDeclarationAuthorityMayDeclareADisasterAndNothingIsSentOrSignedOtherwise() throws Exception {
+        when(agent.exchange(eq(HttpMethod.GET), eq("/internal/dr/authority"), any()))
+                .thenReturn(new BackupAgentClient.Reply(200, JSON.readTree("{\"key\":\"DECLARATION_AUTHORITY\",\"value\":\"qa.lead\"}")));
+        assertThatThrownBy(() -> controller.declare(new BackupDrPlanController.DeclareBody("SITE_LOSS", "fire", "tok")))
+                .isInstanceOfSatisfying(ResponseStatusException.class, e -> {
+                    assertThat(e.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(e.getReason()).isEqualTo("DR_NOT_THE_DECLARATION_AUTHORITY");
+                });
+        verifyNoInteractions(signatures);
+        verify(agent, org.mockito.Mockito.never()).exchange(eq(HttpMethod.POST), anyString(), any());
+    }
+
+    @Test
+    void theAuthorityDeclaresWithASignatureAndItIsAudited() throws Exception {
+        when(agent.exchange(eq(HttpMethod.GET), eq("/internal/dr/authority"), any()))
+                .thenReturn(new BackupAgentClient.Reply(200, JSON.readTree("{\"key\":\"DECLARATION_AUTHORITY\",\"value\":\"ADMIN\"}")));
+        ElectronicSignature signature = mock(ElectronicSignature.class);
+        when(signature.getSignatureId()).thenReturn("ESIG-77");
+        when(signatures.record(eq(actor), eq("tok"), eq("BACKUP_DR_DECLARE"), eq("BACKUP_DR_DECLARATION"), any(), eq("SITE_LOSS"), anyString(), isNull(), isNull())).thenReturn(signature);
+        when(agent.exchange(eq(HttpMethod.POST), eq("/internal/dr/declarations"), any()))
+                .thenReturn(new BackupAgentClient.Reply(200, JSON.readTree("{\"code\":\"DR-2026-0001\",\"status\":\"OPEN\"}")));
+        controller.declare(new BackupDrPlanController.DeclareBody("SITE_LOSS", "The building burned", "tok"));
+        verify(audit).logAs(eq(actor), eq("BACKUP_DR_DECLARATION"), eq("DR-2026-0001"), any(), eq("DR_DECLARED"), isNull(), eq("OPEN"), anyString());
+    }
+
+    @Test
+    void aDeclarationNeedsAReasonAndAValidScenarioBeforeAnythingIsAsked() {
+        assertThatThrownBy(() -> controller.declare(new BackupDrPlanController.DeclareBody("SITE_LOSS", " ", "tok")))
+                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getReason()).isEqualTo("DR_REASON_REQUIRED"));
+        assertThatThrownBy(() -> controller.declare(new BackupDrPlanController.DeclareBody("site loss; drop", "fire", "tok")))
+                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+        verifyNoInteractions(agent);
+    }
+
+    @Test
+    void closingNeedsASummaryAndASignatureAndTheCodeIsChecked() throws Exception {
+        assertThatThrownBy(() -> controller.close("not-a-code", new BackupDrPlanController.CloseBody("done", "tok")))
+                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+        assertThatThrownBy(() -> controller.close("DR-2026-0001", new BackupDrPlanController.CloseBody(" ", "tok")))
+                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getReason()).isEqualTo("DR_SUMMARY_REQUIRED"));
+        doThrow(new IllegalStateException("signature required")).when(signatures).requireValidToken(actor, null);
+        assertThatThrownBy(() -> controller.close("DR-2026-0001", new BackupDrPlanController.CloseBody("done", null))).isInstanceOf(IllegalStateException.class);
+        verifyNoInteractions(agent);
+
+        ElectronicSignature signature = mock(ElectronicSignature.class);
+        when(signature.getSignatureId()).thenReturn("ESIG-78");
+        when(signatures.record(eq(actor), eq("tok"), eq("BACKUP_DR_CLOSE"), eq("BACKUP_DR_DECLARATION"), any(), eq("DR-2026-0001"), anyString(), isNull(), isNull())).thenReturn(signature);
+        when(agent.exchange(eq(HttpMethod.POST), eq("/internal/dr/declarations/DR-2026-0001/close"), any()))
+                .thenReturn(new BackupAgentClient.Reply(200, JSON.readTree("{\"code\":\"DR-2026-0001\",\"status\":\"CLOSED\"}")));
+        controller.close("DR-2026-0001", new BackupDrPlanController.CloseBody("Rebuilt on the spare server", "tok"));
+        verify(audit).logAs(eq(actor), eq("BACKUP_DR_DECLARATION"), eq("DR-2026-0001"), any(), eq("DR_DECLARATION_CLOSED"), eq("OPEN"), eq("CLOSED"), anyString());
+    }
+
+    @Test
     void viewingNeedsOnlyTheViewPermission() {
         allow("backup.admin.disaster_recovery.view");
         assertThatThrownBy(() -> controller.verify("BACKUP_KEY", new BackupDrPlanController.VerifyBody("2026-10-10T08:00:00Z", null)))

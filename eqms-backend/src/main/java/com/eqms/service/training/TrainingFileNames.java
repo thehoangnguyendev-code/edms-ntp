@@ -7,7 +7,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.text.Normalizer;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -94,8 +93,8 @@ public class TrainingFileNames {
     public String name(String key, String fileCode, Map<String, String> values) {
         Map<String, String> all = new LinkedHashMap<>(values);
         all.put("FILE_CODE", fileCode);
-        all.putIfAbsent("DATE", LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).format(DateTimeFormatter.BASIC_ISO_DATE));
-        all.putIfAbsent("YEAR", String.valueOf(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).getYear()));
+        all.putIfAbsent("DATE", LocalDate.now(com.eqms.util.DateTimeFormatUtils.ZONE).format(DateTimeFormatter.BASIC_ISO_DATE));
+        all.putIfAbsent("YEAR", String.valueOf(LocalDate.now(com.eqms.util.DateTimeFormatUtils.ZONE).getYear()));
         String result = render(pattern(key), all);
         if (result.isBlank()) result = render(form(key).defaultPattern(), all);
         return result.isBlank() ? sanitize(fileCode) : result;

@@ -1,4 +1,6 @@
+import type { CSSProperties } from "react";
 import type { NotificationType } from "./types";
+import { findNotificationTone, parseIconKey, withChosenIcon } from "./notificationIcons";
 import { AlertTriangle, Bell, CheckCircle, FileText, Lock, MessageCircle, Reply, Settings, ThumbsUp, UserPlus, type LucideIcon } from 'lucide-react';
 
 type NotificationTypeMeta = {
@@ -53,12 +55,23 @@ const NOTIFICATION_TYPE_ICON_STYLES: Record<NotificationType, { bg: string; text
   system: { bg: 'bg-slate-100', text: 'text-slate-600' },
 };
 
-export const getNotificationTypeIcon = (type?: string | null) => {
+/** The icon of a notification: the one chosen for it in Edit Notification (Lucide or Tabler), else the icon of its kind. */
+export const getNotificationTypeIcon = (type?: string | null, custom?: string | null): LucideIcon => {
   const normalized = (type ?? 'system').toLowerCase() as NotificationType;
-  return NOTIFICATION_TYPE_ICONS[normalized] ?? NOTIFICATION_TYPE_ICONS.system;
+  const base = NOTIFICATION_TYPE_ICONS[normalized] ?? NOTIFICATION_TYPE_ICONS.system;
+  return (parseIconKey(custom) ? withChosenIcon(custom as string, base as never) : base) as LucideIcon;
 };
 
-export const getNotificationTypeIconStyles = (type?: string | null) => {
+const HEX_TONE = /^#[0-9a-f]{6}$/i;
+
+/**
+ * The colours of that icon: the tone chosen for it, else the tone of its kind. A tone is a name of the first version (the classes `bg` and `text`) or a six-digit colour
+ * chosen with the colour picker: the colour then comes as styles, a light tint for the tile and the colour itself for the icon, and `bg` and `text` are empty.
+ */
+export const getNotificationTypeIconStyles = (type?: string | null, tone?: string | null): { bg: string; text: string; tileStyle?: CSSProperties; iconStyle?: CSSProperties } => {
+  if (tone && HEX_TONE.test(tone)) return { bg: '', text: '', tileStyle: { backgroundColor: `${tone}1A` }, iconStyle: { color: tone } };
+  const chosen = findNotificationTone(tone);
+  if (chosen) return { bg: chosen.bg, text: chosen.text };
   const normalized = (type ?? 'system').toLowerCase() as NotificationType;
   return NOTIFICATION_TYPE_ICON_STYLES[normalized] ?? NOTIFICATION_TYPE_ICON_STYLES.system;
 };

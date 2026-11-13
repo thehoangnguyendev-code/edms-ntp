@@ -1,22 +1,7 @@
 import type { PageBackground } from '@/config/page-background';
 
-export interface CompanyInfo {
-  companyName: string;
-  companyAddress: string;
-  companyPhone: string;
-  companyWebsite: string;
-  taxId: string;
-  industry: string;
-  regulatoryBody: string;
-}
-
+/** The name is historical: this holds the OnlyOffice connection. Backups are set in the Backup Policy, not here. */
 export interface BackupSettings {
-  enableAutoBackup: boolean;
-  backupFrequency: 'daily' | 'weekly' | 'monthly';
-  backupTime: string;
-  retentionDays: number;
-  backupLocation: 'local' | 'cloud' | 's3';
-  notifyOnBackupFailure: boolean;
   onlyOffice: OnlyOfficeStorageConfig;
 }
 
@@ -66,8 +51,6 @@ export interface LocaleSettings {
   numberFormat: string;
 }
 
-export type ToastPosition = 'center' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
-
 export interface AppearanceSettings {
   mainBackground?: PageBackground | null;
   authBackground?: PageBackground | null;
@@ -82,10 +65,6 @@ export interface AppearanceSettings {
   tableColumnDividers?: boolean;
   /** Desktop Search + two-column draft filter panel. */
   compactDesktopFilters?: boolean;
-  /** Where system toast notifications appear. Machine values only; labels live in GeneralTab. */
-  toastPosition?: ToastPosition;
-  /** How long a system message stays on screen, in seconds (2 to 60; 5 when empty). */
-  toastDurationSeconds?: number;
   /** How the materials of a training are drawn on every Training screen: a table (default) or tiles. */
   trainingMaterialsLayout?: 'TABLE' | 'TILES';
   /** How the folders of the Knowledge Base are named: the full name (default) or its abbreviation. */
@@ -164,7 +143,6 @@ export interface GeneralConfig {
   maintenanceMode: boolean;
   dateTimeFormat: string;
   timeZone: string;
-  companyInfo: CompanyInfo;
   backupSettings: BackupSettings;
   locale: LocaleSettings;
   appearance: AppearanceSettings;
@@ -291,6 +269,8 @@ export interface NotificationTemplate {
 export interface NotificationConfig {
   enableEmailNotifications: boolean;
   enableInAppNotifications: boolean;
+  /** Days a read in-app notification is kept before it is deleted every night: 0 keeps them for ever, otherwise 30 to 3650; empty means 180. Unread notifications are never deleted. */
+  inAppRetentionDays?: number;
   emailDigestFrequency: 'daily' | 'weekly' | 'instant';
   publicAppUrl: string;
   emailConfig: EmailConfig;
@@ -306,29 +286,8 @@ export interface NotificationConfig {
 
 // --- Integration Types ---
 
-export interface SsoConfig {
-  enableSso: boolean;
-  provider: 'saml' | 'oidc' | 'azure-ad';
-  entityId: string;
-  ssoUrl: string;
-  certificate: string;
-  autoProvisionUsers: boolean;
-  defaultRole: string;
-}
-
-export interface WebhookConfig {
-  id: string;
-  name: string;
-  url: string;
-  events: string[];
-  secret: string;
-  enabled: boolean;
-  lastTriggered: string;
-  failureCount: number;
-}
-
 export interface StorageIntegration {
-  provider: 'local' | 'aws-s3' | 'azure-blob' | 'google-cloud' | 'minio' | 'nas' | 'google-drive' | 'dropbox';
+  provider: 'local' | 'minio' | 'nas';
   bucketName: string;
   region: string;
   accessKeyId: string;
@@ -353,22 +312,10 @@ export interface StorageIntegration {
   nasDomain?: string;
   nasUsername?: string;
   nasPassword?: string;
-  googleDriveClientId?: string;
-  googleDriveClientSecret?: string;
-  googleDriveFolderId?: string;
-  dropboxAccessToken?: string;
-  dropboxAppKey?: string;
-  dropboxAppSecret?: string;
-  dropboxFolderPath?: string;
 }
 
 export interface IntegrationConfig {
-  sso: SsoConfig;
-  webhooks: WebhookConfig[];
   storage: StorageIntegration;
-  enableApiKeyAuth: boolean;
-  apiRateLimitPerMinute: number;
-  corsAllowedOrigins: string[];
 }
 
 export interface FeatureFlag {

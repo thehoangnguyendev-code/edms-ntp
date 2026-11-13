@@ -548,8 +548,10 @@ class DocumentLifecycleBaselineTest {
         assertEquals("ACTIVE", activateRow.getToStatus());
         assertNotNull(activateRow.getUsername());
         assertNotNull(activateRow.getCreatedAt());
-        assertTrue(activateRow.getReason() != null && activateRow.getReason().contains(revisionResponse.id()),
+        // The audit text names the revision by its number, never by its identifier (an identifier is for the server and the database only).
+        assertTrue(activateRow.getReason() != null && activateRow.getReason().contains("Revision " + revisionResponse.revisionNumber()),
                 "Activation audit must reference the triggering Revision");
+        assertFalse(activateRow.getReason().contains(revisionResponse.id()), "Activation audit must not show an identifier");
 
         // TC-DOC-011: activation itself requires no electronic signature.
         assertTrue(electronicSignatureRepository.findByEntityTypeIgnoreCaseAndEntityIdOrderBySignedAtAsc("documents", documentId).isEmpty());

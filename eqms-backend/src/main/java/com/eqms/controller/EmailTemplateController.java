@@ -52,13 +52,21 @@ public class EmailTemplateController {
             @RequestParam(required = false) String createdTo,
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo,
+            @RequestParam(required = false) String usage,
             @RequestParam(required = false, defaultValue = "createdDate") String sortBy,
             @RequestParam(required = false, defaultValue = "desc") String sortDirection,
             @RequestParam(required = false, defaultValue = "1") int page,
             @RequestParam(required = false, defaultValue = "10") int limit
     ) {
         requireViewPermission();
-        return ResponseEntity.ok(service.listTemplates(search, type, status, createdFrom, createdTo, updatedFrom, updatedTo, sortBy, sortDirection, page, limit));
+        return ResponseEntity.ok(service.listTemplates(search, type, status, createdFrom, createdTo, updatedFrom, updatedTo, usage, sortBy, sortDirection, page, limit));
+    }
+
+    /** The types the messages have, for the Type filter of the list. */
+    @GetMapping("/types")
+    public ResponseEntity<List<String>> getTemplateTypes() {
+        requireViewPermission();
+        return ResponseEntity.ok(service.listTypes());
     }
 
     @GetMapping("/export")
@@ -83,29 +91,10 @@ public class EmailTemplateController {
         return ResponseEntity.ok(service.getTemplateById(id));
     }
 
-    @PostMapping
-    public ResponseEntity<EmailTemplateResponse> createTemplate(@Valid @RequestBody EmailTemplateRequest request) {
-        requireEditPermission();
-        return ResponseEntity.ok(service.createTemplate(request));
-    }
-
     @PutMapping("/{id}")
     public ResponseEntity<EmailTemplateResponse> updateTemplate(@PathVariable UUID id, @Valid @RequestBody EmailTemplateRequest request) {
         requireEditPermission();
         return ResponseEntity.ok(service.updateTemplate(id, request));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTemplate(@PathVariable UUID id) {
-        requireEditPermission();
-        service.deleteTemplate(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/{id}/duplicate")
-    public ResponseEntity<EmailTemplateResponse> duplicateTemplate(@PathVariable UUID id) {
-        requireEditPermission();
-        return ResponseEntity.ok(service.duplicateTemplate(id));
     }
 
     @PostMapping("/{id}/toggle-status")

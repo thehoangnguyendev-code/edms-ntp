@@ -51,7 +51,7 @@ export function FilterOptionList({ label, value, options, onChange, onSearch, di
   // p-1: the scrolling pane clips box-shadow/focus rings at its edge; the padding keeps the search border whole.
   return <div className="flex flex-col gap-3 p-1">
     <div className="shrink-0">
-      <FilterSearchInput aria-label={`Search ${label}`} value={query} disabled={disabled} debounceMs={0}
+      <FilterSearchInput aria-label={`Search ${label}`} value={query} disabled={disabled} debounceMs={hasSearch ? 0 : 300}
         onChange={setQuery} placeholder={`Search ${label.toLocaleLowerCase()}...`} />
     </div>
     {disabled && <p className="shrink-0 text-xs text-slate-500">This filter is fixed for the current view.</p>}

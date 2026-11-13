@@ -25,9 +25,9 @@ return <Drawer
 `open` defaults to true for existing conditionally mounted drawers. A user dismissal
 animates out first, then calls `onClose` once. An external `open=false` does not call
 `onClose`; it calls `onExited` when the exit finishes. Use `onExited` when opening a
-second modal after closing the drawer (Calendar personal-event details).
+second modal after closing the drawer.
 
-Consumers: CalendarDayDrawer, VersionHistoryDrawer, LearningHistoryDrawer,
+Consumers: VersionHistoryDrawer, LearningHistoryDrawer,
 CellDetailDrawer, HeaderActionDrawer, AccessProfilePermissionSetDrawer, WorkflowRoleDrawer.
 FilterDrawer, inline mobile filter drawers, sidebar navigation and modal/dropdown
 components intentionally remain separate.

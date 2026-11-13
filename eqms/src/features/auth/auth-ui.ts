@@ -57,18 +57,18 @@ export const AUTH_UI = {
   pageTitleStrong:
     "text-2xl font-bold leading-tight tracking-tight text-slate-900 sm:text-3xl lg:text-4xl",
   description:
-    "text-xs leading-5 text-slate-500 sm:text-sm sm:leading-7",
+    "text-sm leading-6 text-slate-500 sm:leading-7",
   formStack: "space-y-4 sm:space-y-6",
   fieldBlock: "space-y-1.5 sm:space-y-2.5",
   inputBase:
-    "auth-input h-11 w-full rounded-xl border bg-white/92 px-3.5 text-sm text-slate-700 transition-all sm:h-12 sm:px-4",
+    "auth-input h-11 w-full rounded-xl border bg-white/92 px-3 text-base text-slate-700 transition-all sm:h-12 md:text-sm",
   inputFocus:
     "placeholder:text-slate-400 focus:outline-none focus:ring-1",
   inputDefault:
     "border-slate-300/90 hover:border-slate-400 focus:border-emerald-700 focus:ring-emerald-700",
   inputError: "border-red-300 focus:border-red-500 focus:ring-red-500",
   submitButton:
-    "mt-2 h-11 w-full rounded-xl bg-emerald-900 text-sm font-medium text-white transition-colors hover:bg-emerald-950 sm:h-12 sm:text-base",
+    "mt-2 h-11 w-full rounded-xl bg-emerald-900 text-sm font-medium text-white transition-colors hover:bg-emerald-950 disabled:opacity-60 sm:h-12 sm:text-base",
   rightPanel:
     "relative hidden overflow-hidden bg-emerald-900 px-8 py-10 text-white lg:flex lg:flex-col xl:px-12 xl:py-14",
   rightPanelGlow:
@@ -80,5 +80,12 @@ export const AUTH_UI = {
   modulesGrid:
     "grid grid-cols-2 gap-x-4 gap-y-4 text-xs font-medium text-emerald-100/90 lg:text-sm xl:grid-cols-3",
   backLink:
-    "group inline-flex items-center text-sm font-medium text-slate-500 transition-colors hover:text-slate-700 focus-visible:text-slate-700",
+    "group inline-flex min-h-11 items-center text-sm font-medium text-slate-500 transition-colors hover:text-slate-700 focus-visible:text-slate-700",
+  // Touch target 40px (size-10); the icon stays 16/20px. Sits at the input's right edge.
+  eyeButton:
+    "flex size-10 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-600 focus:outline-none focus:text-slate-700",
+  eyeButtonAbsolute:
+    "absolute inset-y-0 right-0 my-auto flex size-10 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-600 sm:right-1.5",
+  // Password rules / helper text: 12px, slate-500 (4.8:1 on white) instead of 11px slate-400 (2.6:1).
+  hintText: "text-xs text-slate-500",
 } as const;

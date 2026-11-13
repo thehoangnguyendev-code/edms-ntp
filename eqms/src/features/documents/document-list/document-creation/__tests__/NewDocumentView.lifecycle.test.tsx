@@ -37,6 +37,7 @@ vi.mock("@/services/api/auditTrail", () => ({
 
 const { documentApiMock, securityApiMock, dictionaryApiMock, documentLifecycleActionsMock } = vi.hoisted(() => ({
   documentApiMock: {
+    getWorkflowSteps: vi.fn(async () => ({ revision: [], document: [], legacyImportSkippedSteps: [] })),
     getDocumentById: vi.fn(),
     getDocumentDetailSnapshot: vi.fn(),
     cancelDocument: vi.fn(),

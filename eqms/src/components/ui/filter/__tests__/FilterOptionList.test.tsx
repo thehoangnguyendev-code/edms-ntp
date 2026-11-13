@@ -8,11 +8,15 @@ const options = [{ label: 'All', value: 'All' }, { label: 'Active', value: 'ACTI
 
 describe('Direct filter option list', () => {
   it('shows values immediately, searches locally and emits the unchanged machine value', () => {
+    vi.useFakeTimers();
     const change = vi.fn();
     render(<FilterOptionList label="Status" options={options} value="ACTIVE" onChange={change} />);
     expect(screen.getByRole('radio', { name: 'Active' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     fireEvent.change(screen.getByRole('textbox', { name: 'Search Status' }), { target: { value: 'draft' } });
+    expect(screen.getByRole('textbox')).toHaveValue('draft');
+    expect(screen.getByRole('radio', { name: 'Active' })).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(300));
     expect(screen.queryByRole('radio', { name: 'Active' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('radio', { name: 'Draft' }));
     expect(change).toHaveBeenCalledExactlyOnceWith('DRAFT');

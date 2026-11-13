@@ -7,7 +7,7 @@ vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ showToast: m.toast 
 vi.mock("@/features/security-authorization/shared/useSecurityESign", () => ({ useSecurityESign: () => ({ requestSignature: m.sign, signatureModal: null }) }));
 vi.mock("@/components/ui/page/PageHeader", () => ({ PageHeader: ({ actions }: { actions: React.ReactNode }) => <div>{actions}</div> }));
 vi.mock("@/components/ui/modal/AlertModal", () => ({ AlertModal: ({ isOpen, title, onConfirm, confirmText }: { isOpen: boolean; title: string; onConfirm: () => void; confirmText: string }) => isOpen ? <div><span>{title}</span><button onClick={onConfirm}>{confirmText}</button></div> : null }));
-vi.mock("../tabs/AccessProfileGeneralTab", () => ({ GeneralTab: () => <div>General information</div>, NewProfileForm: () => null }));
+vi.mock("../tabs/AccessProfileGeneralTab", () => ({ GeneralTab: () => <div>General information</div> }));
 vi.mock("../tabs/AccessProfileAssignedUsersTab", () => ({ AccessProfileAssignedUsersTab: ({ onChangesChange }: { onChangesChange: (d: { added: string[]; removed: string[] }) => void }) => <button onClick={() => onChangesChange({ added: ["new"], removed: ["old"] })}>Change assignment</button> }));
 import { AccessProfileDetailView } from "../AccessProfileDetailView";
 afterEach(cleanup);

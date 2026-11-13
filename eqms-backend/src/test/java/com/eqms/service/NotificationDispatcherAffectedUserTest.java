@@ -74,7 +74,6 @@ class NotificationDispatcherAffectedUserTest {
         event.setCode("user.account_suspended");
         event.setModule("Security");
         event.setActive(true);
-        event.setMandatory(false);
         return event;
     }
 
@@ -106,7 +105,7 @@ class NotificationDispatcherAffectedUserTest {
         verify(notificationService).recordNotification(
                 eq(target), eq(null), eq("personal"), eq("Security"), eq("user.account_suspended"),
                 eq("Account suspended"), eq("Your account was suspended."), any(), any(), any(), any(), any(),
-                any(), any(), eq(false));
+                any(), any());
     }
 
     @Test
@@ -123,7 +122,6 @@ class NotificationDispatcherAffectedUserTest {
         dispatcher.dispatch("user.account_suspended", List.of(inactiveReviewer), Map.of());
 
         verify(notificationService, org.mockito.Mockito.never()).recordNotification(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
-                org.mockito.ArgumentMatchers.anyBoolean());
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 }

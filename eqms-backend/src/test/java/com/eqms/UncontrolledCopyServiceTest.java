@@ -169,6 +169,24 @@ class UncontrolledCopyServiceTest {
     }
 
     @Test
+    void generate_isPartOfDistribute_withoutTheDistributePermissionTheServerRefuses() {
+        copy.setStatusCode(UncontrolledCopyService.STATUS_APPROVED);
+        actAs(approver, UncontrolledCopyService.P_APPROVE);
+
+        AccessDeniedException refused = assertThrows(AccessDeniedException.class, () -> service.generate(copy.getId(), action("x")));
+
+        assertTrue(refused.getMessage().contains("distribute uncontrolled copies"));
+    }
+
+    @Test
+    void capabilities_generateAndDistributeBothFollowTheDistributePermission() {
+        copy.setStatusCode(UncontrolledCopyService.STATUS_APPROVED);
+        actAs(requester, UncontrolledCopyService.P_DISTRIBUTE);
+
+        assertTrue(service.getDetail(copy.getId()).capabilities().canGenerate());
+    }
+
+    @Test
     void capabilities_neverOfferApproveOrReject_toTheRequester() {
         actAs(requester, UncontrolledCopyService.P_APPROVE, UncontrolledCopyService.P_REJECT);
 
@@ -303,8 +321,40 @@ class UncontrolledCopyServiceTest {
     void operationalPermissionsNoLongerImplyViewAll() {
         UserAccount holder = user("holder@example.com", "Holder");
         copy.setRecipientUserId(holder.getId());
+        copy.setStatusCode(UncontrolledCopyService.STATUS_DISTRIBUTED); // not waiting for a decision
         actAs(approver, UncontrolledCopyService.P_VIEW, UncontrolledCopyService.P_APPROVE,
                 UncontrolledCopyService.P_REJECT, UncontrolledCopyService.P_DISTRIBUTE);
+        lenient().when(permissionEvaluationService.hasAnyPermission(approver, UncontrolledCopyService.P_APPROVE, UncontrolledCopyService.P_REJECT)).thenReturn(true);
+
+        assertThrows(AccessDeniedException.class, () -> service.getDetail(copy.getId()));
+    }
+
+    @Test
+    void anApproverSeesARequestThatWaitsForADecision_withoutTheViewEverythingPermission() {
+        UserAccount holder = user("holder@example.com", "Holder");
+        copy.setRecipientUserId(holder.getId());
+        actAs(approver, UncontrolledCopyService.P_VIEW);
+        when(permissionEvaluationService.hasAnyPermission(approver, UncontrolledCopyService.P_APPROVE, UncontrolledCopyService.P_REJECT)).thenReturn(true);
+
+        assertEquals(copy.getId().toString(), service.getDetail(copy.getId()).id());
+    }
+
+    @Test
+    void anApproverDoesNotSeeTheRestOnceTheRequestIsDecided() {
+        UserAccount holder = user("holder@example.com", "Holder");
+        copy.setRecipientUserId(holder.getId());
+        copy.setStatusCode(UncontrolledCopyService.STATUS_APPROVED);
+        actAs(approver, UncontrolledCopyService.P_VIEW);
+        lenient().when(permissionEvaluationService.hasAnyPermission(approver, UncontrolledCopyService.P_APPROVE, UncontrolledCopyService.P_REJECT)).thenReturn(true);
+
+        assertThrows(AccessDeniedException.class, () -> service.getDetail(copy.getId()));
+    }
+
+    @Test
+    void aPersonWhoCannotApproveDoesNotSeeSomeoneElsesPendingRequest() {
+        UserAccount holder = user("holder@example.com", "Holder");
+        copy.setRecipientUserId(holder.getId());
+        actAs(approver, UncontrolledCopyService.P_VIEW);
 
         assertThrows(AccessDeniedException.class, () -> service.getDetail(copy.getId()));
     }

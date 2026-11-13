@@ -39,7 +39,10 @@ public class TrainingPreparationController {
     }
 
     @GetMapping("/copy-distributions/mine")
-    public ResponseEntity<?> mine(@RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection) { return ResponseEntity.ok(copies.mine(users.requireCurrentUser(), sortBy, sortDirection)); }
+    public ResponseEntity<?> mine(@RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
+                                  @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(copies.mine(users.requireCurrentUser(), sortBy, sortDirection, page, limit));
+    }
 
     @PostMapping("/copy-distributions/{id}/receive")
     public ResponseEntity<?> receive(@PathVariable UUID id) { return ResponseEntity.ok(copies.receive(users.requireCurrentUser(), id)); }

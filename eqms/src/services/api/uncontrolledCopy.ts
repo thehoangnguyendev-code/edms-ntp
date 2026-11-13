@@ -173,6 +173,12 @@ export const uncontrolledCopyApi = {
     return response.data;
   },
 
+  /** GET /uncontrolled-copies/:id/workflow -- the lifecycle stepper, worked out on the server. */
+  getUncontrolledCopyWorkflow: async (id: string): Promise<import('@/types/document').WorkflowProgress> => {
+    const response = await api.get<import('@/types/document').WorkflowProgress>(`${UNCONTROLLED_COPIES_ENDPOINT}/${id}/workflow`);
+    return response.data;
+  },
+
   /** GET /uncontrolled-copies/:id/detail */
   getUncontrolledCopyDetail: async (id: string): Promise<UncontrolledCopy> => {
     const response = await api.get<UncontrolledCopy>(`${UNCONTROLLED_COPIES_ENDPOINT}/${id}/detail`);

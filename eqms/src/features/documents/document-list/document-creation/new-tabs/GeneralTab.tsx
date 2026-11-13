@@ -8,7 +8,6 @@ import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
 import { Popover } from "@/components/ui/popover/Popover";
 import { cn } from "@/components/ui/utils";
-import type { DocumentType } from "@/features/documents/types";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { knowledgeApi } from "@/services/api/knowledge";
 
@@ -19,7 +18,7 @@ type DepartmentOption = SelectOption & { businessUnit?: string };
 export interface GeneralTabFormData {
   documentName: string;
   titleLocalLanguage: string;
-  type: DocumentType;
+  type: string;
   author: string;
   coAuthors: (string | number)[];
   businessUnit: string;
@@ -548,7 +547,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
             <Select
               value={formData.type}
               onChange={(value) =>
-                !isObsoleted && setFormData({ type: value as DocumentType })
+                !isObsoleted && setFormData({ type: value })
               }
               options={documentTypeOptions}
               enableSearch={true}

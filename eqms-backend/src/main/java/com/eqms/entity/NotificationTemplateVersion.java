@@ -66,6 +66,10 @@ public class NotificationTemplateVersion {
     @Column(name = "action_url_template", length = 255)
     private String actionUrlTemplate;
 
+    /** The words on the button of the email (the address is the action URL). */
+    @Column(name = "action_label", length = 80)
+    private String actionLabel;
+
     @Column(name = "variables_used", length = 1000)
     private String variablesUsed;
 
@@ -97,6 +101,8 @@ public class NotificationTemplateVersion {
     public void setSubject(String subject) { this.subject = subject; }
     public String getBody() { return body; }
     public void setBody(String body) { this.body = body; }
+    public String getActionLabel() { return actionLabel; }
+    public void setActionLabel(String actionLabel) { this.actionLabel = actionLabel; }
     public String getActionUrlTemplate() { return actionUrlTemplate; }
     public void setActionUrlTemplate(String actionUrlTemplate) { this.actionUrlTemplate = actionUrlTemplate; }
     public String getVariablesUsed() { return variablesUsed; }

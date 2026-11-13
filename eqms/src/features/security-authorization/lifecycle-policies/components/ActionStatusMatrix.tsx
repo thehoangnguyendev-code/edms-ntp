@@ -11,6 +11,7 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { Button } from "@/components/ui/button/Button";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useDebounce } from "@/hooks/useDebounce";
 import { workflowActionPolicyApi } from "@/services/api";
 import { lifecycleStatePolicyApi } from "@/services/api/lifecycleStatePolicy";
 import { ROUTES } from "@/app/routes.constants";
@@ -64,6 +65,7 @@ export const ActionStatusMatrix: React.FC = () => {
   const [loadVersion, setLoadVersion] = useState(0);
   const [objectType, setObjectType] = useState<string>("REVISION");
   const [actionSearch, setActionSearch] = useState("");
+  const debouncedActionSearch = useDebounce(actionSearch, 300);
   const [detail, setDetail] = useState<{ policies: MatrixPolicy[]; action: string; status: string } | null>(null);
 
   const canManage = hasPermissionAlias("security.workflow_authorization.manage");
@@ -139,10 +141,10 @@ export const ActionStatusMatrix: React.FC = () => {
 
   const actions = useMemo(() => {
     const all = [...new Set(scoped.map((p) => p.actionCode))].sort();
-    const q = actionSearch.trim().toLowerCase();
+    const q = debouncedActionSearch.trim().toLowerCase();
     if (!q) return all;
     return all.filter((a) => a.toLowerCase().includes(q) || prettify(a).toLowerCase().includes(q));
-  }, [scoped, actionSearch]);
+  }, [scoped, debouncedActionSearch]);
 
   /** All configured policies for a cell. Runtime selects a document-type override
    * only when the evaluated document matches its document type. */
@@ -163,9 +165,11 @@ export const ActionStatusMatrix: React.FC = () => {
         variant="info"
         description={
           <>
-          Who may perform which action, at which lifecycle status. Each ✓ is an active policy —
-          click it to see the required permission, allowed actors and priority. Document Master,
-          Document Revision and Controlled Copy are shown separately because their status sets differ.
+          Which action can start from which status. Each ✓ means the action is allowed from that status;
+          click it to see who: a person needs the required permission AND must be the right person
+          (for example the named Reviewer, or anyone holding the operator permission). A blank cell means
+          the action cannot start from that status. Document, Revision and Controlled Copy are shown
+          separately because their statuses differ. To change a rule, use the Transition Policies tab.
           </>
         }
       />
@@ -316,7 +320,7 @@ export const ActionStatusMatrix: React.FC = () => {
             <div key={winner.id} className="rounded-lg border border-slate-200 p-3 space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge color={winner.documentTypeId ? "amber" : "blue"} size="sm">
-                  {winner.documentTypeId ? `Document Type: ${winner.documentTypeName ?? winner.documentTypeId}` : "Global"}
+                  {winner.documentTypeId ? `Document Type: ${winner.documentTypeName ?? "—"}` : "Global"}
                 </Badge>
               </div>
               <p className="text-2xs md:text-xs font-semibold uppercase tracking-wider text-slate-400">Required permission</p>

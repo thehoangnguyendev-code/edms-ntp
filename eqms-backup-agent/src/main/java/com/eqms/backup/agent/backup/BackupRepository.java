@@ -44,7 +44,7 @@ public class BackupRepository {
 
     public void markCompleted(UUID runId, Instant finishedAt, Instant dbSnapshotAt, long sizeBytes) {
         jdbc.update("update backup_run set status='COMPLETED', finished_at=?, db_snapshot_at=?, size_bytes=? where id=?",
-                Timestamp.from(finishedAt), Timestamp.from(dbSnapshotAt), sizeBytes, runId);
+                Timestamp.from(finishedAt), dbSnapshotAt == null ? null : Timestamp.from(dbSnapshotAt), sizeBytes, runId);
     }
 
     public void markFailed(UUID runId, Instant finishedAt, String code, String detail) {
@@ -100,6 +100,13 @@ public class BackupRepository {
         jdbc.update("insert into backup_alert(severity, code, detail, ref) values (?,?,?,?)", severity, code, truncate(detail, 2000), ref);
     }
 
+    /** Raises the alert unless one with the same code and reference is still open, so a lasting condition is told once, not every time it is seen. */
+    public boolean insertAlertOnce(String severity, String code, String detail, String ref) {
+        return jdbc.update("insert into backup_alert(severity, code, detail, ref) select ?,?,?,? where not exists "
+                + "(select 1 from backup_alert where code = ? and coalesce(ref,'') = coalesce(?,'') and acknowledged_at is null)",
+                severity, code, truncate(detail, 2000), ref, code, ref) == 1;
+    }
+
     private static String truncate(String text, int max) {
         return text == null || text.length() <= max ? text : text.substring(0, max);
     }
@@ -128,8 +135,21 @@ public class BackupRepository {
                 b.bucket(), b.key(), b.versionId(), b.plainSha256(), b.plainSize(), b.cipherSha256(), b.cipherSize(), b.path(), b.firstRunId());
     }
 
+    /**
+     * Completed backups that are sound on T1 and have no confirmed copy on {@code targetCode}: the copies a target missed while it was
+     * off the network. Newest first, so the most recent backup is protected before an old one.
+     */
+    public List<Map<String, Object>> runsMissingCopy(String targetCode, Instant since, int limit) {
+        return jdbc.queryForList("select r.id, r.backup_number, l.path as t1_path from backup_run r "
+                + "join backup_set_location l on l.run_id = r.id and l.target_code = 'T1' and l.ok "
+                + "where r.status = 'COMPLETED' and r.started_at >= ? "
+                + "and exists (select 1 from backup_verification v where v.run_id = r.id and v.tier = 'V1' and v.result = 'VERIFIED') "
+                + "and not exists (select 1 from backup_set_location x where x.run_id = r.id and x.target_code = ? and x.ok) "
+                + "order by r.started_at desc limit ?", Timestamp.from(since), targetCode, limit);
+    }
+
     /** Where a backup set was written, and whether the copy there was confirmed. */
     public List<Map<String, Object>> locationsFor(UUID runId) {
-        return jdbc.queryForList("select target_code, ok from backup_set_location where run_id = ? order by target_code", runId);
+        return jdbc.queryForList("select distinct on (target_code) target_code, ok from backup_set_location where run_id = ? order by target_code, written_at desc", runId);
     }
 }

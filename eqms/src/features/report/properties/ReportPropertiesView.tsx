@@ -19,6 +19,7 @@ import { ReportLayoutDesigner } from "../templates/ReportLayoutDesigner";
 const LIMITS = {
   digits: { min: 3, max: 8, fallback: 4 },
   maxRows: { min: 1000, max: 100000, fallback: 10000 },
+  maxRowsFull: { min: 10000, max: 100000, fallback: 100000 },
   recipients: { min: 1, max: 500, fallback: 200 },
   retry: { min: 1, max: 60, fallback: 5 },
 } as const;
@@ -53,7 +54,7 @@ const NumberField: React.FC<{
         const parsed = parseInt(e.target.value, 10);
         onChange(Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback);
       }}
-      className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
+      className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
     />
     {hint && <p className="text-xs text-slate-500 mt-1">{hint}</p>}
   </div>
@@ -111,6 +112,7 @@ export const ReportPropertiesView: React.FC = () => {
         templateNumberPrefix: properties.templateNumberPrefix,
         templateNumberDigits: properties.templateNumberDigits,
         maxRows: properties.maxRows,
+        maxRowsFull: properties.maxRowsFull,
         maxScheduleRecipients: properties.maxScheduleRecipients,
         scheduleRetryMinutes: properties.scheduleRetryMinutes,
         appearance: properties.appearance,
@@ -172,7 +174,7 @@ export const ReportPropertiesView: React.FC = () => {
                       disabled={!canManage}
                       value={properties.templateNumberPrefix}
                       onChange={(e) => patch({ templateNumberPrefix: e.target.value.toUpperCase() })}
-                      className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
+                      className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
                     />
                     <p className={`text-xs mt-1 ${prefixValid ? "text-slate-500" : "text-red-600"}`}>2 to 10 upper-case letters or digits, starting with a letter.</p>
                   </div>
@@ -241,6 +243,16 @@ export const ReportPropertiesView: React.FC = () => {
                   fallback={LIMITS.maxRows.fallback}
                   disabled={!canManage}
                   onChange={(v) => patch({ maxRows: v })}
+                />
+                <NumberField
+                  label="Most rows in a report file run with Full"
+                  hint="A report is run with a filter. A person who chooses Full runs it without one, up to this many rows, as a CSV or XLSX file; a PDF or Word file keeps the limit above. Every Full run is written to the Audit Trail. The limit cannot be higher than the report service can hold in memory."
+                  value={properties.maxRowsFull}
+                  min={Math.max(LIMITS.maxRowsFull.min, properties.maxRows)}
+                  max={LIMITS.maxRowsFull.max}
+                  fallback={LIMITS.maxRowsFull.fallback}
+                  disabled={!canManage}
+                  onChange={(v) => patch({ maxRowsFull: v })}
                 />
               </Group>
 

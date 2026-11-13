@@ -21,6 +21,8 @@ public record NotificationResponse(
         NotificationUserResponse sender,
         NotificationUserResponse recipient,
         NotificationRelatedItemResponse relatedItem,
-        JsonNode metadata
+        JsonNode metadata,
+        String icon,
+        String iconTone
 ) {
 }

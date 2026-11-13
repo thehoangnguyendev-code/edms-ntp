@@ -296,7 +296,7 @@ public class WorkflowRoleCatalogService {
 
     private WorkflowRole require(UUID id) {
         return workflowRoleRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Workflow role not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Workflow role not found"));
     }
 
     private void requireView() {

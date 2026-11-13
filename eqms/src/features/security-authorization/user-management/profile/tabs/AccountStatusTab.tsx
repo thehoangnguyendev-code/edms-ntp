@@ -12,12 +12,12 @@ import type { User } from "../../types";
 const HOME_PAGE_OPTIONS: { label: string; value: string }[] = [
   { label: "Dashboard", value: "DASHBOARD" },
   { label: "Notifications", value: "NOTIFICATIONS" },
-  { label: "Knowledge", value: "KNOWLEDGE" },
+  { label: "Knowledge Base", value: "KNOWLEDGE" },
 ];
 const HOME_PAGE_LABELS: Record<string, string> = {
   DASHBOARD: "Dashboard",
   NOTIFICATIONS: "Notifications",
-  KNOWLEDGE: "Knowledge",
+  KNOWLEDGE: "Knowledge Base",
 };
 
 interface ExistingModeProps {

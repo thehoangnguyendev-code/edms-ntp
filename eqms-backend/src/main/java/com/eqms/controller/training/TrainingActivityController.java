@@ -30,6 +30,17 @@ public class TrainingActivityController {
         this.users = users;
     }
 
+    /** The lifecycle stepper of a record that is being created and does not exist yet (ACTIVITY, ASSESSMENT). */
+    @GetMapping("/workflows/new/{type}")
+    public ResponseEntity<?> newWorkflow(@PathVariable String type) {
+        users.requireCurrentUser();
+        return switch (type) {
+            case "ACTIVITY" -> ResponseEntity.ok(com.eqms.service.training.TrainingWorkflows.newActivity());
+            case "ASSESSMENT" -> ResponseEntity.ok(com.eqms.service.training.TrainingWorkflows.assessment(null));
+            default -> ResponseEntity.notFound().build();
+        };
+    }
+
     @GetMapping("/activities")
     public ResponseEntity<?> list(@RequestParam(required = false) String search, @RequestParam(required = false) String status, @RequestParam(required = false) String kind,
                                   @RequestParam(required = false) UUID departmentId, @RequestParam(required = false) Integer year, @RequestParam(required = false) String documentNumber,

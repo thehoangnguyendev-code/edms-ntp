@@ -26,7 +26,7 @@ import static org.mockito.Mockito.when;
 class ReportRoleSearchTest {
     private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
     private final EffectivePermissionService permissions = mock(EffectivePermissionService.class);
-    private final ReportTemplateService service = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider()));
+    private final ReportTemplateService service = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
 
     private UserAccount actor(String... codes) {
         UserAccount user = new UserAccount();

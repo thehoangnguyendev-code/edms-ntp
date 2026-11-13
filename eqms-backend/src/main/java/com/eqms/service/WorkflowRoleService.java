@@ -84,6 +84,36 @@ public class WorkflowRoleService {
         }).toList();
     }
 
+    /**
+     * The workflow roles, searched, sorted and paged on the server. With `accessProfileId` only the roles that Access Profile has are
+     * listed (read-only profile details); without it the whole active catalog is listed (the editor ticks from it).
+     */
+    @Transactional
+    public com.eqms.dto.user.PageResponse<WorkflowRoleResponse> listPaged(
+            int page, int limit, String search, String sortBy, String sortDir, UUID accessProfileId) {
+        String term = search == null ? "" : search.trim().toLowerCase(java.util.Locale.ROOT);
+        var matches = listAll().stream()
+                .filter(role -> accessProfileId == null
+                        || role.assignedProfiles().stream().anyMatch(profile -> accessProfileId.equals(profile.id())))
+                .filter(role -> term.isEmpty() || java.util.stream.Stream.of(role.code(), role.label(), role.moduleKey(), role.description())
+                        .anyMatch(value -> value != null && value.toLowerCase(java.util.Locale.ROOT).contains(term)))
+                .toList();
+        java.util.Comparator<WorkflowRoleResponse> byLabel = java.util.Comparator.comparing(WorkflowRoleResponse::label,
+                java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+        java.util.Comparator<WorkflowRoleResponse> order = switch (sortBy == null ? "" : sortBy) {
+            case "code" -> java.util.Comparator.comparing(WorkflowRoleResponse::code, java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "module" -> java.util.Comparator.comparing(WorkflowRoleResponse::moduleKey, java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "users" -> java.util.Comparator.comparingLong(WorkflowRoleResponse::totalUsers);
+            default -> byLabel;
+        };
+        if ("desc".equalsIgnoreCase(sortDir)) order = order.reversed();
+        var sorted = matches.stream().sorted(order.thenComparing(byLabel)).toList();
+        int safePage = Math.max(1, page), size = Math.max(1, Math.min(100, limit));
+        int start = (int) Math.min((long) (safePage - 1) * size, sorted.size());
+        return new com.eqms.dto.user.PageResponse<>(sorted.subList(start, Math.min(start + size, sorted.size())),
+                new com.eqms.dto.user.PaginationResponse(safePage, size, sorted.size(), Math.max(1, (int) Math.ceil((double) sorted.size() / size))));
+    }
+
     private void requireView() {
         UserAccount u = currentUserService.requireCurrentUser();
         if (!permissionEvaluationService.hasAnyPermission(u, VIEW_PERMISSION, MANAGE_PERMISSION)) {

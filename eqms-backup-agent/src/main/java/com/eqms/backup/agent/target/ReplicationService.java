@@ -70,6 +70,20 @@ public class ReplicationService {
         return outcomes;
     }
 
+    /**
+     * Makes a copy that an earlier run could not make because the target was unreachable. A failure is returned, not recorded as a
+     * new alert: the caller raised one when the target went away, and a retry every few minutes must not fill the alert list. A
+     * success is recorded like any other copy.
+     */
+    public Outcome catchUp(UUID runId, String backupNumber, Path setDir, String keyPrefix, Path envRoot, BackupTarget target) {
+        Outcome outcome = copy(target, backupNumber, setDir, keyPrefix, envRoot);
+        if (outcome.ok()) {
+            repository.insertLocation(runId, target.code(), target.describe(keyPrefix + "/" + backupNumber), Instant.now(), "ALL_FILES_MATCH", true);
+            ledger.append("agent", "BACKUP_COPIED", backupNumber, Map.of("target", target.code(), "ok", true, "late", true));
+        }
+        return outcome;
+    }
+
     private Outcome copy(BackupTarget target, String backupNumber, Path setDir, String keyPrefix, Path envRoot) {
         Path scratch = null;
         try (Stream<Path> walk = Files.walk(setDir)) {

@@ -70,16 +70,20 @@ export interface EmailTemplatePayload {
   /** Electronic-signature reason captured when creating the template (audit trail). */
   reason?: string;
   signatureToken?: string;
+  /** The "Updated" time of the message as it was when this person opened it; a change saved by someone else since refuses this one. */
+  expectedUpdatedDate?: string;
 }
 
 export interface EmailTemplateListParams {
   search?: string;
-  type?: EmailTemplateType | "All";
+  type?: string;
   status?: EmailTemplateStatus | "All";
   createdFrom?: string;
   createdTo?: string;
   updatedFrom?: string;
   updatedTo?: string;
+  /** SENT: sent at least once; NEVER_SENT: not yet. */
+  usage?: "SENT" | "NEVER_SENT";
   sortBy?: string;
   sortDirection?: "asc" | "desc";
   page?: number;

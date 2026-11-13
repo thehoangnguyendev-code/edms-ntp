@@ -65,11 +65,6 @@ public class SecurityAccessProfileController {
         return service.getMigrationReport();
     }
 
-    @PostMapping
-    public AccessProfileDetailResponse create(@RequestBody AccessProfileRequest req) {
-        return service.createProfile(req);
-    }
-
     /** Atomic "create role in one shot" used by the New Role wizard — one transaction, one e-signature. */
     @PostMapping("/full")
     public AccessProfileDetailResponse createFull(@RequestBody com.eqms.dto.settings.AccessProfileFullRequest req) {
@@ -193,8 +188,10 @@ public class SecurityAccessProfileController {
 
     @GetMapping("/{id}/users/paged")
     public Map<String, Object> getUsersPage(@PathVariable UUID id,
-            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return service.queryAssignedUsers(id, page, limit);
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String search, @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
+        return service.queryAssignedUsers(id, page, limit, search, sortBy, sortDir);
     }
 
     @PostMapping("/{id}/users/{userId}")

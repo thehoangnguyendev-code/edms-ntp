@@ -1,6 +1,7 @@
 import { useMemo, useState, type DragEvent, type ReactNode } from "react";
 import { Check, ChevronLeft, ChevronRight, FileText, Search } from "lucide-react";
 import { cn } from "@/components/ui/utils";
+import { useDebounce } from "@/hooks/useDebounce";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 
 type Side = "available" | "selected";
@@ -40,13 +41,14 @@ export function TransferPicker<T>({
   availableSearchPlaceholder, loading, emptyAvailable, emptySelected, readOnly,
 }: Props<T>) {
   const [selectedQuery, setSelectedQuery] = useState("");
+  const debouncedSelectedQuery = useDebounce(selectedQuery, 300);
   const [markedAvailable, setMarkedAvailable] = useState<string[]>([]);
   const [markedSelected, setMarkedSelected] = useState<string[]>([]);
 
   const shownSelected = useMemo(() => {
-    const q = selectedQuery.trim().toLowerCase();
+    const q = debouncedSelectedQuery.trim().toLowerCase();
     return q ? selected.filter((item) => (getSearchText?.(item) ?? getTitle(item)).toLowerCase().includes(q)) : selected;
-  }, [selected, selectedQuery, getSearchText, getTitle]);
+  }, [selected, debouncedSelectedQuery, getSearchText, getTitle]);
 
   const toggleAvailable = (key: string) => setMarkedAvailable((old) => (old.includes(key) ? [] : [key]));
   const toggleSelected = (key: string) => setMarkedSelected((old) => (old.includes(key) ? old.filter((k) => k !== key) : [...old, key]));

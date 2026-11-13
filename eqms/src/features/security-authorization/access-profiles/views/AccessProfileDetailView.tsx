@@ -20,7 +20,7 @@ import {
 } from "@/services/api/settings";
 import { ROUTES } from "@/app/routes.constants";
 import { navigateBack } from "@/app/navigation/backNavigation";
-import { GeneralTab, NewProfileForm } from "./tabs/AccessProfileGeneralTab";
+import { GeneralTab } from "./tabs/AccessProfileGeneralTab";
 import { PermissionSetsTab } from "./tabs/AccessProfilePermissionSetsTab";
 import { AccessProfilePermissionsTab } from "./tabs/AccessProfilePermissionsTab";
 import { WorkflowTab } from "./tabs/AccessProfileWorkflowTab";
@@ -28,6 +28,7 @@ import { AccessProfileEffectiveAccessTab } from "./tabs/AccessProfileEffectiveAc
 import { AccessProfileAssignedUsersTab } from "./tabs/AccessProfileAssignedUsersTab";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
 import { parseScopeCount } from "./tabs/accessProfileDetailShared";
+import { DOCUMENT_CONTROL_VISIBILITY_COLOR, DOCUMENT_CONTROL_VISIBILITY_LABEL } from "../shared/documentControlVisibility";
 import { AccessProfilePermissionSetDrawer } from "./tabs/AccessProfilePermissionSetDrawer";
 import { accessProfileDetail as accessProfileDetailBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 
@@ -60,14 +61,13 @@ export const AccessProfileDetailView: React.FC = () => {
   const { showToast } = useToast();
   const { requestSignature, signatureModal } = useSecurityESign();
 
-  const isNew = !id || location.pathname.endsWith("/new");
   const isEditRoute = location.pathname.endsWith("/edit");
   const [activeTab, setActiveTab] = useState<TabId>("general");
   const [profile, setProfile] = useState<AccessProfileDetailResponse | null>(null);
   const [assignedUserIds, setAssignedUserIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(!isNew);
+  const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isEditing, setIsEditing] = useState(isNew || isEditRoute);
+  const [isEditing, setIsEditing] = useState(isEditRoute);
   const [deleteModal, setDeleteModal] = useState(false);
   const [drawerPs, setDrawerPs] = useState<PermissionSetSummary | null>(null);
   const [capabilities, setCapabilities] = useState<AccessProfileCapabilitiesResponse | null>(null);
@@ -90,7 +90,6 @@ export const AccessProfileDetailView: React.FC = () => {
   });
 
   useEffect(() => {
-    if (isNew) return;
     Promise.all([
       settingsApi.getAccessProfileEditorSummary(id!),
       settingsApi.getAccessProfileCapabilities(id!),
@@ -110,7 +109,7 @@ export const AccessProfileDetailView: React.FC = () => {
       })
       .catch(() => showToast({ type: "error", message: "Failed to load profile" }))
       .finally(() => setLoading(false));
-  }, [id, isNew, showToast]);
+  }, [id, showToast]);
 
   const can = (action: string) => Boolean(capabilities?.actions?.[action]?.allowed);
   const reason = (action: string) => capabilities?.actions?.[action]?.reason || "Action is not currently allowed";
@@ -130,7 +129,7 @@ export const AccessProfileDetailView: React.FC = () => {
     : false;
   const assignmentsDirty = Object.values(changes).some((d) => d.added.length > 0 || d.removed.length > 0);
   const managedDirty = Boolean(managedDraft?.dirty);
-  const hasChanges = isNew || generalDirty || assignmentsDirty || managedDirty;
+  const hasChanges = generalDirty || assignmentsDirty || managedDirty;
 
   const resetEdits = () => {
     if (profile) {
@@ -172,7 +171,7 @@ export const AccessProfileDetailView: React.FC = () => {
       showToast({ type: "error", title: "Validation failed", message: "Name is required" });
       return;
     }
-    const sig = await requestSignature(isNew ? "Create Access Profile" : "Update Access Profile", "Access Profile Change");
+    const sig = await requestSignature("Update Access Profile", "Access Profile Change");
     if (!sig) return;
     setIsSaving(true);
     try {
@@ -183,13 +182,6 @@ export const AccessProfileDetailView: React.FC = () => {
         businessUnitScope: draft.businessUnitScope.trim() || null,
         departmentScope: draft.departmentScope.trim() || null,
       };
-      if (isNew) {
-        const created = await settingsApi.createAccessProfile(payload, sig);
-        showToast({ type: "success", message: "Access profile created" });
-        navigate(`${ROUTES.SECURITY.ACCESS_PROFILES}/${created.id}`, { replace: true });
-        return;
-      }
-
       // Compose the full desired state from current profile + tab diffs, and send it
       // as ONE aggregate request: one transaction, one signature, one audit event.
       // Sections without changes are omitted so the server leaves them untouched.
@@ -244,7 +236,7 @@ export const AccessProfileDetailView: React.FC = () => {
       showToast({ type: "error", title: "Validation failed", message: "Name is required" });
       return;
     }
-    if (!isNew && impactItems.length > 0) {
+    if (impactItems.length > 0) {
       setImpactModal(true);
       return;
     }
@@ -305,11 +297,11 @@ export const AccessProfileDetailView: React.FC = () => {
     }
   };
 
-  const mode: "new" | "edit" | "view" = isNew ? "new" : isEditing ? "edit" : "view";
-  const title = isNew ? "New Access Profile" : isEditing ? "Edit Access Profile" : "Access Profile Details";
+  const mode: "edit" | "view" = isEditing ? "edit" : "view";
+  const title = isEditing ? "Edit Access Profile" : "Access Profile Details";
   const canAssignInTab = (action: string) => isEditing && can(action);
   const tabDeniedReason = (action: string) =>
-    !isEditing ? "Click Edit to enable changes." : reason(action);
+    !isEditing ? undefined : reason(action);
 
   const dashboardStats = useMemo(() => {
     if (!profile) return [];
@@ -338,7 +330,7 @@ export const AccessProfileDetailView: React.FC = () => {
             >
               Back
             </Button>
-            {!isNew && !isEditing && (
+            {!isEditing && (
               <>
                 <Button
                   variant="outline-emerald"
@@ -370,9 +362,9 @@ export const AccessProfileDetailView: React.FC = () => {
                 </Button>
               </>
             )}
-            {(isNew || isEditing) && (
+            {isEditing && (
               <>
-                {isEditing && !isNew && (
+                {isEditing && (
                   <Button
                     variant="outline-emerald"
                     size="sm"
@@ -396,7 +388,7 @@ export const AccessProfileDetailView: React.FC = () => {
         }
       />
 
-      {!isNew && profile && (
+      {profile && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-5 bg-gradient-to-r from-emerald-50 via-white to-slate-50">
             <div className="flex flex-col lg:flex-row lg:items-start gap-4">
@@ -410,15 +402,12 @@ export const AccessProfileDetailView: React.FC = () => {
                     <Badge color={profile.active ? "emerald" : "slate"} size="sm" >
                       {profile.active ? "Active" : "Inactive"}
                     </Badge>
-                    <Badge color="slate" size="sm">
-                      {profile.code || "-"}
-                    </Badge>
+                    {profile.documentControlVisibility ? (
+                      <Badge color={DOCUMENT_CONTROL_VISIBILITY_COLOR[profile.documentControlVisibility]} size="sm">
+                        {`Document Control: ${DOCUMENT_CONTROL_VISIBILITY_LABEL[profile.documentControlVisibility]}`}
+                      </Badge>
+                    ) : null}
                   </div>
-                  {profile.description ? (
-                    <p className="text-sm text-slate-600 max-w-2xl">{profile.description}</p>
-                  ) : (
-                    <p className="text-sm text-slate-500">Administrative access profile.</p>
-                  )}
                 </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 w-full lg:w-auto">
@@ -440,14 +429,14 @@ export const AccessProfileDetailView: React.FC = () => {
         </div>
       )}
 
-      {isEditing && !isNew && profile?.system && (
+      {isEditing && profile?.system && (
         <div className="rounded-lg border border-purple-200 bg-purple-50 px-4 py-2.5 text-xs text-purple-800">
           Editing a system access profile. Changes still require electronic signature confirmation on Save
           and are recorded in the Audit Trail as a system profile override.
         </div>
       )}
 
-      {isEditing && !isNew && hasChanges && (
+      {isEditing && hasChanges && (
         <WarningBanner variant="warning">
           Unsaved changes: {generalDirty ? "general information; " : ""}{managedDirty ? "direct permissions; " : ""}{assignmentsDirty ? "assignments; " : ""}
           click <b>Save</b> to review and confirm all changes with one electronic signature.
@@ -456,7 +445,7 @@ export const AccessProfileDetailView: React.FC = () => {
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-1">
         <TabNav
-          tabs={isNew ? [TABS[0]] : TABS}
+          tabs={TABS}
           activeTab={activeTab}
           onChange={(tabId) => setActiveTab(tabId as TabId)}
         />
@@ -464,10 +453,7 @@ export const AccessProfileDetailView: React.FC = () => {
           {activeTab === "general" && profile && (
             <GeneralTab profile={profile} isEditing={isEditing} draft={draft} onChange={updateDraft} />
           )}
-          {activeTab === "general" && isNew && (
-            <NewProfileForm draft={draft} onChange={updateDraft} />
-          )}
-          {activeTab === "permissions" && !isNew && id && profile && (
+          {activeTab === "permissions" && id && profile && (
             <AccessProfilePermissionsTab
               profileId={id}
               profileCode={profile.code}
@@ -477,7 +463,7 @@ export const AccessProfileDetailView: React.FC = () => {
               onManagedChange={(codes, dirty) => setManagedDraft({ codes, dirty })}
             />
           )}
-          {activeTab === "permission-sets" && !isNew && id && (
+          {activeTab === "permission-sets" && id && (
             <PermissionSetsTab
               profileId={id}
               reloadKey={reloadKey}
@@ -487,7 +473,7 @@ export const AccessProfileDetailView: React.FC = () => {
               onChangesChange={(diff) => handleTabChanges("permissionSets", diff)}
             />
           )}
-          {activeTab === "workflow" && !isNew && id && (
+          {activeTab === "workflow" && id && (
             <WorkflowTab
               profileId={id}
               reloadKey={reloadKey}
@@ -496,10 +482,10 @@ export const AccessProfileDetailView: React.FC = () => {
               onChangesChange={(diff) => handleTabChanges("workflowRoles", diff)}
             />
           )}
-          {activeTab === "effective-access" && !isNew && profile && (
+          {activeTab === "effective-access" && profile && (
             <AccessProfileEffectiveAccessTab profile={profile} isEditing={isEditing} />
           )}
-          {activeTab === "users" && !isNew && id && (
+          {activeTab === "users" && id && (
             <AccessProfileAssignedUsersTab
               profileId={id}
               reloadKey={reloadKey}
@@ -508,7 +494,7 @@ export const AccessProfileDetailView: React.FC = () => {
               onChangesChange={(diff) => handleTabChanges("users", diff)}
             />
           )}
-          {activeTab === "audit" && !isNew && id && (
+          {activeTab === "audit" && id && (
             // Must match AccessProfileService.ENTITY_TYPE exactly ("ACCESS_PROFILE") --
             // unlike "Controlled Copy", the backend's module filter has no switch-case
             // mapping a human-readable label to this entity type, so it falls through to

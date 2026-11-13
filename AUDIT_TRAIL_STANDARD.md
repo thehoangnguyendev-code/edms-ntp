@@ -80,7 +80,7 @@ Optional row-per-field change detail.
 
 ## 3. Display Rules
 
-- `Module`: keep the business module label, e.g. `Document`, `Revision`, `Settings`, `System`.
+- `Module`: the name of the level-1 sidebar menu the audited object belongs to (`Document Control`, `Training Management`, `Security & Authorization`, ...). The server derives it from the stored `entity_type` (`AuditMenuModule`, sent as `metadata.menuModule`); it is never stored and never used to filter or authorize. An entity type that has not been placed yet shows as `Other`. A new `entity_type` must be added to `AuditMenuModule` and its test.
 - `Action`: keep a concise verb, e.g. `Create`, `Update`, `Publish`, `Login`, `Logout`.
 - `Entity`: always human-readable, never raw UUID.
 - `Description`: short reason or summary.

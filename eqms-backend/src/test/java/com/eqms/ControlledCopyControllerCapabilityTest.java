@@ -41,7 +41,7 @@ class ControlledCopyControllerCapabilityTest {
 
     @BeforeEach
     void setUp() {
-        controller = new ControlledCopyController(controlledCopyService, controlledCopyAuthorizationService, controlledCopyDistributionJobRepository, controlledCopyDistributionJobItemRepository, controlledCopyPreviewRealtimeService);
+        controller = new ControlledCopyController(controlledCopyService, controlledCopyAuthorizationService, controlledCopyDistributionJobRepository, controlledCopyDistributionJobItemRepository, controlledCopyPreviewRealtimeService, org.mockito.Mockito.mock(com.eqms.service.WorkflowProgressService.class));
     }
 
     @Test

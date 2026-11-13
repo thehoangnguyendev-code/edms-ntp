@@ -17,6 +17,7 @@ import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
+import { ReviewerSelect } from "@/components/ui/ReviewerSelect";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
@@ -71,17 +72,17 @@ export const AccessReviewView: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   // Server-side query state.
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
   const debouncedSearch = useDebounce(search, 300);
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [createdFrom, setCreatedFrom] = useState("");
-  const [createdTo, setCreatedTo] = useState("");
-  const [updatedFrom, setUpdatedFrom] = useState("");
-  const [updatedTo, setUpdatedTo] = useState("");
-  const [sortKey, setSortKey] = useState("createdAt");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") ?? "ALL");
+  const [createdFrom, setCreatedFrom] = useState(() => searchParams.get("createdFrom") ?? "");
+  const [createdTo, setCreatedTo] = useState(() => searchParams.get("createdTo") ?? "");
+  const [updatedFrom, setUpdatedFrom] = useState(() => searchParams.get("updatedFrom") ?? "");
+  const [updatedTo, setUpdatedTo] = useState(() => searchParams.get("updatedTo") ?? "");
+  const [sortKey, setSortKey] = useState(() => searchParams.get("sortBy") ?? "createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(() => (searchParams.get("sortDir") === "asc" ? "asc" : "desc"));
+  const [currentPage, setCurrentPage] = useState(() => Math.max(1, Number(searchParams.get("page")) || 1));
+  const [itemsPerPage, setItemsPerPage] = useState(() => Math.max(1, Number(searchParams.get("limit")) || 10));
 
   React.useLayoutEffect(() => {
     setSearch(searchParams.get("search") ?? "");
@@ -132,6 +133,7 @@ export const AccessReviewView: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [campaignName, setCampaignName] = useState("");
   const [campaignDescription, setCampaignDescription] = useState("");
+  const [reviewerUserId, setReviewerUserId] = useState("");
   const [reviewPeriodStart, setReviewPeriodStart] = useState("");
   const [reviewPeriodEnd, setReviewPeriodEnd] = useState("");
   const [creating, setCreating] = useState(false);
@@ -195,6 +197,7 @@ export const AccessReviewView: React.FC = () => {
   const openCreateModal = () => {
     setCampaignName("");
     setCampaignDescription("");
+    setReviewerUserId("");
     setReviewPeriodStart("");
     setReviewPeriodEnd("");
     setIsCreateModalOpen(true);
@@ -212,6 +215,7 @@ export const AccessReviewView: React.FC = () => {
         description: campaignDescription.trim() || undefined,
         reviewPeriodStart: ddmmyyyyToIso(reviewPeriodStart),
         reviewPeriodEnd: ddmmyyyyToIso(reviewPeriodEnd),
+        reviewerUserId: reviewerUserId || undefined,
       });
       setIsCreateModalOpen(false);
       showToast({ type: "success", message: "Access review campaign created" });
@@ -596,6 +600,7 @@ export const AccessReviewView: React.FC = () => {
             <label className={labelClass}>Description</label>
             <textarea className={textareaClass} rows={2} value={campaignDescription} onChange={(event) => setCampaignDescription(event.target.value)} />
           </div>
+          <ReviewerSelect load={settingsApi.getAccessReviewReviewers} value={reviewerUserId} onChange={setReviewerUserId} disabled={creating} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <DateTimePicker label="Review Period Start" value={reviewPeriodStart} onChange={setReviewPeriodStart} placeholder="Select start date" />
             <DateTimePicker label="Review Period End" value={reviewPeriodEnd} onChange={setReviewPeriodEnd} placeholder="Select end date" />

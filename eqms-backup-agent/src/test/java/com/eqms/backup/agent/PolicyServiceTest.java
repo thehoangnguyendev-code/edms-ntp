@@ -120,6 +120,24 @@ class PolicyServiceTest {
     }
 
     @Test
+    void theFilesCanHaveATimeOfTheirOwnButOnlyWhenTheyArePartOfThePolicy() {
+        String own = "{\"database\":{\"enabled\":true,\"frequency\":\"DAILY\",\"time\":\"01:30\"},\"files\":{\"enabled\":true,\"time\":\"03:00\"}}";
+        Map<String, Object> draft = service.propose(proposal(SCOPE, own, "{\"mode\":\"PERMANENT\"}", GOOD_TARGETS));
+        assertThat(json((String) draft.get("schedule")).path("files").path("time").asText()).isEqualTo("03:00");
+        assertThat(json((String) draft.get("schedule")).path("files").path("frequency").asText()).isEqualTo("DAILY");
+        assertRefused(proposal("{\"components\":[\"DATABASE\"]}", own, "{\"mode\":\"PERMANENT\"}", GOOD_TARGETS), "POLICY_SCHEDULE_FILES_SCOPE");
+        assertRefused(proposal(SCOPE, own.replace("\"03:00\"", "\"late\""), "{\"mode\":\"PERMANENT\"}", GOOD_TARGETS), "POLICY_SCHEDULE_TIME");
+        assertRefused(proposal(SCOPE, own.replace("\"time\":\"03:00\"", "\"frequency\":\"WEEKLY\""), "{\"mode\":\"PERMANENT\"}", GOOD_TARGETS), "POLICY_SCHEDULE_FREQUENCY");
+    }
+
+    @Test
+    void aFilesScheduleSwitchedOffStoresNothingSoTheFilesFollowTheDatabase() {
+        String off = "{\"database\":{\"enabled\":true,\"frequency\":\"DAILY\",\"time\":\"01:30\"},\"files\":{\"enabled\":false,\"time\":\"03:00\"}}";
+        Map<String, Object> draft = service.propose(proposal(SCOPE, off, "{\"mode\":\"PERMANENT\"}", GOOD_TARGETS));
+        assertThat(json((String) draft.get("schedule")).has("files")).isFalse();
+    }
+
+    @Test
     void aProposalNeedsAProposerAndAReason() {
         assertThatThrownBy(() -> service.propose(new PolicyService.Proposal(json(SCOPE), json(SCHEDULE), json("{}"), json(GOOD_TARGETS), " ", "alice")))
                 .isInstanceOfSatisfying(PolicyService.PolicyException.class, e -> assertThat(e.code).isEqualTo("POLICY_REASON_REQUIRED"));
@@ -189,13 +207,21 @@ class PolicyServiceTest {
     }
 
     @Test
-    void thePersonWhoProposedCannotActivateEvenWithADifferentCase() {
+    void theProposerMayActivateWithTheirOwnSignatureAndTheLedgerSaysSo() {
         service.propose(good());
-        assertThatThrownBy(() -> service.activate(2, "ALICE", "SIG-1"))
-                .isInstanceOfSatisfying(PolicyService.PolicyException.class, e -> assertThat(e.code).isEqualTo("POLICY_SAME_PERSON"));
+        service.activate(2, "alice", "SIG-1"); // exactly the same name: the database must not refuse it either
+        assertThat(service.get(2).get("status")).isEqualTo("ACTIVE");
+        assertThat(service.get(1).get("status")).isEqualTo("SUPERSEDED");
+        assertThat(ledgerEvents()).contains("POLICY_ACTIVATED").doesNotContain("POLICY_ACTIVATION_REFUSED");
+        assertThat(ledger.verify().ok()).isTrue();
+    }
+
+    @Test
+    void aSignatureIsStillRequiredWhenTheProposerActivates() {
+        service.propose(good());
+        assertThatThrownBy(() -> service.activate(2, "alice", ""))
+                .isInstanceOfSatisfying(PolicyService.PolicyException.class, e -> assertThat(e.code).isEqualTo("POLICY_SIGNATURE_REQUIRED"));
         assertThat(service.get(2).get("status")).isEqualTo("DRAFT");
-        assertThat(service.get(1).get("status")).isEqualTo("ACTIVE");
-        assertThat(ledgerEvents()).contains("POLICY_ACTIVATION_REFUSED");
     }
 
     @Test
@@ -302,5 +328,92 @@ class PolicyServiceTest {
         assertThat(service.page("alice", null, "version", false, 1, 10).total()).isEqualTo(3);
         assertThat(service.page("100%", null, "version", false, 1, 10).total()).as("a wildcard is searched for literally").isZero();
         assertThat(service.page(null, null, "version", false, 1, 1000).limit()).isEqualTo(100);
+    }
+
+    @Test
+    void theVersionListNarrowsByWhatItBacksUpWhereItCopiesApprovalAndDates() {
+        service.propose(good());
+        service.discard(2, "carol", "not needed");
+        PolicyService.Filters none = PolicyService.Filters.NONE;
+        java.util.function.Function<PolicyService.Filters, java.util.List<Object>> versions =
+                f -> service.page(null, null, f, "version", false, 1, 10).data().stream().map(m -> m.get("version")).toList();
+
+        assertThat(versions.apply(none)).containsExactly(2, 1);
+        assertThat(versions.apply(new PolicyService.Filters("DATABASE", null, null, null, null, null, null, null))).containsExactly(2, 1);
+        assertThat(versions.apply(new PolicyService.Filters("OBJECT_STORE", null, null, null, null, null, null, null))).containsExactly(2);
+        assertThat(versions.apply(new PolicyService.Filters(null, "T1", null, null, null, null, null, null))).containsExactly(2, 1);
+        assertThat(versions.apply(new PolicyService.Filters(null, "T9", null, null, null, null, null, null))).isEmpty();
+        assertThat(versions.apply(new PolicyService.Filters(null, null, "OWN", null, null, null, null, null))).isEmpty();
+        assertThat(versions.apply(new PolicyService.Filters(null, null, "WITH_DATABASE", null, null, null, null, null))).containsExactly(2, 1);
+        assertThat(versions.apply(new PolicyService.Filters(null, null, null, "NOT_APPROVED", null, null, null, null))).containsExactly(2, 1);
+        assertThat(versions.apply(new PolicyService.Filters(null, null, null, "APPROVED", null, null, null, null))).isEmpty();
+        java.time.Instant now = java.time.Instant.now();
+        assertThat(versions.apply(new PolicyService.Filters(null, null, null, null, now.minusSeconds(3600), now.plusSeconds(3600), null, null))).containsExactly(2, 1);
+        assertThat(versions.apply(new PolicyService.Filters(null, null, null, null, now.plusSeconds(3600), null, null, null))).isEmpty();
+    }
+
+    @Test
+    void theSearchReadsEverythingTheTableShows() {
+        service.propose(good());
+        service.discard(2, "carol", "not needed");
+        java.util.function.Function<String, java.util.List<Object>> found =
+                text -> service.page(text, null, "version", false, 1, 10).data().stream().map(m -> m.get("version")).toList();
+        assertThat(found.apply("discard")).containsExactly(2);
+        assertThat(found.apply("active")).containsExactly(1);
+        assertThat(found.apply("document files")).containsExactly(2);
+        assertThat(found.apply("database")).containsExactly(2, 1);
+        assertThat(found.apply("t1")).containsExactly(2, 1);
+        assertThat(found.apply("t9")).isEmpty();
+        String today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        assertThat(found.apply(today)).containsExactly(2, 1);
+        // a person found by full name arrives as user names the agent keeps
+        PolicyService.Filters people = new PolicyService.Filters(null, null, null, null, null, null, null, null, List.of("Alice"));
+        assertThat(service.page("Nguyen The Hoang", null, people, "version", false, 1, 10).data()).extracting(m -> m.get("version")).containsExactly(2);
+        assertThat(service.page("Nguyen The Hoang", null, PolicyService.Filters.NONE, "version", false, 1, 10).total()).isZero();
+    }
+
+    // ------------------------------------------------------------------ the copy a person keeps by hand (T3 is not automated)
+
+    private void withNas() {
+        properties.getTargets().getExtra().clear();
+        TargetCatalog nas = new TargetCatalog(properties, new TargetRegistry(List.of(new FolderTarget("T2", tmp.resolve("t2"), false))));
+        service = new PolicyService(db.jdbc, db.tx, ledger, nas, new TargetTester(), properties);
+    }
+
+    private static final String T1_AND_NAS = "{\"code\":\"T1\",\"medium\":\"SERVER_FOLDER\"},{\"code\":\"T2\",\"medium\":\"NETWORK_SHARE\",\"offsite\":false,\"immutable\":false}";
+
+    @Test
+    void aManualOffsiteCopyCompletesTheThreeCopyRuleWithoutAnAutomatedImmutableTarget() {
+        withNas();
+        service.propose(proposal(SCOPE, SCHEDULE, "{}", "{\"targets\":[" + T1_AND_NAS + "],"
+                + "\"manualCopy\":{\"declared\":true,\"description\":\"USB disk in the safe, copied by the quality manager\",\"everyDays\":7}}"));
+        Map<String, Object> active = service.activate(2, "bob", "SIG-1");
+        assertThat(active.get("status")).isEqualTo("ACTIVE");
+        JsonNode gate = json((String) active.get("gate"));
+        for (JsonNode c : gate.path("conditions")) {
+            if (List.of("COPIES", "MEDIA", "OFFSITE", "IMMUTABLE").contains(c.path("code").asText())) assertThat(c.path("ok").asBoolean()).as(c.toString()).isTrue();
+        }
+        assertThat(json((String) active.get("targets")).path("manualCopy").path("everyDays").asInt()).isEqualTo(7);
+    }
+
+    @Test
+    void withoutAManualCopyAFolderAndAShareDoNotMeetTheRule() {
+        withNas();
+        service.propose(proposal(SCOPE, SCHEDULE, "{}", "{\"targets\":[" + T1_AND_NAS + "]}"));
+        assertThatThrownBy(() -> service.activate(2, "bob", "SIG-1")).isInstanceOfSatisfying(PolicyService.PolicyException.class, e -> {
+            assertThat(e.code).isEqualTo("POLICY_GATE_FAILED");
+            assertThat(String.valueOf(e.detail)).contains("OFFSITE").contains("IMMUTABLE");
+        });
+    }
+
+    @Test
+    void aManualCopyNeedsAPlaceAndAnInterval() {
+        withNas();
+        assertRefused(proposal(SCOPE, SCHEDULE, "{}", "{\"targets\":[" + T1_AND_NAS + "],\"manualCopy\":{\"declared\":true,\"description\":\" \",\"everyDays\":7}}"),
+                "POLICY_MANUAL_COPY_DESCRIPTION");
+        assertRefused(proposal(SCOPE, SCHEDULE, "{}", "{\"targets\":[" + T1_AND_NAS + "],\"manualCopy\":{\"declared\":true,\"description\":\"safe\",\"everyDays\":0}}"),
+                "POLICY_MANUAL_COPY_INTERVAL");
+        assertRefused(proposal(SCOPE, SCHEDULE, "{}", "{\"targets\":[" + T1_AND_NAS + "],\"manualCopy\":{\"declared\":true,\"description\":\"safe\",\"everyDays\":400}}"),
+                "POLICY_MANUAL_COPY_INTERVAL");
     }
 }

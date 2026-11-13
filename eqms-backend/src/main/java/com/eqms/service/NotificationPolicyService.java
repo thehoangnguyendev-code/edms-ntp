@@ -2,7 +2,6 @@ package com.eqms.service;
 
 import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.audittrail.AuditTrailChangeResponse;
-import com.eqms.dto.notification.CreateNotificationEventRequest;
 import com.eqms.dto.notification.NotificationPolicyDetailResponse;
 import com.eqms.dto.notification.NotificationPolicySummaryResponse;
 import com.eqms.dto.notification.NotificationPreviewRequest;
@@ -36,10 +35,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Backs the redesigned Notification Policy screen: event catalog -> policy (who/how/when) ->
- * template content (per channel, versioned) -> preview. Mandatory GMP events are locked here
- * (not just in the UI) — status/channels/recipients cannot be changed via {@link
- * #updatePolicy}, matching {@code mandatoryReason} shown to the Admin.
+ * Backs the Notifications Administration screens: event catalog -> policy (who/how/when) ->
+ * template content (per channel, versioned) -> preview. Every notification is always sent: there is no mandatory or optional kind, and changing
+ * a wording needs no electronic signature (only an administrator edits). Every change is written to the Audit Trail with the value before and after.
  */
 @Service
 public class NotificationPolicyService {
@@ -53,9 +51,6 @@ public class NotificationPolicyService {
     private static final Set<String> VALID_PRIORITIES = Set.of(
             NotificationEventDefinition.PRIORITY_LOW, NotificationEventDefinition.PRIORITY_MEDIUM,
             NotificationEventDefinition.PRIORITY_HIGH, NotificationEventDefinition.PRIORITY_CRITICAL);
-    private static final Set<String> VALID_COMPLIANCE_GROUPS = Set.of(
-            NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY, NotificationEventDefinition.COMPLIANCE_COMPLIANCE,
-            NotificationEventDefinition.COMPLIANCE_OPTIONAL);
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
     private final NotificationEventDefinitionRepository eventRepository;
@@ -64,6 +59,13 @@ public class NotificationPolicyService {
     private final CurrentUserService currentUserService;
     private final AuditTrailService auditTrailService;
     private final ObjectMapper objectMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private EmailDesignService emailDesignService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @org.springframework.context.annotation.Lazy
+    private EmailService emailService;
 
     public NotificationPolicyService(
             NotificationEventDefinitionRepository eventRepository,
@@ -83,18 +85,18 @@ public class NotificationPolicyService {
 
     @Transactional(readOnly = true)
     public com.eqms.dto.user.PageResponse<NotificationPolicySummaryResponse> list(
-            String search, String module, String complianceGroup, String status,
+            String search, String module, String status, String channel,
             String sortBy, String sortDirection, int page, int limit
     ) {
         String query = StringUtils.hasText(search) ? search.trim().toLowerCase(Locale.ROOT) : null;
         List<NotificationPolicySummaryResponse> summaries = eventRepository.findAll().stream()
-                .filter(e -> !StringUtils.hasText(module) || module.equalsIgnoreCase(e.getModule()))
-                .filter(e -> !StringUtils.hasText(complianceGroup) || complianceGroup.equalsIgnoreCase(e.getComplianceGroup()))
+                .filter(e -> !StringUtils.hasText(module) || moduleKey(module).equals(moduleKey(e.getModule())))
                 .map(event -> {
                     NotificationPolicy policy = policyRepository.findByEventCode(event.getCode()).orElse(null);
                     return toSummary(event, policy);
                 })
                 .filter(summary -> !StringUtils.hasText(status) || status.equalsIgnoreCase(summary.policyStatus()))
+                .filter(summary -> matchesChannel(channel, summary.enabledChannels()))
                 .filter(summary -> query == null
                         || summary.name().toLowerCase(Locale.ROOT).contains(query)
                         || summary.eventCode().toLowerCase(Locale.ROOT).contains(query)
@@ -102,6 +104,18 @@ public class NotificationPolicyService {
                 .sorted(summaryComparator(sortBy, sortDirection))
                 .toList();
         return com.eqms.util.PagedList.paginate(summaries, page, limit);
+    }
+
+    /** EMAIL: the email is switched on. IN_APP_ONLY: it is not (whether or not the event has one). Anything else: no filter. */
+    static boolean matchesChannel(String channel, String enabledChannels) {
+        if (!StringUtils.hasText(channel)) return true;
+        boolean email = Arrays.stream(enabledChannels == null ? new String[0] : enabledChannels.split(","))
+                .anyMatch(c -> NotificationTemplateVersion.CHANNEL_EMAIL.equalsIgnoreCase(c.trim()));
+        return switch (channel.trim().toUpperCase(Locale.ROOT)) {
+            case "EMAIL" -> email;
+            case "IN_APP_ONLY" -> !email;
+            default -> true;
+        };
     }
 
     private java.util.Comparator<NotificationPolicySummaryResponse> summaryComparator(String sortBy, String sortDirection) {
@@ -118,7 +132,8 @@ public class NotificationPolicyService {
     public NotificationPolicyDetailResponse getDetail(String eventCode) {
         NotificationEventDefinition event = requireEvent(eventCode);
         NotificationPolicy policy = requirePolicy(eventCode);
-        List<NotificationTemplateVersionResponse> templates = Arrays.stream(policy.getEnabledChannels().split(","))
+        // the wording of every channel the event supports, also of one that is switched off: it is kept, and the screen of that channel shows it so that it can be read and edited
+        List<NotificationTemplateVersionResponse> templates = Arrays.stream(StringUtils.hasText(event.getSupportedChannels()) ? event.getSupportedChannels().split(",") : policy.getEnabledChannels().split(","))
                 .map(String::trim)
                 .filter(StringUtils::hasText)
                 .map(channel -> templateVersionRepository
@@ -135,15 +150,35 @@ public class NotificationPolicyService {
     public NotificationPolicyDetailResponse updatePolicy(String eventCode, UpdateNotificationPolicyRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         NotificationEventDefinition event = requireEvent(eventCode);
-        NotificationPolicy policy = requirePolicy(eventCode);
+        NotificationPolicy policy = lockPolicy(eventCode);
+        requireFresh(policy, request.expectedUpdatedAt());
 
         List<AuditTrailChangeResponse> changes = new ArrayList<>();
 
         if (request.status() != null && !VALID_STATUSES.contains(request.status().toUpperCase(Locale.ROOT))) {
             throw new IllegalArgumentException("Invalid status: " + request.status());
         }
+        if (request.recipientRules() != null) {
+            NotificationRecipientRules.validate(request.recipientRules());
+        }
+        if (request.escalationRecipientRules() != null && !request.escalationRecipientRules().isEmpty()) {
+            NotificationRecipientRules.validate(request.escalationRecipientRules());
+        }
         if (request.digestMode() != null && !VALID_DIGEST_MODES.contains(request.digestMode().toUpperCase(Locale.ROOT))) {
             throw new IllegalArgumentException("Invalid digest mode: " + request.digestMode());
+        }
+        java.util.List<String> requestedChannels = null;
+        if (request.enabledChannels() != null) {
+            requestedChannels = request.enabledChannels().stream().filter(StringUtils::hasText).map(c -> c.trim().toUpperCase(Locale.ROOT)).distinct().toList();
+            Set<String> supportedChannels = parseCsv(event.getSupportedChannels());
+            if (requestedChannels.isEmpty()) {
+                throw new IllegalArgumentException("A notification must be sent on at least one channel. To stop sending it, switch the notification off.");
+            }
+            for (String channel : requestedChannels) {
+                if (!supportedChannels.contains(channel)) {
+                    throw new IllegalArgumentException("This notification cannot be sent on the channel " + channel + ".");
+                }
+            }
         }
 
         String requestedQuietHoursStart = normalizeTimeValue(request.quietHoursStart());
@@ -160,21 +195,6 @@ public class NotificationPolicyService {
                 ? policy.getEscalationRecipientRules() : request.escalationRecipientRules();
         validateEscalation(effectiveEscalationEnabled, effectiveEscalationAfterMinutes, effectiveEscalationRecipients);
 
-        if (event.isMandatory()) {
-            if (request.status() != null && !NotificationPolicy.STATUS_ACTIVE.equalsIgnoreCase(request.status())) {
-                throw new IllegalArgumentException("This event is GMP-mandatory and cannot be disabled: " + event.getMandatoryReason());
-            }
-            if (request.recipientRules() != null && !request.recipientRules().equals(policy.getRecipientRules())) {
-                throw new IllegalArgumentException("This event's required recipients are locked by GMP policy: " + event.getMandatoryReason());
-            }
-            if (request.digestMode() != null && !NotificationPolicy.DIGEST_IMMEDIATE.equalsIgnoreCase(request.digestMode())) {
-                throw new IllegalArgumentException("GMP-mandatory notifications are delivered immediately and cannot be added to a digest.");
-            }
-            if (request.quietHoursStart() != null || request.quietHoursEnd() != null) {
-                throw new IllegalArgumentException("GMP-mandatory notifications cannot be delayed by quiet hours.");
-            }
-        }
-
         String effectiveStatus = request.status() == null ? policy.getStatus() : request.status();
         if (NotificationPolicy.STATUS_ACTIVE.equalsIgnoreCase(effectiveStatus)) {
             validateActivation(policy, request.recipientRules());
@@ -189,6 +209,17 @@ public class NotificationPolicyService {
             if (!before.equals(after)) {
                 changes.add(new AuditTrailChangeResponse("Recipients", before, after));
                 policy.setRecipientRules(request.recipientRules());
+            }
+        }
+        if (requestedChannels != null) {
+            String before = policy.getEnabledChannels() == null ? "" : policy.getEnabledChannels();
+            String after = String.join(",", requestedChannels);
+            if (!parseCsv(before).equals(new java.util.LinkedHashSet<>(requestedChannels))) {
+                changes.add(new AuditTrailChangeResponse("Channels", before, after));
+                policy.setEnabledChannels(after);
+            }
+            if (requestedChannels.contains(NotificationTemplateVersion.CHANNEL_EMAIL)) {
+                ensureEmailWording(policy, currentUser, changes);
             }
         }
         if (request.digestMode() != null) {
@@ -243,113 +274,89 @@ public class NotificationPolicyService {
         return getDetail(eventCode);
     }
 
-    @Transactional
-    public NotificationPolicySummaryResponse createEvent(CreateNotificationEventRequest request) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        if (!StringUtils.hasText(request.code()) || !StringUtils.hasText(request.name()) || !StringUtils.hasText(request.module())) {
-            throw new IllegalArgumentException("Event code, name and module are required.");
-        }
-        String code = request.code().trim().toLowerCase(Locale.ROOT);
-        if (!EVENT_CODE_PATTERN.matcher(code).matches()) {
-            throw new IllegalArgumentException("Event code must look like 'module.action' using lowercase letters, digits, underscores and at least one dot (e.g. document.custom_review).");
-        }
-        if (eventRepository.existsByCode(code)) {
-            throw new IllegalArgumentException("An event with code '" + code + "' already exists.");
-        }
-        String priority = StringUtils.hasText(request.priority()) ? request.priority().toUpperCase(Locale.ROOT) : NotificationEventDefinition.PRIORITY_MEDIUM;
-        if (!VALID_PRIORITIES.contains(priority)) {
-            throw new IllegalArgumentException("Invalid priority: " + request.priority());
-        }
-        String complianceGroup = StringUtils.hasText(request.complianceGroup()) ? request.complianceGroup().toUpperCase(Locale.ROOT) : NotificationEventDefinition.COMPLIANCE_OPTIONAL;
-        if (!VALID_COMPLIANCE_GROUPS.contains(complianceGroup)) {
-            throw new IllegalArgumentException("Invalid compliance group: " + request.complianceGroup());
-        }
-        if (request.mandatory() && !StringUtils.hasText(request.mandatoryReason())) {
-            throw new IllegalArgumentException("A GMP-mandatory event requires a documented reason.");
-        }
-        validateVariables(parseCsv(request.availableVariables()), request.actionUrlTemplate());
-        NotificationEventDefinition event = new NotificationEventDefinition();
-        event.setCode(code);
-        event.setName(request.name());
-        event.setDescription(request.description());
-        event.setModule(request.module());
-        event.setPriority(priority);
-        event.setComplianceGroup(complianceGroup);
-        event.setRelatedAction(request.relatedAction());
-        event.setDataObject(request.dataObject());
-        event.setSupportedChannels(NotificationTemplateVersion.CHANNEL_IN_APP);
-        event.setAvailableVariables(request.availableVariables());
-        event.setMandatory(request.mandatory());
-        event.setMandatoryReason(request.mandatory() ? request.mandatoryReason() : null);
-        event.setActive(true);
-        event.setDisplayOrder((int) (eventRepository.count() + 1) * 10);
-        event = eventRepository.save(event);
+    /**
+     * The icon of an in-app notification is one icon of the Lucide or the Tabler library, written {@code lucide:BellRing} or {@code tabler:IconBell}
+     * (the library and the name of its React component). The libraries live in the browser, so the server checks the form of the key, not the
+     * list of names; a name that no longer exists draws the icon of the kind of notification instead. The tones are the colours it may have.
+     */
+    public static final Pattern ICON_KEY = Pattern.compile("^(lucide|tabler):[A-Za-z][A-Za-z0-9]{0,59}$");
+    private static final java.util.regex.Pattern ICON_HEX = java.util.regex.Pattern.compile("^#[0-9a-fA-F]{6}$");
+    public static final Set<String> ICON_TONES = Set.of("emerald", "blue", "amber", "red", "purple", "cyan", "indigo", "slate");
 
-        NotificationPolicy policy = new NotificationPolicy();
-        policy.setEventCode(event.getCode());
-        policy.setStatus(NotificationPolicy.STATUS_DRAFT);
-        policy.setEnabledChannels(NotificationTemplateVersion.CHANNEL_IN_APP);
-        policy.setRecipientRules(objectMapper.createArrayNode());
-        policy.setDigestMode(NotificationPolicy.DIGEST_IMMEDIATE);
-        policy.setEscalationEnabled(false);
-        policy.setEscalationRecipientRules(objectMapper.createArrayNode());
-        policy = policyRepository.save(policy);
-
-        NotificationTemplateVersion version = new NotificationTemplateVersion();
-        version.setPolicy(policy);
-        version.setChannel(NotificationTemplateVersion.CHANNEL_IN_APP);
-        version.setVersionNumber(1);
-        version.setStatus(NotificationTemplateVersion.STATUS_ACTIVE);
-        version.setActionUrlTemplate(StringUtils.hasText(request.actionUrlTemplate()) ? request.actionUrlTemplate() : "{{actionUrl}}");
-        version.setVariablesUsed(request.availableVariables());
-        version.setChangeSummary("Event created");
-        version.setCreatedBy(currentUser);
-        templateVersionRepository.save(version);
-
-        auditTrailService.logAs(
-                currentUser, "NOTIFICATION_POLICY", event.getName(), policy.getId(),
-                "CREATE", null, null, "Notification event created", List.of(
-                        new AuditTrailChangeResponse("Event Code", null, event.getCode()),
-                        new AuditTrailChangeResponse("Module", null, event.getModule()),
-                        new AuditTrailChangeResponse("Priority", null, event.getPriority()),
-                        new AuditTrailChangeResponse("Compliance Group", null, event.getComplianceGroup()),
-                        new AuditTrailChangeResponse("Mandatory", null, String.valueOf(event.isMandatory())),
-                        new AuditTrailChangeResponse("Mandatory Reason", null, event.getMandatoryReason()),
-                        new AuditTrailChangeResponse("Policy Status", null, policy.getStatus())
-                )
-        );
-
-        return toSummary(event, policy);
+    /**
+     * Chooses the icon of the in-app notification of an event: an icon of {@link #ICON_KEY} and one tone of {@link #ICON_TONES}; empty means the icon
+     * of its kind. The change is written to the Audit Trail with the value before and after.
+     */
+    public NotificationPolicyDetailResponse updateAppearance(String eventCode, String icon, String iconTone) {
+        return updateAppearance(eventCode, icon, iconTone, null);
     }
 
     @Transactional
-    public void deleteEvent(String eventCode) {
+    public NotificationPolicyDetailResponse updateAppearance(String eventCode, String icon, String iconTone, java.time.Instant expectedUpdatedAt) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         NotificationEventDefinition event = requireEvent(eventCode);
-        if (event.isMandatory()) {
-            throw new IllegalArgumentException("This event is GMP-mandatory and cannot be deleted: " + event.getMandatoryReason());
+        NotificationPolicy policy = lockPolicy(eventCode);
+        requireFresh(policy, expectedUpdatedAt);
+        String newIcon = StringUtils.hasText(icon) ? icon.trim() : null;
+        // a six-digit hex colour chosen with the colour picker (kept in capitals), or one of the names the first version offered
+        String newTone = !StringUtils.hasText(iconTone) ? null : ICON_HEX.matcher(iconTone.trim()).matches() ? iconTone.trim().toUpperCase(Locale.ROOT) : iconTone.trim().toLowerCase(Locale.ROOT);
+        if (newIcon != null && !ICON_KEY.matcher(newIcon).matches()) {
+            throw new IllegalArgumentException("The icon must be an icon of the Lucide or the Tabler library, written lucide:Name or tabler:Name");
         }
-        auditTrailService.logAs(
-                currentUser, "NOTIFICATION_POLICY", event.getName(), event.getId(),
-                "DELETE", null, null, "Notification event deleted", List.of()
-        );
-        eventRepository.delete(event);
+        if (newTone != null && !ICON_HEX.matcher(newTone).matches() && !ICON_TONES.contains(newTone)) {
+            throw new IllegalArgumentException("The colour must be written as #RRGGBB (or be one of: " + String.join(", ", new java.util.TreeSet<>(ICON_TONES)) + ")");
+        }
+        List<AuditTrailChangeResponse> changes = new ArrayList<>();
+        diffField(changes, "Icon", policy.getIcon() == null ? "" : policy.getIcon(), newIcon == null ? "" : newIcon);
+        diffField(changes, "Icon colour", policy.getIconTone() == null ? "" : policy.getIconTone(), newTone == null ? "" : newTone);
+        if (!changes.isEmpty()) {
+            policy.setIcon(newIcon);
+            policy.setIconTone(newTone);
+            policy.setUpdatedBy(currentUser);
+            policy.setUpdatedAt(java.time.Instant.now());
+            policyRepository.save(policy);
+            auditTrailService.logAs(currentUser, "NOTIFICATION_POLICY", event.getName(), policy.getId(), "UPDATE_ICON", null, null,
+                    "Notification icon changed", changes);
+        }
+        return getDetail(eventCode);
     }
 
     @Transactional
     public NotificationTemplateVersionResponse updateTemplate(String eventCode, String channel, UpdateNotificationTemplateRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         NotificationEventDefinition event = requireEvent(eventCode);
-        NotificationPolicy policy = requirePolicy(eventCode);
+        NotificationPolicy policy = lockPolicy(eventCode);
+        requireFresh(policy, request.expectedUpdatedAt());
 
-        if (!NotificationTemplateVersion.CHANNEL_IN_APP.equalsIgnoreCase(channel)) {
-            throw new IllegalArgumentException("This feature only configures in-app/webapp notification content.");
+        boolean inApp = NotificationTemplateVersion.CHANNEL_IN_APP.equalsIgnoreCase(channel);
+        boolean email = NotificationTemplateVersion.CHANNEL_EMAIL.equalsIgnoreCase(channel);
+        if (!inApp && !email) {
+            throw new IllegalArgumentException("Only the in-app and the email wording of a notification can be edited.");
         }
-        if (NotificationPolicy.STATUS_ACTIVE.equalsIgnoreCase(policy.getStatus())
+        if (email && !parseCsv(event.getSupportedChannels()).contains(NotificationTemplateVersion.CHANNEL_EMAIL)) {
+            throw new IllegalArgumentException("This notification has no email.");
+        }
+        if (inApp && NotificationPolicy.STATUS_ACTIVE.equalsIgnoreCase(policy.getStatus())
                 && (!StringUtils.hasText(request.title()) || !StringUtils.hasText(request.summary()))) {
             throw new IllegalArgumentException("An active notification policy requires an in-app title and summary.");
         }
-
+        if (email && (!StringUtils.hasText(request.subject()) || !StringUtils.hasText(request.body()))) {
+            throw new IllegalArgumentException("An email needs a subject and a message.");
+        }
+        if (email && request.subject().length() > 255) {
+            throw new IllegalArgumentException("The email subject must be 255 characters or fewer.");
+        }
+        if (inApp && StringUtils.hasText(request.title()) && request.title().length() > 255) {
+            throw new IllegalArgumentException("The in-app title must be 255 characters or fewer.");
+        }
+        if (request.actionLabel() != null && request.actionLabel().length() > 80) {
+            throw new IllegalArgumentException("The button label must be 80 characters or fewer.");
+        }
+        // the email message is HTML written in the editor: keep only what a mail may hold, so nothing that runs reaches a reader
+        if (email) {
+            request = new UpdateNotificationTemplateRequest(request.title(), request.summary(), request.subject(),
+                    EmailTemplateService.sanitizeRenderedHtml(request.body()), request.actionUrlTemplate(), request.changeSummary(), request.actionLabel());
+        }
         Set<String> allowedVariables = parseCsv(event.getAvailableVariables());
         validateVariables(allowedVariables, request.title());
         validateVariables(allowedVariables, request.summary());
@@ -357,7 +364,7 @@ public class NotificationPolicyService {
         validateVariables(allowedVariables, request.body());
         validateVariables(allowedVariables, request.actionUrlTemplate());
 
-        if (NotificationTemplateVersion.CHANNEL_IN_APP.equalsIgnoreCase(channel)) {
+        if (inApp) {
             if (StringUtils.hasText(request.summary()) && request.summary().length() > 500) {
                 throw new IllegalArgumentException("In-app summary must be 500 characters or fewer — it is not the email body.");
             }
@@ -374,6 +381,7 @@ public class NotificationPolicyService {
             diffField(changes, "Subject", current.getSubject(), request.subject());
             diffField(changes, "Body", current.getBody(), request.body());
             diffField(changes, "Action URL Template", current.getActionUrlTemplate(), request.actionUrlTemplate());
+            diffField(changes, "Button label", current.getActionLabel(), request.actionLabel());
             current.setStatus(NotificationTemplateVersion.STATUS_ARCHIVED);
             templateVersionRepository.save(current);
         }
@@ -389,12 +397,17 @@ public class NotificationPolicyService {
         version.setSubject(request.subject());
         version.setBody(request.body());
         version.setActionUrlTemplate(request.actionUrlTemplate());
+        version.setActionLabel(request.actionLabel());
         version.setVariablesUsed(String.join(",", collectVariables(request)));
         version.setChangeSummary(request.changeSummary());
         version.setCreatedBy(currentUser);
         version = templateVersionRepository.save(version);
+        // the notification as a whole was changed now: its "Updated" time moves, and anyone who opened it before is told when they save
+        policy.setUpdatedBy(currentUser);
+        policy.setUpdatedAt(java.time.Instant.now());
+        policyRepository.save(policy);
 
-        if (!changes.isEmpty()) {
+        if (!changes.isEmpty() || current == null) {
             auditTrailService.logAs(
                     currentUser, "NOTIFICATION_POLICY", event.getName() + " (" + channel + ")", policy.getId(),
                     "UPDATE_CONTENT", null, null,
@@ -424,7 +437,8 @@ public class NotificationPolicyService {
 
         UpdateNotificationTemplateRequest request = new UpdateNotificationTemplateRequest(
                 toRestore.getTitle(), toRestore.getSummary(), toRestore.getSubject(), toRestore.getBody(),
-                toRestore.getActionUrlTemplate(), "Restored from version " + toRestore.getVersionNumber()
+                toRestore.getActionUrlTemplate(), "Restored from version " + toRestore.getVersionNumber(),
+                toRestore.getActionLabel()
         );
         NotificationTemplateVersionResponse restored = updateTemplate(eventCode, channel, request);
         auditTrailService.logAs(
@@ -439,14 +453,108 @@ public class NotificationPolicyService {
     public NotificationPreviewResponse preview(String eventCode, NotificationPreviewRequest request) {
         NotificationEventDefinition event = requireEvent(eventCode);
         java.util.Map<String, String> sample = buildSampleData(event);
+        String html = null;
+        if (NotificationTemplateVersion.CHANNEL_EMAIL.equalsIgnoreCase(request.channel())) {
+            // the mail as the reader gets it: the message as paragraphs, the button, all in the shared frame
+            html = framedSample(request.body(), request.actionUrlTemplate(), request.actionLabel(), sample, true);
+        }
         return new NotificationPreviewResponse(
                 request.channel(),
                 render(request.title(), sample),
                 render(request.summary(), sample),
                 render(request.subject(), sample),
                 render(request.body(), sample),
-                render(request.actionUrlTemplate(), sample)
+                render(request.actionUrlTemplate(), sample),
+                html
         );
+    }
+
+    /**
+     * The placeholders an event offers (the ones its wording may use, and only those: anything else is refused when the wording is saved),
+     * each with the token to copy and an example, so a person never has to guess a name.
+     */
+    @Transactional(readOnly = true)
+    public List<com.eqms.dto.notification.NotificationVariableResponse> variables(String eventCode) {
+        NotificationEventDefinition event = requireEvent(eventCode);
+        java.util.Map<String, String> sample = buildSampleData(event);
+        return parseCsv(event.getAvailableVariables()).stream()
+                .map(name -> new com.eqms.dto.notification.NotificationVariableResponse(
+                        name, "{{" + name + "}}", labelOf(name), sample.getOrDefault(name, "(example)")))
+                .toList();
+    }
+
+    /** Every placeholder any event of the system offers, once each, with the example of what it becomes. */
+    @Transactional(readOnly = true)
+    public List<com.eqms.dto.notification.NotificationVariableResponse> allEventVariables() {
+        java.util.Map<String, String> sample = buildSampleData(null);
+        Set<String> names = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        eventRepository.findAll().forEach(event -> names.addAll(parseCsv(event.getAvailableVariables())));
+        return names.stream()
+                .map(name -> new com.eqms.dto.notification.NotificationVariableResponse(
+                        name, "{{" + name + "}}", labelOf(name),
+                        sample.getOrDefault(name, java.util.Optional.ofNullable(NotificationPlaceholderCatalog.find(name)).map(NotificationPlaceholderCatalog.Entry::sample).orElse("(example)"))))
+                .toList();
+    }
+
+    /** A module is written "DOCUMENT_CONTROL" by most events and "Document Control" by a few: the filter treats them as one. */
+    static String moduleKey(String module) {
+        return module == null ? "" : module.trim().toUpperCase(Locale.ROOT).replace(' ', '_');
+    }
+
+    /** The mail as the reader gets it, with example values: the message as paragraphs, the button, all in the shared frame. */
+    private String framedSample(String body, String actionUrlTemplate, String actionLabel, java.util.Map<String, String> sample, boolean preview) {
+        String message = EmailTemplateService.sanitizeRenderedHtml(render(body, sample));
+        String url = render(actionUrlTemplate, sample);
+        String absolute = !StringUtils.hasText(url) ? null
+                : url.startsWith("http://") || url.startsWith("https://") ? url : "https://eqms.example.com" + (url.startsWith("/") ? url : "/" + url);
+        String brand = emailDesignService == null ? null : emailDesignService.current().getButtonColor();
+        String content = com.eqms.util.EmailFrameRenderer.paragraphs(message) + com.eqms.util.EmailFrameRenderer.button(actionLabel, absolute, brand);
+        return emailDesignService == null ? com.eqms.util.EmailFrameRenderer.render(null, content, null, preview)
+                : preview ? emailDesignService.framePreview(content) : emailDesignService.frame(content);
+    }
+
+    /**
+     * Sends the PUBLISHED email of an event to one address, with example values, so a person sees the real mail in a real inbox before relying on
+     * it. Nothing is recorded as a notification; the send is written to the Audit Trail.
+     */
+    @Transactional
+    public void testSend(String eventCode, String to) {
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        NotificationEventDefinition event = requireEvent(eventCode);
+        NotificationPolicy policy = requirePolicy(eventCode);
+        if (!StringUtils.hasText(to) || !to.trim().matches("[^@\\s<>\"]+@[^@\\s<>\"]+\\.[^@\\s<>\"]+")) {
+            throw new IllegalArgumentException("Write a valid e-mail address to send the test to.");
+        }
+        NotificationTemplateVersion email = templateVersionRepository
+                .findFirstByPolicy_IdAndChannelAndStatusOrderByVersionNumberDesc(policy.getId(), NotificationTemplateVersion.CHANNEL_EMAIL, NotificationTemplateVersion.STATUS_ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("This notification has no published email to send."));
+        NotificationTemplateVersion inApp = templateVersionRepository
+                .findFirstByPolicy_IdAndChannelAndStatusOrderByVersionNumberDesc(policy.getId(), NotificationTemplateVersion.CHANNEL_IN_APP, NotificationTemplateVersion.STATUS_ACTIVE)
+                .orElse(null);
+        java.util.Map<String, String> sample = buildSampleData(event);
+        String urlTemplate = StringUtils.hasText(email.getActionUrlTemplate()) ? email.getActionUrlTemplate() : inApp == null ? null : inApp.getActionUrlTemplate();
+        String html = framedSample(email.getBody(), urlTemplate, email.getActionLabel(), sample, false);
+        if (emailService == null) {
+            throw new IllegalStateException("The email service is not available.");
+        }
+        boolean sent;
+        try {
+            sent = emailService.sendRenderedEmail(to.trim(), "[Test] " + render(email.getSubject(), sample), html);
+        } catch (Exception e) {
+            throw new IllegalStateException("The test email could not be sent: " + e.getMessage(), e);
+        }
+        if (!sent) {
+            throw new IllegalStateException("The test email was not sent: email notifications are off or the SMTP settings are not complete.");
+        }
+        auditTrailService.logAs(currentUser, "NOTIFICATION_POLICY", event.getName() + " (EMAIL)", policy.getId(), "TEST_SEND", null, null,
+                "A test email was sent to " + to.trim(), List.of());
+    }
+
+    /** "controlledCopyNumber" becomes "Controlled copy number". */
+    static String variableLabel(String name) {
+        if (name == null || name.isBlank()) return "";
+        String spaced = name.replaceAll("([a-z0-9])([A-Z])", "$1 $2").toLowerCase(Locale.ROOT);
+        return Character.toUpperCase(spaced.charAt(0)) + spaced.substring(1);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
@@ -454,6 +562,22 @@ public class NotificationPolicyService {
     private NotificationEventDefinition requireEvent(String eventCode) {
         return eventRepository.findByCode(eventCode)
                 .orElseThrow(() -> new EntityNotFoundException("Notification event not found: " + eventCode));
+    }
+
+    private NotificationPolicy lockPolicy(String eventCode) {
+        return policyRepository.lockByEventCode(eventCode)
+                .orElseThrow(() -> new EntityNotFoundException("Notification policy not found: " + eventCode));
+    }
+
+    /**
+     * The person saw the notification as it was at {@code expectedUpdatedAt}. When another change was saved since (its "Updated" time moved), this one is refused: saving it would
+     * silently overwrite the other person's work. The comparison is to the microsecond, which is what the database keeps.
+     */
+    static void requireFresh(NotificationPolicy policy, java.time.Instant expectedUpdatedAt) {
+        if (expectedUpdatedAt == null || policy.getUpdatedAt() == null) return;
+        if (!expectedUpdatedAt.truncatedTo(java.time.temporal.ChronoUnit.MICROS).equals(policy.getUpdatedAt().truncatedTo(java.time.temporal.ChronoUnit.MICROS))) {
+            throw new IllegalStateException("This was changed by someone else after you opened it. Reload it to see their change, then make yours again.");
+        }
     }
 
     private NotificationPolicy requirePolicy(String eventCode) {
@@ -505,6 +629,35 @@ public class NotificationPolicyService {
         if (!b.equals(a)) {
             changes.add(new AuditTrailChangeResponse(label, before, after));
         }
+    }
+
+    /**
+     * An e-mail can only be sent when it has wording. When an administrator turns the e-mail on for a notification that never had one, it starts from the in-app
+     * wording (the title as the subject, the message as the text, the address of the in-app notification as the button), which the administrator then edits.
+     */
+    private void ensureEmailWording(NotificationPolicy policy, UserAccount currentUser, List<AuditTrailChangeResponse> changes) {
+        if (templateVersionRepository.findFirstByPolicy_IdAndChannelAndStatusOrderByVersionNumberDesc(
+                policy.getId(), NotificationTemplateVersion.CHANNEL_EMAIL, NotificationTemplateVersion.STATUS_ACTIVE).isPresent()) {
+            return;
+        }
+        NotificationTemplateVersion inApp = templateVersionRepository.findFirstByPolicy_IdAndChannelAndStatusOrderByVersionNumberDesc(
+                policy.getId(), NotificationTemplateVersion.CHANNEL_IN_APP, NotificationTemplateVersion.STATUS_ACTIVE).orElse(null);
+        NotificationTemplateVersion version = new NotificationTemplateVersion();
+        version.setPolicy(policy);
+        version.setChannel(NotificationTemplateVersion.CHANNEL_EMAIL);
+        version.setVersionNumber(templateVersionRepository.countByPolicy_IdAndChannel(policy.getId(), NotificationTemplateVersion.CHANNEL_EMAIL) + 1);
+        version.setStatus(NotificationTemplateVersion.STATUS_ACTIVE);
+        String title = inApp == null || !StringUtils.hasText(inApp.getTitle()) ? "{{systemName}} notification" : inApp.getTitle();
+        String summary = inApp == null || !StringUtils.hasText(inApp.getSummary()) ? "" : inApp.getSummary();
+        version.setSubject("[EQMS] " + title);
+        version.setBody("<p>" + EmailTemplateService.sanitizeRenderedHtml(summary) + "</p>");
+        version.setActionUrlTemplate(inApp == null ? "{{actionUrl}}" : inApp.getActionUrlTemplate());
+        version.setActionLabel("Open in EQMS");
+        version.setVariablesUsed(String.join(",", collectVariables(new UpdateNotificationTemplateRequest(title, summary, version.getSubject(), version.getBody(), version.getActionUrlTemplate(), null, null))));
+        version.setChangeSummary("Started from the in-app wording when the e-mail was turned on");
+        version.setCreatedBy(currentUser);
+        templateVersionRepository.save(version);
+        changes.add(new AuditTrailChangeResponse("Email wording", "", "Started from the in-app wording"));
     }
 
     private void compareAndSet(List<AuditTrailChangeResponse> changes, String label, String before, String after, java.util.function.Consumer<String> setter) {
@@ -569,7 +722,24 @@ public class NotificationPolicyService {
         sample.put("recallReason", "Obsoleted when a newer revision was published");
         sample.put("dueDate", "31/12/2026");
         sample.put("campaignName", "Q3 Audit Trail Review");
+        // every other placeholder the event offers takes the example of the catalogue of placeholders; the words a module composes (title, message) take the event's own
+        if (event != null) {
+            for (String name : parseCsv(event.getAvailableVariables())) {
+                var entry = NotificationPlaceholderCatalog.find(name);
+                if (entry != null) sample.putIfAbsent(name, entry.sample());
+            }
+            if (parseCsv(event.getAvailableVariables()).contains("title")) {
+                sample.put("title", event.getName());
+                sample.put("message", "Nguyen Van A - Sample record: what happened, and what to do.");
+            }
+        }
         return sample;
+    }
+
+    /** The label of a placeholder: the catalogue's, else its name in words. */
+    static String labelOf(String name) {
+        var entry = NotificationPlaceholderCatalog.find(name);
+        return entry != null ? entry.label() : variableLabel(name);
     }
 
     private String render(String template, java.util.Map<String, String> variables) {
@@ -587,7 +757,7 @@ public class NotificationPolicyService {
     private NotificationPolicySummaryResponse toSummary(NotificationEventDefinition event, NotificationPolicy policy) {
         return new NotificationPolicySummaryResponse(
                 event.getCode(), event.getName(), event.getDescription(), event.getModule(),
-                event.getPriority(), event.getComplianceGroup(), event.isMandatory(), event.getSupportedChannels(),
+                event.getPriority(), event.getSupportedChannels(),
                 policy == null ? NotificationPolicy.STATUS_DRAFT : policy.getStatus(),
                 policy == null ? "" : policy.getEnabledChannels(),
                 policy != null && policy.isEscalationEnabled(),
@@ -598,13 +768,13 @@ public class NotificationPolicyService {
     private NotificationPolicyDetailResponse toDetail(NotificationEventDefinition event, NotificationPolicy policy, List<NotificationTemplateVersionResponse> templates) {
         return new NotificationPolicyDetailResponse(
                 event.getCode(), event.getName(), event.getDescription(), event.getModule(),
-                event.getPriority(), event.getComplianceGroup(), event.getRelatedAction(), event.getDataObject(),
-                event.getSupportedChannels(), event.getAvailableVariables(), event.isMandatory(), event.getMandatoryReason(),
+                event.getPriority(), event.getRelatedAction(), event.getDataObject(),
+                event.getSupportedChannels(), event.getAvailableVariables(),
                 policy.getStatus(), policy.getEnabledChannels(), policy.getRecipientRules(), policy.getDigestMode(),
                 policy.getQuietHoursStart(), policy.getQuietHoursEnd(), policy.isEscalationEnabled(), policy.getEscalationAfterMinutes(),
                 policy.getEscalationRecipientRules(),
                 policy.getUpdatedBy() == null ? null : policy.getUpdatedBy().getFullName(),
-                policy.getUpdatedAt(), templates
+                policy.getUpdatedAt(), templates, policy.getIcon(), policy.getIconTone()
         );
     }
 
@@ -612,7 +782,7 @@ public class NotificationPolicyService {
         return new NotificationTemplateVersionResponse(
                 version.getId().toString(), version.getChannel(), version.getVersionNumber(), version.getStatus(),
                 version.getTitle(), version.getSummary(), version.getSubject(), version.getBody(),
-                version.getActionUrlTemplate(), version.getVariablesUsed(), version.getChangeSummary(),
+                version.getActionUrlTemplate(), version.getActionLabel(), version.getVariablesUsed(), version.getChangeSummary(),
                 version.getCreatedBy() == null ? null : version.getCreatedBy().getFullName(),
                 version.getCreatedAt()
         );

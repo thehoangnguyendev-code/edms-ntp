@@ -9,6 +9,9 @@ export interface ReportProperties {
   lastTemplateSerial: number;
   nextTemplateNumber: string;
   maxRows: number;
+  /** Most rows of a file run with Full, and the most the server accepts for it. */
+  maxRowsFull: number;
+  maxRowsFullLimit: number;
   maxScheduleRecipients: number;
   scheduleRetryMinutes: number;
   /** The one look every report has: cover, header, footer, page numbers, font, stamp, watermark, logo, paper layout and Word page templates. */
@@ -19,7 +22,7 @@ export interface ReportProperties {
 
 export type ReportPropertiesWrite = Pick<
   ReportProperties,
-  "version" | "templateNumberPrefix" | "templateNumberDigits" | "maxRows" | "maxScheduleRecipients" | "scheduleRetryMinutes" | "appearance"
+  "version" | "templateNumberPrefix" | "templateNumberDigits" | "maxRows" | "maxRowsFull" | "maxScheduleRecipients" | "scheduleRetryMinutes" | "appearance"
 >;
 
 export const reportPropertiesApi = {

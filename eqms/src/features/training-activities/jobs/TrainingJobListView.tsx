@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import {
@@ -383,7 +382,7 @@ export function TrainingJobListView() {
           rows={table.items}
           getRowKey={(r) => r.id}
           isLoading={table.isLoading}
-          loadingContent={<SectionLoading text="Loading…" />}
+
           columns={columns}
           columnLayout={layout}
           action={rowMenu.action}

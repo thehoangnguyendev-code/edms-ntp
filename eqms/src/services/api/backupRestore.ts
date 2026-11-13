@@ -7,6 +7,9 @@ export interface BackupListParams {
   status?: string;
   type?: string;
   verification?: string;
+  /** How the backup was started (SCHEDULED, MANUAL, PRE_CHANGE) and a part it contains (CONFIGURATION, DATABASE, OBJECT_STORE). */
+  trigger?: string;
+  component?: string;
   /** ISO instants; the range is inclusive. */
   startedFrom?: string;
   startedTo?: string;
@@ -24,13 +27,9 @@ export interface BackupPage {
   pagination: { page: number; limit: number; total: number; totalPages: number };
 }
 
-export interface BackupVerificationCheck {
-  code: string;
-  ok: boolean;
-  detail: string;
-}
-
 export interface BackupDetail extends BackupRecord {
+  /** The stages of the backup, worked out on the server from its status and verification; the screen only draws them. */
+  workflow?: import("@/types/document").WorkflowProgress;
   locations: { target: string; path: string; ok: boolean }[];
   verifications: { tier: string; result: string; verified_at: string; verified_by: string; detail: string }[];
   errorCode?: string | null;
@@ -60,7 +59,18 @@ export interface BackupJob {
   id: string;
   job_type: string;
   status: "QUEUED" | "RUNNING" | "DONE" | "FAILED";
+  /** How far the agent has got, 0-100. The agent reports it as it works; it is never estimated on the screen. */
+  progress?: number;
+  /** The checks of a verification finished so far (a JSON list of IntegrityCheckResult), filled in while the job runs. */
+  steps_json?: string | null;
   result_json: string | null;
+}
+
+/** One check of an integrity check, as the agent recorded it. */
+export interface IntegrityCheckResult {
+  code: string;
+  ok: boolean;
+  detail: string;
 }
 
 export interface BackupSchedulePolicy {
@@ -83,6 +93,8 @@ export interface ScheduleRowRecord {
   frequency: string;
   time: string;
   status: "ACTIVE" | "NOT_SCHEDULED";
+  /** Why the row is as it is (for example that the files follow the database schedule). */
+  note?: string;
 }
 
 export interface ScheduleRowParams {
@@ -96,10 +108,16 @@ export interface ScheduleRowParams {
   limit?: number;
 }
 
+/** The parts a backup can hold: the settings, the whole database, the stored files. A backup holds one or more of them. */
+/** The parts a backup can be made of and restored in. Backups made before 2026-11-11 may also hold a separate settings part; it is shown but not offered. */
+export type BackupPart = "DATABASE" | "OBJECT_STORE";
+
 export interface CreateBackupPayload {
   reason: string;
   type: Extract<BackupType, "FULL"> | "PRE_CHANGE";
   changeControlRef?: string;
+  /** At least one. Left out, the backup holds what the active policy covers. */
+  components?: BackupPart[];
 }
 
 const BASE = "/backup-restore";
@@ -140,6 +158,18 @@ export interface PolicyVersion {
 export interface PolicyListParams {
   search?: string;
   status?: string;
+  /** DATABASE or OBJECT_STORE: versions that back it up. */
+  component?: string;
+  /** A target code such as T1: versions that copy to it. */
+  target?: string;
+  /** OWN: files have their own time. WITH_DATABASE: files go with the database. */
+  filesSchedule?: string;
+  /** APPROVED or NOT_APPROVED. */
+  approval?: string;
+  proposedFrom?: string;
+  proposedTo?: string;
+  activatedFrom?: string;
+  activatedTo?: string;
   sortBy?: string;
   sortDirection?: "asc" | "desc";
   page?: number;
@@ -169,11 +199,22 @@ export interface BackupTargetInfo {
   location: string;
 }
 
+/** The copy a person makes by hand and keeps off the server (the third place). The Backup Agent cannot reach it, so it is declared, not tested. */
+export interface ManualCopy {
+  declared: boolean;
+  description: string;
+  everyDays: number;
+}
+
 export interface ProposePolicyPayload {
   scope: { components: string[] };
-  schedule: { database: { enabled: boolean; frequency: "DAILY"; time: string; type: "FULL" } };
+  schedule: {
+    database: { enabled: boolean; frequency: "DAILY"; time: string; type: "FULL" };
+    /** Present when the files have a time of their own; without it they are backed up in the database run. */
+    files?: { enabled: boolean; frequency: "DAILY"; time: string; type: "FULL" };
+  };
   retention: { mode: "PERMANENT" };
-  targets: { targets: PolicyTarget[] };
+  targets: { targets: PolicyTarget[]; manualCopy?: ManualCopy };
   reason: string;
 }
 
@@ -181,7 +222,10 @@ export interface PolicyBody {
   components: string[];
   time: string;
   enabled: boolean;
+  /** The time of day of the files backup when it has its own schedule, otherwise null (the files follow the database). */
+  filesTime: string | null;
   targets: PolicyTarget[];
+  manualCopy: ManualCopy | null;
 }
 
 /** Reads the JSON text of a version into what the screens show. Anything unreadable becomes empty rather than breaking the screen. */
@@ -200,7 +244,9 @@ export const readPolicyBody = (policy: Pick<PolicyVersion, "scope" | "schedule" 
     components: Array.isArray(scope.components) ? scope.components : [],
     time: schedule?.database?.time ?? "",
     enabled: schedule?.database?.enabled ?? false,
+    filesTime: schedule?.files?.enabled ? String(schedule.files.time ?? "") : null,
     targets: Array.isArray(targets.targets) ? targets.targets.map((t: any) => ({ offsite: false, immutable: false, ...t })) : [],
+    manualCopy: targets?.manualCopy?.declared ? { declared: true, description: String(targets.manualCopy.description ?? ""), everyDays: Number(targets.manualCopy.everyDays ?? 0) } : null,
   };
 };
 
@@ -214,100 +260,6 @@ export const readPolicyGate = (policy: Pick<PolicyVersion, "gate">): PolicyGate 
   }
 };
 
-
-/** Offline media and export packages (Backup & Restore Administration > Backup Storage & Encryption). Machine values only. */
-export type MediaStatus = "AVAILABLE" | "IN_TRANSIT" | "STORED_OFFSITE" | "IN_READ_TEST" | "QUARANTINED" | "RETIRED";
-export type MediaKind = "HDD" | "SSD" | "USB" | "TAPE";
-export type ExportStatus = "REQUESTED" | "APPROVED" | "RUNNING" | "COMPLETED" | "INVALID" | "REJECTED";
-
-export interface OfflineMedium {
-  id: string;
-  label: string;
-  serialNumber: string;
-  kind: MediaKind;
-  capacityBytes: number;
-  exportDir: string;
-  status: MediaStatus;
-  holder: string | null;
-  storageLocation: string | null;
-  handedOverAt: string | null;
-  lastReadTestAt: string | null;
-  lastReadTestResult: "PASSED" | "FAILED" | null;
-  expiresOn: string | null;
-  destructionRecord: string | null;
-  holdsLegalHold: boolean;
-  registeredBy: string;
-  createdAt: string | null;
-  packageCount: number;
-}
-
-export interface MediaEvent {
-  event: string;
-  by: string;
-  at: string;
-  detail: string | null;
-}
-
-export interface MediaPackage {
-  exportId: string;
-  backupNumber: string;
-  finishedAt: string;
-  sizeBytes: number;
-  receiptSha256: string | null;
-}
-
-export interface BackupExport {
-  id: string;
-  exportId: string;
-  backupNumber: string;
-  mediaId: string;
-  mediaLabel: string;
-  status: ExportStatus;
-  requestedBy: string;
-  reason: string;
-  requestedAt: string | null;
-  approvedBy: string | null;
-  decidedAt: string | null;
-  decisionReason: string | null;
-  startedAt: string | null;
-  finishedAt: string | null;
-  estimatedBytes: number | null;
-  sizeBytes: number | null;
-  fileCount: number | null;
-  receiptSha256: string | null;
-  packagePath: string | null;
-  errorCode: string | null;
-  errorDetail: string | null;
-}
-
-export interface MediaListParams {
-  search?: string;
-  status?: string;
-  kind?: string;
-  sortBy?: string;
-  sortDirection?: "asc" | "desc";
-  page?: number;
-  limit?: number;
-}
-
-export interface ExportListParams {
-  search?: string;
-  status?: string;
-  backupNumber?: string;
-  sortBy?: string;
-  sortDirection?: "asc" | "desc";
-  page?: number;
-  limit?: number;
-}
-
-export interface RegisterMediumPayload {
-  label: string;
-  serialNumber: string;
-  kind: MediaKind;
-  capacityBytes: number;
-  exportDir: string;
-  expiresOn?: string;
-}
 
 export interface TargetTestResult {
   target: string;
@@ -362,92 +314,6 @@ export interface RehearsalListParams {
 }
 
 
-/** A restore request (SDS 11.3, steps R0-R3). Execution (R4-R12) is not built: an approved request is a record, not a running restore. */
-export type RestoreRequestType = "R-FULL" | "R-DB" | "R-OBJ" | "R-ONE";
-export type RestoreRequestTarget = "VALIDATION" | "PRODUCTION";
-export type RestoreRequestStatus = "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
-
-export interface RestoreImpact {
-  backupNumber: string;
-  measuredAt: string;
-  measuredBy: string;
-  dbSnapshotAt: string | null;
-  schemaVersion: string | null;
-  components: { key: string; sizeBytes: number; objectCount: number | null; rows?: number }[];
-  rowsInBackup: number;
-  targets: { target: string; ok: boolean }[];
-  liveRowsAfterBackup: { measured: boolean; auditRows?: number; reason?: string; note?: string };
-}
-
-export interface RestoreRequestRecord {
-  id: string;
-  restoreNumber: string;
-  backupNumber: string;
-  type: RestoreRequestType;
-  target: RestoreRequestTarget;
-  status: RestoreRequestStatus;
-  reason: string;
-  changeControlRef: string | null;
-  requestedBy: string;
-  requestedAt: string | null;
-  impactSha256: string | null;
-  impact: RestoreImpact | null;
-  rehearsalId: string | null;
-  approvedBy: string | null;
-  approvalSignatureRef: string | null;
-  decidedAt: string | null;
-  decisionReason: string | null;
-  events?: { event: string; by: string; at: string }[];
-}
-
-export interface RestoreRequestListParams {
-  search?: string;
-  status?: string;
-  target?: string;
-  sortBy?: string;
-  sortDirection?: "asc" | "desc";
-  page?: number;
-  limit?: number;
-}
-
-/** The test restore queued in the window, with the outcome of its rehearsal and the checks it ran. */
-export interface RestoreTestRestore {
-  rehearsalId: string;
-  status: "QUEUED" | "RUNNING" | "PASSED" | "FAILED";
-  requestedBy: string;
-  errorCode: string | null;
-  errorDetail: string | null;
-  checks: { code: string; title: string; required: boolean; ok: boolean; detail: string; checkedAt?: string }[];
-}
-
-/** The checks before a restore runs, and its schedule if one exists (SDS 11.3, R4). Read on the server. */
-export interface RestoreExecutionChecks {
-  restoreNumber: string;
-  status: RestoreRequestStatus;
-  checks: { code: string; ok: boolean; detail: string }[];
-  readyToSchedule: boolean;
-  schedule: { id: string; status: string; windowStart: string; scheduledBy: string; scheduledAt: string } | null;
-  /** The state of the whole system, and the request that holds it when it is locked for a restore. */
-  systemState: string;
-  systemRequestId: string | null;
-  testRestore: RestoreTestRestore | null;
-  notCheckedYet: string[];
-}
-
-/** Decided on the server: the passed test restore of a backup that is recent enough for a production request, or null. */
-export interface RestoreReadiness {
-  backupNumber: string;
-  maxAgeDays: number;
-  testRestore: { rehearsalId: string; finishedAt: string } | null;
-}
-
-export interface CreateRestoreRequestPayload {
-  type: RestoreRequestType;
-  target: RestoreRequestTarget;
-  reason: string;
-  changeControlRef?: string;
-}
-
 /** A backup alert (SDS 15.1) and whether someone has acknowledged it. */
 export interface BackupAlertRecord {
   id: string;
@@ -470,19 +336,13 @@ export interface BackupAlertListParams {
   state?: "OPEN" | "ACKNOWLEDGED" | "ALL";
   severity?: string;
   search?: string;
+  /** ISO instants for when the alert was raised; the range is inclusive. */
+  from?: string;
+  to?: string;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
   page?: number;
   limit?: number;
-}
-
-/** A restore rule the owner may change (SDS 14.1), with the range the value must stay in. */
-export interface RestoreRuleRecord {
-  code: string;
-  value: number;
-  min: number;
-  max: number;
-  description: string;
-  updatedBy: string;
-  updatedAt: string;
 }
 
 /** A disaster recovery scenario and its proposed targets (SDS 15.2). Targets are proposals until the plan is approved. */
@@ -505,83 +365,115 @@ export interface DrKitItemRecord {
   lastVerifiedAt: string | null;
   lastVerifiedBy: string | null;
   note: string | null;
-  state: "NOT_VERIFIED" | "VERIFIED";
+  state: "NOT_VERIFIED" | "VERIFIED" | "OVERDUE";
+  /** Days after which a check is called overdue (the limit of the alert rule). */
+  reviewDays?: number;
 }
 
-/** A recorded disaster recovery drill; never edited afterwards. */
-export interface DrDrillRecord {
-  drillCode: string;
+/** One alert rule: who is told about an alert of this kind, and the limit at which it is raised when it has one. The names come from the server. */
+export interface AlertRuleRecord {
+  code: string;
+  label: string;
+  hint: string;
+  inApp: boolean;
+  email: boolean;
+  thresholdValue: number | null;
+  thresholdUnit: string | null;
+  thresholdMin: number | null;
+  thresholdMax: number | null;
+  updatedBy: string | null;
+  updatedAt: string | null;
+}
+
+/** A scenario's target next to what the records show now. Hours are read from the records, never promised. */
+export interface DrReadinessRecord {
   scenario: string;
-  performedAt: string;
-  lead: string;
-  rpoTargetHours: number;
-  rtoTargetHours: number;
-  achievedRtoHours: number;
-  result: "PASSED" | "PASSED_WITH_FINDINGS" | "FAILED";
-  findings: string | null;
-  recordedBy: string;
-  recordedAt: string;
+  dataSource: "NEWEST_VERIFIED_BACKUP" | "NEWEST_VERIFIED_COPY_ON_T2";
+  dataAgeHours: number | null;
+  rpoHours: number;
+  rpoState: "WITHIN" | "EXCEEDED" | "NO_DATA";
+  testedRestoreHours: number | null;
+  /** How long the newest passed test restore took, in seconds. */
+  testedRestoreSeconds?: number | null;
+  rtoHours: number;
+  rtoState: "WITHIN" | "EXCEEDED" | "NOT_TESTED";
 }
 
-export interface DrDrillListParams {
+export interface DrDeclarationParams {
   search?: string;
+  status?: string;
   scenario?: string;
-  result?: DrDrillRecord["result"];
+  from?: string;
+  to?: string;
   sortBy?: string;
   sortDirection?: "asc" | "desc";
   page?: number;
   limit?: number;
 }
 
-export interface DrDrillPayload {
+export interface DrDeclarationRecord {
+  code: string;
   scenario: string;
-  performedAt: string;
-  lead: string;
-  achievedRtoHours: number;
-  result: DrDrillRecord["result"];
-  findings?: string;
-}
-
-/** The signed evidence pack of one restore request (SDS 16): the canonical text, its SHA-256, the signature and the key id. */
-export interface RestoreEvidencePack {
-  pack: string;
-  sha256: string;
-  signature: string;
-  keyId: string;
-}
-
-/** Backup Inspection (SDS 7.2): a read-only copy of one verified backup, open for five minutes. */
-export type InspectionStatus = "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "OPENING" | "OPEN" | "CLOSED" | "FAILED";
-
-export interface InspectionRecord {
-  id: string;
-  inspectionNumber: string;
-  backupNumber: string;
-  status: InspectionStatus;
+  scenarioLabel: string;
+  status: "OPEN" | "CLOSED";
+  declaredBy: string;
+  declaredAt: string;
   reason: string;
-  requestedBy: string;
-  requestedAt: string | null;
-  approvedBy: string | null;
-  approvalSignatureRef: string | null;
-  decidedAt: string | null;
-  decisionReason: string | null;
-  scratchDb: string | null;
-  openedAt: string | null;
-  expiresAt: string | null;
-  closedAt: string | null;
+  rpoTargetHours: number;
+  rtoTargetHours: number;
   closedBy: string | null;
-  closeReason: string | null;
-  errorCode: string | null;
-  errorDetail: string | null;
-  events?: { event: string; by: string; at: string }[];
-  checks?: { code: string; title: string; required: boolean; ok: boolean; detail: string | null }[];
+  closedAt: string | null;
+  summary: string | null;
+  hoursTaken: number | null;
 }
 
-export interface InspectionListParams {
-  search?: string;
-  status?: InspectionStatus;
-  page?: number;
-  limit?: number;
+/** The copy a person makes by hand: what the policy asks for and what has been recorded. */
+export interface ManualCopyStatus {
+  declared: boolean;
+  description: string | null;
+  everyDays: number | null;
+  lastCopiedOn: string | null;
+  lastBackupNumber?: string | null;
+  lastPlace?: string | null;
+  lastMadeBy?: string | null;
+  nextDueOn: string | null;
+  state: "NOT_DECLARED" | "NEVER_RECORDED" | "ON_TIME" | "OVERDUE";
+}
+
+export interface ManualCopyRecord {
+  id: string;
+  copiedOn: string;
+  backupNumber: string | null;
+  place: string;
+  madeBy: string;
+  note: string | null;
+  recordedBy: string;
+  recordedAt: string;
+}
+
+export interface ManualCopyInput {
+  copiedOn: string;
+  backupNumber?: string;
+  place: string;
+  madeBy: string;
+  note?: string;
+}
+
+/** One run of the periodic check of the live file store. */
+export interface StoreScrubRecord {
+  id: string;
+  trigger: "SCHEDULED" | "MANUAL";
+  requestedBy: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  status: "RUNNING" | "COMPLETED" | "FAILED";
+  backupNumber: string | null;
+  checkedFiles: number;
+  checkedBytes: number;
+  differentFiles: number;
+  missingFiles: number;
+  referenceDifferences: number;
+  errorCode: string | null;
 }
 
 export const backupRestoreApi = {
@@ -629,12 +521,6 @@ export const backupRestoreApi = {
   requestRehearsal: async (backupNumber: string, reason: string): Promise<RestoreRehearsal> =>
     (await api.post<RestoreRehearsal>(`${BASE}/backups/${encodeURIComponent(backupNumber)}/rehearsals`, { reason })).data,
 
-  restoreRequests: async (params?: RestoreRequestListParams): Promise<Paged<RestoreRequestRecord>> =>
-    (await api.get<Paged<RestoreRequestRecord>>(`${BASE}/restores`, { params })).data,
-
-  restoreRequest: async (restoreNumber: string): Promise<RestoreRequestRecord> =>
-    (await api.get<RestoreRequestRecord>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}`)).data,
-
   alerts: async (params?: BackupAlertListParams): Promise<Paged<BackupAlertRecord>> =>
     (await api.get<Paged<BackupAlertRecord>>(`${BASE}/alerts`, { params })).data,
 
@@ -650,10 +536,35 @@ export const backupRestoreApi = {
     await api.post(`${BASE}/alert-recipients/${encodeURIComponent(username)}/remove`);
   },
 
-  drScenarios: async (): Promise<DrScenarioRecord[]> => (await api.get<DrScenarioRecord[]>(`${BASE}/dr/scenarios`)).data,
+  alertRules: async (): Promise<AlertRuleRecord[]> => (await api.get<AlertRuleRecord[]>(`${BASE}/alert-rules`)).data,
 
-  drDrills: async (params?: DrDrillListParams): Promise<Paged<DrDrillRecord>> =>
-    (await api.get<Paged<DrDrillRecord>>(`${BASE}/dr/drills`, { params })).data,
+  changeAlertRule: async (code: string, change: { inApp: boolean; email: boolean; threshold: number | null; reason: string }): Promise<AlertRuleRecord> =>
+    (await api.post<AlertRuleRecord>(`${BASE}/alert-rules/${encodeURIComponent(code)}`, change)).data,
+
+  drReadiness: async (): Promise<DrReadinessRecord[]> => (await api.get<DrReadinessRecord[]>(`${BASE}/dr/readiness`)).data,
+
+  drDeclarations: async (params?: DrDeclarationParams): Promise<Paged<DrDeclarationRecord>> =>
+    (await api.get<Paged<DrDeclarationRecord>>(`${BASE}/dr/declarations`, { params })).data,
+
+  declareDisaster: async (scenario: string, reason: string, signatureToken: string): Promise<{ code: string }> =>
+    (await api.post<{ code: string }>(`${BASE}/dr/declarations`, { scenario, reason, signatureToken })).data,
+
+  closeDeclaration: async (code: string, summary: string, signatureToken: string): Promise<{ code: string }> =>
+    (await api.post<{ code: string }>(`${BASE}/dr/declarations/${encodeURIComponent(code)}/close`, { summary, signatureToken })).data,
+
+  manualCopyStatus: async (): Promise<ManualCopyStatus> => (await api.get<ManualCopyStatus>(`${BASE}/manual-copies/status`)).data,
+
+  manualCopies: async (params?: { page?: number; limit?: number }): Promise<Paged<ManualCopyRecord>> =>
+    (await api.get<Paged<ManualCopyRecord>>(`${BASE}/manual-copies`, { params })).data,
+
+  recordManualCopy: async (input: ManualCopyInput): Promise<{ id: string }> => (await api.post<{ id: string }>(`${BASE}/manual-copies`, input)).data,
+
+  storeScrubs: async (params?: { page?: number; limit?: number }): Promise<Paged<StoreScrubRecord>> =>
+    (await api.get<Paged<StoreScrubRecord>>(`${BASE}/store-scrubs`, { params })).data,
+
+  startStoreScrub: async (): Promise<{ jobId: string }> => (await api.post<{ jobId: string }>(`${BASE}/store-scrubs`)).data,
+
+  drScenarios: async (): Promise<DrScenarioRecord[]> => (await api.get<DrScenarioRecord[]>(`${BASE}/dr/scenarios`)).data,
 
   changeDrTargets: async (code: string, rpoHours: number, rtoHours: number, reason: string, signatureToken: string): Promise<DrScenarioRecord> =>
     (await api.post<DrScenarioRecord>(`${BASE}/dr/scenarios/${encodeURIComponent(code)}/targets`, { rpoHours, rtoHours, reason, signatureToken })).data,
@@ -669,85 +580,10 @@ export const backupRestoreApi = {
   changeDrAuthority: async (username: string, reason: string, signatureToken: string): Promise<{ key: string; value: string }> =>
     (await api.post<{ key: string; value: string }>(`${BASE}/dr/authority`, { value: username, reason, signatureToken })).data,
 
-  recordDrDrill: async (payload: DrDrillPayload): Promise<DrDrillRecord> => (await api.post<DrDrillRecord>(`${BASE}/dr/drills`, payload)).data,
-
-  restoreRules: async (): Promise<RestoreRuleRecord[]> => (await api.get<RestoreRuleRecord[]>(`${BASE}/restore-rules`)).data,
-
-  changeRestoreRule: async (code: string, value: number, reason: string, signatureToken: string): Promise<{ code: string; value: number; previous: number }> =>
-    (await api.post<{ code: string; value: number; previous: number }>(`${BASE}/restore-rules/${encodeURIComponent(code)}`, { value, reason, signatureToken })).data,
-
-  restoreEvidence: async (restoreNumber: string): Promise<RestoreEvidencePack> =>
-    (await api.get<RestoreEvidencePack>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}/evidence`)).data,
-
-  restoreReadiness: async (backupNumber: string): Promise<RestoreReadiness> =>
-    (await api.get<RestoreReadiness>(`${BASE}/backups/${encodeURIComponent(backupNumber)}/restore-readiness`)).data,
-
-  restoreExecution: async (restoreNumber: string): Promise<RestoreExecutionChecks> =>
-    (await api.get<RestoreExecutionChecks>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}/execution`)).data,
-
-  scheduleRestore: async (restoreNumber: string, windowStart: string): Promise<RestoreExecutionChecks> =>
-    (await api.post<RestoreExecutionChecks>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}/schedule`, { windowStart })).data,
-
-  startTestRestore: async (restoreNumber: string): Promise<{ restoreNumber: string; rehearsalId: string; status: string }> =>
-    (await api.post<{ restoreNumber: string; rehearsalId: string; status: string }>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}/test-restore`, {})).data,
-
-  enterRestoreWindow: async (restoreNumber: string, noUserConfirmed: boolean): Promise<{ restoreNumber: string; systemState: string }> =>
-    (await api.post<{ restoreNumber: string; systemState: string }>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}/enter-window`, { noUserConfirmed })).data,
-
-  createRestoreRequest: async (backupNumber: string, payload: CreateRestoreRequestPayload): Promise<RestoreRequestRecord> =>
-    (await api.post<RestoreRequestRecord>(`${BASE}/backups/${encodeURIComponent(backupNumber)}/restores`, payload)).data,
-
-  approveRestoreRequest: async (restoreNumber: string, signatureToken: string): Promise<RestoreRequestRecord> =>
-    (await api.post<RestoreRequestRecord>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}/approve`, { signatureToken })).data,
-
-  rejectRestoreRequest: async (restoreNumber: string, reason: string, signatureToken: string): Promise<RestoreRequestRecord> =>
-    (await api.post<RestoreRequestRecord>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}/reject`, { reason, signatureToken })).data,
-
-  inspections: async (params?: InspectionListParams): Promise<Paged<InspectionRecord>> =>
-    (await api.get<Paged<InspectionRecord>>(`${BASE}/inspections`, { params })).data,
-
-  inspection: async (inspectionNumber: string): Promise<InspectionRecord> =>
-    (await api.get<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionNumber)}`)).data,
-
-  askInspection: async (backupNumber: string, reason: string): Promise<InspectionRecord> =>
-    (await api.post<InspectionRecord>(`${BASE}/backups/${encodeURIComponent(backupNumber)}/inspections`, { reason })).data,
-
-  approveInspection: async (inspectionNumber: string, signatureToken: string): Promise<InspectionRecord> =>
-    (await api.post<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionNumber)}/approve`, { signatureToken })).data,
-
-  rejectInspection: async (inspectionNumber: string, reason: string, signatureToken: string): Promise<InspectionRecord> =>
-    (await api.post<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionNumber)}/reject`, { reason, signatureToken })).data,
-
-  closeInspection: async (inspectionNumber: string, reason: string): Promise<InspectionRecord> =>
-    (await api.post<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionNumber)}/close`, { reason })).data,
-
   encryption: async (): Promise<EncryptionFacts> => (await api.get<EncryptionFacts>(`${BASE}/encryption`)).data,
 
   testTarget: async (code: string): Promise<TargetTestResult> => (await api.post<TargetTestResult>(`${BASE}/targets/${encodeURIComponent(code)}/test`)).data,
 
-  media: async (params?: MediaListParams): Promise<Paged<OfflineMedium>> => (await api.get<Paged<OfflineMedium>>(`${BASE}/media`, { params })).data,
-  medium: async (id: string): Promise<OfflineMedium> => (await api.get<OfflineMedium>(`${BASE}/media/${encodeURIComponent(id)}`)).data,
-  mediumEvents: async (id: string): Promise<MediaEvent[]> => (await api.get<MediaEvent[]>(`${BASE}/media/${encodeURIComponent(id)}/events`)).data,
-  mediumPackages: async (id: string): Promise<MediaPackage[]> => (await api.get<MediaPackage[]>(`${BASE}/media/${encodeURIComponent(id)}/packages`)).data,
-  registerMedium: async (payload: RegisterMediumPayload): Promise<OfflineMedium> => (await api.post<OfflineMedium>(`${BASE}/media`, payload)).data,
-  handoverMedium: async (id: string, holder: string, location: string): Promise<OfflineMedium> =>
-    (await api.post<OfflineMedium>(`${BASE}/media/${encodeURIComponent(id)}/handover`, { holder, location })).data,
-  receiveMedium: async (id: string): Promise<OfflineMedium> => (await api.post<OfflineMedium>(`${BASE}/media/${encodeURIComponent(id)}/receive`)).data,
-  readTestMedium: async (id: string, result: "PASSED" | "FAILED", detail: string): Promise<OfflineMedium> =>
-    (await api.post<OfflineMedium>(`${BASE}/media/${encodeURIComponent(id)}/read-test`, { result, detail })).data,
-  recycleMedium: async (id: string, wipeConfirmed: boolean, reason: string): Promise<OfflineMedium> =>
-    (await api.post<OfflineMedium>(`${BASE}/media/${encodeURIComponent(id)}/recycle`, { wipeConfirmed, reason })).data,
-  retireMedium: async (id: string, destructionRecord: string): Promise<OfflineMedium> =>
-    (await api.post<OfflineMedium>(`${BASE}/media/${encodeURIComponent(id)}/retire`, { destructionRecord })).data,
-
-  exports: async (params?: ExportListParams): Promise<Paged<BackupExport>> => (await api.get<Paged<BackupExport>>(`${BASE}/exports`, { params })).data,
-  exportEstimate: async (backupNumber: string): Promise<{ backupNumber: string; estimatedBytes: number; fileCount: number }> =>
-    (await api.get<{ backupNumber: string; estimatedBytes: number; fileCount: number }>(`${BASE}/backups/${encodeURIComponent(backupNumber)}/export-estimate`)).data,
-  requestExport: async (backupNumber: string, mediaId: string, reason: string): Promise<BackupExport> =>
-    (await api.post<BackupExport>(`${BASE}/backups/${encodeURIComponent(backupNumber)}/exports`, { mediaId, reason })).data,
-  approveExport: async (exportId: string): Promise<BackupExport> => (await api.post<BackupExport>(`${BASE}/exports/${encodeURIComponent(exportId)}/approve`)).data,
-  rejectExport: async (exportId: string, reason: string): Promise<BackupExport> =>
-    (await api.post<BackupExport>(`${BASE}/exports/${encodeURIComponent(exportId)}/reject`, { reason })).data,
 };
 
 /**
@@ -758,6 +594,79 @@ export const waitForBackupJob = async (jobId: string, intervalMs = 2500, maxMs =
   const started = Date.now();
   for (;;) {
     const job = await backupRestoreApi.job(jobId);
+    if (job.status === "DONE" || job.status === "FAILED") return job;
+    if (Date.now() - started > maxMs) return job;
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+};
+
+/** Restore into production (SDS-BR-003). Every action is signed; the agent's worker does the work and the job is followed to its end. */
+export type ProductionRestoreStatus = "PENDING_FINALIZATION" | "FINALIZED" | "ROLLED_BACK";
+
+export interface ProductionRestoreRecord {
+  run_code: string;
+  backup_number: string;
+  status: ProductionRestoreStatus;
+  restored_by: string;
+  restore_signature: string;
+  /** What the restore covered, for example "DATABASE,OBJECT_STORE". */
+  components: string | null;
+  restored_at: string;
+  closed_by: string | null;
+  close_signature: string | null;
+  closed_at: string | null;
+  kept_old_db: string;
+  post_db: string | null;
+}
+
+export interface ProductionRestoreListParams {
+  search?: string;
+  status?: ProductionRestoreStatus;
+  /** DATABASE or OBJECT_STORE: a restore that included this part. */
+  part?: string;
+  restoredFrom?: string;
+  restoredTo?: string;
+  closedFrom?: string;
+  closedTo?: string;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+}
+
+/** What the signed-in person may do; the screen shows only these actions. */
+export interface ProductionRestoreCapabilities {
+  view: boolean;
+  restore: boolean;
+  rollback: boolean;
+  finalize: boolean;
+}
+
+export const productionRestoreApi = {
+  list: async (params?: ProductionRestoreListParams): Promise<Paged<ProductionRestoreRecord>> =>
+    (await api.get<Paged<ProductionRestoreRecord>>(`${BASE}/production-restores`, { params })).data,
+
+  capabilities: async (): Promise<ProductionRestoreCapabilities> =>
+    (await api.get<ProductionRestoreCapabilities>(`${BASE}/production-restores/capabilities`)).data,
+
+  job: async (jobId: string): Promise<BackupJob> =>
+    (await api.get<BackupJob>(`${BASE}/production-restores/jobs/${encodeURIComponent(jobId)}`)).data,
+
+  restore: async (backupNumber: string, signatureToken: string, components?: BackupPart[]): Promise<{ jobId: string }> =>
+    (await api.post<{ jobId: string }>(`${BASE}/backups/${encodeURIComponent(backupNumber)}/production-restore`, { signatureToken, components })).data,
+
+  finalize: async (runCode: string, signatureToken: string): Promise<{ jobId: string }> =>
+    (await api.post<{ jobId: string }>(`${BASE}/production-restores/${encodeURIComponent(runCode)}/finalize`, { signatureToken })).data,
+
+  rollback: async (runCode: string, signatureToken: string): Promise<{ jobId: string }> =>
+    (await api.post<{ jobId: string }>(`${BASE}/production-restores/${encodeURIComponent(runCode)}/rollback`, { signatureToken })).data,
+};
+
+/** A restore can take a long time (the database is restored and checked first); the wait ends with a known state, not a hang. */
+export const waitForProductionJob = async (jobId: string, intervalMs = 3000, maxMs = 3 * 60 * 60 * 1000): Promise<BackupJob> => {
+  const started = Date.now();
+  for (;;) {
+    const job = await productionRestoreApi.job(jobId);
     if (job.status === "DONE" || job.status === "FAILED") return job;
     if (Date.now() - started > maxMs) return job;
     await new Promise((resolve) => setTimeout(resolve, intervalMs));

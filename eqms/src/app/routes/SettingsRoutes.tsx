@@ -21,15 +21,13 @@ const DictionariesView = lazy(() => import('@/features/settings').then(m => ({ d
 const EducationDegreeLevelsView = lazy(() => import('@/features/settings').then(m => ({ default: m.EducationDegreeLevelsView })));
 const EducationSchoolsView = lazy(() => import('@/features/settings').then(m => ({ default: m.EducationSchoolsView })));
 const EducationSchoolEditorView = lazy(() => import('@/features/settings').then(m => ({ default: m.EducationSchoolEditorView })));
+const NotificationsView = lazy(() => import('@/features/settings').then(m => ({ default: m.NotificationsView })));
+const NotificationEventView = lazy(() => import('@/features/settings').then(m => ({ default: m.NotificationEventView })));
+const EmailMessageEditView = lazy(() => import('@/features/settings').then(m => ({ default: m.EmailMessageEditView })));
+const EmailDesignView = lazy(() => import('@/features/settings').then(m => ({ default: m.EmailDesignView })));
+const InAppDesignView = lazy(() => import('@/features/settings').then(m => ({ default: m.InAppDesignView })));
 const ConfigurationView = lazy(() => import('@/features/settings/configuration/ConfigurationView').then(m => ({ default: m.ConfigurationView })));
-const EmailTemplatesView = lazy(() => import('@/features/settings').then(m => ({ default: m.EmailTemplatesView })));
-const EmailTemplateCreateView = lazy(() => import('@/features/settings').then(m => ({ default: m.EmailTemplateCreateView })));
-const EmailTemplateEditView = lazy(() => import('@/features/settings').then(m => ({ default: m.EmailTemplateEditView })));
-const EmailTemplatePreviewView = lazy(() => import('@/features/settings').then(m => ({ default: m.EmailTemplatePreviewView })));
 const ElectronicSignatureSettingsView = lazy(() => import('@/features/settings').then(m => ({ default: m.ElectronicSignatureSettingsView })));
-const NotificationPolicyView = lazy(() => import('@/features/settings').then(m => ({ default: m.NotificationPolicyView })));
-const NotificationPolicyDetailView = lazy(() => import('@/features/settings').then(m => ({ default: m.NotificationPolicyDetailView })));
-const NotificationPolicyCreateView = lazy(() => import('@/features/settings').then(m => ({ default: m.NotificationPolicyCreateView })));
 const SystemInformationView = lazy(() => import('@/features/settings').then(m => ({ default: m.SystemInformationView })));
 const ReportConfigurationView = lazy(() => import('@/features/settings').then(m => ({ default: m.ReportConfigurationView })));
 const ReportDefinitionEditView = lazy(() => import('@/features/settings').then(m => ({ default: m.ReportDefinitionEditView })));
@@ -68,8 +66,6 @@ const ReportDeliveryView = lazy(() => import('@/features/report-analytics').then
 const BackupPolicyView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupPolicyView })));
 const BackupPolicyDetailView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupPolicyDetailView })));
 const NewBackupPolicyView = lazy(() => import('@/features/settings').then(m => ({ default: m.NewBackupPolicyView })));
-const OfflineMediumDetailView = lazy(() => import('@/features/settings').then(m => ({ default: m.OfflineMediumDetailView })));
-const BackupControlsView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupControlsView })));
 const BackupStorageView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupStorageView })));
 const DisasterRecoveryPlanView = lazy(() => import('@/features/settings').then(m => ({ default: m.DisasterRecoveryPlanView })));
 const AnnouncementsView = lazy(() => import('@/features/settings').then(m => ({ default: m.AnnouncementsView })));
@@ -161,23 +157,21 @@ export function settingsRoutes(navigate: NavigateFunction) {
         <Route path="report-configuration/:code/details" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportTemplateDetailAdminPage /></Suspense></ProtectedRoute>} />
         <Route path="report-configuration/:code" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportDefinitionEditView /></Suspense></ProtectedRoute>} />
         <Route path="electronic-signature" element={<ProtectedRoute requiredPermissions={["settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ElectronicSignatureSettingsView /></Suspense></ProtectedRoute>} />
-        <Route path="email-templates">
-          <Route index element={<ProtectedRoute requiredPermissions={["settings.email_template.view", "settings.email_template.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><EmailTemplatesView /></Suspense></ProtectedRoute>} />
-          <Route path="new" element={<ProtectedRoute requiredPermissions={["settings.email_template.manage", "settings.configuration.manage"]}><Suspense fallback={<LoadingFallback />}><EmailTemplateCreateView /></Suspense></ProtectedRoute>} />
-          <Route path="edit/:id" element={<ProtectedRoute requiredPermissions={["settings.email_template.manage", "settings.configuration.manage"]}><Suspense fallback={<LoadingFallback />}><EmailTemplateEditView /></Suspense></ProtectedRoute>} />
-          <Route path="preview" element={<ProtectedRoute requiredPermissions={["settings.email_template.view", "settings.email_template.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><EmailTemplatePreviewView /></Suspense></ProtectedRoute>} />
-          <Route path="preview/:id" element={<ProtectedRoute requiredPermissions={["settings.email_template.view", "settings.email_template.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><EmailTemplatePreviewView /></Suspense></ProtectedRoute>} />
+        <Route path="notifications">
+          <Route index element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage", "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><NotificationsView /></Suspense></ProtectedRoute>} />
+          <Route path="events/:eventCode" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><NotificationEventView channel="IN_APP" /></Suspense></ProtectedRoute>} />
+          <Route path="events/:eventCode/email" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><NotificationEventView channel="EMAIL" /></Suspense></ProtectedRoute>} />
+          <Route path="emails/:id" element={<ProtectedRoute requiredPermissions={["settings.email_template.view", "settings.email_template.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><EmailMessageEditView /></Suspense></ProtectedRoute>} />
+          <Route path="in-app-design" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><InAppDesignView /></Suspense></ProtectedRoute>} />
+          <Route path="email-design" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage", "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><EmailDesignView /></Suspense></ProtectedRoute>} />
         </Route>
+        {/* the old addresses keep working: a bookmark or a link in a mail opens the new screen */}
+        <Route path="email-templates/*" element={<Navigate to="/settings/notifications?tab=email" replace />} />
+        <Route path="notification-policy/*" element={<Navigate to="/settings/notifications" replace />} />
         <Route path="announcements">
           <Route index element={<ProtectedRoute requiredPermissions={["settings.announcement.view", "settings.announcement.manage"]}><Suspense fallback={<LoadingFallback />}><AnnouncementsView /></Suspense></ProtectedRoute>} />
           <Route path="new" element={<ProtectedRoute requiredPermissions={["settings.announcement.manage"]}><Suspense fallback={<LoadingFallback />}><AnnouncementEditorView /></Suspense></ProtectedRoute>} />
           <Route path="edit/:id" element={<ProtectedRoute requiredPermissions={["settings.announcement.manage"]}><Suspense fallback={<LoadingFallback />}><AnnouncementEditorView /></Suspense></ProtectedRoute>} />
-        </Route>
-        <Route path="notification-policy">
-          <Route index element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view"]}><Suspense fallback={<LoadingFallback />}><NotificationPolicyView /></Suspense></ProtectedRoute>} />
-          <Route path="new" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.manage"]}><Suspense fallback={<LoadingFallback />}><NotificationPolicyCreateView /></Suspense></ProtectedRoute>} />
-          <Route path=":eventCode" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view"]}><Suspense fallback={<LoadingFallback />}><NotificationPolicyDetailView mode="view" /></Suspense></ProtectedRoute>} />
-          <Route path=":eventCode/edit" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.manage"]}><Suspense fallback={<LoadingFallback />}><NotificationPolicyDetailView mode="edit" /></Suspense></ProtectedRoute>} />
         </Route>
       </Route>
 
@@ -225,12 +219,10 @@ export function settingsRoutes(navigate: NavigateFunction) {
         <Route path="policy" element={<ProtectedRoute requiredPermissions={["backup.admin.policy.view"]}><Suspense fallback={<LoadingFallback />}><BackupPolicyView /></Suspense></ProtectedRoute>} />
         <Route path="policy/new" element={<ProtectedRoute requiredPermissions={["backup.admin.policy.propose"]}><Suspense fallback={<LoadingFallback />}><NewBackupPolicyView /></Suspense></ProtectedRoute>} />
         <Route path="policy/:version" element={<ProtectedRoute requiredPermissions={["backup.admin.policy.view"]}><Suspense fallback={<LoadingFallback />}><BackupPolicyDetailView /></Suspense></ProtectedRoute>} />
-        <Route path="controls" element={<ProtectedRoute requiredPermissions={["backup.admin.restore_controls.view", "backup.admin.verification.view", "backup.admin.retention.view"]}><Suspense fallback={<LoadingFallback />}><BackupControlsView /></Suspense></ProtectedRoute>} />
-        <Route path="retention" element={<Navigate to={`${ROUTES.SETTINGS.BACKUP_ADMINISTRATION.CONTROLS}?tab=retention`} replace />} />
-        <Route path="verification" element={<Navigate to={`${ROUTES.SETTINGS.BACKUP_ADMINISTRATION.CONTROLS}?tab=verification`} replace />} />
-        <Route path="restore-controls" element={<Navigate to={`${ROUTES.SETTINGS.BACKUP_ADMINISTRATION.CONTROLS}?tab=restore-rules`} replace />} />
+        <Route path="controls" element={<Navigate to={ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY} replace />} />
+        <Route path="retention" element={<Navigate to={ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY} replace />} />
+        <Route path="verification" element={<Navigate to={ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY} replace />} />
         <Route path="storage" element={<ProtectedRoute requiredPermissions={["backup.admin.storage.view"]}><Suspense fallback={<LoadingFallback />}><BackupStorageView /></Suspense></ProtectedRoute>} />
-        <Route path="storage/media/:id" element={<ProtectedRoute requiredPermissions={["backup.admin.storage.view"]}><Suspense fallback={<LoadingFallback />}><OfflineMediumDetailView /></Suspense></ProtectedRoute>} />
         <Route path="alerts" element={<ProtectedRoute requiredPermissions={["backup.admin.alerts.view"]}><Suspense fallback={<LoadingFallback />}><BackupAlertsView /></Suspense></ProtectedRoute>} />
         <Route path="disaster-recovery" element={<ProtectedRoute requiredPermissions={["backup.admin.disaster_recovery.view"]}><Suspense fallback={<LoadingFallback />}><DisasterRecoveryPlanView /></Suspense></ProtectedRoute>} />
       </Route>

@@ -57,19 +57,19 @@ export const ObjectAccessRulesView: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<ObjectAccessRuleResponse | null>(null);
 
   // Server-side query state.
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
   const debouncedSearch = useDebounce(search, 300);
-  const [resourceTypeFilter, setResourceTypeFilter] = useState("ALL");
-  const [effectFilter, setEffectFilter] = useState("ALL");
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [createdFrom, setCreatedFrom] = useState("");
-  const [createdTo, setCreatedTo] = useState("");
-  const [updatedFrom, setUpdatedFrom] = useState("");
-  const [updatedTo, setUpdatedTo] = useState("");
-  const [sortKey, setSortKey] = useState("priority");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [resourceTypeFilter, setResourceTypeFilter] = useState(() => searchParams.get("resourceType") ?? "ALL");
+  const [effectFilter, setEffectFilter] = useState(() => searchParams.get("effect") ?? "ALL");
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") ?? "ALL");
+  const [createdFrom, setCreatedFrom] = useState(() => searchParams.get("createdFrom") ?? "");
+  const [createdTo, setCreatedTo] = useState(() => searchParams.get("createdTo") ?? "");
+  const [updatedFrom, setUpdatedFrom] = useState(() => searchParams.get("updatedFrom") ?? "");
+  const [updatedTo, setUpdatedTo] = useState(() => searchParams.get("updatedTo") ?? "");
+  const [sortKey, setSortKey] = useState(() => searchParams.get("sortBy") ?? "priority");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(() => (searchParams.get("sortDir") === "asc" ? "asc" : "desc"));
+  const [currentPage, setCurrentPage] = useState(() => Math.max(1, Number(searchParams.get("page")) || 1));
+  const [itemsPerPage, setItemsPerPage] = useState(() => Math.max(1, Number(searchParams.get("limit")) || 10));
 
   React.useLayoutEffect(() => {
     setSearch(searchParams.get("search") ?? "");

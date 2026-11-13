@@ -10,6 +10,9 @@ import java.util.List;
 import java.util.UUID;
 
 public interface DocumentWorkflowParticipantRepository extends JpaRepository<DocumentWorkflowParticipant, UUID> {
+
+    /** Navigation: the user is a Document-level participant of at least one Document. */
+    boolean existsByUser_Id(UUID userId);
     void deleteAllByDocument_Id(UUID documentId);
     void deleteAllByDocument_IdAndParticipantType(UUID documentId, String participantType);
     List<DocumentWorkflowParticipant> findAllByDocument_IdOrderBySequenceOrderAsc(UUID documentId);

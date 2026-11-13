@@ -8,6 +8,7 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { Switch } from "@/components/ui/switch/Switch";
+import { Popover } from "@/components/ui/popover/Popover";
 import { Select } from "@/components/ui/select/Select";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { useToast } from "@/components/ui/toast/Toast";
@@ -121,6 +122,16 @@ const REVISION_SEED_OPTIONS = [
   { value: "0.1", label: "0.1  — two-part (0.1 → 0.2 … approve → 1.0)" },
 ];
 
+/** One short grey line; the full explanation sits behind the (i) next to it. */
+const Details: React.FC<{ summary: React.ReactNode; children: React.ReactNode }> = ({ summary, children }) => (
+  <p className="text-xs leading-5 text-slate-500">
+    {summary}{" "}
+    <span className="inline-block align-middle">
+      <Popover content={<div className="space-y-2 text-xs leading-relaxed" style={{ width: 360, maxWidth: "100%" }}>{children}</div>} triggerAriaLabel="More details" />
+    </span>
+  </p>
+);
+
 const Group: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="min-w-0 space-y-3 rounded-lg border border-slate-200 p-3.5">
     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{title}</p>
@@ -151,7 +162,7 @@ const NumberField: React.FC<{
         const parsed = parseInt(e.target.value, 10);
         onChange(Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback);
       }}
-      className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
+      className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
     />
     {hint && <p className="text-xs text-slate-500 mt-1">{hint}</p>}
   </div>
@@ -251,34 +262,40 @@ export const DocumentPropertiesView: React.FC = () => {
           {/* Who can see what: one section, the two settings side by side (one under the other on a narrower screen) */}
           <FormSection title="Visibility" icon={<IconTableSpark className="h-4 w-4" />}>
           <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:items-start">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {/* 0. Who can see which records -- first, because it changes what every user sees in Document Control */}
           <Group title="Record Visibility">
             {(() => {
               const participantsOnly =
                 (documents.documentVisibilityMode ?? DEFAULT_DOCUMENT_VISIBILITY_MODE) === "PARTICIPANTS_ONLY";
               return (
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 p-3.5">
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-900">Restrict records to the people involved</p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {participantsOnly ? (
-                          <>
-                            <strong>On.</strong> A user sees a Document or Revision only when they are its Author, a Co-Author, a
-                            Reviewer or an Approver, on the document or on any of its revisions (one person may hold several
-                            roles, on the same or on different documents). A Controlled or Uncontrolled Copy is visible only to
-                            the user named as its recipient. Everyone else sees none of them, in lists or by opening a link.
-                          </>
-                        ) : (
-                          <>
-                            <strong>Off.</strong> Every user who holds the base View permission (View Documents, View Controlled
-                            Copy Records, View Uncontrolled Copies) sees every document, revision and copy, in lists and in
-                            detail, including drafts and documents still in review. People outside the flow still need their own
-                            permission to preview files or open the Audit Trail.
-                          </>
-                        )}
-                      </p>
+                      <div className="mt-1">
+                        <Details
+                          summary={
+                            participantsOnly ? (
+                              <><strong>On.</strong> A user sees a Document or Revision only when they are its Author, Co-Author, Reviewer or Approver; a copy only when they are its recipient.</>
+                            ) : (
+                              <><strong>Off.</strong> Every user with the base View permission sees every document, revision and copy.</>
+                            )
+                          }
+                        >
+                          {participantsOnly ? (
+                            <p>
+                              The role may be held on the document or on any of its revisions (one person may hold several roles, on the same or on different documents).
+                              Everyone else sees none of them, in lists or by opening a link.
+                            </p>
+                          ) : (
+                            <p>
+                              This covers View Documents, View Controlled Copy Records and View Uncontrolled Copies, in lists and in detail, including drafts and
+                              documents still in review. People outside the flow still need their own permission to preview files or open the Audit Trail.
+                            </p>
+                          )}
+                        </Details>
+                      </div>
                     </div>
                     <Switch
                       checked={participantsOnly}
@@ -290,20 +307,20 @@ export const DocumentPropertiesView: React.FC = () => {
                     />
                   </div>
 
-                  <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-800">
-                    Regardless of this switch, users who hold <strong>View All Document Records</strong>,{" "}
-                    <strong>View All Controlled Copies</strong> or <strong>View All Uncontrolled Copies</strong> always see
-                    every record of that kind. These are separate permissions: assign each one to the Access Profiles that need
-                    it at{" "}
-                    <button
+                  <Details summary={<>Holders of the <strong>View All</strong> permissions always see every record of that kind.</>}>
+                    <p>
+                      <strong>View All Document Records</strong>, <strong>View All Controlled Copies</strong> and <strong>View All Uncontrolled Copies</strong> are
+                      separate permissions, independent of this switch. Assign each one to the Access Profiles that need it at{" "}
+                      <button
                       type="button"
                       onClick={() => navigate(ROUTES.SECURITY.ACCESS_PROFILES)}
-                      className="font-medium underline underline-offset-2 hover:text-sky-900"
+                      className="font-medium text-emerald-700 underline underline-offset-2"
                     >
                       Security & Authorization &gt; Access Profiles
                     </button>
-                    . They do not depend on a profile's name, and administration permissions no longer grant them implicitly.
-                  </div>
+                      . They do not depend on a profile's name, and administration permissions no longer grant them implicitly.
+                    </p>
+                  </Details>
                 </div>
               );
             })()}
@@ -321,63 +338,60 @@ export const DocumentPropertiesView: React.FC = () => {
                   options={KNOWLEDGE_VISIBILITY_OPTIONS}
                   enableSearch={false}
                 />
-                <p className="mt-2 text-xs text-slate-500">
-                  {(documents.knowledgeVisibilityMode ?? "OWN_DEPARTMENT") === "SHARING" ? (
-                    <>
-                      <strong>Sharing.</strong> Closed by default: a user sees an Effective document in the Knowledge Base only when the{" "}
-                      <strong>Head</strong> of its Department or Business Unit shared it with them (a folder or a document, right-click &gt;
-                      Share), or when they are that Head. A Head can share with people, Positions, other Departments or everyone.
-                      The user still needs the Knowledge permission. This does not change Document Control.
-                    </>
-                  ) : documents.knowledgeVisibilityMode === "OWN_BUSINESS_UNIT" ? (
-                    <>
-                      <strong>Own Business Unit.</strong> A user sees the Effective documents of every Department of the Business Unit their
-                      own Department belongs to. Everybody who may see a document already sees it, so there is no Share menu.
-                    </>
-                  ) : documents.knowledgeVisibilityMode === "ALL" ? (
-                    <>
-                      <strong>Everything.</strong> A user sees every Effective document of the system. There is nothing to share, so there is
-                      no Share menu.
-                    </>
-                  ) : (
-                    <>
-                      <strong>Own Department.</strong> A user sees the Effective documents of their own Department in the Knowledge Base,
-                      as before. There is nothing to share, so there is no Share menu. Switch to Sharing when the Heads are ready to decide
-                      who sees what.
-                    </>
-                  )}
+                <div className="mt-1.5">
+                  <Details
+                    summary={
+                      (documents.knowledgeVisibilityMode ?? "OWN_DEPARTMENT") === "SHARING"
+                        ? "Closed by default: a user sees a document only when the Head of its Department or Business Unit shared it with them."
+                        : documents.knowledgeVisibilityMode === "OWN_BUSINESS_UNIT"
+                          ? "A user sees the Effective documents of every Department of their own Business Unit."
+                          : documents.knowledgeVisibilityMode === "ALL"
+                            ? "A user sees every Effective document of the system."
+                            : "A user sees the Effective documents of their own Department."
+                    }
+                  >
+                    <p>
+                      {(documents.knowledgeVisibilityMode ?? "OWN_DEPARTMENT") === "SHARING"
+                        ? "A user sees an Effective document only when the Head of its Department or Business Unit shared it with them (a folder or a document, right-click > Share), or when they are that Head. A Head can share with people, Positions, other Departments or everyone. The user still needs the Knowledge Base permission. This does not change Document Control."
+                        : "Everybody who may see a document already sees it, so there is no Share menu. Switch to Sharing when the Heads are ready to decide who sees what."}
+                    </p>
+                  </Details>
+                </div>
+              </div>
+              <Details summary={<>Whoever holds <strong>View All Documents in the Knowledge Base</strong> sees every Effective document in every mode.</>}>
+                <p>
+                  Only the <strong>Department Head</strong> named on a Department and the <strong>Head of Unit</strong> named on a Business Unit (in Dictionaries)
+                  may share, and only under Sharing: being named is the whole grant. The person designated as DCO shares any Department through{" "}
+                  <strong>Share Knowledge Base of Any Department</strong>, assigned to an Access Profile at{" "}
+                  <button
+                      type="button"
+                      onClick={() => navigate(ROUTES.SECURITY.ACCESS_PROFILES)}
+                      className="font-medium text-emerald-700 underline underline-offset-2"
+                    >
+                      Security & Authorization &gt; Access Profiles
+                    </button>
+                  . View All Documents in the Knowledge Base is a Knowledge Base permission of its own and changes nothing in Document Control.
                 </p>
-              </div>
-              <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-800">
-                Who may share (only under Sharing): the <strong>Department Head</strong> named on a Department and the{" "}
-                <strong>Head of Unit</strong> named on a Business Unit, in Dictionaries. Being named is the whole grant: only the administrator
-                edits Dictionaries, so there is no permission to assign. The person designated as DCO shares any Department through the
-                permission <strong>Share Knowledge Base of Any Department</strong>, assigned to an Access Profile at{" "}
-                <button
-                  type="button"
-                  onClick={() => navigate(ROUTES.SECURITY.ACCESS_PROFILES)}
-                  className="font-medium underline underline-offset-2 hover:text-sky-900"
-                >
-                  Security & Authorization &gt; Access Profiles
-                </button>
-                . Whoever holds <strong>View All Documents in the Knowledge Base</strong> always sees every Effective document in every mode,
-                whatever a Head shared or excluded; it is a Knowledge Base permission of its own and changes nothing in Document Control.
-              </div>
+              </Details>
             </div>
           </Group>
           </div>
 
           {/* Access kept after a role is removed: part of the same visibility rules */}
             <Group title="Retain visibility for removed participants">
-              <p className="text-xs text-slate-500">
-                When a user is removed from one of these roles on a Document (e.g. via "Edit Revision for Upgrade"), they keep
-                read-only visibility of it based on having held that role before. Pick which roles this applies to; each is
-                independent. If none are checked, a removed participant with no other role on the Document loses visibility
-                immediately (default).
-                {(documents.documentVisibilityMode ?? DEFAULT_DOCUMENT_VISIBILITY_MODE) === "ALL_WITH_VIEW_PERMISSION"
-                  ? " Not applicable while everyone with the View permission sees every record."
-                  : ""}
-              </p>
+              <Details
+                summary={
+                  (documents.documentVisibilityMode ?? DEFAULT_DOCUMENT_VISIBILITY_MODE) === "ALL_WITH_VIEW_PERMISSION"
+                    ? "Not applicable while everyone with the View permission sees every record."
+                    : "A user removed from a checked role keeps read-only visibility of the Document."
+                }
+              >
+                <p>
+                  When a user is removed from one of these roles on a Document (e.g. via "Edit Revision for Upgrade"), they keep read-only visibility of it based on
+                  having held that role before. Each role is independent. If none are checked, a removed participant with no other role on the Document loses
+                  visibility immediately (default).
+                </p>
+              </Details>
               {(() => {
                 const retainDisabled = !canManage
                   || (documents.documentVisibilityMode ?? DEFAULT_DOCUMENT_VISIBILITY_MODE) === "ALL_WITH_VIEW_PERMISSION";

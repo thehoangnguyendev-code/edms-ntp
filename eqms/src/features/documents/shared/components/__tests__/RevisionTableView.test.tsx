@@ -11,8 +11,8 @@ const mount = (shouldShowExpandIcon?: () => boolean) => {
   render(<RevisionTableView
     revisions={[
       { id: "empty", documentId: null, relatedDocuments: [], correlatedDocuments: [] },
-      { id: "parent", documentId: "document" },
-      { id: "relation", relatedDocuments: [{ id: "related", documentNumber: "SOP.1" }] },
+      { id: "parent", documentId: "document", documentNumber: "SOP.PARENT", revisionNumber: "1.0.0" },
+      { id: "relation", documentNumber: "SOP.REL", revisionNumber: "2.0.0", relatedDocuments: [{ id: "related", documentNumber: "SOP.1" }] },
     ]}
     columns={[{ id: "no", label: "No.", visible: true, order: 0 }]}
     expandedRowId={null}
@@ -31,9 +31,9 @@ describe("RevisionTableView expansion controls", () => {
     expect(screen.queryByRole("button", { name: "Expand revision empty" })).toBeNull();
     fireEvent.click(screen.getByRole("cell", { name: "1" }).parentElement!.firstElementChild!);
     expect(onExpand).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Expand revision parent" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expand revision SOP.PARENT 1.0.0" }));
     expect(onExpand).toHaveBeenCalledWith("parent");
-    expect(screen.getByRole("button", { name: "Expand revision relation" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Expand revision SOP.REL 2.0.0" })).toBeTruthy();
   });
 
   it("allows callers to hide expansion without allowing them to force empty rows", () => {

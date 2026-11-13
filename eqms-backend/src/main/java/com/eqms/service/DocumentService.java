@@ -152,6 +152,7 @@ public class DocumentService {
     private final AuditLogRepository auditLogRepository;
     private final DocumentWorkflowSettingRepository documentWorkflowSettingRepository;
     private final AuditTrailService auditTrailService;
+    private final WorkflowProgressService workflowProgressService;
     private final DocumentAuthorizationService documentAuthorizationService;
     private final CurrentUserService currentUserService;
     private final TokenService tokenService;
@@ -225,8 +226,10 @@ public class DocumentService {
             @org.springframework.context.annotation.Lazy RevisionService revisionService,
             WorkflowParticipantEligibilityService workflowParticipantEligibilityService,
             SecureFileAccessService secureFileAccessService,
-            SignatureTokenConsumptionService signatureTokenConsumptionService
+            SignatureTokenConsumptionService signatureTokenConsumptionService,
+            WorkflowProgressService workflowProgressService
     ) {
+        this.workflowProgressService = workflowProgressService;
         this.documentRepository = documentRepository;
         this.statusRepository = statusRepository;
         this.documentTypeRepository = documentTypeRepository;
@@ -608,7 +611,8 @@ public class DocumentService {
                 canRequestControlledCopy(currentUser, document, revisionRecords),
                 revisionService.resolveNextDraftRevisionNumberForDocument(documentId),
                 document.getAuthor() == null ? null : document.getAuthor().getId().toString(),
-                resolvePreviewVersionToken(revisionRecords)
+                resolvePreviewVersionToken(revisionRecords),
+                workflowProgressService.forDocument(StatusMapper.code(document.getStatus()), document.getId())
         );
     }
 
@@ -1258,7 +1262,7 @@ public class DocumentService {
                 ? previousAuthor
                 : resolveUser(request.authorUserId());
         if (request != null && StringUtils.hasText(request.authorUserId()) && requestedAuthor == null) {
-            throw new IllegalArgumentException("Author not found: " + request.authorUserId());
+            throw new IllegalArgumentException("Author not found");
         }
         boolean authorChanged = !Objects.equals(
                 previousAuthor == null ? null : previousAuthor.getId(),
@@ -1487,7 +1491,7 @@ public class DocumentService {
         int sequence = 1;
         for (String participantId : requestedIds) {
             UserAccount participant = resolveUser(participantId);
-            if (participant == null) throw new IllegalArgumentException("Co-Author not found: " + participantId);
+            if (participant == null) throw new IllegalArgumentException("Co-Author not found");
             saveParticipant(document, participant, "CO_AUTHOR", sequence++);
         }
     }
@@ -1657,7 +1661,7 @@ public class DocumentService {
         int sequence = 1;
         for (String participantId : participantIds) {
             UserAccount participant = resolveUser(participantId);
-            if (participant == null) throw new IllegalArgumentException(participantType + " not found: " + participantId);
+            if (participant == null) throw new IllegalArgumentException(participantType + " not found");
             requirePoolMembership(participantType, participant);
             saveParticipant(document, participant, participantType, sequence++);
         }
@@ -2000,7 +2004,8 @@ public class DocumentService {
         document.setLastModifiedBy(currentUser);
         documentRepository.save(document);
 
-        auditTrailService.logAs(
+        // The Activity Summary is what the person typed: it is also the reason shown in the Audit Trail.
+        auditTrailService.logAsWithUserReason(
                 currentUser,
                 "DOCUMENT",
                 document.getDocumentNumber() + " - " + document.getDocumentName(),
@@ -2008,7 +2013,10 @@ public class DocumentService {
                 "CANCEL",
                 fromStatus,
                 "CLOSED_CANCELLED",
-                trimmedActivitySummary
+                trimmedActivitySummary,
+                trimmedActivitySummary,
+                null,
+                null
         );
 
         return getDocumentDetail(documentId);
@@ -2332,6 +2340,16 @@ public class DocumentService {
      * The documents the current user may see in the Knowledge portal: Effective, non-template, scoped by the Knowledge Base visibility
      * setting unless the user holds the Knowledge Base view-all permission (DC-XF-68).
      */
+    /**
+     * The server decides, not the menu (DC-VISIBILITY-TIERS-2026-11-07): without the Knowledge permission nothing of the Knowledge Base is
+     * listed, searched, suggested or opened, even by a direct call. The Knowledge view-all widens WHAT is seen; it does not replace this permission.
+     */
+    private void requireKnowledgePermission(UserAccount user) {
+        if (!permissionEvaluationService.hasPermission(user, KnowledgeVisibilityService.KNOWLEDGE_VIEW_PERMISSION)) {
+            throw new AccessDeniedException("Knowledge Base access denied");
+        }
+    }
+
     @Transactional(readOnly = true)
     public List<KnowledgeEntry> visibleKnowledgeEntries() {
         // DC-XF-68: previously scoped by nothing -- any authenticated user could browse every
@@ -2341,6 +2359,7 @@ public class DocumentService {
         // string), same cross-department bypass every other object-access check in this codebase
         // already grants DCO/Document Admin.
         UserAccount currentUser = currentUserService.requireCurrentUser();
+        requireKnowledgePermission(currentUser);
         // the Knowledge Base has its own "view all" (never the one of Document Control): it sees every Effective document, whatever a Head excluded
         boolean canViewAllDepartments = permissionEvaluationService.hasPermission(currentUser, KnowledgeVisibilityService.KNOWLEDGE_VIEW_ALL_PERMISSION);
         UUID currentUserDepartmentId = canViewAllDepartments ? null : resolveUserDepartmentId(currentUser);
@@ -3500,7 +3519,7 @@ public class DocumentService {
             for (String userId : coAuthorIds) {
                 UserAccount user = resolveUser(userId);
                 if (user == null) {
-                    throw new IllegalArgumentException("Co-author not found: " + userId);
+                    throw new IllegalArgumentException("Co-author not found");
                 }
                 saveParticipant(document, user, "CO_AUTHOR", sequence++);
             }
@@ -3528,7 +3547,7 @@ public class DocumentService {
             for (String userId : incomingReviewerIds) {
                 UserAccount user = resolveUser(userId);
                 if (user == null) {
-                    throw new IllegalArgumentException("Reviewer not found: " + userId);
+                    throw new IllegalArgumentException("Reviewer not found");
                 }
                 requirePoolMembership("REVIEWER", user);
                 saveParticipant(document, user, "REVIEWER", sequence++);
@@ -3557,7 +3576,7 @@ public class DocumentService {
             for (String userId : approverUserIds) {
                 UserAccount user = resolveUser(userId);
                 if (user == null) {
-                    throw new IllegalArgumentException("Approver not found: " + userId);
+                    throw new IllegalArgumentException("Approver not found");
                 }
                 requirePoolMembership("APPROVER", user);
                 saveParticipant(document, user, "APPROVER", sequence++);
@@ -3615,7 +3634,7 @@ public class DocumentService {
         for (String userId : coAuthorIds) {
             UserAccount user = resolveUser(userId);
             if (user == null) {
-                throw new IllegalArgumentException("Co-author not found: " + userId);
+                throw new IllegalArgumentException("Co-author not found");
             }
             saveRevisionParticipant(revision, user, "CO_AUTHOR", sequence++);
         }
@@ -3624,7 +3643,7 @@ public class DocumentService {
         for (String userId : reviewerUserIds) {
             UserAccount user = resolveUser(userId);
             if (user == null) {
-                throw new IllegalArgumentException("Reviewer not found: " + userId);
+                throw new IllegalArgumentException("Reviewer not found");
             }
             saveRevisionParticipant(revision, user, "REVIEWER", sequence++);
         }
@@ -3633,7 +3652,7 @@ public class DocumentService {
         for (String userId : approverUserIds) {
             UserAccount user = resolveUser(userId);
             if (user == null) {
-                throw new IllegalArgumentException("Approver not found: " + userId);
+                throw new IllegalArgumentException("Approver not found");
             }
             saveRevisionParticipant(revision, user, "APPROVER", sequence++);
         }
@@ -4355,6 +4374,8 @@ public class DocumentService {
      */
     @Transactional(readOnly = true)
     public DocumentFileResult previewKnowledgeDocumentFile(UUID documentId) {
+        // Checked first: with "Own Department" the next lines hand over to the Document Control preview, which never asks for the Knowledge permission.
+        requireKnowledgePermission(currentUserService.requireCurrentUser());
         String knowledgeMode = systemConfigurationService.getKnowledgeVisibilityMode();
         boolean listedByKnowledge = SystemConfigurationService.KNOWLEDGE_VISIBILITY_ALL.equals(knowledgeMode)
                 || SystemConfigurationService.KNOWLEDGE_VISIBILITY_OWN_BUSINESS_UNIT.equals(knowledgeMode)

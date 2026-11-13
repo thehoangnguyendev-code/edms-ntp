@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -207,7 +206,7 @@ export function TrainingMatrixListView() {
           rows={table.items}
           getRowKey={(m) => m.id}
           isLoading={table.isLoading}
-          loadingContent={<SectionLoading text="Loading matrices…" />}
+
           emptyState={
             <TableEmptyState
               title="No Training Matrix"

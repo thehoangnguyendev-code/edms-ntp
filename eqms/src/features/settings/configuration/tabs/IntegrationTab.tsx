@@ -69,31 +69,6 @@ const buildStorageTestPayload = (storage: IntegrationConfig['storage']): Storage
         nasUsername: storage.nasUsername,
         nasPassword: storage.nasPassword,
       };
-    case 'aws-s3':
-      return {
-        provider: 'aws-s3',
-        bucketName: storage.bucketName,
-        region: storage.region,
-        accessKeyId: storage.accessKeyId,
-        secretAccessKey: storage.secretAccessKey,
-        basePath: storage.basePath,
-      };
-    case 'azure-blob':
-      return {
-        provider: 'azure-blob',
-        bucketName: storage.bucketName,
-        accessKeyId: storage.accessKeyId,
-        secretAccessKey: storage.secretAccessKey,
-        basePath: storage.basePath,
-      };
-    case 'google-cloud':
-      return {
-        provider: 'google-cloud',
-        bucketName: storage.bucketName,
-        accessKeyId: storage.accessKeyId,
-        secretAccessKey: storage.secretAccessKey,
-        basePath: storage.basePath,
-      };
     case 'minio':
       return {
         provider: 'minio',
@@ -103,6 +78,8 @@ const buildStorageTestPayload = (storage: IntegrationConfig['storage']): Storage
         minioSecretAccessKey: storage.minioSecretAccessKey || '',
         minioRetentionYears: storage.minioRetentionYears || MAX_RETENTION_YEARS,
       };
+    default:
+      return { provider: 'local' };
   }
 };
 
@@ -116,15 +93,9 @@ interface IntegrationTabProps {
 
 export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange }) => {
   const { showToast } = useToast();
-  const [showStorageKey, setShowStorageKey] = useState(false);
-  const [showStorageAccessKeyId, setShowStorageAccessKeyId] = useState(false);
   const [showMinioSecretAccessKey, setShowMinioSecretAccessKey] = useState(false);
   const [showNasPassword, setShowNasPassword] = useState(false);
   const [testingStorage, setTestingStorage] = useState(false);
-  const [showGoogleDriveClientSecret, setShowGoogleDriveClientSecret] = useState(false);
-  const [showMsClientSecret, setShowMsClientSecret] = useState(false);
-  const [showDropboxAppSecret, setShowDropboxAppSecret] = useState(false);
-  const [showDropboxAccessToken, setShowDropboxAccessToken] = useState(false);
   const [storagePathPreview, setStoragePathPreview] = useState<StoragePathPreview | null>(null);
 
   const handleTestStorageConnection = async () => {
@@ -197,123 +168,15 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
               value={config.storage.provider}
               onChange={(val) => handleStorageChange('provider', val as any)}
               options={[
-                { label: 'Local Server', value: 'local' },
-              { label: 'Amazon S3', value: 'aws-s3' },
-                { label: 'MinIO', value: 'minio' },
-                { label: 'Azure Blob Storage', value: 'azure-blob' },
-                { label: 'Google Cloud Storage', value: 'google-cloud' },
+                { label: 'MinIO (recommended)', value: 'minio' },
                 { label: 'Network Attached Storage (NAS)', value: 'nas' },
-                { label: 'Google Drive', value: 'google-drive' },
-                { label: 'Dropbox', value: 'dropbox' },
+                { label: 'Local Server (not backed up)', value: 'local' },
               ]}
             />
-            {['aws-s3', 'azure-blob', 'google-cloud'].includes(config.storage.provider) && (
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                  Bucket / Container Name
-                </label>
-                <input
-                  type="text"
-                  value={config.storage.bucketName}
-                  onChange={(e) => handleStorageChange('bucketName', e.target.value)}
-                  className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                  placeholder="my-eqms-bucket"
-                />
-              </div>
-            )}
           </div>
-          {['aws-s3', 'azure-blob', 'google-cloud'].includes(config.storage.provider) && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Region
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.region}
-                    onChange={(e) => handleStorageChange('region', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                    placeholder="ap-southeast-1"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Base Path
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.basePath}
-                    onChange={(e) => handleStorageChange('basePath', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                    placeholder="/documents"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Access Key ID
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showStorageAccessKeyId ? 'text' : 'password'}
-                      value={config.storage.accessKeyId}
-                      onChange={(e) => handleStorageChange('accessKeyId', e.target.value)}
-                      className="w-full h-9 px-3.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="AKIA..."
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowStorageAccessKeyId(!showStorageAccessKeyId)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showStorageAccessKeyId ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Secret Access Key
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showStorageKey ? 'text' : 'password'}
-                      value={config.storage.secretAccessKey}
-                      onChange={(e) => handleStorageChange('secretAccessKey', e.target.value)}
-                      className="w-full h-9 px-3.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Enter secret key"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowStorageKey(!showStorageKey)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showStorageKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="pt-2">
-                <Checkbox
-                  id="enableCdn"
-                  label="Enable CDN (Content Delivery Network)"
-                  checked={config.storage.enableCdn}
-                  onChange={(checked) => handleStorageChange('enableCdn', checked)}
-                />
-                {config.storage.enableCdn && (
-                  <div className="mt-3">
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                      CDN URL
-                    </label>
-                    <input
-                      type="url"
-                      value={config.storage.cdnUrl}
-                      onChange={(e) => handleStorageChange('cdnUrl', e.target.value)}
-                      className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                      placeholder="https://cdn.example.com"
-                    />
-                  </div>
-                )}
-              </div>
+          {config.storage.provider === 'local' && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+              Files are written to a folder on the application server. That folder is not part of the backup, so a lost disk loses them. Use MinIO or a NAS for real records.
             </div>
           )}
           {config.storage.provider === 'minio' && (
@@ -327,7 +190,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                     type="text"
                     value={config.storage.minioEndpoint || ''}
                     onChange={(e) => handleStorageChange('minioEndpoint', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                     placeholder="http://localhost:9000"
                   />
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -373,7 +236,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                     type="text"
                     value={config.storage.minioBucket || ''}
                     onChange={(e) => handleStorageChange('minioBucket', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                     placeholder="eqms-gmp-revisions"
                   />
                   <p className="mt-1 text-xs text-slate-500">
@@ -388,7 +251,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                     type="text"
                     value={config.storage.minioAccessKeyId || ''}
                     onChange={(e) => handleStorageChange('minioAccessKeyId', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                     placeholder="eqms-minio"
                   />
                   <p className="mt-1 text-xs text-slate-500">
@@ -404,7 +267,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                       type={showMinioSecretAccessKey ? 'text' : 'password'}
                       value={config.storage.minioSecretAccessKey || ''}
                       onChange={(e) => handleStorageChange('minioSecretAccessKey', e.target.value)}
-                      className="w-full h-9 px-3.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full h-9 px-3 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                       placeholder="eqms-minio-secret"
                     />
                     <button
@@ -441,7 +304,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                             Math.min(Math.max(Number(e.target.value || DEFAULT_FIXED_RETENTION_YEARS), 1), MAX_RETENTION_YEARS - 1),
                           )
                         }
-                        className="h-9 w-24 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                        className="h-9 w-24 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                         aria-label="Retention period in years"
                       />
                     )}
@@ -497,7 +360,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                     type="text"
                     value={config.storage.nasHost || ''}
                     onChange={(e) => handleStorageChange('nasHost', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
+                    className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
                     placeholder="ProjectT7 or 10.0.80.254"
                   />
                 </div>
@@ -509,7 +372,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                     type="text"
                     value={config.storage.nasShareName || ''}
                     onChange={(e) => handleStorageChange('nasShareName', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
+                    className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
                     placeholder="ShareT7 or Documents"
                   />
                 </div>
@@ -521,7 +384,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                     type="text"
                     value={config.storage.nasDomain || ''}
                     onChange={(e) => handleStorageChange('nasDomain', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
+                    className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
                     placeholder="WORKGROUP or DOMAIN"
                   />
                 </div>
@@ -533,7 +396,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                     type="text"
                     value={config.storage.nasUsername || ''}
                     onChange={(e) => handleStorageChange('nasUsername', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
+                    className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
                     placeholder="nas_user"
                   />
                 </div>
@@ -546,7 +409,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                       type={showNasPassword ? 'text' : 'password'}
                       value={config.storage.nasPassword || ''}
                       onChange={(e) => handleStorageChange('nasPassword', e.target.value)}
-                      className="w-full h-9 px-3.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full h-9 px-3 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                       placeholder="••••••••"
                     />
                     <button
@@ -576,130 +439,6 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
               </div>
             </div>
           )}
-          {config.storage.provider === 'google-drive' && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Client ID
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.googleDriveClientId || ''}
-                    onChange={(e) => handleStorageChange('googleDriveClientId', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                    placeholder="Enter Google Client ID"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Client Secret
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showGoogleDriveClientSecret ? 'text' : 'password'}
-                      value={config.storage.googleDriveClientSecret || ''}
-                      onChange={(e) => handleStorageChange('googleDriveClientSecret', e.target.value)}
-                      className="w-full h-9 px-3.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="••••••••"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowGoogleDriveClientSecret(!showGoogleDriveClientSecret)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showGoogleDriveClientSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Google Drive Folder ID
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.googleDriveFolderId || ''}
-                    onChange={(e) => handleStorageChange('googleDriveFolderId', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                    placeholder="Enter Folder ID (e.g. 1a2b3c4d5e...)"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {config.storage.provider === 'dropbox' && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    App Key
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.dropboxAppKey || ''}
-                    onChange={(e) => handleStorageChange('dropboxAppKey', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                    placeholder="Enter Dropbox App Key"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    App Secret
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showDropboxAppSecret ? 'text' : 'password'}
-                      value={config.storage.dropboxAppSecret || ''}
-                      onChange={(e) => handleStorageChange('dropboxAppSecret', e.target.value)}
-                      className="w-full h-9 px-3.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="••••••••"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowDropboxAppSecret(!showDropboxAppSecret)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showDropboxAppSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Access Token
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showDropboxAccessToken ? 'text' : 'password'}
-                      value={config.storage.dropboxAccessToken || ''}
-                      onChange={(e) => handleStorageChange('dropboxAccessToken', e.target.value)}
-                      className="w-full h-9 px-3.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Enter Access Token"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowDropboxAccessToken(!showDropboxAccessToken)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showDropboxAccessToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Folder Path
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.dropboxFolderPath || ''}
-                    onChange={(e) => handleStorageChange('dropboxFolderPath', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                    placeholder="e.g. /eqms-documents"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
           <div className="flex justify-end pt-2">
             <Button
               variant="outline-emerald"
@@ -710,12 +449,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
               className="gap-2 shadow-sm"
               disabled={
                 (config.storage.provider === 'nas' && !((config.storage.nasPath || buildNasUncPath(config.storage.nasHost, config.storage.nasShareName)).trim()))
-                || (config.storage.provider === 'aws-s3' && (!config.storage.bucketName?.trim() || !config.storage.region?.trim() || !config.storage.accessKeyId?.trim() || !config.storage.secretAccessKey?.trim()))
                 || (config.storage.provider === 'minio' && (!config.storage.minioEndpoint?.trim() || !config.storage.minioBucket?.trim() || !config.storage.minioAccessKeyId?.trim() || !config.storage.minioSecretAccessKey?.trim()))
-                || (config.storage.provider === 'azure-blob' && (!config.storage.bucketName?.trim() || !config.storage.accessKeyId?.trim() || !config.storage.secretAccessKey?.trim()))
-                || (config.storage.provider === 'google-cloud' && (!config.storage.bucketName?.trim() || !config.storage.accessKeyId?.trim() || !config.storage.secretAccessKey?.trim()))
-                || (config.storage.provider === 'google-drive' && (!config.storage.googleDriveClientId?.trim() || !config.storage.googleDriveClientSecret?.trim() || !config.storage.googleDriveFolderId?.trim()))
-                || (config.storage.provider === 'dropbox' && (!config.storage.dropboxAccessToken?.trim() || !config.storage.dropboxAppKey?.trim() || !config.storage.dropboxAppSecret?.trim() || !config.storage.dropboxFolderPath?.trim()))
               }
             >
               Test Storage Connect

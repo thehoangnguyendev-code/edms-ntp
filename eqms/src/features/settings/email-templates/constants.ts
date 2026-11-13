@@ -2,14 +2,6 @@
 
 import { TableColumn, EmailVariable, EmailTemplateType } from "./types";
 
-// Routes
-export const EMAIL_TEMPLATES_ROUTES = {
-  LIST: "/settings/email-templates",
-  CREATE: "/settings/email-templates/create",
-  EDIT: (id: string) => `/settings/email-templates/edit/${id}`,
-  PREVIEW: (id: string) => `/settings/email-templates/preview/${id}`,
-} as const;
-
 // Email Template Types Configuration
 export const EMAIL_TEMPLATE_TYPES: Record<EmailTemplateType, { label: string; description: string }> = {
   "password-reset": {
@@ -194,11 +186,3 @@ export const DEFAULT_COLUMNS: TableColumn[] = [
 ];
 
 
-
-// File upload configuration for logos
-export const LOGO_UPLOAD_CONFIG = {
-  maxSize: 2 * 1024 * 1024, // 2MB
-  allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml'],
-  maxWidth: 800,
-  maxHeight: 600
-};

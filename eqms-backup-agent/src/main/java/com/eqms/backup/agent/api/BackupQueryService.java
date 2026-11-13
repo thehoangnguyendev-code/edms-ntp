@@ -25,9 +25,21 @@ public class BackupQueryService {
             "sizeBytes", "r.size_bytes",
             "createdBy", "r.requested_by",
             "verification", "coalesce(v.result, 'NOT_VERIFIED')",
-            "verifiedAt", "v.verified_at");
+            "verifiedAt", "v.verified_at",
+            "trigger", "r.trigger_kind",
+            "duration", "(r.finished_at - r.started_at)");
 
-    public record Query(String search, String status, String type, String verification, Instant startedFrom, Instant startedTo, Instant checkedFrom, Instant checkedTo, String sortBy, boolean ascending, int page, int limit) {
+    /** {@code trigger} is how the backup was started and {@code component} a part it contains; both are exact values, never typed text. */
+    public record Query(String search, String status, String type, String verification, Instant startedFrom, Instant startedTo, Instant checkedFrom, Instant checkedTo, String sortBy, boolean ascending, int page, int limit,
+                        String trigger, String component, List<String> people) {
+        public Query(String search, String status, String type, String verification, Instant startedFrom, Instant startedTo, Instant checkedFrom, Instant checkedTo, String sortBy, boolean ascending, int page, int limit,
+                     String trigger, String component) {
+            this(search, status, type, verification, startedFrom, startedTo, checkedFrom, checkedTo, sortBy, ascending, page, limit, trigger, component, List.of());
+        }
+
+        public Query(String search, String status, String type, String verification, Instant startedFrom, Instant startedTo, Instant checkedFrom, Instant checkedTo, String sortBy, boolean ascending, int page, int limit) {
+            this(search, status, type, verification, startedFrom, startedTo, checkedFrom, checkedTo, sortBy, ascending, page, limit, null, null, List.of());
+        }
     }
 
     public record Page(List<Map<String, Object>> data, int page, int limit, long total) {
@@ -45,11 +57,19 @@ public class BackupQueryService {
         List<Object> args = new ArrayList<>();
         StringBuilder where = new StringBuilder(" where 1=1");
         if (hasText(q.search())) {
-            where.append(" and (lower(r.backup_number) like ? or lower(r.requested_by) like ? or lower(coalesce(r.reason,'')) like ?)");
-            String like = "%" + q.search().trim().toLowerCase().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            args.add(like);
-            args.add(like);
-            args.add(like);
+            // everything the list shows: number, person, reason, status, type, trigger, integrity, schema, contents and the start time
+            String has = "exists (select 1 from backup_component_result c where c.run_id = r.id and c.component ";
+            new SearchClause(q.search())
+                    .text("lower(r.backup_number)").text("lower(r.requested_by)").text("lower(coalesce(r.reason,''))")
+                    .text("lower(r.status)").text("replace(lower(r.type),'_',' ')").text("replace(lower(r.trigger_kind),'_',' ')")
+                    .text("replace(lower(coalesce(v.result,'NOT_VERIFIED')),'_',' ')")
+                    .text("lower('v' || coalesce(m.manifest_text::jsonb->'app'->>'flywayLatest',''))")
+                    .date("r.started_at")
+                    .label(has + "= 'DATABASE')", "database")
+                    .label(has + "in ('OBJECT_STORE','FILE_STORAGE'))", "files")
+                    .label(has + "= 'CONFIGURATION')", "settings")
+                    .people(q.people(), "r.requested_by")
+                    .appendTo(where, args);
         }
         if (hasText(q.status()) && !"ALL".equals(q.status())) {
             where.append(" and r.status = ?");
@@ -58,6 +78,14 @@ public class BackupQueryService {
         if (hasText(q.type()) && !"ALL".equals(q.type())) {
             where.append(" and r.type = ?");
             args.add(q.type());
+        }
+        if (hasText(q.trigger()) && !"ALL".equals(q.trigger())) {
+            where.append(" and r.trigger_kind = ?");
+            args.add(q.trigger());
+        }
+        if (hasText(q.component()) && !"ALL".equals(q.component())) {
+            where.append(" and exists (select 1 from backup_component_result c where c.run_id = r.id and c.component = ? and c.status = 'COMPLETED')");
+            args.add(q.component());
         }
         if (q.startedFrom() != null) {
             where.append(" and r.started_at >= ?");
@@ -107,7 +135,7 @@ public class BackupQueryService {
         attachComponents(rows);
         if (rows.isEmpty()) return Optional.empty();
         Map<String, Object> view = rows.get(0);
-        view.put("locations", jdbc.queryForList("select target_code as target, path, ok from backup_set_location where run_id = ?::uuid", String.valueOf(view.get("_runId"))));
+        view.put("locations", jdbc.queryForList("select distinct on (target_code) target_code as target, path, ok from backup_set_location where run_id = ?::uuid order by target_code, written_at desc", String.valueOf(view.get("_runId"))));
         view.put("verifications", jdbc.queryForList("select tier, result, verified_at, verified_by, detail_json::text as detail from backup_verification where run_id = ?::uuid order by verified_at desc limit 20",
                 String.valueOf(view.get("_runId"))));
         view.remove("_runId");

@@ -198,6 +198,7 @@ export const PermissionSetDetailView: React.FC = () => {
               <Badge color={permissionSet.system ? "blue" : "slate"} size="xs">
                 {permissionSet.system ? "System" : "Custom"}
               </Badge>
+              {permissionSet.testData ? <Badge color="amber" size="xs">Test</Badge> : null}
               <Badge color={permissionSet.active ? "emerald" : "slate"} size="xs" >
                 {permissionSet.active ? "Active" : "Inactive"}
               </Badge>

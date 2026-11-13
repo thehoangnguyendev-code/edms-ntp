@@ -12,7 +12,6 @@ import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
@@ -119,7 +118,7 @@ export function TrainingJobRolesView() {
       <ReportListToolbar searchPlaceholder="Search code, name, department or job title…" search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); reset(); }}
         filters={filters} dates={[]} hasActiveFilters={Boolean(status || departmentId || titlePositionId || table.searchQuery)}
         onClear={() => { setStatus(""); setDepartmentId(""); setTitlePositionId(""); table.setSearchQuery(""); reset(); }} customControl={control}>
-        <DataTable rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading} loadingContent={<SectionLoading text="Loading Work Positions…" />} columns={columns} columnLayout={layout} action={rowMenu.action}
+        <DataTable rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading} columns={columns} columnLayout={layout} action={rowMenu.action}
           emptyState={<TableEmptyState title="No Work Positions" description="Try changing your search or filter." />}
           pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined} />
       </ReportListToolbar>

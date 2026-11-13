@@ -17,7 +17,10 @@ public final class NotificationEmailCipher {
     private final SecretKeySpec key;
     private final SecureRandom random=new SecureRandom();
     private final ObjectMapper mapper;
-    public record Content(String subject,String body,Map<String,String> payload) { }
+    /** The message sealed in an outbox row: the wording and, for a notice that carries a file (an attendance list, the results of a training), the file, sealed with it. */
+    public record Content(String subject,String body,Map<String,String> payload,String attachmentName,byte[] attachment) {
+        public Content(String subject,String body,Map<String,String> payload) {this(subject,body,payload,null,null);}
+    }
 
     public NotificationEmailCipher(@Value("${app.notifications.outbox-encryption-key:}") String encoded,ObjectMapper mapper) {
         byte[] bytes;

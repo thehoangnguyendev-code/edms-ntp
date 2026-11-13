@@ -119,7 +119,7 @@ export function LegacyTrainingEvidence({
               <textarea
                 id={`legacy-lost-reason-${revisionLabel}`}
                 rows={2}
-                className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 value={value.noEvidenceReason}
                 onChange={(e) => set({ noEvidenceReason: e.target.value })}
               />

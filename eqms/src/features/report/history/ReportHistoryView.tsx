@@ -8,14 +8,13 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, pickerDateToIso, type ReportSelectFilter, type ReportDateFilter } from "../shared/ReportListToolbar";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
-import { codeLabel, runStatusLabel } from "../shared/reportLabels";
+import { codeLabel, reportRevisionLabel, runStatusLabel } from "../shared/reportLabels";
 import { reportsApi, type ReportRunSummary } from "@/services/api/reports";
 import { reportError } from "@/services/api/reportTemplates";
 import { displayDateTime } from "@/utils/format";
@@ -159,7 +158,8 @@ export function ReportHistoryView() {
       sort: { direction: table.sortConfig.key === "definitionCode" ? table.sortConfig.direction : undefined, onSort: () => table.handleSort("definitionCode") },
       cell: (r) => r.definitionCode,
     },
-    { id: "revision", header: "Template revision", cell: (r) => (r.revision != null ? `Rev ${r.revision}` : "—") },
+    { id: "revision", header: "Template revision", cell: (r) => (r.revision != null ? reportRevisionLabel(r.revision) : "—") },
+    { id: "scope", header: "Run type", cell: (r) => (r.fullRun ? <Badge color="blue">Full</Badge> : "Filtered") },
     {
       id: "status",
       header: "Status",
@@ -245,7 +245,7 @@ export function ReportHistoryView() {
             rows={table.items}
             getRowKey={(r) => r.id}
             isLoading={table.isLoading}
-            loadingContent={<SectionLoading text="Loading reports…" />}
+
             emptyState={<TableEmptyState title="No Reports Found" description="Generated reports will appear here. Try changing your search or filters." />}
             scrollerRef={drag.scrollerRef}
             scrollProps={drag.dragEvents}

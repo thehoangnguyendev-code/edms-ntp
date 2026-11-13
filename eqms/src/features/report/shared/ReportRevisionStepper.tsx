@@ -1,33 +1,14 @@
-import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
+import { WorkflowProgressStepper } from "@/components/ui/workflow-stepper/WorkflowProgressStepper";
+import { useServerWorkflow } from "@/components/ui/workflow-stepper/useServerWorkflow";
+import { reportTemplatesApi } from "@/services/api/reportTemplates";
+import type { WorkflowProgress } from "@/types/document";
 
 /**
- * The steps of a report template revision, shown with the same stepper as the revisions of a document (REPORT-TEMPLATE-REVISION-2026-10-14):
- * Draft, Pending Approval, Effective, Obsoleted; a revision that was discarded ends at Closed - Cancelled.
+ * The steps of a report template revision, shown with the same stepper as the revisions of a document (REPORT-TEMPLATE-REVISION-2026-10-14).
+ * The server works the stepper out (the steps, the step of the revision, where an ended revision stood); this only draws it.
+ * `isNew`: the template is being created and has no record yet, so the stepper of a new template is asked from the server.
  */
-export const REPORT_REVISION_STEPS = ["Draft", "Pending Approval", "Effective", "Obsoleted", "Closed - Cancelled"] as const;
-
-const STEP_OF_STATUS: Record<string, number> = { DRAFT: 0, PENDING_APPROVAL: 1, APPROVED: 2, EFFECTIVE: 2, OBSOLETE: 3, DISCARDED: 4 };
-
-/** Where a discarded or obsoleted revision stopped before it ended, so the steps before are shown as done. */
-const PROGRESS_BEFORE_END: Record<string, string> = { OBSOLETE: "Effective", DISCARDED: "Draft" };
-
-/**
- * `status` is the machine status of the revision (DRAFT, PENDING_APPROVAL, EFFECTIVE, OBSOLETE, DISCARDED). For a template that was never approved the
- * approval status (DRAFT, PENDING_APPROVAL, APPROVED) is understood as well.
- */
-export function ReportRevisionStepper({ status }: { status?: string | null }) {
-  const key = String(status ?? "DRAFT");
-  return <WorkflowStepper steps={REPORT_REVISION_STEPS} currentStepIndex={STEP_OF_STATUS[key] ?? 0} terminalProgressStep={PROGRESS_BEFORE_END[key]} />;
-}
-
-/** The status of the revision that matters on a template's screens: the one being written, else the effective one. */
-export function latestRevisionStatus(template: {
-  openRevision?: number | null;
-  openRevisionStatus?: string | null;
-  effectiveRevision?: number | null;
-  approvalStatus?: string | null;
-}): string {
-  if (template.openRevision != null && template.openRevisionStatus) return template.openRevisionStatus;
-  if (template.effectiveRevision != null) return "EFFECTIVE";
-  return template.approvalStatus ?? "DRAFT";
+export function ReportRevisionStepper({ workflow, isNew = false }: { workflow?: WorkflowProgress | null; isNew?: boolean }) {
+  const fresh = useServerWorkflow(isNew ? "report:TEMPLATE" : null, reportTemplatesApi.newWorkflow);
+  return <WorkflowProgressStepper workflow={isNew ? fresh : workflow} />;
 }

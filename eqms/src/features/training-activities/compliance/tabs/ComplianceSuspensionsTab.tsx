@@ -9,7 +9,6 @@ import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
@@ -97,7 +96,7 @@ export function ComplianceSuspensionsTab({ departmentId, departmentFilter }: { d
         customControl={control} framed={false} flush
       >
         <DataTable
-          rows={table.items} getRowKey={(s) => s.id} isLoading={table.isLoading} loadingContent={<SectionLoading text="Loading…" />}
+          rows={table.items} getRowKey={(s) => s.id} isLoading={table.isLoading}
           columns={columns} columnLayout={layout} action={rowMenu.action}
           emptyState={<TableEmptyState title="No suspended work" description="Nobody of the department is waiting for retraining." />}
           pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined}

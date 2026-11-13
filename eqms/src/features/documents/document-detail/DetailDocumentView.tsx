@@ -4,7 +4,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useDocumentPermissions } from "@/features/documents/shared/useDocumentPermissions";
 import { useDocumentControlledCopies } from "@/features/documents/shared/useDocumentControlledCopies";
 import { cn } from "@/components/ui/utils";
-import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import {
   GeneralInformationTab,
@@ -64,18 +63,16 @@ import type {
   RelatedDocument,
   ParentDocument,
 } from "./tabs/subtabs";
-import type { DocumentType, DocumentStatus } from "@/features/documents/types";
+import type { DocumentStatus } from "@/features/documents/types";
 import type {
   DocumentDetailResponse,
   DocumentParticipantItem,
 } from "@/features/documents/document-list/types";
 import {
-  documentWorkflowStepIndex,
-  DOCUMENT_WORKFLOW_STEPS,
   mapRevisionSummaryFromApi,
-  normalizeDocumentStatusForStepper,
-  resolveTerminalProgressStep,
+  resolveStatusLabel,
 } from "@/features/documents/shared/statusMapping";
+import { WorkflowProgressStepper } from "@/components/ui/workflow-stepper/WorkflowProgressStepper";
 import {
   buildControlledCopyRequestStateFromDocumentDetail,
   buildControlledCopyRequestRouteStateFromRevision,
@@ -119,7 +116,7 @@ const createEmptyDocumentDetail = (): DocumentDetailResponse => ({
   id: "",
   documentNumber: "",
   documentName: "",
-  type: "" as DocumentType,
+  type: "",
   revisionNumber: "",
   status: "Draft",
   effectiveDate: "",
@@ -179,10 +176,16 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   const { canUseDocumentTemplate } = useDocumentPermissions();
   const { navigateTo, isNavigating: isRouteNavigating } =
     useNavigateWithLoading();
+  // id -> display name, filled from the same search the pickers use, so a user chosen in the
+  // Author/Co-Author pickers is always shown by name (the operator may not hold settings.user.view).
+  const knownUserNamesRef = useRef<Map<string, string>>(new Map());
   const searchWorkflowUsers = useCallback(async (query: string) => {
     const results = await securityApi.getEligibleUsers("documents.document.view", query);
+    (results || []).forEach((user) => {
+      if (user.id && user.fullName) knownUserNamesRef.current.set(user.id, user.fullName);
+    });
     return (results || []).map((user) => ({
-      label: user.employeeCode ? `${user.employeeCode} - ${user.fullName}` : user.fullName || user.id,
+      label: user.employeeCode ? `${user.employeeCode} - ${user.fullName}` : user.fullName || "",
       value: user.id,
     }));
   }, []);
@@ -294,10 +297,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
 
   const applyDocumentDetail = React.useCallback(
     (detail: DocumentDetailResponse, auditTrailResponse?: AuditEntry[]) => {
-      const resolvedStatus = normalizeDocumentStatusForStepper(
-        detail.status,
-        detail.statusInfo,
-      );
+      const resolvedStatus = resolveStatusLabel(detail.status, detail.statusInfo);
       const coAuthorList = asArray(detail.coAuthors);
       const reviewerList = asArray(detail.reviewers);
       const approverList = asArray(detail.approvers);
@@ -309,11 +309,12 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         id: detail.id,
         documentNumber: detail.documentNumber,
         documentName: detail.documentName || "",
-        type: (detail.type || "") as DocumentType,
+        type: (detail.type || ""),
         revisionNumber: detail.revisionNumber || "",
         status: resolvedStatus as DocumentStatus,
         statusCode: detail.statusCode || detail.statusInfo?.id,
         statusInfo: detail.statusInfo,
+        workflow: detail.workflow,
         effectiveDate: detail.effectiveDate || "",
         validUntil: detail.validUntil || "",
         reviewDate: detail.reviewDate || "",
@@ -372,7 +373,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       setAuthorNameDraft(normalizedDocument.author || "");
       initialCoAuthorIdsRef.current = coAuthorList.map((coAuthor) => coAuthor.id);
       initialCoAuthorNamesRef.current = coAuthorList.map(
-        (coAuthor) => coAuthor.fullName || coAuthor.username || coAuthor.id,
+        (coAuthor) => coAuthor.fullName || coAuthor.username || "",
       );
       initialPeriodicReviewCycleRef.current = normalizedDocument.periodicReviewCycle ?? null;
       initialPeriodicReviewNotificationRef.current = normalizedDocument.periodicReviewNotification ?? null;
@@ -1006,10 +1007,16 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       setAuthorNameDraft("");
       return;
     }
+    const known = knownUserNamesRef.current.get(authorId);
+    if (known) {
+      setAuthorNameDraft(known);
+      return;
+    }
+    setAuthorNameDraft("");
     void settingsApi
       .getUserById(authorId)
-      .then((user: any) => setAuthorNameDraft(user?.fullName || user?.username || authorId))
-      .catch(() => setAuthorNameDraft(authorId));
+      .then((user: any) => setAuthorNameDraft(user?.fullName || user?.username || ""))
+      .catch(() => setAuthorNameDraft(""));
   };
 
   const handleCoAuthorsChange = (coAuthorIds: string[]) => {
@@ -1020,7 +1027,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         return (
           existing || {
             id,
-            fullName: id,
+            fullName: knownUserNamesRef.current.get(id) || "",
             username: "",
             position: "",
             email: "",
@@ -1030,26 +1037,26 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       }),
       coAuthorNames: coAuthorIds.map((id) => {
         const existing = current.coAuthors.find((item) => item.id === id);
-        return existing?.fullName || existing?.username || id;
+        return existing?.fullName || existing?.username || knownUserNamesRef.current.get(id) || "";
       }),
     }));
     // Resolve display names for any newly-selected co-author not already known locally,
     // so the change-confirmation modal shows a real name instead of a raw user id.
     const unresolvedIds = coAuthorIds.filter(
-      (id) => !(document.coAuthors || []).some((item) => item.id === id),
+      (id) => !(document.coAuthors || []).some((item) => item.id === id) && !knownUserNamesRef.current.has(id),
     );
     unresolvedIds.forEach((id) => {
       void settingsApi
         .getUserById(id)
         .then((user: any) => {
-          const fullName = user?.fullName || user?.username || id;
+          const fullName = user?.fullName || user?.username || "";
           setDocument((current) => ({
             ...current,
             coAuthors: current.coAuthors.map((item) =>
               item.id === id ? { ...item, fullName } : item,
             ),
             coAuthorNames: current.coAuthors.map((item) =>
-              item.id === id ? fullName : item.fullName || item.username || item.id,
+              item.id === id ? fullName : item.fullName || item.username || "",
             ),
           }));
         })
@@ -1063,14 +1070,14 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       if (before !== after) rows.push({ label, before: before || "—", after: after || "—" });
     };
     const namesOf = (items: Array<{ fullName?: string | null; documentNumber?: string | null; displayLabel?: string | null; id?: string | null }>) =>
-      items.map((item) => item.fullName || item.displayLabel || item.documentNumber || item.id || "").join(", ");
+      items.map((item) => item.fullName || item.displayLabel || item.documentNumber || "").join(", ");
     // Related/Correlated document items carry displayLabel only when freshly loaded from the
     // server -- an untouched item still sitting in local editable state may only have
     // documentNumber populated. Comparing/displaying by documentNumber on BOTH sides (never
     // falling back to displayLabel) avoids a false "changed" diff for a document the user never
     // touched, purely because of which of the two sources happened to carry the full label.
     const documentNumbersOf = (items: Array<{ documentNumber?: string | null; id?: string | null }>) =>
-      items.map((item) => item.documentNumber || item.id || "").join(", ");
+      items.map((item) => item.documentNumber || "").join(", ");
 
     push("Reviewers", namesOf(document.reviewers || []), namesOf(reviewers));
     push("Approvers", namesOf(document.approvers || []), namesOf(approvers));
@@ -1490,29 +1497,6 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   // Sub-tab state (for active documents)
   const [activeSubTab, setActiveSubTab] = useState<SubTabType>("revisions");
 
-  // Document status workflow steps
-  const statusSteps = DOCUMENT_WORKFLOW_STEPS;
-
-  const normalizedStatus = normalizeDocumentStatusForStepper(
-    document.status,
-    document.statusInfo,
-  ) as DocumentStatus;
-
-  const currentStepIndex = documentWorkflowStepIndex(
-    document.status,
-    document.statusInfo,
-  );
-  const skippedSteps = document.requiresTraining
-    ? []
-    : (["Pending Training"] as const);
-  const terminalProgressStep = useMemo(
-    () =>
-      resolveTerminalProgressStep(
-        localStatus ?? document.status,
-        auditTrail as unknown as any[],
-      ),
-    [auditTrail, document.status, localStatus],
-  );
 
   const handleShare = () => {
     const shareUrl = `${window.location.origin}${ROUTES.DOCUMENTS.DETAIL(documentId)}`;
@@ -1551,7 +1535,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
 
   const detailFormData = {
     documentName: document.documentName,
-    type: document.type as DocumentType,
+    type: document.type,
     author: document.author,
     coAuthors,
     coAuthorItems,
@@ -1814,12 +1798,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       </div>
 
       {/* Status Stepper */}
-      <WorkflowStepper
-        steps={statusSteps}
-        currentStepIndex={currentStepIndex}
-        skippedSteps={skippedSteps}
-        terminalProgressStep={terminalProgressStep}
-      />
+      <WorkflowProgressStepper workflow={document.workflow} />
 
       {/* Tab Navigation */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -1858,7 +1837,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
                   : []
               }
               coAuthorOptions={(document.coAuthors || []).map((coAuthor) => ({
-                label: coAuthor.fullName || coAuthor.username || coAuthor.id,
+                label: coAuthor.fullName || coAuthor.username || knownUserNamesRef.current.get(coAuthor.id) || "",
                 value: coAuthor.id,
               }))}
               onSearchWorkflowUsers={searchWorkflowUsers}
@@ -1943,8 +1922,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
           )}
         </div>
       </div>
-      {/* Footer Actions */}
-      <div className="flex items-center gap-2 md:gap-3">
+      {/* Footer Actions: wraps onto a second line when the user holds many actions (e.g. upgrade mode) */}
+      <div className="flex flex-wrap items-center gap-2 md:gap-3">
         <Button
           onClick={handleBack}
           size="sm"

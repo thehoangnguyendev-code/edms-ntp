@@ -3,7 +3,7 @@ import { Popover } from "@/components/ui/popover/Popover";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
-import { formatDocumentTypeSelectLabel } from "@/features/documents/shared/documentTypeDisplay";
+import { formatDocumentTypeLookupLabel } from "@/features/documents/shared/documentTypeDisplay";
 import { formatDate } from "@/utils/format";
 
 export interface GeneralInformationDocumentDetail {
@@ -27,6 +27,8 @@ export interface GeneralInformationDocumentDetail {
   description: string;
   titleLocalLanguage?: string;
   type?: any;
+  /** Short code of the Document Type as the server holds it; the screen only displays it. */
+  typeShortCode?: string | null;
   subType?: string;
   /** Set when the revision is published (Effective); empty before that. */
   effectiveDate?: string | null;
@@ -285,7 +287,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
           </label>
           <input
             type="text"
-            value={document.type ? formatDocumentTypeSelectLabel(document.type) : "-"}
+            value={document.type ? formatDocumentTypeLookupLabel(document.typeShortCode, String(document.type)) : "-"}
             readOnly
             className={readonlyInputClassName}
           />

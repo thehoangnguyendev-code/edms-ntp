@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
-import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
+import { WorkflowProgressStepper } from "@/components/ui/workflow-stepper/WorkflowProgressStepper";
+import type { WorkflowProgress } from "@/types/document";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import type { BreadcrumbItem } from "@/components/ui/breadcrumb/Breadcrumb";
 
@@ -10,11 +11,8 @@ interface Props {
   title: string;
   breadcrumbItems: BreadcrumbItem[];
   onBack: () => void;
-  /** Status steps as in the Document Details stepper. */
-  steps: string[];
-  currentStepIndex: number;
-  terminalProgressStep?: string;
-  skippedSteps?: string[];
+  /** The lifecycle stepper as the server worked it out (steps, current step, skipped steps, where the record ended). The screen only draws it. */
+  workflow?: WorkflowProgress | null;
   tabs: TabItem[];
   activeTab: string;
   onTab: (id: string) => void;
@@ -31,7 +29,7 @@ interface Props {
 }
 
 /** The frame of every Training detail screen; it repeats the frame of Document Details (stepper, tab card, footer row). */
-export function TrainingDetailLayout({ title, breadcrumbItems, onBack, steps, currentStepIndex, terminalProgressStep, skippedSteps, tabs, activeTab, onTab, tabLayoutId, footer, headerExtra, repeatFooterInHeader = false, afterFooter, children }: Props) {
+export function TrainingDetailLayout({ title, breadcrumbItems, onBack, workflow, tabs, activeTab, onTab, tabLayoutId, footer, headerExtra, repeatFooterInHeader = false, afterFooter, children }: Props) {
   return (
     <div className="w-full space-y-4 md:space-y-6">
       <div className="flex flex-col gap-4">
@@ -47,7 +45,7 @@ export function TrainingDetailLayout({ title, breadcrumbItems, onBack, steps, cu
           }
         />
       </div>
-      <WorkflowStepper steps={steps} currentStepIndex={currentStepIndex} terminalProgressStep={terminalProgressStep} skippedSteps={skippedSteps} />
+      <WorkflowProgressStepper workflow={workflow} />
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <TabNav tabs={tabs} activeTab={activeTab} onChange={onTab} layoutId={tabLayoutId} />
         <div className="p-4 md:p-5">{children}</div>

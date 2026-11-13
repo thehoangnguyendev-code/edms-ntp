@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, pickerDateToIso, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { usePersistedState } from "@/hooks/usePersistedState";
@@ -19,8 +18,8 @@ interface Props {
 }
 
 /**
- * The signature meanings, one row per system-defined signing action, as a table that is searched, filtered by module and by the date of the last update, sorted and paged by the server.
- * The code is fixed by the application; the display name is the only field that can be changed, and what is typed stays (also on other pages) until the settings are saved with a signature.
+ * The signing actions, one row per system-defined action, as a table that is searched, filtered by module and by the date of the last update, sorted and paged by the server.
+ * The action and its code are fixed by the application; the meaning (display name) is the only field that can be changed, and what is typed stays (also on other pages) until the settings are saved with a signature.
  */
 export const SignatureMeaningsTable: React.FC<Props> = ({ meanings, canEdit, onRename, savedVersion }) => {
   const [module, setModule] = usePersistedState("esign.meanings.module", "");
@@ -36,7 +35,7 @@ export const SignatureMeaningsTable: React.FC<Props> = ({ meanings, canEdit, onR
         setError("");
         return page;
       }).catch((e) => {
-        setError("The signature meanings could not be loaded.");
+        setError("The signing actions could not be loaded.");
         throw e;
       }),
     [],
@@ -60,15 +59,16 @@ export const SignatureMeaningsTable: React.FC<Props> = ({ meanings, canEdit, onR
 
   const columns: DataTableColumn<ElectronicSignatureMeaningRow>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "code", header: "Code", sort: sorted("code"), cell: (r) => <span className="font-mono text-xs text-slate-800">{r.code}</span> },
+    { id: "actionName", header: "Action", sort: sorted("actionName"), cell: (r) => <span className="font-medium text-slate-900">{r.actionName || r.displayName}</span> },
+    { id: "code", header: "Code", sort: sorted("code"), cell: (r) => <span className="font-mono text-xs text-slate-600">{r.code}</span> },
     { id: "module", header: "Module", sort: sorted("module"), cell: (r) => r.module },
     {
       id: "displayName",
-      header: "Display Name",
+      header: "Meaning",
       sort: sorted("displayName"),
       cell: (r) => (
         <input
-          aria-label={`Display name of ${r.code}`}
+          aria-label={`Meaning of ${r.code}`}
           className="h-9 w-full min-w-[220px] rounded-lg border border-slate-200 px-2.5 text-xs focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-slate-50 sm:text-sm"
           value={typed.get(r.code) ?? r.displayName}
           disabled={!canEdit}
@@ -88,11 +88,11 @@ export const SignatureMeaningsTable: React.FC<Props> = ({ meanings, canEdit, onR
   return (
     <div className="space-y-3">
       <p className="text-xs text-slate-600 sm:text-sm">
-        One row per system-defined signing action. <strong>Code</strong> is fixed by the application and cannot be changed; <strong>Display Name</strong> is the only editable field and controls the label shown to the signer in the signing modal. Changes are saved with <strong>Save Changes</strong>.
+        Every action that needs an electronic signature. The <strong>Action</strong> and its <strong>Code</strong> are fixed by the application; <strong>Meaning</strong> is the only editable field and is the label shown to the signer and written on the signed record. Changes are saved with <strong>Save Changes</strong>.
       </p>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar
-        searchPlaceholder="Search by code or display name…"
+        searchPlaceholder="Search by action, code or meaning…"
         search={table.searchQuery}
         onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
         filters={filters}
@@ -107,10 +107,10 @@ export const SignatureMeaningsTable: React.FC<Props> = ({ meanings, canEdit, onR
           rows={table.items}
           getRowKey={(r) => r.code}
           isLoading={table.isLoading}
-          loadingContent={<SectionLoading text="Loading…" />}
+
           columns={columns}
           columnLayout={layout}
-          emptyState={<TableEmptyState title="No Signature Meanings" description="No signature meaning matches the search or the filters." />}
+          emptyState={<TableEmptyState title="No Signing Actions" description="No signing action matches the search or the filters." />}
           pagination={table.totalItems > 0 ? (
             <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} />
           ) : undefined}

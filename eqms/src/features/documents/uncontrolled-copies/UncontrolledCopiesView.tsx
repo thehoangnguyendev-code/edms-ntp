@@ -394,15 +394,36 @@ export const UncontrolledCopiesView: React.FC<{
       sort: sort("document"),
       cellClassName: "font-medium text-slate-900",
       cell: (copy) =>
-        formatDocumentDisplayLabel(copy.documentNumber, copy.documentTitle),
+        copy.documentId ? (
+          <button
+            type="button"
+            onClick={() => navigateTo(ROUTES.DOCUMENTS.DETAIL(copy.documentId!), { state: { from: `${location.pathname}${location.search}` } })}
+            className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left"
+          >
+            {formatDocumentDisplayLabel(copy.documentNumber, copy.documentTitle)}
+          </button>
+        ) : (
+          formatDocumentDisplayLabel(copy.documentNumber, copy.documentTitle)
+        ),
     },
     {
       id: "revision",
       header: "Document Revision",
       cellClassName: "font-medium text-slate-900",
-      cell: (copy) =>
-        [copy.documentTitle, copy.revisionNumber].filter(Boolean).join("_") ||
-        "-",
+      cell: (copy) => {
+        const label = [copy.documentTitle, copy.revisionNumber].filter(Boolean).join("_") || "-";
+        return copy.revisionId ? (
+          <button
+            type="button"
+            onClick={() => navigateTo(ROUTES.DOCUMENTS.REVISIONS.DETAIL(copy.revisionId!), { state: { from: `${location.pathname}${location.search}` } })}
+            className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left"
+          >
+            {label}
+          </button>
+        ) : (
+          label
+        );
+      },
     },
     {
       id: "recipient",

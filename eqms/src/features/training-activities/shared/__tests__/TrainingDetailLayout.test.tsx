@@ -12,8 +12,7 @@ const renderLayout = (repeat: boolean) =>
           title="Details"
           breadcrumbItems={[]}
           onBack={vi.fn()}
-          steps={["Draft", "Approved"]}
-          currentStepIndex={0}
+          workflow={{ steps: [{ code: "DRAFT", label: "Draft", terminal: false }, { code: "APPROVED", label: "Approved", terminal: false }], currentStepIndex: 0, skippedSteps: [], terminalProgressStep: "" }}
           tabs={[{ id: "overview", label: "Overview" }]}
           activeTab="overview"
           onTab={vi.fn()}

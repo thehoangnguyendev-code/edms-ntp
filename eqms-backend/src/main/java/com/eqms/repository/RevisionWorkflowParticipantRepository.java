@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.UUID;
 
 public interface RevisionWorkflowParticipantRepository extends JpaRepository<RevisionWorkflowParticipant, UUID> {
+
+    /** Navigation: the user is a participant of at least one Revision. */
+    boolean existsByUser_Id(UUID userId);
     List<RevisionWorkflowParticipant> findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(UUID revisionId, String participantType);
     List<RevisionWorkflowParticipant> findAllByRevision_IdOrderByParticipantTypeAscSequenceOrderAsc(UUID revisionId);
     List<RevisionWorkflowParticipant> findAllByUser_IdAndActionStatusAndRevision_Status_CodeIn(UUID userId, String actionStatus, java.util.Collection<String> revisionStatusCodes);

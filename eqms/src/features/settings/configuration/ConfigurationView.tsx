@@ -290,10 +290,6 @@ export const ConfigurationView: React.FC = () => {
           <NotificationTab
             config={config.notifications}
             onChange={(val) => handleConfigChange('notifications', val)}
-            toastPosition={config.general.appearance?.toastPosition ?? 'top-right'}
-            onToastPositionChange={(toastPosition) => handleConfigChange('general', { ...config.general, appearance: { ...config.general.appearance, toastPosition } })}
-            toastDurationSeconds={config.general.appearance?.toastDurationSeconds}
-            onToastDurationChange={(toastDurationSeconds) => handleConfigChange('general', { ...config.general, appearance: { ...config.general.appearance, toastDurationSeconds } })}
           />
         );;
       case 'integration':
@@ -399,8 +395,8 @@ export const ConfigurationView: React.FC = () => {
             </p>
           </div>
         }
-        primaryActionLabel="Discard changes"
-        secondaryActionLabel="Keep editing"
+        primaryActionLabel="Discard Changes"
+        secondaryActionLabel="Keep Editing"
       />
 
       {/* Section tabs + content */}

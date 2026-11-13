@@ -13,7 +13,7 @@ export const RevisionWorkspaceReviewersTab: React.FC<RevisionWorkspaceReviewersT
   }
   const items: ParticipantSignatureRecord[] = reviewers.map((reviewer, index) => ({
     label: `Reviewer ${index + 1}`,
-    name: reviewer.fullName || reviewer.username || reviewer.id || "",
+    name: reviewer.fullName || reviewer.username || "",
     signedOn: reviewer.signedOn || reviewer.actedAt || "",
   }));
 

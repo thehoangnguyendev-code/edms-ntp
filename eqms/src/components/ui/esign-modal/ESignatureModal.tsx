@@ -6,10 +6,8 @@ import { IconArrowBigUpFilled } from "@tabler/icons-react";
 import { Button } from '../button/Button';
 import { Loading } from '../loading/Loading';
 import { cn } from "@/components/ui/utils";
-import { useAuth } from "@/contexts/AuthContext";
 import { authApi } from "@/services/api/auth";
 import { electronicSignatureSettingsApi, type ElectronicSignatureMeaning } from "@/services/api/electronicSignatureSettings";
-import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 export interface ESignatureModalProps {
   isOpen: boolean;
@@ -71,25 +69,16 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
   onClose,
   onConfirm,
   actionTitle: propActionTitle,
-  changes: propChanges,
-  targetDetails,
-  documentDetails: legacyDocumentDetails,
   transactionType,
   meaningDisplayName,
   meaningCode,
   deferConfirm = false,
 }) => {
-  const { user } = useAuth();
-  const currentUsername = user?.username || "";
-  const currentFullName = user?.fullName || "";
-  const currentEmployeeCode = user?.employeeCode || "";
   const modalId = useId();
   const titleId = `${modalId}-title`;
 
   const preset = transactionType ? TRANSACTION_PRESETS[transactionType] : null;
   const actionTitle = propActionTitle || preset?.actionTitle || "Electronic Signature";
-  const changes = propChanges || preset?.changes || [];
-  const documentDetails = targetDetails ?? legacyDocumentDetails;
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -241,9 +230,6 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
     setIsCapsLockOn(event.getModifierState?.('CapsLock') ?? false);
   };
 
-  const totalItems = changes.length + 1;
-  const itemLabel = totalItems === 1 ? '1 item' : `${totalItems} items`;
-
   // Keep modal visible while submitting even if parent sets isOpen=false
   const shouldShow = isOpen || isSubmitting;
 
@@ -309,7 +295,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                   <h3 id={titleId} className="text-sm md:text-base font-semibold text-slate-900 leading-tight truncate">
                     Electronic Signature
                   </h3>
-                  <p className="text-2xs text-slate-500 font-medium">Confirm your identity to sign this action.</p>
+                  <p className="text-2xs text-slate-500 font-medium truncate">{actionTitle}</p>
                 </div>
               </div>
               <button
@@ -326,91 +312,13 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
             <form onSubmit={handleSubmit} noValidate className="flex flex-col flex-1 overflow-hidden">
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
 
-                {/* Signing context — e-signatures are system-wide, not document-only. */}
-                {documentDetails && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1.5">
-                    <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">Signing Context</p>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-bold text-slate-900 leading-tight line-clamp-2 break-words">{documentDetails.title || "—"}</p>
-                      <span className="shrink-0 text-2xs font-semibold px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded uppercase">{documentDetails.code || "N/A"}</span>
-                    </div>
-                    {documentDetails.revision && (
-                      <span className="inline-block text-2xs font-medium text-slate-500">Reference: {documentDetails.revision}</span>
-                    )}
+                {/* The signature carries its meaning; what changed is recorded in the Audit Trail. */}
+                {effectiveMeaningDisplayName && (
+                  <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 py-2.5">
+                    <span className="text-2xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">Meaning</span>
+                    <span className="text-sm font-semibold text-slate-900 break-words">{effectiveMeaningDisplayName}</span>
                   </div>
                 )}
-
-                {/* Signing As + Meaning -- merged into one card so the modal stays short and
-                    easy to focus on for the person signing. */}
-                <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-emerald-700">Signing as</span>
-                  </div>
-                  <div className="grid gap-2 text-xs text-slate-700 sm:grid-cols-2">
-                    {[
-                      { label: "Full Name", value: currentFullName },
-                      { label: "Employee ID", value: currentEmployeeCode },
-                      { label: "Username", value: currentUsername },
-                    ].map(({ label, value }) => (
-                      <div key={label}>
-                        <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-                        <p className="font-medium text-slate-900 break-words">{value || "N/A"}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {effectiveMeaningDisplayName && (
-                    <div className="flex items-center gap-2 border-t border-emerald-100 pt-2">
-                      <span className="text-2xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">Meaning</span>
-                      <span className="text-xs font-semibold text-slate-900">{effectiveMeaningDisplayName}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Activity Summary */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs sm:text-sm font-medium text-slate-700">Activity Summary</span>
-                    {/* <span className="text-2xs font-medium text-slate-400 shrink-0">{itemLabel} to sign</span> */}
-                  </div>
-                  <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-                    <TableMarkup.Root className="w-full text-left border-collapse table-fixed">
-                      <TableMarkup.Head>
-                        <TableMarkup.Row className="bg-slate-50 border-b border-slate-200">
-                          <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell4}>Property</TableMarkup.HeaderCell>
-                          <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell4}>Old Value</TableMarkup.HeaderCell>
-                          <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell4}>New Value</TableMarkup.HeaderCell>
-                        </TableMarkup.Row>
-                      </TableMarkup.Head>
-                      <TableMarkup.Body>
-                        <TableMarkup.Row className="border-b border-emerald-100 bg-emerald-50/40">
-                          <TableMarkup.Cell className="px-3 py-3 text-xs font-bold text-slate-900">
-                            <span aria-hidden="true" className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 align-middle" />
-                            Signing Action
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="px-3 py-3 text-xs text-slate-400 italic font-medium">—</TableMarkup.Cell>
-                          <TableMarkup.Cell className="px-3 py-3 text-xs font-medium text-emerald-700 break-words">{actionTitle}</TableMarkup.Cell>
-                        </TableMarkup.Row>
-                        {changes.length > 0 ? (
-                          changes.map((change, idx) => (
-                            <TableMarkup.Row key={idx} className={cn("hover:bg-slate-50/50", idx !== changes.length - 1 ? "border-b border-slate-200" : "")}>
-                              <TableMarkup.Cell className="px-3 py-2.5 text-xs font-semibold text-slate-700 truncate max-w-0" title={change.action}>{change.action}</TableMarkup.Cell>
-                              <TableMarkup.Cell className="px-3 py-2.5 max-w-0">
-                                <span className="text-2xs text-slate-400 font-medium line-through decoration-slate-300 break-words">{change.oldValue || '—'}</span>
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className="px-3 py-2.5 max-w-0">
-                                <span className="text-xs font-medium text-emerald-700 break-words">{change.newValue}</span>
-                              </TableMarkup.Cell>
-                            </TableMarkup.Row>
-                          ))
-                        ) : (
-                          <TableMarkup.Row>
-                            <TableMarkup.Cell colSpan={3} className="px-3 py-3 text-2xs text-slate-400 text-center italic">No additional property changes in this transaction.</TableMarkup.Cell>
-                          </TableMarkup.Row>
-                        )}
-                      </TableMarkup.Body>
-                    </TableMarkup.Root>
-                  </div>
-                </div>
 
                 {/* Form Fields */}
                 <div className="space-y-3">

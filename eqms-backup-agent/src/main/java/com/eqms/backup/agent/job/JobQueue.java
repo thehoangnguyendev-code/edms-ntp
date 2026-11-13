@@ -28,7 +28,7 @@ public class JobQueue {
 
     /** Takes the oldest queued job, or a job whose lease ran out because the agent died while running it. */
     public Optional<Job> claimNext(int leaseMinutes) {
-        return claimNext(leaseMinutes, List.of("BACKUP_DB", "VERIFY", "EXPORT"));
+        return claimNext(leaseMinutes, List.of("BACKUP_DB", "VERIFY", "EXPORT", "SCRUB"));
     }
 
     /** Takes the oldest queued job of the given types, so the API process and the restore worker never take each other's work. */
@@ -41,12 +41,22 @@ public class JobQueue {
         return claimed.stream().findFirst();
     }
 
+    /** Records how far a running job has got; it only moves forward. */
+    public void reportProgress(UUID id, int percent) {
+        jdbc.update("update backup_job set progress = greatest(progress, ?) where id = ? and status = 'RUNNING'", Math.min(Math.max(percent, 0), 100), id);
+    }
+
+    /** Records the checks finished so far, as a JSON list, so a screen can show them while the job is still running. */
+    public void reportSteps(UUID id, String stepsJson) {
+        jdbc.update("update backup_job set steps_json = ?::jsonb where id = ? and status = 'RUNNING'", stepsJson, id);
+    }
+
     public void finish(UUID id, boolean ok, String resultJson) {
-        jdbc.update("update backup_job set status = ?, finished_at = now(), result_json = ?::jsonb where id = ?", ok ? "DONE" : "FAILED", resultJson, id);
+        jdbc.update("update backup_job set status = ?, progress = 100, finished_at = now(), result_json = ?::jsonb where id = ?", ok ? "DONE" : "FAILED", resultJson, id);
     }
 
     public Optional<Map<String, Object>> find(UUID id) {
-        return jdbc.queryForList("select id, job_type, status, attempts, requested_by, created_at, finished_at, result_json::text as result_json from backup_job where id = ?", id)
+        return jdbc.queryForList("select id, job_type, status, progress, attempts, requested_by, created_at, finished_at, result_json::text as result_json, steps_json::text as steps_json from backup_job where id = ?", id)
                 .stream().findFirst();
     }
 

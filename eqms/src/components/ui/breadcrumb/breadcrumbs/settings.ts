@@ -245,24 +245,36 @@ export const configuration = (
 };
 
 
-export const emailTemplates = (navigate?: NavigateFn): BreadcrumbItem[] => [
-  ...appSettingsBase(navigate),
-  { label: "Email Templates", isActive: true },
+export const notificationsAdmin = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...systemAdminBase(navigate),
+  { label: "Notifications Administration", isActive: true },
 ];
 
-export const emailTemplateCreate = (navigate?: NavigateFn): BreadcrumbItem[] => [
-  ...appSettingsBase(navigate),
-  { label: "Email Templates", onClick: () => navigate?.(ROUTES.SETTINGS.EMAIL_TEMPLATES) },
-  { label: "Create Template", isActive: true },
+export const notificationEvent = (navigate?: NavigateFn, readOnly = false, channel: "IN_APP" | "EMAIL" = "IN_APP"): BreadcrumbItem[] => [
+  ...systemAdminBase(navigate),
+  { label: "Notifications Administration", onClick: () => navigate?.(`${ROUTES.SETTINGS.NOTIFICATIONS}?tab=${channel === "EMAIL" ? "email" : "in-app"}`) },
+  {
+    label: channel === "EMAIL" ? (readOnly ? "Email Notification Details" : "Edit Email Notification") : (readOnly ? "In-App Notification Details" : "Edit In-App Notification"),
+    isActive: true,
+  },
 ];
 
-export const emailTemplateEdit = (
-  navigate?: NavigateFn,
-  templateName?: string
-): BreadcrumbItem[] => [
-  ...appSettingsBase(navigate),
-  { label: "Email Templates", onClick: () => navigate?.(ROUTES.SETTINGS.EMAIL_TEMPLATES) },
-  { label: templateName || "Edit Template", isActive: true },
+export const notificationEmail = (navigate?: NavigateFn, readOnly = false): BreadcrumbItem[] => [
+  ...systemAdminBase(navigate),
+  { label: "Notifications Administration", onClick: () => navigate?.(`${ROUTES.SETTINGS.NOTIFICATIONS}?tab=email`) },
+  { label: readOnly ? "Email Message Details" : "Edit Email Message", isActive: true },
+];
+
+export const emailDesign = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...systemAdminBase(navigate),
+  { label: "Notifications Administration", onClick: () => navigate?.(ROUTES.SETTINGS.NOTIFICATIONS) },
+  { label: "Email Design", isActive: true },
+];
+
+export const inAppDesign = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...systemAdminBase(navigate),
+  { label: "Notifications Administration", onClick: () => navigate?.(`${ROUTES.SETTINGS.NOTIFICATIONS}?tab=in-app`) },
+  { label: "In-App Notification Design", isActive: true },
 ];
 
 export const systemAnnouncements = (navigate?: NavigateFn): BreadcrumbItem[] => [
@@ -464,27 +476,6 @@ export const trainingNotifications = (navigate?: NavigateFn): BreadcrumbItem[] =
 export const electronicSignatureSettings = (navigate?: NavigateFn): BreadcrumbItem[] => [
   ...systemAdminBase(navigate),
   { label: "E-Sign Config", isActive: true },
-];
-
-export const notificationPolicy = (navigate?: NavigateFn): BreadcrumbItem[] => [
-  ...appSettingsBase(navigate),
-  { label: "Notification In-app", isActive: true },
-];
-
-export const notificationPolicyDetail = (navigate?: NavigateFn, eventName?: string): BreadcrumbItem[] => [
-  ...appSettingsBase(navigate),
-  { label: "Notification In-app", onClick: () => navigate?.(ROUTES.SETTINGS.NOTIFICATION_POLICY) },
-  { label: eventName || "Event Detail", isActive: true },
-];
-
-export const notificationPolicyEdit = (navigate?: NavigateFn, eventName?: string, eventCode?: string): BreadcrumbItem[] => [
-  ...appSettingsBase(navigate),
-  { label: "Notification In-app", onClick: () => navigate?.(ROUTES.SETTINGS.NOTIFICATION_POLICY) },
-  {
-    label: eventName || "Event Detail",
-    onClick: eventCode ? () => navigate?.(`${ROUTES.SETTINGS.NOTIFICATION_POLICY}/${eventCode}`) : undefined,
-  },
-  { label: "Edit Notification In-app", isActive: true },
 ];
 
 export const permissionSets = (navigate?: NavigateFn): BreadcrumbItem[] => [

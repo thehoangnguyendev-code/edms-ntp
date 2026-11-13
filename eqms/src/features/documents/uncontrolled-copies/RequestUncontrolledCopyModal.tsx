@@ -36,7 +36,7 @@ const searchSystemUsers = async (query: string, keep: SelectOption | null): Prom
   const users = await metadataApi.getUsersLookup({ search: query.trim() || undefined });
   const options: SelectOption[] = users.map((u) => ({
     value: u.id,
-    label: [u.fullName || u.username || u.id, u.email || u.department].filter(Boolean).join(" · "),
+    label: [u.fullName || u.username || "—", u.email || u.department].filter(Boolean).join(" · "),
   }));
   // Keep the current choice resolvable so its label still shows after a different search.
   return keep && !options.some((o) => o.value === keep.value) ? [keep, ...options] : options;
@@ -66,7 +66,7 @@ const SystemUserPicker: React.FC<{
       minSearchLength={0}
       onChange={(next) => {
         const id = next == null ? "" : String(next);
-        onChange(id ? { value: id, label: labels.current.get(id) ?? id } : null);
+        onChange(id ? { value: id, label: labels.current.get(id) ?? "" } : null);
       }}
     />
   );

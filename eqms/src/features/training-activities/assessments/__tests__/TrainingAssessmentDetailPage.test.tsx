@@ -4,7 +4,19 @@ import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({ get: vi.fn(), create: vi.fn(), update: vi.fn(), submit: vi.fn(), returnToDraft: vi.fn(), approve: vi.fn(), upgradeRevision: vi.fn(), remove: vi.fn(), list: vi.fn(), approved: vi.fn(), preview: vi.fn(), revisions: vi.fn() }));
-vi.mock("@/services/api/trainingActivities", async (importOriginal) => ({ ...(await importOriginal<object>()), trainingAssessmentsApi: api }));
+// The stepper of an assessment that is being created comes from the server (GET /training/workflows/new/ASSESSMENT); this is what it answers.
+const NEW_ASSESSMENT_WORKFLOW = {
+  steps: [
+    { code: "DRAFT", label: "Draft", terminal: false },
+    { code: "PENDING_APPROVAL", label: "Pending Approval", terminal: false },
+    { code: "EFFECTIVE", label: "Effective", terminal: false },
+    { code: "OBSOLETED", label: "Obsoleted", terminal: true },
+  ],
+  currentStepIndex: 0,
+  skippedSteps: [],
+  terminalProgressStep: "",
+};
+vi.mock("@/services/api/trainingActivities", async (importOriginal) => ({ ...(await importOriginal<object>()), trainingAssessmentsApi: api, trainingWorkflowApi: { newRecord: vi.fn(async () => NEW_ASSESSMENT_WORKFLOW) } }));
 vi.mock("@/features/realtime/useEntityChanged", () => ({ useEntityChanged: () => undefined }));
 vi.mock("@/components/ui/toast/Toast", () => ({ useToast: () => ({ showToast: vi.fn() }) }));
 vi.mock("@/features/documents/shared/components/AuditTrailTab", () => ({ AuditTrailTab: () => <div>audit</div> }));

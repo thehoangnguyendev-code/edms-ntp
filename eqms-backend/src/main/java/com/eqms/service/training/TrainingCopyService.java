@@ -8,7 +8,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -72,24 +74,46 @@ public class TrainingCopyService {
         return out;
     }
 
-    /** The copies sent to the department of the person, newest first, with the ones still to be received. A person sees only the kinds of copy the person may read. */
+    /**
+     * The copies sent to the department of the person, with the ones still to be received first, paged and sorted by the server. A person sees only the kinds
+     * of copy the person may read: the kinds are decided before the query, so the count and the pages are of what the person may see.
+     */
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> mine(UserAccount actor, String sortBy, String sortDirection) {
+    public Map<String, Object> mine(UserAccount actor, String sortBy, String sortDirection, int page, int limit) {
         access.require(actor, "training.requirement.view", "training.job_assignment.view");
+        int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
         UUID own = access.departmentOf(actor);
-        if (own == null) return List.of();
-        List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList("""
-            select c.id, c.object_type, c.object_id, c.sent_at, c.note, c.received_at, su.full_name as sent_by_name, ru.full_name as received_by_name,
-                   case c.object_type when 'TRAINING_REQUIREMENT' then rq.request_no else 'JA #' || ja.issue_no end as object_name, d.name as from_department
+        List<String> kinds = new ArrayList<>();
+        if (access.has(actor, viewPermission(REQUIREMENT))) kinds.add(REQUIREMENT);
+        if (access.has(actor, viewPermission(JOB))) kinds.add(JOB);
+        Map<String, Object> result = new LinkedHashMap<>();
+        if (own == null || kinds.isEmpty()) {
+            result.put("data", List.of());
+            result.put("pagination", Map.of("page", 1, "limit", safeLimit, "total", 0, "totalPages", 1));
+            return result;
+        }
+        String from = """
               from training_copy_distributions c join app_users su on su.id = c.sent_by left join app_users ru on ru.id = c.received_by
               left join training_requirements rq on c.object_type = 'TRAINING_REQUIREMENT' and rq.id = c.object_id
               left join training_job_assignments ja on c.object_type = 'TRAINING_JOB_ASSIGNMENT' and ja.id = c.object_id
               left join departments d on d.id = coalesce(rq.department_id, ja.department_id)
-             where c.recipient_department = ?""" + TrainingRows.orderBy(sortBy, sortDirection, Map.of("type", "c.object_type", "reference", "object_name", "fromDepartment", "d.name", "sent", "c.sent_at", "note", "c.note", "state", "c.received_at"),
-                "c.received_at is not null, c.sent_at desc") + " limit 200", own));
-        rows.removeIf(r -> !access.has(actor, viewPermission(String.valueOf(r.get("objectType")))));
+             where c.recipient_department = ? and c.object_type in (""" + String.join(",", kinds.stream().map(k -> "?").toList()) + ")";
+        List<Object> args = new ArrayList<>();
+        args.add(own);
+        args.addAll(kinds);
+        Long total = jdbc.queryForObject("select count(*)" + from, Long.class, args.toArray());
+        long count = total == null ? 0 : total;
+        args.add(safeLimit);
+        args.add((long) (safePage - 1) * safeLimit);
+        List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList("""
+            select c.id, c.object_type, c.object_id, c.sent_at, c.note, c.received_at, su.full_name as sent_by_name, ru.full_name as received_by_name,
+                   case c.object_type when 'TRAINING_REQUIREMENT' then rq.request_no else 'JA #' || ja.issue_no end as object_name, d.name as from_department
+            """ + from + TrainingRows.orderBy(sortBy, sortDirection, Map.of("type", "c.object_type", "reference", "object_name", "fromDepartment", "d.name", "sent", "c.sent_at", "note", "c.note", "state", "c.received_at"),
+                "c.received_at is not null, c.sent_at desc") + " limit ? offset ?", args.toArray()));
         for (Map<String, Object> row : rows) row.put("canReceive", row.get("receivedAt") == null);
-        return rows;
+        result.put("data", rows);
+        result.put("pagination", Map.of("page", safePage, "limit", safeLimit, "total", count, "totalPages", Math.max(1, (count + safeLimit - 1) / safeLimit)));
+        return result;
     }
 
     @Transactional

@@ -129,7 +129,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
                 type="text"
                 value={onlyOfficeConfig.documentServerUrl || ''}
                 onChange={(e) => handleFieldChange('documentServerUrl', e.target.value)}
-                className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                 placeholder="http://localhost:8082"
               />
               {renderFieldError('documentServerUrl')}
@@ -146,7 +146,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
                   value={isStoredJwtSecretPreview ? 'Stored secret configured' : onlyOfficeConfig.jwtSecret || ''}
                   onChange={(e) => handleFieldChange('jwtSecret', e.target.value)}
                   readOnly={isStoredJwtSecretPreview}
-                  className={isStoredJwtSecretPreview ? `${CONTROL_STATE_CLASSES.readonlyField} pr-10` : "w-full h-9 px-3.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"}
+                  className={isStoredJwtSecretPreview ? `${CONTROL_STATE_CLASSES.readonlyField} pr-10` : "w-full h-9 px-3 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"}
                   placeholder={isReplacingJwtSecret ? 'Enter a replacement secret' : 'Must match the onlyoffice-documentserver JWT_SECRET env var'}
                 />
                 <button

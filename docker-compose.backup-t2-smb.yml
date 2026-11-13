@@ -1,0 +1,34 @@
+# T2 on a NAS shared by SMB (CIFS), for a Docker host on Windows (Docker Desktop) or Linux. Use with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.backup-t2-smb.yml up -d
+#
+# Docker mounts the share itself, inside its Linux machine, so no drive letter or Windows login of the person at the PC is involved
+# (a mapped drive such as Z: is not visible to a container). Set these in the environment or in .env, never in this file:
+#   BACKUP_T2_NAS_HOST      address of the NAS, preferably a fixed IP, for example 192.168.1.50
+#   BACKUP_T2_NAS_SHARE     name of the share, for example eqms-backup
+#   BACKUP_T2_NAS_USER      a NAS account that may read and write that share and nothing else
+#   BACKUP_T2_NAS_PASSWORD  its password
+#   BACKUP_T2_NAS_VERS      SMB version, default 3.0 (use 2.1 only for an old NAS; never 1.0)
+#
+# The share must be a place only for backups, and the account must not be the one used for anything else. Backups are already
+# encrypted and signed before they reach it, and the decryption key must not be kept on it.
+#
+# NOT YET TRIED AGAINST A REAL NAS (the DEV machine has none). First use: run this, then press Test on T2 in Storage & Encryption.
+# The test writes a file, reads it back byte for byte and removes it. If it fails, the message names the step.
+services:
+  backup-agent:
+    volumes:
+      - eqms_backup_t2_nas:/backup/t2
+    environment:
+      AGENT_TARGETS_EXTRA_T2_KIND: FOLDER
+      AGENT_TARGETS_EXTRA_T2_PATH: /backup/t2
+      AGENT_TARGETS_EXTRA_T2_IMMUTABLE: "false"
+
+volumes:
+  eqms_backup_t2_nas:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: "//${BACKUP_T2_NAS_HOST:?BACKUP_T2_NAS_HOST is required}/${BACKUP_T2_NAS_SHARE:?BACKUP_T2_NAS_SHARE is required}"
+      # uid/gid 10001 is the agent user inside its container; the mode keeps the files private to it.
+      # soft: when the NAS stops answering, calls fail after a while instead of hanging for ever (the agent also gives up after 60 s).
+      o: "addr=${BACKUP_T2_NAS_HOST},username=${BACKUP_T2_NAS_USER:?BACKUP_T2_NAS_USER is required},password=${BACKUP_T2_NAS_PASSWORD:?BACKUP_T2_NAS_PASSWORD is required},vers=${BACKUP_T2_NAS_VERS:-3.0},uid=10001,gid=10001,file_mode=0600,dir_mode=0700,soft,nounix,serverino,iocharset=utf8"

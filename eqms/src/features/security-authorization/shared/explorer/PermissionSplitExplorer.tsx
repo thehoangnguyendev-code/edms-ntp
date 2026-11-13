@@ -19,6 +19,8 @@ interface PermissionSplitExplorerProps {
   lockedNotes?: Map<string, string>;
   /** Retained for callers; selecting one permission is managed by the parent form. */
   selectionMode?: "single" | "multiple";
+  /** Read-only details: list only the permissions that are selected, without tick boxes or the "Selected" panel. */
+  selectedOnly?: boolean;
 }
 
 /**
@@ -36,6 +38,7 @@ export const PermissionSplitExplorer: React.FC<
   isLoading = false,
   lockedCodes,
   lockedNotes,
+  selectedOnly = false,
 }) => {
   const [search, setSearch] = useState("");
   const [activeModule, setActiveModule] = useState<string | null>(null);
@@ -77,14 +80,25 @@ export const PermissionSplitExplorer: React.FC<
     return [...seen.values()];
   }, [groups]);
 
+  // Details show only what is granted; the editor shows the whole catalog.
+  const shownGroups = useMemo(
+    () =>
+      selectedOnly
+        ? catalogGroups
+            .map((group) => ({ ...group, permissions: group.permissions.filter((permission) => selectedCodes.has(permission.id)) }))
+            .filter((group) => group.permissions.length > 0)
+        : catalogGroups,
+    [catalogGroups, selectedOnly, selectedCodes],
+  );
+
   const moduleMap = useMemo(() => {
     const map = new Map<string, PermissionGroup[]>();
-    for (const group of catalogGroups) {
+    for (const group of shownGroups) {
       const module = group.permissions[0]?.module ?? "Other";
       map.set(module, [...(map.get(module) ?? []), group]);
     }
     return map;
-  }, [catalogGroups]);
+  }, [shownGroups]);
 
   const visibleModules = useMemo(
     () =>
@@ -173,7 +187,7 @@ export const PermissionSplitExplorer: React.FC<
         </div>
       ) : visibleModules.length === 0 ? (
         <div className="flex-1 py-12 text-center text-slate-400">
-          <p className="text-sm">No permissions match the current filters.</p>
+          <p className="text-sm">{selectedOnly && !search.trim() ? "No permissions are granted." : "No permissions match the current filters."}</p>
           <button
             type="button"
             onClick={clearFilters}
@@ -221,7 +235,7 @@ export const PermissionSplitExplorer: React.FC<
                         isActive ? "text-emerald-600" : "text-slate-400",
                       )}
                     >
-                      {selectedCount}/{uniqueModulePermissions.length} selected
+                      {selectedOnly ? `${uniqueModulePermissions.length} granted` : `${selectedCount}/${uniqueModulePermissions.length} selected`}
                     </span>
                   </button>
                 );
@@ -237,6 +251,7 @@ export const PermissionSplitExplorer: React.FC<
                 selectedCodes={selectedCodes}
                 onToggle={onToggle}
                 readOnly={readOnly}
+                hideCheckbox={selectedOnly}
                 showSelectAll={false}
                 hideHeader
                 filteredPermissionIds={null}
@@ -246,6 +261,7 @@ export const PermissionSplitExplorer: React.FC<
             ))}
           </div>
 
+          {!selectedOnly && (
           <aside className="border-t border-slate-200 bg-slate-50/40 lg:w-72 lg:shrink-0 lg:border-l lg:border-t-0">
             <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-2.5 sm:px-4">
               <span className="text-sm font-semibold text-slate-700">Selected ({selectedPermissions.length})</span>
@@ -295,6 +311,7 @@ export const PermissionSplitExplorer: React.FC<
               )}
             </div>
           </aside>
+          )}
         </div>
       )}
     </div>

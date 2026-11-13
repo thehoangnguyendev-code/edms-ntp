@@ -43,8 +43,8 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
   // ─── Self-Service ───────────────────────────────────────────────────────────
   {
     code: "self_service.knowledge.view",
-    label: "View Knowledge",
-    description: "View the Knowledge portal under Self-Service (browse/search published documents, feedback, subscriptions).",
+    label: "View Knowledge Base",
+    description: "View the Knowledge Base portal under Self-Service (browse/search published documents, feedback, subscriptions).",
     module: "self_service",
     group: "self_service_access",
   },
@@ -75,7 +75,7 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
   {
     code: "documents.document.view_all",
     label: "View All Document Records",
-    description: "View every document and revision regardless of authorship or workflow participation, and regardless of Document Properties > Record visibility. This is the only permission that grants blanket document visibility. It is read-only.",
+    description: "See every Document and Revision, drafts included, regardless of authorship or workflow participation. Part of the view-everything bundle (with the two copy permissions). Read-only: acting still needs a name in the flow.",
     module: "documents",
     group: "document_control_access",
   },
@@ -376,7 +376,7 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
   {
     code: "documents.controlled_copy.view_all",
     label: "View All Controlled Copies",
-    description: "See every controlled copy and distribution batch regardless of recipient. Without it a user sees only the copies on which they are the named recipient (unless Record visibility is set to All).",
+    description: "See every Controlled Copy and distribution batch. Part of the view-everything bundle. Without it a person sees only the copies they received.",
     module: "documents",
     group: "controlled_copies",
   },
@@ -630,13 +630,6 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     group: "backup_admin",
   },
   {
-    code: "backup.admin.retention.view",
-    label: "View Retention & Legal Hold",
-    description: "View the Retention & Legal Hold section under Backup & Restore Administration.",
-    module: "backup",
-    group: "backup_admin",
-  },
-  {
     code: "backup.admin.storage.view",
     label: "View Storage & Encryption",
     description: "View the Storage & Encryption section under Backup & Restore Administration.",
@@ -644,16 +637,9 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     group: "backup_admin",
   },
   {
-    code: "backup.admin.verification.view",
-    label: "View Verification & Drills",
-    description: "View the Verification & Drills section under Backup & Restore Administration.",
-    module: "backup",
-    group: "backup_admin",
-  },
-  {
-    code: "backup.admin.restore_controls.view",
-    label: "View Restore Controls",
-    description: "View the Restore Controls section under Backup & Restore Administration.",
+    code: "backup.admin.manual_copy.manage",
+    label: "Record Manual Backup Copies",
+    description: "Record the copy of the backups that a person makes by hand and keeps outside the system.",
     module: "backup",
     group: "backup_admin",
   },

@@ -8,6 +8,8 @@ import {
   Settings2,
   FilePlus2,
   MoreVertical,
+  Pin,
+  PinOff,
 } from "lucide-react";
 import { IconFileSettings, IconFilter2, IconInfoCircle, IconPencilMinus } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button/Button";
@@ -15,7 +17,7 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { type SelectOption } from "@/components/ui/select/Select";
 import { ReportListToolbar } from "../shared/ReportListToolbar";
-import { humanize } from "../shared/reportLabels";
+import { humanize, reportRevisionLabel } from "../shared/reportLabels";
 import { Textarea } from "@/components/ui/form/ResponsiveForm";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
@@ -35,6 +37,8 @@ import {
 } from "@/services/api/reportTemplates";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
 import { displayDateTime } from "@/utils/format";
+import { useToast } from "@/components/ui/toast/Toast";
+import { reportsApi } from "@/services/api/reports";
 
 const LIFECYCLE_TEXT: Record<string, string> = { ACTIVE: "Active", INACTIVE: "Disabled", DRAFT: "Draft", PENDING_APPROVAL: "Pending Approval" };
 const defaults = { status: "", sourceCode: "", format: "", orientation: "" };
@@ -50,6 +54,9 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
     "reports.definition.manage",
     "settings.configuration.manage",
   ]);
+  const { showToast } = useToast();
+  /** The reports the person pinned to the Reports Overview (codes). A pin is a personal convenience and grants nothing. */
+  const [pinned, setPinned] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -75,22 +82,37 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
       openId ? result?.data?.find((item) => item.code === openId) : undefined,
     [openId, result?.data],
   );
-  // The actions of the row menu come from the server's decision for the template that was opened.
-  const [rowCaps, setRowCaps] = useState<ReportTemplateCapabilities>();
-  const openCode = openTemplate?.code;
+  // The actions of the row menu come from the server's decision, sent with the list: the menu opens complete, with no request after the click.
+  const rowCaps: ReportTemplateCapabilities | undefined = openTemplate?.capabilities;
+  const rowCan = (action: string) => rowCaps?.actions?.[action]?.allowed === true;
   useEffect(() => {
-    setRowCaps(undefined);
-    if (!openCode) return;
+    if (inAdministration) return;
     let alive = true;
-    reportTemplatesApi
-      .capabilities(openCode)
-      .then((value) => alive && setRowCaps(value))
-      .catch(() => alive && setRowCaps(undefined));
+    reportsApi
+      .listPins()
+      .then((list) => alive && setPinned(new Set(list.map((pin) => pin.code))))
+      .catch(() => alive && setPinned(new Set()));
     return () => {
       alive = false;
     };
-  }, [openCode]);
-  const rowCan = (action: string) => rowCaps?.actions?.[action]?.allowed === true;
+  }, [inAdministration]);
+  const togglePin = async (code: string) => {
+    const wasPinned = pinned.has(code);
+    try {
+      if (wasPinned) await reportsApi.unpinReport(code);
+      else await reportsApi.pinReport(code);
+      setPinned((current) => {
+        const next = new Set(current);
+        if (wasPinned) next.delete(code);
+        else next.add(code);
+        return next;
+      });
+      showToast({ type: "success", message: wasPinned ? "Unpinned from the Reports Overview." : "Pinned to the Reports Overview." });
+    } catch (e) {
+      const status = (e as { response?: { status?: number; data?: { error?: { message?: string } } } })?.response;
+      showToast({ type: "error", message: status?.data?.error?.message === "REPORT_PIN_LIMIT" ? "You can pin at most 20 reports." : "The pin could not be changed." });
+    }
+  };
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     () => new Set(["status", "sourceCode", "format", "orientation"]),
   );
@@ -247,7 +269,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
       id: "revision",
       header: "Revision",
       sort: sortable("revision"),
-      cell: (row) => (row.effectiveRevision != null ? `Rev ${row.effectiveRevision}` : "—"),
+      cell: (row) => (row.effectiveRevision != null ? reportRevisionLabel(row.effectiveRevision) : "—"),
     },
     // The revision being written is for people who maintain templates; someone who only runs reports sees the effective revision.
     ...(inAdministration
@@ -258,7 +280,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
           cell: (row) =>
             row.openRevision != null ? (
               <span className="whitespace-nowrap">
-                Rev {row.openRevision} · {row.openRevisionStatus === "PENDING_APPROVAL" ? "Pending Approval" : "Draft"}
+                {reportRevisionLabel(row.openRevision, row.openRevisionStatus ?? "DRAFT")} · {row.openRevisionStatus === "PENDING_APPROVAL" ? "Pending Approval" : "Draft"}
               </span>
             ) : (
               "—"
@@ -467,6 +489,17 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
                 }}
               >
                 Create Report
+              </DropdownMenuItem>
+            )}
+            {!inAdministration && rowCan("createReport") && (
+              <DropdownMenuItem
+                icon={pinned.has(openTemplate.code) ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                onClick={() => {
+                  void togglePin(openTemplate.code);
+                  close();
+                }}
+              >
+                {pinned.has(openTemplate.code) ? "Unpin from Overview" : "Pin to Overview"}
               </DropdownMenuItem>
             )}
             {/* Changing a template belongs to Report Definitions; an effective revision is changed by Upgrade, on its details page. */}

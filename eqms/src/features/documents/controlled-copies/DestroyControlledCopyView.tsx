@@ -573,7 +573,7 @@ export const DestroyControlledCopyView: React.FC = () => {
                 value={formData.destructionMethod}
                 onChange={(e) => handleInputChange("destructionMethod", e.target.value)}
                 placeholder="e.g., Paper shredding, Incineration, etc."
-                className={`w-full h-9 px-4 border rounded-lg text-sm focus:outline-none focus:ring-1 transition-colors ${errors.destructionMethod
+                className={`w-full h-9 px-3 border rounded-lg text-sm focus:outline-none focus:ring-1 transition-colors ${errors.destructionMethod
                   ? "border-red-300 focus:ring-red-500 focus:border-red-500"
                   : "border-slate-200 focus:ring-emerald-500 focus:border-emerald-500"
                   }`}

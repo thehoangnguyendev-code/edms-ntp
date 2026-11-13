@@ -51,12 +51,12 @@ import {
 import type {
   DocumentDetailResponse,
 } from "@/features/documents/document-list/types";
-import type { DocumentType, DocumentStatus } from "@/features/documents/types";
+import type { DocumentStatus } from "@/features/documents/types";
+import { stepLabels, useWorkflowSteps } from "@/features/documents/shared/useWorkflowSteps";
 import {
-  documentWorkflowStepIndex,
-  DOCUMENT_WORKFLOW_STEPS,
   mapRevisionSummaryFromApi,
-  normalizeDocumentStatusForStepper,
+  resolveStatusCode,
+  resolveStatusLabel,
 } from "@/features/documents/shared/statusMapping";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { newDocument } from "@/components/ui/breadcrumb/breadcrumbs.config";
@@ -260,7 +260,7 @@ const isRestorableNewDocumentDraft = (snapshot?: NewDocumentDraftSnapshot | null
 
 const defaultFormData = {
   documentName: "",
-  type: "" as DocumentType,
+  type: "",
   author: "",
   coAuthors: [] as (string | number)[],
   businessUnit: "",
@@ -284,8 +284,8 @@ const defaultTrainingConfig: TrainingConfig = {
 
 const toWorkflowUserOption = (user: { id: string; employeeCode?: string | null; fullName?: string | null; username?: string | null; position?: string | null; department?: string | null; email?: string | null; }) => ({
   id: user.id,
-  employeeCode: user.employeeCode || user.username || user.id,
-  fullName: user.fullName || user.username || user.id,
+  employeeCode: user.employeeCode || user.username || "",
+  fullName: user.fullName || user.username || "",
   username: user.username || "",
   position: user.position || "",
   department: user.department || "",
@@ -349,7 +349,7 @@ const readStoredUser = () => {
 };
 
 const mapDocumentStatusToLocal = (status?: string | null, statusInfo?: { id?: string; name?: string } | null): DocumentStatus =>
-  normalizeDocumentStatusForStepper(status, statusInfo);
+  resolveStatusLabel(status, statusInfo);
 
 const mapRelationDocument = (doc: {
   id: string;
@@ -555,6 +555,8 @@ export const NewDocumentView: React.FC = () => {
     initialData?.revisionFile || null,
   );
   const [documentStatus, setDocumentStatus] = useState<DocumentStatus>(initialData?.status || "Draft");
+  // Logic follows the status code; the label is only shown.
+  const documentStatusCode = resolveStatusCode(documentStatus);
   const [documentId, setDocumentId] = useState<string | null>(initialData?.id || null);
   // The Training Number and training state of the document, read from Training Management after each save.
   const [trainingLink, setTrainingLink] = useState<TrainingLink | null>(null);
@@ -1110,7 +1112,7 @@ export const NewDocumentView: React.FC = () => {
       ...prev,
       documentName: detail.documentName || "",
       titleLocalLanguage: detail.titleLocalLanguage || "",
-      type: (resolvedDocumentType || detail.type || "") as DocumentType,
+      type: (resolvedDocumentType || detail.type || ""),
       author: resolvedAuthor?.id || detail.author || "",
       coAuthors: detail.coAuthors?.map((item) => item.id).filter(Boolean) || [],
       businessUnit: resolvedBusinessUnit || detail.businessUnit || "",
@@ -1366,7 +1368,7 @@ export const NewDocumentView: React.FC = () => {
       return {
         ...prev,
         author: normalizedAuthor,
-        type: normalizedDocumentType as DocumentType,
+        type: normalizedDocumentType,
         businessUnit: normalizedBusinessUnit,
         department: normalizedDepartment,
         knowledgeBase: normalizedKnowledgeBase,
@@ -1420,10 +1422,11 @@ export const NewDocumentView: React.FC = () => {
 
   // Calculate current step index based on document status
   // Document starts in Draft and requires workflow completion to move to Active
-  const currentStepIndex = useMemo(
-    () => documentWorkflowStepIndex(documentStatus),
-    [documentStatus],
-  );
+  const documentSteps = useWorkflowSteps().document;
+  const currentStepIndex = useMemo(() => {
+    const index = documentSteps.findIndex((step) => step.code === documentStatusCode);
+    return index >= 0 ? index : 0;
+  }, [documentSteps, documentStatusCode]);
 
   const missingRequiredFields = useMemo(() => {
     const missing: string[] = [];
@@ -1472,7 +1475,7 @@ export const NewDocumentView: React.FC = () => {
   ]);
 
   const canProceedNextStep =
-    documentStatus !== "Obsoleted" &&
+    documentStatusCode !== "OBSOLETED" &&
     !isSaving &&
     missingRequiredFields.length === 0;
 
@@ -1548,7 +1551,7 @@ export const NewDocumentView: React.FC = () => {
       }
       clearNewDocumentDraft();
       setIsCancelModalOpen(false);
-      setDocumentStatus("Closed - Cancelled");
+      await hydrateDocumentFromBackend(documentId, false);
       setIsSaved(true);
       setCancelActivitySummary("");
       showToast({
@@ -1857,7 +1860,6 @@ export const NewDocumentView: React.FC = () => {
         signatureToken: signature.signatureToken as string,
       });
       await hydrateDocumentFromBackend(response.id || documentId, false);
-      setDocumentStatus("Obsoleted");
       setIsObsoleteModalOpen(false);
       showToast({
         type: "success",
@@ -1984,7 +1986,6 @@ export const NewDocumentView: React.FC = () => {
 
       setIsWorkflowSaved(true);
       setIsRevisionUploaded(true);
-      setDocumentStatus("Active");
       markRevisionListForRefresh();
       await hydrateDocumentFromBackend(documentId, false);
       persistNewDocumentDraft({
@@ -2046,8 +2047,6 @@ export const NewDocumentView: React.FC = () => {
     knowledgeBase: resolveLookupLabel(formData.knowledgeBase, departmentOptions) || formData.knowledgeBase,
   };
 
-  const statusSteps = DOCUMENT_WORKFLOW_STEPS;
-
   const tabs = [
     { id: "general" as TabType, label: "General Information" },
     ...(formData.isTemplate ? [] : [{ id: "training" as TabType, label: "Training Information" }]),
@@ -2067,7 +2066,7 @@ export const NewDocumentView: React.FC = () => {
           title="New Document"
           breadcrumbItems={newDocument(navigateTo)}
           actions={
-            documentStatus === "Closed - Cancelled" ? (
+            documentStatusCode === "CLOSED_CANCELLED" ? (
               <Button
                 onClick={handleBackToList}
                 variant="outline-emerald"
@@ -2136,7 +2135,7 @@ export const NewDocumentView: React.FC = () => {
       </div>
 
       {/* Status Stepper */}
-      <WorkflowStepper steps={statusSteps} currentStepIndex={currentStepIndex} />
+      <WorkflowStepper steps={stepLabels(documentSteps)} currentStepIndex={currentStepIndex} />
 
       {/* Tab Navigation */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -2178,8 +2177,8 @@ export const NewDocumentView: React.FC = () => {
               documentTypeOptions={documentTypeOptions}
               subTypeOptions={subTypeOptionsForSelectedDocumentType}
               isObsoleted={
-                documentStatus === "Obsoleted" ||
-                documentStatus === "Closed - Cancelled"
+                documentStatusCode === "OBSOLETED" ||
+                documentStatusCode === "CLOSED_CANCELLED"
               }
               readOnlyReviewDate={true}
               lockAllEditableFields={hasUploadedRevision || isContributorReadOnly}
@@ -2198,8 +2197,8 @@ export const NewDocumentView: React.FC = () => {
               pendingParticipants={pendingParticipants}
               onPendingParticipantsChange={setPendingParticipants}
               isReadOnly={
-                documentStatus === "Obsoleted" ||
-                documentStatus === "Closed - Cancelled" ||
+                documentStatusCode === "OBSOLETED" ||
+                documentStatusCode === "CLOSED_CANCELLED" ||
                 hasUploadedRevision ||
                 isContributorReadOnly
               }
@@ -2214,8 +2213,8 @@ export const NewDocumentView: React.FC = () => {
               onSelectFile={setSelectedFile}
               maxFiles={1}
               isObsoleted={
-                documentStatus === "Obsoleted" ||
-                documentStatus === "Closed - Cancelled"
+                documentStatusCode === "OBSOLETED" ||
+                documentStatusCode === "CLOSED_CANCELLED"
               }
               correlatedDocuments={correlatedDocuments}
               onCorrelatedDocumentsChange={(next) => {
@@ -2245,7 +2244,7 @@ export const NewDocumentView: React.FC = () => {
       <div className="">
         <div className="flex flex-wrap items-center gap-3">
             {/* Back to List button - shown when obsoleted */}
-            {documentStatus === "Obsoleted" && (
+            {documentStatusCode === "OBSOLETED" && (
               <Button
                 onClick={handleBackToList}
                 variant="outline-emerald"
@@ -2257,8 +2256,8 @@ export const NewDocumentView: React.FC = () => {
             )}
 
             {/* Back / Cancel button depending on save state */}
-            {documentStatus !== "Obsoleted" &&
-      documentStatus !== "Closed - Cancelled" && (
+            {documentStatusCode !== "OBSOLETED" &&
+      documentStatusCode !== "CLOSED_CANCELLED" && (
                 <>
                   {isSaved && (
                     <Button
@@ -2271,7 +2270,7 @@ export const NewDocumentView: React.FC = () => {
                     </Button>
                   )}
                   {(!isSaved ||
-                    (canCancelDocument && documentStatus === "Draft" && revisions.length === 0)) && (
+                    (canCancelDocument && documentStatusCode === "DRAFT" && revisions.length === 0)) && (
                     <Button
                       onClick={handleCancel}
                       variant="outline-emerald"
@@ -2285,7 +2284,7 @@ export const NewDocumentView: React.FC = () => {
               )}
 
             {/* Back to List button - shown when cancelled */}
-            {documentStatus === "Closed - Cancelled" && (
+            {documentStatusCode === "CLOSED_CANCELLED" && (
               <Button
                 onClick={handleBackToList}
                 variant="outline-emerald"
@@ -2296,7 +2295,7 @@ export const NewDocumentView: React.FC = () => {
               </Button>
             )}
 
-            {canAdministerDocumentWorkspace && documentStatus !== "Closed - Cancelled" && !isSaved && (
+            {canAdministerDocumentWorkspace && documentStatusCode !== "CLOSED_CANCELLED" && !isSaved && (
               <Button
                 onClick={() => handleSaveDraft("next-step")}
                 disabled={!canProceedNextStep}
@@ -2308,7 +2307,7 @@ export const NewDocumentView: React.FC = () => {
               </Button>
             )}
 
-            {canAdministerDocumentWorkspace && documentStatus !== "Closed - Cancelled" && isSaved && (
+            {canAdministerDocumentWorkspace && documentStatusCode !== "CLOSED_CANCELLED" && isSaved && (
               <Button
                 onClick={() => handleSaveDraft("save")}
                 disabled={!canSaveDocument}
@@ -2334,15 +2333,15 @@ export const NewDocumentView: React.FC = () => {
 
             {/* Divider - only show when saved and not obsoleted or cancelled */}
             {isSaved &&
-              documentStatus !== "Obsoleted" &&
-              documentStatus !== "Closed - Cancelled" && (
+              documentStatusCode !== "OBSOLETED" &&
+              documentStatusCode !== "CLOSED_CANCELLED" && (
                 <div className="w-px h-8 bg-slate-500 mx-1" />
               )}
 
             {/* Assignment-based upload and permission-based workspace management actions */}
             {isSaved &&
-              documentStatus !== "Obsoleted" &&
-              documentStatus !== "Closed - Cancelled" && (
+              documentStatusCode !== "OBSOLETED" &&
+              documentStatusCode !== "CLOSED_CANCELLED" && (
                 <>
                   {/* Upload uses the persisted author assignment and saved document workflow.
                       Sub-Type has no effect on Review. */}
@@ -2593,7 +2592,7 @@ export const NewDocumentView: React.FC = () => {
               onChange={(e) => setCancelActivitySummary(e.target.value)}
               placeholder="Please provide a reason for cancelling this document..."
               rows={4}
-              className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400 text-sm resize-none"
+              className="w-full px-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400 text-sm resize-none"
             />
             {!cancelActivitySummary.trim() && (
               <p className="text-xs text-slate-500">

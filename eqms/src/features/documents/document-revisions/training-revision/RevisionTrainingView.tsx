@@ -24,15 +24,14 @@ import {
   TrainingInformationTab,
 } from "@/features/documents/document-revisions/workspace-tabs";
 
-import type { DocumentStatus } from "@/features/documents/types";
 import { documentApi } from "@/services/api/documents";
 import { trainingLinksApi, type TrainingLink } from "@/services/api/trainingLinks";
 import type { RevisionDetailResponse } from "@/features/documents/document-revisions/detail-revision/types";
 import { buildRevisionSignatureRecords, type SignatureTabRecord } from "@/features/documents/document-revisions/shared/signatureRecords";
 import { hasWorkingNotesEditAccess } from "@/features/documents/document-revisions/shared/workingNotesPermissions";
+import { resolveStatusCode } from "@/features/documents/shared/statusMapping";
 import { isRevisionDetailSnapshotPreload, refreshDetailAfterSnapshot, isSnapshotGenerating, pollSnapshotInBackground } from "@/features/documents/shared/detailSnapshotHelpers";
 import type { TrainingInformationValue } from "@/features/documents/document-revisions/shared/components/TrainingInformationTab";
-import { resolveTerminalProgressStep } from "@/features/documents/shared/statusMapping";
 import type { RevisionWorkspaceState } from "@/features/documents/shared/navigationContext";
 import { buildRevisionDetailNavigationState } from "@/features/documents/shared/navigationContext";
 import { useRevisionActionCapabilities } from "@/hooks/useRevisionActionCapabilities";
@@ -167,8 +166,6 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
       document?.workingNotesEditable,
     ],
   );
-  const skippedSteps = document?.requiresTraining ? [] : (["Pending Training"] as const);
-  const terminalProgressStep = resolveTerminalProgressStep(document?.status, document?.history ?? []);
 
   const loadRevisionPreview = React.useCallback(
     async (detail: RevisionDetailResponse | null | undefined) => {
@@ -348,10 +345,11 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
     setShowESignModal(true);
   };
 
+  const isPendingTraining = resolveStatusCode(document?.status, document?.statusInfo) === "PENDING_TRAINING";
   const canCompleteTraining = !revisionActionCapabilities.loading
-    && Boolean(document?.status === "Pending Training")
+    && isPendingTraining
     && revisionActionCapabilities.can("completeTraining");
-  const canEditTrainingDates = document?.status === "Pending Training" && canCompleteTraining;
+  const canEditTrainingDates = isPendingTraining && canCompleteTraining;
   // A training run in Training Management is complete for the revision once its trainer has finished it (Finish Training); until then the button stays off and says why.
   const trainingNotDone = integrated && trainingLink?.status !== "COMPLETED" && !trainingLink?.finishedOn;
   const completeTitle = trainingNotDone ? `Training ${trainingLink?.trainingNumber ?? ""} is not done yet: its trainer has not finished it (Finish Training).` : undefined;
@@ -475,18 +473,6 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
     }
   };
 
-  // Status workflow steps
-  const statusSteps: DocumentStatus[] = [
-    "Draft",
-    "Pending Review",
-    "Pending Approval",
-    "Pending Training",
-    "Ready for Publishing",
-    "Effective",
-    "Obsoleted",
-    "Closed - Cancelled",
-  ];
-
   // Breadcrumbs
   const breadcrumbs = revisionTraining(
     navigate,
@@ -506,10 +492,7 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
         title="Training Revision"
         breadcrumbs={breadcrumbs}
         onBack={handleBack}
-        statusSteps={statusSteps}
-        currentStatus={document?.status || "Draft"}
-        skippedSteps={skippedSteps}
-        terminalProgressStep={terminalProgressStep}
+        workflow={document?.workflow}
         tabs={DEFAULT_WORKFLOW_TABS}
         activeTab={activeTab}
         onTabChange={(tab) => setActiveTab(tab as TabType)}
@@ -581,6 +564,7 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
               documentNumber: document.documentNumber,
               documentName: document.documentName,
               type: document.type,
+              typeShortCode: document.typeShortCode,
               created: document.created,
               openedBy: document.openedBy,
               author: document.author,

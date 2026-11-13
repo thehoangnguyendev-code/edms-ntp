@@ -39,7 +39,7 @@ const NumberField: React.FC<{
         const parsed = parseInt(e.target.value, 10);
         onChange(Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback);
       }}
-      className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
+      className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
     />
     {hint && <p className="text-xs text-slate-500 mt-1">{hint}</p>}
   </div>
@@ -403,7 +403,7 @@ export const TrainingPropertiesView: React.FC = () => {
                   disabled={!canManage}
                   value={f.pattern}
                   onChange={(e) => patch({ downloadFileNames: settings.downloadFileNames.map((x) => (x.form === f.form ? { ...x, pattern: e.target.value, example: previewFileName(x, e.target.value) } : x)) })}
-                  className="w-full h-9 px-3.5 text-sm font-mono border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
+                  className="w-full h-9 px-3 text-sm font-mono border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
                 />
               </div>
               {canManage && (

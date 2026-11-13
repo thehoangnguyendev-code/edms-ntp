@@ -6,6 +6,7 @@ public record NotificationPreviewRequest(
         String summary,
         String subject,
         String body,
-        String actionUrlTemplate
+        String actionUrlTemplate,
+        String actionLabel
 ) {
 }

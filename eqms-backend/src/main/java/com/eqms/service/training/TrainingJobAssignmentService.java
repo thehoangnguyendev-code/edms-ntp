@@ -203,6 +203,7 @@ public class TrainingJobAssignmentService {
             """, id)));
         if ("DRAFT".equals(j.get("status"))) out.put("eligibility", eligibilityForRoles((UUID) j.get("person_user_id"), newRolesOf(id), requiredOf(id)));
         out.put("capabilities", capabilities(actor, j));
+        out.put("workflow", TrainingWorkflows.job((String) j.get("status")));
         return out;
     }
 

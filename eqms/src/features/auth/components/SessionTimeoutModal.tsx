@@ -371,7 +371,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                           setCode(e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH));
                           setError("");
                         }}
-                        className="w-full rounded-xl border border-slate-300 px-4 py-3 text-center text-lg tracking-[0.4em] outline-none transition-all focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+                        className="w-full rounded-xl border border-slate-300 px-3 py-3 text-center text-lg tracking-[0.4em] outline-none transition-all focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
                         placeholder="000000"
                         autoFocus
                       />
@@ -425,11 +425,11 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                       }}
                       onKeyDown={handleCapsLockCheck}
                       onKeyUp={handleCapsLockCheck}
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 pr-20 text-sm outline-none transition-all focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+                      className="auth-input w-full rounded-xl border border-slate-300 px-3 py-3 pr-20 text-base outline-none md:text-sm transition-all focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
                       placeholder="Enter your password"
                       autoFocus
                     />
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-1">
                       {isCapsLockOn && (
                         <div className="mr-2 rounded-md border border-emerald-100 bg-emerald-50 p-1" title="Caps Lock is ON">
                           <IconArrowBigUpFilled className="h-4 w-4 text-emerald-700" aria-hidden="true" />
@@ -438,7 +438,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowPassword((current) => !current)}
-                        className="flex items-center p-1 text-slate-400 transition-colors hover:text-slate-600 focus:outline-none focus:text-slate-700"
+                        className="flex size-10 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-600 focus:outline-none focus:text-slate-700"
                         aria-label={showPassword ? "Hide password" : "Show password"}
                         tabIndex={-1}
                       >

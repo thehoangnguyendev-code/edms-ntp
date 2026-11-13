@@ -265,6 +265,7 @@ export function ScheduledReportsView() {
                   { label: "Invalid schedule", value: "SUSPENDED_INVALID_SCHEDULE" },
                   { label: "Template not approved", value: "SUSPENDED_TEMPLATE_NOT_APPROVED" },
                   { label: "Template disabled", value: "SUSPENDED_TEMPLATE_DISABLED" },
+                  { label: "Signature required", value: "SUSPENDED_SIGNATURE_REQUIRED" },
                 ],
                 onChange: (value) => {
                   setStatus(value);

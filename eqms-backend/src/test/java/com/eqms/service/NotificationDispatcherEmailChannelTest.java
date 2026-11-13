@@ -75,12 +75,11 @@ class NotificationDispatcherEmailChannelTest {
         policy.setRecipientRules(rules);
     }
 
-    private NotificationEventDefinition event(boolean mandatory) {
+    private NotificationEventDefinition event() {
         NotificationEventDefinition event = new NotificationEventDefinition();
         event.setCode("test.event");
         event.setModule("Security");
         event.setPriority("HIGH");
-        event.setMandatory(mandatory);
         event.setActive(true);
         return event;
     }
@@ -104,8 +103,8 @@ class NotificationDispatcherEmailChannelTest {
     }
 
     @Test
-    void optionalEvent_recipientEmailEnabled_sendsRenderedEmail() {
-        when(eventRepository.findByCode("test.event")).thenReturn(Optional.of(event(false)));
+    void theEmailOfTheEventIsRenderedAndSent() {
+        when(eventRepository.findByCode("test.event")).thenReturn(Optional.of(event()));
         when(policyRepository.findByEventCode("test.event")).thenReturn(Optional.of(policy));
         stubActiveVersions(emailVersion());
 
@@ -113,56 +112,57 @@ class NotificationDispatcherEmailChannelTest {
 
         verify(emailOutbox).enqueue(
                 eq("a@example.local"), eq("Hello Nguyen Van A"), eq("<p>Body for Nguyen Van A</p>"),
-                eq("test.event"), eq("Security"), any(),eq(false));
+                eq("test.event"), eq("Security"), any());
     }
 
     @Test
-    void recipientEmailNotificationsDisabled_optionalEvent_doesNotSendEmail() {
+    void aRecipientWhoSwitchedEmailNotificationsOffStillGetsTheEmail_everyNotificationIsAlwaysSent() {
         recipient.setEmailNotificationsEnabled(false);
-        when(eventRepository.findByCode("test.event")).thenReturn(Optional.of(event(false)));
-        when(policyRepository.findByEventCode("test.event")).thenReturn(Optional.of(policy));
-        stubActiveVersions(emailVersion());
-
-        dispatcher.dispatch("test.event", List.of(recipient), Map.of());
-
-        verify(emailOutbox, never()).enqueue(
-                anyString(), anyString(), anyString(), anyString(), anyString(), any(),org.mockito.ArgumentMatchers.anyBoolean());
-    }
-
-    @Test
-    void mandatoryEvent_bypassesEmailPreference() {
-        recipient.setEmailNotificationsEnabled(true);
-        when(eventRepository.findByCode("test.event")).thenReturn(Optional.of(event(true)));
+        when(eventRepository.findByCode("test.event")).thenReturn(Optional.of(event()));
         when(policyRepository.findByEventCode("test.event")).thenReturn(Optional.of(policy));
         stubActiveVersions(emailVersion());
 
         dispatcher.dispatch("test.event", List.of(recipient), Map.of());
 
         verify(emailOutbox).enqueue(
-                eq("a@example.local"), anyString(), anyString(), eq("test.event"), anyString(), any(),eq(true));
+                eq("a@example.local"), anyString(), anyString(), eq("test.event"), anyString(), any());
+    }
+
+    @Test
+    void aFileGoesWithTheEmailAndIsNotHeldBackByADigest() {
+        policy.setDigestMode(NotificationPolicy.DIGEST_DAILY);
+        when(eventRepository.findByCode("test.event")).thenReturn(Optional.of(event()));
+        when(policyRepository.findByEventCode("test.event")).thenReturn(Optional.of(policy));
+        stubActiveVersions(emailVersion());
+        byte[] pdf = {1, 2, 3};
+
+        var outcome = dispatcher.dispatchIndependently("test.event", List.of(recipient), Map.of(), new NotificationDispatcher.MailFile("list.pdf", pdf));
+
+        verify(emailOutbox).enqueue(eq("a@example.local"), eq("Hello Nguyen Van A"), anyString(), eq("test.event"), eq("Security"), any(), eq("list.pdf"), eq(pdf));
+        org.junit.jupiter.api.Assertions.assertTrue(outcome.emailSent());
     }
 
     @Test
     void noActiveEmailVersion_noEmailSent() {
-        when(eventRepository.findByCode("test.event")).thenReturn(Optional.of(event(false)));
+        when(eventRepository.findByCode("test.event")).thenReturn(Optional.of(event()));
         when(policyRepository.findByEventCode("test.event")).thenReturn(Optional.of(policy));
         stubActiveVersions(null);
 
         dispatcher.dispatch("test.event", List.of(recipient), Map.of());
 
         verify(emailOutbox, never()).enqueue(
-                anyString(), anyString(), anyString(), anyString(), anyString(), any(),org.mockito.ArgumentMatchers.anyBoolean());
+                anyString(), anyString(), anyString(), anyString(), anyString(), any());
     }
 
     @Test
     void channelNotEnabledInPolicy_noEmailSent() {
         policy.setEnabledChannels("IN_APP");
-        when(eventRepository.findByCode("test.event")).thenReturn(Optional.of(event(false)));
+        when(eventRepository.findByCode("test.event")).thenReturn(Optional.of(event()));
         when(policyRepository.findByEventCode("test.event")).thenReturn(Optional.of(policy));
 
         dispatcher.dispatch("test.event", List.of(recipient), Map.of());
 
         verify(emailOutbox, never()).enqueue(
-                anyString(), anyString(), anyString(), anyString(), anyString(), any(),org.mockito.ArgumentMatchers.anyBoolean());
+                anyString(), anyString(), anyString(), anyString(), anyString(), any());
     }
 }

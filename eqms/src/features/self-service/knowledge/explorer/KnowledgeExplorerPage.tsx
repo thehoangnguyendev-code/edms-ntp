@@ -45,7 +45,8 @@ import {
 import { openKnowledgePreview, openKnowledgeSuggestion } from "./openExplorer";
 import { pageBackgroundCss } from "@/config/page-background";
 import { useMediaQuery } from "./useMediaQuery";
-import { APP_SIDEBAR_COLLAPSED_WIDTH, APP_SIDEBAR_WIDTH } from "@/components/layout/sidebar/sidebarWidths";
+import { APP_SIDEBAR_COLLAPSED_WIDTH, MOBILE_SIDEBAR_WIDTH } from "@/components/layout/sidebar/sidebarWidths";
+import { useSidebarWidth } from "@/components/layout/sidebar/useSidebarWidth";
 
 const VIEW_STORAGE_KEY = "eqms.knowledgeExplorer.view";
 const WIDGETS_STORAGE_KEY = "eqms.knowledgeExplorer.widgets";
@@ -145,11 +146,12 @@ export const KnowledgeExplorerPage: React.FC = () => {
 
   useEffect(() => { document.title = `${branding.systemDisplayName || "EQMS"} · Knowledge Base`; }, [branding.systemDisplayName]);
 
+  const { width: storedSidebarWidth } = useSidebarWidth();
   const explorerGridTemplateColumns = useMemo(() => {
     if (!isMedium) return "minmax(0, 1fr)";
-    const sidebarWidth = sidebarCollapsed ? `${APP_SIDEBAR_COLLAPSED_WIDTH}px` : `${APP_SIDEBAR_WIDTH}px`;
+    const sidebarWidth = sidebarCollapsed ? `${APP_SIDEBAR_COLLAPSED_WIDTH}px` : `${storedSidebarWidth}px`;
     return `${sidebarWidth} minmax(0, 1fr)`;
-  }, [isMedium, sidebarCollapsed]);
+  }, [isMedium, sidebarCollapsed, storedSidebarWidth]);
 
   // ---- data -------------------------------------------------------------------------------
   // the colour and the abbreviation of each Business Unit, Department and Document Type, as folders (Dictionaries); read once
@@ -616,7 +618,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
                     <div className="flex min-w-0 items-start gap-3">
                       <div className="min-w-0">
                         <h2 id="knowledge-welcome-title" className="text-sm font-semibold text-slate-900 md:text-base">
-                          Welcome to Knowledge {user?.fullName?.trim() ? `, ${user.fullName.trim()}` : ""}
+                          Welcome to Knowledge Base {user?.fullName?.trim() ? `, ${user.fullName.trim()}` : ""}
                         </h2>
                         <p className="mt-0.5 text-xs leading-5 text-slate-600 md:text-sm">
                           Browse the latest effective documents, or use search to find the information you need.
@@ -684,7 +686,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
           <div className="fixed inset-0 z-50 md:hidden">
             <motion.div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMenuOpen(false)} />
             <motion.aside
-              className="absolute inset-y-0 left-0 max-w-[92vw] bg-white shadow-xl" style={{ width: APP_SIDEBAR_WIDTH }}
+              className="absolute inset-y-0 left-0 max-w-[92vw] bg-white shadow-xl" style={{ width: MOBILE_SIDEBAR_WIDTH }}
               initial={reduceMotion ? false : { x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}

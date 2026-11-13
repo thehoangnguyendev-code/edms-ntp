@@ -39,11 +39,15 @@ public class BackupAlertController {
     static final String MANAGE = "backup.admin.alerts.manage";
     private static final Pattern ALERT_ID = Pattern.compile("^[0-9a-fA-F-]{36}$");
     private static final int MAX_TEXT = 500;
+    private static final Pattern RULE_CODE = Pattern.compile("^[A-Z0-9_]{3,80}$");
 
     public record AcknowledgeBody(String comment) {
     }
 
     public record RecipientBody(String username) {
+    }
+
+    public record RuleBody(boolean inApp, boolean email, Integer threshold, String reason) {
     }
 
     private final CurrentUserService currentUserService;
@@ -64,11 +68,19 @@ public class BackupAlertController {
     @GetMapping("/alerts")
     public ResponseEntity<JsonNode> list(@RequestParam(required = false) String state, @RequestParam(required = false) String severity,
                                          @RequestParam(required = false) String search, @RequestParam(defaultValue = "1") int page,
-                                         @RequestParam(defaultValue = "10") int limit) {
+                                         @RequestParam(defaultValue = "10") int limit, @RequestParam(required = false) String from,
+                                         @RequestParam(required = false) String to, @RequestParam(defaultValue = "at") String sortBy,
+                                         @RequestParam(defaultValue = "desc") String sortDirection) {
         require(currentUserService.requireCurrentUser(), VIEW);
         UriComponentsBuilder uri = UriComponentsBuilder.fromPath("/internal/alerts")
                 .queryParam("page", Math.max(page, 1)).queryParam("limit", Math.min(Math.max(limit, 1), 100));
         Map<String, Object> vars = new LinkedHashMap<>();
+        for (String[] pair : new String[][] {{"from", from}, {"to", to}, {"sortBy", sortBy}, {"sortDirection", sortDirection}}) {
+            if (pair[1] != null && !pair[1].isBlank()) {
+                uri.queryParam(pair[0], "{" + pair[0] + "}");
+                vars.put(pair[0], cut(pair[1], 40));
+            }
+        }
         if (state != null && !state.isBlank()) {
             uri.queryParam("state", "{state}");
             vars.put("state", cut(state, 20));
@@ -96,6 +108,37 @@ public class BackupAlertController {
         if (reply.ok()) {
             audit.logAs(actor, "BACKUP_ALERT", id, BackupAuditIds.of("alert", id), "ALERT_ACKNOWLEDGED", "OPEN", "ACKNOWLEDGED",
                     "Acknowledged backup alert " + id + (comment.isEmpty() ? "" : ". Note: " + comment));
+        }
+        return reply(reply);
+    }
+
+    @GetMapping("/alert-rules")
+    public ResponseEntity<JsonNode> rules() {
+        require(currentUserService.requireCurrentUser(), VIEW);
+        return reply(agent.exchange(HttpMethod.GET, "/internal/alert-rules", null));
+    }
+
+    @PostMapping("/alert-rules/{code}")
+    public ResponseEntity<JsonNode> changeRule(@PathVariable String code, @RequestBody RuleBody body) {
+        UserAccount actor = currentUserService.requireCurrentUser();
+        require(actor, MANAGE);
+        if (code == null || !RULE_CODE.matcher(code).matches()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "ALERT_RULE_NOT_FOUND");
+        String reason = body == null || body.reason() == null ? "" : body.reason().trim();
+        if (reason.isEmpty() || reason.length() > MAX_TEXT) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ALERT_RULE_REASON_REQUIRED");
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("inApp", body.inApp());
+        out.put("email", body.email());
+        out.put("threshold", body.threshold());
+        out.put("by", actor.getUsername());
+        out.put("reason", reason);
+        BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/alert-rules/" + code, out);
+        if (reply.ok()) {
+            JsonNode before = reply.body() == null ? null : reply.body().path("previous");
+            String was = before == null || before.isMissingNode() ? "" : " (was: in the application " + (before.path("inApp").asBoolean() ? "on" : "off")
+                    + ", e-mail " + (before.path("email").asBoolean() ? "on" : "off") + (before.path("threshold").isNull() ? "" : ", limit " + before.path("threshold").asText()) + ")";
+            audit.logAs(actor, "BACKUP_ALERT_RULE", code, BackupAuditIds.of("alert-rule", code), "ALERT_RULE_CHANGED", null, "CHANGED",
+                    "Changed alert rule " + code + ": in the application " + (body.inApp() ? "on" : "off") + ", e-mail " + (body.email() ? "on" : "off")
+                            + (body.threshold() == null ? "" : ", limit " + body.threshold()) + was + ". Reason: " + reason);
         }
         return reply(reply);
     }

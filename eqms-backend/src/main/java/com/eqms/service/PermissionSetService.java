@@ -374,7 +374,7 @@ public class PermissionSetService {
 
     private PermissionSet require(UUID id) {
         return permissionSetRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Permission set not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Permission set not found"));
     }
 
     private void requireView() {
@@ -437,7 +437,7 @@ public class PermissionSetService {
                 .toList();
         return new PermissionSetResponse(
                 ps.getId(), ps.getName(), ps.getCode(), ps.getDescription(),
-                ps.isActive(), ps.isSystem(), codes.size(), codes,
+                ps.isActive(), ps.isSystem(), ps.isTestData(), codes.size(), codes,
                 modules, inferCategory(modules),
                 ps.getCreatedAt(), ps.getUpdatedAt());
     }
@@ -477,9 +477,24 @@ public class PermissionSetService {
             String module, String category,
             String createdFrom, String createdTo, String updatedFrom, String updatedTo,
             String sortBy, String sortDir, boolean includeManaged) {
+        return listPaged(page, limit, search, status, type, module, category,
+                createdFrom, createdTo, updatedFrom, updatedTo, sortBy, sortDir, includeManaged, null);
+    }
+
+    /** As above; with `accessProfileId` only the sets attached to that Access Profile are listed (read-only profile details). */
+    @Transactional
+    public com.eqms.dto.user.PageResponse<PermissionSetResponse> listPaged(
+            int page, int limit, String search, String status, String type,
+            String module, String category,
+            String createdFrom, String createdTo, String updatedFrom, String updatedTo,
+            String sortBy, String sortDir, boolean includeManaged, UUID accessProfileId) {
         requireView();
+        java.util.Set<UUID> attached = accessProfileId == null ? null
+                : accessProfilePermissionSetRepository.findByAccessProfileId(accessProfileId).stream()
+                        .map(link -> link.getPermissionSetId()).collect(Collectors.toSet());
         List<PermissionSetResponse> all = permissionSetRepository.findAllByOrderByNameAsc()
                 .stream()
+                .filter(ps -> attached == null || attached.contains(ps.getId()))
                 .filter(ps -> includeManaged || !isManagedSetCode(ps.getCode()))
                 .map(this::toResponse).collect(Collectors.toList());
 

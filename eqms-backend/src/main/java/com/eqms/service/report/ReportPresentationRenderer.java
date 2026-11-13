@@ -6,7 +6,7 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.graphics.state.PDExtendedGraphicsState;
 import org.apache.pdfbox.util.Matrix;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import java.io.ByteArrayOutputStream;
 import java.util.*;
 
@@ -25,7 +25,7 @@ public final class ReportPresentationRenderer {
         if(!"PDF".equals(format)) throw new IllegalArgumentException("REPORT_FORMAT_NOT_ALLOWED");
         for(String part:layout.effectiveWordComponents().keySet())if((!part.equals("cover")||layout.cover())&&!components.containsKey(part))throw new IllegalStateException("REPORT_WORD_RENDERER_REQUIRED");
         float pageWidth=layout.pageWidth(),pageHeight=layout.pageHeight();
-        try(var pdf=Loader.loadPDF(ReportPdfRenderer.render(rows,pageWidth,pageHeight,components.containsKey("header")?125:30,components.containsKey("footer")?100:30,layout.effectiveFont()));var input=ReportPresentationRenderer.class.getResourceAsStream(ReportFonts.bodyResource(layout.effectiveFont()));var out=new ByteArrayOutputStream()) {
+        try(var pdf=Loader.loadPDF(ReportPdfRenderer.render(rows,pageWidth,pageHeight,components.containsKey("header")?125:30,components.containsKey("footer")?100:(signed(values)?54:40),layout.effectiveFont()));var input=ReportPresentationRenderer.class.getResourceAsStream(ReportFonts.bodyResource(layout.effectiveFont()));var out=new ByteArrayOutputStream()) {
             var font=PDType0Font.load(pdf,input);
             for(int c=charts.size()-1;c>=0;c--) {
                 var page=new PDPage(new PDRectangle(pageWidth,pageHeight));pdf.getPages().insertBefore(page,pdf.getPage(0));
@@ -43,8 +43,8 @@ public final class ReportPresentationRenderer {
                     y=paragraph(stream,font,layout.resolve(layout.coverTitle(),values),50,y,22,blockWidth);
                     y=paragraph(stream,font,layout.resolve(layout.subtitle(),values),50,y-30,12,blockWidth);
                     if(layout.showExecutor()) y=paragraph(stream,font,"Prepared by: "+values.get("report.executor"),50,y-35,11,blockWidth);
-                    if(layout.showGeneratedAt()) y=paragraph(stream,font,"Generated at (UTC): "+values.get("report.generatedAt"),50,y-20,11,blockWidth);
-                    paragraph(stream,font,"Data as of: "+values.get("report.asOfAt"),50,y-20,10,blockWidth);
+                    if(layout.showGeneratedAt()) y=paragraph(stream,font,"Generated at (UTC+7): "+values.get("report.generatedAt"),50,y-20,11,blockWidth);
+                    paragraph(stream,font,"Data as of (UTC+7): "+values.get("report.asOfAt"),50,y-20,10,blockWidth);
                 }
             }
             for(int index=0;index<pdf.getNumberOfPages();index++) {
@@ -57,6 +57,11 @@ public final class ReportPresentationRenderer {
                     if(!components.containsKey("header"))line(stream,font,layout.resolve(layout.header(),context),30,pageHeight-15,8,pageWidth-60);
                     if(!components.containsKey("footer"))line(stream,font,layout.resolve(layout.footer(),context),30,14,7,pageWidth-162);
                     if(layout.pageNumbers()) line(stream,font,(index+1)+" / "+pdf.getNumberOfPages(),pageWidth-77,14,8,60);
+                    // The statement of GMP status is on every page and is not part of the layout, so a layout cannot remove it.
+                    String notice=values.get("report.gmpNotice");
+                    if(notice!=null&&!notice.isBlank()) line(stream,font,notice,30,components.containsKey("footer")?8:26,7,pageWidth-162);
+                    // A signed run says so on every page: who, when and the number of the signature (the reason is in the information of the XLSX and with the signature).
+                    if(signed(values)) line(stream,font,"Signed electronically by "+values.get("report.signedBy")+" on "+values.get("report.signedAt")+" (UTC+7), signature "+values.get("report.signatureId")+".",30,components.containsKey("footer")?17:36,7,pageWidth-162);
                     var logo=layout.logo();
                     if(logo!=null&&logo.enabled()&&(index==0||"ALL".equals(logo.pages()))) {
                         var image=ReportImage.decode(logo.data());float width=(float)(logo.width()*pageWidth/100),height=width*image.getHeight()/image.getWidth(); if(height>140){width*=140/height;height=140;}
@@ -128,13 +133,23 @@ public final class ReportPresentationRenderer {
         stream.beginText();stream.setFont(font,actual);stream.newLineAtOffset(x,y);stream.showText(value);stream.endText();
     }
     private static byte[] spreadsheet(List<List<String>> rows,ReportLayout layout,Map<String,String> values,List<ReportCharts.Result> charts) throws Exception {
-        try(var book=new XSSFWorkbook();var out=new ByteArrayOutputStream()) {
+        // Streaming workbook: only a window of rows is kept in memory, so a Full run of 100,000 rows does not exhaust the heap (REPORT-LARGE-RUN-2026-11-12).
+        var book=new SXSSFWorkbook(200);
+        try(var out=new ByteArrayOutputStream()) {
             var info=book.createSheet("Report information");int r=0;
             var details=new LinkedHashMap<String,String>();details.put("Title",layout.resolve(layout.coverTitle(),values));details.put("Subtitle",layout.resolve(layout.subtitle(),values));
             details.put("Template",values.get("report.code"));details.put("Version",values.get("template.version"));
             if(layout.showExecutor())details.put("Prepared by",values.get("report.executor"));
-            if(layout.showGeneratedAt())details.put("Generated at (UTC)",values.get("report.generatedAt"));
-            details.put("Data as of",values.get("report.asOfAt"));
+            if(layout.showGeneratedAt())details.put("Generated at (UTC+7)",values.get("report.generatedAt"));
+            details.put("Data as of (UTC+7)",values.get("report.asOfAt"));
+            if(values.get("report.gmpNotice")!=null)details.put("GMP status",values.get("report.gmpNotice"));
+            if(signed(values)) {
+                details.put("Signed by",values.get("report.signedBy"));
+                details.put("Signed on (UTC+7)",values.get("report.signedAt"));
+                details.put("Reason for signing",values.get("report.signatureReason"));
+                details.put("Signature",values.get("report.signatureId"));
+                details.put("Signature meaning","Report Run Requested");
+            }
             if(layout.watermarkEnabled())details.put("Watermark",layout.resolve(layout.watermark(),values));
             if(layout.stampEnabled())details.put("Presentation stamp (not a signature)",layout.resolve(layout.stamp(),values));
             for(var item:details.entrySet()) {var row=info.createRow(r++);row.createCell(0).setCellValue(item.getKey());row.createCell(1).setCellValue(item.getValue());}
@@ -142,10 +157,12 @@ public final class ReportPresentationRenderer {
             var sheet=book.createSheet("Report");
             sheet.getPrintSetup().setLandscape("LANDSCAPE".equals(layout.effectiveOrientation()));
             for(r=0;r<rows.size();r++) {var row=sheet.createRow(r);for(int c=0;c<rows.get(r).size();c++)row.createCell(c).setCellValue(rows.get(r).get(c));}
-            for(int c=0;c<rows.getFirst().size();c++)sheet.autoSizeColumn(c);
+            for(int c=0;c<rows.getFirst().size();c++)sheet.setColumnWidth(c,columnWidth(rows,c));
             sheet.createFreezePane(0,1);sheet.setRepeatingRows(new org.apache.poi.ss.util.CellRangeAddress(0,0,-1,-1));
             sheet.getHeader().setLeft(layout.resolve(layout.header(),values).replace("&","&&"));sheet.getFooter().setLeft(layout.resolve(layout.footer(),values).replace("&","&&"));
             if(layout.pageNumbers())sheet.getFooter().setRight("Page &P / &N");
+            if(values.get("report.gmpNotice")!=null||signed(values))sheet.getFooter().setCenter(((values.get("report.gmpNotice")==null?"":values.get("report.gmpNotice"))
+                    +(signed(values)?" Signed by "+values.get("report.signedBy")+", signature "+values.get("report.signatureId")+".":"")).trim().replace("&","&&"));
             for(int c=0;c<charts.size();c++) {
                 var chart=charts.get(c);var analysis=book.createSheet("Analysis "+(c+1));analysis.createRow(0).createCell(0).setCellValue(chart.title());
                 var header=analysis.createRow(1);header.createCell(0).setCellValue("Category");header.createCell(1).setCellValue("Count");header.createCell(2).setCellValue(chart.metric());
@@ -156,6 +173,16 @@ public final class ReportPresentationRenderer {
                 analysis.setColumnWidth(0,40*256);
             }
             book.write(out);return out.toByteArray();
-        }
+        } finally { book.dispose(); }
+    }
+    /** True when the run was signed at the request and the file says so. */
+    private static boolean signed(Map<String,String> values) {
+        return values.get("report.signedBy")!=null&&!values.get("report.signedBy").isBlank();
+    }
+    /** A column is as wide as its header and the first 200 rows (at least 10 and at most 60 characters), so the width never needs every row to be read. */
+    private static int columnWidth(List<List<String>> rows,int column) {
+        int longest=10;
+        for(int r=0;r<Math.min(rows.size(),201);r++) {var row=rows.get(r);if(column<row.size()&&row.get(column)!=null)longest=Math.max(longest,row.get(column).length());}
+        return Math.min(60,longest+2)*256;
     }
 }

@@ -13,6 +13,13 @@ import java.util.UUID;
 import java.util.List;
 
 public interface DocumentRecordRepository extends JpaRepository<DocumentRecord, UUID>, JpaSpecificationExecutor<DocumentRecord> {
+
+    /** Navigation: the user is the Author of at least one Document. */
+    boolean existsByAuthor_Id(UUID userId);
+
+    /** The person who created the Document (owner_user_id) -- always allowed to see it. */
+    boolean existsByOwner_Id(UUID userId);
+
     boolean existsByDocumentNumber(String documentNumber);
 
     java.util.Optional<DocumentRecord> findFirstByDocumentNumberIgnoreCase(String documentNumber);

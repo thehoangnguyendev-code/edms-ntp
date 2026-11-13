@@ -13,7 +13,7 @@ vi.mock("@/components/ui/page/PageHeader",()=>({PageHeader:({title,actions}:any)
 vi.mock("@/hooks/usePermissions",()=>({usePermissions:()=>({hasAnyPermission:()=>true})}));
 vi.mock("@/components/branding/BrandLogo",()=>({useBranding:()=>({compactDesktopFilters:false})}));
 vi.mock("@/services/api/reportTemplates",async importOriginal=>({...await importOriginal<any>(),reportTemplatesApi:{list:vi.fn(),preview:vi.fn(),options:vi.fn(),detail:vi.fn(),sources:vi.fn(),roles:vi.fn(),save:vi.fn(),delete:vi.fn(),capabilities:vi.fn()}}));
-vi.mock("@/services/api/reports",()=>({reportsApi:{createRun:vi.fn(),definitionHistory:vi.fn()}}));
+vi.mock("@/services/api/reports",()=>({reportsApi:{createRun:vi.fn(),definitionHistory:vi.fn(),listPins:vi.fn().mockResolvedValue([]),pinReport:vi.fn().mockResolvedValue({}),unpinReport:vi.fn().mockResolvedValue({})}}));
 vi.mock("../../shared/RealtimeReportPreview",()=>({RealtimeReportPreview:()=> <div>Server PDF preview</div>}));
 const template:ReportTemplate={code:"DOCUMENT_STATUS",sourceCode:"DOCUMENT_STATUS",displayName:"Document Register",description:"Actual metadata",category:"DOCUMENT",classification:"REGULATED",active:true,definitionVersion:1,allowedFormats:["CSV"],limits:{},filterFields:[{code:"search",name:"Search documents",type:"TEXT"}],
   fields:[{code:"documentNumber",name:"Document Number",type:"TEXT",allowed:true,defaultSelected:true,required:true,order:0},{code:"documentName",name:"Document Name",type:"TEXT",allowed:true,defaultSelected:true,required:true,order:1}]};
@@ -21,7 +21,9 @@ const pagination={page:1,limit:10,total:1,totalPages:1};
 const everyAction = ["viewRevisions","edit","submitForApproval","approve","reject","upgrade","discardRevision","disable","enable","delete","createReport"];
 beforeEach(()=>{
   vi.mocked(reportTemplatesApi.capabilities).mockResolvedValue({resourceType:"REPORT_TEMPLATE",resourceId:"DOCUMENT_STATUS",state:"DRAFT",actions:Object.fromEntries(everyAction.map(a=>[a,{allowed:true}]))} as never);
-  vi.clearAllMocks(); vi.mocked(reportTemplatesApi.list).mockResolvedValue({data:[template],pagination});
+  vi.clearAllMocks(); // The list carries what the person may do with each template: the row menu opens complete, with no request after the click.
+  const withActions={...template,capabilities:{resourceType:"REPORT_TEMPLATE",resourceId:"DOCUMENT_STATUS",state:"DRAFT",actions:Object.fromEntries(everyAction.map(action=>[action,{allowed:true}]))}} as never;
+  vi.mocked(reportTemplatesApi.list).mockResolvedValue({data:[withActions],pagination});
   vi.mocked(reportTemplatesApi.preview).mockResolvedValue({rows:[["Document Number","Document Name"],["FORM-001","Visible report"]],asOfAt:"2026-10-03T00:00:00Z",pagination});
 });
 describe("Report Template server-owned flow",()=>{
@@ -46,6 +48,7 @@ describe("Report Template server-owned flow",()=>{
     await screen.findByRole("button", { name: "DOCUMENT_STATUS" });
     fireEvent.click(screen.getByRole("button", { name: "More actions" }));
     fireEvent.click(await screen.findByText("Delete Report Template"));
+    expect(reportTemplatesApi.capabilities).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Delete Template" })).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Reason for deletion"), { target: { value: "Retire TEST template" } });
     expect(reportTemplatesApi.delete).not.toHaveBeenCalled();
@@ -79,16 +82,58 @@ describe("Report Template server-owned flow",()=>{
     expect(reportTemplatesApi.preview).toHaveBeenCalledWith("DOCUMENT_STATUS",{version:1,fields:["documentNumber","documentName"],filters:{search:"FORM-001"},sortBy:"documentNumber",direction:"asc"},1);
     fireEvent.click(screen.getByRole("button",{name:"Continue to Output"}));
     fireEvent.click(screen.getByRole("button",{name:"Generate Report"}));
-    await waitFor(()=>expect(reportsApi.createRun).toHaveBeenCalledWith({definitionCode:"DOCUMENT_STATUS",format:"CSV",fields:["documentNumber","documentName"],parameters:{search:"FORM-001",definitionVersion:1,reportTitle:"Document Register"},sort:[{field:"documentNumber",direction:"asc"}]},expect.any(String)));
+    await waitFor(()=>expect(reportsApi.createRun).toHaveBeenCalledWith({definitionCode:"DOCUMENT_STATUS",format:"CSV",fields:["documentNumber","documentName"],parameters:{search:"FORM-001",definitionVersion:1,reportTitle:"Document Register"},sort:[{field:"documentNumber",direction:"asc"}],full:false},expect.any(String)));
   });
   it("keeps the idempotency key for a retry after a network failure",async()=>{
     vi.mocked(reportsApi.createRun).mockRejectedValue(new Error("network"));
     render(<ToastProvider><MemoryRouter><ReportTemplateRun template={template} onBack={vi.fn()} /></MemoryRouter></ToastProvider>);
+    fireEvent.click(screen.getByLabelText("Full report (no filter)"));
     fireEvent.click(screen.getByRole("button",{name:"Preview Report"}));await screen.findByText("Visible report");
     fireEvent.click(screen.getByRole("button",{name:"Continue to Output"}));fireEvent.click(screen.getByRole("button",{name:"Generate Report"}));
     await screen.findByRole("alert");fireEvent.click(screen.getByRole("button",{name:"Generate Report"}));
     await waitFor(()=>expect(reportsApi.createRun).toHaveBeenCalledTimes(2));
     expect(vi.mocked(reportsApi.createRun).mock.calls[0][1]).toEqual(vi.mocked(reportsApi.createRun).mock.calls[1][1]);
+  });
+  it("needs a filter or the Full choice before a report is previewed, and sends the Full choice with the run (REPORT-FULL-RUN-2026-11-12)",async()=>{
+    vi.mocked(reportsApi.createRun).mockResolvedValue({id:"run",status:"QUEUED"});
+    render(<ToastProvider><MemoryRouter><ReportTemplateRun template={template} onBack={vi.fn()} /></MemoryRouter></ToastProvider>);
+    expect(screen.getByRole("button",{name:"Preview Report"})).toBeDisabled();
+    expect(screen.getByText("Choose at least one filter, or choose Full, to continue.")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Full report (no filter)"));
+    expect(screen.getByRole("button",{name:"Preview Report"})).toBeEnabled();
+    fireEvent.click(screen.getByRole("button",{name:"Preview Report"}));await screen.findByText("Visible report");
+    fireEvent.click(screen.getByRole("button",{name:"Continue to Output"}));fireEvent.click(screen.getByRole("button",{name:"Generate Report"}));
+    await waitFor(()=>expect(reportsApi.createRun).toHaveBeenCalledWith(expect.objectContaining({full:true}),expect.any(String)));
+  });
+  it("asks for a signature before a report of a signed type is queued, and gives the reason in the signature window (REPORT-RUN-SIGNATURE-2026-11-12)",async()=>{
+    render(<ToastProvider><MemoryRouter><ReportTemplateRun template={{...template,runNeedsSignature:true}} onBack={vi.fn()} /></MemoryRouter></ToastProvider>);
+    fireEvent.click(screen.getByLabelText("Full report (no filter)"));
+    fireEvent.click(screen.getByRole("button",{name:"Preview Report"}));await screen.findByText("Visible report");
+    fireEvent.click(screen.getByRole("button",{name:"Continue to Output"}));
+    const generate=screen.getByRole("button",{name:"Sign And Generate Report"});
+    expect(screen.queryByLabelText(/Reason For This Report/)).toBeNull(); // one reason only: the one of the signature window
+    expect(generate).toBeEnabled();
+    fireEvent.click(generate);
+    expect(reportsApi.createRun).not.toHaveBeenCalled(); // nothing is queued before the signature is given
+  });
+  it("offers only CSV and XLSX, and no page preview, for a result above the ordinary limit",async()=>{
+    vi.mocked(reportTemplatesApi.preview).mockResolvedValue({rows:[["Document Number","Document Name"],["FORM-001","Visible report"]],asOfAt:"2026-10-03T00:00:00Z",pagination:{page:1,limit:10,total:20000,totalPages:2000},maxRows:10000,maxRowsFull:100000} as never);
+    render(<ToastProvider><MemoryRouter><ReportTemplateRun template={{...template,allowedFormats:["PDF","XLSX","CSV"]}} onBack={vi.fn()} /></MemoryRouter></ToastProvider>);
+    fireEvent.click(screen.getByLabelText("Full report (no filter)"));
+    fireEvent.click(screen.getByRole("button",{name:"Preview Report"}));await screen.findByText("Visible report");
+    fireEvent.click(screen.getByRole("button",{name:"Continue to Output"}));
+    expect(await screen.findByText(/A page preview is not made for a result of 20,000 records/)).toBeInTheDocument();
+    expect(screen.queryByText("Server PDF preview")).toBeNull();
+    expect(screen.getByText("XLSX")).toBeInTheDocument();
+    expect(screen.queryByText("PDF")).toBeNull();
+  });
+  it("does not let a result above the Full limit continue",async()=>{
+    vi.mocked(reportTemplatesApi.preview).mockResolvedValue({rows:[["Document Number","Document Name"],["FORM-001","Visible report"]],asOfAt:"2026-10-03T00:00:00Z",pagination:{page:1,limit:10,total:150000,totalPages:15000},maxRows:10000,maxRowsFull:100000} as never);
+    render(<ToastProvider><MemoryRouter><ReportTemplateRun template={template} onBack={vi.fn()} /></MemoryRouter></ToastProvider>);
+    fireEvent.click(screen.getByLabelText("Full report (no filter)"));
+    fireEvent.click(screen.getByRole("button",{name:"Preview Report"}));await screen.findByText("Visible report");
+    expect(screen.getByRole("alert")).toHaveTextContent("more than a Full report file may hold");
+    expect(screen.getByRole("button",{name:"Continue to Output"})).toBeDisabled();
   });
   it("does not save a template without a description and includes version and role grants atomically",async()=>{
     vi.mocked(reportTemplatesApi.detail).mockResolvedValue({...template,description:"",roleScopes:[{roleId:"role",scope:"DEPARTMENT"}]});

@@ -34,8 +34,8 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("the No. column is not fixed", () => {
-  it("scrolls with the table, while a column the person pinned stays fixed", async () => {
+describe("optional No. column pinning", () => {
+  it("fixes the No. column when enabled in the saved user layout", async () => {
     render(<ToastProvider><Screen /></ToastProvider>);
 
     const name = await screen.findByText("An");
@@ -44,9 +44,9 @@ describe("the No. column is not fixed", () => {
     expect(name.closest("td")!.style.left).toBe("0px"); // the first fixed column starts at the edge: nothing fixed stands before it
 
     const number = screen.getByText("1").closest("td")!;
-    expect(number.style.position).toBe("");
-    expect(number).not.toHaveAttribute("data-pinned");
-    expect(screen.getByRole("columnheader", { name: "No." }).style.position).toBe("");
+    expect(number.style.position).toBe("sticky");
+    expect(number).toHaveAttribute("data-pinned", "true");
+    expect(screen.getByRole("columnheader", { name: "No." }).style.position).toBe("sticky");
     expect(screen.getByText("0901").closest("td")!.style.position).toBe("");
   });
 

@@ -48,7 +48,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
               type="number"
               value={config.passwordMinLength}
               onChange={(e) => handleIntegerChange('passwordMinLength', e.target.value, 8, 128)}
-              className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+              className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
               min={8}
               max={128}
             />
@@ -130,7 +130,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
               type="number"
               value={config.minUniqueChars ?? 0}
               onChange={(e) => handleIntegerChange('minUniqueChars', e.target.value, 0, 64)}
-              className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+              className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
               min={0}
               max={64}
             />
@@ -144,7 +144,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
               type="number"
               value={config.maxRepeatedChars ?? 0}
               onChange={(e) => handleIntegerChange('maxRepeatedChars', e.target.value, 0, 10)}
-              className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+              className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
               min={0}
               max={10}
             />
@@ -180,7 +180,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
                 type="number"
                 value={config.passwordExpiryDays}
                 onChange={(e) => handleIntegerChange('passwordExpiryDays', e.target.value, 30, 365)}
-                className="w-full md:w-64 h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                className="w-full md:w-64 h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                 min={30}
                 max={365}
               />
@@ -209,7 +209,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
                   type="number"
                   value={config.passwordHistoryCount}
                 onChange={(e) => handleIntegerChange('passwordHistoryCount', e.target.value, 3, 24)}
-                  className="w-full md:w-64 h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full md:w-64 h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                   min={3}
                   max={24}
                 />
@@ -249,7 +249,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
               type="number"
               value={config.sessionTimeoutMinutes}
               onChange={(e) => handleSessionTimeoutChange(e.target.value)}
-              className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+              className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
               min={1}
               max={1440}
               step={1}
@@ -294,7 +294,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange }) =>
                   type="number"
                   value={config.maxLoginAttempts}
                   onChange={(e) => handleIntegerChange('maxLoginAttempts', e.target.value, 3, 10)}
-                  className="w-full md:w-64 h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full md:w-64 h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                   min={3}
                   max={10}
                 />

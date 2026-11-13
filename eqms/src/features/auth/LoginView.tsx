@@ -353,7 +353,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
                     aria-invalid={!!errors.password}
                     aria-describedby={errors.password ? "current-password-error" : undefined}
                   />
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:pr-3">
+                  <div className="absolute inset-y-0 right-0 flex items-center sm:pr-1.5">
                     {isCapsLockOn && (
                       <div className="mr-2 rounded-md border border-emerald-100 bg-emerald-50 p-1" title="Caps Lock is ON">
                         <IconArrowBigUpFilled className="h-4 w-4 text-emerald-700" />
@@ -362,7 +362,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
                     <button
                       type="button"
                       onClick={handleTogglePassword}
-                      className="flex items-center p-1 text-slate-400 transition-colors hover:text-slate-600 focus:outline-none focus:text-slate-700"
+                      className={AUTH_UI.eyeButton}
                       disabled={isLoading}
                       aria-label={showPassword ? "Hide password" : "Show password"}
                       tabIndex={-1}
@@ -377,11 +377,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
                 </div>
               </AuthField>
 
-              <div className="flex items-center justify-end pt-0.5 sm:pt-1">
+              <div className="flex items-center justify-end">
                 <button
                   type="button"
                   onClick={handleForgotPasswordClick}
-                  className="text-xs font-medium text-emerald-700 transition-colors hover:text-emerald-800 focus:outline-none sm:text-sm"
+                  className="flex min-h-11 items-center text-sm font-medium text-emerald-700 transition-colors hover:text-emerald-800 focus:outline-none"
                   disabled={isLoading}
                   aria-label="Forgot password"
                 >
@@ -411,7 +411,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
             </div>
 
             <div className="text-center">
-              <p className="text-[11px] text-slate-500 sm:text-sm">Product is developed by Nguyen The Hoang</p>
+              <p className="text-xs text-slate-500 sm:text-sm">Product is developed by Nguyen The Hoang</p>
             </div>
           </div>
         }

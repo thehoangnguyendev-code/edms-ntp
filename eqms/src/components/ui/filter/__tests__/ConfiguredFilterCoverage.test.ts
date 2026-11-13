@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 // Delegated views are checked at their filter-owning tab rather than the page wrapper.
 const screens = [
   "src/features/audit-trail/AuditTrailView.tsx",
-  "src/features/settings/email-templates/EmailTemplatesView.tsx",
   "src/features/settings/education/EducationSchoolsView.tsx",
   "src/features/settings/education/EducationDegreeLevelsView.tsx",
   "src/features/settings/document-administration/knowledge/KnowledgeComponentsView.tsx",

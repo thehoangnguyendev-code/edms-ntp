@@ -1,5 +1,5 @@
 import "../../testing/browserStubs";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ReportRunDetailPage } from "../ReportRunDetailPage";
@@ -98,43 +98,56 @@ function renderPage() {
   );
 }
 
-it("shows every part of a run on its own page", async () => {
+it("shows every part of a run on its own page, in tabs and read-only inputs", async () => {
   renderPage();
 
-  await waitFor(() => expect(screen.getByText("Run")).toBeTruthy());
   // The page names the screen; the report's own name is a fact in the run details.
-  expect(screen.getByRole("heading", { name: "Report Run Details" })).toBeTruthy();
-  expect(screen.getByText("Report name")).toBeTruthy();
-  expect(screen.getAllByText("EQMS - Document status register").length).toBeGreaterThan(0);
+  expect(await screen.findByRole("heading", { name: "Report Run Details" })).toBeTruthy();
+  expect(screen.getByLabelText("Report Name")).toHaveValue("EQMS - Document status register");
   // Run facts
-  expect(screen.getByText("Scheduled")).toBeTruthy();
-  expect(screen.getByText("Monthly register")).toBeTruthy();
-  expect(screen.getByText("Nguyen The Hoang")).toBeTruthy();
+  expect(screen.getByLabelText("Request")).toHaveValue("Scheduled");
+  expect(screen.getByLabelText("Schedule")).toHaveValue("Monthly register");
+  expect(screen.getByLabelText("Requested By")).toHaveValue("Nguyen The Hoang");
+  expect(screen.getByLabelText("Status")).toHaveValue("Completed");
   // Template as it was at run time
-  expect(screen.getByText("Approved")).toBeTruthy();
-  expect(screen.getByText("Rev 2")).toBeTruthy();
-  expect(screen.getAllByText("v3").length).toBeGreaterThan(0);
+  expect(screen.getByLabelText("Approval At Run Time")).toHaveValue("Approved");
+  expect(screen.getByLabelText("Template Revision")).toHaveValue("2.0.0");
+  expect(screen.getByLabelText("Approved Version")).toHaveValue("v3");
+  // No identifier of the run is shown
+  expect(screen.queryByText("Run ID")).toBeNull();
   // Criteria
-  expect(screen.getByText(/"search": "SOP"/)).toBeTruthy();
-  expect(screen.getByText("documentNumber")).toBeTruthy();
+  expect((screen.getByLabelText("Filters And Parameters") as HTMLTextAreaElement).value).toContain('"search": "SOP"');
+  expect((screen.getByLabelText("Fields") as HTMLTextAreaElement).value).toContain("documentNumber");
   // Files: checksum and retention
-  expect(screen.getByText(/a2420669ba44/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("tab", { name: /Report Files/ }));
+  expect(await screen.findByText(/a2420669ba44/)).toBeTruthy();
   expect(screen.getByText("Kept permanently")).toBeTruthy();
-  // Timeline and notices
-  // Machine values are shown as ordinary text, not in capitals.
-  expect(screen.getAllByText("Queued").length).toBeGreaterThan(1);
-  expect(screen.getAllByText("Completed").length).toBeGreaterThan(0);
+  // Timeline and notices; machine values are shown as ordinary text, not in capitals.
+  fireEvent.click(screen.getByRole("tab", { name: /Timeline/ }));
+  expect((await screen.findAllByText("Queued")).length).toBeGreaterThan(0);
   expect(screen.queryByText("QUEUED")).toBeNull();
-  expect(screen.queryByText("COMPLETED")).toBeNull();
-  expect(screen.getByText("Approver Test 1")).toBeTruthy();
+  fireEvent.click(screen.getByRole("tab", { name: /Notices Sent/ }));
+  expect(await screen.findByText("Approver Test 1")).toBeTruthy();
+  // Back, Refresh are in the footer row
+  expect(screen.getAllByRole("button", { name: "Back" }).length).toBeGreaterThan(0);
+});
+
+it("writes the dates of the filters in the display format of the system, not as ISO (REPORT-TIME-FORMAT-2026-11-12)", async () => {
+  vi.mocked(reportsApi.getRun).mockResolvedValue({ ...run, parameters: { createdFrom: "2026-11-11", createdTo: "2026-11-12", search: "2026-07-28 typed" } } as ReportRunDetail);
+  renderPage();
+
+  const filters = (await screen.findByLabelText("Filters And Parameters")) as HTMLTextAreaElement;
+  expect(filters.value).toContain('"createdFrom": "11/11/2026"');
+  expect(filters.value).toContain('"createdTo": "12/11/2026"');
+  expect(filters.value).toContain('"search": "2026-07-28 typed"'); // a text that was typed is not changed
 });
 
 it("hides the notices list when the viewer may not see recipients", async () => {
   vi.mocked(reportsApi.getRun).mockResolvedValue({ ...run, deliveries: null } as ReportRunDetail);
   renderPage();
 
-  await waitFor(() => expect(screen.getByText("Notices sent")).toBeTruthy());
-  expect(screen.getByText("Shown to people who manage scheduled reports.")).toBeTruthy();
+  fireEvent.click(await screen.findByRole("tab", { name: /Notices Sent/ }));
+  expect(await screen.findByText("Shown to people who manage scheduled reports.")).toBeTruthy();
 });
 
 it("does not break when a list arrives in the wrong shape; it shows the list as empty", async () => {
@@ -146,6 +159,6 @@ it("does not break when a list arrives in the wrong shape; it shows the list as 
   } as unknown as ReportRunDetail);
   renderPage();
 
-  await waitFor(() => expect(screen.getByRole("heading", { name: "Report Run Details" })).toBeTruthy());
-  expect(screen.getByText("Default")).toBeTruthy();
+  expect(await screen.findByRole("heading", { name: "Report Run Details" })).toBeTruthy();
+  expect(await screen.findByLabelText("Sort")).toHaveValue("Default");
 });

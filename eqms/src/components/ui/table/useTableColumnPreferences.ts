@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { tablePreferencesApi, type SavedColumnPreference } from "@/services/api/tablePreferences";
 import { useAuth } from "@/contexts/AuthContext";
 
-/** A table column as the customizer sees it. `locked` columns (e.g. "No.") cannot be hidden, moved or unpinned. */
+/** Locked columns stay visible and in place; their pin preference is independent. */
 export interface CustomizableColumn {
   id: string;
   label: string;
@@ -29,8 +29,8 @@ export function mergeSavedColumns(defaults: CustomizableColumn[], saved: SavedCo
   });
 
   const merged = [...ordered, ...unsaved].map((column, index) => {
-    if (column.locked) return { ...column, order: column.order, visible: true, pinned: true };
     const entry = savedById.get(column.id);
+    if (column.locked) return { ...column, order: column.order, visible: true, pinned: entry ? entry.pinned : Boolean(column.pinned) };
     return {
       ...column,
       visible: entry ? entry.visible : column.visible,

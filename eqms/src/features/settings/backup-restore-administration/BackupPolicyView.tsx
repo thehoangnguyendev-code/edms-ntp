@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShieldCheck } from "lucide-react";
+import { MoreVertical } from "lucide-react";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { FormSection } from "@/components/ui/form";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { TABLE_STYLES } from "@/components/ui/table";
-import type { DataTableColumn } from "@/components/ui/table";
-import { useDebounce } from "@/hooks";
+import type { DataTableAction, DataTableColumn } from "@/components/ui/table";
+import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
+import { dateToInstant } from "@/features/settings/announcements/announcementFilters";
+import { useDebounce, usePortalDropdown } from "@/hooks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
 import { Fact } from "@/features/backup-restore/components/Fact";
@@ -18,12 +21,27 @@ import { statusLabel } from "@/features/backup-restore/types";
 import { backupRestoreApi, readPolicyBody, type PolicyStatus, type PolicyVersion } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
-import { COMPONENT_LABEL, MEDIUM_LABEL, POLICY_STATUS_COLOR } from "./policyLabels";
+import { COMPONENT_LABEL, filesText, MEDIUM_LABEL, POLICY_STATUS_COLOR } from "./policyLabels";
 import { IconSettingsAutomation } from "@tabler/icons-react";
 
 type SortKey = "version" | "status" | "proposedBy" | "approvedBy" | "createdAt" | "activatedAt";
 
 const ALL = "ALL";
+const PART_OPTIONS = [
+  { label: "All", value: ALL },
+  { label: "Database", value: "DATABASE" },
+  { label: "Document files", value: "OBJECT_STORE" },
+];
+const FILES_OPTIONS = [
+  { label: "All", value: ALL },
+  { label: "At its own time", value: "OWN" },
+  { label: "With the database", value: "WITH_DATABASE" },
+];
+const APPROVAL_OPTIONS = [
+  { label: "All", value: ALL },
+  { label: "Approved", value: "APPROVED" },
+  { label: "Not approved", value: "NOT_APPROVED" },
+];
 const STATUS_OPTIONS = [{ label: "All", value: ALL }, ...(["ACTIVE", "DRAFT", "SUPERSEDED", "DISCARDED"] as PolicyStatus[]).map((value) => ({ label: statusLabel(value), value }))];
 
 /**
@@ -41,6 +59,16 @@ export const BackupPolicyView: React.FC = () => {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
   const [status, setStatus] = useState(ALL);
+  const [part, setPart] = useState(ALL);
+  const [target, setTarget] = useState(ALL);
+  const [filesSchedule, setFilesSchedule] = useState(ALL);
+  const [approval, setApproval] = useState(ALL);
+  const [proposedFrom, setProposedFrom] = useState("");
+  const [proposedTo, setProposedTo] = useState("");
+  const [activatedFrom, setActivatedFrom] = useState("");
+  const [activatedTo, setActivatedTo] = useState("");
+  const [targetOptions, setTargetOptions] = useState([{ label: "All", value: ALL }]);
+  const menu = usePortalDropdown();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "version", direction: "desc" });
@@ -68,10 +96,36 @@ export const BackupPolicyView: React.FC = () => {
 
   useEffect(() => {
     let live = true;
+    backupRestoreApi
+      .targets()
+      .then((list) => live && setTargetOptions([{ label: "All", value: ALL }, ...list.map((t) => ({ label: t.code, value: t.code }))]))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let live = true;
     setLoading(true);
     setError("");
     backupRestoreApi
-      .policies({ search: debouncedSearch.trim() || undefined, status: status === ALL ? undefined : status, sortBy: sort.key, sortDirection: sort.direction, page, limit: pageSize })
+      .policies({
+        search: debouncedSearch.trim() || undefined,
+        status: status === ALL ? undefined : status,
+        component: part === ALL ? undefined : part,
+        target: target === ALL ? undefined : target,
+        filesSchedule: filesSchedule === ALL ? undefined : filesSchedule,
+        approval: approval === ALL ? undefined : approval,
+        proposedFrom: dateToInstant(proposedFrom, "start"),
+        proposedTo: dateToInstant(proposedTo, "end"),
+        activatedFrom: dateToInstant(activatedFrom, "start"),
+        activatedTo: dateToInstant(activatedTo, "end"),
+        sortBy: sort.key,
+        sortDirection: sort.direction,
+        page,
+        limit: pageSize,
+      })
       .then((data) => {
         if (!live) return;
         setRows(data.data);
@@ -93,9 +147,9 @@ export const BackupPolicyView: React.FC = () => {
     return () => {
       live = false;
     };
-  }, [debouncedSearch, status, sort, page, pageSize]);
+  }, [debouncedSearch, status, part, target, filesSchedule, approval, proposedFrom, proposedTo, activatedFrom, activatedTo, sort, page, pageSize]);
 
-  useEffect(() => setPage(1), [debouncedSearch, status, pageSize]);
+  useEffect(() => setPage(1), [debouncedSearch, status, part, target, filesSchedule, approval, proposedFrom, proposedTo, activatedFrom, activatedTo, pageSize]);
 
   const sortFor = (key: SortKey) => ({
     direction: sort.key === key ? sort.direction : undefined,
@@ -129,6 +183,21 @@ export const BackupPolicyView: React.FC = () => {
     { id: "createdAt", header: "Proposed", label: "Proposed", sort: sortFor("createdAt"), cell: (row) => formatDateTime(row.createdAt) },
     { id: "activatedAt", header: "Activated", label: "Activated", sort: sortFor("activatedAt"), cell: (row) => formatDateTime(row.activatedAt) },
   ];
+
+  const actionRow = rows.find((row) => row.id === menu.openId);
+  const action: DataTableAction<PolicyVersion> = {
+    cell: (row) => (
+      <button
+        type="button"
+        ref={menu.getRef(row.id)}
+        aria-label="More actions"
+        className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
+        onClick={(event) => menu.toggle(row.id, event)}
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+    ),
+  };
 
   const activeBody = active ? readPolicyBody(active) : null;
 
@@ -165,6 +234,7 @@ export const BackupPolicyView: React.FC = () => {
             <div className="space-y-3">
               <Fact label="Backs up">{activeBody.components.map((c) => COMPONENT_LABEL[c] ?? c).join(", ")}</Fact>
               <Fact label="Database backup">{activeBody.enabled ? `Daily at ${activeBody.time}` : "Switched off"}</Fact>
+              <Fact label="Files backup">{filesText(activeBody)}</Fact>
             </div>
             <div className="space-y-3">
               <Fact label="Copied to">
@@ -178,6 +248,7 @@ export const BackupPolicyView: React.FC = () => {
                   ))}
                 </ul>
               </Fact>
+              {activeBody.manualCopy && <Fact label="Manual copy">{activeBody.manualCopy.description}, every {activeBody.manualCopy.everyDays} day(s)</Fact>}
             </div>
           </div>
         ) : (
@@ -188,6 +259,7 @@ export const BackupPolicyView: React.FC = () => {
       <ServerListPanel
         tableKey="backup-admin.policy-versions"
         columns={columns}
+        action={action}
         rows={rows}
         getRowKey={(row) => row.id}
         loading={loading}
@@ -199,10 +271,28 @@ export const BackupPolicyView: React.FC = () => {
         onSearch={setSearch}
         searchLabel="Search policy versions"
         searchPlaceholder="Version, person or reason…"
-        filters={[{ id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setStatus }]}
+        filters={[
+          { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setStatus },
+          { id: "part", label: "Backs Up", value: part, options: PART_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setPart },
+          { id: "target", label: "Copied To", value: target, options: targetOptions, defaultValue: ALL, placeholder: "All", onChange: setTarget },
+          { id: "files", label: "Files Backup", value: filesSchedule, options: FILES_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setFilesSchedule },
+          { id: "approval", label: "Approval", value: approval, options: APPROVAL_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setApproval },
+        ]}
+        dates={[
+          { id: "proposed", label: "Proposed", from: proposedFrom, to: proposedTo, onFromChange: setProposedFrom, onToChange: setProposedTo },
+          { id: "activated", label: "Activated", from: activatedFrom, to: activatedTo, onFromChange: setActivatedFrom, onToChange: setActivatedTo },
+        ]}
         onClear={() => {
           setSearch("");
           setStatus(ALL);
+          setPart(ALL);
+          setTarget(ALL);
+          setFilesSchedule(ALL);
+          setApproval(ALL);
+          setProposedFrom("");
+          setProposedTo("");
+          setActivatedFrom("");
+          setActivatedTo("");
           setPage(1);
         }}
         page={page}
@@ -212,6 +302,22 @@ export const BackupPolicyView: React.FC = () => {
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
       />
+
+      <PortalDropdownMenu isOpen={!!actionRow} onClose={menu.close} position={menu.position} minWidth={200}>
+        {actionRow && (
+          <div className="py-1">
+            <DropdownMenuItem
+              icon={<IconInfoCircle className="h-4 w-4" />}
+              onClick={() => {
+                open(actionRow.version);
+                menu.close();
+              }}
+            >
+              View Details
+            </DropdownMenuItem>
+          </div>
+        )}
+      </PortalDropdownMenu>
     </BackupAdminLivePage>
   );
 };

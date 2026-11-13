@@ -127,7 +127,11 @@ export const UserManagementView: React.FC = () => {
     refreshUsers,
   } = useUserList();
 
-  const { columns, saveColumns, resetColumns } = useTableColumnPreferences("users.list", DEFAULT_COLUMNS);
+  const customizableColumns = useMemo(() => [
+    { id: "expand", label: "Expand", visible: true, order: 0, locked: true, pinned: true },
+    ...DEFAULT_COLUMNS.map((column) => ({ ...column, order: column.order + 1, pinned: column.id === "no" ? true : column.pinned })),
+  ], []);
+  const { columns, saveColumns, resetColumns } = useTableColumnPreferences("users.list", customizableColumns);
   // Pinning applies only to the desktop table; on mobile the table keeps its native touch scrolling.
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const compactFilters = useBranding().compactDesktopFilters ?? false;
@@ -199,11 +203,14 @@ export const UserManagementView: React.FC = () => {
 
   // Visible columns
   const visibleColumns = tableColumns
-    .filter((col) => col.visible)
+    .filter((col) => col.visible && col.id !== "expand")
     .sort((a, b) => a.order - b.order);
 
-  // Expand and No. are always fixed on the left; user-pinned columns follow them in table order.
-  useStickyPinnedColumns(isDesktop ? scrollerEl : null, ["expand", ...visibleColumns.filter((col) => col.pinned).map((col) => col.id)]);
+  // Include structural columns only when their own pin preference is enabled.
+  useStickyPinnedColumns(isDesktop ? scrollerEl : null, [
+    ...(columns.find((column) => column.id === "expand")?.pinned ? ["expand"] : []),
+    ...visibleColumns.filter((col) => col.pinned).map((col) => col.id),
+  ]);
 
   // One control, placed by breakpoint and filter mode (see the filter section and the table section below).
   const customizeDrawer = (
@@ -358,7 +365,7 @@ export const UserManagementView: React.FC = () => {
               size="sm"
               variant="outline"
               className="flex items-center gap-2 whitespace-nowrap"
-              onClick={() => exportToExcel(columns)}
+              onClick={() => exportToExcel(columns.filter((column) => column.id !== "expand"))}
             >
               <Download className="h-4 w-4" />
               Export

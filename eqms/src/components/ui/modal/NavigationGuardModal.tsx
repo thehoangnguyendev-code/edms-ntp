@@ -219,7 +219,7 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                 {isLoading ? (
                   <ButtonLoading text="Processing..." light />
                 ) : (
-                  primaryActionLabel || (mode === "discard" ? "Discard changes" : "Leave anyway")
+                  primaryActionLabel || (mode === "discard" ? "Discard Changes" : "Leave Anyway")
                 )}
               </Button>
             </div>

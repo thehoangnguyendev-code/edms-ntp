@@ -1,15 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
-import { FormSection } from "@/components/ui/form/FormSection";
-import { Badge } from "@/components/ui/badge/Badge";
+import { Checkbox } from "@/components/ui/checkbox/Checkbox";
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
+import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { Button } from "@/components/ui/button/Button";
 import { Select } from "@/components/ui/select/Select";
-import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
-import { humanize } from "../shared/reportLabels";
+import { humanize, reportRevisionLabel } from "../shared/reportLabels";
 import {
   reportTemplatesApi,
   reportError,
@@ -20,26 +24,31 @@ import {
 } from "@/services/api/reportTemplates";
 import { REVISION_STATUS, whenText } from "./ReportTemplateRevisions";
 import { ReportRevisionStepper } from "../shared/ReportRevisionStepper";
+import { ReadonlyField } from "../shared/ReadonlyField";
 
 type FieldRow = ReportTemplate["fields"][number];
 type ScopeRow = NonNullable<ReportTemplate["roleScopes"]>[number];
-const SCOPE_LABEL: Record<string, string> = { PERSONAL: "Personal", DEPARTMENT: "Department", BUSINESS_UNIT: "Business Unit", SYSTEM: "Entire system" };
-const KIND_LABEL: Record<ReportRevisionChange["kind"], string> = { ADDED: "Added", REMOVED: "Removed", CHANGED: "Changed" };
-
-function Fact({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <dt className="mb-1 text-xs text-slate-500">{label}</dt>
-      <dd className="break-words font-medium text-slate-900">{children}</dd>
-    </div>
-  );
-}
+const SCOPE_LABEL: Record<string, string> = {
+  PERSONAL: "Personal",
+  DEPARTMENT: "Department",
+  BUSINESS_UNIT: "Business Unit",
+  SYSTEM: "Entire system",
+};
+const KIND_LABEL: Record<ReportRevisionChange["kind"], string> = {
+  ADDED: "Added",
+  REMOVED: "Removed",
+  CHANGED: "Changed",
+};
 
 /**
  * One revision of a report template on a page of its own: who wrote and approved it, when it was effective, its whole content, and what changed from
  * the revision before it. The comparison is made by the server.
  */
-export function ReportTemplateRevisionPage({ inAdministration = false }: { inAdministration?: boolean }) {
+export function ReportTemplateRevisionPage({
+  inAdministration = false,
+}: {
+  inAdministration?: boolean;
+}) {
   const { code = "", revision = "" } = useParams();
   const navigate = useNavigate();
   const [detail, setDetail] = useState<ReportRevisionDetail>();
@@ -48,6 +57,7 @@ export function ReportTemplateRevisionPage({ inAdministration = false }: { inAdm
   /** What this revision is compared with: "previous", "effective", or the number of another revision. */
   const [withRevision, setWithRevision] = useState("previous");
   const [others, setOthers] = useState<number[]>([]);
+  const [activeTab, setActiveTab] = useState("general");
 
   useEffect(() => {
     let alive = true;
@@ -59,8 +69,20 @@ export function ReportTemplateRevisionPage({ inAdministration = false }: { inAdm
       .then((value) => alive && setDetail(value))
       .catch((e) => alive && setError(reportError(e)));
     reportTemplatesApi
-      .revisions(code, { sortBy: "revision", sortDirection: "desc", limit: 100 })
-      .then((page) => alive && setOthers(page.data.map((row) => row.revision).filter((number) => number !== Number(revision))))
+      .revisions(code, {
+        sortBy: "revision",
+        sortDirection: "desc",
+        limit: 100,
+      })
+      .then(
+        (page) =>
+          alive &&
+          setOthers(
+            page.data
+              .map((row) => row.revision)
+              .filter((number) => number !== Number(revision)),
+          ),
+      )
       .catch(() => alive && setOthers([]));
     return () => {
       alive = false;
@@ -79,142 +101,350 @@ export function ReportTemplateRevisionPage({ inAdministration = false }: { inAdm
     };
   }, [code, revision, withRevision]);
 
-  const templatePath = inAdministration ? `/settings/report-configuration/${encodeURIComponent(code)}/details` : `/report/templates/${encodeURIComponent(code)}`;
-  const parent = { label: "Report Template Details", onClick: () => navigate(templatePath) };
+  const templatePath = inAdministration
+    ? `/settings/report-configuration/${encodeURIComponent(code)}/details`
+    : `/report/templates/${encodeURIComponent(code)}`;
+  const parent = {
+    label: "Report Template Details",
+    onClick: () => navigate(templatePath),
+  };
   const title = "Report Template Revision";
 
   const fieldColumns: DataTableColumn<FieldRow>[] = [
-    { id: "name", header: "Field", cell: (row) => <span className="font-medium text-slate-900">{row.name}</span> },
-    { id: "code", header: "Code", cell: (row) => <span className="font-mono text-xs">{row.code}</span> },
-    { id: "allowed", header: "Allowed", cell: (row) => (row.allowed ? "Yes" : "No") },
-    { id: "default", header: "Default", cell: (row) => (row.defaultSelected ? "Yes" : "No") },
-    { id: "required", header: "Required", cell: (row) => (row.required ? "Yes" : "No") },
+    {
+      id: "name",
+      header: "Field",
+      cell: (row) => (
+        <span className="font-medium text-slate-900">{row.name}</span>
+      ),
+    },
+    {
+      id: "code",
+      header: "Code",
+      cell: (row) => <span className="font-mono text-xs">{row.code}</span>,
+    },
+    {
+      id: "allowed",
+      header: "Allowed",
+      cell: (row) => (row.allowed ? "Yes" : "No"),
+    },
+    {
+      id: "default",
+      header: "Default",
+      cell: (row) => (row.defaultSelected ? "Yes" : "No"),
+    },
+    {
+      id: "required",
+      header: "Required",
+      cell: (row) => (row.required ? "Yes" : "No"),
+    },
   ];
-  const { layout: fieldLayout, control: fieldControl } = useCustomColumnLayout("reportRevisionFields", fieldColumns);
   const scopeColumns: DataTableColumn<ScopeRow>[] = [
-    { id: "role", header: "Role", cell: (row) => row.roleName ?? row.roleId },
-    { id: "scope", header: "Data scope", cell: (row) => SCOPE_LABEL[row.scope] ?? row.scope },
+    { id: "role", header: "Role", cell: (row) => row.roleName ?? "—" },
+    {
+      id: "scope",
+      header: "Data scope",
+      cell: (row) => SCOPE_LABEL[row.scope] ?? row.scope,
+    },
   ];
-  const { layout: scopeLayout, control: scopeControl } = useCustomColumnLayout("reportRevisionScopes", scopeColumns);
   const changeColumns: DataTableColumn<ReportRevisionChange>[] = [
     { id: "section", header: "Section", cell: (row) => row.section },
-    { id: "item", header: "Item", cell: (row) => <span className="font-medium text-slate-900">{row.item}</span> },
+    {
+      id: "item",
+      header: "Item",
+      cell: (row) => (
+        <span className="font-medium text-slate-900">{row.item}</span>
+      ),
+    },
     { id: "kind", header: "Change", cell: (row) => KIND_LABEL[row.kind] },
-    { id: "from", header: "Before", cell: (row) => <div className="max-w-64 whitespace-normal">{row.from ?? "—"}</div> },
-    { id: "to", header: "After", cell: (row) => <div className="max-w-64 whitespace-normal">{row.to ?? "—"}</div> },
+    {
+      id: "from",
+      header: "Before",
+      cell: (row) => (
+        <div className="max-w-64 whitespace-normal">{row.from ?? "—"}</div>
+      ),
+    },
+    {
+      id: "to",
+      header: "After",
+      cell: (row) => (
+        <div className="max-w-64 whitespace-normal">{row.to ?? "—"}</div>
+      ),
+    },
   ];
-  const { layout: changeLayout, control: changeControl } = useCustomColumnLayout("reportRevisionChanges", changeColumns);
 
   const content = detail?.content;
+  // The same tab layout as the Report Template Details and the Document details.
+  const tabs = useMemo<TabItem[]>(() => {
+    const list: TabItem[] = [
+      { id: "general", label: "General Information" },
+      { id: "changes", label: "Changes", count: comparison?.changes.length },
+      { id: "fields", label: "Fields", count: content?.fields?.length },
+    ];
+    if (inAdministration)
+      list.push({
+        id: "scopes",
+        label: "Role Scopes",
+        count: content?.roleScopes?.length ?? 0,
+      });
+    return list;
+  }, [comparison, content, inAdministration]);
+  const shownTab = tabs.some((tab) => tab.id === activeTab)
+    ? activeTab
+    : "general";
   const status = detail ? REVISION_STATUS[detail.status] : undefined;
   return (
     <div className="space-y-4 md:space-y-6">
       <PageHeader
         title={title}
-        breadcrumbItems={reportBreadcrumbs(navigate, title, inAdministration, parent)}
+        breadcrumbItems={reportBreadcrumbs(
+          navigate,
+          title,
+          inAdministration,
+          parent,
+        )}
         actions={
-          <Button size="sm" variant="outline" className="whitespace-nowrap touch-manipulation" onClick={parent.onClick}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="whitespace-nowrap touch-manipulation"
+            onClick={parent.onClick}
+          >
             Back
           </Button>
         }
       />
       {error && (
-        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <p
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+        >
           {error}
         </p>
       )}
       {!detail ? (
-        error ? null : <SectionLoading text="Loading revision…" />
+        error ? null : (
+          <SectionLoading text="Loading revision…" />
+        )
       ) : (
         <>
-          <ReportRevisionStepper status={detail.status} />
-          <FormSection title="Revision" description={detail.changeReason ?? "No reason recorded."}>
-            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Fact label="Template number">
-                <span className="font-mono text-xs">{detail.definitionCode}</span>
-              </Fact>
-              <Fact label="Revision">Rev {detail.revision}</Fact>
-              <Fact label="Status">
-                <Badge color={status?.color ?? "slate"} size="sm">
-                  {status?.label ?? detail.status}
-                </Badge>
-              </Fact>
-              <Fact label="Created by">{detail.createdByName ?? "—"}</Fact>
-              <Fact label="Created on">{whenText(detail.createdAt)}</Fact>
-              <Fact label="Last changed by">{detail.lastChangedByName ?? "—"}</Fact>
-              <Fact label="Submitted by">{detail.submittedByName ?? "—"}</Fact>
-              <Fact label="Submitted on">{whenText(detail.submittedAt)}</Fact>
-              <Fact label="Last review comment">{detail.approvalComment ?? "—"}</Fact>
-              <Fact label="Approved by">{detail.approvedByName ?? "—"}</Fact>
-              <Fact label="Approved on">{whenText(detail.approvedAt)}</Fact>
-              <Fact label="Effective from">{whenText(detail.effectiveAt)}</Fact>
-              <Fact label="Discarded">
-                {detail.discardedAt ? `${whenText(detail.discardedAt)}: ${detail.discardReason ?? ""}` : "—"}
-              </Fact>
-              <Fact label="Obsoleted">
-                {detail.obsoletedAt ? `${whenText(detail.obsoletedAt)} by Rev ${detail.obsoletedByRevision ?? ""}` : "—"}
-              </Fact>
-            </dl>
-          </FormSection>
-          <FormSection
-            title="Changes"
-            description={comparison?.comparedWith != null ? `What changed from Rev ${comparison.comparedWith} to Rev ${detail.revision}.` : "This is the first revision."}
-          >
-            <div className="mb-2 flex flex-wrap items-end justify-between gap-3">
-              <div className="w-full sm:w-72">
-                <Select
-                  label="Compare with"
-                  value={withRevision}
-                  options={[
-                    { value: "previous", label: "Previous revision" },
-                    { value: "effective", label: "Effective revision" },
-                    ...others.map((number) => ({ value: String(number), label: `Rev ${number}` })),
-                  ]}
-                  onChange={(value) => setWithRevision(String(value))}
+          <ReportRevisionStepper workflow={detail.workflow} />
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <TabNav
+              tabs={tabs}
+              activeTab={shownTab}
+              onChange={setActiveTab}
+              layoutId="report-template-revision-tab"
+            />
+            <div className="space-y-4 p-4 md:p-5">
+              {shownTab === "general" && (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+                  <ReadonlyField
+                    label="Created Time"
+                    value={whenText(detail.createdAt)}
+                  />
+                  <ReadonlyField
+                    label="Last Changed By"
+                    value={detail.lastChangedByName ?? "—"}
+                  />
+                  <ReadonlyField
+                    label="Template Name"
+                    value={content?.displayName ?? "—"}
+                  />
+                  <ReadonlyField
+                    label="Template Number"
+                    value={detail.definitionCode}
+                  />
+                  <ReadonlyField
+                    label="Revision"
+                    value={reportRevisionLabel(detail.revision, detail.status)}
+                  />
+                  <ReadonlyField
+                    label="Status"
+                    value={status?.label ?? detail.status}
+                  />
+                  <ReadonlyField
+                    label="Data Source"
+                    value={humanize(content?.sourceCode)}
+                  />
+                  <ReadonlyField
+                    label="Output Formats"
+                    value={content?.allowedFormats?.join(" · ") ?? "—"}
+                  />
+                  <ReadonlyField
+                    label="Orientation"
+                    value={
+                      content?.layout?.orientation === "PORTRAIT"
+                        ? "Portrait"
+                        : "Landscape"
+                    }
+                  />
+                  <div className="flex items-center gap-3">
+                    <label className="text-xs font-medium text-slate-700 sm:text-sm">
+                      Used For GMP Decisions?
+                    </label>
+                    <Checkbox
+                      id="gmpUse"
+                      checked={Boolean(content?.gmpUse)}
+                      disabled
+                      aria-label="Used for GMP decisions"
+                    />
+                  </div>
+                  <ReadonlyField
+                    label="Created By"
+                    value={detail.createdByName ?? "—"}
+                  />
+                  <ReadonlyField
+                    label="Submitted By"
+                    value={detail.submittedByName ?? "—"}
+                  />
+                  <ReadonlyField
+                    label="Submitted On"
+                    value={whenText(detail.submittedAt)}
+                  />
+                  <ReadonlyField
+                    label="Last Review Comment"
+                    value={detail.approvalComment ?? "—"}
+                  />
+                  <ReadonlyField
+                    label="Approved By"
+                    value={detail.approvedByName ?? "—"}
+                  />
+                  <ReadonlyField
+                    label="Approved On"
+                    value={whenText(detail.approvedAt)}
+                  />
+                  <ReadonlyField
+                    label="Effective From"
+                    value={whenText(detail.effectiveAt)}
+                  />
+                  <ReadonlyField
+                    label="Discarded"
+                    value={
+                      detail.discardedAt
+                        ? `${whenText(detail.discardedAt)}: ${detail.discardReason ?? ""}`
+                        : "—"
+                    }
+                  />
+                  <ReadonlyField
+                    label="Obsoleted"
+                    value={
+                      detail.obsoletedAt
+                        ? `${whenText(detail.obsoletedAt)} by ${reportRevisionLabel(detail.obsoletedByRevision)}`
+                        : "—"
+                    }
+                  />
+                  <div className="flex flex-col gap-1.5 md:col-span-2">
+                    <label
+                      htmlFor="report-revision-reason"
+                      className="text-xs font-medium text-slate-700 sm:text-sm"
+                    >
+                      Reason For The Change
+                    </label>
+                    <textarea
+                      id="report-revision-reason"
+                      value={detail.changeReason ?? "No reason recorded."}
+                      rows={3}
+                      readOnly
+                      className={CONTROL_STATE_CLASSES.readonlyTextarea}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5 md:col-span-2">
+                    <label
+                      htmlFor="report-revision-description"
+                      className="text-xs font-medium text-slate-700 sm:text-sm"
+                    >
+                      Description
+                    </label>
+                    <textarea
+                      id="report-revision-description"
+                      value={content?.description || "—"}
+                      rows={4}
+                      readOnly
+                      className={CONTROL_STATE_CLASSES.readonlyTextarea}
+                    />
+                  </div>
+                </div>
+              )}
+              {shownTab === "changes" && (
+                <div>
+                  <div className="mb-3 w-full sm:w-72">
+                    <Select
+                      label="Compare with"
+                      value={withRevision}
+                      options={[
+                        { value: "previous", label: "Previous revision" },
+                        { value: "effective", label: "Effective revision" },
+                        ...others.map((number) => ({
+                          value: String(number),
+                          label: reportRevisionLabel(number),
+                        })),
+                      ]}
+                      onChange={(value) => setWithRevision(String(value))}
+                    />
+                  </div>
+                  <p className="mb-3 text-sm text-slate-600">
+                    {comparison?.comparedWith != null
+                      ? `What changed from ${reportRevisionLabel(comparison.comparedWith)} to ${reportRevisionLabel(detail.revision, detail.status)}.`
+                      : "This is the first revision."}
+                  </p>
+                  <DataTable
+                    rows={comparison?.changes ?? []}
+                    getRowKey={(row) =>
+                      `${row.section}|${row.item}|${row.kind}`
+                    }
+                    columns={changeColumns}
+                    emptyState={
+                      <TableEmptyState
+                        title="No changes"
+                        description={
+                          comparison?.comparedWith != null
+                            ? "This revision has the same content as the one before it."
+                            : "There is no earlier revision to compare with."
+                        }
+                      />
+                    }
+                  />
+                </div>
+              )}
+              {shownTab === "fields" && (
+                <DataTable
+                  rows={content?.fields ?? []}
+                  getRowKey={(row) => row.code}
+                  columns={fieldColumns}
+                  emptyState={
+                    <TableEmptyState
+                      title="No fields"
+                      description="This revision has no fields."
+                    />
+                  }
                 />
-              </div>
-              {changeControl}
+              )}
+              {shownTab === "scopes" && inAdministration && (
+                <DataTable
+                  rows={content?.roleScopes ?? []}
+                  getRowKey={(row) => row.roleId}
+                  columns={scopeColumns}
+                  emptyState={
+                    <TableEmptyState
+                      title="No role scopes"
+                      description="No role may run this revision."
+                    />
+                  }
+                />
+              )}
             </div>
-            <DataTable
-              rows={comparison?.changes ?? []}
-              getRowKey={(row) => `${row.section}|${row.item}|${row.kind}`}
-              columns={changeColumns}
-              columnLayout={changeLayout}
-              emptyState={<TableEmptyState title="No changes" description={comparison?.comparedWith != null ? "This revision has the same content as the one before it." : "There is no earlier revision to compare with."} />}
-            />
-          </FormSection>
-          <FormSection title="Content" description="The template as this revision defines it.">
-            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Fact label="Template name">{content?.displayName ?? "—"}</Fact>
-              <Fact label="Data source">{humanize(content?.sourceCode)}</Fact>
-              <Fact label="Output formats">{content?.allowedFormats?.join(" · ") ?? "—"}</Fact>
-              <Fact label="Orientation">{content?.layout?.orientation === "PORTRAIT" ? "Portrait" : "Landscape"}</Fact>
-              <Fact label="Used for GMP decisions">{content?.gmpUse ? "Yes" : "No"}</Fact>
-              <Fact label="Description">{content?.description || "—"}</Fact>
-            </dl>
-          </FormSection>
-          <FormSection title="Fields" description="The columns this revision can put in a report.">
-            <div className="mb-2 flex justify-end">{fieldControl}</div>
-            <DataTable
-              rows={content?.fields ?? []}
-              getRowKey={(row) => row.code}
-              columns={fieldColumns}
-              columnLayout={fieldLayout}
-              emptyState={<TableEmptyState title="No fields" description="This revision has no fields." />}
-            />
-          </FormSection>
-          {inAdministration && (
-            <FormSection title="Role scopes" description="How far each role's data reaches for this revision.">
-              <div className="mb-2 flex justify-end">{scopeControl}</div>
-              <DataTable
-                rows={content?.roleScopes ?? []}
-                getRowKey={(row) => row.roleId}
-                columns={scopeColumns}
-                columnLayout={scopeLayout}
-                emptyState={<TableEmptyState title="No role scopes" description="No role may run this revision." />}
-              />
-            </FormSection>
-          )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 md:gap-3">
+            <Button
+              size="sm"
+              variant="outline-emerald"
+              className="whitespace-nowrap touch-manipulation"
+              onClick={parent.onClick}
+            >
+              Back
+            </Button>
+          </div>
         </>
       )}
     </div>

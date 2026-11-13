@@ -3,8 +3,7 @@ package com.eqms.service.report;
 import com.eqms.entity.UserAccount;
 import com.eqms.entity.UserStatus;
 import com.eqms.repository.UserAccountRepository;
-import com.eqms.service.EmailNotificationService;
-import com.eqms.service.NotificationService;
+import com.eqms.service.NotificationDispatcher;
 import com.eqms.service.PermissionEvaluationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,8 +31,7 @@ class ReportDeliveryServiceTest {
     private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
     private final UserAccountRepository users = mock(UserAccountRepository.class);
     private final PermissionEvaluationService permissions = mock(PermissionEvaluationService.class);
-    private final NotificationService notifications = mock(NotificationService.class);
-    private final EmailNotificationService email = mock(EmailNotificationService.class);
+    private final NotificationDispatcher dispatcher = mock(NotificationDispatcher.class);
     private final UUID runId = UUID.randomUUID();
     private final UUID scheduleId = UUID.randomUUID();
     private final UUID creatorId = UUID.randomUUID();
@@ -57,8 +55,9 @@ class ReportDeliveryServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ReportDeliveryService(jdbc, users, permissions, notifications, email);
-        when(email.resolvePublicAppBaseUrl()).thenReturn("https://eqms.example");
+        service = new ReportDeliveryService(jdbc, users, permissions, dispatcher);
+        // by default the registry sends both channels
+        when(dispatcher.dispatchIndependently(anyString(), any(), any())).thenReturn(new NotificationDispatcher.Outcome(null, true, true, true, true));
         when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(Map.of(
                 "schedule_id", scheduleId.toString(), "requester_user_id", creatorId.toString(), "title", "Training status")));
         when(jdbc.queryForList(anyString(), eq(UUID.class), anyObj())).thenReturn(List.of(recipientId));
@@ -92,15 +91,14 @@ class ReportDeliveryServiceTest {
     @Test
     void anAuthorizedRecipientGetsAnInAppNoticeAndALinkOnlyEmail() {
         recipientMayOpen(true, false);
-        when(email.sendRenderedEmailWithTracking(eq("recipient@example.test"), anyString(), anyString(), anyString(), anyString(), any()))
-                .thenReturn(true);
+
+        var recipient = users.findById(recipientId).orElseThrow();
 
         service.notifyRecipientsOfCompletedRun(runId);
 
-        verify(notifications).recordNotification(any(), any(), eq("personal"), eq("Report"), eq("report-ready"), eq("Report ready: Training status"),
-                anyString(), eq("/report/runs/" + runId), eq("REPORT_RUN"), eq(runId), any(), any(), any(), any());
-        verify(email).sendRenderedEmailWithTracking(eq("recipient@example.test"), eq("EQMS: Report ready: Training status"),
-                org.mockito.ArgumentMatchers.contains("https://eqms.example/report/runs/" + runId), eq("REPORT_READY"), eq("REPORT"), any());
+        verify(dispatcher).dispatchIndependently(eq("report.ready"), eq(List.of(recipient)),
+                org.mockito.ArgumentMatchers.argThat(v -> "Report ready: Training status".equals(v.get("title")) && ("/report/runs/" + runId).equals(v.get("actionUrl"))
+                        && v.get("message").contains("The file itself is not sent")));
         assertThat(attempts()).containsExactly(
                 List.of("IN_APP", "REPORT_READY", "SENT", "-"),
                 List.of("EMAIL", "REPORT_READY", "SENT", "-"));
@@ -112,8 +110,7 @@ class ReportDeliveryServiceTest {
 
         service.notifyRecipientsOfCompletedRun(runId);
 
-        verify(notifications, never()).recordNotification(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
-        verify(email, never()).sendRenderedEmailWithTracking(any(), any(), any(), any(), any(), any());
+        verify(dispatcher, never()).dispatchIndependently(any(), any(), any());
         assertThat(attempts()).containsExactly(
                 List.of("IN_APP", "REPORT_READY", "SKIPPED_NOT_AUTHORIZED", "-"),
                 List.of("EMAIL", "REPORT_READY", "SKIPPED_NOT_AUTHORIZED", "-"));
@@ -122,7 +119,6 @@ class ReportDeliveryServiceTest {
     @Test
     void theRequesterCanAlwaysOpenTheirOwnRun() {
         recipientMayOpen(false, true);
-        when(email.sendRenderedEmailWithTracking(any(), any(), any(), any(), any(), any())).thenReturn(true);
 
         service.notifyRecipientsOfCompletedRun(runId);
 
@@ -130,29 +126,36 @@ class ReportDeliveryServiceTest {
     }
 
     @Test
-    void aFailedInAppNoticeDoesNotStopTheEmail() {
+    void aFailureOfTheDispatchIsRecordedAsFailedOnBothChannels() {
         recipientMayOpen(true, false);
-        when(notifications.recordNotification(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                .thenThrow(new IllegalStateException("db down"));
-        when(email.sendRenderedEmailWithTracking(any(), any(), any(), any(), any(), any())).thenReturn(true);
+        when(dispatcher.dispatchIndependently(anyString(), any(), any())).thenThrow(new IllegalStateException("db down"));
 
         service.notifyRecipientsOfCompletedRun(runId);
 
         assertThat(attempts()).containsExactly(
                 List.of("IN_APP", "REPORT_READY", "FAILED", "IllegalStateException"),
-                List.of("EMAIL", "REPORT_READY", "SENT", "-"));
+                List.of("EMAIL", "REPORT_READY", "FAILED", "IllegalStateException"));
     }
 
     @Test
-    void anEmailThatTheProviderRejectsIsRecordedAsFailed() {
+    void aSwitchedOffEventAndAChannelThatIsOffAreSkippedNotFailed() {
         recipientMayOpen(true, false);
-        when(email.sendRenderedEmailWithTracking(any(), any(), any(), any(), any(), any())).thenReturn(false);
-
+        when(dispatcher.dispatchIndependently(anyString(), any(), any())).thenReturn(new NotificationDispatcher.Outcome(null, true, false, true, false));
         service.notifyRecipientsOfCompletedRun(runId);
-
         assertThat(attempts()).containsExactly(
                 List.of("IN_APP", "REPORT_READY", "SENT", "-"),
-                List.of("EMAIL", "REPORT_READY", "FAILED", "EMAIL_NOT_SENT"));
+                List.of("EMAIL", "REPORT_READY", "SKIPPED", "CHANNEL_OFF"));
+    }
+
+    @Test
+    void aRecipientWithoutAnAddressIsAFailedEmailAsBefore() {
+        recipientMayOpen(true, false);
+        users.findById(recipientId).orElseThrow().setEmail(null);
+        when(dispatcher.dispatchIndependently(anyString(), any(), any())).thenReturn(new NotificationDispatcher.Outcome(null, true, true, true, false));
+        service.notifyRecipientsOfCompletedRun(runId);
+        assertThat(attempts()).containsExactly(
+                List.of("IN_APP", "REPORT_READY", "SENT", "-"),
+                List.of("EMAIL", "REPORT_READY", "FAILED", "NO_EMAIL_ADDRESS"));
     }
 
     @Test
@@ -163,14 +166,12 @@ class ReportDeliveryServiceTest {
         when(users.findById(creatorId)).thenReturn(Optional.of(creator));
         when(jdbc.queryForMap(anyString(), anyObj())).thenReturn(Map.of(
                 "name", "Monthly status", "owner_user_id", recipientId.toString(), "creator_user_id", creatorId.toString()));
-        when(email.sendRenderedEmailWithTracking(any(), any(), any(), any(), any(), any())).thenReturn(true);
 
         service.notifyScheduleSuspended(scheduleId, "SUSPENDED_AUTHORIZATION_CHANGED");
 
-        verify(notifications, org.mockito.Mockito.times(2)).recordNotification(any(), any(), eq("personal"), eq("Report"),
-                eq("report-schedule-suspended"), eq("Scheduled report suspended: Monthly status"),
-                org.mockito.ArgumentMatchers.contains("creator's permissions"), eq("/report/scheduled"),
-                eq("REPORT_SCHEDULE"), eq(scheduleId), any(), any(), any(), any());
+        verify(dispatcher, org.mockito.Mockito.times(2)).dispatchIndependently(eq("report.schedule_suspended"), any(),
+                org.mockito.ArgumentMatchers.argThat(v -> "Scheduled report suspended: Monthly status".equals(v.get("title")) && v.get("message").contains("creator's permissions")
+                        && "/report/scheduled".equals(v.get("actionUrl"))));
         assertThat(attempts()).extracting(row -> row.get(2)).containsOnly("SENT");
     }
 
@@ -187,12 +188,10 @@ class ReportDeliveryServiceTest {
         when(permissions.hasPermission(administrator, "reports.schedule.manage")).thenReturn(true);
         when(jdbc.queryForMap(anyString(), anyObj())).thenReturn(Map.of(
                 "name", "Monthly status", "owner_user_id", recipientId.toString(), "creator_user_id", creatorId.toString()));
-        when(email.sendRenderedEmailWithTracking(any(), any(), any(), any(), any(), any())).thenReturn(true);
 
         service.notifyScheduleSuspended(scheduleId, "SUSPENDED_AUTHORIZATION_CHANGED");
 
-        verify(notifications, org.mockito.Mockito.times(3)).recordNotification(any(), any(), eq("personal"), eq("Report"),
-                eq("report-schedule-suspended"), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(dispatcher, org.mockito.Mockito.times(3)).dispatchIndependently(eq("report.schedule_suspended"), any(), any());
         assertThat(attempts()).hasSize(6);
     }
 
@@ -211,13 +210,33 @@ class ReportDeliveryServiceTest {
     }
 
     @Test
-    void aRunWithoutASchedulePostsNothing() {
+    void aRunWithoutAScheduleTellsOnlyThePersonWhoAskedForIt() {
+        var requester = user(creatorId, "creator@example.test");
+        when(users.findById(creatorId)).thenReturn(Optional.of(requester));
         when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(Map.of(
                 "requester_user_id", creatorId.toString(), "title", "Ad hoc")));
 
         service.notifyRecipientsOfCompletedRun(runId);
 
-        verify(notifications, never()).recordNotification(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
-        assertThat(attempts()).isEmpty();
+        verify(dispatcher).dispatchIndependently(eq("report.ready"), eq(List.of(requester)),
+                org.mockito.ArgumentMatchers.argThat(v -> "Report ready: Ad hoc".equals(v.get("title")) && v.get("message").contains("The report you asked for")
+                        && ("/report/runs/" + runId).equals(v.get("actionUrl"))));
+        assertThat(attempts()).extracting(row -> row.get(2)).containsOnly("SENT");
+    }
+
+    @Test
+    void aRunThatFailedForGoodIsToldToThePersonWhoAskedAndARunThatWillBeTriedAgainIsNot() {
+        var requester = user(creatorId, "creator@example.test");
+        when(users.findById(creatorId)).thenReturn(Optional.of(requester));
+        when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(Map.of(
+                "requester_user_id", creatorId.toString(), "title", "Ad hoc", "status", "RETRY_SCHEDULED")));
+        service.notifyRequesterOfFailedRun(runId);
+        verify(dispatcher, never()).dispatchIndependently(any(), any(), any());
+
+        when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(Map.of(
+                "requester_user_id", creatorId.toString(), "title", "Ad hoc", "status", "FAILED")));
+        service.notifyRequesterOfFailedRun(runId);
+        verify(dispatcher).dispatchIndependently(eq("report.run_failed"), eq(List.of(requester)),
+                org.mockito.ArgumentMatchers.argThat(v -> "Report failed: Ad hoc".equals(v.get("title")) && ("/report/runs/" + runId).equals(v.get("actionUrl"))));
     }
 }

@@ -17,7 +17,7 @@ class ReportLayoutApiTest {
         var templates=mock(ReportTemplateService.class);var users=mock(CurrentUserService.class);var words=mock(ReportWordService.class);var actor=new UserAccount();when(users.requireCurrentUser()).thenReturn(actor);
         var controller=new ReportLayoutController(templates,users);controller.configureWords(words);
         var mvc=MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ReportAccessExceptionHandler(),new GlobalExceptionHandler()).build();
-        doThrow(new SecurityException("denied")).when(templates).require(actor,"reports.definition.manage","settings.configuration.manage");
+        doThrow(new SecurityException("denied")).when(templates).require(actor,"reports.definition.manage","reports.properties.manage","settings.configuration.manage");
         mvc.perform(multipart("/reports/templates/layout/components/header").file(new org.springframework.mock.web.MockMultipartFile("file","test.docx","application/octet-stream",new byte[]{1}))).andExpect(status().isForbidden());
         verifyNoInteractions(words);
         reset(templates);
@@ -33,18 +33,20 @@ class ReportLayoutApiTest {
         var mvc=MockMvcBuilders.standaloneSetup(new ReportLayoutController(templates,users)).setControllerAdvice(new ReportAccessExceptionHandler(),new GlobalExceptionHandler()).build();
         var mapper=new ObjectMapper();
         var request=Map.of("title","TEST","layout",ReportLayout.defaults(),"page",1);
-        byte[] image=mvc.perform(post("/reports/templates/layout/preview-page").contentType("application/json").content(mapper.writeValueAsString(request)))
-            .andExpect(status().isOk()).andExpect(content().contentType("image/png")).andExpect(header().string("Cache-Control","no-store")).andReturn().getResponse().getContentAsByteArray();
+        // The page preview is JSON: the page as a base64 PNG, its size in points and the marks drawn on it.
+        var body=mapper.readTree(mvc.perform(post("/reports/templates/layout/preview-page").contentType("application/json").content(mapper.writeValueAsString(request)))
+            .andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith("application/json")).andReturn().getResponse().getContentAsByteArray());
+        byte[] image=java.util.Base64.getDecoder().decode(body.path("imageBase64").asText());
         org.junit.jupiter.api.Assertions.assertNotNull(javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(image)));
         mvc.perform(post("/reports/templates/layout/preview-page").contentType("application/json").content(mapper.writeValueAsString(Map.of("title","TEST","layout",ReportLayout.defaults(),"page",8))))
             .andExpect(status().isBadRequest());
-        doThrow(new SecurityException("denied")).when(templates).require(actor,"reports.definition.manage","settings.configuration.manage");
+        doThrow(new SecurityException("denied")).when(templates).require(actor,"reports.definition.manage","reports.properties.manage","settings.configuration.manage");
         mvc.perform(post("/reports/templates/layout/preview-page").contentType("application/json").content(mapper.writeValueAsString(request))).andExpect(status().isForbidden());
-        verify(templates,times(3)).require(actor,"reports.definition.manage","settings.configuration.manage");verifyNoMoreInteractions(templates);
+        verify(templates,times(3)).require(actor,"reports.definition.manage","reports.properties.manage","settings.configuration.manage");verifyNoMoreInteractions(templates);
     }
     @Test void layoutPreviewCannotBypassConfigurationPermission() throws Exception {
         var templates=mock(ReportTemplateService.class);var users=mock(CurrentUserService.class);var actor=new UserAccount();
-        when(users.requireCurrentUser()).thenReturn(actor);doThrow(new SecurityException("private roles")).when(templates).require(actor,"reports.definition.manage","settings.configuration.manage");
+        when(users.requireCurrentUser()).thenReturn(actor);doThrow(new SecurityException("private roles")).when(templates).require(actor,"reports.definition.manage","reports.properties.manage","settings.configuration.manage");
         var mvc=MockMvcBuilders.standaloneSetup(new ReportLayoutController(templates,users)).setControllerAdvice(new ReportAccessExceptionHandler(),new GlobalExceptionHandler()).build();
         mvc.perform(post("/reports/templates/layout/preview").contentType("application/json").content(new ObjectMapper().writeValueAsString(Map.of("title","TEST","layout",ReportLayout.defaults()))))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("REPORT_SCOPE_DENIED"));
@@ -58,6 +60,6 @@ class ReportLayoutApiTest {
         var bad=new ReportLayout(true,"{{password}}","",true,true,"","",true,false,"",false,"");
         mvc.perform(post("/reports/templates/layout/preview").contentType("application/json").content(json.writeValueAsString(Map.of("title","TEST","layout",bad))))
                 .andExpect(status().isBadRequest());
-        verify(templates,times(2)).require(actor,"reports.definition.manage","settings.configuration.manage");verifyNoMoreInteractions(templates);
+        verify(templates,times(2)).require(actor,"reports.definition.manage","reports.properties.manage","settings.configuration.manage");verifyNoMoreInteractions(templates);
     }
 }

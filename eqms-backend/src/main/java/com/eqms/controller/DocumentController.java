@@ -50,13 +50,16 @@ public class DocumentController {
     private final RevisionService revisionService;
     private final RevisionUpgradeSessionService revisionUpgradeSessionService;
     private final com.eqms.service.DocumentNumberService documentNumberService;
+    private final com.eqms.service.WorkflowProgressService workflowProgressService;
 
     public DocumentController(
             DocumentService documentService,
             RevisionService revisionService,
             RevisionUpgradeSessionService revisionUpgradeSessionService,
-            com.eqms.service.DocumentNumberService documentNumberService
+            com.eqms.service.DocumentNumberService documentNumberService,
+            com.eqms.service.WorkflowProgressService workflowProgressService
     ) {
+        this.workflowProgressService = workflowProgressService;
         this.documentNumberService = documentNumberService;
         this.documentService = documentService;
         this.revisionService = revisionService;
@@ -98,6 +101,12 @@ public class DocumentController {
                 reviewerId, approverId, requiresTraining,
                 sortBy, sortDirection, page, limit
         ));
+    }
+
+    /** The Revision and Document lifecycles in order, for screens that draw a stepper before a record exists. */
+    @GetMapping("/workflow-steps")
+    public ResponseEntity<com.eqms.dto.document.WorkflowStepsResponse> getWorkflowSteps() {
+        return ResponseEntity.ok(workflowProgressService.steps());
     }
 
     @GetMapping("/filters")

@@ -147,6 +147,18 @@ public class ReportTemplateRevisionService {
 
     // ---- screens: list, detail, compare (all processing on the server) -----------------------------------------------------------------------
 
+    /**
+     * The number people read for a revision, kept in step with the Document revisions: a revision being written is 0.0.1 (the first one) and becomes
+     * 1.0.0 when it is effective; the next one is 1.0.1 and then 2.0.0. The stored number stays the whole number of the revision (1, 2, 3); the label is
+     * worked out from it and from the status, here and in the screens, and the search of the revision list reads the same label.
+     */
+    public static String effectiveLabel(int revision) {
+        return revision + ".0.0";
+    }
+
+    /** SQL form of the label above for the columns r.revision and r.status. */
+    static final String LABEL_SQL = "(case when r.status in ('DRAFT','PENDING_APPROVAL','DISCARDED') then (r.revision - 1) || '.0.1' else r.revision || '.0.0' end)";
+
     public Map<String, Object> list(UserAccount actor, String code, String status, String search, String sortBy, String sortDirection, int page, int limit) {
         requireView(actor);
         if (jdbc.queryForList("select 1 from report_definitions where code=?", code).isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "REPORT_TEMPLATE_NOT_FOUND");
@@ -166,8 +178,8 @@ public class ReportTemplateRevisionService {
         int safeLimit = Math.max(1, Math.min(limit, MAX_PAGE));
         int safePage = Math.max(1, page);
         StringBuilder where = new StringBuilder(" from report_template_revisions r left join app_users c on c.id=r.created_by_user_id left join app_users a on a.id=r.approved_by_user_id"
-                + " where r.definition_code=? and (coalesce(r.change_reason,'') ilike ? or cast(r.revision as text) ilike ? or coalesce(c.full_name,'') ilike ? or coalesce(a.full_name,'') ilike ?)");
-        List<Object> args = new ArrayList<>(List.of(code, pattern, pattern, pattern, pattern));
+                + " where r.definition_code=? and (coalesce(r.change_reason,'') ilike ? or cast(r.revision as text) ilike ? or "+LABEL_SQL+" ilike ? or coalesce(c.full_name,'') ilike ? or coalesce(a.full_name,'') ilike ?)");
+        List<Object> args = new ArrayList<>(List.of(code, pattern, pattern, pattern, pattern, pattern));
         if (status != null && !status.isBlank() && !"ALL".equals(status)) { where.append(" and r.status=?"); args.add(status); }
         long total = Objects.requireNonNullElse(jdbc.queryForObject("select count(*)" + where, Long.class, args.toArray()), 0L);
         args.add(safeLimit);
@@ -211,6 +223,7 @@ public class ReportTemplateRevisionService {
         result.put("obsoletedAt", row.get("superseded_at"));
         result.put("obsoletedByRevision", row.get("superseded_by_revision"));
         result.put("content", contentOf(row, liveContent));
+        result.put("workflow", ReportRevisionWorkflow.of(row.get("status")));
         return result;
     }
 

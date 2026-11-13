@@ -33,8 +33,9 @@ public class InternalRehearsalController {
     @GetMapping("/rehearsals")
     public Map<String, Object> list(@RequestParam(required = false) String search, @RequestParam(required = false) String status, @RequestParam(required = false) String backupNumber,
                                     @RequestParam(defaultValue = "requestedAt") String sortBy, @RequestParam(defaultValue = "desc") String sortDirection,
-                                    @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        RestoreRehearsalService.Page result = rehearsals.page(search, status, backupNumber, sortBy, "asc".equalsIgnoreCase(sortDirection), page, limit);
+                                    @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit,
+                                    @RequestParam(required = false) String people) {
+        RestoreRehearsalService.Page result = rehearsals.page(search, status, backupNumber, sortBy, "asc".equalsIgnoreCase(sortDirection), page, limit, SearchClause.split(people));
         Map<String, Object> pagination = new LinkedHashMap<>();
         pagination.put("page", result.page());
         pagination.put("limit", result.limit());

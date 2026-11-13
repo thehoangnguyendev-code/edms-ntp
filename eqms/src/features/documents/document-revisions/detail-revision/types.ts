@@ -119,6 +119,7 @@ export interface RevisionDetailResponse {
     label?: string;
   } | null;
   type?: string | null;
+  typeShortCode?: string | null;
   businessUnit?: string | null;
   department?: string | null;
   author?: string | null;
@@ -172,6 +173,8 @@ export interface RevisionDetailResponse {
   workingNotesEditable?: boolean;
   workingNotesStage?: string | null;
   history?: RevisionHistoryItem[];
+  /** Lifecycle stepper for this Revision, from the server. */
+  workflow?: import("@/types/document").WorkflowProgress;
   storageProvider?: string | null;
   storageSiteId?: string | null;
   storageDriveId?: string | null;

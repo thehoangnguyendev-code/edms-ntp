@@ -48,6 +48,7 @@ import java.util.UUID;
 public class ControlledCopyController {
 
     private final ControlledCopyService controlledCopyService;
+    private final com.eqms.service.WorkflowProgressService workflowProgressService;
     private final com.eqms.service.ControlledCopyPreviewRealtimeService controlledCopyPreviewRealtimeService;
     private final ControlledCopyAuthorizationService controlledCopyAuthorizationService;
     private final ControlledCopyDistributionJobRepository controlledCopyDistributionJobRepository;
@@ -58,8 +59,10 @@ public class ControlledCopyController {
             ControlledCopyAuthorizationService controlledCopyAuthorizationService,
             ControlledCopyDistributionJobRepository controlledCopyDistributionJobRepository,
             com.eqms.repository.ControlledCopyDistributionJobItemRepository controlledCopyDistributionJobItemRepository,
-            com.eqms.service.ControlledCopyPreviewRealtimeService controlledCopyPreviewRealtimeService
+            com.eqms.service.ControlledCopyPreviewRealtimeService controlledCopyPreviewRealtimeService,
+            com.eqms.service.WorkflowProgressService workflowProgressService
     ) {
+        this.workflowProgressService = workflowProgressService;
         this.controlledCopyPreviewRealtimeService = controlledCopyPreviewRealtimeService;
         this.controlledCopyService = controlledCopyService;
         this.controlledCopyAuthorizationService = controlledCopyAuthorizationService;
@@ -242,6 +245,19 @@ public class ControlledCopyController {
         return ResponseEntity.ok(controlledCopyService.getById(id));
     }
 
+    /** The lifecycle stepper of this copy, worked out on the server. Visibility is that of the copy itself. */
+    @GetMapping("/{id}/workflow")
+    public ResponseEntity<com.eqms.dto.document.WorkflowProgressResponse> getWorkflow(@PathVariable UUID id) {
+        ControlledCopyListItemResponse copy = controlledCopyService.getById(id);
+        return ResponseEntity.ok(workflowProgressService.forControlledCopy(copy.statusCode(), id));
+    }
+
+    @GetMapping("/batches/{batchId}/workflow")
+    public ResponseEntity<com.eqms.dto.document.WorkflowProgressResponse> getBatchWorkflow(@PathVariable UUID batchId) {
+        ControlledCopyDistributionBatchSummaryResponse batch = controlledCopyService.getDistributionBatchById(batchId);
+        return ResponseEntity.ok(workflowProgressService.forControlledCopy(batch.statusCode(), "CONTROLLED_COPY_DISTRIBUTION_BATCH", batchId));
+    }
+
     @GetMapping("/{id}/detail")
     public ResponseEntity<ControlledCopyListItemResponse> getDetailById(@PathVariable UUID id) {
         return ResponseEntity.ok(controlledCopyService.getControlledCopyDetail(id));
@@ -358,7 +374,7 @@ public class ControlledCopyController {
                 .findByBatch_IdAndActionTypeOrderByCreatedAtDesc(batchId, action.toUpperCase(java.util.Locale.ROOT))
                 .stream()
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Job not found for batch: " + batchId));
+                .orElseThrow(() -> new IllegalArgumentException("Job not found for this batch"));
         boolean isFinished = "COMPLETED".equals(job.getStatus()) || "COMPLETED_WITH_ERRORS".equals(job.getStatus());
         String status = switch (job.getStatus()) {
             case "COMPLETED" -> "completed";

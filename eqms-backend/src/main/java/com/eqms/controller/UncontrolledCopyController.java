@@ -33,8 +33,11 @@ import java.util.UUID;
 public class UncontrolledCopyController {
 
     private final UncontrolledCopyService uncontrolledCopyService;
+    private final com.eqms.service.WorkflowProgressService workflowProgressService;
 
-    public UncontrolledCopyController(UncontrolledCopyService uncontrolledCopyService) {
+    public UncontrolledCopyController(UncontrolledCopyService uncontrolledCopyService,
+            com.eqms.service.WorkflowProgressService workflowProgressService) {
+        this.workflowProgressService = workflowProgressService;
         this.uncontrolledCopyService = uncontrolledCopyService;
     }
 
@@ -77,6 +80,13 @@ public class UncontrolledCopyController {
     @GetMapping("/{id}")
     public ResponseEntity<UncontrolledCopyResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(uncontrolledCopyService.getDetail(id));
+    }
+
+    /** The lifecycle stepper of this copy, worked out on the server. Visibility is that of the copy itself. */
+    @GetMapping("/{id}/workflow")
+    public ResponseEntity<com.eqms.dto.document.WorkflowProgressResponse> getWorkflow(@PathVariable UUID id) {
+        UncontrolledCopyResponse copy = uncontrolledCopyService.getDetail(id);
+        return ResponseEntity.ok(workflowProgressService.forUncontrolledCopy(copy.statusCode()));
     }
 
     @GetMapping("/{id}/detail")

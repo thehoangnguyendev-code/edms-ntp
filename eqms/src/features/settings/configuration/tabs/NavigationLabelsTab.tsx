@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch/Switch';
 import { cn } from '@/components/ui/utils';
 import { NAVIGATION_LABEL_OPTIONS } from '@/app/navigation';
 import { GeneralConfig } from '../types';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface NavigationLabelsTabProps {
   config: GeneralConfig;
@@ -16,6 +17,7 @@ interface NavigationLabelsTabProps {
 
 export const NavigationLabelsTab: React.FC<NavigationLabelsTabProps> = ({ config, onChange }) => {
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [showOnlyCustomized, setShowOnlyCustomized] = useState(false);
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
 
@@ -47,7 +49,7 @@ export const NavigationLabelsTab: React.FC<NavigationLabelsTabProps> = ({ config
   };
 
   const groups = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = debouncedSearch.trim().toLowerCase();
     const map = new Map<string, typeof NAVIGATION_LABEL_OPTIONS>();
     NAVIGATION_LABEL_OPTIONS.forEach((option) => {
       const isCustomized = Boolean(overrides[option.id]);
@@ -58,16 +60,16 @@ export const NavigationLabelsTab: React.FC<NavigationLabelsTabProps> = ({ config
       map.get(groupName)!.push(option);
     });
     return Array.from(map.entries());
-  }, [search, showOnlyCustomized, overrides]);
+  }, [debouncedSearch, showOnlyCustomized, overrides]);
 
   // While searching or filtering, expand every matching group so results are never hidden
   // behind a collapsed accordion the user hasn't opened yet.
   const effectiveOpenGroups = useMemo(() => {
-    if (search.trim() || showOnlyCustomized) {
+    if (debouncedSearch.trim() || showOnlyCustomized) {
       return new Set(groups.map(([name]) => name));
     }
     return openGroups;
-  }, [groups, openGroups, search, showOnlyCustomized]);
+  }, [groups, openGroups, debouncedSearch, showOnlyCustomized]);
 
   const toggleGroup = (name: string) => {
     setOpenGroups((prev) => {

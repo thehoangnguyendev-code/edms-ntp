@@ -107,4 +107,18 @@ class AlertServiceTest {
         assertThat(alerts.recipients()).hasSize(2);
         assertThat(db.jdbc.queryForObject("select count(*) from backup_alert_recipient", Integer.class)).as("one row per person, never duplicated").isEqualTo(2);
     }
+
+    @Test
+    void theListSortsAndFiltersByDateInTheDatabase() {
+        var byCodeAsc = rows(alerts.page("OPEN", null, null, null, null, "code", true, 1, 10));
+        assertThat(byCodeAsc).extracting(r -> r.get("code")).containsExactly("BACKUP_V2_MISSED", "LOW_SPACE");
+        var byCodeDesc = rows(alerts.page("OPEN", null, null, null, null, "code", false, 1, 10));
+        assertThat(byCodeDesc).extracting(r -> r.get("code")).containsExactly("LOW_SPACE", "BACKUP_V2_MISSED");
+        var unknownKey = rows(alerts.page("OPEN", null, null, null, null, "at; drop table backup_alert", true, 1, 10));
+        assertThat(unknownKey).hasSize(2);
+        java.time.Instant now = java.time.Instant.now();
+        assertThat(rows(alerts.page("OPEN", null, null, now.minusSeconds(3600), now.plusSeconds(3600), "at", false, 1, 10))).hasSize(2);
+        assertThat(rows(alerts.page("OPEN", null, null, now.plusSeconds(3600), null, "at", false, 1, 10))).isEmpty();
+        assertThat(rows(alerts.page("OPEN", null, null, null, now.minusSeconds(3600), "at", false, 1, 10))).isEmpty();
+    }
 }

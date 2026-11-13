@@ -28,6 +28,10 @@ import java.util.regex.Pattern;
 @Service
 public class ReportPropertiesService {
     public static final int DEFAULT_MAX_ROWS = 10_000;
+    /** Rows of a run with the Full choice. The ceiling is what the report worker can hold in memory; raising it needs a memory test (REPORT-FULL-RUN-2026-11-12). */
+    public static final int DEFAULT_MAX_ROWS_FULL = 100_000;
+    public static final int MIN_MAX_ROWS_FULL = 10_000;
+    public static final int MAX_MAX_ROWS_FULL = 100_000;
     public static final int DEFAULT_MAX_SCHEDULE_RECIPIENTS = 200;
     public static final int DEFAULT_SCHEDULE_RETRY_MINUTES = 5;
     /** The settings are one record; its audit entries share this identity. */
@@ -46,10 +50,14 @@ public class ReportPropertiesService {
 
     /** What an administrator sends. A missing number keeps the present value. */
     public record PropertiesWrite(Integer version, String templateNumberPrefix, Integer templateNumberDigits, Integer maxRows,
-                                  Integer maxScheduleRecipients, Integer scheduleRetryMinutes, ReportLayout appearance) {
+                                  Integer maxScheduleRecipients, Integer scheduleRetryMinutes, ReportLayout appearance, Integer maxRowsFull) {
+        public PropertiesWrite(Integer version, String templateNumberPrefix, Integer templateNumberDigits, Integer maxRows,
+                               Integer maxScheduleRecipients, Integer scheduleRetryMinutes, ReportLayout appearance) {
+            this(version, templateNumberPrefix, templateNumberDigits, maxRows, maxScheduleRecipients, scheduleRetryMinutes, appearance, null);
+        }
         public PropertiesWrite(Integer version, String templateNumberPrefix, Integer templateNumberDigits, Integer maxRows,
                                Integer maxScheduleRecipients, Integer scheduleRetryMinutes) {
-            this(version, templateNumberPrefix, templateNumberDigits, maxRows, maxScheduleRecipients, scheduleRetryMinutes, null);
+            this(version, templateNumberPrefix, templateNumberDigits, maxRows, maxScheduleRecipients, scheduleRetryMinutes, null, null);
         }
     }
 
@@ -75,6 +83,8 @@ public class ReportPropertiesService {
     // ---- values used by the other services ---------------------------------------------------------------------------------------------------
 
     public int maxRows() { return intValue("max_rows", DEFAULT_MAX_ROWS); }
+    /** Most rows of a run with the Full choice; never below the ordinary limit and never above what the worker can hold. */
+    public int maxRowsFull() { return Math.min(MAX_MAX_ROWS_FULL, Math.max(maxRows(), intValue("max_rows_full", DEFAULT_MAX_ROWS_FULL))); }
     public int maxScheduleRecipients() { return intValue("max_schedule_recipients", DEFAULT_MAX_SCHEDULE_RECIPIENTS); }
     public int scheduleRetryMinutes() { return intValue("schedule_retry_minutes", DEFAULT_SCHEDULE_RETRY_MINUTES); }
 
@@ -89,7 +99,7 @@ public class ReportPropertiesService {
         require(actor, "reports.properties.view", "reports.properties.manage");
         var row = jdbc.queryForMap("""
             select template_number_prefix, template_number_digits, template_number_sequence,
-                   max_rows, max_schedule_recipients, schedule_retry_minutes, version, updated_at
+                   max_rows, max_rows_full, max_schedule_recipients, schedule_retry_minutes, version, updated_at
               from report_properties where id=1
             """);
         var result = new LinkedHashMap<String, Object>();
@@ -102,6 +112,8 @@ public class ReportPropertiesService {
         result.put("lastTemplateSerial", last);
         result.put("nextTemplateNumber", ReportTemplateNumberService.format(prefix, digits, last + 1));
         result.put("maxRows", ((Number) row.get("max_rows")).intValue());
+        result.put("maxRowsFull", ((Number) row.get("max_rows_full")).intValue());
+        result.put("maxRowsFullLimit", MAX_MAX_ROWS_FULL);
         result.put("maxScheduleRecipients", ((Number) row.get("max_schedule_recipients")).intValue());
         result.put("scheduleRetryMinutes", ((Number) row.get("schedule_retry_minutes")).intValue());
         result.put("appearance", appearance());
@@ -116,7 +128,7 @@ public class ReportPropertiesService {
         if (request == null) throw new IllegalArgumentException("REPORT_PROPERTIES_INVALID");
         var current = jdbc.queryForMap("""
             select template_number_prefix, template_number_digits,
-                   max_rows, max_schedule_recipients, schedule_retry_minutes, version
+                   max_rows, max_rows_full, max_schedule_recipients, schedule_retry_minutes, version
               from report_properties where id=1 for update
             """);
         if (!Objects.equals(((Number) current.get("version")).intValue(), request.version())) throw new ResponseStatusException(HttpStatus.CONFLICT, "REPORT_PROPERTIES_VERSION_CHANGED");
@@ -126,6 +138,8 @@ public class ReportPropertiesService {
         if (digits < 3 || digits > 8) throw new IllegalArgumentException("REPORT_NUMBER_DIGITS_INVALID");
         int maxRows = request.maxRows() == null ? ((Number) current.get("max_rows")).intValue() : request.maxRows();
         if (maxRows < 1000 || maxRows > 100_000) throw new IllegalArgumentException("REPORT_MAX_ROWS_INVALID");
+        int maxRowsFull = request.maxRowsFull() == null ? ((Number) current.get("max_rows_full")).intValue() : request.maxRowsFull();
+        if (maxRowsFull < MIN_MAX_ROWS_FULL || maxRowsFull > MAX_MAX_ROWS_FULL || maxRowsFull < maxRows) throw new IllegalArgumentException("REPORT_MAX_ROWS_FULL_INVALID");
         int recipients = request.maxScheduleRecipients() == null ? ((Number) current.get("max_schedule_recipients")).intValue() : request.maxScheduleRecipients();
         if (recipients < 1 || recipients > 500) throw new IllegalArgumentException("REPORT_MAX_RECIPIENTS_INVALID");
         int retry = request.scheduleRetryMinutes() == null ? ((Number) current.get("schedule_retry_minutes")).intValue() : request.scheduleRetryMinutes();
@@ -135,6 +149,7 @@ public class ReportPropertiesService {
         change(changes, "Template number prefix", current.get("template_number_prefix"), prefix);
         change(changes, "Digits of the serial number", current.get("template_number_digits"), digits);
         change(changes, "Most rows in a report file", current.get("max_rows"), maxRows);
+        change(changes, "Most rows in a report file run with Full", current.get("max_rows_full"), maxRowsFull);
         change(changes, "Most recipients of a schedule", current.get("max_schedule_recipients"), recipients);
         change(changes, "Retry of a schedule after a temporary failure (minutes)", current.get("schedule_retry_minutes"), retry);
         ReportLayout before = appearance();
@@ -153,9 +168,9 @@ public class ReportPropertiesService {
             throw new IllegalArgumentException("REPORT_LAYOUT_INVALID");
         }
         jdbc.update("""
-            update report_properties set template_number_prefix=?, template_number_digits=?, max_rows=?, max_schedule_recipients=?,
+            update report_properties set template_number_prefix=?, template_number_digits=?, max_rows=?, max_rows_full=?, max_schedule_recipients=?,
               schedule_retry_minutes=?, appearance=cast(? as jsonb), version=version+1, updated_by=?, updated_at=now() where id=1
-            """, prefix, digits, maxRows, recipients, retry, appearanceJson, actor.getId());
+            """, prefix, digits, maxRows, maxRowsFull, recipients, retry, appearanceJson, actor.getId());
         audit.logAs(actor, "REPORT_PROPERTIES", "REPORT_PROPERTIES", AUDIT_ID, "REPORT_PROPERTIES_UPDATED", null, null, String.join("; ", changes));
         return get(actor);
     }

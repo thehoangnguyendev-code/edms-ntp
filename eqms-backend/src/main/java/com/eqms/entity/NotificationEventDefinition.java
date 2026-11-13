@@ -25,9 +25,6 @@ public class NotificationEventDefinition {
     public static final String PRIORITY_HIGH = "HIGH";
     public static final String PRIORITY_CRITICAL = "CRITICAL";
 
-    public static final String COMPLIANCE_GMP_MANDATORY = "GMP_MANDATORY";
-    public static final String COMPLIANCE_COMPLIANCE = "COMPLIANCE";
-    public static final String COMPLIANCE_OPTIONAL = "OPTIONAL";
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -48,8 +45,6 @@ public class NotificationEventDefinition {
     @Column(nullable = false, length = 20)
     private String priority = PRIORITY_MEDIUM;
 
-    @Column(name = "compliance_group", nullable = false, length = 30)
-    private String complianceGroup = COMPLIANCE_OPTIONAL;
 
     @Column(name = "related_action", length = 120)
     private String relatedAction;
@@ -65,11 +60,7 @@ public class NotificationEventDefinition {
     @Column(name = "available_variables", length = 1000)
     private String availableVariables;
 
-    @Column(name = "is_mandatory", nullable = false)
-    private boolean mandatory = false;
 
-    @Column(name = "mandatory_reason", length = 500)
-    private String mandatoryReason;
 
     @Column(nullable = false)
     private boolean active = true;
@@ -95,8 +86,6 @@ public class NotificationEventDefinition {
     public void setModule(String module) { this.module = module; }
     public String getPriority() { return priority; }
     public void setPriority(String priority) { this.priority = priority; }
-    public String getComplianceGroup() { return complianceGroup; }
-    public void setComplianceGroup(String complianceGroup) { this.complianceGroup = complianceGroup; }
     public String getRelatedAction() { return relatedAction; }
     public void setRelatedAction(String relatedAction) { this.relatedAction = relatedAction; }
     public String getDataObject() { return dataObject; }
@@ -105,10 +94,6 @@ public class NotificationEventDefinition {
     public void setSupportedChannels(String supportedChannels) { this.supportedChannels = supportedChannels; }
     public String getAvailableVariables() { return availableVariables; }
     public void setAvailableVariables(String availableVariables) { this.availableVariables = availableVariables; }
-    public boolean isMandatory() { return mandatory; }
-    public void setMandatory(boolean mandatory) { this.mandatory = mandatory; }
-    public String getMandatoryReason() { return mandatoryReason; }
-    public void setMandatoryReason(String mandatoryReason) { this.mandatoryReason = mandatoryReason; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
     public int getDisplayOrder() { return displayOrder; }

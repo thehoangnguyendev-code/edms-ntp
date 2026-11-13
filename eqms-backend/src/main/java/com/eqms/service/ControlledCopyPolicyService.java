@@ -701,7 +701,7 @@ public class ControlledCopyPolicyService {
                 UUID id = UUID.fromString(input.id().trim());
                 limit = existingById.get(id);
                 if (limit == null) {
-                    throw new IllegalArgumentException("Expiry rule not found: " + input.id());
+                    throw new IllegalArgumentException("Expiry rule not found");
                 }
                 before = expirySnapshot(limit);
                 keptIds.add(id);

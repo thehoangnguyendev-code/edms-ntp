@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.UUID;
 
 public interface UncontrolledCopyRepository extends JpaRepository<UncontrolledCopyRecord, UUID>, JpaSpecificationExecutor<UncontrolledCopyRecord> {
+
+    /** Navigation: the user is the named recipient of at least one Uncontrolled Copy. */
+    boolean existsByRecipientUserId(UUID userId);
     List<UncontrolledCopyRecord> findAllByDocument_IdOrderByCreatedAtDesc(UUID documentId);
     List<UncontrolledCopyRecord> findAllByStatusOrderByCreatedAtDesc(String status);
     List<UncontrolledCopyRecord> findAllByRequestedBy_IdOrderByCreatedAtDesc(UUID requestedByUserId);

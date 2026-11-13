@@ -32,7 +32,8 @@ function pinnedBlockIsContiguous(list: CustomizableColumn[]): boolean {
  * and only saved for the signed-in user when Apply is pressed.
  *
  * Rules (enforced here and in normalizeColumnOrder):
- * - Locked columns (No.) and fixed columns (Action) cannot be hidden, pinned or dragged.
+ * - Locked columns cannot be hidden or dragged. No. and Expand can be pinned independently.
+ * - Fixed columns (Action) cannot be changed.
  * - Only a continuous run from the left can be pinned, right after the locked columns. A drag that
  *   would break that run is ignored.
  * - At most MAX_PINNED_COLUMNS columns can be pinned.
@@ -60,8 +61,7 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
 
   const ordered = normalizeColumnOrder(draft);
   const movable = ordered.filter((column) => !column.locked);
-  // The "Expand" toggle column of a table is part of its structure, not something a person arranges: it is never listed here (it stays in the table).
-  const lockedColumns = ordered.filter((column) => column.locked && column.id !== "expand");
+  const lockedColumns = ordered.filter((column) => column.locked);
   const pinnedCount = movable.filter((column) => column.pinned && column.visible).length;
   const searching = query.trim().length > 0;
   const needle = query.trim().toLowerCase();
@@ -140,7 +140,7 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
         <Drawer
           title="Custom Column"
           subtitlePlacement="below"
-          subtitle={`Show, hide, pin and reorder columns. Pin up to ${MAX_PINNED_COLUMNS}, starting from the left.`}
+          subtitle={`Pin No. and Expand independently. Show, hide, pin and reorder up to ${MAX_PINNED_COLUMNS} additional columns.`}
           onClose={() => setOpen(false)}
           footer={
             <div className="flex items-center justify-between gap-2">
@@ -164,7 +164,7 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
               placeholder="Search columns..."
               value={query}
               onChange={setQuery}
-              debounceMs={0}
+              debounceMs={300}
             />
           </div>
 
@@ -172,7 +172,23 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
             items={visibleMovable}
             onReorder={reorder}
             header={visibleLocked.map((column) => (
-              <LockedRow key={column.id} label={column.label} />
+              <div key={column.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <IconLock aria-label="Always visible" className="h-4 w-4 shrink-0 text-slate-400" />
+                <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{column.label}</span>
+                {allowPin && (column.id === "no" || column.id === "expand") && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`${column.pinned ? "Unpin" : "Pin"} ${column.label}`}
+                    aria-pressed={Boolean(column.pinned)}
+                    onClick={() => update(column.id, { pinned: !column.pinned })}
+                    className={column.pinned ? "text-emerald-600" : "text-slate-400"}
+                  >
+                    {column.pinned ? <IconPin className="h-4 w-4" /> : <IconPinnedOff className="h-4 w-4" />}
+                  </Button>
+                )}
+              </div>
             ))}
             footer={visibleFixed.map((column) => (
               <LockedRow key={column.id} label={column.label} />

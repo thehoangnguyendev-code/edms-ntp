@@ -38,6 +38,8 @@ export interface PermissionSetResponse {
   description: string | null;
   active: boolean;
   system: boolean;
+  /** A DEV/UAT/test set; shown as a "Test" badge only. */
+  testData?: boolean;
   permissionCount: number;
   permissionCodes: string[];
   /** Server-computed module coverage + derived category. */
@@ -75,6 +77,9 @@ export interface UserActionCapabilitiesResponse {
   userId: string;
   actions: Record<string, UserActionCapability>;
 }
+
+/** Machine codes from the server; a screen translates them for display only. */
+export type DocumentControlVisibility = 'VIEW_EVERYTHING' | 'INCOMPLETE' | 'NAMED_IN_FLOW';
 
 export interface UserAuthorizationSummary {
   userId: string;
@@ -253,12 +258,16 @@ export interface AccessProfileResponse {
   type: 'SYSTEM' | 'CUSTOM';
   active: boolean;
   system: boolean;
+  /** A DEV/UAT/test profile; shown as a "Test" badge only. */
+  testData?: boolean;
   businessUnitScope: string | null;
   departmentScope: string | null;
   permissionSetCount: number;
   workflowRoleCount: number;
   assignedUserCount: number;
   workflowRoles: string[];
+  /** How much of Document Control the profile lets its people see; computed on the server from the profile's permissions. */
+  documentControlVisibility?: DocumentControlVisibility;
   createdAt: string;
   updatedAt: string;
   /** Server-formatted "dd/MM/yyyy HH:mm:ss" — render as-is, do not reformat on the client. */
@@ -287,6 +296,7 @@ export interface PermissionSetSummary {
 export interface AssignedUserSummary {
   id: string;
   fullName: string;
+  employeeCode?: string | null;
   email: string;
   department: string | null;
   status: string | null;
@@ -301,13 +311,16 @@ export interface AccessProfileDetailResponse {
   type: 'SYSTEM' | 'CUSTOM';
   active: boolean;
   system: boolean;
+  testData?: boolean;
   businessUnitScope: string | null;
   departmentScope: string | null;
   permissionSets: PermissionSetSummary[];
   workflowRoles: string[];
+  documentControlVisibility?: DocumentControlVisibility;
   assignedUsers: AssignedUserSummary[];
   createdAt: string;
   updatedAt: string;
+  createdBy?: string | null;
 }
 
 export interface AccessProfileActionCapability {
@@ -436,9 +449,6 @@ export interface SmtpConnectionTestPayload {
 
 export type StorageTestPayload =
   | { provider: 'local'; basePath?: string }
-  | { provider: 'aws-s3'; bucketName: string; region: string; accessKeyId: string; secretAccessKey: string; basePath?: string }
-  | { provider: 'azure-blob'; bucketName: string; accessKeyId: string; secretAccessKey: string; basePath?: string }
-  | { provider: 'google-cloud'; bucketName: string; accessKeyId: string; secretAccessKey: string; basePath?: string }
   | {
       provider: 'minio';
       minioEndpoint: string;
@@ -453,9 +463,7 @@ export type StorageTestPayload =
       auditPrefix?: string;
       tempPrefix?: string;
     }
-  | { provider: 'nas'; nasHost?: string; nasShareName?: string; nasDomain?: string; nasPath?: string; nasUsername?: string; nasPassword?: string }
-  | { provider: 'google-drive'; googleDriveClientId: string; googleDriveClientSecret: string; googleDriveFolderId: string }
-  | { provider: 'dropbox'; dropboxAccessToken: string; dropboxAppKey: string; dropboxAppSecret: string; dropboxFolderPath: string };
+  | { provider: 'nas'; nasHost?: string; nasShareName?: string; nasDomain?: string; nasPath?: string; nasUsername?: string; nasPassword?: string };
 
 export const settingsApi = {
   // ─── User CRUD ───────────────────────────────────────────────────────────────
@@ -509,6 +517,12 @@ export const settingsApi = {
    *  has no admin-list enrichments -- just the max existing employeeCode digits + 1. */
   getNextEmployeeCode: async (): Promise<string> => {
     const response = await api.get<string>(`${ENDPOINT}/next-employee-code`);
+    return response.data;
+  },
+
+  /** A free username for a full name, worked out by the server (it knows every account); the form does not load the list of users. */
+  suggestUsername: async (fullName: string): Promise<string> => {
+    const response = await api.get<string>(`${ENDPOINT}/suggest-username`, { params: { fullName } });
     return response.data;
   },
 
@@ -955,6 +969,8 @@ export const settingsApi = {
     module?: string; category?: string;
     createdFrom?: string; createdTo?: string; updatedFrom?: string; updatedTo?: string;
     sortBy?: string; sortDir?: string;
+    /** Only the sets attached to this Access Profile (read-only profile details). */
+    accessProfileId?: string;
   }): Promise<PaginatedResponse<PermissionSetResponse>> => {
     const r = await api.get<PaginatedResponse<PermissionSetResponse>>('/security/permission-sets/paged', { params });
     return r.data;
@@ -1125,10 +1141,6 @@ export const settingsApi = {
     const r = await api.get<WorkflowRoleCatalogSummary[]>('/security/workflow-roles');
     return r.data;
   },
-  createAccessProfile: async (payload: AccessProfilePayload, sig?: SecuritySignaturePayload): Promise<AccessProfileDetailResponse> => {
-    const r = await api.post<AccessProfileDetailResponse>('/security/access-profiles', { ...payload, ...sig });
-    return r.data;
-  },
   /** Atomic "create role in one shot" (profile + picked permissions + shared sets + workflow roles + users) — one e-signature. */
   createAccessProfileFull: async (
     payload: {
@@ -1202,8 +1214,8 @@ export const settingsApi = {
     const r = await api.get<AssignedUserSummary[]>(`/security/access-profiles/${id}/users`);
     return r.data;
   },
-  getAccessProfileUsersPage: async (id: string, page: number, limit: number) => {
-    const r = await api.get<{ data: AssignedUserSummary[]; assignedIds: string[]; pagination: { total: number; totalPages: number } }>(`/security/access-profiles/${id}/users/paged`, { params: { page, limit } });
+  getAccessProfileUsersPage: async (id: string, page: number, limit: number, query?: { search?: string; sortBy?: string; sortDir?: "asc" | "desc" }) => {
+    const r = await api.get<{ data: AssignedUserSummary[]; assignedIds: string[]; pagination: { total: number; totalPages: number } }>(`/security/access-profiles/${id}/users/paged`, { params: { page, limit, ...query } });
     return r.data;
   },
   assignUserToAccessProfile: async (id: string, userId: string, sig?: SecuritySignaturePayload): Promise<void> => {
@@ -1247,7 +1259,9 @@ export const settingsApi = {
     const r = await api.get<PaginatedResponse<AccessReviewItem>>(`/security/access-reviews/${id}/items/paged`, { params });
     return r.data;
   },
-  createAccessReview: async (payload: { name: string; description?: string; reviewPeriodStart?: string; reviewPeriodEnd?: string }): Promise<AccessReviewCampaignDetail> => {
+  /** The people who may be given an access review campaign. */
+  getAccessReviewReviewers: async (): Promise<{ id: string; name: string }[]> => (await api.get<{ id: string; name: string }[]>('/security/access-reviews/reviewers')).data,
+  createAccessReview: async (payload: { name: string; description?: string; reviewPeriodStart?: string; reviewPeriodEnd?: string; reviewerUserId?: string }): Promise<AccessReviewCampaignDetail> => {
     const r = await api.post<AccessReviewCampaignDetail>('/security/access-reviews', payload);
     return r.data;
   },

@@ -51,6 +51,7 @@ public class AuditTrailReviewService {
     private static final String MANAGE_PERMISSION = "audit.review.manage";
     private static final Set<String> DECISIONS = Set.of("CONFIRMED", "FLAGGED", "PENDING");
 
+    private final com.eqms.repository.UserAccountRepository userRepo;
     private final AuditTrailReviewCampaignRepository campaignRepo;
     private final AuditTrailReviewItemRepository itemRepo;
     private final AuditLogRepository auditLogRepository;
@@ -61,6 +62,7 @@ public class AuditTrailReviewService {
     private final ElectronicSignatureService electronicSignatureService;
 
     public AuditTrailReviewService(
+            com.eqms.repository.UserAccountRepository userRepo,
             AuditTrailReviewCampaignRepository campaignRepo,
             AuditTrailReviewItemRepository itemRepo,
             AuditLogRepository auditLogRepository,
@@ -69,6 +71,7 @@ public class AuditTrailReviewService {
             AuditTrailService auditTrailService,
             SecurityChangeSignatureService securityChangeSignatureService,
             ElectronicSignatureService electronicSignatureService) {
+        this.userRepo = userRepo;
         this.campaignRepo = campaignRepo;
         this.itemRepo = itemRepo;
         this.auditLogRepository = auditLogRepository;
@@ -141,7 +144,8 @@ public class AuditTrailReviewService {
         campaign.setReviewPeriodStart(request.reviewPeriodStart());
         campaign.setReviewPeriodEnd(request.reviewPeriodEnd());
         campaign.setStatus("IN_PROGRESS");
-        campaign.setReviewer(actor);
+        UserAccount reviewer = resolveReviewer(actor, request.reviewerUserId());
+        campaign.setReviewer(reviewer);
         campaign.setCreatedBy(actor);
         campaign.setUpdatedBy(actor);
         campaign = campaignRepo.save(campaign);
@@ -162,7 +166,8 @@ public class AuditTrailReviewService {
         auditTrailService.logAs(actor, ENTITY_TYPE, campaign.getName(), campaign.getId(),
                 "AUDIT_TRAIL_REVIEW_CAMPAIGN_CREATED", null, "In Progress",
                 "Created audit trail review campaign with " + count + " log entries for period "
-                        + request.reviewPeriodStart() + " to " + request.reviewPeriodEnd());
+                        + request.reviewPeriodStart() + " to " + request.reviewPeriodEnd()
+                        + (reviewer.getId().equals(actor.getId()) ? "" : ". Reviewer: " + reviewer.getFullName()));
         return getCampaignInternal(campaign.getId());
     }
 
@@ -174,7 +179,7 @@ public class AuditTrailReviewService {
             throw new IllegalStateException("Decisions can only be recorded on an in-progress campaign");
         }
         AuditTrailReviewItem item = itemRepo.findById(itemId)
-                .orElseThrow(() -> new IllegalArgumentException("Review item not found: " + itemId));
+                .orElseThrow(() -> new IllegalArgumentException("Review item not found"));
         if (item.getCampaign() == null || !campaignId.equals(item.getCampaign().getId())) {
             throw new IllegalArgumentException("Review item does not belong to this campaign");
         }
@@ -192,7 +197,7 @@ public class AuditTrailReviewService {
 
         auditTrailService.logAs(actor, ENTITY_TYPE, campaign.getName(), campaign.getId(),
                 "AUDIT_TRAIL_REVIEW_ITEM_DECIDED", oldDecision, decision,
-                "Review decision for audit log " + item.getAuditLog().getId()
+                "Review decision for audit log entry (" + item.getAuditLog().getAction() + " on " + item.getAuditLog().getEntityName() + ")"
                         + (StringUtils.hasText(request.note()) ? ": " + request.note() : ""));
         return toItemResponse(item);
     }
@@ -261,7 +266,7 @@ public class AuditTrailReviewService {
 
     private AuditTrailReviewCampaign require(UUID id) {
         return campaignRepo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Audit trail review campaign not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Audit trail review campaign not found"));
     }
 
     private void requireView() {
@@ -269,6 +274,27 @@ public class AuditTrailReviewService {
         if (!permissionEvaluationService.hasAnyPermission(u, VIEW_PERMISSION, MANAGE_PERMISSION)) {
             throw new AccessDeniedException("Audit trail review view permission required");
         }
+    }
+
+    /** The person who reviews a campaign: the one the creator names, or the creator. A person named must be an active user who may manage audit trail reviews (they decide the items). */
+    private UserAccount resolveReviewer(UserAccount actor, java.util.UUID reviewerUserId) {
+        if (reviewerUserId == null || reviewerUserId.equals(actor.getId())) return actor;
+        UserAccount reviewer = userRepo.findById(reviewerUserId).orElseThrow(() -> new IllegalArgumentException("The reviewer was not found."));
+        if (reviewer.getStatus() != com.eqms.entity.UserStatus.Active || !permissionEvaluationService.hasPermission(reviewer, MANAGE_PERMISSION)) {
+            throw new IllegalArgumentException("The reviewer must be an active user who may manage audit trail reviews.");
+        }
+        return reviewer;
+    }
+
+    /** The people who may be given a campaign: the active users who may manage audit trail reviews. */
+    @Transactional(readOnly = true)
+    public List<com.eqms.dto.audittrail.AuditTrailReviewDtos.ReviewerOption> reviewers() {
+        requireManage();
+        return userRepo.findAllByStatus(com.eqms.entity.UserStatus.Active).stream()
+                .filter(user -> permissionEvaluationService.hasPermission(user, MANAGE_PERMISSION))
+                .sorted(java.util.Comparator.comparing(user -> user.getFullName() == null ? "" : user.getFullName(), String.CASE_INSENSITIVE_ORDER))
+                .map(user -> new com.eqms.dto.audittrail.AuditTrailReviewDtos.ReviewerOption(user.getId(), user.getFullName()))
+                .toList();
     }
 
     private UserAccount requireManage() {

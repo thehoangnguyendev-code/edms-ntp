@@ -7,8 +7,10 @@ import { Input, Textarea } from "../shared/TrainingFields";
 import { Select } from "@/components/ui/select/Select";
 import { useToast } from "@/components/ui/toast/Toast";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
+import { useServerWorkflow } from "@/components/ui/workflow-stepper/useServerWorkflow";
 import {
   trainingActivitiesApi,
+  trainingWorkflowApi,
   trainingError,
   trainingFilesApi,
   type TrainingKind,
@@ -43,14 +45,6 @@ const CREATE_KINDS: TrainingKind[] = [
   "UNPLANNED",
   "EXTERNAL",
 ];
-const STEPS = [
-  "New",
-  "Planned",
-  "Notified",
-  "In Progress",
-  "Pending QA Confirmation",
-  "Completed",
-];
 const LATER = ["assessment", "signatures"];
 
 /** A material added on this screen: it waits here and is saved with the activity (the same board as in planning, so the person meets one layout). */
@@ -59,6 +53,8 @@ type StagedMaterial = { id: string; title: string; file?: File; url?: string };
 /** A new training activity as a page with tabs, like Document Details. Basic Information and the sessions are filled here; the Training Number is issued when the activity is saved, and the other tabs open on the next screen. */
 export function TrainingActivityCreatePage() {
   const navigate = useNavigate();
+  // The activity has no record yet, so the server gives the stepper of a new one.
+  const workflow = useServerWorkflow("training:ACTIVITY", () => trainingWorkflowApi.newRecord("ACTIVITY"));
   const goBack = useTrainingBack("/training-management/activities");
   const { showToast } = useToast();
   const [tab, setTab] = useState("basic");
@@ -203,8 +199,7 @@ export function TrainingActivityCreatePage() {
         "New Training Activity",
       )}
       onBack={goBack}
-      steps={STEPS}
-      currentStepIndex={0}
+      workflow={workflow}
       tabs={tabs}
       activeTab={tab}
       onTab={setTab}

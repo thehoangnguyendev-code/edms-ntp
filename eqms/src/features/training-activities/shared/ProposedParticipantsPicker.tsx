@@ -15,7 +15,15 @@ const ROW = "grid grid-cols-[28px_minmax(0,1fr)_110px] items-center gap-3 px-3 p
  * One screen to choose the people: type a name or an employee ID, or narrow the list to a Business Unit and/or a Department, tick the people (or "Select all shown"),
  * and confirm. It edits the whole list: the people already proposed are ticked, unticking one takes the person off, ticking adds. `onChange` gets everyone who is ticked.
  */
-export function ProposedParticipantsPicker({ initialIds, initialPeople = [], onChange }: { initialIds: string[]; /** Who the first ids are, when they are not on the server yet. */ initialPeople?: TrainingPerson[]; onChange: (personIds: string[], people: TrainingPerson[]) => void }) {
+/** Where the people come from: the people of a Training by default; another screen (the recipients of a scheduled report) gives its own, with the same shape. */
+export interface PeopleSource {
+  groups: (by: "BUSINESS_UNIT" | "DEPARTMENT") => Promise<TrainingGroup[]>;
+  query: (params: { search?: string; businessUnit?: string; department?: string; page: number; limit: number }) => ReturnType<typeof trainingProposalApi.queryPeople>;
+}
+
+export function ProposedParticipantsPicker({ initialIds, initialPeople = [], onChange, source }: { initialIds: string[]; /** Who the first ids are, when they are not on the server yet. */ initialPeople?: TrainingPerson[]; onChange: (personIds: string[], people: TrainingPerson[]) => void; source?: PeopleSource }) {
+  const groupsOf = (by: "BUSINESS_UNIT" | "DEPARTMENT") => (source ? source.groups(by) : trainingProposalApi.peopleGroups(by));
+  const queryOf = (params: Parameters<PeopleSource["query"]>[0]) => (source ? source.query(params) : trainingProposalApi.queryPeople(params));
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
   const [units, setUnits] = useState<TrainingGroup[]>([]);
   const [departments, setDepartments] = useState<TrainingGroup[]>([]);
@@ -32,8 +40,8 @@ export function ProposedParticipantsPicker({ initialIds, initialPeople = [], onC
   const known = useRef<Map<string, TrainingPerson>>(new Map(initialPeople.map((p) => [p.id, p])));
 
   useEffect(() => {
-    trainingProposalApi.peopleGroups("BUSINESS_UNIT").then(setUnits).catch(() => setUnits([]));
-    trainingProposalApi.peopleGroups("DEPARTMENT").then(setDepartments).catch(() => setDepartments([]));
+    groupsOf("BUSINESS_UNIT").then(setUnits).catch(() => setUnits([]));
+    groupsOf("DEPARTMENT").then(setDepartments).catch(() => setDepartments([]));
   }, []);
 
   // A Business Unit or a Department narrows the list to its people; the search then narrows it further. With neither, the search asks the server.
@@ -42,7 +50,7 @@ export function ProposedParticipantsPicker({ initialIds, initialPeople = [], onC
     setLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const result = await trainingProposalApi.queryPeople({ search: search || undefined, businessUnit: unit || undefined, department: department || undefined, page, limit: 20 });
+        const result = await queryOf({ search: search || undefined, businessUnit: unit || undefined, department: department || undefined, page, limit: 20 });
         const rows = result.data;
         if (alive) { rows.forEach((p) => known.current.set(p.id, p)); setPeople(rows); setTotal(result.pagination.total); setTotalPages(Math.max(1, result.pagination.totalPages)); }
       } catch {

@@ -105,16 +105,19 @@ export const safeRandomUUID = (): string => {
   return `${timestamp.slice(0, 8)}-${random.slice(0, 4)}-4${random.slice(4, 7)}-a${random.slice(7, 10)}-${timestamp.slice(8)}${random.slice(10, 12)}`;
 };
 
+/** Marks a value written by the present scheme, which handles any text (names with accents). Values without it are read as before. */
+const SCHEME = 'u8:';
+const KEY_BYTES = new TextEncoder().encode(ENCRYPTION_KEY);
+const toBinary = (bytes: Uint8Array): string => Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
+const xor = (bytes: Uint8Array): Uint8Array => bytes.map((byte, i) => byte ^ KEY_BYTES[i % KEY_BYTES.length]);
+
+/**
+ * Obscures a value for the browser storage (it is not a secret: the key is in the page). The text is turned into UTF-8 bytes first, so a name such as "Nguyễn Thế Hoàng" is written
+ * and read back as it was; the older scheme worked on characters, failed for any character beyond Latin-1 and stored the text as it was.
+ */
 export const encryptData = (data: string): string => {
   try {
-    const encrypted = Array.from(data)
-      .map((char, i) =>
-        String.fromCharCode(
-          char.charCodeAt(0) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length)
-        )
-      )
-      .join('');
-    return btoa(encrypted); // Base64 encode
+    return SCHEME + btoa(toBinary(xor(new TextEncoder().encode(data))));
   } catch (error) {
     if (import.meta.env.DEV) console.error('Encryption error:', error);
     return data;
@@ -122,17 +125,21 @@ export const encryptData = (data: string): string => {
 };
 
 export const decryptData = (encrypted: string): string => {
+  if (encrypted.startsWith(SCHEME)) {
+    try {
+      const binary = atob(encrypted.slice(SCHEME.length));
+      return new TextDecoder().decode(xor(Uint8Array.from(binary, (char) => char.charCodeAt(0))));
+    } catch {
+      return encrypted;
+    }
+  }
+  // A value of the older scheme, or text that the older scheme could not encode and stored as it was: read as before. Text that is not Base64 is returned as it is (expected, not an error).
   try {
-    const decoded = atob(encrypted); // Base64 decode
+    const decoded = atob(encrypted);
     return Array.from(decoded)
-      .map((char, i) =>
-        String.fromCharCode(
-          char.charCodeAt(0) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length)
-        )
-      )
+      .map((char, i) => String.fromCharCode(char.charCodeAt(0) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length)))
       .join('');
-  } catch (error) {
-    if (import.meta.env.DEV) console.error('Decryption error:', error);
+  } catch {
     return encrypted;
   }
 };

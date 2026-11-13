@@ -11,6 +11,8 @@ public record PermissionSetResponse(
     String description,
     boolean active,
     boolean system,
+    /** A DEV/UAT/test set (display badge only). */
+    boolean testData,
     int permissionCount,
     List<String> permissionCodes,
     /** Distinct module keys covered by this set (server-computed for filtering/display). */

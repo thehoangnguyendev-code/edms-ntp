@@ -5,10 +5,6 @@ import { ToastProvider } from "@/components/ui/toast/Toast";
 import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import { backupRestore } from "@/components/ui/breadcrumb/breadcrumbs/core";
 import { BackupSchedulesView } from "../views/BackupSchedulesView";
-import { BackupVerificationResultsView } from "../views/BackupVerificationResultsView";
-import { RestoreHistoryView } from "../views/RestoreHistoryView";
-import { RestoreVerificationReportsView } from "../views/RestoreVerificationReportsView";
-import { RestoreRequestsView } from "../views/RestoreRequestsView";
 import { BackupsView } from "../views/BackupsView";
 
 vi.mock("@/services/api/backupRestore", async () => {
@@ -36,17 +32,13 @@ const renderView = (view: React.ReactNode) =>
 
 it.each([
   ["Backup Schedules", "Backup", <BackupSchedulesView />],
-  ["Backup Verification Results", "Backup", <BackupVerificationResultsView />],
   ["Backup History", "Backup", <BackupsView />],
-  ["Restore Verification Reports", "Restore", <RestoreVerificationReportsView />],
-  ["Restore History & Evidence", "Restore", <RestoreHistoryView />],
-  ["Restore Requests", "Restore", <RestoreRequestsView />],
 ])("%s renders under the %s group", (title, _group, view) => {
   renderView(view);
   expect(screen.getAllByText(title).length).toBeGreaterThan(0);
 });
 
 it("puts the menu group between the module and the page in the breadcrumb", () => {
-  expect(backupRestore(vi.fn(), "Restore Approval Queue", undefined, "Restore").map((item) => item.label)).toEqual(["Dashboard", "Backup & Restore", "Restore", "Restore Approval Queue"]);
+  expect(backupRestore(vi.fn(), "Restore Backup", undefined, "Restore").map((item) => item.label)).toEqual(["Dashboard", "Backup & Restore", "Restore", "Restore Backup"]);
   expect(backupRestore(vi.fn()).map((item) => item.label)).toEqual(["Dashboard", "Backup & Restore", "Backup Status Overview"]);
 });

@@ -1,0 +1,1286 @@
+[
+ {
+  "id": "S1.DCO",
+  "name": "documents, no revision yet: dcv.operator",
+  "ok": true,
+  "detail": "documents, no revision yet: dcv.operator sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.U1",
+  "name": "documents, no revision yet: dcv.u1",
+  "ok": true,
+  "detail": "documents, no revision yet: dcv.u1 sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.U2",
+  "name": "documents, no revision yet: dcv.u2",
+  "ok": true,
+  "detail": "documents, no revision yet: dcv.u2 sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.U3",
+  "name": "documents, no revision yet: dcv.u3",
+  "ok": true,
+  "detail": "documents, no revision yet: dcv.u3 sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.ALLVIEW",
+  "name": "documents, no revision yet: dcv.viewall",
+  "ok": true,
+  "detail": "documents, no revision yet: dcv.viewall sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.UCAPP",
+  "name": "documents, no revision yet: dcv.approver",
+  "ok": true,
+  "detail": "documents, no revision yet: dcv.approver sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.READER",
+  "name": "documents, no revision yet: dcv.reader",
+  "ok": true,
+  "detail": "documents, no revision yet: dcv.reader sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.DCO",
+  "name": "documents, no revision yet: dcv.operator",
+  "ok": true,
+  "detail": "documents, no revision yet: dcv.operator sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.U1",
+  "name": "documents, no revision yet: dcv.u1",
+  "ok": true,
+  "detail": "documents, no revision yet: dcv.u1 sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.U2",
+  "name": "documents, no revision yet: dcv.u2",
+  "ok": true,
+  "detail": "documents, no revision yet: dcv.u2 sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.U3",
+  "name": "documents, no revision yet: dcv.u3",
+  "ok": true,
+  "detail": "documents, no revision yet: dcv.u3 sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.ALLVIEW",
+  "name": "documents, no revision yet: dcv.viewall",
+  "ok": true,
+  "detail": "documents, no revision yet: dcv.viewall sees revisions/documents/controlled/uncontrolled = (0, 2, 0, 0); expected (0,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.UCAPP",
+  "name": "documents, no revision yet: dcv.approver",
+  "ok": true,
+  "detail": "documents, no revision yet: dcv.approver sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S1.READER",
+  "name": "documents, no revision yet: dcv.reader",
+  "ok": true,
+  "detail": "documents, no revision yet: dcv.reader sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.DCO",
+  "name": "revision 1 in Draft: dcv.operator",
+  "ok": true,
+  "detail": "revision 1 in Draft: dcv.operator sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.U1",
+  "name": "revision 1 in Draft: dcv.u1",
+  "ok": true,
+  "detail": "revision 1 in Draft: dcv.u1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.U2",
+  "name": "revision 1 in Draft: dcv.u2",
+  "ok": true,
+  "detail": "revision 1 in Draft: dcv.u2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.U3",
+  "name": "revision 1 in Draft: dcv.u3",
+  "ok": true,
+  "detail": "revision 1 in Draft: dcv.u3 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.ALLVIEW",
+  "name": "revision 1 in Draft: dcv.viewall",
+  "ok": true,
+  "detail": "revision 1 in Draft: dcv.viewall sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.UCAPP",
+  "name": "revision 1 in Draft: dcv.approver",
+  "ok": true,
+  "detail": "revision 1 in Draft: dcv.approver sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S2.READER",
+  "name": "revision 1 in Draft: dcv.reader",
+  "ok": true,
+  "detail": "revision 1 in Draft: dcv.reader sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S3.1",
+  "name": "U2 (Reviewer of X, not Author) cannot complete editing of X",
+  "ok": false,
+  "detail": "(404, '{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"Resource not found\",\"details\":[]}}')"
+ },
+ {
+  "id": "S3.2",
+  "name": "a person outside the flow cannot complete editing of X",
+  "ok": true,
+  "detail": "(404, '{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"Resource not found\",\"details\":[]}}')"
+ },
+ {
+  "id": "S3.3",
+  "name": "the Knowledge-only reader cannot open the Draft revision",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Revision access denied\",\"details\":[]}}')"
+ },
+ {
+  "id": "X.0",
+  "name": "X: the Author dcv.u1 completes the editing",
+  "ok": false,
+  "detail": "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"Resource not found\",\"details\":[]}}"
+ },
+ {
+  "id": "X.1",
+  "name": "X: the Author submits it for review",
+  "ok": true,
+  "detail": "{\"id\":\"3fc33695-c8af-42cf-824b-64dae26ff733\",\"documentId\":\"2457fc06-2c0a-4703-ac93-d701748a422a\",\"originalDocument\":{\"id\":\"2457fc06-2c0a-4703-ac93-d701748a422a\",\"documentNumber\":\"SOP.10423\",\"documentName\":\"DCV-TEST X Sampling of raw materials\",\"displayName\":\"SOP.10423 - DCV-TEST X Sampling of raw ma"
+ },
+ {
+  "id": "Y.0",
+  "name": "Y: the Author dcv.u2 completes the editing",
+  "ok": false,
+  "detail": "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"Resource not found\",\"details\":[]}}"
+ },
+ {
+  "id": "Y.1",
+  "name": "Y: the Author submits it for review",
+  "ok": true,
+  "detail": "{\"id\":\"7fa25559-c638-42df-9cbb-ff6e7579bc08\",\"documentId\":\"65a4e30d-bf85-4ad7-b356-9e3c17efd9c5\",\"originalDocument\":{\"id\":\"65a4e30d-bf85-4ad7-b356-9e3c17efd9c5\",\"documentNumber\":\"INS.0005\",\"documentName\":\"DCV-TEST Y Weighing room cleaning\",\"displayName\":\"INS.0005 - DCV-TEST Y Weighing room cleaning\""
+ },
+ {
+  "id": "S4.DCO",
+  "name": "Pending Review: dcv.operator",
+  "ok": true,
+  "detail": "Pending Review: dcv.operator sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.U1",
+  "name": "Pending Review: dcv.u1",
+  "ok": true,
+  "detail": "Pending Review: dcv.u1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.U2",
+  "name": "Pending Review: dcv.u2",
+  "ok": true,
+  "detail": "Pending Review: dcv.u2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.U3",
+  "name": "Pending Review: dcv.u3",
+  "ok": true,
+  "detail": "Pending Review: dcv.u3 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.ALLVIEW",
+  "name": "Pending Review: dcv.viewall",
+  "ok": true,
+  "detail": "Pending Review: dcv.viewall sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.UCAPP",
+  "name": "Pending Review: dcv.approver",
+  "ok": true,
+  "detail": "Pending Review: dcv.approver sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S4.READER",
+  "name": "Pending Review: dcv.reader",
+  "ok": true,
+  "detail": "Pending Review: dcv.reader sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S5.1",
+  "name": "U1 (Author of X) cannot review X",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"WORKFLOW_ACCESS_DENIED\",\"message\":\"You are not allowed to perform this workflow action.\",\"details\":[]}}')"
+ },
+ {
+  "id": "S5.2",
+  "name": "U3 (Approver of X) cannot review X",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"WORKFLOW_ACCESS_DENIED\",\"message\":\"You are not allowed to perform this workflow action.\",\"details\":[]}}')"
+ },
+ {
+  "id": "S5.3",
+  "name": "U2 (Reviewer of X) reviews X",
+  "ok": true,
+  "detail": "{\"id\":\"3fc33695-c8af-42cf-824b-64dae26ff733\",\"documentId\":\"2457fc06-2c0a-4703-ac93-d701748a422a\",\"originalDocument\":{\"id\":\"2457fc06-2c0a-4703-ac93-d701748a422a\",\"documentNumber\":\"SOP.10423\",\"documentName\":\"DCV-TEST X Sampling of raw materials\",\"displayName\":\"SOP.10423 - DCV-TEST X Sampling of raw ma"
+ },
+ {
+  "id": "S5.4",
+  "name": "U2 (Author of Y) cannot review Y",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"WORKFLOW_ACCESS_DENIED\",\"message\":\"You are not allowed to perform this workflow action.\",\"details\":[]}}')"
+ },
+ {
+  "id": "S5.5",
+  "name": "U1 (Reviewer of Y) reviews Y",
+  "ok": true,
+  "detail": "{\"id\":\"7fa25559-c638-42df-9cbb-ff6e7579bc08\",\"documentId\":\"65a4e30d-bf85-4ad7-b356-9e3c17efd9c5\",\"originalDocument\":{\"id\":\"65a4e30d-bf85-4ad7-b356-9e3c17efd9c5\",\"documentNumber\":\"INS.0005\",\"documentName\":\"DCV-TEST Y Weighing room cleaning\",\"displayName\":\"INS.0005 - DCV-TEST Y Weighing room cleaning\""
+ },
+ {
+  "id": "S6.1",
+  "name": "U1 (Author of X) cannot approve X",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"WORKFLOW_ACCESS_DENIED\",\"message\":\"You are not allowed to perform this workflow action.\",\"details\":[]}}')"
+ },
+ {
+  "id": "S6.2",
+  "name": "U3 approves X",
+  "ok": true,
+  "detail": "{\"id\":\"3fc33695-c8af-42cf-824b-64dae26ff733\",\"documentId\":\"2457fc06-2c0a-4703-ac93-d701748a422a\",\"originalDocument\":{\"id\":\"2457fc06-2c0a-4703-ac93-d701748a422a\",\"documentNumber\":\"SOP.10423\",\"documentName\":\"DCV-TEST X Sampling of raw materials\",\"displayName\":\"SOP.10423 - DCV-TEST X Sampling of raw ma"
+ },
+ {
+  "id": "S6.3",
+  "name": "U3 approves Y",
+  "ok": true,
+  "detail": "{\"id\":\"7fa25559-c638-42df-9cbb-ff6e7579bc08\",\"documentId\":\"65a4e30d-bf85-4ad7-b356-9e3c17efd9c5\",\"originalDocument\":{\"id\":\"65a4e30d-bf85-4ad7-b356-9e3c17efd9c5\",\"documentNumber\":\"INS.0005\",\"documentName\":\"DCV-TEST Y Weighing room cleaning\",\"displayName\":\"INS.0005 - DCV-TEST Y Weighing room cleaning\""
+ },
+ {
+  "id": "S6.DCO",
+  "name": "Ready for Publishing: dcv.operator",
+  "ok": true,
+  "detail": "Ready for Publishing: dcv.operator sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.U1",
+  "name": "Ready for Publishing: dcv.u1",
+  "ok": true,
+  "detail": "Ready for Publishing: dcv.u1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.U2",
+  "name": "Ready for Publishing: dcv.u2",
+  "ok": true,
+  "detail": "Ready for Publishing: dcv.u2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.U3",
+  "name": "Ready for Publishing: dcv.u3",
+  "ok": true,
+  "detail": "Ready for Publishing: dcv.u3 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.ALLVIEW",
+  "name": "Ready for Publishing: dcv.viewall",
+  "ok": true,
+  "detail": "Ready for Publishing: dcv.viewall sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.UCAPP",
+  "name": "Ready for Publishing: dcv.approver",
+  "ok": true,
+  "detail": "Ready for Publishing: dcv.approver sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S6.READER",
+  "name": "Ready for Publishing: dcv.reader",
+  "ok": true,
+  "detail": "Ready for Publishing: dcv.reader sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.X",
+  "name": "X published by the operator (status Effective)",
+  "ok": true,
+  "detail": "[]"
+ },
+ {
+  "id": "S7.Y",
+  "name": "Y published by the operator (status Effective)",
+  "ok": true,
+  "detail": "[]"
+ },
+ {
+  "id": "S7.DCO",
+  "name": "Effective: visibility of documents and revisions is unchanged (name in flow or view-everything): dcv.operator",
+  "ok": true,
+  "detail": "Effective: visibility of documents and revisions is unchanged (name in flow or view-everything): dcv.operator sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.U1",
+  "name": "Effective: visibility of documents and revisions is unchanged (name in flow or view-everything): dcv.u1",
+  "ok": true,
+  "detail": "Effective: visibility of documents and revisions is unchanged (name in flow or view-everything): dcv.u1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.U2",
+  "name": "Effective: visibility of documents and revisions is unchanged (name in flow or view-everything): dcv.u2",
+  "ok": true,
+  "detail": "Effective: visibility of documents and revisions is unchanged (name in flow or view-everything): dcv.u2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.U3",
+  "name": "Effective: visibility of documents and revisions is unchanged (name in flow or view-everything): dcv.u3",
+  "ok": true,
+  "detail": "Effective: visibility of documents and revisions is unchanged (name in flow or view-everything): dcv.u3 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.ALLVIEW",
+  "name": "Effective: visibility of documents and revisions is unchanged (name in flow or view-everything): dcv.viewall",
+  "ok": true,
+  "detail": "Effective: visibility of documents and revisions is unchanged (name in flow or view-everything): dcv.viewall sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.UCAPP",
+  "name": "Effective: visibility of documents and revisions is unchanged (name in flow or view-everything): dcv.approver",
+  "ok": true,
+  "detail": "Effective: visibility of documents and revisions is unchanged (name in flow or view-everything): dcv.approver sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S7.READER",
+  "name": "Effective: visibility of documents and revisions is unchanged (name in flow or view-everything): dcv.reader",
+  "ok": true,
+  "detail": "Effective: visibility of documents and revisions is unchanged (name in flow or view-everything): dcv.reader sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S8.DCO",
+  "name": "dcv.operator can open the Knowledge Base list",
+  "ok": true,
+  "detail": "[200, None]"
+ },
+ {
+  "id": "S8.U1",
+  "name": "dcv.u1 can open the Knowledge Base list",
+  "ok": true,
+  "detail": "[200, None]"
+ },
+ {
+  "id": "S8.U2",
+  "name": "dcv.u2 can open the Knowledge Base list",
+  "ok": true,
+  "detail": "[200, None]"
+ },
+ {
+  "id": "S8.U3",
+  "name": "dcv.u3 can open the Knowledge Base list",
+  "ok": true,
+  "detail": "[200, None]"
+ },
+ {
+  "id": "S8.ALLVIEW",
+  "name": "dcv.viewall can open the Knowledge Base list",
+  "ok": true,
+  "detail": "[200, None]"
+ },
+ {
+  "id": "S8.UCAPP",
+  "name": "dcv.approver can open the Knowledge Base list",
+  "ok": true,
+  "detail": "[200, None]"
+ },
+ {
+  "id": "S8.READER",
+  "name": "dcv.reader can open the Knowledge Base list",
+  "ok": true,
+  "detail": "[200, None]"
+ },
+ {
+  "id": "S9.1",
+  "name": "the operator requests a Controlled Copy for U3",
+  "ok": true,
+  "detail": "{\"id\":\"f5401459-901a-439b-8021-9aaa7378ba51\",\"controlledCopyNumber\":\"CC.SOP.10423.001\",\"createdDate\":\"07/11/2026\",\"createdTime\":\"23:55:44\",\"openedBy\":null,\"name\":\"DCV-TEST X Sampling of raw materials - 1.0.0 - Controlled Copy 1\",\"status\":\"Ready for Distribution\",\"statusCode\":\"READY_FOR_DISTRIBUTION\""
+ },
+ {
+  "id": "S9.DCO",
+  "name": "Controlled Copy ready: operator and view-everything, and the recipient U3. NOT the other flow members: dcv.operator",
+  "ok": true,
+  "detail": "Controlled Copy ready: operator and view-everything, and the recipient U3. NOT the other flow members: dcv.operator sees revisions/documents/controlled/uncontrolled = (2, 2, 1, 0); expected (2,2,1,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.U1",
+  "name": "Controlled Copy ready: operator and view-everything, and the recipient U3. NOT the other flow members: dcv.u1",
+  "ok": true,
+  "detail": "Controlled Copy ready: operator and view-everything, and the recipient U3. NOT the other flow members: dcv.u1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.U2",
+  "name": "Controlled Copy ready: operator and view-everything, and the recipient U3. NOT the other flow members: dcv.u2",
+  "ok": true,
+  "detail": "Controlled Copy ready: operator and view-everything, and the recipient U3. NOT the other flow members: dcv.u2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.U3",
+  "name": "Controlled Copy ready: operator and view-everything, and the recipient U3. NOT the other flow members: dcv.u3",
+  "ok": true,
+  "detail": "Controlled Copy ready: operator and view-everything, and the recipient U3. NOT the other flow members: dcv.u3 sees revisions/documents/controlled/uncontrolled = (2, 2, 1, 0); expected (2,2,1,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.ALLVIEW",
+  "name": "Controlled Copy ready: operator and view-everything, and the recipient U3. NOT the other flow members: dcv.viewall",
+  "ok": true,
+  "detail": "Controlled Copy ready: operator and view-everything, and the recipient U3. NOT the other flow members: dcv.viewall sees revisions/documents/controlled/uncontrolled = (2, 2, 1, 0); expected (2,2,1,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.UCAPP",
+  "name": "Controlled Copy ready: operator and view-everything, and the recipient U3. NOT the other flow members: dcv.approver",
+  "ok": true,
+  "detail": "Controlled Copy ready: operator and view-everything, and the recipient U3. NOT the other flow members: dcv.approver sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.READER",
+  "name": "Controlled Copy ready: operator and view-everything, and the recipient U3. NOT the other flow members: dcv.reader",
+  "ok": true,
+  "detail": "Controlled Copy ready: operator and view-everything, and the recipient U3. NOT the other flow members: dcv.reader sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S9.2",
+  "name": "U1 cannot distribute the copy",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"You are not authorized to perform this controlled copy action.\",\"details\":[]}}')"
+ },
+ {
+  "id": "S9.3",
+  "name": "the operator distributes the copy",
+  "ok": false,
+  "detail": "{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"You are not authorized to perform this controlled copy action.\",\"details\":[]}}"
+ },
+ {
+  "id": "S9.4",
+  "name": "U3 sees status Distributed",
+  "ok": false,
+  "detail": "Ready for Distribution"
+ },
+ {
+  "id": "S10.1",
+  "name": "U1 requests an Uncontrolled Copy of X",
+  "ok": true,
+  "detail": "{\"id\":\"6b135e1c-76dd-4d62-9cca-4fe9a778ae2f\",\"uncontrolledCopyNumber\":\"UCC.SOP.10423.001\",\"documentId\":\"2457fc06-2c0a-4703-ac93-d701748a422a\",\"documentNumber\":\"SOP.10423\",\"documentTitle\":\"DCV-TEST X Sampling of raw materials\",\"revisionId\":\"3fc33695-c8af-42cf-824b-64dae26ff733\",\"revisionNumber\":\"1.0."
+ },
+ {
+  "id": "S10.DCO",
+  "name": "Uncontrolled Copy REQUESTED: requester, operator, view-everything, and the approver (waiting for decision): dcv.operator",
+  "ok": true,
+  "detail": "Uncontrolled Copy REQUESTED: requester, operator, view-everything, and the approver (waiting for decision): dcv.operator sees revisions/documents/controlled/uncontrolled = (2, 2, 1, 1); expected (2,2,1,1); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.U1",
+  "name": "Uncontrolled Copy REQUESTED: requester, operator, view-everything, and the approver (waiting for decision): dcv.u1",
+  "ok": true,
+  "detail": "Uncontrolled Copy REQUESTED: requester, operator, view-everything, and the approver (waiting for decision): dcv.u1 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 1); expected (2,2,0,1); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.U2",
+  "name": "Uncontrolled Copy REQUESTED: requester, operator, view-everything, and the approver (waiting for decision): dcv.u2",
+  "ok": true,
+  "detail": "Uncontrolled Copy REQUESTED: requester, operator, view-everything, and the approver (waiting for decision): dcv.u2 sees revisions/documents/controlled/uncontrolled = (2, 2, 0, 0); expected (2,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.U3",
+  "name": "Uncontrolled Copy REQUESTED: requester, operator, view-everything, and the approver (waiting for decision): dcv.u3",
+  "ok": true,
+  "detail": "Uncontrolled Copy REQUESTED: requester, operator, view-everything, and the approver (waiting for decision): dcv.u3 sees revisions/documents/controlled/uncontrolled = (2, 2, 1, 0); expected (2,2,1,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.ALLVIEW",
+  "name": "Uncontrolled Copy REQUESTED: requester, operator, view-everything, and the approver (waiting for decision): dcv.viewall",
+  "ok": true,
+  "detail": "Uncontrolled Copy REQUESTED: requester, operator, view-everything, and the approver (waiting for decision): dcv.viewall sees revisions/documents/controlled/uncontrolled = (2, 2, 1, 1); expected (2,2,1,1); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.UCAPP",
+  "name": "Uncontrolled Copy REQUESTED: requester, operator, view-everything, and the approver (waiting for decision): dcv.approver",
+  "ok": true,
+  "detail": "Uncontrolled Copy REQUESTED: requester, operator, view-everything, and the approver (waiting for decision): dcv.approver sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 1); expected (0,0,0,1); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.READER",
+  "name": "Uncontrolled Copy REQUESTED: requester, operator, view-everything, and the approver (waiting for decision): dcv.reader",
+  "ok": true,
+  "detail": "Uncontrolled Copy REQUESTED: requester, operator, view-everything, and the approver (waiting for decision): dcv.reader sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S10.2",
+  "name": "U2 (no approve permission) cannot approve",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"You do not have permission to approve uncontrolled copy requests.\",\"details\":[]}}')"
+ },
+ {
+  "id": "S10.3",
+  "name": "the approver approves",
+  "ok": true,
+  "detail": "{\"id\":\"6b135e1c-76dd-4d62-9cca-4fe9a778ae2f\",\"uncontrolledCopyNumber\":\"UCC.SOP.10423.001\",\"documentId\":\"2457fc06-2c0a-4703-ac93-d701748a422a\",\"documentNumber\":\"SOP.10423\",\"documentTitle\":\"DCV-TEST X Sampling of raw materials\",\"revisionId\":\"3fc33695-c8af-42cf-824b-64dae26ff733\",\"revisionNumber\":\"1.0."
+ },
+ {
+  "id": "S10.4",
+  "name": "after the decision the approver no longer sees the request",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Uncontrolled copy access denied\",\"details\":[]}}')"
+ },
+ {
+  "id": "S10.5",
+  "name": "the operator generates the copy",
+  "ok": false,
+  "detail": "{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"You do not have permission to generate uncontrolled copies.\",\"details\":[]}}"
+ },
+ {
+  "id": "S10.6",
+  "name": "the operator distributes the copy",
+  "ok": false,
+  "detail": "{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"You do not have permission to distribute uncontrolled copies.\",\"details\":[]}}"
+ },
+ {
+  "id": "S9.3",
+  "name": "the operator distributes the Controlled Copy",
+  "ok": false,
+  "detail": "{\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Comments are required when distributing a controlled copy\",\"details\":[]}}"
+ },
+ {
+  "id": "S9.4",
+  "name": "U3 sees status Distributed",
+  "ok": false,
+  "detail": "Ready for Distribution"
+ },
+ {
+  "id": "S10.5",
+  "name": "the operator generates the Uncontrolled Copy",
+  "ok": true,
+  "detail": "{\"id\":\"6b135e1c-76dd-4d62-9cca-4fe9a778ae2f\",\"uncontrolledCopyNumber\":\"UCC.SOP.10423.001\",\"documentId\":\"2457fc06-2c0a-4703-ac93-d701748a422a\",\"documentNumber\":\"SOP.10423\",\"documentTitle\":\"DCV-TEST X Sampling of raw materials\",\"revisionId\":\"3fc33695-c8af-42cf-824b-64dae26ff733\",\"revisionNumber\":\"1.0."
+ },
+ {
+  "id": "S10.6",
+  "name": "the operator distributes the Uncontrolled Copy",
+  "ok": true,
+  "detail": "{\"id\":\"6b135e1c-76dd-4d62-9cca-4fe9a778ae2f\",\"uncontrolledCopyNumber\":\"UCC.SOP.10423.001\",\"documentId\":\"2457fc06-2c0a-4703-ac93-d701748a422a\",\"documentNumber\":\"SOP.10423\",\"documentTitle\":\"DCV-TEST X Sampling of raw materials\",\"revisionId\":\"3fc33695-c8af-42cf-824b-64dae26ff733\",\"revisionNumber\":\"1.0."
+ },
+ {
+  "id": "S9.3",
+  "name": "the operator distributes the Controlled Copy",
+  "ok": true,
+  "detail": "{\"id\":\"f5401459-901a-439b-8021-9aaa7378ba51\",\"controlledCopyNumber\":\"CC.SOP.10423.001\",\"createdDate\":\"07/11/2026\",\"createdTime\":\"23:55:44\",\"openedBy\":\"DCV Contributor 3\",\"name\":\"DCV-TEST X Sampling of raw materials - 1.0.0 - Controlled Copy 1\",\"status\":\"Distributed\",\"statusCode\":\"DISTRIBUTED\",\"statu"
+ },
+ {
+  "id": "S9.4",
+  "name": "U3 sees status Distributed",
+  "ok": true,
+  "detail": "Distributed"
+ },
+ {
+  "id": "S8.R",
+  "name": "Knowledge-only reader of the same Department reads the 2 Effective documents (Own Department mode)",
+  "ok": true,
+  "detail": "11"
+ },
+ {
+  "id": "S11.DOCU.DCO",
+  "name": "Document X: dcv.operator reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"127cbf92-271b-4b11-ac1a-f66d432604d8\",\"timestamp\":\"08/11/2026 00:03:54\",\"user\":{\"id\":\"0ba34303-c0c9-484f-a8a1-eb"
+ },
+ {
+  "id": "S11.DOCU.U1",
+  "name": "Document X: dcv.u1 reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"127cbf92-271b-4b11-ac1a-f66d432604d8\",\"timestamp\":\"08/11/2026 00:03:54\",\"user\":{\"id\":\"0ba34303-c0c9-484f-a8a1-eb"
+ },
+ {
+  "id": "S11.DOCU.U2",
+  "name": "Document X: dcv.u2 reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"127cbf92-271b-4b11-ac1a-f66d432604d8\",\"timestamp\":\"08/11/2026 00:03:54\",\"user\":{\"id\":\"0ba34303-c0c9-484f-a8a1-eb"
+ },
+ {
+  "id": "S11.DOCU.U3",
+  "name": "Document X: dcv.u3 reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"127cbf92-271b-4b11-ac1a-f66d432604d8\",\"timestamp\":\"08/11/2026 00:03:54\",\"user\":{\"id\":\"0ba34303-c0c9-484f-a8a1-eb"
+ },
+ {
+  "id": "S11.DOCU.ALLVIEW",
+  "name": "Document X: dcv.viewall reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"127cbf92-271b-4b11-ac1a-f66d432604d8\",\"timestamp\":\"08/11/2026 00:03:54\",\"user\":{\"id\":\"0ba34303-c0c9-484f-a8a1-eb"
+ },
+ {
+  "id": "S11.DOCU.UCAPP",
+  "name": "Document X: dcv.approver is refused the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 403 {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Document access denied\",\"details\":[]}}"
+ },
+ {
+  "id": "S11.DOCU.READER",
+  "name": "Document X: dcv.reader is refused the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 403 {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Document access denied\",\"details\":[]}}"
+ },
+ {
+  "id": "S11.REVI.DCO",
+  "name": "Revision X: dcv.operator reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"994af841-036e-4eab-a00a-1eaa896d35b9\",\"timestamp\":\"08/11/2026 00:02:13\",\"user\":{\"id\":\"00000000-0000-0000-0000-00"
+ },
+ {
+  "id": "S11.REVI.U1",
+  "name": "Revision X: dcv.u1 reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"994af841-036e-4eab-a00a-1eaa896d35b9\",\"timestamp\":\"08/11/2026 00:02:13\",\"user\":{\"id\":\"00000000-0000-0000-0000-00"
+ },
+ {
+  "id": "S11.REVI.U2",
+  "name": "Revision X: dcv.u2 reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"994af841-036e-4eab-a00a-1eaa896d35b9\",\"timestamp\":\"08/11/2026 00:02:13\",\"user\":{\"id\":\"00000000-0000-0000-0000-00"
+ },
+ {
+  "id": "S11.REVI.U3",
+  "name": "Revision X: dcv.u3 reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"994af841-036e-4eab-a00a-1eaa896d35b9\",\"timestamp\":\"08/11/2026 00:02:13\",\"user\":{\"id\":\"00000000-0000-0000-0000-00"
+ },
+ {
+  "id": "S11.REVI.ALLVIEW",
+  "name": "Revision X: dcv.viewall reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"994af841-036e-4eab-a00a-1eaa896d35b9\",\"timestamp\":\"08/11/2026 00:02:13\",\"user\":{\"id\":\"00000000-0000-0000-0000-00"
+ },
+ {
+  "id": "S11.REVI.UCAPP",
+  "name": "Revision X: dcv.approver is refused the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 403 {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Revision access denied\",\"details\":[]}}"
+ },
+ {
+  "id": "S11.REVI.READER",
+  "name": "Revision X: dcv.reader is refused the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 403 {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Revision access denied\",\"details\":[]}}"
+ },
+ {
+  "id": "S11.CONT.DCO",
+  "name": "Controlled Copy X: dcv.operator reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"f4d8ab1f-5525-4967-aeb2-72441ab290c1\",\"timestamp\":\"08/11/2026 00:02:17\",\"user\":{\"id\":\"3cc7fd0e-f1bc-462b-b826-ed"
+ },
+ {
+  "id": "S11.CONT.U1",
+  "name": "Controlled Copy X: dcv.u1 is refused the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 403 {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Controlled copy audit access denied\",\"details\":[]}}"
+ },
+ {
+  "id": "S11.CONT.U2",
+  "name": "Controlled Copy X: dcv.u2 is refused the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 403 {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Controlled copy audit access denied\",\"details\":[]}}"
+ },
+ {
+  "id": "S11.CONT.U3",
+  "name": "Controlled Copy X: dcv.u3 reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"f4d8ab1f-5525-4967-aeb2-72441ab290c1\",\"timestamp\":\"08/11/2026 00:02:17\",\"user\":{\"id\":\"3cc7fd0e-f1bc-462b-b826-ed"
+ },
+ {
+  "id": "S11.CONT.ALLVIEW",
+  "name": "Controlled Copy X: dcv.viewall reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"f4d8ab1f-5525-4967-aeb2-72441ab290c1\",\"timestamp\":\"08/11/2026 00:02:17\",\"user\":{\"id\":\"3cc7fd0e-f1bc-462b-b826-ed"
+ },
+ {
+  "id": "S11.CONT.UCAPP",
+  "name": "Controlled Copy X: dcv.approver is refused the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 403 {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Controlled copy audit access denied\",\"details\":[]}}"
+ },
+ {
+  "id": "S11.CONT.READER",
+  "name": "Controlled Copy X: dcv.reader is refused the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 403 {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Controlled copy audit access denied\",\"details\":[]}}"
+ },
+ {
+  "id": "S11.UNCO.DCO",
+  "name": "Uncontrolled Copy X: dcv.operator reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"c350bb4d-a2a7-4674-8751-d183a283f6d7\",\"timestamp\":\"08/11/2026 00:01:31\",\"user\":{\"id\":\"0ba34303-c0c9-484f-a8a1-eb"
+ },
+ {
+  "id": "S11.UNCO.U1",
+  "name": "Uncontrolled Copy X: dcv.u1 reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"c350bb4d-a2a7-4674-8751-d183a283f6d7\",\"timestamp\":\"08/11/2026 00:01:31\",\"user\":{\"id\":\"0ba34303-c0c9-484f-a8a1-eb"
+ },
+ {
+  "id": "S11.UNCO.U2",
+  "name": "Uncontrolled Copy X: dcv.u2 is refused the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 403 {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Uncontrolled copy audit access denied\",\"details\":[]}}"
+ },
+ {
+  "id": "S11.UNCO.U3",
+  "name": "Uncontrolled Copy X: dcv.u3 is refused the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 403 {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Uncontrolled copy audit access denied\",\"details\":[]}}"
+ },
+ {
+  "id": "S11.UNCO.ALLVIEW",
+  "name": "Uncontrolled Copy X: dcv.viewall reads the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 200 [{\"id\":\"c350bb4d-a2a7-4674-8751-d183a283f6d7\",\"timestamp\":\"08/11/2026 00:01:31\",\"user\":{\"id\":\"0ba34303-c0c9-484f-a8a1-eb"
+ },
+ {
+  "id": "S11.UNCO.UCAPP",
+  "name": "Uncontrolled Copy X: dcv.approver is refused the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 403 {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Uncontrolled copy audit access denied\",\"details\":[]}}"
+ },
+ {
+  "id": "S11.UNCO.READER",
+  "name": "Uncontrolled Copy X: dcv.reader is refused the Audit Trail tab",
+  "ok": true,
+  "detail": "HTTP 403 {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Uncontrolled copy audit access denied\",\"details\":[]}}"
+ },
+ {
+  "id": "S12.1",
+  "name": "a Contributor without the Records permission is refused",
+  "ok": true,
+  "detail": "403"
+ },
+ {
+  "id": "S12.2",
+  "name": "the Knowledge-only reader is refused",
+  "ok": true,
+  "detail": "403"
+ },
+ {
+  "id": "S12.3",
+  "name": "the operator (holds Records permission) can list",
+  "ok": true,
+  "detail": "200"
+ },
+ {
+  "id": "S13.1",
+  "name": "U1 submits Z for review",
+  "ok": true,
+  "detail": "{\"id\":\"aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b\",\"documentId\":\"0b186594-a173-42b6-b020-fdd6256cfeed\",\"originalDocument\":{\"id\":\"0b186594-a173-42b6-b020-fdd6256cfeed\",\"documentNumber\":\"SOP.10424\",\"documentName\":\"DCV-TEST Z Cleaning validation\",\"displayName\":\"SOP.10424 - DCV-TEST Z Cleaning validation\",\"ti"
+ },
+ {
+  "id": "S13.2",
+  "name": "U3 (Approver, not Reviewer) cannot reject the review",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"WORKFLOW_ACCESS_DENIED\",\"message\":\"You are not allowed to perform this workflow action.\",\"details\":[]}}')"
+ },
+ {
+  "id": "S13.3",
+  "name": "U2 (Reviewer) rejects the review",
+  "ok": true,
+  "detail": "{\"id\":\"aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b\",\"documentId\":\"0b186594-a173-42b6-b020-fdd6256cfeed\",\"originalDocument\":{\"id\":\"0b186594-a173-42b6-b020-fdd6256cfeed\",\"documentNumber\":\"SOP.10424\",\"documentName\":\"DCV-TEST Z Cleaning validation\",\"displayName\":\"SOP.10424 - DCV-TEST Z Cleaning validation\",\"ti"
+ },
+ {
+  "id": "S13.4",
+  "name": "Z is back in Draft (status Draft)",
+  "ok": true,
+  "detail": "Draft"
+ },
+ {
+  "id": "S13.DCO",
+  "name": "Z after the rejection: dcv.operator",
+  "ok": true,
+  "detail": "Z after the rejection: dcv.operator sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.U1",
+  "name": "Z after the rejection: dcv.u1",
+  "ok": true,
+  "detail": "Z after the rejection: dcv.u1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.U2",
+  "name": "Z after the rejection: dcv.u2",
+  "ok": true,
+  "detail": "Z after the rejection: dcv.u2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.U3",
+  "name": "Z after the rejection: dcv.u3",
+  "ok": true,
+  "detail": "Z after the rejection: dcv.u3 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.ALLVIEW",
+  "name": "Z after the rejection: dcv.viewall",
+  "ok": true,
+  "detail": "Z after the rejection: dcv.viewall sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.UCAPP",
+  "name": "Z after the rejection: dcv.approver",
+  "ok": true,
+  "detail": "Z after the rejection: dcv.approver sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S13.READER",
+  "name": "Z after the rejection: dcv.reader",
+  "ok": true,
+  "detail": "Z after the rejection: dcv.reader sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S14.1",
+  "name": "U2 requests an Uncontrolled Copy of X",
+  "ok": true,
+  "detail": "{\"id\":\"bc37da6a-b8c8-4823-a88c-d28bb06d2941\",\"uncontrolledCopyNumber\":\"UCC.SOP.10423.002\",\"documentId\":\"2457fc06-2c0a-4703-ac93-d701748a422a\",\"documentNumber\":\"SOP.10423\",\"documentTitle\":\"DCV-TEST X Sampling of raw materials\",\"revisionId\":\"3fc33695-c8af-42cf-824b-64dae26ff733\",\"revisionNumber\":\"1.0."
+ },
+ {
+  "id": "S14.2",
+  "name": "the approver sees the waiting request",
+  "ok": true,
+  "detail": "(200, '{\"id\":\"bc37da6a-b8c8-4823-a88c-d28bb06d2941\",\"uncontrolledCopyNumber\":\"UCC.SOP.10423.002\",\"documentId\":\"2457fc06-2c0a-4703-ac93-d701748a422a\",\"documentNumber\":\"SOP.10423\",\"documentTitle\":\"DCV-TEST X Sampling of raw materials\",\"revisionId\":\"3fc33695-c8af-42cf-824b-64dae26ff733\",\"revisionNumber\":\"1.0.')"
+ },
+ {
+  "id": "S14.3",
+  "name": "U1 (not the requester, not an approver) does not see it",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Uncontrolled copy access denied\",\"details\":[]}}')"
+ },
+ {
+  "id": "S14.4",
+  "name": "the approver rejects it",
+  "ok": true,
+  "detail": "{\"id\":\"bc37da6a-b8c8-4823-a88c-d28bb06d2941\",\"uncontrolledCopyNumber\":\"UCC.SOP.10423.002\",\"documentId\":\"2457fc06-2c0a-4703-ac93-d701748a422a\",\"documentNumber\":\"SOP.10423\",\"documentTitle\":\"DCV-TEST X Sampling of raw materials\",\"revisionId\":\"3fc33695-c8af-42cf-824b-64dae26ff733\",\"revisionNumber\":\"1.0."
+ },
+ {
+  "id": "S14.5",
+  "name": "after the decision the approver no longer sees it",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Uncontrolled copy access denied\",\"details\":[]}}')"
+ },
+ {
+  "id": "S14.6",
+  "name": "U2 still sees their rejected request",
+  "ok": true,
+  "detail": "(200, 'Rejected')"
+ },
+ {
+  "id": "S14.7",
+  "name": "a rejected request cannot be generated",
+  "ok": true,
+  "detail": "(409, '{\"error\":{\"code\":\"INVALID_STATE\",\"message\":\"Uncontrolled copy UCC.SOP.10423.002 is Rejected and cannot be generated.\",\"details\":[]}}')"
+ },
+ {
+  "id": "S15.1",
+  "name": "U1 cannot recall the copy",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"You are not authorized to perform this controlled copy action.\",\"details\":[]}}')"
+ },
+ {
+  "id": "S15.2",
+  "name": "the operator recalls the copy (was Distributed)",
+  "ok": false,
+  "detail": "{\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Reason for recall is required.\",\"details\":[]}}"
+ },
+ {
+  "id": "S16.1",
+  "name": "U1 (Author) starts an upgrade of X",
+  "ok": false,
+  "detail": "{\"error\":{\"code\":\"WORKFLOW_ACCESS_DENIED\",\"message\":\"You are not allowed to perform this workflow action.\",\"details\":[]}}"
+ },
+ {
+  "id": "S16.1b",
+  "name": "the operator creates revision 2 instead",
+  "ok": true,
+  "detail": "{\"id\":\"9b28f96e-ac9c-483b-a81a-971cc3423d94\",\"documentId\":\"2457fc06-2c0a-4703-ac93-d701748a422a\",\"originalDocument\":{\"id\":\"2457fc06-2c0a-4703-ac93-d701748a422a\",\"documentNumber\":\"SOP.10423\",\"documentName\":\"DCV-TEST X Sampling of raw materials\",\"displayName\":\"SOP.10423 - DCV-TEST X Sampling of raw ma"
+ },
+ {
+  "id": "S16.DCO",
+  "name": "revision 2 Draft: dcv.operator",
+  "ok": true,
+  "detail": "revision 2 Draft: dcv.operator sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.U1",
+  "name": "revision 2 Draft: dcv.u1",
+  "ok": true,
+  "detail": "revision 2 Draft: dcv.u1 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.U2",
+  "name": "revision 2 Draft: dcv.u2",
+  "ok": true,
+  "detail": "revision 2 Draft: dcv.u2 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.U3",
+  "name": "revision 2 Draft: dcv.u3",
+  "ok": true,
+  "detail": "revision 2 Draft: dcv.u3 sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.ALLVIEW",
+  "name": "revision 2 Draft: dcv.viewall",
+  "ok": true,
+  "detail": "revision 2 Draft: dcv.viewall sees revisions/documents/controlled/uncontrolled = (3, 2, 0, 0); expected (3,2,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.UCAPP",
+  "name": "revision 2 Draft: dcv.approver",
+  "ok": true,
+  "detail": "revision 2 Draft: dcv.approver sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S16.READER",
+  "name": "revision 2 Draft: dcv.reader",
+  "ok": true,
+  "detail": "revision 2 Draft: dcv.reader sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "S15.2",
+  "name": "the operator recalls the Controlled Copy",
+  "ok": true,
+  "detail": "{\"id\":\"f5401459-901a-439b-8021-9aaa7378ba51\",\"controlledCopyNumber\":\"CC.SOP.10423.001\",\"createdDate\":\"07/11/2026\",\"createdTime\":\"23:55:44\",\"openedBy\":\"DCV Contributor 3\",\"name\":\"DCV-TEST X Sampling of raw materials - 1.0.0 - Controlled Copy 1\",\"status\":\"Obsoleted\",\"statusCode\":\"OBSOLETED\",\"statusInf"
+ },
+ {
+  "id": "S3.1",
+  "name": "U2 (Reviewer of Z, not Author) cannot submit Z for review",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"WORKFLOW_ACCESS_DENIED\",\"message\":\"You are not allowed to perform this workflow action.\",\"details\":[]}}')"
+ },
+ {
+  "id": "S3.1b",
+  "name": "U3 (Approver of Z) cannot submit Z",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"WORKFLOW_ACCESS_DENIED\",\"message\":\"You are not allowed to perform this workflow action.\",\"details\":[]}}')"
+ },
+ {
+  "id": "S3.2",
+  "name": "a person outside the flow cannot submit Z",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"WORKFLOW_ACCESS_DENIED\",\"message\":\"You are not allowed to perform this workflow action.\",\"details\":[]}}')"
+ },
+ {
+  "id": "S3.2b",
+  "name": "the Knowledge-only reader cannot submit Z",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"WORKFLOW_ACCESS_DENIED\",\"message\":\"You are not allowed to perform this workflow action.\",\"details\":[]}}')"
+ },
+ {
+  "id": "F1.1",
+  "name": "the creator opens the first revision of the document he created",
+  "ok": false,
+  "detail": "{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Current user is not allowed to perform this action\",\"details\":[]}}"
+ },
+ {
+  "id": "F1.1",
+  "name": "the creator opens the first revision of the document he created",
+  "ok": true,
+  "detail": "{\"id\":\"56180465-dccf-45f4-b0c1-1a5d873a4f59\",\"documentId\":\"f5fd16ad-d443-4781-bace-bc16e11820e8\",\"originalDocument\":{\"id\":\"f5fd16ad-d443-4781-bace-bc16e11820e8\",\"documentNumber\":\"SOP.10425\",\"documentName\":\"DCV-TEST W Gowning procedure\",\"displayName\":\"SOP.10425 - DCV-TEST W Gowning procedure\",\"title\""
+ },
+ {
+  "id": "F1.CREATOR",
+  "name": "the creator sees his own document and revision, not the other documents: dcv.creator",
+  "ok": true,
+  "detail": "the creator sees his own document and revision, not the other documents: dcv.creator sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "F1.U1",
+  "name": "the creator sees his own document and revision, not the other documents: dcv.u1",
+  "ok": true,
+  "detail": "the creator sees his own document and revision, not the other documents: dcv.u1 sees revisions/documents/controlled/uncontrolled = (5, 4, 0, 0); expected (5,4,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "F1.U2",
+  "name": "the creator sees his own document and revision, not the other documents: dcv.u2",
+  "ok": true,
+  "detail": "the creator sees his own document and revision, not the other documents: dcv.u2 sees revisions/documents/controlled/uncontrolled = (5, 4, 0, 0); expected (5,4,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "F1.U3",
+  "name": "the creator sees his own document and revision, not the other documents: dcv.u3",
+  "ok": true,
+  "detail": "the creator sees his own document and revision, not the other documents: dcv.u3 sees revisions/documents/controlled/uncontrolled = (5, 4, 0, 0); expected (5,4,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "F1.READER",
+  "name": "the creator sees his own document and revision, not the other documents: dcv.reader",
+  "ok": true,
+  "detail": "the creator sees his own document and revision, not the other documents: dcv.reader sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "F2.1",
+  "name": "U2, Author of Y, starts revision 2 of Y",
+  "ok": true,
+  "detail": "{\"id\":\"b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c\",\"documentId\":\"65a4e30d-bf85-4ad7-b356-9e3c17efd9c5\",\"originalDocument\":{\"id\":\"65a4e30d-bf85-4ad7-b356-9e3c17efd9c5\",\"documentNumber\":\"INS.0005\",\"documentName\":\"DCV-TEST Y Weighing room cleaning\",\"displayName\":\"INS.0005 - DCV-TEST Y Weighing room cleaning\""
+ },
+ {
+  "id": "F2.2",
+  "name": "U3 (Approver, not Author) cannot start a revision of a document he does not write",
+  "ok": true,
+  "detail": "(400, '{\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Only effective revisions can be upgraded\",\"details\":[]}}')"
+ },
+ {
+  "id": "F1.2",
+  "name": "a view-everything observer (no workspace permission) cannot open a revision",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Current user is not allowed to perform this action\",\"details\":[]}}')"
+ },
+ {
+  "id": "F1.2",
+  "name": "a view-everything observer (no workspace permission) cannot open a revision",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Current user is not allowed to perform this action\",\"details\":[]}}')"
+ },
+ {
+  "id": "F1.3",
+  "name": "an operator not ticked with view-everything does not see a document he is not named in (owner: the DCO is ticked anyway)",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Document access denied\",\"details\":[]}}')"
+ },
+ {
+  "id": "F1.4",
+  "name": "the DCO (view-everything + workspace permission) opens the first revision",
+  "ok": true,
+  "detail": "(200, '{\"id\":\"f2ceac77-a673-424c-89d9-efec84a462bb\",\"documentId\":\"3dfcad78-683d-4ae6-b52a-a22cd39581af\",\"originalDocument\":{\"id\":\"3dfcad78-683d-4ae6-b52a-a22cd39581af\",\"documentNumber\":\"SOP.10426\",\"documentName\":\"DCV-TEST W2 Gowning (DCO)\",\"displayName\":\"SOP.10426 - DCV-TEST W2 Gowning (DCO)\",\"title\":\"SOP.')"
+ },
+ {
+  "id": "F1.CREATOR",
+  "name": "the creator sees his own document and revision, not the other documents: dcv.creator",
+  "ok": true,
+  "detail": "the creator sees his own document and revision, not the other documents: dcv.creator sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "F1.U1",
+  "name": "the creator sees his own document and revision, not the other documents: dcv.u1",
+  "ok": true,
+  "detail": "the creator sees his own document and revision, not the other documents: dcv.u1 sees revisions/documents/controlled/uncontrolled = (5, 4, 0, 0); expected (5,4,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "F1.U2",
+  "name": "the creator sees his own document and revision, not the other documents: dcv.u2",
+  "ok": true,
+  "detail": "the creator sees his own document and revision, not the other documents: dcv.u2 sees revisions/documents/controlled/uncontrolled = (5, 4, 0, 0); expected (5,4,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "F1.U3",
+  "name": "the creator sees his own document and revision, not the other documents: dcv.u3",
+  "ok": true,
+  "detail": "the creator sees his own document and revision, not the other documents: dcv.u3 sees revisions/documents/controlled/uncontrolled = (5, 4, 0, 0); expected (5,4,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "F1.READER",
+  "name": "the creator sees his own document and revision, not the other documents: dcv.reader",
+  "ok": true,
+  "detail": "the creator sees his own document and revision, not the other documents: dcv.reader sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "F2.1",
+  "name": "U2, Author of Y, starts revision 2 of Y",
+  "ok": false,
+  "detail": "{\"error\":{\"code\":\"INVALID_STATE\",\"message\":\"Document already has a revision in progress. Please complete, cancel, or publish the current revision before creating a new revision.\",\"details\":[]}}"
+ },
+ {
+  "id": "F2.2",
+  "name": "U3 (Approver, not Author) cannot start a revision of a document he does not write",
+  "ok": true,
+  "detail": "(400, '{\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Only effective revisions can be upgraded\",\"details\":[]}}')"
+ },
+ {
+  "id": "V1.U1",
+  "name": "V before any revision: documents only: dcv.u1",
+  "ok": true,
+  "detail": "V before any revision: documents only: dcv.u1 sees revisions/documents/controlled/uncontrolled = (0, 1, 0, 0); expected (0,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "V1.U2",
+  "name": "V before any revision: documents only: dcv.u2",
+  "ok": true,
+  "detail": "V before any revision: documents only: dcv.u2 sees revisions/documents/controlled/uncontrolled = (0, 1, 0, 0); expected (0,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "V1.U3",
+  "name": "V before any revision: documents only: dcv.u3",
+  "ok": true,
+  "detail": "V before any revision: documents only: dcv.u3 sees revisions/documents/controlled/uncontrolled = (0, 1, 0, 0); expected (0,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "V1.DCO",
+  "name": "V before any revision: documents only: dcv.operator",
+  "ok": true,
+  "detail": "V before any revision: documents only: dcv.operator sees revisions/documents/controlled/uncontrolled = (0, 1, 0, 0); expected (0,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "V1.CREATOR",
+  "name": "V before any revision: documents only: dcv.creator",
+  "ok": true,
+  "detail": "V before any revision: documents only: dcv.creator sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "V1.READER",
+  "name": "V before any revision: documents only: dcv.reader",
+  "ok": true,
+  "detail": "V before any revision: documents only: dcv.reader sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "V1.UCAPP",
+  "name": "V before any revision: documents only: dcv.approver",
+  "ok": true,
+  "detail": "V before any revision: documents only: dcv.approver sees revisions/documents/controlled/uncontrolled = (0, 1, 0, 0); expected (0,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "V2.1",
+  "name": "Co-Author opens the document detail",
+  "ok": true,
+  "detail": "(200, '{\"id\":\"eccd8317-8b1d-4215-9f1f-bef337d4c5e3\",\"documentNumber\":\"SOP.10427\",\"documentName\":\"DCV-TEST V Line clearance\",\"titleLocalLanguage\":null,\"versio')"
+ },
+ {
+  "id": "V2.2",
+  "name": "Co-Author cannot open a revision (no workspace permission)",
+  "ok": true,
+  "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Current user is not allowed to perform this action\",\"details\":[]}}')"
+ },
+ {
+  "id": "V2.3",
+  "name": "Co-Author cannot upload a revision (not the Author)",
+  "ok": true,
+  "detail": "UPLOAD /documents/eccd8317-8b1d-4215-9f1f-bef337d4c5e3/revisions/upload -> 403 b'{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Only the assigned Author can "
+ },
+ {
+  "id": "V2.4",
+  "name": "the Author uploads and a revision is created",
+  "ok": true,
+  "detail": "{'id': '1bdb5510-3800-4a1b-99db-a0846735587a', 'documentId': 'eccd8317-8b1d-4215-9f1f-bef337d4c5e3', 'originalDocument': {'id': 'eccd8317-8b1d-4215-9f1f-bef337d4c5e3', 'documentNumber': 'SOP.10427', 'documentName': 'DCV-TEST V Line clearance', 'displayName': 'SOP.10427 - DCV-TEST V Line clearance', 'title': 'SOP.10427 - DCV-TEST V Line clearance', 'created': '08/11/2026 10:45:46', 'openedBy': 'DCV Contributor 1', 'author': 'DCV Contributor 1', 'owner': 'DCV Operator', 'status': 'Active', 'status"
+ },
+ {
+  "id": "V3.U1",
+  "name": "V after the Author upload: Draft revision visible to the named only: dcv.u1",
+  "ok": true,
+  "detail": "V after the Author upload: Draft revision visible to the named only: dcv.u1 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "V3.U2",
+  "name": "V after the Author upload: Draft revision visible to the named only: dcv.u2",
+  "ok": true,
+  "detail": "V after the Author upload: Draft revision visible to the named only: dcv.u2 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "V3.U3",
+  "name": "V after the Author upload: Draft revision visible to the named only: dcv.u3",
+  "ok": true,
+  "detail": "V after the Author upload: Draft revision visible to the named only: dcv.u3 sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "V3.DCO",
+  "name": "V after the Author upload: Draft revision visible to the named only: dcv.operator",
+  "ok": true,
+  "detail": "V after the Author upload: Draft revision visible to the named only: dcv.operator sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "V3.CREATOR",
+  "name": "V after the Author upload: Draft revision visible to the named only: dcv.creator",
+  "ok": true,
+  "detail": "V after the Author upload: Draft revision visible to the named only: dcv.creator sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "V3.READER",
+  "name": "V after the Author upload: Draft revision visible to the named only: dcv.reader",
+  "ok": true,
+  "detail": "V after the Author upload: Draft revision visible to the named only: dcv.reader sees revisions/documents/controlled/uncontrolled = (0, 0, 0, 0); expected (0,0,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "V3.UCAPP",
+  "name": "V after the Author upload: Draft revision visible to the named only: dcv.approver",
+  "ok": true,
+  "detail": "V after the Author upload: Draft revision visible to the named only: dcv.approver sees revisions/documents/controlled/uncontrolled = (1, 1, 0, 0); expected (1,1,0,0); list-vs-detail rev True doc True cc True uc True"
+ },
+ {
+  "id": "A1",
+  "name": "update-only account opens the Access Profiles list",
+  "ok": true,
+  "detail": "All Items\nFavourite\n0\nCalendar\nSelf-Service\nSecurity & Authorization\nAccess Profiles\nAdvanced\nDS\nDCV"
+ },
+ {
+  "id": "A2",
+  "name": "update-only account does NOT see the New Access Profile button",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "id": "A3",
+  "name": "update-only account cannot use the wizard by typing the URL",
+  "ok": true,
+  "detail": "All Items\nFavourite\n0\nCalendar\nSelf-Service\nSecurity & Authorization\nAccess Profiles\nAdvanced\nDS\nDCV Security update only (DEV test)\nQC Specialist\nAccess Denied\nDEV\nAccess Denied\n\nYou don't have permi"
+ },
+ {
+  "id": "A4",
+  "name": "control: security manager sees the New Access Profile button",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "id": "B1",
+  "name": "update+assign account sees the New Access Profile button",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "id": "A1",
+  "name": "update-only account opens the Access Profiles list",
+  "ok": true,
+  "detail": "All Items\nFavourite\n0\nCalendar\nSelf-Service\nSecurity & Authorization\nAccess Profiles\nAdvanced\nDS\nDCV"
+ },
+ {
+  "id": "A2",
+  "name": "update-only account does NOT see the New Access Profile button",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "id": "A3",
+  "name": "update-only account cannot use the wizard by typing the URL",
+  "ok": true,
+  "detail": "All Items\nFavourite\n0\nCalendar\nSelf-Service\nSecurity & Authorization\nAccess Profiles\nAdvanced\nDS\nDCV Security update only (DEV test)\nQC Specialist\nAccess Denied\nDEV\nAccess Denied\n\nYou don't have permi"
+ },
+ {
+  "id": "A4",
+  "name": "control: security manager sees the New Access Profile button",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "id": "B1",
+  "name": "update+assign account sees the New Access Profile button",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "id": "B2",
+  "name": "Users step explains instead of failing",
+  "ok": false,
+  "detail": "ile's Assigned Users tab.\nEverything above is created in one atomic operation under a single electronic signature — if any step fails (e.g. a Segregation-of-Duties conflict), nothing is created.\nBack\nCreate Access Profile\n\n© 2026 Ngoc Thien Pharma. All rights reserved.\n\nFDA 21 CFR Part 11 Compliance"
+ },
+ {
+  "id": "C1",
+  "name": "wizard shows the server reason, not \"Unexpected error\"",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "id": "B1",
+  "name": "update+assign account sees the New Access Profile button",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "id": "B2",
+  "name": "Users step explains instead of failing",
+  "ok": true,
+  "detail": "sers selected — the Access Profile will be created unassigned.\n\nYou do not have permission to list users. The Access Profile will be created unassigned; assign users later from the profile's Assigned Users tab.\n\nBack\nNext\n\n© 2026 Ngoc Thien Pharma. All rights reserved.\n\nFDA 21 CFR Part 11 Compliance"
+ }
+]

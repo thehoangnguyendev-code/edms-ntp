@@ -15,12 +15,12 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * The list of signature meanings of the E-Sign Config screen, searched, filtered, sorted and paged here. Reading only: a meaning is renamed through the settings, with a signature.
+ * The list of signing actions of the E-Sign Config screen (the action is fixed, the meaning is what an administrator can change), searched, filtered, sorted and paged here. Reading only: a meaning is renamed through the settings, with a signature.
  * The module of a meaning is the first word of its code (BACKUP, TRAINING, AUDIT ...).
  */
 @Service
 public class ElectronicSignatureMeaningQueryService {
-    private static final Map<String, String> SORTS = Map.of("code", "m.code", "displayName", "m.display_name", "updatedAt", "m.updated_at", "module", "split_part(m.code, '_', 1)");
+    private static final Map<String, String> SORTS = Map.of("code", "m.code", "displayName", "m.display_name", "actionName", "coalesce(m.action_name, m.display_name)", "updatedAt", "m.updated_at", "module", "split_part(m.code, '_', 1)");
 
     private final JdbcTemplate jdbc;
 
@@ -34,7 +34,8 @@ public class ElectronicSignatureMeaningQueryService {
         StringBuilder where = new StringBuilder(" where 1=1");
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (lower(m.code) like ? escape '\\' or lower(m.display_name) like ? escape '\\')");
+            where.append(" and (lower(m.code) like ? escape '\\' or lower(m.display_name) like ? escape '\\' or lower(coalesce(m.action_name, m.display_name)) like ? escape '\\')");
+            args.add(like);
             args.add(like);
             args.add(like);
         }
@@ -58,10 +59,11 @@ public class ElectronicSignatureMeaningQueryService {
         String column = sortBy == null ? null : SORTS.get(sortBy);
         String order = column == null ? " order by m.code" : " order by " + column + " " + ("desc".equalsIgnoreCase(sortDirection) ? "desc" : "asc") + ", m.code";
         List<Map<String, Object>> rows = new ArrayList<>();
-        for (Map<String, Object> row : jdbc.queryForList("select m.id, m.code, m.display_name, m.updated_at, split_part(m.code, '_', 1) as module from electronic_signature_meanings m" + where + order + " limit ? offset ?", args.toArray())) {
+        for (Map<String, Object> row : jdbc.queryForList("select m.id, m.code, m.display_name, coalesce(m.action_name, m.display_name) as action_name, m.updated_at, split_part(m.code, '_', 1) as module from electronic_signature_meanings m" + where + order + " limit ? offset ?", args.toArray())) {
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("id", row.get("id") instanceof UUID id ? id.toString() : String.valueOf(row.get("id")));
             out.put("code", row.get("code"));
+            out.put("actionName", row.get("action_name"));
             out.put("displayName", row.get("display_name"));
             out.put("module", row.get("module"));
             out.put("updatedAt", row.get("updated_at") instanceof java.sql.Timestamp t ? t.toInstant().toString() : null);

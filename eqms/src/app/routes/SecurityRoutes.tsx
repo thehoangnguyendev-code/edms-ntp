@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { Navigate, Outlet, Route } from 'react-router-dom';
+import { Navigate, Outlet, Route, useLocation } from 'react-router-dom';
 import { LoadingFallback } from './LoadingFallback';
 import { ProtectedRoute } from '@/middleware/ProtectedRoute';
 
@@ -10,7 +10,6 @@ const AccessProfileListView = lazy(() => import('@/features/security-authorizati
 const AccessProfileDetailView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.AccessProfileDetailView })));
 const RoleSetupWizardView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.RoleSetupWizardView })));
 const LifecyclePoliciesView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.LifecyclePoliciesView })));
-const PolicyResolverView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.PolicyResolverView })));
 const AuthorizationDiagnosticsView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.AuthorizationDiagnosticsView })));
 const LifecyclePolicyFormView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.LifecyclePolicyFormView })));
 const WorkflowPolicyDuplicateView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.WorkflowPolicyDuplicateView })));
@@ -22,6 +21,14 @@ const SodViolationReviewView = lazy(() => import('@/features/security-authorizat
 const SodConstraintFormView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.SodConstraintFormView })));
 const AccessReviewView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.AccessReviewView })));
 const AccessReviewCampaignDetailView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.AccessReviewCampaignDetailView })));
+
+/** Old Policy Resolver address -> its tab in Engine Diagnostics, keeping any resolver query parameters. */
+const PolicyResolverRedirect: React.FC = () => {
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
+  params.set('tab', 'resolver');
+  return <Navigate to={`/security/authorization-diagnostics?${params.toString()}`} replace />;
+};
 
 const SecurityGuard: React.FC<React.PropsWithChildren<{ permission: string }>> = ({ permission, children }) => (
   <ProtectedRoute requiredPermissions={[permission]}>{children}</ProtectedRoute>
@@ -55,14 +62,16 @@ export function securityRoutes() {
       </Route>
       <Route path="access-profiles">
         <Route index element={<SecurityGuard permission="security.access_profiles.view"><Suspense fallback={<LoadingFallback />}><AccessProfileListView /></Suspense></SecurityGuard>} />
-        <Route path="new" element={<SecurityGuard permission="security.access_profiles.update"><Suspense fallback={<LoadingFallback />}><AccessProfileDetailView /></Suspense></SecurityGuard>} />
+        {/* Old "advanced" create form was removed; keep old links working */}
+        <Route path="new" element={<Navigate to="/security/access-profiles/wizard" replace />} />
         <Route path="wizard" element={<SecurityGuard permission="security.access_profiles.update"><SecurityGuard permission="security.access_profiles.assign"><Suspense fallback={<LoadingFallback />}><RoleSetupWizardView /></Suspense></SecurityGuard></SecurityGuard>} />
         <Route path=":id/edit" element={<SecurityGuard permission="security.access_profiles.update"><Suspense fallback={<LoadingFallback />}><AccessProfileDetailView /></Suspense></SecurityGuard>} />
         <Route path=":id" element={<SecurityGuard permission="security.access_profiles.view"><Suspense fallback={<LoadingFallback />}><AccessProfileDetailView /></Suspense></SecurityGuard>} />
       </Route>
       <Route path="lifecycle-policies">
         <Route index element={<SecurityGuard permission="security.workflow_authorization.view"><Suspense fallback={<LoadingFallback />}><LifecyclePoliciesView /></Suspense></SecurityGuard>} />
-        <Route path="policy-resolver" element={<SecurityGuard permission="security.workflow_authorization.view"><Suspense fallback={<LoadingFallback />}><PolicyResolverView /></Suspense></SecurityGuard>} />
+        {/* Policy Resolver now lives in Engine Diagnostics; keep old links working (query string kept) */}
+        <Route path="policy-resolver" element={<PolicyResolverRedirect />} />
         <Route path="transitions" element={<Navigate to="/security/lifecycle-policies?tab=transitions" replace />} />
         <Route path="capabilities" element={<Navigate to="/security/lifecycle-policies?tab=capabilities" replace />} />
         <Route path="roles" element={<Navigate to="/security/advanced/workflow-roles" replace />} />

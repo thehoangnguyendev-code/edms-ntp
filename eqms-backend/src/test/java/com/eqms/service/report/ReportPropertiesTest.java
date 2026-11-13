@@ -45,6 +45,7 @@ class ReportPropertiesTest {
         row.put("template_number_digits", 4);
         row.put("template_number_sequence", 2);
         row.put("max_rows", 10000);
+        row.put("max_rows_full", 100000);
         row.put("max_schedule_recipients", 200);
         row.put("schedule_retry_minutes", 5);
         row.put("version", version);
@@ -64,7 +65,7 @@ class ReportPropertiesTest {
     @Test
     void aChangeIsSavedAndTheAuditTrailNamesWhatChanged() {
         service.update(actor("reports.properties.manage", "reports.properties.view"), write(3, "QA", 5, 20000, null, null));
-        verify(jdbc).update(anyString(), eq("QA"), eq(5), eq(20000), eq(200), eq(5), any(), any());
+        verify(jdbc).update(anyString(), eq("QA"), eq(5), eq(20000), eq(100000), eq(200), eq(5), any(), any());
         verify(audit).logAs(any(), eq("REPORT_PROPERTIES"), anyString(), any(), eq("REPORT_PROPERTIES_UPDATED"), any(), any(),
                 eq("Template number prefix: RPT -> QA; Digits of the serial number: 4 -> 5; Most rows in a report file: 10000 -> 20000"));
     }
@@ -112,6 +113,22 @@ class ReportPropertiesTest {
             assertThatThrownBy(() -> service.update(admin, bad)).isInstanceOf(IllegalArgumentException.class);
         }
         verify(jdbc, never()).update(anyString(), org.mockito.ArgumentMatchers.<Object[]>any());
+    }
+
+    @Test
+    void theFullLimitIsSavedWithinItsRangeAndAuditedAndRefusedOutsideIt() {
+        UserAccount admin = actor("reports.properties.manage");
+        service.update(admin, new ReportPropertiesService.PropertiesWrite(3, null, null, null, null, null, null, 50000));
+        verify(jdbc).update(anyString(), eq("RPT"), eq(4), eq(10000), eq(50000), eq(200), eq(5), any(), any());
+        verify(audit).logAs(any(), eq("REPORT_PROPERTIES"), anyString(), any(), eq("REPORT_PROPERTIES_UPDATED"), any(), any(),
+                eq("Most rows in a report file run with Full: 100000 -> 50000"));
+        // below its minimum, above what the report worker can hold, and lower than the ordinary limit are all refused
+        for (int bad : new int[] {9999, 100001, 1_000_000}) {
+            assertThatThrownBy(() -> service.update(admin, new ReportPropertiesService.PropertiesWrite(3, null, null, null, null, null, null, bad)))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessage("REPORT_MAX_ROWS_FULL_INVALID");
+        }
+        assertThatThrownBy(() -> service.update(admin, new ReportPropertiesService.PropertiesWrite(3, null, null, 50000, null, null, null, 20000)))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("REPORT_MAX_ROWS_FULL_INVALID");
     }
 
     @Test

@@ -99,11 +99,7 @@ public class ReportTypeService {
         ReportMetadataProvider provider = providers.get(code);
         if (provider == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "REPORT_SOURCE_UNKNOWN");
         Map<String, Object> result = new LinkedHashMap<>(row(provider));
-        Set<String> dates = new HashSet<>();
-        for (Map<String, String> filter : provider.filters()) {
-            String column = provider.filterColumns().get(filter.get("code"));
-            if ("DATE".equals(filter.get("type")) && column != null) dates.add(column);
-        }
+        Set<String> dates = provider.dateColumns();
         List<Map<String, Object>> columns = new ArrayList<>();
         for (String column : provider.columns().keySet().stream().sorted().toList()) {
             columns.add(Map.of("code", column, "label", provider.labels().getOrDefault(column, column), "required", provider.requiredFields().contains(column),

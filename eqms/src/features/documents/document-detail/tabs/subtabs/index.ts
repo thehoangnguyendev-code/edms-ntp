@@ -7,7 +7,6 @@ export { RelatedDocumentsTab } from './RelatedDocumentsTab';
 export { CorrelatedDocumentsTab } from './CorrelatedDocumentsTab';
 
 // Shared Components
-export { DocumentRelationships } from './components/DocumentRelationships';
 
 // Types
 export type {

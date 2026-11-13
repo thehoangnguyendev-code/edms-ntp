@@ -12,7 +12,6 @@ import { Select } from "@/components/ui/select/Select";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { useToast } from "@/components/ui/toast/Toast";
 import { usePortalDropdown } from "@/hooks/usePortalDropdown";
@@ -156,7 +155,7 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
         filters={filters} dates={resettingDates([requestedRange.filter, generatedRange.filter], () => table.setCurrentPage(1))}
         hasActiveFilters={Boolean(status || departmentFilter || requestedRange.isSet || generatedRange.isSet || table.searchQuery)}
         onClear={() => { setStatus(""); setDepartmentFilter(""); requestedRange.clear(); generatedRange.clear(); table.setCurrentPage(1); }} customControl={control} framed={false} flush>
-        <DataTable rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading} loadingContent={<SectionLoading text="Loading…" />} columns={columns} columnLayout={layout} action={action}
+        <DataTable rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading} columns={columns} columnLayout={layout} action={action}
           emptyState={<TableEmptyState title="No Exports" description="Prepare an export of a personal training record to have it approved." />}
           pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined} />
       </ReportListToolbar>

@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, pickerDateToIso } from "@/features/report/shared/ReportListToolbar";
@@ -50,7 +49,7 @@ export function MyTrainingTodoTab({ onTotal }: { onTotal: (total: number) => voi
   >
     <DataTable rows={table.items} getRowKey={(t) => t.participantId} columns={columns} columnLayout={layout}
       scrollerRef={drag.scrollerRef} scrollProps={drag.dragEvents} isDragging={drag.isDragging}
-      isLoading={table.isLoading} loadingContent={<SectionLoading text="Loading training tasks…" />}
+      isLoading={table.isLoading}
       emptyState={<TableEmptyState title="Nothing to do" description="No training tasks match the current filters." />}
       pagination={<TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} />} />
   </ReportListToolbar>;

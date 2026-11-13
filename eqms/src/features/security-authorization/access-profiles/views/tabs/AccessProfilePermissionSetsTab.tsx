@@ -1,17 +1,27 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Search } from "lucide-react";
+import { MoreVertical, Search } from "lucide-react";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
-import { SectionLoading } from "@/components/ui/loading/Loading";
-import { TablePagination } from "@/components/ui/table/TablePagination";
-import { useDebounce } from "@/hooks";
+import { PortalDropdownMenu } from "@/components/ui/dropdown";
+import { DataTable, TableEmptyState, TablePagination, TABLE_STYLES, type DataTableAction, type DataTableColumn, type DataTableSortDirection } from "@/components/ui/table";
+import { useDebounce, usePortalDropdown } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
 import { ROUTES } from "@/app/routes.constants";
-import { settingsApi, type PermissionCatalogGroup, type PermissionSetSummary, type PermissionSetResponse } from "@/services/api/settings";
+import { settingsApi, type PermissionSetSummary, type PermissionSetResponse } from "@/services/api/settings";
 import type { AssignDiff } from "../AccessProfileDetailView";
+
+type SortKey = "name" | "type" | "permissionCount" | "moduleCount";
+
+const summarizeModules = (modules: string[] | undefined) => {
+  const list = modules ?? [];
+  if (list.length === 0) return "-";
+  if (list.length <= 2) return list.join(" · ");
+  return `${list.slice(0, 2).join(" · ")} · +${list.length - 2} more`;
+};
 
 export const PermissionSetsTab: React.FC<{
   profileId: string;
@@ -23,61 +33,57 @@ export const PermissionSetsTab: React.FC<{
 }> = ({ profileId, reloadKey = 0, canAssign = true, deniedReason, onOpenDrawer, onChangesChange }) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [allSets, setAllSets] = useState<PermissionSetResponse[]>([]);
+  const { openId: openMenuId, position: menuPosition, getRef: getButtonRef, toggle: toggleMenu, close: closeMenu } = usePortalDropdown();
+  const [rows, setRows] = useState<PermissionSetResponse[]>([]);
   const [originalIds, setOriginalIds] = useState<string[]>([]);
-  const [assignedIdsState, setAssignedIdsState] = useState<string[]>([]);
-  const [catalog, setCatalog] = useState<PermissionCatalogGroup[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [assignedIds, setAssignedIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const searchTerm = useDebounce(search, 300);
+  const [sort, setSort] = useState<{ key: SortKey; direction: DataTableSortDirection }>({ key: "name", direction: "asc" });
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [availableCount, setAvailableCount] = useState(0);
-  const [listLoading, setListLoading] = useState(false);
+  const [listLoading, setListLoading] = useState(true);
   const [pendingRemove, setPendingRemove] = useState<PermissionSetSummary | null>(null);
 
+  // The ids already attached (from the profile) and the ones ticked since: the difference is what Save applies.
   const load = useCallback(async () => {
     try {
-      const [catalogData, profileDetail] = await Promise.all([
-        settingsApi.getPermissionCatalog(),
-        settingsApi.getAccessProfileEditorSummary(profileId).then((result) => result.profile),
-      ]);
-      setCatalog(catalogData);
-      // Only track shared sets visible in this list — the auto-managed ROLE_ set is
-      // edited on the Permissions tab and must never enter this tab's diff.
+      const profileDetail = await settingsApi.getAccessProfileEditorSummary(profileId).then((result) => result.profile);
+      // The auto-managed ROLE_ set is edited on the Permissions tab and must never enter this tab's difference.
       const ids = profileDetail.permissionSets.filter((s) => !s.code.startsWith("ROLE_")).map((s) => s.id);
       setOriginalIds(ids);
-      setAssignedIdsState(ids);
+      setAssignedIds(ids);
       onChangesChange?.({ added: [], removed: [] });
     } catch {
       showToast({ type: "error", message: "Failed to load permission sets" });
-    } finally {
-      setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileId, showToast, reloadKey]);
 
   useEffect(() => { void load(); }, [load]);
 
+  // Searched, sorted and paged on the server. Details list only the sets of this profile; editing lists every set to tick from.
   useEffect(() => {
     let active = true;
     setListLoading(true);
-    settingsApi.listPermissionSetsPaged({ page, limit, search: searchTerm || undefined, sortBy: "name", sortDir: "asc" })
+    settingsApi.listPermissionSetsPaged({
+      page, limit, search: searchTerm || undefined, sortBy: sort.key, sortDir: sort.direction,
+      accessProfileId: canAssign ? undefined : profileId,
+    })
       .then((result) => {
         if (!active) return;
-        setAllSets(result.data);
+        setRows(result.data);
         setTotal(result.pagination.total);
         const pages = Math.max(1, result.pagination.totalPages);
         setTotalPages(pages);
-        if (!searchTerm) setAvailableCount(result.pagination.total);
         if (page > pages) setPage(pages);
       })
-      .catch(() => { if (active) { setAllSets([]); setTotal(0); setTotalPages(1); showToast({ type: "error", message: "Failed to load permission sets" }); } })
+      .catch(() => { if (active) { setRows([]); setTotal(0); setTotalPages(1); showToast({ type: "error", message: "Failed to load permission sets" }); } })
       .finally(() => { if (active) setListLoading(false); });
     return () => { active = false; };
-  }, [page, limit, searchTerm, reloadKey, showToast]);
+  }, [page, limit, searchTerm, sort, reloadKey, showToast, canAssign, profileId]);
 
   const reportDiff = (nextAssigned: string[]) => {
     const originalSet = new Set(originalIds);
@@ -88,55 +94,16 @@ export const PermissionSetsTab: React.FC<{
     });
   };
 
-  const permissionLookup = useMemo(() => {
-    const lookup = new Map<string, { module: string; group: string }>();
-    catalog.forEach((group) => {
-      group.permissions.forEach((permission) => {
-        lookup.set(permission.code, {
-          module: permission.module,
-          group: permission.group,
-        });
-      });
-    });
-    return lookup;
-  }, [catalog]);
-
-  const summarizeModules = (permissionCodes: string[]) => {
-    const modules = Array.from(
-      new Set(
-        permissionCodes
-          .map((code) => permissionLookup.get(code)?.module)
-          .filter((module): module is string => Boolean(module))
-      )
-    );
-    if (modules.length === 0) return "No module metadata";
-    if (modules.length <= 2) return modules.join(" · ");
-    return `${modules.slice(0, 2).join(" · ")} · +${modules.length - 2} more`;
-  };
-
-  const summarizeGroups = (permissionCodes: string[]) => {
-    const groups = Array.from(
-      new Set(
-        permissionCodes
-          .map((code) => permissionLookup.get(code)?.group)
-          .filter((group): group is string => Boolean(group))
-      )
-    );
-    if (groups.length === 0) return "No group metadata";
-    if (groups.length <= 2) return groups.join(" · ");
-    return `${groups.slice(0, 2).join(" · ")} · +${groups.length - 2} more`;
-  };
-
-  const assignedSet = new Set(assignedIdsState);
+  const assignedSet = new Set(assignedIds);
 
   const handleToggle = (set: PermissionSetResponse) => {
     if (!canAssign) return;
     if (assignedSet.has(set.id)) {
-      // Removals are confirmed — users holding this profile lose the set's permissions.
+      // Removals are confirmed: users holding this profile lose the set's permissions.
       setPendingRemove(set as unknown as PermissionSetSummary);
       return;
     }
-    setAssignedIdsState((prev) => {
+    setAssignedIds((prev) => {
       const next = [...prev, set.id];
       reportDiff(next);
       return next;
@@ -145,7 +112,7 @@ export const PermissionSetsTab: React.FC<{
 
   const confirmRemove = () => {
     if (!pendingRemove) return;
-    setAssignedIdsState((prev) => {
+    setAssignedIds((prev) => {
       const next = prev.filter((id) => id !== pendingRemove.id);
       reportDiff(next);
       return next;
@@ -153,83 +120,114 @@ export const PermissionSetsTab: React.FC<{
     setPendingRemove(null);
   };
 
-  if (loading) return <SectionLoading />;
+  const sortOf = (key: SortKey) => ({
+    direction: sort.key === key ? sort.direction : undefined,
+    onSort: () => { setSort((s) => ({ key, direction: s.key === key && s.direction === "asc" ? "desc" : "asc" })); setPage(1); },
+  });
+  const openSet = rows.find((row) => row.id === openMenuId);
 
-  const assignedVisibleCount = assignedIdsState.length;
+  const columns: DataTableColumn<PermissionSetResponse>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: "text-center text-slate-500", cell: (_row, index) => (page - 1) * limit + index + 1 },
+    { id: "name", header: "Name", label: "Name", sort: sortOf("name"), cellClassName: "font-medium text-slate-900", cell: (row) => row.name },
+    { id: "code", header: "Code", label: "Code", cell: (row) => <code className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">{row.code}</code> },
+    { id: "type", header: "Type", label: "Type", sort: sortOf("type"), cell: (row) => <Badge color={row.system ? "blue" : "slate"} size="sm">{row.system ? "System" : "Custom"}</Badge> },
+    { id: "permissionCount", header: "Permissions", label: "Permissions", sort: sortOf("permissionCount"), cellClassName: "text-slate-600", cell: (row) => row.permissionCount },
+    { id: "modules", header: "Modules", label: "Modules", sort: sortOf("moduleCount"), cellClassName: "text-slate-600", cell: (row) => summarizeModules(row.modules) },
+    { id: "description", header: "Description", label: "Description", cellClassName: "max-w-md truncate text-slate-600", cell: (row) => row.description || "-" },
+  ];
+  const action: DataTableAction<PermissionSetResponse> = {
+    header: "Action",
+    cell: (row) => (
+      <button
+        ref={getButtonRef(row.id)}
+        onClick={(e) => { e.stopPropagation(); toggleMenu(row.id, e); }}
+        className="inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 sm:h-8 sm:w-8"
+        aria-label="More actions"
+      >
+        <MoreVertical className="h-3.5 w-3.5 text-slate-600 sm:h-4 sm:w-4" />
+      </button>
+    ),
+  };
 
   return (
     <div className="space-y-4">
-      <WarningBanner
-        variant="info"
-        description={
-          <>
-            Tick a shared permission set to attach it to this Access Profile. Changes are applied when you click <b>Save</b>{" "}
-            (a single electronic signature covers all changes). To modify a set's contents, use{" "}
-            <button
-              onClick={() => navigate(ROUTES.SECURITY.PERMISSION_SETS)}
-              className="font-medium underline hover:text-blue-900"
-            >
-              Shared Permission Sets
-            </button>.
-          </>
-        }
-      />
-      {!canAssign && (
+      {canAssign && (
         <WarningBanner
-          variant="warning"
-          description={deniedReason || "You can preview permission sets, but cannot change assignments."}
+          variant="info"
+          description={
+            <>
+              Tick a shared permission set to attach it to this Access Profile. Changes are applied when you click <b>Save</b>{" "}
+              (a single electronic signature covers all changes). To modify a set's contents, use{" "}
+              <button
+                onClick={() => navigate(ROUTES.SECURITY.PERMISSION_SETS)}
+                className="font-medium underline hover:text-blue-900"
+              >
+                Shared Permission Sets
+              </button>.
+            </>
+          }
         />
       )}
+      {!canAssign && deniedReason && (
+        <WarningBanner variant="warning" description={deniedReason} />
+      )}
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
-          className="w-full h-9 pl-9 pr-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400"
+          className="h-9 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           placeholder="Search permission sets…"
         />
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge color="emerald" size="sm">{assignedVisibleCount} assigned</Badge>
-        <span className="text-xs text-slate-500">{availableCount} shared set(s) available</span>
-      </div>
 
-      <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
-        {!listLoading && allSets.length === 0 && (
-          <p className="p-4 text-sm text-slate-400">No permission sets match your search.</p>
-        )}
-        {allSets.map((ps) => (
-          <div key={ps.id} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
-            <Checkbox
-              id={`profile-ps-${ps.id}`}
-              checked={assignedSet.has(ps.id)}
-              onChange={() => handleToggle(ps)}
-              disabled={!canAssign}
-            />
-            <button
-              type="button"
-              className="min-w-0 flex-1 text-left"
-              onClick={() => onOpenDrawer(ps as unknown as PermissionSetSummary)}
-              title="Preview permissions in this set"
-            >
-              <span className="flex flex-wrap items-center gap-2">
-                <span className="text-xs sm:text-sm font-medium text-slate-800">{ps.name}</span>
-                <Badge color={ps.system ? "blue" : "slate"} size="xs">{ps.system ? "System" : "Custom"}</Badge>
-                <span className="text-2xs text-slate-400">{ps.permissionCount} permissions</span>
-              </span>
-              {ps.description && (
-                <span className="block text-xs text-slate-500 mt-0.5">{ps.description}</span>
-              )}
-              <span className="block text-2xs text-slate-400 mt-0.5">
-                {summarizeModules(ps.permissionCodes ?? [])} · {summarizeGroups(ps.permissionCodes ?? [])}
-              </span>
-            </button>
-            <ChevronRight className="h-4 w-4 text-slate-300 shrink-0 mt-0.5" aria-hidden="true" />
+      <DataTable
+        rows={rows}
+        getRowKey={(row) => row.id}
+        columns={columns}
+        action={action}
+        isLoading={listLoading}
+        onRowClick={(row) => onOpenDrawer(row as unknown as PermissionSetSummary)}
+        // The tick boxes exist only while the assignments can be changed (edit / create), never on the read-only details.
+        selection={{
+          visible: canAssign,
+          header: "",
+          cell: (row) => (
+            <div onClick={(e) => e.stopPropagation()}>
+              <Checkbox id={`profile-ps-${row.id}`} checked={assignedSet.has(row.id)} onChange={() => handleToggle(row)} />
+            </div>
+          ),
+        }}
+        emptyState={
+          <TableEmptyState
+            title={searchTerm.trim() ? "No permission sets match your search" : "No shared permission sets"}
+            description={searchTerm.trim() ? "Try a different search." : canAssign ? "No shared permission set exists yet." : "No shared permission set is attached to this Access Profile."}
+          />
+        }
+        pagination={total > 0 ? (
+          <div className="border-t border-slate-200">
+            <TablePagination currentPage={page} totalPages={totalPages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} />
           </div>
-        ))}
-      </div>
-      {total > 0 && <TablePagination currentPage={page} totalPages={totalPages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} />}
+        ) : undefined}
+      />
+
+      <PortalDropdownMenu isOpen={!!openMenuId} onClose={closeMenu} position={menuPosition}>
+        <div className="py-1.5">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (openSet) onOpenDrawer(openSet as unknown as PermissionSetSummary);
+              closeMenu();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 transition-colors hover:bg-slate-50"
+          >
+            <IconInfoCircle className="h-3.5 w-3.5" />
+            <span>View Permissions</span>
+          </button>
+        </div>
+      </PortalDropdownMenu>
+
       <AlertModal
         isOpen={Boolean(pendingRemove)}
         onClose={() => setPendingRemove(null)}

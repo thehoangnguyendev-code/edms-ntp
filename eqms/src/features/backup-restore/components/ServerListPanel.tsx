@@ -21,6 +21,8 @@ export interface ListFilter {
   options: SelectOption[];
   defaultValue: string;
   placeholder?: string;
+  /** Shows the value but does not let it be changed (a list that is already limited to one value). */
+  disabled?: boolean;
   onChange: (value: string) => void;
 }
 
@@ -68,6 +70,8 @@ interface Props<T> {
   rowClassName?: string | ((row: T, index: number) => string);
   /** False when the list sits inside a card that already has a frame (a tab, a section): no second border, no padding of its own. */
   framed?: boolean;
+  /** With framed={false}: still draw the border around the table itself (the filters stay outside it). */
+  tableFramed?: boolean;
 }
 
 /**
@@ -79,7 +83,7 @@ export function ServerListPanel<T>({
   tableKey, columns, action, rows, getRowKey, loading, hasLoaded, error, emptyTitle, emptyDescription,
   search, onSearch, searchLabel, searchPlaceholder, filters, dates = [], onClear,
   page, totalPages, totalItems, pageSize, onPageChange, onPageSizeChange, pageSizeOptions = [10, 20, 50],
-  selection, onRowClick, rowClassName, framed = true,
+  selection, onRowClick, rowClassName, framed = true, tableFramed = false,
 }: Props<T>) {
   const { layout, control } = useCustomColumnLayout(tableKey, columns, action);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -112,7 +116,7 @@ export function ServerListPanel<T>({
                   placeholder={searchPlaceholder}
                   value={search}
                   onChange={(event) => onSearch(event.target.value)}
-                  className="block h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-9 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="block h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-9 text-sm transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 {search && (
                   <button onClick={() => onSearch("")} className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400" aria-label="Clear search">
@@ -130,7 +134,7 @@ export function ServerListPanel<T>({
           <ConfiguredDesktopFilters
             search={searchInput}
             trailing={control}
-            filters={filters.map((f) => ({ id: f.id, label: f.label, value: f.value, options: f.options, defaultValue: f.defaultValue, onChange: f.onChange }))}
+            filters={filters.map((f) => ({ id: f.id, label: f.label, value: f.value, options: f.options, defaultValue: f.defaultValue, disabled: f.disabled, onChange: f.onChange }))}
             dates={dates}
           >
             <div className="hidden items-end gap-4 pb-4 md:grid md:grid-cols-2 md:pb-5 lg:grid-cols-3">
@@ -143,12 +147,12 @@ export function ServerListPanel<T>({
                     value={search}
                     onChange={(event) => onSearch(event.target.value)}
                     placeholder={searchPlaceholder}
-                    className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
               </div>
               {filters.map((f) => (
-                <Select key={f.id} label={f.label} value={f.value} onChange={(value) => f.onChange(String(value))} options={f.options} placeholder={f.placeholder ?? f.label} />
+                <Select key={f.id} label={f.label} value={f.value} onChange={(value) => f.onChange(String(value))} options={f.options} placeholder={f.placeholder ?? f.label} disabled={f.disabled} />
               ))}
               {dates.map((d) => (
                 <DateRangePicker
@@ -174,7 +178,7 @@ export function ServerListPanel<T>({
               <FilterAccordionItem key={f.id} label={f.label} isExpanded={expanded.has(f.id)} onToggle={() => toggle(f.id)}>
                 <div className="flex flex-wrap gap-2 pb-3">
                   {f.options.map((option) => (
-                    <FilterOptionButton key={String(option.value)} label={option.label} isSelected={f.value === String(option.value)} onClick={() => f.onChange(String(option.value))} />
+                    <FilterOptionButton key={String(option.value)} label={option.label} isSelected={f.value === String(option.value)} onClick={() => !f.disabled && f.onChange(String(option.value))} />
                   ))}
                 </div>
               </FilterAccordionItem>
@@ -203,7 +207,7 @@ export function ServerListPanel<T>({
               <SectionLoading text="Searching..." minHeight="150px" />
             </div>
           )}
-          <div className={framed ? "relative flex flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition-all duration-300" : "relative flex flex-1 flex-col overflow-hidden transition-all duration-300"}>
+          <div className={framed || tableFramed ? "relative flex flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition-all duration-300" : "relative flex flex-1 flex-col overflow-hidden transition-all duration-300"}>
             <DataTable
               rows={rows}
               getRowKey={getRowKey}

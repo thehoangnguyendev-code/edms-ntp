@@ -44,7 +44,6 @@ public class KnowledgeShareNotifier {
         variables.put("itemLabel", itemLabel == null ? "" : itemLabel);
         variables.put("scopeName", scopeName == null ? "" : scopeName);
         variables.put("detail", detail == null || detail.isBlank() ? "-" : detail);
-        variables.put("notificationMandatory", "true");
         try {
             emailNotificationService.sendByTypeToRecipients(EmailTemplateTypeUtils.KNOWLEDGE_SHARE_NOTIFICATION, recipients, variables);
         } catch (RuntimeException ex) {

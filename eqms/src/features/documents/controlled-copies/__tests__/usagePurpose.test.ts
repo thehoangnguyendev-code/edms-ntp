@@ -16,7 +16,7 @@ describe("usagePurpose", () => {
 
   it("shows a dash for a legacy copy without purpose", () => {
     expect(usagePurposeLabel(undefined)).toBe("-");
-    expect(usagePurposeLabel("READ_AND_COMPLY")).toBe("Read and comply");
+    expect(usagePurposeLabel("READ_AND_COMPLY")).toBe("Read and Comply");
     expect(usagePurposeLabel("RECORD_KEEPING")).toBe("Record-keeping");
   });
 

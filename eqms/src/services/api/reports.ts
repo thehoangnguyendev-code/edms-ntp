@@ -31,6 +31,11 @@ export interface ReportRunRequest {
   parameters?: Record<string, unknown>;
   fields?: string[];
   sort?: Array<{ field: string; direction: "asc" | "desc" }>;
+  /** The choice to run without a filter (written to the Audit Trail). */
+  full?: boolean;
+  /** A run of the Audit Trail report is signed: the reason and the e-signature token (REPORT-RUN-SIGNATURE-2026-11-12). */
+  reason?: string;
+  signatureToken?: string;
 }
 export interface ReportRunSummary {
   id: string;
@@ -39,6 +44,8 @@ export interface ReportRunSummary {
   definitionVersion: number;
   /** The revision of the template this run was made from (REPORT-TEMPLATE-REVISION-2026-10-14); null for runs made before revisions. */
   revision?: number | null;
+  /** True when the run was made with the Full choice (no filter). */
+  fullRun?: boolean;
   status: string;
   progress: number;
   reasonCode?: string;
@@ -82,6 +89,8 @@ export interface ReportRunDetail extends ReportRunSummary {
     approvedAt: string | null;
     nameFormatId: string | null;
   };
+  /** The electronic signature of a run of a type that is signed (the Audit Trail report); null for any other run. */
+  signature?: { signedBy: string; signedAt: string; reason?: string | null } | null;
   /** Notices sent about this run. Null when the viewer may not see who was notified. */
   deliveries?: Array<{
     channel: "IN_APP" | "EMAIL";
@@ -135,7 +144,22 @@ export interface ReportSchedulePage {
 export interface ReportScheduleDetail extends CreateReportScheduleRequest {
   id: string;
   version: number;
-  recipients?: Array<{ id: string; fullName: string }>;
+  recipients?: ReportRecipientPerson[];
+  /** The template of the schedule and the formats it allows, also when the template is not one that the person may run now. */
+  definitionName?: string;
+  allowedFormats?: ReportFormat[];
+}
+/** A person who is, or may be, a recipient of a scheduled report: what is needed to recognise the person, as in the list of the people of a Training. */
+export interface ReportRecipientPerson {
+  id: string;
+  fullName: string;
+  username?: string | null;
+  email?: string | null;
+  employeeCode?: string | null;
+  department?: string | null;
+  position?: string | null;
+  businessUnit?: string | null;
+  avatar?: string | null;
 }
 export interface CreateReportScheduleRequest {
   name: string;
@@ -170,8 +194,69 @@ export interface ReportRecipientCandidate {
   businessUnit?: string;
 }
 
+/** What needs the attention of the person, as the server counted it (REPORT-OVERVIEW-2026-11-12). */
+export interface ReportAttentionItem {
+  code: string;
+  tone: "red" | "amber" | "emerald" | "blue";
+  count: number;
+  title: string;
+  detail: string;
+  path: string;
+}
+export interface ReportOverview {
+  attention: ReportAttentionItem[];
+  generatedAt: string;
+}
+export interface ReportPin {
+  code: string;
+  name: string;
+  active: boolean;
+  sourceCode?: string | null;
+  pinnedAt: string;
+}
+export interface AnalyticsDocumentControl {
+  effectiveDocuments: number;
+  revisedLast90Days: number;
+  revisionsInProgress: number;
+  revisionsWaitingOver14Days: number;
+  reviewsDue: number;
+  reviewsOverdue: number;
+  controlledCopiesOut: number;
+  controlledCopiesExpired: number;
+  revisionsByStage: Array<{ label: string; value: number }>;
+  byType: Array<{ type: string; effective: number; inRevision: number; reviewDue: number }>;
+}
+/** Training figures; {@code note} is set instead of the figures when the person has no department to count. */
+export interface AnalyticsTraining {
+  note?: "NO_DEPARTMENT";
+  overdueActivities?: number;
+  dueSoonActivities?: number;
+  openActivities?: number;
+  absentInOpenActivities?: number;
+  activitiesByStatus?: Array<{ label: string; value: number }>;
+  requirements?: number;
+  trained?: number;
+  notTrained?: number;
+  annualDue?: number;
+  percentTrained?: number | null;
+}
+export interface AnalyticsUsage {
+  runsPerWeek: Array<{ weekStart: string; value: number }>;
+  runsLast30Days: number;
+  failedLast30Days: number;
+  fullRunsLast30Days: number;
+  allUsers: boolean;
+}
+
 /** API boundary for server-owned catalog, validation and asynchronous report runs. */
 export const reportsApi = {
+  overview: async () => (await apiClient.get<ReportOverview>("/reports/overview")).data,
+  listPins: async () => (await apiClient.get<ReportPin[]>("/reports/pins")).data,
+  pinReport: async (code: string) => apiClient.put(`/reports/pins/${encodeURIComponent(code)}`),
+  unpinReport: async (code: string) => apiClient.delete(`/reports/pins/${encodeURIComponent(code)}`),
+  analyticsDocuments: async () => (await apiClient.get<AnalyticsDocumentControl>("/reports/analytics/documents")).data,
+  analyticsTraining: async () => (await apiClient.get<AnalyticsTraining>("/reports/analytics/training")).data,
+  analyticsUsage: async () => (await apiClient.get<AnalyticsUsage>("/reports/analytics/usage")).data,
   catalog: async () =>
     (await apiClient.get<ReportDefinition[]>("/reports/catalog")).data,
   createRun: async (request: ReportRunRequest, idempotencyKey: string) =>
@@ -269,6 +354,11 @@ export const reportsApi = {
     page?: number;
     limit?: number;
   }) => (await apiClient.get<ReportDeliveryPage>("/reports/deliveries", { params })).data,
+  /** The people who may be chosen as recipients, found, narrowed and paged by the server. */
+  recipientPeople: async (params: { search?: string; businessUnit?: string; department?: string; page: number; limit: number }) =>
+    (await apiClient.get<{ data: ReportRecipientPerson[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>("/reports/schedules/recipient-people", { params })).data,
+  recipientGroups: async (by: "BUSINESS_UNIT" | "DEPARTMENT") =>
+    (await apiClient.get<{ data: Array<{ name: string; total: number }> }>("/reports/schedules/recipient-groups", { params: { by } })).data.data,
   listScheduleRecipients: async (search?: string) =>
     (
       await apiClient.get<ReportRecipientCandidate[]>(

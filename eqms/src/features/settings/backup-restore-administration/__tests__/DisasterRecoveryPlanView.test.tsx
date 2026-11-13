@@ -11,6 +11,10 @@ const api = vi.hoisted(() => ({
   drAuthority: vi.fn(),
   verifyDrKitItem: vi.fn(),
   changeDrAuthority: vi.fn(),
+  drReadiness: vi.fn(),
+  drDeclarations: vi.fn(),
+  declareDisaster: vi.fn(),
+  closeDeclaration: vi.fn(),
 }));
 const perms = vi.hoisted(() => ({ granted: new Set<string>() }));
 const esign = vi.hoisted(() => ({ confirm: undefined as undefined | ((data: { signatureToken?: string }) => unknown) }));
@@ -56,6 +60,12 @@ beforeEach(() => {
   api.drAuthority.mockResolvedValue({ key: "DECLARATION_AUTHORITY", value: "admin" });
   api.verifyDrKitItem.mockResolvedValue(undefined);
   api.changeDrAuthority.mockResolvedValue({ key: "DECLARATION_AUTHORITY", value: "qa.lead" });
+  api.drReadiness.mockResolvedValue([
+    { scenario: "SERVER_LOSS", dataSource: "NEWEST_VERIFIED_BACKUP", dataAgeHours: 3.2, rpoHours: 24, rpoState: "WITHIN", testedRestoreHours: 0.5, rtoHours: 24, rtoState: "WITHIN" },
+  ]);
+  api.drDeclarations.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 1 } });
+  api.declareDisaster.mockResolvedValue({ code: "DR-2026-0001" });
+  api.closeDeclaration.mockResolvedValue({ code: "DR-2026-0001" });
   perms.granted = new Set(["backup.admin.disaster_recovery.view", "backup.admin.disaster_recovery.manage"]);
   esign.confirm = undefined;
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} unobserve() {} });
@@ -63,11 +73,11 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-const renderView = () =>
+const renderView = (tab?: string) =>
   render(
     <ToastProvider>
       <BreadcrumbProvider>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={[tab ? `/dr?tab=${tab}` : "/dr"]}>
           <DisasterRecoveryPlanView />
         </MemoryRouter>
       </BreadcrumbProvider>
@@ -102,5 +112,62 @@ describe("Disaster Recovery Plan", () => {
     expect(api.changeDrAuthority).not.toHaveBeenCalled();
     await esign.confirm?.({ signatureToken: "tok-7" });
     await waitFor(() => expect(api.changeDrAuthority).toHaveBeenCalledWith("qa.lead", "Delegate to QA", "tok-7"));
+  });
+
+  it("shows each target next to what the records show now, from the server", async () => {
+    renderView();
+    expect(await screen.findByText("Targets Against The Records")).toBeTruthy();
+    expect(await screen.findByText("3.2 h")).toBeTruthy();
+    expect(screen.getAllByText("Within the target").length).toBe(2);
+    expect(api.drReadiness).toHaveBeenCalled();
+  });
+
+  it("calls an item overdue when its check is older than the review period", async () => {
+    api.drKit.mockResolvedValue([{ ...kitItem("RUNBOOK", "Step-by-step rebuild procedure", true), state: "OVERDUE" }]);
+    renderView();
+    expect(await screen.findByText("Rebuild kit checks are overdue")).toBeTruthy();
+    expect(screen.getByText("Check overdue")).toBeTruthy();
+  });
+
+  it("declares a disaster only after the electronic signature, and sends exactly what was written", async () => {
+    renderView("declarations");
+    fireEvent.click(await screen.findByRole("button", { name: "Declare a Disaster" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(await within(dialog).findByRole("combobox"));
+    fireEvent.click(await screen.findByRole("option", { name: "Server lost, site intact" }));
+    fireEvent.change(document.querySelector("textarea") as HTMLTextAreaElement, { target: { value: "The server room flooded" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue to sign" }));
+    expect(await screen.findByText("meaning:BACKUP_DR_DECLARE")).toBeTruthy();
+    expect(api.declareDisaster).not.toHaveBeenCalled();
+    await esign.confirm?.({ signatureToken: "tok-9" });
+    await waitFor(() => expect(api.declareDisaster).toHaveBeenCalledWith("SERVER_LOSS", "The server room flooded", "tok-9"));
+  });
+
+  it("lets only one declaration be open and closes it with a summary and a signature", async () => {
+    api.drDeclarations.mockResolvedValue({
+      data: [{ code: "DR-2026-0001", scenario: "SERVER_LOSS", scenarioLabel: "Server lost, site intact", status: "OPEN", declaredBy: "admin", declaredAt: "2026-11-11T01:00:00Z", reason: "flood", rpoTargetHours: 24, rtoTargetHours: 24, closedBy: null, closedAt: null, summary: null, hoursTaken: null }],
+      pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+    });
+    renderView("declarations");
+    expect((await screen.findByRole("button", { name: "Declare a Disaster" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Close the Open Declaration" }));
+    await screen.findByRole("dialog");
+    fireEvent.change(document.querySelector("textarea") as HTMLTextAreaElement, { target: { value: "Rebuilt on the spare server" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue to sign" }));
+    expect(await screen.findByText("meaning:BACKUP_DR_CLOSE")).toBeTruthy();
+    await esign.confirm?.({ signatureToken: "tok-10" });
+    await waitFor(() => expect(api.closeDeclaration).toHaveBeenCalledWith("DR-2026-0001", "Rebuilt on the spare server", "tok-10"));
+  });
+
+  it("searches and filters the declarations on the server by status and scenario", async () => {
+    renderView("declarations");
+    await screen.findByRole("button", { name: "Declare a Disaster" });
+    await waitFor(() => expect(api.drDeclarations).toHaveBeenCalledWith(expect.objectContaining({ sortBy: "declaredAt", sortDirection: "desc", page: 1, limit: 10 })));
+    fireEvent.change(screen.getAllByPlaceholderText("Declaration, scenario, person or reason…")[0], { target: { value: "flood" } });
+    await waitFor(() => expect(api.drDeclarations).toHaveBeenLastCalledWith(expect.objectContaining({ search: "flood", page: 1 })), { timeout: 2000 });
+    fireEvent.click(document.querySelector('[data-table-col="status"]') as HTMLElement);
+    await waitFor(() => expect(api.drDeclarations).toHaveBeenLastCalledWith(expect.objectContaining({ sortBy: "status" })));
+    // the open declaration is read separately so the banner and the buttons do not depend on the page being shown
+    expect(api.drDeclarations).toHaveBeenCalledWith({ status: "OPEN", page: 1, limit: 1 });
   });
 });

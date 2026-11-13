@@ -3,7 +3,6 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { trainingError, trainingLegacyApi, type TrainingLegacyPerson } from "@/services/api/trainingActivities";
 
 /**
@@ -79,7 +78,7 @@ export function LegacyPeopleTab({ activityId }: { activityId: string }) {
         rows={rows}
         getRowKey={(r) => `${r.role}-${r.personId}-${r.documentNumber ?? ""}-${r.revisionNumber ?? ""}`}
         isLoading={loading}
-        loadingContent={<SectionLoading text="Loading…" />}
+
         columns={columns}
         emptyState={<TableEmptyState title="Nobody named" description="No person was named with the paper record of this training." />}
         pagination={

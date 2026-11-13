@@ -32,7 +32,6 @@ import {
 } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
 import { TrainingDateField } from "../shared/TrainingDateField";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -279,7 +278,7 @@ export function TrainingRequirementListView() {
           rows={table.items}
           getRowKey={(r) => r.id}
           isLoading={table.isLoading}
-          loadingContent={<SectionLoading text="Loading…" />}
+
           columns={columns}
           columnLayout={layout}
           action={action}

@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { ROUTES } from '@/app/routes.constants';
 import { Button } from "@/components/ui/button/Button";
 import { cn } from "@/components/ui/utils";
-import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { FormModal } from "@/components/ui/modal/FormModal";
@@ -51,7 +50,8 @@ import {
   useControlledCopyActionCapabilities,
   useControlledCopyBatchActionCapabilities,
 } from "@/hooks";
-import { resolveTerminalProgressStep } from "@/features/documents/shared/statusMapping";
+import { WorkflowProgressStepper } from "@/components/ui/workflow-stepper/WorkflowProgressStepper";
+import type { WorkflowProgress } from "@/types/document";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { startControlledCopyJobStatusPolling } from "../jobStatusPolling";
@@ -197,10 +197,24 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     }
   };
   const reissueDecision = getControlledCopyActionDecision(activeCapabilities, "replaceLostDamaged");
-  const terminalProgressStep = React.useMemo(
-    () => resolveTerminalProgressStep(controlledCopy.status, auditTrailRows as any[]),
-    [auditTrailRows, controlledCopy.status],
-  );
+  // The lifecycle stepper is worked out on the server; it is fetched again when the status or the audit trail changes.
+  const [workflow, setWorkflow] = useState<WorkflowProgress | null>(null);
+  const workflowId = isBatchParent ? (controlledCopy.distributionBatchId || controlledCopy.id) : controlledCopy.id;
+  useEffect(() => {
+    if (!workflowId) return;
+    let live = true;
+    documentApi
+      .getControlledCopyWorkflow(workflowId, isBatchParent)
+      .then((result) => {
+        if (live) setWorkflow(result);
+      })
+      .catch(() => {
+        if (live) setWorkflow(null);
+      });
+    return () => {
+      live = false;
+    };
+  }, [workflowId, isBatchParent, controlledCopy.status, auditTrailRows.length]);
 
   const loadAuditTrail = useCallback(async (
     entityType: string,
@@ -716,19 +730,6 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     };
   }, [controlledCopyId, locationState?.preloadedControlledCopy, locationState?.preloadedControlledCopySnapshot, refreshDetailRelatedData, showToast]);
 
-  // Status workflow steps
-  const getStatusSteps = () => {
-    return [
-      "Ready for Distribution",
-      "Distributed",
-      "Obsoleted",
-      "Closed - Cancelled",
-    ];
-  };
-
-  const statusSteps = getStatusSteps();
-  const currentStepIndex = statusSteps.indexOf(controlledCopy.status);
-
   // Tabs configuration
   const tabs = [
     { id: "document" as TabType, label: "Document Information" },
@@ -1209,11 +1210,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       </div>
 
       {/* Status Stepper */}
-      <WorkflowStepper
-        steps={statusSteps}
-        currentStepIndex={currentStepIndex}
-        terminalProgressStep={terminalProgressStep}
-      />
+      <WorkflowProgressStepper workflow={workflow} />
 
 
       {/* Tab Navigation */}

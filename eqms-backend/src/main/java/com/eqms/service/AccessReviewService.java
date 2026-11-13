@@ -202,7 +202,8 @@ public class AccessReviewService {
         campaign.setReviewPeriodStart(request.reviewPeriodStart());
         campaign.setReviewPeriodEnd(request.reviewPeriodEnd());
         campaign.setStatus("IN_PROGRESS");
-        campaign.setReviewer(actor);
+        UserAccount reviewer = resolveReviewer(actor, request.reviewerUserId());
+        campaign.setReviewer(reviewer);
         campaign.setCreatedBy(actor);
         campaign.setUpdatedBy(actor);
         campaign = campaignRepo.save(campaign);
@@ -232,7 +233,8 @@ public class AccessReviewService {
 
         auditTrailService.logAs(actor, ENTITY_TYPE, campaign.getName(), campaign.getId(),
                 "ACCESS_REVIEW_CAMPAIGN_CREATED", null, "In Progress",
-                "Created access review campaign with " + count + " user snapshots");
+                "Created access review campaign with " + count + " user snapshots"
+                        + (reviewer.getId().equals(actor.getId()) ? "" : ". Reviewer: " + reviewer.getFullName()));
         return getCampaignInternal(campaign.getId());
     }
 
@@ -244,7 +246,7 @@ public class AccessReviewService {
             throw new IllegalStateException("Decisions can only be recorded on an in-progress campaign");
         }
         AccessReviewItem item = itemRepo.findById(itemId)
-                .orElseThrow(() -> new IllegalArgumentException("Review item not found: " + itemId));
+                .orElseThrow(() -> new IllegalArgumentException("Review item not found"));
         if (item.getCampaign() == null || !campaignId.equals(item.getCampaign().getId())) {
             throw new IllegalArgumentException("Review item does not belong to this campaign");
         }
@@ -334,7 +336,7 @@ public class AccessReviewService {
 
     private AccessReviewCampaign require(UUID id) {
         return campaignRepo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Access review campaign not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Access review campaign not found"));
     }
 
     private void requireView() {
@@ -342,6 +344,30 @@ public class AccessReviewService {
         if (!permissionEvaluationService.hasAnyPermission(u, VIEW_PERMISSION, MANAGE_PERMISSION)) {
             throw new AccessDeniedException("Access review view permission required");
         }
+    }
+
+    /**
+     * The person who reviews a campaign: the one the creator names, or the creator. A person named must be an active user who may manage access reviews (they decide the items), so
+     * a campaign is never given to someone who cannot act on it.
+     */
+    private UserAccount resolveReviewer(UserAccount actor, java.util.UUID reviewerUserId) {
+        if (reviewerUserId == null || reviewerUserId.equals(actor.getId())) return actor;
+        UserAccount reviewer = userRepo.findById(reviewerUserId).orElseThrow(() -> new IllegalArgumentException("The reviewer was not found."));
+        if (reviewer.getStatus() != com.eqms.entity.UserStatus.Active || !permissionEvaluationService.hasPermission(reviewer, MANAGE_PERMISSION)) {
+            throw new IllegalArgumentException("The reviewer must be an active user who may manage access reviews.");
+        }
+        return reviewer;
+    }
+
+    /** The people who may be given a campaign: the active users who may manage access reviews. */
+    @Transactional(readOnly = true)
+    public List<com.eqms.dto.user.AccessReviewDtos.ReviewerOption> reviewers() {
+        requireManage();
+        return userRepo.findAllByStatus(com.eqms.entity.UserStatus.Active).stream()
+                .filter(user -> permissionEvaluationService.hasPermission(user, MANAGE_PERMISSION))
+                .sorted(java.util.Comparator.comparing(user -> user.getFullName() == null ? "" : user.getFullName(), String.CASE_INSENSITIVE_ORDER))
+                .map(user -> new com.eqms.dto.user.AccessReviewDtos.ReviewerOption(user.getId(), user.getFullName()))
+                .toList();
     }
 
     private UserAccount requireManage() {

@@ -1,0 +1,1794 @@
+[
+ {
+  "id": "S1",
+  "file": "S1__operator-documents.png",
+  "caption": "S1: the operator (no view-everything) who created the documents",
+  "user": "dcv.operator",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S1",
+  "file": "S1__U1-documents.png",
+  "caption": "S1: U1 is Author of X and Reviewer of Y: sees both with ONE profile",
+  "user": "dcv.u1",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S1",
+  "file": "S1__outsider-documents.png",
+  "caption": "S1: a person with the module permission but no name in the flow sees nothing",
+  "user": "dcv.approver",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S1",
+  "file": "S1__reader-home.png",
+  "caption": "S1: the Knowledge-Base-only reader has no Document Control menu",
+  "user": "dcv.reader",
+  "path": "/"
+ },
+ {
+  "id": "S1",
+  "file": "S1__operator-documents.png",
+  "caption": "S1: the operator (no view-everything) who created the documents",
+  "user": "dcv.operator",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S1",
+  "file": "S1__U1-documents.png",
+  "caption": "S1: U1 is Author of X and Reviewer of Y: sees both with ONE profile",
+  "user": "dcv.u1",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S1",
+  "file": "S1__outsider-documents.png",
+  "caption": "S1: a person with the module permission but no name in the flow sees nothing",
+  "user": "dcv.approver",
+  "path": "/documents/all"
+ },
+ {
+  "id": "S1",
+  "file": "S1__reader-home.png",
+  "caption": "S1: the Knowledge-Base-only reader has no Document Control menu",
+  "user": "dcv.reader",
+  "path": "/"
+ },
+ {
+  "id": "S4",
+  "file": "S4__U1-revisions.png",
+  "caption": "S4: U1 sees both revisions (Author of X, Reviewer of Y)",
+  "user": "dcv.u1",
+  "path": "/documents/revisions/all"
+ },
+ {
+  "id": "S8",
+  "file": "S8__reader-kb.png",
+  "caption": "S8: the Knowledge-only reader reads Effective documents here",
+  "user": "dcv.reader",
+  "path": "/self-service/knowledge"
+ },
+ {
+  "id": "S9",
+  "file": "S9__recipient-cc.png",
+  "caption": "S9: U3, the recipient, sees the Controlled Copy",
+  "user": "dcv.u3",
+  "path": "/documents/controlled-copies/all"
+ },
+ {
+  "id": "S9",
+  "file": "S9__other-flow-member-cc.png",
+  "caption": "S9: U1 (in the flow but not the recipient) does not see it",
+  "user": "dcv.u1",
+  "path": "/documents/controlled-copies/all"
+ },
+ {
+  "id": "S10",
+  "file": "S10__approver-sees-pending.png",
+  "caption": "S10: the approver sees the request waiting for their decision",
+  "user": "dcv.approver",
+  "path": "/documents/uncontrolled-copies/all"
+ },
+ {
+  "id": "S10",
+  "file": "S10__U2-no-uc.png",
+  "caption": "S10: U2 sees no Uncontrolled Copy of someone else",
+  "user": "dcv.u2",
+  "path": "/documents/uncontrolled-copies/all"
+ },
+ {
+  "id": "S10",
+  "file": "S10__U1-own-uc.png",
+  "caption": "S10: U1 sees their own Uncontrolled Copy",
+  "user": "dcv.u1",
+  "path": "/documents/uncontrolled-copies/all"
+ },
+ {
+  "id": "S10",
+  "file": "S10__U1-own-uc-distributed.png",
+  "caption": "S10: U1 sees their own Uncontrolled Copy, now Distributed",
+  "user": "dcv.u1",
+  "path": "/documents/uncontrolled-copies/all"
+ },
+ {
+  "id": "S9",
+  "file": "S9__recipient-cc-distributed.png",
+  "caption": "S9: U3 sees the Controlled Copy, now Distributed",
+  "user": "dcv.u3",
+  "path": "/documents/controlled-copies/all"
+ },
+ {
+  "id": "S9",
+  "file": "S9__recipient-cc-distributed.png",
+  "caption": "S9: U3 sees the Controlled Copy, now Distributed",
+  "user": "dcv.u3",
+  "path": "/documents/controlled-copies/all"
+ },
+ {
+  "id": "S8",
+  "file": "S8__reader-kb-own-department.png",
+  "caption": "S8: the reader (Knowledge only) now sees the Effective documents of their Department",
+  "user": "dcv.reader",
+  "path": "/documents/knowledge/explorer"
+ },
+ {
+  "id": "S11",
+  "file": "S11__U1-revision-detail.png",
+  "caption": "S11: U1 opens revision X (Author) and its tabs",
+  "user": "dcv.u1",
+  "path": "/documents/revisions/3fc33695-c8af-42cf-824b-64dae26ff733"
+ },
+ {
+  "id": "S12",
+  "file": "S12__operator-records.png",
+  "caption": "S12: the operator sees Records",
+  "user": "dcv.operator",
+  "path": "/documents/records"
+ },
+ {
+  "id": "SA",
+  "file": "SA__users.png",
+  "caption": "Security: User Management",
+  "user": "admin",
+  "path": "/settings/users"
+ },
+ {
+  "id": "SA",
+  "file": "SA__time-limited.png",
+  "caption": "Security: Time-Limited User",
+  "user": "admin",
+  "path": "/settings/users/time-limited"
+ },
+ {
+  "id": "SA",
+  "file": "SA__logged-in.png",
+  "caption": "Security: Logged in Users",
+  "user": "admin",
+  "path": "/settings/users/logged-in"
+ },
+ {
+  "id": "SA",
+  "file": "SA__profiles.png",
+  "caption": "Security: Access Profiles list",
+  "user": "admin",
+  "path": "/security/access-profiles"
+ },
+ {
+  "id": "SA",
+  "file": "SA__wizard.png",
+  "caption": "Security: Role setup wizard",
+  "user": "admin",
+  "path": "/security/access-profiles/wizard"
+ },
+ {
+  "id": "SA",
+  "file": "SA__lifecycle.png",
+  "caption": "Security: Workflow Authorization",
+  "user": "admin",
+  "path": "/security/lifecycle-policies"
+ },
+ {
+  "id": "SA",
+  "file": "SA__access-review.png",
+  "caption": "Security: Access Review",
+  "user": "admin",
+  "path": "/security/access-review"
+ },
+ {
+  "id": "SA",
+  "file": "SA__sod-review.png",
+  "caption": "Security: SoD Violation Review",
+  "user": "admin",
+  "path": "/security/sod-violation-review"
+ },
+ {
+  "id": "SA",
+  "file": "SA__permission-sets.png",
+  "caption": "Security: Shared Permission Sets",
+  "user": "admin",
+  "path": "/security/permission-sets"
+ },
+ {
+  "id": "SA",
+  "file": "SA__workflow-roles.png",
+  "caption": "Security: Workflow Role Catalog",
+  "user": "admin",
+  "path": "/security/advanced/workflow-roles"
+ },
+ {
+  "id": "SA",
+  "file": "SA__diagnostics.png",
+  "caption": "Security: Engine Diagnostics",
+  "user": "admin",
+  "path": "/security/authorization-diagnostics"
+ },
+ {
+  "id": "SA",
+  "file": "SA__object-rules.png",
+  "caption": "Security: Object Access Rules",
+  "user": "admin",
+  "path": "/security/object-rules"
+ },
+ {
+  "id": "SA",
+  "file": "SA__sod.png",
+  "caption": "Security: Segregation of Duties",
+  "user": "admin",
+  "path": "/security/sod"
+ },
+ {
+  "id": "SA",
+  "file": "SA__profile-detail-viewall.png",
+  "caption": "Profile detail: DC Contributor + View Everything",
+  "user": "admin",
+  "path": "/security/access-profiles/9f9aca0d-0a5c-49dc-93de-28a0cc7940f2"
+ },
+ {
+  "id": "SA",
+  "file": "SA__profile-tab-Permissions.png",
+  "caption": "Profile DC Contributor, tab Permissions",
+  "user": "admin",
+  "path": "/security/access-profiles/ed5b775f-b2f8-4598-a6b0-3b708cfa7ee7"
+ },
+ {
+  "id": "SA",
+  "file": "SA__profile-tab-Permission-Sets.png",
+  "caption": "Profile DC Contributor, tab Permission Sets",
+  "user": "admin",
+  "path": "/security/access-profiles/ed5b775f-b2f8-4598-a6b0-3b708cfa7ee7"
+ },
+ {
+  "id": "S14",
+  "file": "S14__U2-rejected.png",
+  "caption": "S14: U2 sees the rejected request",
+  "user": "dcv.u2",
+  "path": "/documents/uncontrolled-copies/all"
+ },
+ {
+  "id": "S16",
+  "file": "S16__reader-draft-denied.png",
+  "caption": "S16: the Knowledge-only reader opening the Draft revision directly",
+  "user": "dcv.reader",
+  "path": "/documents/revisions/9b28f96e-ac9c-483b-a81a-971cc3423d94"
+ },
+ {
+  "id": "S15",
+  "file": "S15__recipient-after-recall.png",
+  "caption": "S15: U3 after the recall",
+  "user": "dcv.u3",
+  "path": "/documents/controlled-copies/all"
+ },
+ {
+  "id": "SA",
+  "file": "SA__profile-detail-badge.png",
+  "caption": "Profile detail now shows Document Control: View everything",
+  "user": "admin",
+  "path": "/security/access-profiles/9f9aca0d-0a5c-49dc-93de-28a0cc7940f2"
+ },
+ {
+  "id": "SA",
+  "file": "SA__wizard-permissions-step.png",
+  "caption": "Wizard step 2: Knowledge Base is pre-ticked",
+  "user": "admin",
+  "path": "/security/access-profiles/wizard"
+ },
+ {
+  "id": "F1",
+  "file": "F1__creator-sees-own.png",
+  "caption": "F1: the operator who is NOT ticked with view-everything now sees the document he created",
+  "user": "dcv.creator",
+  "path": "/documents/all"
+ },
+ {
+  "id": "SA",
+  "file": "SA__profiles-banner-after.png",
+  "caption": "Access Profiles: banner now counts active users only",
+  "user": "admin",
+  "path": "/security/access-profiles"
+ },
+ {
+  "id": "F1",
+  "file": "F1__creator-sees-own.png",
+  "caption": "F1: the operator who is NOT ticked with view-everything now sees the document he created",
+  "user": "dcv.creator",
+  "path": "/documents/all"
+ },
+ {
+  "id": "WA0",
+  "file": "WA0__wa-matrix.png",
+  "caption": "WA0: wa-matrix",
+  "user": "dcv.secadmin",
+  "path": "/security/lifecycle-policies?tab=matrix"
+ },
+ {
+  "id": "WA0",
+  "file": "WA0__wa-transitions.png",
+  "caption": "WA0: wa-transitions",
+  "user": "dcv.secadmin",
+  "path": "/security/lifecycle-policies?tab=transitions"
+ },
+ {
+  "id": "WA0",
+  "file": "WA0__wa-capabilities.png",
+  "caption": "WA0: wa-capabilities",
+  "user": "dcv.secadmin",
+  "path": "/security/lifecycle-policies?tab=capabilities"
+ },
+ {
+  "id": "WA0",
+  "file": "WA0__diag-resolver.png",
+  "caption": "WA0: diag-resolver",
+  "user": "dcv.secadmin",
+  "path": "/security/authorization-diagnostics?tab=resolver"
+ },
+ {
+  "id": "WA0",
+  "file": "WA0__profiles.png",
+  "caption": "WA0: profiles",
+  "user": "dcv.secadmin",
+  "path": "/security/access-profiles"
+ },
+ {
+  "id": "WA0",
+  "file": "WA0__permission-sets.png",
+  "caption": "WA0: permission-sets",
+  "user": "dcv.secadmin",
+  "path": "/security/permission-sets"
+ },
+ {
+  "id": "WA0",
+  "file": "WA0__old-resolver-link.png",
+  "caption": "WA0: old-resolver-link",
+  "user": "dcv.secadmin",
+  "path": "/security/lifecycle-policies/policy-resolver?moduleKey=documents"
+ },
+ {
+  "id": "WA1",
+  "file": "WA1__wa-matrix.png",
+  "caption": "WA1: wa-matrix",
+  "user": "dcv.secadmin",
+  "path": "/security/lifecycle-policies?tab=matrix"
+ },
+ {
+  "id": "WA1",
+  "file": "WA1__wa-transitions.png",
+  "caption": "WA1: wa-transitions",
+  "user": "dcv.secadmin",
+  "path": "/security/lifecycle-policies?tab=transitions"
+ },
+ {
+  "id": "WA1",
+  "file": "WA1__wa-capabilities.png",
+  "caption": "WA1: wa-capabilities",
+  "user": "dcv.secadmin",
+  "path": "/security/lifecycle-policies?tab=capabilities"
+ },
+ {
+  "id": "WA1",
+  "file": "WA1__diag-resolver.png",
+  "caption": "WA1: diag-resolver",
+  "user": "dcv.secadmin",
+  "path": "/security/authorization-diagnostics?tab=resolver"
+ },
+ {
+  "id": "WA1",
+  "file": "WA1__diag-simulator.png",
+  "caption": "WA1: diag-simulator",
+  "user": "dcv.secadmin",
+  "path": "/security/authorization-diagnostics?tab=simulator"
+ },
+ {
+  "id": "WA1",
+  "file": "WA1__diag-relations.png",
+  "caption": "WA1: diag-relations",
+  "user": "dcv.secadmin",
+  "path": "/security/authorization-diagnostics?tab=relations"
+ },
+ {
+  "id": "WA1",
+  "file": "WA1__diag-health.png",
+  "caption": "WA1: diag-health",
+  "user": "dcv.secadmin",
+  "path": "/security/authorization-diagnostics?tab=engineHealth"
+ },
+ {
+  "id": "WA1",
+  "file": "WA1__profiles.png",
+  "caption": "WA1: profiles",
+  "user": "dcv.secadmin",
+  "path": "/security/access-profiles"
+ },
+ {
+  "id": "WA1",
+  "file": "WA1__permission-sets.png",
+  "caption": "WA1: permission-sets",
+  "user": "dcv.secadmin",
+  "path": "/security/permission-sets"
+ },
+ {
+  "id": "WA1",
+  "file": "WA1__old-resolver-link.png",
+  "caption": "WA1: old-resolver-link",
+  "user": "dcv.secadmin",
+  "path": "/security/lifecycle-policies/policy-resolver?moduleKey=documents"
+ },
+ {
+  "id": "WO",
+  "file": "WO__wizard-direct.png",
+  "caption": "New Access Profile opens the wizard",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "WO",
+  "file": "WO__wizard-direct.png",
+  "caption": "New Access Profile opens the wizard",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "WO",
+  "file": "WO__wizard-direct.png",
+  "caption": "New Access Profile opens the wizard",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "WO",
+  "file": "WO__wizard-direct.png",
+  "caption": "New Access Profile opens the wizard",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "WO",
+  "file": "WO__wizard-direct.png",
+  "caption": "New Access Profile opens the wizard",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "WO",
+  "file": "WO__wizard-direct.png",
+  "caption": "New Access Profile opens the wizard",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "WO",
+  "file": "WO__detail-edit.png",
+  "caption": "profile detail in edit mode",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "WC",
+  "file": "WC__review.png",
+  "caption": "wizard review step",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "WC",
+  "file": "WC__esign.png",
+  "caption": "e-signature dialog",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "WC",
+  "file": "WC__created.png",
+  "caption": "after creation",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "WC",
+  "file": "WC__review.png",
+  "caption": "wizard review step",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "WC",
+  "file": "WC__esign.png",
+  "caption": "e-signature dialog",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "WC",
+  "file": "WC__created.png",
+  "caption": "after creation",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "WO",
+  "file": "WO__wizard-direct.png",
+  "caption": "New Access Profile opens the wizard",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "WO",
+  "file": "WO__detail-edit.png",
+  "caption": "profile detail in edit mode",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__1-basic.png",
+  "caption": "Author: step 1 Basic Info",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__1-basic.png",
+  "caption": "Author: step 1 Basic Info",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__2-permissions.png",
+  "caption": "Author: step 2 Permissions",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__1-basic.png",
+  "caption": "Author: step 1 Basic Info",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__2-permissions.png",
+  "caption": "Author: step 2 Permissions",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__3a-users-search.png",
+  "caption": "users list after search",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__1-basic.png",
+  "caption": "Author: step 1 Basic Info",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__2-permissions.png",
+  "caption": "Author: step 2 Permissions",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__3a-users-search.png",
+  "caption": "users list after search",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__3-user.png",
+  "caption": "Author: step 5 Users",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__4-review.png",
+  "caption": "Author: step 6 Review",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__5-created.png",
+  "caption": "Author: profile created",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-CoAuthor",
+  "file": "RP-CoAuthor__1-basic.png",
+  "caption": "Co-Author: step 1 Basic Info",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-CoAuthor",
+  "file": "RP-CoAuthor__2-permissions.png",
+  "caption": "Co-Author: step 2 Permissions",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-CoAuthor",
+  "file": "RP-CoAuthor__3a-users-search.png",
+  "caption": "users list after search",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-CoAuthor",
+  "file": "RP-CoAuthor__3-user.png",
+  "caption": "Co-Author: step 5 Users",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-CoAuthor",
+  "file": "RP-CoAuthor__4-review.png",
+  "caption": "Co-Author: step 6 Review",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-CoAuthor",
+  "file": "RP-CoAuthor__5-created.png",
+  "caption": "Co-Author: profile created",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Reviewer",
+  "file": "RP-Reviewer__1-basic.png",
+  "caption": "Reviewer: step 1 Basic Info",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Reviewer",
+  "file": "RP-Reviewer__2-permissions.png",
+  "caption": "Reviewer: step 2 Permissions",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Reviewer",
+  "file": "RP-Reviewer__3a-users-search.png",
+  "caption": "users list after search",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Reviewer",
+  "file": "RP-Reviewer__3-user.png",
+  "caption": "Reviewer: step 5 Users",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Reviewer",
+  "file": "RP-Reviewer__4-review.png",
+  "caption": "Reviewer: step 6 Review",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Reviewer",
+  "file": "RP-Reviewer__5-created.png",
+  "caption": "Reviewer: profile created",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Approver",
+  "file": "RP-Approver__1-basic.png",
+  "caption": "Approver: step 1 Basic Info",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Approver",
+  "file": "RP-Approver__2-permissions.png",
+  "caption": "Approver: step 2 Permissions",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Approver",
+  "file": "RP-Approver__3a-users-search.png",
+  "caption": "users list after search",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Approver",
+  "file": "RP-Approver__3-user.png",
+  "caption": "Approver: step 5 Users",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Approver",
+  "file": "RP-Approver__4-review.png",
+  "caption": "Approver: step 6 Review",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Approver",
+  "file": "RP-Approver__5-created.png",
+  "caption": "Approver: profile created",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__1-basic.png",
+  "caption": "Author: step 1 Basic Info",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__2-permissions.png",
+  "caption": "Author: step 2 Permissions",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__3a-users-search.png",
+  "caption": "users list after search",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__3-user.png",
+  "caption": "Author: step 5 Users",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__4-review.png",
+  "caption": "Author: step 6 Review",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Author",
+  "file": "RP-Author__5-created.png",
+  "caption": "Author: profile created",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-CoAuthor",
+  "file": "RP-CoAuthor__1-basic.png",
+  "caption": "Co-Author: step 1 Basic Info",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-CoAuthor",
+  "file": "RP-CoAuthor__2-permissions.png",
+  "caption": "Co-Author: step 2 Permissions",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-CoAuthor",
+  "file": "RP-CoAuthor__3a-users-search.png",
+  "caption": "users list after search",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-CoAuthor",
+  "file": "RP-CoAuthor__3-user.png",
+  "caption": "Co-Author: step 5 Users",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-CoAuthor",
+  "file": "RP-CoAuthor__4-review.png",
+  "caption": "Co-Author: step 6 Review",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-CoAuthor",
+  "file": "RP-CoAuthor__5-created.png",
+  "caption": "Co-Author: profile created",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Reviewer",
+  "file": "RP-Reviewer__1-basic.png",
+  "caption": "Reviewer: step 1 Basic Info",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Reviewer",
+  "file": "RP-Reviewer__2-permissions.png",
+  "caption": "Reviewer: step 2 Permissions",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Reviewer",
+  "file": "RP-Reviewer__3a-users-search.png",
+  "caption": "users list after search",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Reviewer",
+  "file": "RP-Reviewer__3-user.png",
+  "caption": "Reviewer: step 5 Users",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Reviewer",
+  "file": "RP-Reviewer__4-review.png",
+  "caption": "Reviewer: step 6 Review",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Reviewer",
+  "file": "RP-Reviewer__5-created.png",
+  "caption": "Reviewer: profile created",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Approver",
+  "file": "RP-Approver__1-basic.png",
+  "caption": "Approver: step 1 Basic Info",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Approver",
+  "file": "RP-Approver__2-permissions.png",
+  "caption": "Approver: step 2 Permissions",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Approver",
+  "file": "RP-Approver__3a-users-search.png",
+  "caption": "users list after search",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Approver",
+  "file": "RP-Approver__3-user.png",
+  "caption": "Approver: step 5 Users",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Approver",
+  "file": "RP-Approver__4-review.png",
+  "caption": "Approver: step 6 Review",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "RP-Approver",
+  "file": "RP-Approver__5-created.png",
+  "caption": "Approver: profile created",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "UP1",
+  "file": "UP1__1-document.png",
+  "caption": "Effective document SOP.7147 before upgrade",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP2",
+  "file": "UP2__1-confirm.png",
+  "caption": "confirm Edit Revision for Upgrade",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP2",
+  "file": "UP2__1-confirm.png",
+  "caption": "confirm Edit Revision for Upgrade",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP2",
+  "file": "UP2__3-scrolled.png",
+  "caption": "edit mode scrolled",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP3",
+  "file": "UP3__1-top.png",
+  "caption": "edit mode top",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP3",
+  "file": "UP3__2-author-open.png",
+  "caption": "author picker open",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP3",
+  "file": "UP3__3-coauthor-open.png",
+  "caption": "co-author picker open",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP3",
+  "file": "UP3__1-top.png",
+  "caption": "edit mode top",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP3",
+  "file": "UP3__2-author-search-dcv.png",
+  "caption": "author picker searched DCV",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP4",
+  "file": "UP4__1-author-coauthor.png",
+  "caption": "new Author and Co-Author chosen for the upgrade",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP4",
+  "file": "UP4__2-reviewers-tab.png",
+  "caption": "Reviewers tab",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP4",
+  "file": "UP4__1-author-coauthor.png",
+  "caption": "new Author and Co-Author chosen for the upgrade",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP4",
+  "file": "UP4__2-reviewer-picked.png",
+  "caption": "Setup Reviewers: DCV Contributor 3 selected",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP4",
+  "file": "UP4__3-approvers-modal.png",
+  "caption": "Setup Approvers (current approver)",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP4",
+  "file": "UP4__1-author-coauthor.png",
+  "caption": "new Author and Co-Author chosen for the upgrade",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP4",
+  "file": "UP4__2-reviewer-picked.png",
+  "caption": "Setup Reviewers: DCV Contributor 3 selected",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP4",
+  "file": "UP4__3-approver-table.png",
+  "caption": "Approvers tab with the current approver",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__1-author-coauthor.png",
+  "caption": "Author = DCV Contributor 1, Co-Author = DCV Contributor 2",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__2-reviewer.png",
+  "caption": "Reviewer = DCV Contributor 3",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__1-author-coauthor.png",
+  "caption": "Author = DCV Contributor 1, Co-Author = DCV Contributor 2",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__2-reviewer.png",
+  "caption": "Reviewer = DCV Contributor 3",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__1-author-coauthor.png",
+  "caption": "Author = DCV Contributor 1, Co-Author = DCV Contributor 2",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__2-reviewer.png",
+  "caption": "Reviewer = DCV Contributor 3",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__1-author-coauthor.png",
+  "caption": "Author = DCV Contributor 1, Co-Author = DCV Contributor 2",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__2-reviewer.png",
+  "caption": "Reviewer = DCV Contributor 3",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__3-remove-approver.png",
+  "caption": "after clicking remove on the old approver",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__4-approver.png",
+  "caption": "Approver = DCV Copy Approver",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__5-approvers-tab.png",
+  "caption": "Approvers tab after change",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__6-date-picker.png",
+  "caption": "review date picker",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__1-author-coauthor.png",
+  "caption": "Author = DCV Contributor 1, Co-Author = DCV Contributor 2",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__2-reviewer.png",
+  "caption": "Reviewer = DCV Contributor 3",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__3-remove-approver.png",
+  "caption": "after clicking remove on the old approver",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__4-approver.png",
+  "caption": "Approver = DCV Copy Approver",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__5-approvers-tab.png",
+  "caption": "Approvers tab after change",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__6-date-picker.png",
+  "caption": "review date picker",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__7-form-filled.png",
+  "caption": "review date and description filled",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__8-after-save.png",
+  "caption": "after Save",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__9-top-after-save.png",
+  "caption": "top of page after Save",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__1-author-coauthor.png",
+  "caption": "Author = DCV Contributor 1, Co-Author = DCV Contributor 2",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__2-reviewer.png",
+  "caption": "Reviewer = DCV Contributor 3",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__3-remove-approver.png",
+  "caption": "after clicking remove on the old approver",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__4-approver.png",
+  "caption": "Approver = DCV Copy Approver",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__5-approvers-tab.png",
+  "caption": "Approvers tab after change",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__6-date-picker.png",
+  "caption": "review date picker",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__7-form-filled.png",
+  "caption": "review date and description filled",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__8-confirm-save.png",
+  "caption": "Save Next-Revision Configuration dialog (before/after)",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__8b-after-save.png",
+  "caption": "after confirming Save",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__9-top-after-save.png",
+  "caption": "top of page after Save",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP6",
+  "file": "UP6__1-author-view.png",
+  "caption": "new Author opens the document",
+  "user": "dcv.u1",
+  "path": null
+ },
+ {
+  "id": "UP6",
+  "file": "UP6__1-author-view.png",
+  "caption": "new Author opens the document",
+  "user": "dcv.u1",
+  "path": null
+ },
+ {
+  "id": "UP6",
+  "file": "UP6__2-upload-modal.png",
+  "caption": "Upload Revision dialog",
+  "user": "dcv.u1",
+  "path": null
+ },
+ {
+  "id": "UP6",
+  "file": "UP6__3-file-chosen.png",
+  "caption": "file chosen",
+  "user": "dcv.u1",
+  "path": null
+ },
+ {
+  "id": "UP6",
+  "file": "UP6__1-author-view.png",
+  "caption": "new Author opens the document",
+  "user": "dcv.u1",
+  "path": null
+ },
+ {
+  "id": "UP6",
+  "file": "UP6__2-upload-modal.png",
+  "caption": "Upload Revision dialog",
+  "user": "dcv.u1",
+  "path": null
+ },
+ {
+  "id": "UP6",
+  "file": "UP6__3-file-chosen.png",
+  "caption": "file chosen",
+  "user": "dcv.u1",
+  "path": null
+ },
+ {
+  "id": "UP6",
+  "file": "UP6__4-after-upload.png",
+  "caption": "after OK: what the Author sees",
+  "user": "dcv.u1",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__1-author-coauthor.png",
+  "caption": "Author = DCV Contributor 1, Co-Author = DCV Contributor 2",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "FIX3",
+  "file": "FIX3__1-save-dialog.png",
+  "caption": "Save dialog: Author/Co-Author by name",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UP5",
+  "file": "UP5__1-author-coauthor.png",
+  "caption": "Author = DCV Contributor 1, Co-Author = DCV Contributor 2",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "FIX3",
+  "file": "FIX3__1-save-dialog.png",
+  "caption": "Save dialog: Author/Co-Author by name",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "PUB",
+  "file": "PUB__1-effective.png",
+  "caption": "SOP.7147 after publish of 1.0.1",
+  "user": "dcv.operator",
+  "path": "/documents/a09c5b96-2b83-48d8-95ce-3e97134ae630"
+ },
+ {
+  "id": "WRAP",
+  "file": "WRAP__1-buttons.png",
+  "caption": "buttons wrap to a second line",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "BW",
+  "file": "BW__A1-list-update-only.png",
+  "caption": "update only: list",
+  "user": "dcv.sec.upd",
+  "path": null
+ },
+ {
+  "id": "BW",
+  "file": "BW__A3-wizard-direct.png",
+  "caption": "update only: wizard by URL",
+  "user": "dcv.sec.upd",
+  "path": null
+ },
+ {
+  "id": "BW",
+  "file": "BW__A1-list-update-only.png",
+  "caption": "update only: list",
+  "user": "dcv.sec.upd",
+  "path": null
+ },
+ {
+  "id": "BW",
+  "file": "BW__A3-wizard-direct.png",
+  "caption": "update only: wizard by URL",
+  "user": "dcv.sec.upd",
+  "path": null
+ },
+ {
+  "id": "BW",
+  "file": "BW__B2-users-step.png",
+  "caption": "no user-list permission: Users step",
+  "user": "dcv.sec.nouser",
+  "path": null
+ },
+ {
+  "id": "BW",
+  "file": "BW__C1-sod-toast.png",
+  "caption": "SoD refusal: toast text",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "BW",
+  "file": "BW__B2-users-step.png",
+  "caption": "no user-list permission: Users step",
+  "user": "dcv.sec.nouser",
+  "path": null
+ },
+ {
+  "id": "UI1",
+  "file": "UI1__1-document.png",
+  "caption": "SOP.7147 after the first upgrade",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UI1",
+  "file": "UI1__1-document.png",
+  "caption": "SOP.7147 after the first upgrade",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UI1",
+  "file": "UI1__1-document.png",
+  "caption": "SOP.7147 after the first upgrade",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UI1",
+  "file": "UI1__2-form.png",
+  "caption": "operator: review date + description",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UI1",
+  "file": "UI1__3-confirm.png",
+  "caption": "Save dialog",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UI1",
+  "file": "UI1__4-saved.png",
+  "caption": "after Save",
+  "user": "dcv.operator",
+  "path": null
+ },
+ {
+  "id": "UI2",
+  "file": "UI2__1-author-view.png",
+  "caption": "new Author opens the document",
+  "user": "dcv.u1",
+  "path": null
+ },
+ {
+  "id": "UI2",
+  "file": "UI2__2-upload-modal.png",
+  "caption": "Upload Revision dialog",
+  "user": "dcv.u1",
+  "path": null
+ },
+ {
+  "id": "UI2",
+  "file": "UI2__3-file-chosen.png",
+  "caption": "file chosen",
+  "user": "dcv.u1",
+  "path": null
+ },
+ {
+  "id": "UI2",
+  "file": "UI2__4-after-upload.png",
+  "caption": "after OK: what the Author sees",
+  "user": "dcv.u1",
+  "path": null
+ },
+ {
+  "id": "UI3-coauthor",
+  "file": "UI3-coauthor__1-open.png",
+  "caption": "U2 opens the Draft revision",
+  "user": "dcv.u2",
+  "path": null
+ },
+ {
+  "id": "UI3-reviewer-draft",
+  "file": "UI3-reviewer-draft__1-open.png",
+  "caption": "U3 opens the Draft revision",
+  "user": "dcv.u3",
+  "path": null
+ },
+ {
+  "id": "UI4",
+  "file": "UI4__author-submit-esign.png",
+  "caption": "author-submit: e-signature dialog",
+  "user": "dcv.u1",
+  "path": null
+ },
+ {
+  "id": "UI4",
+  "file": "UI4__step1-after.png",
+  "caption": "after step 1",
+  "user": "dcv.u1",
+  "path": null
+ },
+ {
+  "id": "UI4",
+  "file": "UI4__step2-after.png",
+  "caption": "after step 2",
+  "user": "dcv.u3",
+  "path": null
+ },
+ {
+  "id": "UI4",
+  "file": "UI4__reviewer-complete-esign.png",
+  "caption": "reviewer-complete: e-signature dialog",
+  "user": "dcv.u3",
+  "path": null
+ },
+ {
+  "id": "UI4",
+  "file": "UI4__step2-after.png",
+  "caption": "after step 2",
+  "user": "dcv.u3",
+  "path": null
+ },
+ {
+  "id": "UI4",
+  "file": "UI4__approver-approve-esign.png",
+  "caption": "approver-approve: e-signature dialog",
+  "user": "dcv.approver",
+  "path": null
+ },
+ {
+  "id": "UI4",
+  "file": "UI4__step3-after.png",
+  "caption": "after step 3",
+  "user": "dcv.approver",
+  "path": null
+ },
+ {
+  "id": "AP",
+  "file": "AP__1-list.png",
+  "caption": "access profile list",
+  "user": "dcv.secadmin",
+  "path": null
+ },
+ {
+  "id": "AP",
+  "file": "AP__2-admin.png",
+  "caption": "admin list",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "AP",
+  "file": "AP__3-after.png",
+  "caption": "after interactions",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "AP",
+  "file": "AP__4-fixed.png",
+  "caption": "limit=5 page 2 sorted",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R1",
+  "file": "R1__1-run-no-filter.png",
+  "caption": "Create Report: no filter yet, Preview disabled",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R1",
+  "file": "R1__2-run-full-chosen.png",
+  "caption": "Full chosen",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R1",
+  "file": "R1__3-preview-full.png",
+  "caption": "Preview of a Full run (10,796 records)",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R1",
+  "file": "R1__4-output-formats.png",
+  "caption": "Output: only CSV and XLSX offered above 10,000 records",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R1",
+  "file": "R1__5-properties.png",
+  "caption": "Report Properties: Full limit",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R1",
+  "file": "R1__6-history.png",
+  "caption": "Run History with Run type column",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R1",
+  "file": "R1__3b-preview-full.png",
+  "caption": "Preview of a Full run: table now shows rows",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R1",
+  "file": "R1__4b-output-large.png",
+  "caption": "Output: large result, CSV/XLSX only, no page preview",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R2",
+  "file": "R2__1-report-types.png",
+  "caption": "Report Types: five types",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R2",
+  "file": "R2__2-type-detail-revisions.png",
+  "caption": "Report Type detail: Document Revisions",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R2",
+  "file": "R2__3-run-revisions.png",
+  "caption": "Create Report: Document Revisions filters",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R2",
+  "file": "R2__4-library.png",
+  "caption": "Report Library with the new templates",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R2",
+  "file": "R2__5-register-preview.png",
+  "caption": "Document Register preview with the new columns",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R2",
+  "file": "R2__7-type-detail-controlled.png",
+  "caption": "Report Type detail: Controlled Copies",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R2",
+  "file": "R2__8-history.png",
+  "caption": "Run History with the R2 runs",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__1-library-menu-pin.png",
+  "caption": "Report Library row menu with Pin to Overview",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__2-overview.png",
+  "caption": "Reports Overview with real data and one pinned report",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__3-analytics.png",
+  "caption": "Quality Analytics with real data",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__1-library-menu-pin.png",
+  "caption": "Report Library row menu with Pin to Overview",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__1-library-menu-pin.png",
+  "caption": "Report Library row menu with Pin to Overview",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__2-overview.png",
+  "caption": "Reports Overview with real data and one pinned report",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__3-analytics.png",
+  "caption": "Quality Analytics with real data",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__4-analytics-qc.png",
+  "caption": "Quality Analytics for a department head: no Document Control section, own-department Training",
+  "user": "uat31.head.qc",
+  "path": null
+ },
+ {
+  "id": "NAV",
+  "file": "NAV__1-notifications-inbox.png",
+  "caption": "Inbox page: only the inbox entry is active",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "NAV",
+  "file": "NAV__2-notification-settings.png",
+  "caption": "Notification settings page",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__1-library-menu-pin.png",
+  "caption": "Report Library row menu with Pin to Overview",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__2-overview.png",
+  "caption": "Reports Overview with real data and one pinned report",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__3-analytics.png",
+  "caption": "Quality Analytics with real data",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__4-analytics-qc.png",
+  "caption": "Quality Analytics for a department head: no Document Control section, own-department Training",
+  "user": "uat31.head.qc",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__1-library-menu-pin.png",
+  "caption": "Report Library row menu with Pin to Overview",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__2-overview.png",
+  "caption": "Reports Overview with real data and one pinned report",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__3-analytics.png",
+  "caption": "Quality Analytics with real data",
+  "user": "admin",
+  "path": null
+ },
+ {
+  "id": "R6",
+  "file": "R6__4-analytics-qc.png",
+  "caption": "Quality Analytics for a department head: no Document Control section, own-department Training",
+  "user": "uat31.head.qc",
+  "path": null
+ }
+]

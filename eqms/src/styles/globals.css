@@ -863,6 +863,16 @@ input.auth-input:-webkit-autofill {
   letter-spacing: normal !important;
 }
 
+/* Auth inputs are typed into on phones: below 16px iOS zooms the whole page on focus and
+   does not zoom back. The global rule above forces every input to 14px, so the auth
+   screens opt out on narrow screens and on every touch device (phone landscape, iPad); a
+   mouse-driven desktop >= 768px keeps 14px, same as before. */
+@media (max-width: 767px), (pointer: coarse) {
+  input.auth-input {
+    font-size: 1rem !important;
+  }
+}
+
 input.auth-input::first-line,
 input.auth-input:-webkit-autofill::first-line {
   font-family: var(--font-sans) !important;

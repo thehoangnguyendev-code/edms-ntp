@@ -49,11 +49,6 @@ const NEXT_STEP: Record<string, string> = {
   OBSOLETED: "This version was replaced by a newer one and stays as history. It cannot be changed.",
 };
 
-const MATRIX_STEPS = [
-  { status: "DRAFT", label: "Draft" },
-  { status: "PENDING_APPROVAL", label: "Pending Approval" },
-  { status: "EFFECTIVE", label: "Effective" },
-];
 
 type Dialog =
   | "addTopic"
@@ -329,14 +324,6 @@ export function TrainingMatrixVersionPage() {
       )}
     </>
   );
-  const obsolete = version.status === "OBSOLETED";
-  const steps = [...MATRIX_STEPS.map((x) => x.label), "Obsoleted"];
-  const stepIndex = obsolete
-    ? 3
-    : Math.max(
-        0,
-        MATRIX_STEPS.findIndex((x) => x.status === version.status),
-      );
   const tabs: TabItem[] = [
     { id: "matrix", label: "Matrix", count: rows.length },
     { id: "general", label: "General Information" },
@@ -349,9 +336,7 @@ export function TrainingMatrixVersionPage() {
         title={title}
         breadcrumbItems={crumbs}
         onBack={goBack}
-        steps={steps}
-        currentStepIndex={stepIndex}
-        terminalProgressStep="Effective"
+        workflow={version.workflow}
         tabs={tabs}
         activeTab={tab}
         onTab={setTab}

@@ -214,7 +214,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                                         value={formData.email}
                                         onChange={(e) => onInputChange('email', e.target.value)}
                                         disabled={!editingFields.email}
-                                        className={`w-full h-9 px-3.5 pr-10 text-sm border rounded-lg transition-all focus:outline-none ${editingFields.email
+                                        className={`w-full h-9 px-3 pr-10 text-sm border rounded-lg transition-all focus:outline-none ${editingFields.email
                                             ? 'border-emerald-500 bg-white ring-1 ring-emerald-500 focus:ring-emerald-500 focus:border-emerald-500'
                                             : 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
                                             }`}
@@ -266,7 +266,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                                         value={formData.phone}
                                         onChange={(e) => onInputChange('phone', e.target.value)}
                                         disabled={!editingFields.phone}
-                                        className={`w-full h-9 px-3.5 pr-10 text-sm border rounded-lg transition-all focus:outline-none ${editingFields.phone
+                                        className={`w-full h-9 px-3 pr-10 text-sm border rounded-lg transition-all focus:outline-none ${editingFields.phone
                                             ? 'border-emerald-500 bg-white ring-1 ring-emerald-500 focus:ring-emerald-500 focus:border-emerald-500'
                                             : 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
                                             }`}

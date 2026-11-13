@@ -15,6 +15,8 @@ public record RevisionDetailResponse(
         String status,
         StatusResponse statusInfo,
         String type,
+        /** Short code of the Document Type, read from the Document Type dictionary (never derived by the client). */
+        String typeShortCode,
         String businessUnit,
         String department,
         String author,
@@ -105,6 +107,8 @@ public record RevisionDetailResponse(
          *  this revision is not itself Ready for Publishing, or no Related Document qualifies. Shown
          *  to the user in a confirmation modal before they sign the Publish action; the same list
          *  RevisionService#publishRevision actually publishes together (single source of truth). */
-        List<String> relatedDocumentsPublishingTogether
+        List<String> relatedDocumentsPublishingTogether,
+        /** Lifecycle stepper (steps, current step, skipped steps, step reached when it ended), worked out on the server. */
+        WorkflowProgressResponse workflow
 ) {
 }

@@ -86,6 +86,10 @@ public class AuditLog {
     @Column(name = "reason", columnDefinition = "TEXT")
     private String reason;
 
+    /** What a person typed as the reason (the Audit Trail "Why"); reason/comment hold the system's own text. Empty when nobody typed one. */
+    @Column(name = "user_reason", columnDefinition = "TEXT")
+    private String userReason;
+
     @Column(name = "signature_id")
     private UUID signatureId;
 
@@ -313,6 +317,14 @@ public class AuditLog {
 
     public void setReason(String reason) {
         this.reason = reason;
+    }
+
+    public String getUserReason() {
+        return userReason;
+    }
+
+    public void setUserReason(String userReason) {
+        this.userReason = userReason;
     }
 
     public UUID getSignatureId() {

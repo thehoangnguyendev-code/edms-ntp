@@ -13,6 +13,7 @@ import com.eqms.repository.DocumentRecordRepository;
 import com.eqms.repository.DocumentRevisionRepository;
 import com.eqms.repository.UserAccountRepository;
 import com.eqms.service.AuditTrailService;
+import com.eqms.service.UncontrolledCopyService;
 import com.eqms.service.DocumentAuthorizationService;
 import com.eqms.service.PermissionEvaluationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +34,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -107,6 +111,11 @@ class AuditTrailServiceTest {
                 permissionEvaluationService,
                 provider
         );
+
+        // Field-injected in the application; the snapshot of the signing user looks up the user's access profile names.
+        com.eqms.repository.UserAccessProfileRepository userAccessProfileRepository = org.mockito.Mockito.mock(com.eqms.repository.UserAccessProfileRepository.class);
+        when(userAccessProfileRepository.findByUserId(any())).thenReturn(java.util.List.of());
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "userAccessProfileRepository", userAccessProfileRepository);
 
         when(currentUserService.requireCurrentUser()).thenReturn(user);
         when(auditLogRepository.findAllByNormalizedEntityTypeAndEntityId(anyString(), any())).thenReturn(java.util.List.of());
@@ -190,5 +199,87 @@ class AuditTrailServiceTest {
         assertThatThrownBy(() -> service.getByEntity("DOCUMENT", entityId))
                 .isInstanceOf(AccessDeniedException.class);
         assertThat(true).isTrue();
+    }
+
+    // ---- owner rule 2026-11-07: whoever may open a screen may read the Audit Trail tab it carries ----------------------------
+
+    private void uncontrolledCopyAccess(boolean canOpen) {
+        UncontrolledCopyService uncontrolled = org.mockito.Mockito.mock(UncontrolledCopyService.class);
+        when(uncontrolled.canViewAudit(user, entityId)).thenReturn(canOpen);
+        ObjectProvider<UncontrolledCopyService> provider = new ObjectProvider<>() {
+            @Override public UncontrolledCopyService getObject() { return uncontrolled; }
+            @Override public UncontrolledCopyService getObject(Object... args) { return uncontrolled; }
+            @Override public UncontrolledCopyService getIfAvailable() { return uncontrolled; }
+            @Override public UncontrolledCopyService getIfUnique() { return uncontrolled; }
+        };
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "uncontrolledCopyService", provider);
+    }
+
+    @Test
+    void uncontrolledCopy_auditTabFollowsTheScreen() {
+        uncontrolledCopyAccess(true);
+        service.getByEntity("Uncontrolled Copy", entityId);
+
+        uncontrolledCopyAccess(false);
+        assertThatThrownBy(() -> service.getByEntity("Uncontrolled Copy", entityId)).isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void accessProfile_auditTabNeedsOnlyThePermissionToOpenTheScreen_notTheGlobalAuditPermission() {
+        when(permissionEvaluationService.hasAnyPermission(user, "security.access_profiles.view", "security.access_profiles.update", "security.access_profiles.assign")).thenReturn(true);
+
+        service.getByEntity("ACCESS_PROFILE", entityId);
+        verify(permissionEvaluationService, never()).hasAnyPermission(eq(user), eq("audit.view"), any(String.class), any(String.class));
+    }
+
+    @Test
+    void accessProfile_auditTabIsClosedToSomeoneWhoCannotOpenTheScreen() {
+        assertThatThrownBy(() -> service.getByEntity("ACCESS_PROFILE", entityId)).isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void permissionSet_auditTabFollowsThePermissionSetScreen() {
+        assertThatThrownBy(() -> service.getByEntity("PERMISSION_SET", entityId)).isInstanceOf(AccessDeniedException.class);
+        when(permissionEvaluationService.hasAnyPermission(user, "security.permission_sets.view", "security.permission_sets.update")).thenReturn(true);
+        service.getByEntity("PERMISSION_SET", entityId);
+    }
+
+    @Test
+    void restoreRequest_auditTabFollowsTheBackupModulePermission() {
+        assertThatThrownBy(() -> service.getByEntity("BACKUP_RESTORE", entityId)).isInstanceOf(AccessDeniedException.class);
+        when(permissionEvaluationService.hasAnyPermission(user, "backup.module.view")).thenReturn(true);
+        service.getByEntity("BACKUP_RESTORE", entityId);
+    }
+
+    @Test
+    void anUnknownKindOfRecord_needsTheGlobalAuditPermission_andIsNoLongerReadAsARevision() {
+        assertThatThrownBy(() -> service.getByEntity("SOMETHING_ELSE", entityId))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Audit trail view permission required");
+        verifyNoInteractions(documentRevisionRepository);
+
+        when(permissionEvaluationService.hasAnyPermission(eq(user), eq("audit.view"), eq("audittrail.module.view"), eq("VIEW_AUDIT_TRAIL"))).thenReturn(true);
+        service.getByEntity("SOMETHING_ELSE", entityId);
+    }
+
+    @Test
+    void aReasonThePersonTypedIsStoredApartFromTheSystemComment() {
+        service.logAsWithUserReason(user, "SETTINGS", "Cancel test", entityId, "CANCEL", "DRAFT", "CLOSED_CANCELLED",
+                "System wrote this comment", "  What the person typed  ", null, null);
+
+        org.mockito.ArgumentCaptor<com.eqms.entity.AuditLog> saved = org.mockito.ArgumentCaptor.forClass(com.eqms.entity.AuditLog.class);
+        org.mockito.Mockito.verify(auditLogRepository).save(saved.capture());
+        assertThat(saved.getValue().getUserReason()).isEqualTo("What the person typed");
+        assertThat(saved.getValue().getComment()).isEqualTo("System wrote this comment");
+    }
+
+    @Test
+    void anEventWithNoTypedReasonKeepsTheUserReasonEmpty_evenWhenTheSystemCommentIsStored() {
+        service.logAs(user, "SETTINGS", "Update test", entityId, "UPDATE", "DRAFT", "DRAFT", "Document draft updated | Co-authors=0");
+
+        org.mockito.ArgumentCaptor<com.eqms.entity.AuditLog> saved = org.mockito.ArgumentCaptor.forClass(com.eqms.entity.AuditLog.class);
+        org.mockito.Mockito.verify(auditLogRepository).save(saved.capture());
+        assertThat(saved.getValue().getUserReason()).isNull();
+        assertThat(saved.getValue().getComment()).startsWith("Document draft updated");
     }
 }

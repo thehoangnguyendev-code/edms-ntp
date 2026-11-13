@@ -149,7 +149,9 @@ public final class PostRestoreChecks {
             return new Result("C4", "Audit trail is intact", true, false, "The audit_logs table is missing");
         }
         try (PreparedStatement ps = db.prepareStatement("select count(*) from public.audit_logs where created_at > ?")) {
-            ps.setTimestamp(1, Timestamp.from(snapshotAt));
+            // the manifest keeps the snapshot time to the second, while rows carry fractions of a second: a row written in the same second
+            // as the snapshot (the audit row of the backup request itself) is inside the snapshot, so allow one second
+            ps.setTimestamp(1, Timestamp.from(snapshotAt.plusSeconds(1)));
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
                 if (rs.getLong(1) > 0) problems.add(rs.getLong(1) + " audit row(s) are newer than the backup");

@@ -9,7 +9,6 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
@@ -182,7 +181,7 @@ export function TrainingActivityListView() {
           rows={table.items}
           getRowKey={(r) => r.id}
           isLoading={table.isLoading}
-          loadingContent={<SectionLoading text="Loading training activities…" />}
+
           emptyState={<TableEmptyState title="No Training Activities Found" description="Training activities will appear here. Try changing your search or filters." />}
           scrollerRef={drag.scrollerRef}
           scrollProps={drag.dragEvents}

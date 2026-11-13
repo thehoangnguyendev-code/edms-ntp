@@ -40,60 +40,14 @@ export interface BackupRecord {
   errorMessage?: string | null;
 }
 
-export type RestoreTarget = "VALIDATION_ENV" | "PRODUCTION" | "REBUILT_ENVIRONMENT";
-export type RestoreKind = "RESTORE" | "DISASTER_RECOVERY";
-export type RestoreStatus =
-  | "PENDING_APPROVAL"
-  | "APPROVED"
-  | "RUNNING"
-  | "VERIFYING"
-  | "COMPLETED"
-  | "FAILED"
-  | "REJECTED";
-
-export interface RestoreEvent {
-  at: string;
-  actor: string;
-  action: string;
-  note?: string;
-}
-
-export interface RestoreVerificationCheck {
-  label: string;
-  result: "PASS" | "FAIL" | "WARNING";
-  detail: string;
-}
-
-export interface RestoreRequest {
-  id: string;
-  kind: RestoreKind;
-  backupNumber: string;
-  components: BackupComponentKey[];
-  target: RestoreTarget;
-  status: RestoreStatus;
-  reason: string;
-  changeControlRef?: string;
-  requestedBy: string;
-  requestedAt: string;
-  decidedBy?: string;
-  decidedAt?: string;
-  completedAt?: string;
-  events: RestoreEvent[];
-  verification?: RestoreVerificationCheck[];
-}
+/** One colour per part of a backup, so Database and Files are told apart at a glance wherever they are listed. */
+export const CONTENT_COLOR: Record<string, "blue" | "emerald" | "amber"> = { DATABASE: "blue", OBJECT_STORE: "emerald", FILE_STORAGE: "emerald", CONFIGURATION: "amber" };
 
 export const COMPONENT_LABEL: Record<BackupComponentKey, string> = {
   DATABASE: "Database (PostgreSQL)",
   OBJECT_STORE: "Document files (object storage)",
   FILE_STORAGE: "Application file storage",
-  CONFIGURATION: "System configuration",
-};
-
-export const COMPONENT_HINT: Record<BackupComponentKey, string> = {
-  DATABASE: "Records, workflow, audit trail, e-signatures, users and permissions.",
-  OBJECT_STORE: "Revision source files, published PDFs, report artifacts and evidence uploads.",
-  FILE_STORAGE: "Files kept on the application volume.",
-  CONFIGURATION: "Non-secret settings and policies. Secrets are never included.",
+  CONFIGURATION: "System settings",
 };
 
 export const BACKUP_STATUS_COLOR = {
@@ -101,16 +55,6 @@ export const BACKUP_STATUS_COLOR = {
   COMPLETED: "emerald",
   FAILED: "red",
   EXPIRED: "slate",
-} as const;
-
-export const RESTORE_STATUS_COLOR = {
-  PENDING_APPROVAL: "amber",
-  APPROVED: "blue",
-  RUNNING: "blue",
-  VERIFYING: "purple",
-  COMPLETED: "emerald",
-  FAILED: "red",
-  REJECTED: "red",
 } as const;
 
 export const VERIFICATION_COLOR = {
@@ -126,46 +70,3 @@ export const statusLabel = (code: string) =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 
-export interface AlertRule {
-  event: string;
-  label: string;
-  hint: string;
-  email: boolean;
-  inApp: boolean;
-  threshold?: { unit: string; value: number };
-}
-
-export interface VerificationCheckRule {
-  code: string;
-  label: string;
-  hint: string;
-  required: boolean;
-}
-
-export interface DrScenario {
-  code: string;
-  label: string;
-  description: string;
-  rpoHours: number;
-  rtoHours: number;
-}
-
-export type DrDrillResult = "PASSED" | "PASSED_WITH_FINDINGS" | "FAILED";
-export interface DrDrill {
-  id: string;
-  scenario: string;
-  performedAt: string;
-  lead: string;
-  targetRtoHours: number;
-  achievedRtoHours: number;
-  result: DrDrillResult;
-  findings: string;
-}
-
-export interface RebuildKitItem {
-  code: string;
-  label: string;
-  detail: string;
-  state: "CURRENT" | "STALE" | "MISSING";
-  lastVerifiedAt?: string;
-}

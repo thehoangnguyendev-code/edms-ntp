@@ -1,13 +1,13 @@
-import type { DocumentType, DocumentStatus } from "@/features/documents/types";
+import type { DocumentStatus } from "@/features/documents/types";
 import type { DocumentRelationBase } from "@/features/documents/shared/documentRelation.types";
 
 export interface RelatedDocument extends DocumentRelationBase {
-  type?: DocumentType;
+  type?: string;
   state?: DocumentStatus;
 }
 
 export interface CorrelatedDocument extends DocumentRelationBase {
-  type?: DocumentType;
+  type?: string;
   state?: DocumentStatus;
 }
 
@@ -40,7 +40,7 @@ export interface Revision {
   author: string;
   effectiveDate: string;
   validUntil: string;
-  type: DocumentType;
+  type: string;
   department: string;
   businessUnit: string;
     hasRelatedDocuments?: boolean;

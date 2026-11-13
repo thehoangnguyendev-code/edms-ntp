@@ -64,6 +64,7 @@ public class RevisionBusinessRulesTest {
     @Mock private WorkflowParticipantEligibilityService workflowParticipantEligibilityService;
     @Mock private UserAccountRepository userAccountRepository;
     @Mock private SignatureTokenConsumptionService signatureTokenConsumptionService;
+    @Mock private WorkflowProgressService workflowProgressService;
 
     @InjectMocks
     private RevisionService revisionService;
@@ -697,7 +698,7 @@ public class RevisionBusinessRulesTest {
         // TBR-DOC-004: DRAFT->ACTIVE activation now produces its own explicit audit entry.
         verify(auditTrailService).logAs(
                 eq(currentUser), eq("DOCUMENT"), any(), eq(document.getId()),
-                eq("ACTIVATE"), eq("DRAFT"), eq("ACTIVE"), contains(initialRevision.getId().toString())
+                eq("ACTIVATE"), eq("DRAFT"), eq("ACTIVE"), contains("Revision " + initialRevision.getRevisionNumber())
         );
     }
 

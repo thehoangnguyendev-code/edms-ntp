@@ -1,10 +1,15 @@
 SDS-BR-001 · Bản nháp 1.53 · 2026-10-15
 
+> **Lưu ý ngày 2026-11-11:** tài liệu này là thiết kế gốc. Sau đó: đích T3 đã bỏ (T3 do chủ dự án làm thủ công, khai báo trong chính sách); không còn export, snapshot, luồng yêu cầu và duyệt restore (backup và restore do quản trị viên làm, ký điện tử); phần System settings không còn là một loại backup riêng. Màn Backup Controls đã bỏ. Chỗ nào bên dưới nói khác, đọc `SDS-BR-003`, `SDS-BR-004` mục 6 và 7 và Decision Log (`BACKUP-RESTORE-TARGETS-2026-11-10`, `BACKUP-FINISHING-2026-11-11`).
+
+
 # SDS Backup & Restore và Backup & Restore Administration
 
 Đặc tả thiết kế phần mềm cho sao lưu, phục hồi và phục hồi sau thảm họa của hệ thống eQMS, triển khai on-premises, theo EU-GMP.
 
 **Trạng thái:** ĐỀ XUẤT, chưa được duyệt. **TẠM DỪNG từ 2026-10-15** theo yêu cầu của chủ dự án (xem 23.9 và 24.3).
+
+> **CẬP NHẬT 2026-11-10 — tài liệu này đã được thay thế một phần.** Cơ chế hiện hành là SDS-BR-002 (phân loại) và SDS-BR-003 (cơ chế), cùng mục `BACKUP-RESTORE-SIMPLIFIED-2026-11-09`, `BACKUP-RESTORE-IMPLEMENTATION-2026-11-09` và `BACKUP-RESTORE-PARTS-2026-11-10` trong `DECISION_LOG.md`. **Đã bỏ khỏi phần mềm:** luồng yêu cầu và phê duyệt restore (R0-R3, lịch cửa sổ, quy tắc restore), kiểm tra bản sao (Inspections), hồ sơ diễn tập thảm họa (DR Drills), xuất bộ backup (Exports), sổ phương tiện lưu trữ ngoài (Offline Media), màn hình kết quả kiểm tra toàn vẹn riêng. **Đã có:** backup chọn một hoặc nhiều phần (cài đặt hệ thống, cơ sở dữ liệu, file); restore database bằng hoán đổi tên DB, bổ sung file không ghi đè, ký điện tử, quay lui đến khi chốt, quyền chốt do Admin cấp. Các mục 4, 9, 11, 14 (một phần), 15.2 (phần diễn tập), 16 và 22 của tài liệu này mô tả các tính năng đã bỏ và chỉ giữ làm lịch sử thiết kế.
 
 **Phạm vi:** Module Backup & Restore, Administration, agent, API, DB
 

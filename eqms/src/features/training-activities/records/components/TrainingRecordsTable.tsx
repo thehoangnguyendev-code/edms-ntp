@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
@@ -160,7 +159,7 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
           rows={table.items}
           getRowKey={(r) => r.id}
           isLoading={table.isLoading}
-          loadingContent={<SectionLoading text="Loading training records…" />}
+
           emptyState={<TableEmptyState title="No Training Records" description="Records appear here when QA confirms a training as completed." />}
           scrollerRef={drag.scrollerRef}
           scrollProps={drag.dragEvents}

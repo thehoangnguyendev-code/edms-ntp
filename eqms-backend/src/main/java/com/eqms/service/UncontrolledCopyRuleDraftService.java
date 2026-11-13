@@ -47,7 +47,7 @@ public class UncontrolledCopyRuleDraftService {
                     .orElseThrow(() -> new IllegalArgumentException("Document Type not found"));
             if (change.id() == null) row.setId(UUID.randomUUID());
             plans.add(new Plan(row, change, type));
-            String prefix = "Eligibility Rule " + row.getId() + ": ";
+            String prefix = "Eligibility Rule: ";
             if (change.delete()) {
                 audit.add(new AuditTrailChangeResponse(prefix + "Deleted", describe(row), null));
             } else if (change.id() == null) {

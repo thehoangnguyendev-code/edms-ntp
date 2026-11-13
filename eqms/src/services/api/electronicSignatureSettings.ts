@@ -6,8 +6,8 @@ export interface ElectronicSignatureMeaning {
   displayName: string;
 }
 
-/** One row of the table of meanings: the meaning, its module (the first word of the code) and when it was last updated. */
-export interface ElectronicSignatureMeaningRow { id: string; code: string; displayName: string; module: string; updatedAt?: string | null }
+/** One signing action: the action and its code are fixed; the meaning (displayName) is what an administrator can change. */
+export interface ElectronicSignatureMeaningRow { id: string; code: string; actionName?: string; displayName: string; module: string; updatedAt?: string | null }
 export interface ElectronicSignatureMeaningPage { data: ElectronicSignatureMeaningRow[]; pagination: { page: number; limit: number; total: number; totalPages: number }; modules: string[] }
 
 export interface ElectronicSignatureSettings {
@@ -51,8 +51,6 @@ export interface ElectronicSignatureRecord {
   createdAt?: string;
 }
 
-export interface ElectronicSignatureDisplayStyle { style: 'STANDARD'; label: string; frame: string; text: string }
-
 export const electronicSignatureSettingsApi = {
   getSettings: async () => {
     const response = await api.get<ElectronicSignatureSettings>('/settings/electronic-signature');
@@ -68,8 +66,6 @@ export const electronicSignatureSettingsApi = {
     const response = await api.put<ElectronicSignatureSettings>('/settings/electronic-signature', { ...payload, ...sig });
     return response.data;
   },
-  /** The way a signed signature is written in a document (the Standard frame), drawn by the server from one sample record. */
-  getDisplayStyle: async () => (await api.get<ElectronicSignatureDisplayStyle>('/settings/electronic-signature/display-style')).data,
   generatePdfPreview: async () => {
     const response = await api.get<Blob>('/settings/electronic-signature/pdf-preview', { responseType: 'blob' });
     return response.data;

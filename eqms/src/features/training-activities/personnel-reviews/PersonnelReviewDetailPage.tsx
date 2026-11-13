@@ -25,8 +25,6 @@ import { useTrainingBack } from "../shared/useTrainingBack";
 
 const ITEM_STATUS = { PENDING: "Pending", DONE: "Done", NOT_NEEDED: "Not needed" } as const;
 const ITEM_COLOR = { PENDING: "amber", DONE: "emerald", NOT_NEEDED: "slate" } as const;
-/** A review ends in one of two ways: closed with a signature, or cancelled. The stepper always shows all three; the end that was not taken is striped. */
-const STEPS = ["Open", "Closed", "Cancelled"];
 const EVENT_DATE_LABEL: Record<string, string> = { NEW_HIRE: "Start Date", ABSENCE_RETURN: "Return Date", DEPT_TRANSFER: "Transfer Date", LOCATION_TRANSFER: "Transfer Date" };
 const GAP_LABEL: Record<string, string> = { MISSING: "Not trained", DUE: "Annual training due", OK: "Trained" };
 const GAP_COLOR: Record<string, "red" | "amber" | "emerald"> = { MISSING: "red", DUE: "amber", OK: "emerald" };
@@ -140,7 +138,7 @@ export function PersonnelReviewDetailPage() {
 
   return (
     <>
-      <TrainingDetailLayout title={title} breadcrumbItems={crumbs} onBack={goBack} steps={STEPS} currentStepIndex={review.status === "OPEN" ? 0 : review.status === "CLOSED" ? 1 : 2} terminalProgressStep="Open" skippedSteps={review.status === "CLOSED" ? ["Cancelled"] : undefined}
+      <TrainingDetailLayout title={title} breadcrumbItems={crumbs} onBack={goBack} workflow={review.workflow}
         tabs={tabs} activeTab={tab} onTab={setTab} tabLayoutId="training-review-detail-tab" footer={footer} afterFooter={<TrainingPersonRelatedCard personId={review.personUserId} />}>
         {review.readyToClose && (
           <p role="status" className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">

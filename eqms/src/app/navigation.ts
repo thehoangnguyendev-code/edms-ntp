@@ -1,4 +1,5 @@
 import {
+    IconDatabaseCog,
   IconInfoCircle,
   IconUserShield,
 } from "@tabler/icons-react";
@@ -13,7 +14,6 @@ import {
 import React from "react";
 import {
   Bell,
-  CalendarDays,
   Package,
   Scale,
   ShieldCheck,
@@ -81,7 +81,6 @@ import { ROUTES } from "./routes.constants";
 
 export const ICON_MAP: Record<string, React.ComponentType<any>> = {
   Bell,
-  CalendarDays,
   Package,
   Scale,
   ShieldCheck,
@@ -132,12 +131,6 @@ const CORE_NAV: NavItem[] = [
     icon: Bell,
     path: ROUTES.NOTIFICATIONS,
     allowedPermissions: ["notifications.module.view"],
-  },
-  {
-    id: "calendar",
-    label: "Calendar",
-    icon: CalendarDays,
-    path: ROUTES.CALENDAR,
   },
   {
     id: "self-service",
@@ -476,7 +469,7 @@ const SYSTEM_MODULES: NavItem[] = [
   {
     id: "backup-restore",
     label: "Backup & Restore",
-    icon: DatabaseBackup,
+    icon: IconDatabaseCog,
     allowedPermissions: ["backup.module.view"],
     showDividerAfter: true,
     children: [
@@ -495,25 +488,9 @@ const SYSTEM_MODULES: NavItem[] = [
             path: ROUTES.BACKUP_RESTORE.BACKUPS,
           },
           {
-            id: "backup-verifications",
-            label: "Backup Verification Results",
-            path: ROUTES.BACKUP_RESTORE.BACKUP_VERIFICATIONS,
-          },
-          {
             id: "backup-schedules",
             label: "Backup Schedules",
             path: ROUTES.BACKUP_RESTORE.BACKUP_SCHEDULES,
-          },
-          {
-            id: "backup-exports",
-            label: "Export Requests",
-            path: ROUTES.BACKUP_RESTORE.EXPORTS,
-          },
-          {
-            id: "backup-alerts",
-            label: "Backup Alerts & Recipients",
-            path: ROUTES.BACKUP_RESTORE.ALERTS,
-            allowedPermissions: ["backup.admin.alerts.view"],
           },
         ],
       },
@@ -522,36 +499,9 @@ const SYSTEM_MODULES: NavItem[] = [
         label: "Restore",
         children: [
           {
-            id: "backup-restores",
-            label: "Restore Requests",
-            path: ROUTES.BACKUP_RESTORE.RESTORES,
-          },
-          {
-            id: "restore-verifications",
-            label: "Restore Verification Reports",
-            path: ROUTES.BACKUP_RESTORE.RESTORE_VERIFICATIONS,
-          },
-          {
-            id: "restore-history",
-            label: "Restore History & Evidence",
-            path: ROUTES.BACKUP_RESTORE.RESTORE_HISTORY,
-          },
-          {
-            id: "backup-inspections",
-            label: "Backup Inspections",
-            path: ROUTES.BACKUP_RESTORE.INSPECTIONS,
-          },
-          {
-            id: "restore-rules",
-            label: "Restore Approval & Execution Rules",
-            path: ROUTES.BACKUP_RESTORE.RESTORE_RULES,
-            allowedPermissions: ["backup.admin.restore_controls.view"],
-          },
-          {
-            id: "backup-dr-drills",
-            label: "Disaster Recovery Drills",
-            path: ROUTES.BACKUP_RESTORE.DR_DRILLS,
-            allowedPermissions: ["backup.admin.disaster_recovery.view"],
+            id: "production-restores",
+            label: "Restore Backup",
+            path: ROUTES.BACKUP_RESTORE.PRODUCTION_RESTORES,
           },
         ],
       },
@@ -785,17 +735,6 @@ const SYSTEM_MODULES: NavItem[] = [
         ],
       },
       {
-        id: "email-templates",
-        label: "Email Templates",
-        icon: IconMailForward,
-        path: ROUTES.SETTINGS.EMAIL_TEMPLATES,
-        allowedPermissions: [
-          "settings.email_template.view",
-          "settings.email_template.manage",
-          "settings.configuration.view",
-        ],
-      },
-      {
         id: "system-announcements",
         label: "System Announcements",
         icon: IconSpeakerphone,
@@ -804,13 +743,6 @@ const SYSTEM_MODULES: NavItem[] = [
           "settings.announcement.view",
           "settings.announcement.manage",
         ],
-      },
-      {
-        id: "notification-policy",
-        label: "Notification In-app",
-        icon: Bell,
-        path: ROUTES.SETTINGS.NOTIFICATION_POLICY,
-        allowedPermissions: ["settings.configuration.view"],
       },
     ],
   },
@@ -822,6 +754,10 @@ const SYSTEM_MODULES: NavItem[] = [
     icon: IconDeviceDesktopCog,
     allowedPermissions: [
       "settings.configuration.view",
+      "settings.notification_policy.view",
+      "settings.notification_policy.manage",
+      "settings.email_template.view",
+      "settings.email_template.manage",
       "documents.admin.view",
       "documents.admin.properties.view",
       "documents.admin.properties.manage",
@@ -851,6 +787,19 @@ const SYSTEM_MODULES: NavItem[] = [
         label: "E-Sign Config",
         path: ROUTES.SECURITY.ESIGN_POLICIES,
         allowedPermissions: ["settings.configuration.view"],
+      },
+      {
+        // Its own id: the inbox above is "notifications", and two items with one id lit up this entry (and its unread badge) on the inbox page.
+        id: "notification-settings",
+        label: "Notifications Administration",
+        path: ROUTES.SETTINGS.NOTIFICATIONS,
+        allowedPermissions: [
+          "settings.notification_policy.view",
+          "settings.notification_policy.manage",
+          "settings.email_template.view",
+          "settings.email_template.manage",
+          "settings.configuration.view",
+        ],
       },
       {
         // Moved here from Document Control -- see NavigationService.java for the server-side
@@ -1098,10 +1047,7 @@ const SYSTEM_MODULES: NavItem[] = [
         label: "Backup & Restore Administration",
         allowedPermissions: [
           "backup.admin.policy.view",
-          "backup.admin.retention.view",
           "backup.admin.storage.view",
-          "backup.admin.verification.view",
-          "backup.admin.restore_controls.view",
           "backup.admin.alerts.view",
           "backup.admin.disaster_recovery.view",
         ],
@@ -1117,16 +1063,6 @@ const SYSTEM_MODULES: NavItem[] = [
             label: "Backup Storage & Encryption",
             path: ROUTES.SETTINGS.BACKUP_ADMINISTRATION.STORAGE,
             allowedPermissions: ["backup.admin.storage.view"],
-          },
-          {
-            id: "backup-admin-controls",
-            label: "Backup Controls",
-            path: ROUTES.SETTINGS.BACKUP_ADMINISTRATION.CONTROLS,
-            allowedPermissions: [
-              "backup.admin.restore_controls.view",
-              "backup.admin.verification.view",
-              "backup.admin.retention.view",
-            ],
           },
           {
             id: "backup-admin-alerts",

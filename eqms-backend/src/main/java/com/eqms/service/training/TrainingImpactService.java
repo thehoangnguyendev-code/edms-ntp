@@ -50,7 +50,7 @@ public class TrainingImpactService {
         """;
 
     private static final String BASE = """
-        select a.id, a.training_number, training_activity_topics(a.id) as training_topics, a.status as activity_status, a.document_id, a.document_number, a.document_name, a.revision_number, a.kind_reason, a.organizer_department_id,
+        select a.id, a.training_number, training_activity_topics(a.id) as training_topics, a.status as activity_status, a.document_id, a.revision_id, a.document_number, a.document_name, a.revision_number, a.kind_reason, a.organizer_department_id,
                d.name as department_name, a.created_at, x.outcome, x.assessed_at, ux.full_name as assessed_by_name, x.reason as assessment_reason,
                case when x.id is null then 'PENDING'
                     when x.outcome = 'MATRIX_UPDATE_NEEDED' and not %s then 'MATRIX_UPDATE_PENDING'

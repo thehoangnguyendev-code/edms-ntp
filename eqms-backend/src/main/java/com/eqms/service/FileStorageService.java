@@ -730,96 +730,12 @@ public class FileStorageService {
             return;
         }
 
-        if ("aws-s3".equalsIgnoreCase(provider)) {
-            String bucket = storageConfig.path("bucketName").asText("");
-            String region = storageConfig.path("region").asText("");
-            String accessKeyId = storageConfig.path("accessKeyId").asText("");
-            String secretAccessKey = storageConfig.path("secretAccessKey").asText("");
-            if (!StringUtils.hasText(bucket)) {
-                throw new IllegalArgumentException("Bucket Name is required");
-            }
-            if (!StringUtils.hasText(region)) {
-                throw new IllegalArgumentException("Region is required");
-            }
-            if (!StringUtils.hasText(accessKeyId)) {
-                throw new IllegalArgumentException("Access Key ID is required");
-            }
-            if (!StringUtils.hasText(secretAccessKey)) {
-                throw new IllegalArgumentException("Secret Access Key is required");
-            }
-            log.info("Testing connection to AWS S3: bucket={}, region={}", bucket, region);
-            Path simulatedDir = Paths.get(System.getProperty("user.dir"), "storage", "s3", bucket);
-            Files.createDirectories(simulatedDir);
-        } else if ("azure-blob".equalsIgnoreCase(provider)) {
-            String container = storageConfig.path("bucketName").asText("");
-            String accessKeyId = storageConfig.path("accessKeyId").asText("");
-            String secretAccessKey = storageConfig.path("secretAccessKey").asText("");
-            if (!StringUtils.hasText(container)) {
-                throw new IllegalArgumentException("Container Name is required");
-            }
-            if (!StringUtils.hasText(accessKeyId)) {
-                throw new IllegalArgumentException("Storage Account Name (Access Key ID) is required");
-            }
-            if (!StringUtils.hasText(secretAccessKey)) {
-                throw new IllegalArgumentException("Access Key (Secret Access Key) is required");
-            }
-            log.info("Testing connection to Azure Blob Storage: container={}", container);
-            Path simulatedDir = Paths.get(System.getProperty("user.dir"), "storage", "azure-blob", container);
-            Files.createDirectories(simulatedDir);
-        } else if ("google-cloud".equalsIgnoreCase(provider)) {
-            String bucket = storageConfig.path("bucketName").asText("");
-            String accessKeyId = storageConfig.path("accessKeyId").asText("");
-            String secretAccessKey = storageConfig.path("secretAccessKey").asText("");
-            if (!StringUtils.hasText(bucket)) {
-                throw new IllegalArgumentException("Bucket Name is required");
-            }
-            if (!StringUtils.hasText(accessKeyId)) {
-                throw new IllegalArgumentException("Client Email (Access Key ID) is required");
-            }
-            if (!StringUtils.hasText(secretAccessKey)) {
-                throw new IllegalArgumentException("Private Key (Secret Access Key) is required");
-            }
-            log.info("Testing connection to Google Cloud Storage: bucket={}", bucket);
-            Path simulatedDir = Paths.get(System.getProperty("user.dir"), "storage", "gcs", bucket);
-            Files.createDirectories(simulatedDir);
-        } else if ("google-drive".equalsIgnoreCase(provider)) {
-            String clientId = storageConfig.path("googleDriveClientId").asText("");
-            String clientSecret = storageConfig.path("googleDriveClientSecret").asText("");
-            String folderId = storageConfig.path("googleDriveFolderId").asText("");
-            if (!StringUtils.hasText(clientId)) {
-                throw new IllegalArgumentException("Client ID is required");
-            }
-            if (!StringUtils.hasText(clientSecret)) {
-                throw new IllegalArgumentException("Client Secret is required");
-            }
-            if (!StringUtils.hasText(folderId)) {
-                throw new IllegalArgumentException("Google Drive Folder ID is required");
-            }
-            log.info("Testing connection to Google Drive: folderId={}", folderId);
-            Path simulatedDir = Paths.get(System.getProperty("user.dir"), "storage", "google-drive", folderId);
-            Files.createDirectories(simulatedDir);
-        } else if ("dropbox".equalsIgnoreCase(provider)) {
-            String appKey = storageConfig.path("dropboxAppKey").asText("");
-            String appSecret = storageConfig.path("dropboxAppSecret").asText("");
-            String accessToken = storageConfig.path("dropboxAccessToken").asText("");
-            String folderPath = storageConfig.path("dropboxFolderPath").asText("");
-            if (!StringUtils.hasText(appKey)) {
-                throw new IllegalArgumentException("App Key is required");
-            }
-            if (!StringUtils.hasText(appSecret)) {
-                throw new IllegalArgumentException("App Secret is required");
-            }
-            if (!StringUtils.hasText(accessToken)) {
-                throw new IllegalArgumentException("Access Token is required");
-            }
-            if (!StringUtils.hasText(folderPath)) {
-                throw new IllegalArgumentException("Folder Path is required");
-            }
-            log.info("Testing connection to Dropbox: folderPath={}", folderPath);
-            String cleanFolder = sanitizeFolderPath(folderPath);
-            Path simulatedDir = Paths.get(System.getProperty("user.dir"), "storage", "dropbox", cleanFolder);
-            Files.createDirectories(simulatedDir);
-        } else {
+        if (!"local".equalsIgnoreCase(provider)) {
+            // Amazon S3, Azure Blob, Google Cloud, Google Drive and Dropbox were never connected: the old test only made a folder on this server
+            // and said "success". Saying that again would let a person believe their files are in a cloud. Only MinIO, a NAS and the local folder are real.
+            throw new IllegalArgumentException("The storage provider '" + provider + "' is not supported. Use MinIO, a NAS or the local server folder.");
+        }
+        {
             Path path = LOCAL_STORAGE_ROOT;
             try {
                 if (!Files.exists(path)) {

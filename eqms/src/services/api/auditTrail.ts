@@ -282,11 +282,14 @@ export const auditTrailApi = {
     return r.data;
   },
 
+  /** The people who may be given an audit trail review campaign. */
+  getReviewReviewers: async (): Promise<{ id: string; name: string }[]> => (await api.get<{ id: string; name: string }[]>(`${ENDPOINT}/reviews/reviewers`)).data,
   createReviewCampaign: async (payload: {
     name: string;
     description?: string;
     reviewPeriodStart: string;
     reviewPeriodEnd: string;
+    reviewerUserId?: string;
   }): Promise<AuditTrailReviewCampaignDetail> => {
     const r = await api.post<AuditTrailReviewCampaignDetail>(`${ENDPOINT}/reviews`, payload);
     return r.data;

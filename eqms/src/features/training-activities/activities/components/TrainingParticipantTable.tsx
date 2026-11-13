@@ -3,7 +3,6 @@ import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { FilterSearchInput } from "@/components/ui/filter/FilterSearchInput";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useDebounce } from "@/hooks";
 import { trainingActivitiesApi, trainingError, type TrainingParticipant } from "@/services/api/trainingActivities";
 
@@ -53,7 +52,7 @@ export function TrainingParticipantTable({ activityId, sessionId, group, title, 
     <h3 className="mb-3 text-sm font-semibold text-slate-800">{title}{loaded ? ` (${total})` : ""}</h3>
     <div className="mb-4"><FilterSearchInput aria-label={`Search ${title}`} value={search} onChange={(value) => { setSearch(value); setPage(1); }} placeholder="Search name or employee ID…" /></div>
     {error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
-    <DataTable rows={rows} getRowKey={(p) => p.id} isLoading={loading} loadingContent={<SectionLoading text="Loading participants…" />}
+    <DataTable rows={rows} getRowKey={(p) => p.id} isLoading={loading}
       columns={columns.map((column) => column.id === "rowNo" ? { ...column, cell: (_p: TrainingParticipant, i: number) => (page - 1) * limit + i + 1 }
         : SORTABLE.has(column.id) ? { ...column, sort: { direction: sort.key === column.id ? sort.direction : undefined, onSort: () => { setSort((s) => ({ key: column.id, direction: s.key === column.id && s.direction === "asc" ? "desc" : "asc" })); setPage(1); } } }
         : column)}

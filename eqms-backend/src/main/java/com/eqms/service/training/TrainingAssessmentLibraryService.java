@@ -117,6 +117,13 @@ public class TrainingAssessmentLibraryService {
     // ------------------------------------------------------------------------------------------------------------------------------ the library
 
     /** The list: searched, filtered, sorted and paged here. Only the people who design or approve see it (it holds the keys). */
+    /** The names of the people who last changed an assessment (each once, in order), for the filter of the list. */
+    @Transactional(readOnly = true)
+    public List<String> editors(UserAccount actor) {
+        access.require(actor, "training.assessment.design", "training.assessment.approve");
+        return jdbc.queryForList("select distinct u.full_name from training_assessment_defs d join app_users u on u.id = d.updated_by where u.full_name is not null order by u.full_name", String.class);
+    }
+
     @Transactional(readOnly = true)
     public Map<String, Object> page(UserAccount actor, String search, String status, String kind, String sortBy, String sortDirection, int page, int limit) {
         return page(actor, search, status, kind, sortBy, sortDirection, page, limit, Map.of());
@@ -268,6 +275,7 @@ public class TrainingAssessmentLibraryService {
         caps.put("approve", approver(actor) && pending && apart);
         caps.put("upgradeRevision", designer(actor) && "EFFECTIVE".equals(status) && !open);
         out.put("capabilities", caps);
+        out.put("workflow", TrainingWorkflows.assessment(status));
         // Why the approval is not offered to a person who may approve in general (shown instead of hiding the button without a word).
         out.put("approveBlocker", approver(actor) && pending && !apart ? TrainingApprovalService.SEGREGATION : null);
         return out;

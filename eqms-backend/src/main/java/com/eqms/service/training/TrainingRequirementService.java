@@ -146,6 +146,7 @@ public class TrainingRequirementService {
             """, id)));
         out.put("approvers", TrainingRows.camel(approvals.assignments(TYPE, id)));
         out.put("capabilities", capabilities(actor, r));
+        out.put("workflow", TrainingWorkflows.requirement((String) r.get("status")));
         return out;
     }
 

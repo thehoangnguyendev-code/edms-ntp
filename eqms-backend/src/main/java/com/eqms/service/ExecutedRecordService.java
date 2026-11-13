@@ -266,18 +266,14 @@ public class ExecutedRecordService {
         return toResponse(record, currentUser);
     }
 
-    /** A scan record follows the visibility of the controlled copy it came from: blanket copy viewers see every record,
-     *  everyone else only the records of copies on which they are the named recipient. */
+    /**
+     * A Record has no flow of its own: it is only where the scan of a returned paper copy is kept. Whoever holds the Records permission
+     * ({@link #P_VIEW}, checked by every caller) sees all of them (DC-VISIBILITY-TIERS-2026-11-07). The one exception is a Record of a copy
+     * issued for reading: the Records screens show only what was written.
+     */
     private boolean canViewRecord(UserAccount user, ExecutedRecord record) {
         ControlledCopyRecord origin = record.getSourceControlledCopy();
-        if (origin != null && ControlledCopyService.USAGE_READ_AND_COMPLY.equals(origin.getUsagePurpose())) {
-            return false; // the Records screens show only what was written: never a record of a copy for reading
-        }
-        if (documentAuthorizationService.canViewAllControlledCopies(user)) {
-            return true;
-        }
-        ControlledCopyRecord source = record.getSourceControlledCopy();
-        return source != null && source.getRecipientUser() != null && user.getId().equals(source.getRecipientUser().getId());
+        return origin == null || !ControlledCopyService.USAGE_READ_AND_COMPLY.equals(origin.getUsagePurpose());
     }
 
     private void requireCanViewRecord(UserAccount user, ExecutedRecord record) {
@@ -364,7 +360,6 @@ public class ExecutedRecordService {
         int safePage = page == null || page < 1 ? 1 : page;
         int safeLimit = limit == null || limit < 1 ? 20 : Math.min(limit, MAX_LIST_PAGE_SIZE);
 
-        boolean seesAll = documentAuthorizationService.canViewAllControlledCopies(currentUser);
         Specification<ExecutedRecord> specification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             // A record of a copy issued for reading is never listed (a record without a source copy, and records of copies issued before the
@@ -373,10 +368,6 @@ public class ExecutedRecordService {
             predicates.add(cb.or(
                     cb.isNull(originJoin.get("usagePurpose")),
                     cb.notEqual(originJoin.<String>get("usagePurpose"), ControlledCopyService.USAGE_READ_AND_COMPLY)));
-            if (!seesAll) {
-                // Everyone else sees only the records of copies they hold as the named recipient (account id).
-                predicates.add(cb.equal(root.get("sourceControlledCopy").get("recipientUser").get("id"), currentUser.getId()));
-            }
             UUID formDocumentUuid = parseUuidOrNull(formDocumentId);
             if (formDocumentUuid != null) {
                 predicates.add(cb.equal(root.get("formDocument").get("id"), formDocumentUuid));
@@ -423,6 +414,7 @@ public class ExecutedRecordService {
     @Transactional(readOnly = true)
     public byte[] downloadFile(UUID id) throws IOException {
         UserAccount currentUser = currentUserService.requireCurrentUser();
+        requirePermission(currentUser, P_VIEW, "Not permitted to view Executed Records");
         requirePermission(currentUser, P_DOWNLOAD, "Not permitted to download Executed Record files");
         ExecutedRecord record = requireRecord(id);
         requireCanViewRecord(currentUser, record);

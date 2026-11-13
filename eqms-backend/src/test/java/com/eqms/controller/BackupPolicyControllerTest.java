@@ -90,7 +90,7 @@ class BackupPolicyControllerTest {
     @Test
     void readingNeedsTheViewPermission() {
         allow();
-        assertThatThrownBy(() -> controller.list(null, null, "version", "desc", 1, 10)).isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> controller.list(null, null, "version", "desc", 1, 10, null, null, null, null, null, null, null, null)).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> controller.get(2)).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> controller.gate(2)).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> controller.targets()).isInstanceOf(AccessDeniedException.class);
@@ -100,11 +100,12 @@ class BackupPolicyControllerTest {
     @Test
     void theVersionListIsPassedOnWithBoundedAndEncodedParameters() {
         when(agent.exchange(eq(HttpMethod.GET), anyString(), isNull())).thenReturn(reply(200, "{\"data\":[]}"));
-        controller.list("a&b c", "DRAFT", "status", "asc", 0, 5000);
+        controller.list("a&b c", "DRAFT", "status", "asc", 0, 5000, "OBJECT_STORE", "T2", "OWN", "APPROVED", "2026-11-01T00:00:00Z", null, null, null);
         ArgumentCaptor<String> path = ArgumentCaptor.forClass(String.class);
         verify(agent).exchange(eq(HttpMethod.GET), path.capture(), isNull());
         assertThat(path.getValue()).startsWith("/internal/policies?").contains("search=a%26b%20c").contains("status=DRAFT").contains("sortDirection=asc")
-                .contains("page=1").contains("limit=100");
+                .contains("page=1").contains("limit=100").contains("component=OBJECT_STORE").contains("target=T2")
+                .contains("filesSchedule=OWN").contains("approval=APPROVED").contains("proposedFrom=2026-11-01T00:00:00Z");
     }
 
     @Test

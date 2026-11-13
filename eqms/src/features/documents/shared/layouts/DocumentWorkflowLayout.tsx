@@ -5,12 +5,8 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import type { BreadcrumbItem } from "@/components/ui/breadcrumb/Breadcrumb";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
-import type { DocumentStatus } from "@/features/documents/types";
-import {
-    normalizeRevisionStatusForStepper,
-    resolveTerminalProgressStep,
-} from "@/features/documents/shared/statusMapping";
-import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
+import type { WorkflowProgress } from "@/types/document";
+import { WorkflowProgressStepper } from "@/components/ui/workflow-stepper/WorkflowProgressStepper";
 
 // --- Types ---
 type TabType =
@@ -35,10 +31,8 @@ interface DocumentWorkflowLayoutProps {
     headerActions?: React.ReactNode;
 
     // Status stepper
-    statusSteps: DocumentStatus[];
-    currentStatus: DocumentStatus;
-    skippedSteps?: readonly DocumentStatus[];
-    terminalProgressStep?: string;
+    /** The lifecycle stepper as the server worked it out; nothing is drawn until it has arrived. */
+    workflow?: WorkflowProgress;
 
     // Tabs
     tabs: TabItem[];
@@ -69,18 +63,13 @@ export const DEFAULT_WORKFLOW_TABS: TabItem[] = [
     { id: "audit", label: "Audit Trail" },
 ];
 
-const normalizeStatusForStepper = normalizeRevisionStatusForStepper;
-
 // --- Main Component ---
 export const DocumentWorkflowLayout: React.FC<DocumentWorkflowLayoutProps> = ({
     title,
     breadcrumbs,
     onBack,
     headerActions,
-    statusSteps,
-    currentStatus,
-    skippedSteps,
-    terminalProgressStep,
+    workflow,
     tabs,
     activeTab,
     onTabChange,
@@ -88,13 +77,6 @@ export const DocumentWorkflowLayout: React.FC<DocumentWorkflowLayoutProps> = ({
     afterTabContent,
     children,
 }) => {
-    const normalized = normalizeStatusForStepper(currentStatus) as DocumentStatus;
-    const index = statusSteps.indexOf(normalized);
-    const currentStepIndex = index !== -1 ? index : 0;
-    const resolvedTerminalProgressStep = terminalProgressStep
-        ? terminalProgressStep
-        : resolveTerminalProgressStep(currentStatus);
-
     return (
         <div className="space-y-4 md:space-y-6 w-full">
             {/* Header */}
@@ -118,12 +100,7 @@ export const DocumentWorkflowLayout: React.FC<DocumentWorkflowLayoutProps> = ({
 
             <div className="min-w-0 space-y-4 md:space-y-6">
                 {/* Status Stepper */}
-                <WorkflowStepper
-                    steps={statusSteps}
-                    currentStepIndex={currentStepIndex}
-                    skippedSteps={skippedSteps}
-                    terminalProgressStep={resolvedTerminalProgressStep}
-                />
+                <WorkflowProgressStepper workflow={workflow} />
 
                 {/* Tab Navigation + Content */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm">

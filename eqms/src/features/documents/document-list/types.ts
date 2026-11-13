@@ -253,6 +253,8 @@ export interface KnowledgeBaseResponse {
 }
 
 export interface DocumentDetailResponse extends DocumentListItem {
+  /** Lifecycle stepper for this Document, worked out on the server. */
+  workflow?: import("@/types/document").WorkflowProgress;
   titleLocalLanguage?: string | null;
   description?: string | null;
   knowledgeBase?: string | null;

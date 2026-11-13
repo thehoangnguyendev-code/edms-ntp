@@ -21,11 +21,12 @@ public class AgentProperties {
     private final Crypto crypto = new Crypto();
     private final Tools tools = new Tools();
     private final Objects objects = new Objects();
-    private final Exports exports = new Exports();
     private final Restore restore = new Restore();
     private final Maintenance maintenance = new Maintenance();
     private Path ledgerDir = Path.of("/backup/ledger");
     private long minFreeBytes = 1_073_741_824L;
+    /** The folder the application writes files to when it does not use the document store (read only here). Files in it are not backed up. */
+    private Path localStoragePath;
     /** Time zone used to read the schedule of the policy (stored times are UTC). */
     private String zone = "Asia/Ho_Chi_Minh";
     private int pollSeconds = 5;
@@ -114,14 +115,6 @@ public class AgentProperties {
         public void setBuckets(java.util.List<String> buckets) { this.buckets = buckets; }
     }
 
-    /** Where packages for registered offline media are written; each medium has one folder under this root. */
-    public static class Exports {
-        private Path root = Path.of("/backup/export");
-
-        public Path getRoot() { return root; }
-        public void setRoot(Path root) { this.root = root; }
-    }
-
     /** Restore rehearsals run only in the worker, which is the only process given the private key and a role that may create databases. */
     public static class Restore {
         private boolean enabled;
@@ -143,6 +136,13 @@ public class AgentProperties {
                 java.util.List.of("minio:9000", "clamav:3310", "mailhog:1025", "onlyoffice:80"));
 
         public TestObjects getTestObjects() { return testObjects; }
+        /** The role that renames databases at the swap. It must own the live database (or be allowed to rename it). Unset: no production restore. */
+        private final Swap swap = new Swap();
+        /** The restore writer's MinIO account for the live buckets: add only. Unset: no production restore. */
+        private final LiveObjects liveObjects = new LiveObjects();
+
+        public Swap getSwap() { return swap; }
+        public LiveObjects getLiveObjects() { return liveObjects; }
         /**
          * DEV only: C5 is reported as a warning instead of a required check, because the DEV database holds test data without
          * signature records. Ignored in every other environment. A labelled DEV deviation, not a relaxation of the rule.
@@ -168,6 +168,47 @@ public class AgentProperties {
         public void setPassword(String password) { this.password = password; }
         public String getDbPrefix() { return dbPrefix; }
         public void setDbPrefix(String dbPrefix) { this.dbPrefix = dbPrefix; }
+    }
+
+    /** The database role used for the swap and the name of the live database it renames. */
+    public static class Swap {
+        private String user = "";
+        private String password = "";
+        private String liveDatabase = "";
+        /** SECURITY DEFINER function in the maintenance database that ends the sessions of one database; empty when the login is a superuser. */
+        private String endSessionsFunction = "";
+        /** Role that owns the database that takes the live name; empty to leave ownership as the restore made it. */
+        private String ownerRole = "";
+
+        public String getEndSessionsFunction() { return endSessionsFunction; }
+        public void setEndSessionsFunction(String endSessionsFunction) { this.endSessionsFunction = endSessionsFunction; }
+        public String getOwnerRole() { return ownerRole; }
+        public void setOwnerRole(String ownerRole) { this.ownerRole = ownerRole; }
+        public String getUser() { return user; }
+        public void setUser(String user) { this.user = user; }
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+        public String getLiveDatabase() { return liveDatabase; }
+        public void setLiveDatabase(String liveDatabase) { this.liveDatabase = liveDatabase; }
+        public boolean configured() { return !user.isBlank() && !password.isBlank() && !liveDatabase.isBlank(); }
+    }
+
+    /** The add-only MinIO account for the live buckets and the buckets a restore may add files to. */
+    public static class LiveObjects {
+        private String endpoint = "http://minio:9000";
+        private String accessKey = "";
+        private String secretKey = "";
+        private java.util.List<String> buckets = new java.util.ArrayList<>(java.util.List.of("eqms-gmp-records", "eqms-templates"));
+
+        public String getEndpoint() { return endpoint; }
+        public void setEndpoint(String endpoint) { this.endpoint = endpoint; }
+        public String getAccessKey() { return accessKey; }
+        public void setAccessKey(String accessKey) { this.accessKey = accessKey; }
+        public String getSecretKey() { return secretKey; }
+        public void setSecretKey(String secretKey) { this.secretKey = secretKey; }
+        public java.util.List<String> getBuckets() { return buckets; }
+        public void setBuckets(java.util.List<String> buckets) { this.buckets = buckets; }
+        public boolean configured() { return !accessKey.isBlank() && !secretKey.isBlank(); }
     }
 
     /** The test-bucket account of the restore worker; see {@link Restore#getTestObjects()}. */
@@ -245,9 +286,10 @@ public class AgentProperties {
     public Crypto getCrypto() { return crypto; }
     public Tools getTools() { return tools; }
     public Objects getObjects() { return objects; }
-    public Exports getExports() { return exports; }
     public Path getLedgerDir() { return ledgerDir; }
     public void setLedgerDir(Path ledgerDir) { this.ledgerDir = ledgerDir; }
+    public Path getLocalStoragePath() { return localStoragePath; }
+    public void setLocalStoragePath(Path localStoragePath) { this.localStoragePath = localStoragePath; }
     public long getMinFreeBytes() { return minFreeBytes; }
     public void setMinFreeBytes(long minFreeBytes) { this.minFreeBytes = minFreeBytes; }
     public String getZone() { return zone; }

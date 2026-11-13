@@ -10,6 +10,7 @@ import com.eqms.service.PermissionEvaluationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
@@ -58,6 +59,41 @@ class BackupAlertControllerTest {
             }
             return false;
         });
+    }
+
+    @org.junit.jupiter.api.Test
+    void aRuleChangeNeedsTheManagePermissionAReasonAndAValidCodeAndIsAudited() throws Exception {
+        allow("backup.admin.alerts.view");
+        assertThatThrownBy(() -> controller.changeRule("CAPACITY_HIGH", new BackupAlertController.RuleBody(true, true, 90, "why")))
+                .isInstanceOf(AccessDeniedException.class);
+        allow("backup.admin.alerts.view", "backup.admin.alerts.manage");
+        assertThatThrownBy(() -> controller.changeRule("capacity high; drop", new BackupAlertController.RuleBody(true, true, 90, "why")))
+                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+        assertThatThrownBy(() -> controller.changeRule("CAPACITY_HIGH", new BackupAlertController.RuleBody(true, true, 90, "  ")))
+                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getReason()).isEqualTo("ALERT_RULE_REASON_REQUIRED"));
+        verifyNoInteractions(agent);
+
+        when(agent.exchange(eq(HttpMethod.POST), eq("/internal/alert-rules/CAPACITY_HIGH"), any()))
+                .thenReturn(reply(200, "{\"code\":\"CAPACITY_HIGH\",\"previous\":{\"inApp\":true,\"email\":true,\"threshold\":80}}"));
+        controller.changeRule("CAPACITY_HIGH", new BackupAlertController.RuleBody(true, false, 90, "The NAS is large"));
+        ArgumentCaptor<String> text = ArgumentCaptor.forClass(String.class);
+        verify(audit).logAs(eq(actor), eq("BACKUP_ALERT_RULE"), eq("CAPACITY_HIGH"), any(), eq("ALERT_RULE_CHANGED"), isNull(), eq("CHANGED"), text.capture());
+        assertThat(text.getValue()).contains("e-mail off").contains("limit 90").contains("was: in the application on, e-mail on, limit 80").contains("The NAS is large");
+    }
+
+    @org.junit.jupiter.api.Test
+    void aRuleIsNotAuditedWhenTheAgentRefusesIt() throws Exception {
+        when(agent.exchange(eq(HttpMethod.POST), eq("/internal/alert-rules/CAPACITY_HIGH"), any())).thenReturn(reply(400, "{\"code\":\"ALERT_RULE_THRESHOLD_RANGE\"}"));
+        var out = controller.changeRule("CAPACITY_HIGH", new BackupAlertController.RuleBody(true, true, 100, "too high"));
+        assertThat(out.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), anyString());
+    }
+
+    @org.junit.jupiter.api.Test
+    void theRulesAreSeenWithTheViewPermission() throws Exception {
+        when(agent.exchange(eq(HttpMethod.GET), anyString(), any())).thenReturn(reply(200, "[]"));
+        controller.rules();
+        verify(agent).exchange(HttpMethod.GET, "/internal/alert-rules", null);
     }
 
     @BeforeEach

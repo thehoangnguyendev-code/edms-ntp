@@ -7,7 +7,6 @@ import { CredentialsModal } from"../components/CredentialsModal";
 import { useToast } from"@/components/ui/toast";
 import { NewUser } from"../../types";
 import { USER_MANAGEMENT_ROUTES } from"../../constants";
-import { generateUsername } from"../utils";
 import { PageHeader } from"@/components/ui/page/PageHeader";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
@@ -130,7 +129,6 @@ export const AddUserView: React.FC = () => {
   title: "",
   message: "",
  });
- const [existingUsers, setExistingUsers] = useState<User[]>([]);
  const [lookupAccessProfiles, setLookupAccessProfiles] = useState<LookupOption[]>([]);
  const [accessProfiles, setAccessProfiles] = useState<AccessProfileResponse[]>([]);
  const [lookupGenders, setLookupGenders] = useState<LookupOption[]>([]);
@@ -142,9 +140,7 @@ export const AddUserView: React.FC = () => {
  const [lookupLanguages, setLookupLanguages] = useState<LookupOption[]>([]);
  // Direct Manager's default option list -- fetched via the dedicated lightweight
  // /settings/users/manager-options endpoint (same one the Edit flow already uses), not derived
- // from the full existingUsers list, so it's ready well before that much heavier 1000-row fetch
- // finishes (that heavier fetch enriches every row with sessions/access-profiles,
- // none of which this dropdown needs).
+ // from the list of users.
  const [managerLookupOptions, setManagerLookupOptions] = useState<LookupOption[]>([]);
  const [businessUnits, setBusinessUnits] = useState<DictionaryBusinessUnit[]>([]);
  const [departments, setDepartments] = useState<DictionaryDepartment[]>([]);
@@ -315,16 +311,6 @@ export const AddUserView: React.FC = () => {
    }
   };
 
-  const loadExistingUsers = async () => {
-   try {
-    const usersPage = await settingsApi.getUsers({ page: 1, limit: 1000 });
-    setExistingUsers(usersPage.data ?? []);
-   } catch (error) {
-    setExistingUsers([]);
-    if (import.meta.env.DEV) console.error("Failed to load existing users", error);
-   }
-  };
-
   // Dedicated lightweight endpoint -- avoids waiting on the heavy 1000-row getUsers() fetch
   // above (username/email de-dup still needs that full list, but the Employee ID suggestion
   // doesn't) so the field fills in immediately instead of lagging behind admin-list enrichment.
@@ -339,15 +325,28 @@ export const AddUserView: React.FC = () => {
 
   setIsLoading(true);
   void loadLookupOptions();
-  void loadExistingUsers();
   void loadNextEmployeeCode();
  }, []);
 
- const existingUsernames = useMemo(
-  () => existingUsers.map((user) => user.username.toLowerCase()),
-  [existingUsers]
- );
-
+// The username is suggested by the server from the full name (it knows every account, terminated ones too), so the screen never loads the list of users.
+ useEffect(() => {
+  if (isUsernameEdited) return;
+  const name = newUser.fullName.trim();
+  if (!name) return;
+  let alive = true;
+  const timer = window.setTimeout(() => {
+   settingsApi
+    .suggestUsername(name)
+    .then((suggested) => {
+     if (alive && suggested) setNewUser((prev) => (prev.fullName.trim() === name ? { ...prev, username: suggested } : prev));
+    })
+    .catch(() => undefined);
+  }, 300);
+  return () => {
+   alive = false;
+   window.clearTimeout(timer);
+  };
+ }, [newUser.fullName, isUsernameEdited]);
  const validateForm = (): boolean => {
  const errors: { [key: string]: string } = {};
 
@@ -501,7 +500,6 @@ export const AddUserView: React.FC = () => {
    password: created.password,
   });
   setShowCredentialsModal(true);
-  setExistingUsers((prev) => [created.user, ...prev]);
   showToast({
    type: "success",
    title: "Success",
@@ -652,9 +650,6 @@ export const AddUserView: React.FC = () => {
   });
   setNewUser((prev) => {
    const next: any = { ...prev, [key]: value };
-   if (key === "fullName" && !isUsernameEdited) {
-    next.username = generateUsername(value, existingUsernames);
-   }
    if (key === "businessUnit") { next.department = ""; next.position = ""; }
    if (key === "department") {
     next.position = "";

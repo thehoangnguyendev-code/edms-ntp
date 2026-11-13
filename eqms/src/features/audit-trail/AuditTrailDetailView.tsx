@@ -1,31 +1,13 @@
 import { formatAuditActionLabel, formatAuditModuleLabel } from "./utils/actionBadge";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  ArrowRight,
-  Download,
-  Hash,
-  Info,
-  AlertTriangle,
-  Shield,
-  Clock,
-  User as UserIcon,
-  Globe,
-  Laptop,
-  CheckCircle2,
-  FileText,
-  Activity,
-  Layers,
-  ShieldCheck,
-  PenTool,
-} from "lucide-react";
-import { IconExchange, IconLabel, IconMessage2, IconScanTraces, IconSourceCode } from "@tabler/icons-react";
+import { Activity, AlertTriangle, ChevronDown, Download, PenLine } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { auditTrailDetail } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { Button } from "@/components/ui/button/Button";
 import { cn } from "@/components/ui/utils";
 import { FormSection } from "@/components/ui/form";
-import { Badge, type BadgeColor } from "@/components/ui/badge/Badge";
+import { Badge } from "@/components/ui/badge/Badge";
 import { Avatar } from "@/components/ui/avatar";
 import { formatDateTime } from "@/utils/format";
 import { AuditExportModal } from "./components/AuditExportModal";
@@ -36,61 +18,15 @@ import { ROUTES } from "@/app/routes.constants";
 import { formatWorkflowStatusLabel } from "./utils/statusLabel";
 import type { AuditTrailDetailRecord, AuditTrailRecord } from "./types";
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
+import { Collapsible } from "@/components/ui/collapsible";
 
-const DetailItem: React.FC<{
-  label: string;
-  value: React.ReactNode;
-  icon?: React.ReactNode;
-  subValue?: React.ReactNode;
-  last?: boolean;
-}> = ({ label, value, icon, subValue, last }) => (
-  <div
-    className={cn(
-      "flex flex-col gap-1 sm:flex-row sm:items-center justify-between py-3 px-3 sm:px-4 rounded-lg transition-colors hover:bg-slate-50/80",
-      !last && "border-b border-slate-100"
-    )}
-  >
-    <div className="flex items-center gap-2.5 text-xs sm:text-sm font-medium text-slate-500 min-w-[150px] flex-shrink-0">
-      {icon && <span className="text-slate-400 flex-shrink-0">{icon}</span>}
-      <span>{label}</span>
-    </div>
-    <div className="flex flex-col items-start sm:items-end text-xs sm:text-sm font-semibold text-slate-800 break-words text-left sm:text-right min-w-0 flex-1 mt-0.5 sm:mt-0">
-      {value}
-      {subValue && <span className="text-xs font-normal text-slate-500 mt-0.5">{subValue}</span>}
-    </div>
+/** One label and value of a card, in a <dl>: the label is muted, the value stands out. */
+const DetailItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+  <div className="grid gap-1 sm:grid-cols-[14rem_minmax(0,1fr)] sm:items-baseline sm:gap-4">
+    <dt className="text-xs text-slate-500 sm:text-sm">{label}</dt>
+    <dd className="min-w-0 text-xs font-medium text-slate-900 [overflow-wrap:anywhere] sm:text-sm">{value}</dd>
   </div>
 );
-
-const getActionBadgeColor = (action: string): BadgeColor => {
-  const normalized = action.toLowerCase().replace(/[_\s-]+/g, " ");
-  switch (normalized) {
-    case "create": case "approve": case "publish": case "enable": return "emerald";
-    case "update": case "review": case "assign": case "submit": case "upload":
-    case "view": case "open": case "preview": case "open preview": case "view page":
-    case "close preview": case "replace file": case "update metadata":
-    case "add working note": case "delete working note": case "download evidence":
-    case "open edit online":
-    case "upload to office online":
-    case "revision file uploaded to office online":
-    case "edit online synced back to minio":
-    case "edit online session closed": return "blue";
-    case "delete": case "reject": case "disable": case "failed login": case "destroy": case "account locked": return "red";
-    case "archive": case "restore": case "cancel": case "obsolete": return "amber";
-    default: return "slate";
-  }
-};
-
-const getSeverityBadgeColor = (severity?: string): BadgeColor => {
-  const normalized = (severity || "").toLowerCase();
-  switch (normalized) {
-    case "high": return "red";
-    case "medium": return "amber";
-    case "low": return "emerald";
-    default: return "slate";
-  }
-};
-
-const formatAuditLabel = (value?: string): string => (value ? formatAuditActionLabel(value) : "-");
 
 const buildEntityLabel = (r: AuditTrailRecord): string => {
   if (r.entityName && r.entityName.trim()) return r.entityName.trim();
@@ -100,18 +36,8 @@ const buildEntityLabel = (r: AuditTrailRecord): string => {
   return "System Audit Record";
 };
 
-const buildReason = (r: AuditTrailRecord): string => {
-  if (r.reason && r.reason.trim()) return r.reason.trim();
-  if (r.description && r.description.trim()) return r.description.trim();
-  return "-";
-};
-
-const getSignatureBadge = (r: AuditTrailRecord): { label: string; color: BadgeColor; isSigned: boolean } => {
-  if (r.electronicSignatureApplied || Boolean(r.signatureId)) {
-    return { label: "Electronically Signed", color: "emerald", isSigned: true };
-  }
-  return { label: "Standard Log", color: "slate", isSigned: false };
-};
+/** The reason the person gave, if any. A description the system wrote is not a reason and is shown on its own. */
+const buildReason = (r: AuditTrailRecord): string => (r.reason && r.reason.trim() ? r.reason.trim() : "");
 
 const formatSignatureId = (id?: string | null): string => {
   if (!id || !id.trim()) return "";
@@ -219,6 +145,26 @@ const formatProcessingDuration = (seconds: number): string => {
   return `${seconds.toFixed(seconds < 10 ? 3 : 2)} sec`;
 };
 
+/** A value that says nothing: empty, "-", "null", "Not specified". It is left out instead of being shown as a value. */
+const isBlank = (value?: string | null) => /^(|-|—|null|undefined|n\/a|not specified)$/i.test((value ?? "").trim());
+
+/** A before or after value as a chip; a missing value is a dash. */
+const ValueChip: React.FC<{ field: string | null | undefined; value?: string | null; side: "before" | "after" }> = ({ field, value, side }) =>
+  isBlank(value) ? (
+    <span className="italic text-slate-300">—</span>
+  ) : side === "before" ? (
+    <span className="break-all rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500 line-through sm:text-sm">
+      {formatAuditChangeValue(field, value)}
+    </span>
+  ) : (
+    <span className="inline-block break-all rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 sm:text-sm">
+      {formatAuditChangeValue(field, value)}
+    </span>
+  );
+
+const eventLabel = (record: AuditTrailRecord): string =>
+  formatAuditActionLabel((record.actionType || record.action || "").toString());
+
 export const AuditTrailDetailView: React.FC<{
   /** Present when embedded by the All Records view; omitted for the standalone route. */
   record?: AuditTrailRecord;
@@ -232,6 +178,7 @@ export const AuditTrailDetailView: React.FC<{
   const [detailError, setDetailError] = useState<string | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [showTechnical, setShowTechnical] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -269,13 +216,20 @@ export const AuditTrailDetailView: React.FC<{
   };
 
   const r = (detailRecord ?? record) as AuditTrailDetailRecord | null;
-  const signature = r ? getSignatureBadge(r) : { label: "Standard Log", color: "slate" as BadgeColor, isSigned: false };
+  const isSigned = Boolean(r && (r.electronicSignatureApplied || r.signatureId));
   const changes = r?.changes || [];
   const entityLabel = r ? buildEntityLabel(r) : "Audit Record";
-  const reason = r ? buildReason(r) : "-";
+  const description = r?.description?.trim() ?? "";
+  // The reason is what a person typed. The server keeps it apart as `userReason`; a signature always carries the reason its signer typed.
+  // The stored reason/comment of anything else is the system's own text ("Document draft updated | Co-authors=0, ...") and is never shown.
+  const typedReason = r ? getMetadataValue(r.metadata, "userReason") : "";
+  const reason = typedReason || (isSigned && r ? buildReason(r) : "");
+  // The specific action (SUBMIT_FOR_REVIEW -> "Submit For Review"), not the family it is filed under ("Submit").
   const actionLabel = (r?.actionType || r?.action || "").toString().toUpperCase() === "DESTROY"
     ? "Destroy"
-    : formatAuditLabel(r?.action);
+    : r ? eventLabel(r) : "-";
+  // The module is the name of the sidebar menu the object belongs to (sent by the server).
+  const moduleLabel = r ? getMetadataValue(r.metadata, "menuModule") || formatAuditModuleLabel(r.module) : "";
   const profileId = r?.user?.id || "";
   const userName = r?.user?.fullName || r?.fullName || "System User";
   const isDestroyAction = r ? isControlledCopyDestroyAction(r) : false;
@@ -297,11 +251,9 @@ export const AuditTrailDetailView: React.FC<{
     ? (evidenceFiles.length || Number(getMetadataValue(r?.metadata, "evidenceCount", "evidence_count")) || 0)
     : 0;
 
-  // Drop a genuinely no-op "status"/"state" entry (old === new, or no destination value at
-  // all). Older audit rows persisted a synthetic "Obsoleted -> Obsoleted" for non-mutating
-  // actions (View, Login), which would otherwise surface here as a meaningless "Field
-  // Modifications" row. A blank OLD value with a real NEW one is a creation (e.g. Controlled
-  // Copy REQUEST) -- that IS meaningful ("None -> Ready for Distribution") and must stay.
+  // Drop a genuinely no-op "status"/"state" entry (old === new, or no destination value at all). Older audit rows
+  // persisted a synthetic "Obsoleted -> Obsoleted" for non-mutating actions (View, Login), which would otherwise
+  // surface here as a meaningless row. A blank OLD value with a real NEW one is a creation and stays.
   const isNoOpStatusChange = (c: { field?: string | null; oldValue?: string | null; newValue?: string | null }) => {
     if (!/status|state/i.test(c.field || "")) return false;
     const o = (c.oldValue ?? "").trim();
@@ -309,9 +261,49 @@ export const AuditTrailDetailView: React.FC<{
     return n === "" || (o !== "" && o.toLowerCase() === n.toLowerCase());
   };
   const fieldChanges = changes.filter(
-    c => c.field !== "Permission Granted" && c.field !== "Permission Revoked" && !isNoOpStatusChange(c),
+    (c) => c.field !== "Permission Granted" && c.field !== "Permission Revoked" && !isNoOpStatusChange(c) && !(isBlank(c.oldValue) && isBlank(c.newValue)),
   );
-  const permissionChanges = changes.filter(c => c.field === "Permission Granted" || c.field === "Permission Revoked");
+  const permissionChanges = changes.filter((c) => c.field === "Permission Granted" || c.field === "Permission Revoked");
+
+  // The status transition of the record is the first row of "What changed" unless the change list already has it.
+  // Blank before = created; blank after = removed; both blank (Login, View) or equal = nothing changed.
+  const fromStatus = (r?.fromStatus ?? "").trim();
+  const toStatus = (r?.toStatus ?? "").trim();
+  const hasStatusRow = fieldChanges.some((c) => /^(status|state)$/i.test((c.field || "").trim()));
+  const readOnlyEvent = /^(view|login|logout|failed[ _]login|preview|open|download|export|send[ _]email)/i.test((r?.actionType || r?.action || "").toString().trim());
+  const statusMoved = !readOnlyEvent && !(fromStatus === "" && toStatus === "") && fromStatus.toLowerCase() !== toStatus.toLowerCase();
+  const changeRows = [
+    ...(statusMoved && !hasStatusRow ? [{ field: "Status", oldValue: fromStatus, newValue: toStatus }] : []),
+    ...fieldChanges,
+  ];
+  // A record that was just created has nothing "before": that column is left out.
+  const hasBefore = changeRows.some((c) => !isBlank(c.oldValue));
+
+  type TechnicalItem = { label: string; value: React.ReactNode };
+  const technicalItems: TechnicalItem[] = [];
+  if (r) {
+    technicalItems.push({ label: "Record ID", value: r.id });
+    if (r.entityId) technicalItems.push({ label: "Entity ID", value: r.entityId });
+    if (r.objectCode) technicalItems.push({ label: "Object Code", value: r.objectCode });
+    if (r.severity) technicalItems.push({ label: "Severity", value: r.severity });
+    technicalItems.push({ label: "IP Address", value: r.ipAddress || "-" });
+    if (r.userAgent || r.device) technicalItems.push({ label: "Client Device / Agent", value: r.device || r.userAgent });
+    if (r.progressDurationSeconds !== undefined && r.progressDurationSeconds !== null) {
+      technicalItems.push({ label: "Processing Duration", value: formatProcessingDuration(r.progressDurationSeconds) });
+    }
+  }
+
+  const userEmail = r ? getMetadataValue(r.metadata, "userEmail") : "";
+  const userCode = r?.user?.employeeCode;
+  const userCodeNode = userCode
+    ? profileId
+      ? (
+        <button type="button" onClick={() => navigate(USER_MANAGEMENT_ROUTES.PROFILE(profileId))} className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline">
+          {userCode}
+        </button>
+      )
+      : <span className="font-medium text-slate-500">{userCode}</span>
+    : null;
 
   return (
     <div className="w-full min-w-0 space-y-5 md:space-y-6">
@@ -336,361 +328,196 @@ export const AuditTrailDetailView: React.FC<{
       )}
 
       {detailError && !isLoadingDetail && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 flex-shrink-0 text-red-500" />
+        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-red-500" />
           <span>{detailError}</span>
         </div>
       )}
 
       {!isLoadingDetail && r && (
-        <div className="space-y-5 md:space-y-6">
-          {/* Header Banner Card — identical to UserProfileView */}
-          <div className="bg-gradient-to-br from-emerald-50 via-white to-slate-50 rounded-xl border border-emerald-100 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-4 sm:gap-5 p-4 sm:p-5 bg-gradient-to-b from-emerald-50/50 to-transparent">
-              <div className="relative h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-emerald-600 shadow-md flex items-center justify-center flex-shrink-0 overflow-hidden text-white font-medium text-xl">
-                <IconScanTraces className="h-7 w-7 text-white" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-base sm:text-lg font-semibold text-slate-900 leading-tight break-words">
-                  {entityLabel}
-                </h2>
-                <p className="text-xs sm:text-sm mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="text-slate-500">{formatDateTime(r.timestamp) || "-"}</span>
-                </p>
-                <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
-                  <Badge color={getActionBadgeColor(r.action)} size="sm">
-                    {actionLabel}
-                  </Badge>
-                  <Badge color="slate" size="sm">
-                    {r.module ? formatAuditModuleLabel(r.module) : "General"}
-                  </Badge>
-                  {r.severity && (
-                    <Badge color={getSeverityBadgeColor(r.severity)} size="sm">
-                      {r.severity} Severity
-                    </Badge>
-                  )}
+        <div className="min-w-0 space-y-5 md:space-y-6">
+            {/* The event: what was done, to what, by whom and when. */}
+            <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-600">
+                  {isSigned ? <PenLine className="h-5 w-5" /> : <Activity className="h-5 w-5" />}
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 2-Column Primary Context Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
-            {/* Left Column: User & Security Metadata */}
-            <FormSection title="User & Security Context" icon={<UserIcon className="h-4 w-4" />}>
-              <div className="space-y-1">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50/80 mb-3 border border-slate-100">
-                  <Avatar
-                    name={userName}
-                    src={r.user?.avatar || (r as any).avatar || r.metadata?.userAvatar}
-                    tone="solid"
-                    className="h-10 w-10 text-sm font-bold shadow-sm"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-                        {userName}
-                      </span>
-                      {profileId && r.user?.employeeCode && (
-                        <button
-                          type="button"
-                          onClick={() => navigate(USER_MANAGEMENT_ROUTES.PROFILE(profileId))}
-                          className="text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex-shrink-0"
-                        >
-                          {r.user.employeeCode}
-                        </button>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-500 truncate mt-0.5">
-                      {[r.user?.accessProfileNames?.[0], r.user?.department].filter(Boolean).join(" • ") || "User Record"}
-                    </p>
-                  </div>
-                </div>
-
-                <DetailItem
-                  icon={<Shield className="h-3.5 w-3.5" />}
-                  label="Access Profile"
-                  value={
-                    !r.user?.accessProfileNames?.length ? (
-                      <Badge size="sm" color="amber" title="No Access Profile was assigned at the time of this event.">
-                        Unassigned
-                      </Badge>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Badge size="sm" color="slate">
-                          {r.user.accessProfileNames[0]}
-                        </Badge>
-                        {r.user.accessProfileNames.length > 1 && (
-                          <span className="text-2xs text-slate-500 font-medium">+{r.user.accessProfileNames.length - 1}</span>
-                        )}
-                      </span>
-                    )
-                  }
-                />
-                <DetailItem
-                  icon={<UserIcon className="h-3.5 w-3.5" />}
-                  label="Position"
-                  value={r.user?.position || "-"}
-                />
-                <DetailItem
-                  icon={<Layers className="h-3.5 w-3.5" />}
-                  label="Department"
-                  value={r.user?.department || "-"}
-                />
-                <DetailItem
-                  icon={<Globe className="h-3.5 w-3.5" />}
-                  label="IP Address"
-                  value={r.ipAddress || "-"}
-                />
-                {(r.userAgent || r.device) && (
-                  <DetailItem
-                    icon={<Laptop className="h-3.5 w-3.5" />}
-                    label="Client Device / Agent"
-                    value={r.device || r.userAgent}
-                  />
-                )}
-                {r.progressDurationSeconds !== undefined && r.progressDurationSeconds !== null && (
-                  <DetailItem
-                    icon={<Clock className="h-3.5 w-3.5" />}
-                    label="Processing Duration"
-                    value={formatProcessingDuration(r.progressDurationSeconds)}
-                    last
-                  />
-                )}
-              </div>
-            </FormSection>
-
-            {/* Right Column: Event & Workflow Metadata */}
-            <FormSection title="Event & Workflow Information" icon={<Info className="h-4 w-4" />}>
-              <div className="space-y-1">
-                <DetailItem
-                  icon={<Activity className="h-3.5 w-3.5" />}
-                  label="Action Type"
-                  value={<Badge color={getActionBadgeColor(r.action)} size="sm">{actionLabel}</Badge>}
-                />
-                <DetailItem
-                  icon={<Layers className="h-3.5 w-3.5" />}
-                  label="Target Module"
-                  value={formatAuditModuleLabel(r.module)}
-                />
-                <DetailItem
-                  icon={<IconLabel className="h-3.5 w-3.5" />}
-                  label="Entity Name"
-                  value={entityLabel}
-                />
-                {r.entityId && (
-                  <DetailItem
-                    icon={<Hash className="h-3.5 w-3.5" />}
-                    label="Entity ID"
-                    value={r.entityId}
-                  />
-                )}
-                {r.objectCode && (
-                  <DetailItem
-                    icon={<IconSourceCode className="h-3.5 w-3.5" />}
-                    label="Object Code"
-                    value={r.objectCode}
-                  />
-                )}
-                {(() => {
-                  const fromRaw = (r.fromStatus ?? "").trim();
-                  const toRaw = (r.toStatus ?? "").trim();
-                  // A blank fromStatus with a real toStatus is a creation (e.g. Controlled Copy
-                  // REQUEST) -- the record simply didn't exist before, which is itself meaningful
-                  // ("None -> Ready for Distribution"). Symmetrically, a real fromStatus with a
-                  // blank toStatus is a deletion (e.g. Access Profile DELETE) -- also meaningful
-                  // ("Active -> None"), not something to hide. Only hide when NEITHER side carries
-                  // a status at all (Login/View -- no status concept applies) or both sides are the
-                  // same real value (a genuine no-op).
-                  if (fromRaw === "" && toRaw === "") return null;
-                  const isNoOp = fromRaw !== "" && toRaw !== "" && fromRaw.toLowerCase() === toRaw.toLowerCase();
-                  if (isNoOp) return null;
-                  return (
-                    <DetailItem
-                      icon={<IconExchange className="h-3.5 w-3.5" />}
-                      label="Status Transition"
-                      value={
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                            {fromRaw === "" ? "None" : formatWorkflowStatusLabel(r.fromStatus)}
-                          </span>
-                          <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 text-emerald-500" />
-                          <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
-                            {toRaw === "" ? "None" : formatWorkflowStatusLabel(r.toStatus)}
-                          </span>
-                        </div>
-                      }
-                    />
-                  );
-                })()}
-                <DetailItem
-                  icon={<PenTool className="h-3.5 w-3.5 -rotate-[90deg]"/>}
-                  label="E-Signature Status"
-                  value={<Badge color={signature.color} size="sm">{signature.label}</Badge>}
-                  last={!r.signatureId}
-                />
-                {r.signatureId && (
-                  <DetailItem
-                    icon={<ShieldCheck className="h-3.5 w-3.5 text-slate-400" />}
-                    label="Signature ID"
-                    value={
-                      <span className="text-xs sm:text-sm font-semibold text-slate-800 whitespace-nowrap" title={`Full UUID: ${r.signatureId}`}>
-                        {formatSignatureId(r.signatureId)}
-                      </span>
-                    }
-                    last
-                  />
-                )}
-              </div>
-            </FormSection>
-          </div>
-
-          {/* GxP Reason / Comment Box -- a structured comment (e.g. "Controlled Copy CANCEL
-              (Record); Copy Number: X; Document: Y; Reason: ...", see
-              buildControlledCopyRecordActionComment) packs several distinct fields into one
-              "; "-joined string. Rendered inline that reads as one long, hard-to-scan line; break
-              each field onto its own line instead. A plain free-text reason (no "; ") is
-              unaffected. */}
-          {reason !== "-" && (
-            <FormSection title="GxP Reason / Description" icon={<IconMessage2 className="h-4 w-4" />}>
-              <div className="rounded-xl bg-gradient-to-r from-slate-50 to-emerald-50/40 p-4 border border-slate-200/80">
-                {reason.includes("; ") ? (
-                  <div className="space-y-1.5">
-                    {reason.split("; ").map((segment, index) => (
-                      <p key={index} className="leading-relaxed text-xs sm:text-sm font-medium text-slate-800 break-words">
-                        {segment}
-                      </p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="leading-relaxed text-xs sm:text-sm font-medium text-slate-800 whitespace-pre-wrap">
-                    {reason}
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-balance text-lg font-semibold leading-snug text-slate-900">{actionLabel}</h2>
+                  <p className="mt-0.5 break-words text-sm text-slate-600">
+                    {entityLabel}
+                    {r.objectCode && r.objectCode !== entityLabel && (
+                      <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-600">{r.objectCode}</span>
+                    )}
                   </p>
-                )}
+                </div>
+                <div className="hidden shrink-0 flex-wrap justify-end gap-1.5 sm:flex">
+                  <Badge color="slate" size="sm">{moduleLabel || "General"}</Badge>
+                  {isSigned && <Badge color="emerald" size="sm" showDot>Signed</Badge>}
+                </div>
               </div>
-            </FormSection>
-          )}
+              <div className="mt-3 flex flex-wrap gap-1.5 sm:hidden">
+                <Badge color="slate" size="sm">{moduleLabel || "General"}</Badge>
+                {isSigned && <Badge color="emerald" size="sm" showDot>Signed</Badge>}
+              </div>
+              <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 sm:text-sm">
+                <span className="tabular-nums">{formatDateTime(r.timestamp) || "-"}</span>
+                <span aria-hidden="true">·</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Avatar name={userName} src={r.user?.avatar || r.metadata?.userAvatar} tone="solid" className="h-5 w-5 text-[9px] font-bold" />
+                  <span className="font-medium text-slate-700">{userName}</span>
+                </span>
+                {userCodeNode}
+              </p>
+              {description && description !== entityLabel && changeRows.length === 0 && permissionChanges.length === 0 && (
+                <p className="mt-3 break-words border-t border-slate-100 pt-3 text-xs text-slate-600 sm:text-sm">{description}</p>
+              )}
+            </div>
 
-          {/* Controlled Copy Destruction Details */}
-          {isDestroyAction && (
-            <FormSection title="Controlled Copy Destruction Record" icon={<AlertTriangle className="h-4 w-4 text-red-500" />}>
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {destructionDetails.map((item) => (
-                    <div key={item.label} className="p-3 rounded-lg bg-slate-50 border border-slate-100 flex flex-col gap-1">
-                      <span className="text-xs font-medium text-slate-500">{item.label}</span>
-                      <span className="text-xs sm:text-sm font-semibold text-slate-900 break-words">{toReadableText(item.value)}</span>
-                    </div>
+            {changeRows.length > 0 && (
+              <FormSection
+                title="What changed"
+                contentClassName="p-0"
+                headerRight={changeRows.length > 0 ? <span className="text-xs text-slate-400">{changeRows.length} {changeRows.length === 1 ? "field" : "fields"}</span> : undefined}
+              >
+                {changeRows.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <TableMarkup.Root className="w-full">
+                      <TableMarkup.Head className="border-b border-slate-200 bg-slate-50/90">
+                        <TableMarkup.Row>
+                          <TableMarkup.HeaderCell className={cn(hasBefore ? "w-[28%]" : "w-[40%]", "px-3 py-2.5 sm:px-4 text-left text-2xs font-semibold uppercase tracking-wider text-slate-500 md:px-5 md:text-xs")}>Field</TableMarkup.HeaderCell>
+                          {hasBefore && (
+                            <TableMarkup.HeaderCell className="px-3 py-2.5 text-left sm:px-4 text-2xs font-semibold uppercase tracking-wider text-slate-500 md:text-xs">Before</TableMarkup.HeaderCell>
+                          )}
+                          <TableMarkup.HeaderCell className="px-3 py-2.5 text-left sm:px-4 text-2xs font-semibold uppercase tracking-wider text-slate-500 md:pr-5 md:text-xs">After</TableMarkup.HeaderCell>
+                        </TableMarkup.Row>
+                      </TableMarkup.Head>
+                      <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
+                        {changeRows.map((change, i) => (
+                          <TableMarkup.Row key={`${change.field}-${i}`}>
+                            <TableMarkup.Cell className="px-3 py-3 text-xs font-semibold sm:px-4 text-slate-900 md:px-5 md:text-sm">{formatAuditField(change.field)}</TableMarkup.Cell>
+                            {hasBefore && (
+                              <TableMarkup.Cell className="px-3 py-3 sm:px-4"><ValueChip field={change.field} value={change.oldValue} side="before" /></TableMarkup.Cell>
+                            )}
+                            <TableMarkup.Cell className="px-3 py-3 sm:px-4 md:pr-5"><ValueChip field={change.field} value={change.newValue} side="after" /></TableMarkup.Cell>
+                          </TableMarkup.Row>
+                        ))}
+                      </TableMarkup.Body>
+                    </TableMarkup.Root>
+                  </div>
+                ) : null}
+              </FormSection>
+            )}
+
+            {/* Signed: the reason is in the signature card below. Unsigned: only when the person typed one. */}
+            {!isSigned && reason && (
+              <FormSection title="Why" contentClassName="px-4 py-4 md:px-5">
+                <div className="space-y-1 border-l-[3px] border-emerald-300 pl-3">
+                  {reason.split("; ").map((segment, index) => (
+                    <p key={index} className="whitespace-pre-wrap break-words text-sm text-slate-800">{segment}</p>
                   ))}
                 </div>
+              </FormSection>
+            )}
 
-                {evidenceCount > 0 && (
-                  <div className="pt-2 border-t border-slate-100">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-semibold text-slate-700">Evidence Files ({evidenceCount})</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {evidenceFiles.map((file: any, index: number) => (
-                        <Badge key={file.id || file.fileName || index} color="rose" size="sm">
-                          {file.fileName || file.name || file.originalFileName || `Evidence File ${index + 1}`}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </FormSection>
-          )}
-
-          {/* Field Changes Table */}
-          {fieldChanges.length > 0 && (
-            <FormSection title={`Field Modifications (${fieldChanges.length})`} icon={<IconExchange className="h-4 w-4 text-emerald-600" />}>
-              <div className="-mx-4 -mb-4 overflow-x-auto rounded-b-xl md:-mx-5 md:-mb-5 border-t border-slate-200">
-                <TableMarkup.Root className="w-full min-w-[550px]">
-                  <TableMarkup.Head className="bg-slate-50/90 border-b border-slate-200">
-                    <TableMarkup.Row>
-                      <TableMarkup.HeaderCell className="w-1/3 px-4 py-3 text-left text-2xs md:text-xs font-bold uppercase tracking-wider text-slate-600">
-                        Field Name
-                      </TableMarkup.HeaderCell>
-                      <TableMarkup.HeaderCell className="w-1/3 px-4 py-3 text-left text-2xs md:text-xs font-bold uppercase tracking-wider text-slate-500">
-                        Original Value (Before)
-                      </TableMarkup.HeaderCell>
-                      <TableMarkup.HeaderCell className="w-1/3 px-4 py-3 text-left text-2xs md:text-xs font-bold uppercase tracking-wider text-slate-700">
-                        <span className="flex items-center gap-1.5">
-                          <ArrowRight className="h-3.5 w-3.5 text-emerald-600" />
-                          New Value (After)
-                        </span>
-                      </TableMarkup.HeaderCell>
-                    </TableMarkup.Row>
-                  </TableMarkup.Head>
-                  <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
-                    {fieldChanges.map((change, i) => (
-                      <TableMarkup.Row key={i} className="transition-colors hover:bg-slate-50/80">
-                        <TableMarkup.Cell className="px-4 py-3 text-xs md:text-sm font-bold text-slate-900">
-                          {formatAuditField(change.field)}
-                        </TableMarkup.Cell>
-                        <TableMarkup.Cell className="px-4 py-3 text-xs md:text-sm">
-                          {change.oldValue !== undefined && change.oldValue !== null ? (
-                            <span className="rounded bg-slate-100 px-2 py-1 text-slate-500 line-through text-xs sm:text-sm font-medium break-all">
-                              {formatAuditChangeValue(change.field, change.oldValue)}
-                            </span>
-                          ) : (
-                            <span className="italic text-slate-300">—</span>
-                          )}
-                        </TableMarkup.Cell>
-                        <TableMarkup.Cell className="px-4 py-3 text-xs md:text-sm">
-                          {change.newValue !== undefined && change.newValue !== null ? (
-                            <span className="inline-block rounded-md bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-emerald-800 text-xs sm:text-sm font-semibold break-all">
-                              {formatAuditChangeValue(change.field, change.newValue)}
-                            </span>
-                          ) : (
-                            <span className="italic text-slate-300">—</span>
-                          )}
-                        </TableMarkup.Cell>
+            {permissionChanges.length > 0 && (
+              <FormSection title="Permission changes" contentClassName="p-0" headerRight={<span className="text-xs text-slate-400">{permissionChanges.length}</span>}>
+                <div className="overflow-x-auto">
+                  <TableMarkup.Root className="w-full min-w-[360px]">
+                    <TableMarkup.Head className="border-b border-slate-200 bg-slate-50/90">
+                      <TableMarkup.Row>
+                        <TableMarkup.HeaderCell className="w-32 px-4 py-2.5 text-left text-2xs font-semibold uppercase tracking-wider text-slate-500 md:px-5 md:text-xs">Change</TableMarkup.HeaderCell>
+                        <TableMarkup.HeaderCell className="px-4 py-2.5 text-left text-2xs font-semibold uppercase tracking-wider text-slate-500 md:pr-5 md:text-xs">Permission</TableMarkup.HeaderCell>
                       </TableMarkup.Row>
-                    ))}
-                  </TableMarkup.Body>
-                </TableMarkup.Root>
-              </div>
-            </FormSection>
-          )}
+                    </TableMarkup.Head>
+                    <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
+                      {permissionChanges.map((change, i) => {
+                        const isGranted = change.field === "Permission Granted";
+                        return (
+                          <TableMarkup.Row key={i}>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 md:px-5">
+                              <Badge color={isGranted ? "emerald" : "red"} size="sm" showDot>{isGranted ? "Granted" : "Revoked"}</Badge>
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="px-4 py-3 text-xs font-medium text-slate-900 sm:text-sm md:pr-5">
+                              {formatAuditChangeValue(change.field, change.newValue ?? change.oldValue)}
+                            </TableMarkup.Cell>
+                          </TableMarkup.Row>
+                        );
+                      })}
+                    </TableMarkup.Body>
+                  </TableMarkup.Root>
+                </div>
+              </FormSection>
+            )}
 
-          {/* Permission Changes Table */}
-          {permissionChanges.length > 0 && (
-            <FormSection title={`Permission Modifications (${permissionChanges.length})`} icon={<Shield className="h-4 w-4 text-emerald-600" />}>
-              <div className="-mx-4 -mb-4 overflow-x-auto rounded-b-xl md:-mx-5 md:-mb-5 border-t border-slate-200">
-                <TableMarkup.Root className="w-full min-w-[400px]">
-                  <TableMarkup.Head className="bg-slate-50/90 border-b border-slate-200">
-                    <TableMarkup.Row>
-                      <TableMarkup.HeaderCell className="w-36 px-4 py-3 text-left text-2xs md:text-xs font-bold uppercase tracking-wider text-slate-600">
-                        Change
-                      </TableMarkup.HeaderCell>
-                      <TableMarkup.HeaderCell className="px-4 py-3 text-left text-2xs md:text-xs font-bold uppercase tracking-wider text-slate-600">
-                        Permission Code / Description
-                      </TableMarkup.HeaderCell>
-                    </TableMarkup.Row>
-                  </TableMarkup.Head>
-                  <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
-                    {permissionChanges.map((change, i) => {
-                      const isGranted = change.field === "Permission Granted";
-                      return (
-                        <TableMarkup.Row key={i} className="transition-colors hover:bg-slate-50/80">
-                          <TableMarkup.Cell className="whitespace-nowrap px-4 py-3">
-                            <Badge color={isGranted ? "emerald" : "red"} size="sm" showDot>
-                              {isGranted ? "Granted" : "Revoked"}
-                            </Badge>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="px-4 py-3 text-xs sm:text-sm font-semibold text-slate-900">
-                            {formatAuditChangeValue(change.field, change.newValue ?? change.oldValue)}
-                          </TableMarkup.Cell>
-                        </TableMarkup.Row>
-                      );
-                    })}
-                  </TableMarkup.Body>
-                </TableMarkup.Root>
+            {isDestroyAction && destructionDetails.length > 0 && (
+              <FormSection title="Controlled Copy Destruction Record" icon={<AlertTriangle className="h-4 w-4 text-red-500" />}>
+                <div className="space-y-3">
+                  <dl className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    {destructionDetails.map((item) => (
+                      <div key={item.label} className="flex flex-col gap-1 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                        <dt className="text-xs text-slate-500">{item.label}</dt>
+                        <dd className="break-words text-xs font-medium text-slate-900 sm:text-sm">{toReadableText(item.value)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  {evidenceCount > 0 && (
+                    <div className="border-t border-slate-100 pt-2">
+                      <span className="mb-2 block text-xs font-semibold text-slate-700">Evidence Files ({evidenceCount})</span>
+                      <div className="flex flex-wrap gap-2">
+                        {evidenceFiles.map((file: any, index: number) => (
+                          <Badge key={file.id || file.fileName || index} color="rose" size="sm">
+                            {file.fileName || file.name || file.originalFileName || `Evidence File ${index + 1}`}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </FormSection>
+            )}
+
+            <FormSection title={isSigned ? "Signature and user" : "User"} contentClassName="p-0">
+              <dl className="space-y-3 px-4 py-4 md:px-5">
+                {isSigned && reason && (
+                  <DetailItem label="Reason" value={<span className="whitespace-pre-wrap">{reason}</span>} />
+                )}
+                {isSigned && r.signatureId && (
+                  <DetailItem label="Signature ID" value={<span className="font-mono text-xs" title={`Full UUID: ${r.signatureId}`}>{formatSignatureId(r.signatureId)}</span>} />
+                )}
+                <DetailItem
+                  label="User"
+                  value={<span className="inline-flex flex-wrap items-baseline gap-x-2"><span>{userName}</span>{userCodeNode}</span>}
+                />
+                {userEmail && (
+                  <DetailItem label="Email" value={<a href={`mailto:${userEmail}`} className="text-emerald-600 hover:text-emerald-700 hover:underline">{userEmail}</a>} />
+                )}
+                <DetailItem label="Position" value={r.user?.position || "-"} />
+                <DetailItem label="Department" value={r.user?.department || "-"} />
+              </dl>
+              {/* IP address, device, identifiers: needed by an investigator, not by every reader. */}
+              <div className="border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowTechnical((open) => !open)}
+                  aria-expanded={showTechnical}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-xs text-slate-500 transition-colors hover:bg-slate-50 sm:text-sm md:px-5"
+                >
+                  <span>Technical details <span className="text-slate-400">· IP address, device, record ID</span></span>
+                  <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-emerald-600">
+                    {showTechnical ? "Hide" : "Show"}
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", showTechnical && "rotate-180")} />
+                  </span>
+                </button>
+                <Collapsible open={showTechnical}>
+                  <dl className="space-y-3 border-t border-slate-100 px-4 py-4 md:px-5">
+                    {technicalItems.map((item) => (
+                      <DetailItem key={item.label} label={item.label} value={item.value} />
+                    ))}
+                  </dl>
+                </Collapsible>
               </div>
             </FormSection>
-          )}
         </div>
       )}
 

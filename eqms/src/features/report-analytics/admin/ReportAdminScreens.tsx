@@ -27,13 +27,6 @@ const ReportAdminListPage: React.FC<{ title: string; note?: React.ReactNode; chi
   );
 };
 
-/** Retention of report files, said once above the register (decision REPORT-FILE-RETENTION-PERMANENT-2026-10-14). */
-const RetentionNote: React.FC = () => (
-  <p>
-    Report output files are kept permanently; no file expires by age. A legal hold still blocks any removal. Holds are placed and released on each run's page; the files held now are listed below.
-  </p>
-);
-
 /** The limit of recipients is a setting of Report Properties; the log below records every notice. */
 const DeliveryNote: React.FC = () => {
   const navigate = useNavigate();
@@ -106,7 +99,6 @@ export const ReportAccessScopeView: React.FC = () => {
   return (
     <ReportAdminListPage
       title="Report Access & Data Scope"
-      note="How far each role's data reaches, template by template. Scopes are changed on the template (Access & Scope tab); roles and permissions are edited in Access Profiles and Permission Sets."
     >
         <ReportListToolbar
           searchPlaceholder="Search template or role…"
@@ -197,7 +189,7 @@ export const ReportRetentionView: React.FC = () => {
   ];
   const { layout, control } = useCustomColumnLayout("reportLegalHolds", columns);
   return (
-    <ReportAdminListPage title="Report Retention & Legal Hold" note={<RetentionNote />}>
+    <ReportAdminListPage title="Report Retention & Legal Hold">
               <ReportListToolbar
           searchPlaceholder="Search report or file name…"
           search={table.searchQuery}

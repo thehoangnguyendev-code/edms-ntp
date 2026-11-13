@@ -15,7 +15,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
 import { knowledgeApi, type KnowledgeFieldOption, type KnowledgeHierarchy } from "@/services/api/knowledge";
 
-const inputClass = "w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50";
+const inputClass = "w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50";
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 
 /** A level in the editor. Changes stay in the browser until Save; id is missing for a level not saved yet. */
@@ -233,7 +233,7 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
           <div>
             <label className={labelClass}>Description</label>
             <textarea
-              className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 resize-none"
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 resize-none"
               rows={3} value={description} disabled={!canManage} onChange={(e) => setDescription(e.target.value)}
             />
             <p className="text-xs text-slate-500 mt-1.5">The determinator field decides which Knowledge Base a document belongs to (for example, each Business Unit is one Knowledge Base). Only fields with one low-cardinality value per document can be a determinator.</p>

@@ -894,7 +894,7 @@ export const RequestControlledCopyView: React.FC = () => {
         .filter((user) => selectedTargetIds.has(user.id))
         .map((user) => ({
           id: user.id,
-          displayName: user.fullName || user.username || user.id,
+          displayName: user.fullName || user.username || "—",
           username: user.username || "-",
           position:
             user.position ||
@@ -930,7 +930,7 @@ export const RequestControlledCopyView: React.FC = () => {
       })
       .map((user) => ({
         id: user.id,
-        displayName: user.fullName || user.username || user.id,
+        displayName: user.fullName || user.username || "—",
         username: user.username || "-",
         position:
           user.position || user.department || user.businessUnit || "Recipient",

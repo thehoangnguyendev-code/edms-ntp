@@ -30,6 +30,12 @@ public class TrainingComplianceService {
         this.access = access;
     }
 
+    /**
+     * The coverage query for the department that the SQL expression gives: a parameter mark for one department, or a column of an outer query for every department. The Compliance
+     * screens and the Training Compliance Report Type share this one definition (REPORT-TRAINING-SOURCES-2026-11-12), so a report can never differ from the screen.
+     */
+    public static String coverageSql(String departmentExpression) { return BASE.replace("?::uuid", departmentExpression); }
+
     private static final String BASE = """
         with d as (select ?::uuid as id),
         ev as (select v.id from training_matrix_versions v join training_matrices mx on mx.id = v.matrix_id where mx.department_id = (select id from d) and v.status = 'EFFECTIVE'),
@@ -46,7 +52,7 @@ public class TrainingComplianceService {
            where u.status = 'Active'
              and (lower(trim(u.department)) = lower(trim((select name from departments where id = (select id from d)))) or p.department_id = (select id from d))),
         gaps as (
-          select distinct on (pe.pid, req.row_id) pe.pid, pe.full_name, pe.employee_code, pe.position_name, pe.is_new, pe.no_role, req.title, req.code, req.annual_required, req.all_employees,
+          select distinct on (pe.pid, req.row_id) req.row_id, pe.pid, pe.full_name, pe.employee_code, pe.position_name, pe.is_new, pe.no_role, req.title, req.code, req.annual_required, req.all_employees,
                  req.tname, req.dnum,
                  (select max(r.completed_on) from training_records r left join training_record_voids v on v.record_id = r.id
                    where r.person_user_id = pe.pid and v.id is null

@@ -28,6 +28,11 @@ public class AuditTrailReviewController {
         return ResponseEntity.ok(service.listCampaigns());
     }
 
+    @GetMapping("/reviewers")
+    public ResponseEntity<List<com.eqms.dto.audittrail.AuditTrailReviewDtos.ReviewerOption>> reviewers() {
+        return ResponseEntity.ok(service.reviewers());
+    }
+
     @GetMapping("/paged")
     public ResponseEntity<com.eqms.dto.user.PageResponse<CampaignSummaryResponse>> listPaged(
             @RequestParam(defaultValue = "1") int page,

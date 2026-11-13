@@ -1,0 +1,650 @@
+[
+ {
+  "where": "DCO /documents/controlled-copies/all",
+  "kind": "aria-label",
+  "uuid": "ffcd175f-5b72-4f28-94db-8b65ced18f61",
+  "context": "Expand controlled copy batch ffcd175f-5b72-4f28-94db-8b65ced18f61"
+ },
+ {
+  "where": "DCO /documents/controlled-copies/all",
+  "kind": "aria-label",
+  "uuid": "d06cd0e6-6d3a-4a6a-88c7-77bd7f920a96",
+  "context": "Expand controlled copy batch d06cd0e6-6d3a-4a6a-88c7-77bd7f920a96"
+ },
+ {
+  "where": "DCO /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "69163672-54d5-41b1-babf-c8f5fa7aeb32",
+  "context": "Expand revision 69163672-54d5-41b1-babf-c8f5fa7aeb32"
+ },
+ {
+  "where": "DCO /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "1bdb5510-3800-4a1b-99db-a0846735587a",
+  "context": "Expand revision 1bdb5510-3800-4a1b-99db-a0846735587a"
+ },
+ {
+  "where": "DCO /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "f2ceac77-a673-424c-89d9-efec84a462bb",
+  "context": "Expand revision f2ceac77-a673-424c-89d9-efec84a462bb"
+ },
+ {
+  "where": "DCO /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c",
+  "context": "Expand revision b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c"
+ },
+ {
+  "where": "DCO /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "56180465-dccf-45f4-b0c1-1a5d873a4f59",
+  "context": "Expand revision 56180465-dccf-45f4-b0c1-1a5d873a4f59"
+ },
+ {
+  "where": "DCO /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "9b28f96e-ac9c-483b-a81a-971cc3423d94",
+  "context": "Expand revision 9b28f96e-ac9c-483b-a81a-971cc3423d94"
+ },
+ {
+  "where": "DCO /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b",
+  "context": "Expand revision aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b"
+ },
+ {
+  "where": "DCO /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "7fa25559-c638-42df-9cbb-ff6e7579bc08",
+  "context": "Expand revision 7fa25559-c638-42df-9cbb-ff6e7579bc08"
+ },
+ {
+  "where": "DCO /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "3fc33695-c8af-42cf-824b-64dae26ff733",
+  "context": "Expand revision 3fc33695-c8af-42cf-824b-64dae26ff733"
+ },
+ {
+  "where": "DCO /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "50d76a37-590c-4878-ad60-6b0d7e6faaf4",
+  "context": "Expand revision 50d76a37-590c-4878-ad60-6b0d7e6faaf4"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "69163672-54d5-41b1-babf-c8f5fa7aeb32",
+  "context": "Expand revision 69163672-54d5-41b1-babf-c8f5fa7aeb32"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "1bdb5510-3800-4a1b-99db-a0846735587a",
+  "context": "Expand revision 1bdb5510-3800-4a1b-99db-a0846735587a"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "f2ceac77-a673-424c-89d9-efec84a462bb",
+  "context": "Expand revision f2ceac77-a673-424c-89d9-efec84a462bb"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c",
+  "context": "Expand revision b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "56180465-dccf-45f4-b0c1-1a5d873a4f59",
+  "context": "Expand revision 56180465-dccf-45f4-b0c1-1a5d873a4f59"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "9b28f96e-ac9c-483b-a81a-971cc3423d94",
+  "context": "Expand revision 9b28f96e-ac9c-483b-a81a-971cc3423d94"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b",
+  "context": "Expand revision aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "7fa25559-c638-42df-9cbb-ff6e7579bc08",
+  "context": "Expand revision 7fa25559-c638-42df-9cbb-ff6e7579bc08"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "3fc33695-c8af-42cf-824b-64dae26ff733",
+  "context": "Expand revision 3fc33695-c8af-42cf-824b-64dae26ff733"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "50d76a37-590c-4878-ad60-6b0d7e6faaf4",
+  "context": "Expand revision 50d76a37-590c-4878-ad60-6b0d7e6faaf4"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "69163672-54d5-41b1-babf-c8f5fa7aeb32",
+  "context": "Expand revision 69163672-54d5-41b1-babf-c8f5fa7aeb32"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "1bdb5510-3800-4a1b-99db-a0846735587a",
+  "context": "Expand revision 1bdb5510-3800-4a1b-99db-a0846735587a"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "f2ceac77-a673-424c-89d9-efec84a462bb",
+  "context": "Expand revision f2ceac77-a673-424c-89d9-efec84a462bb"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c",
+  "context": "Expand revision b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "56180465-dccf-45f4-b0c1-1a5d873a4f59",
+  "context": "Expand revision 56180465-dccf-45f4-b0c1-1a5d873a4f59"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "9b28f96e-ac9c-483b-a81a-971cc3423d94",
+  "context": "Expand revision 9b28f96e-ac9c-483b-a81a-971cc3423d94"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b",
+  "context": "Expand revision aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "7fa25559-c638-42df-9cbb-ff6e7579bc08",
+  "context": "Expand revision 7fa25559-c638-42df-9cbb-ff6e7579bc08"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "3fc33695-c8af-42cf-824b-64dae26ff733",
+  "context": "Expand revision 3fc33695-c8af-42cf-824b-64dae26ff733"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "50d76a37-590c-4878-ad60-6b0d7e6faaf4",
+  "context": "Expand revision 50d76a37-590c-4878-ad60-6b0d7e6faaf4"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "69163672-54d5-41b1-babf-c8f5fa7aeb32",
+  "context": "Expand revision 69163672-54d5-41b1-babf-c8f5fa7aeb32"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "1bdb5510-3800-4a1b-99db-a0846735587a",
+  "context": "Expand revision 1bdb5510-3800-4a1b-99db-a0846735587a"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "f2ceac77-a673-424c-89d9-efec84a462bb",
+  "context": "Expand revision f2ceac77-a673-424c-89d9-efec84a462bb"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c",
+  "context": "Expand revision b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "56180465-dccf-45f4-b0c1-1a5d873a4f59",
+  "context": "Expand revision 56180465-dccf-45f4-b0c1-1a5d873a4f59"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "9b28f96e-ac9c-483b-a81a-971cc3423d94",
+  "context": "Expand revision 9b28f96e-ac9c-483b-a81a-971cc3423d94"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b",
+  "context": "Expand revision aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "7fa25559-c638-42df-9cbb-ff6e7579bc08",
+  "context": "Expand revision 7fa25559-c638-42df-9cbb-ff6e7579bc08"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "3fc33695-c8af-42cf-824b-64dae26ff733",
+  "context": "Expand revision 3fc33695-c8af-42cf-824b-64dae26ff733"
+ },
+ {
+  "where": "DCO /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "50d76a37-590c-4878-ad60-6b0d7e6faaf4",
+  "context": "Expand revision 50d76a37-590c-4878-ad60-6b0d7e6faaf4"
+ },
+ {
+  "where": "SEC /security/access-profiles -> detail tab8",
+  "kind": "text",
+  "uuid": "f0fd24a1-45ab-494b-a518-dff5d1b87ca9",
+  "context": "User: Not specified → System Admin Two (f0fd24a1-45ab-494b-a518-dff5d1b87ca9) \tYes\t 12"
+ },
+ {
+  "where": "SEC /security/access-profiles -> detail tab8",
+  "kind": "title",
+  "uuid": "f0fd24a1-45ab-494b-a518-dff5d1b87ca9",
+  "context": "User: Not specified → System Admin Two (f0fd24a1-45ab-494b-a518-dff5d1b87ca9)"
+ },
+ {
+  "where": "U1 /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "69163672-54d5-41b1-babf-c8f5fa7aeb32",
+  "context": "Expand revision 69163672-54d5-41b1-babf-c8f5fa7aeb32"
+ },
+ {
+  "where": "U1 /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "1bdb5510-3800-4a1b-99db-a0846735587a",
+  "context": "Expand revision 1bdb5510-3800-4a1b-99db-a0846735587a"
+ },
+ {
+  "where": "U1 /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "f2ceac77-a673-424c-89d9-efec84a462bb",
+  "context": "Expand revision f2ceac77-a673-424c-89d9-efec84a462bb"
+ },
+ {
+  "where": "U1 /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c",
+  "context": "Expand revision b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c"
+ },
+ {
+  "where": "U1 /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "56180465-dccf-45f4-b0c1-1a5d873a4f59",
+  "context": "Expand revision 56180465-dccf-45f4-b0c1-1a5d873a4f59"
+ },
+ {
+  "where": "U1 /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "9b28f96e-ac9c-483b-a81a-971cc3423d94",
+  "context": "Expand revision 9b28f96e-ac9c-483b-a81a-971cc3423d94"
+ },
+ {
+  "where": "U1 /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b",
+  "context": "Expand revision aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b"
+ },
+ {
+  "where": "U1 /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "7fa25559-c638-42df-9cbb-ff6e7579bc08",
+  "context": "Expand revision 7fa25559-c638-42df-9cbb-ff6e7579bc08"
+ },
+ {
+  "where": "U1 /documents/revisions/all",
+  "kind": "aria-label",
+  "uuid": "3fc33695-c8af-42cf-824b-64dae26ff733",
+  "context": "Expand revision 3fc33695-c8af-42cf-824b-64dae26ff733"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "69163672-54d5-41b1-babf-c8f5fa7aeb32",
+  "context": "Expand revision 69163672-54d5-41b1-babf-c8f5fa7aeb32"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "1bdb5510-3800-4a1b-99db-a0846735587a",
+  "context": "Expand revision 1bdb5510-3800-4a1b-99db-a0846735587a"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "f2ceac77-a673-424c-89d9-efec84a462bb",
+  "context": "Expand revision f2ceac77-a673-424c-89d9-efec84a462bb"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c",
+  "context": "Expand revision b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "56180465-dccf-45f4-b0c1-1a5d873a4f59",
+  "context": "Expand revision 56180465-dccf-45f4-b0c1-1a5d873a4f59"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "9b28f96e-ac9c-483b-a81a-971cc3423d94",
+  "context": "Expand revision 9b28f96e-ac9c-483b-a81a-971cc3423d94"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b",
+  "context": "Expand revision aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "7fa25559-c638-42df-9cbb-ff6e7579bc08",
+  "context": "Expand revision 7fa25559-c638-42df-9cbb-ff6e7579bc08"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail",
+  "kind": "aria-label",
+  "uuid": "3fc33695-c8af-42cf-824b-64dae26ff733",
+  "context": "Expand revision 3fc33695-c8af-42cf-824b-64dae26ff733"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "69163672-54d5-41b1-babf-c8f5fa7aeb32",
+  "context": "Expand revision 69163672-54d5-41b1-babf-c8f5fa7aeb32"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "1bdb5510-3800-4a1b-99db-a0846735587a",
+  "context": "Expand revision 1bdb5510-3800-4a1b-99db-a0846735587a"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "f2ceac77-a673-424c-89d9-efec84a462bb",
+  "context": "Expand revision f2ceac77-a673-424c-89d9-efec84a462bb"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c",
+  "context": "Expand revision b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "56180465-dccf-45f4-b0c1-1a5d873a4f59",
+  "context": "Expand revision 56180465-dccf-45f4-b0c1-1a5d873a4f59"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "9b28f96e-ac9c-483b-a81a-971cc3423d94",
+  "context": "Expand revision 9b28f96e-ac9c-483b-a81a-971cc3423d94"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b",
+  "context": "Expand revision aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "7fa25559-c638-42df-9cbb-ff6e7579bc08",
+  "context": "Expand revision 7fa25559-c638-42df-9cbb-ff6e7579bc08"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "3fc33695-c8af-42cf-824b-64dae26ff733",
+  "context": "Expand revision 3fc33695-c8af-42cf-824b-64dae26ff733"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "69163672-54d5-41b1-babf-c8f5fa7aeb32",
+  "context": "Expand revision 69163672-54d5-41b1-babf-c8f5fa7aeb32"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "1bdb5510-3800-4a1b-99db-a0846735587a",
+  "context": "Expand revision 1bdb5510-3800-4a1b-99db-a0846735587a"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "f2ceac77-a673-424c-89d9-efec84a462bb",
+  "context": "Expand revision f2ceac77-a673-424c-89d9-efec84a462bb"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c",
+  "context": "Expand revision b3bcd9bf-91bf-4d5e-9808-0d3c99d1872c"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "56180465-dccf-45f4-b0c1-1a5d873a4f59",
+  "context": "Expand revision 56180465-dccf-45f4-b0c1-1a5d873a4f59"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "9b28f96e-ac9c-483b-a81a-971cc3423d94",
+  "context": "Expand revision 9b28f96e-ac9c-483b-a81a-971cc3423d94"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b",
+  "context": "Expand revision aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "7fa25559-c638-42df-9cbb-ff6e7579bc08",
+  "context": "Expand revision 7fa25559-c638-42df-9cbb-ff6e7579bc08"
+ },
+ {
+  "where": "U1 /documents/revisions/all -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "3fc33695-c8af-42cf-824b-64dae26ff733",
+  "context": "Expand revision 3fc33695-c8af-42cf-824b-64dae26ff733"
+ },
+ {
+  "where": "U1 /documents/revisions/owned",
+  "kind": "aria-label",
+  "uuid": "69163672-54d5-41b1-babf-c8f5fa7aeb32",
+  "context": "Expand revision 69163672-54d5-41b1-babf-c8f5fa7aeb32"
+ },
+ {
+  "where": "U1 /documents/revisions/owned",
+  "kind": "aria-label",
+  "uuid": "1bdb5510-3800-4a1b-99db-a0846735587a",
+  "context": "Expand revision 1bdb5510-3800-4a1b-99db-a0846735587a"
+ },
+ {
+  "where": "U1 /documents/revisions/owned",
+  "kind": "aria-label",
+  "uuid": "f2ceac77-a673-424c-89d9-efec84a462bb",
+  "context": "Expand revision f2ceac77-a673-424c-89d9-efec84a462bb"
+ },
+ {
+  "where": "U1 /documents/revisions/owned",
+  "kind": "aria-label",
+  "uuid": "56180465-dccf-45f4-b0c1-1a5d873a4f59",
+  "context": "Expand revision 56180465-dccf-45f4-b0c1-1a5d873a4f59"
+ },
+ {
+  "where": "U1 /documents/revisions/owned",
+  "kind": "aria-label",
+  "uuid": "9b28f96e-ac9c-483b-a81a-971cc3423d94",
+  "context": "Expand revision 9b28f96e-ac9c-483b-a81a-971cc3423d94"
+ },
+ {
+  "where": "U1 /documents/revisions/owned",
+  "kind": "aria-label",
+  "uuid": "aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b",
+  "context": "Expand revision aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b"
+ },
+ {
+  "where": "U1 /documents/revisions/owned",
+  "kind": "aria-label",
+  "uuid": "3fc33695-c8af-42cf-824b-64dae26ff733",
+  "context": "Expand revision 3fc33695-c8af-42cf-824b-64dae26ff733"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail",
+  "kind": "aria-label",
+  "uuid": "69163672-54d5-41b1-babf-c8f5fa7aeb32",
+  "context": "Expand revision 69163672-54d5-41b1-babf-c8f5fa7aeb32"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail",
+  "kind": "aria-label",
+  "uuid": "1bdb5510-3800-4a1b-99db-a0846735587a",
+  "context": "Expand revision 1bdb5510-3800-4a1b-99db-a0846735587a"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail",
+  "kind": "aria-label",
+  "uuid": "f2ceac77-a673-424c-89d9-efec84a462bb",
+  "context": "Expand revision f2ceac77-a673-424c-89d9-efec84a462bb"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail",
+  "kind": "aria-label",
+  "uuid": "56180465-dccf-45f4-b0c1-1a5d873a4f59",
+  "context": "Expand revision 56180465-dccf-45f4-b0c1-1a5d873a4f59"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail",
+  "kind": "aria-label",
+  "uuid": "9b28f96e-ac9c-483b-a81a-971cc3423d94",
+  "context": "Expand revision 9b28f96e-ac9c-483b-a81a-971cc3423d94"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail",
+  "kind": "aria-label",
+  "uuid": "aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b",
+  "context": "Expand revision aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail",
+  "kind": "aria-label",
+  "uuid": "3fc33695-c8af-42cf-824b-64dae26ff733",
+  "context": "Expand revision 3fc33695-c8af-42cf-824b-64dae26ff733"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "69163672-54d5-41b1-babf-c8f5fa7aeb32",
+  "context": "Expand revision 69163672-54d5-41b1-babf-c8f5fa7aeb32"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "1bdb5510-3800-4a1b-99db-a0846735587a",
+  "context": "Expand revision 1bdb5510-3800-4a1b-99db-a0846735587a"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "f2ceac77-a673-424c-89d9-efec84a462bb",
+  "context": "Expand revision f2ceac77-a673-424c-89d9-efec84a462bb"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "56180465-dccf-45f4-b0c1-1a5d873a4f59",
+  "context": "Expand revision 56180465-dccf-45f4-b0c1-1a5d873a4f59"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "9b28f96e-ac9c-483b-a81a-971cc3423d94",
+  "context": "Expand revision 9b28f96e-ac9c-483b-a81a-971cc3423d94"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b",
+  "context": "Expand revision aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail tab0",
+  "kind": "aria-label",
+  "uuid": "3fc33695-c8af-42cf-824b-64dae26ff733",
+  "context": "Expand revision 3fc33695-c8af-42cf-824b-64dae26ff733"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "69163672-54d5-41b1-babf-c8f5fa7aeb32",
+  "context": "Expand revision 69163672-54d5-41b1-babf-c8f5fa7aeb32"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "1bdb5510-3800-4a1b-99db-a0846735587a",
+  "context": "Expand revision 1bdb5510-3800-4a1b-99db-a0846735587a"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "f2ceac77-a673-424c-89d9-efec84a462bb",
+  "context": "Expand revision f2ceac77-a673-424c-89d9-efec84a462bb"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "56180465-dccf-45f4-b0c1-1a5d873a4f59",
+  "context": "Expand revision 56180465-dccf-45f4-b0c1-1a5d873a4f59"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "9b28f96e-ac9c-483b-a81a-971cc3423d94",
+  "context": "Expand revision 9b28f96e-ac9c-483b-a81a-971cc3423d94"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b",
+  "context": "Expand revision aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b"
+ },
+ {
+  "where": "U1 /documents/revisions/owned -> detail tab1",
+  "kind": "aria-label",
+  "uuid": "3fc33695-c8af-42cf-824b-64dae26ff733",
+  "context": "Expand revision 3fc33695-c8af-42cf-824b-64dae26ff733"
+ }
+]

@@ -54,6 +54,8 @@ public record DocumentDetailResponse(
          *  changes (a new Revision becomes EFFECTIVE, or its published PDF is regenerated) -- lets
          *  the FE detect a stale-showing preview without re-downloading the PDF bytes just to
          *  compare them. Null when there is no published PDF yet (no cache-busting needed). */
-        String previewVersionToken
+        String previewVersionToken,
+        /** Lifecycle stepper (steps, current step, step reached when it ended), worked out on the server. */
+        WorkflowProgressResponse workflow
 ) {
 }

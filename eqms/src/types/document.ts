@@ -1,22 +1,27 @@
-export * from './documentTypes';
 
 /**
- * Global Document Statuses
- * Follows the standard document lifecycle: Draft -> Review -> Approval -> Training -> Effective -> Obsoleted
+ * Label of a Document / Revision status as the server names it. The statuses, their order and their codes live in
+ * the status lookup tables on the server; the client never lists them.
  */
-export type DocumentStatus = 
-  | "Draft" 
-  | "Active"
-  | "Pending Review" 
-  | "Pending Approval" 
-  | "Approved" 
-  | "Pending Training" 
-  | "Ready for Publishing" 
-  | "Published" 
-  | "Effective" 
-  | "Archive"
-  | "Obsoleted"
-  | "Closed - Cancelled";
+export type DocumentStatus = string;
+
+/** One step of a Document or Revision lifecycle, as the server defines it. */
+export interface WorkflowStep {
+  code: string;
+  label: string;
+  /** The status ends the lifecycle (Obsoleted, Closed - Cancelled). */
+  terminal: boolean;
+}
+
+/** What a lifecycle stepper shows for one record. Worked out on the server; the screen only draws it. */
+export interface WorkflowProgress {
+  steps: WorkflowStep[];
+  currentStepIndex: number;
+  /** Labels of steps the record never went through. */
+  skippedSteps: string[];
+  /** Label of the step reached when the record ended; empty while it runs or when the history does not say. */
+  terminalProgressStep: string;
+}
 
 /**
  * Base Document Interface
@@ -26,7 +31,7 @@ export interface Document {
   id: string;               // Database UUID
   documentNumber: string;   // Canonical document code (e.g., SOP-QA-001)
   documentName: string;
-  type: DocumentType | string;
+  type: string;
   status: DocumentStatus;
   department: string;
   businessUnit?: string;
@@ -44,6 +49,8 @@ export interface Document {
     id: string;
     name: string;
   };
+  /** Lifecycle stepper for this Document, from the server. */
+  workflow?: WorkflowProgress;
 }
 
 /** Specialized shape for document lists/summaries */

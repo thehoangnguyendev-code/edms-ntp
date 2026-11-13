@@ -1514,7 +1514,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
             onPointerEnter={prefetchChildren}
             onPointerDown={prefetchChildren}
             onFocus={prefetchChildren}
-            aria-label={`${isExpanded ? "Collapse" : "Expand"} controlled copy batch ${batchId}`}
+            aria-label={`${isExpanded ? "Collapse" : "Expand"} controlled copy batch ${(copy as any).batchNumber || (copy as any).distributionBatchNumber || (copy as any).controlledCopyNumber || ""}`}
             aria-expanded={isExpanded}
             className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-lg hover:bg-slate-200 transition-colors mx-auto"
           >
@@ -1587,11 +1587,11 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         return expiryDate ? formatDateUS(expiryDate) : "-";
       },
     },
-    { id: "document", header: "Document", label: "Document", sort: { direction: sortConfig.key === "document" ? sortConfig.direction : undefined, onSort: () => handleSort("document") }, cell: (copy) => <span className="font-medium text-slate-900">{formatDocumentLabel(copy)}</span> },
+    { id: "document", header: "Document", label: "Document", sort: { direction: sortConfig.key === "document" ? sortConfig.direction : undefined, onSort: () => handleSort("document") }, cell: (copy) => (copy.documentId ? <button type="button" className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left" onClick={() => navigateTo(ROUTES.DOCUMENTS.DETAIL(copy.documentId!))}>{formatDocumentLabel(copy)}</button> : <span className="font-medium text-slate-900">{formatDocumentLabel(copy)}</span>) },
     { id: "distributionList", header: "Distribution List", label: "Distribution List", sort: { direction: sortConfig.key === "distributionList" ? sortConfig.direction : undefined, onSort: () => handleSort("distributionList") }, cell: (copy) => getControlledCopyDistributionListText(copy) || "-" },
     { id: "recallDate", header: "Recall Date", label: "Recall Date", sort: { direction: sortConfig.key === "recallDate" ? sortConfig.direction : undefined, onSort: () => handleSort("recallDate") }, cell: (copy) => (copy.recallDate ? formatDateUS(copy.recallDate) : "-") },
     { id: "recallReason", header: "Reason for Recall", label: "Reason for Recall", sort: { direction: sortConfig.key === "recallReason" ? sortConfig.direction : undefined, onSort: () => handleSort("recallReason") }, cell: (copy) => copy.recallReason || "-" },
-    { id: "documentRevision", header: "Document Revision", label: "Document Revision", sort: { direction: sortConfig.key === "documentRevision" ? sortConfig.direction : undefined, onSort: () => handleSort("documentRevision") }, cell: (copy) => <span className="font-medium text-slate-900">{formatDocumentRevisionLabel(copy)}</span> },
+    { id: "documentRevision", header: "Document Revision", label: "Document Revision", sort: { direction: sortConfig.key === "documentRevision" ? sortConfig.direction : undefined, onSort: () => handleSort("documentRevision") }, cell: (copy) => (copy.sourceRevisionId ? <button type="button" className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left" onClick={() => navigateTo(ROUTES.DOCUMENTS.REVISIONS.DETAIL(copy.sourceRevisionId!))}>{formatDocumentRevisionLabel(copy)}</button> : <span className="font-medium text-slate-900">{formatDocumentRevisionLabel(copy)}</span>) },
     { id: "lastUpdated", header: "Last Updated", label: "Last Updated", sort: { direction: sortConfig.key === "lastUpdated" ? sortConfig.direction : undefined, onSort: () => handleSort("lastUpdated") }, cell: (copy) => (copy.lastUpdatedAt ? formatDateTime(copy.lastUpdatedAt) : "-") },
   ];
   const controlledAction: DataTableAction<Row> = {

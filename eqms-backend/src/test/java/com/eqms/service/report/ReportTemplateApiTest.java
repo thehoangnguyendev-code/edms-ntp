@@ -40,6 +40,14 @@ class ReportTemplateApiTest {
         mvc.perform(get("/reports/templates")).andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("REPORT_SCOPE_DENIED"))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("private"))));
     }
+    @Test void aGmpTemplateRefusedToAnOrdinaryApproverSaysWhyAndNothingElseIsLeaked() throws Exception {
+        var templates=mock(ReportTemplateService.class);var users=mock(CurrentUserService.class);var actor=new UserAccount();when(users.requireCurrentUser()).thenReturn(actor);
+        when(templates.approve(eq(actor),eq("QA_REGISTER"),eq(2),any(),any())).thenThrow(new SecurityException("REPORT_GMP_APPROVER_REQUIRED"));
+        var mvc=MockMvcBuilders.standaloneSetup(new ReportTemplateController(templates,users)).setControllerAdvice(new ReportAccessExceptionHandler(),new GlobalExceptionHandler()).build();
+        mvc.perform(post("/reports/templates/QA_REGISTER/approve").contentType("application/json").content("{\"version\":2,\"reason\":\"ok\",\"signatureToken\":\"tok\"}"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("REPORT_GMP_APPROVER_REQUIRED"))
+                .andExpect(jsonPath("$.error.message").value(org.hamcrest.Matchers.containsString("GMP")));
+    }
     @Test void staleTemplateIsConflictAndInvalidCriteriaAreBadRequest() throws Exception {
         var templates=mock(ReportTemplateService.class);var users=mock(CurrentUserService.class);var actor=new UserAccount();when(users.requireCurrentUser()).thenReturn(actor);
         when(templates.preview(eq(actor),eq("QA_REGISTER"),any(),eq(1))).thenThrow(new ResponseStatusException(HttpStatus.CONFLICT,"REPORT_TEMPLATE_VERSION_CHANGED"))

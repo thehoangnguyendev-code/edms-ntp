@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { trainingError, trainingMatrixApi, type TrainingPersonPosition, type TrainingPosition } from "@/services/api/trainingActivities";
@@ -55,7 +54,7 @@ export function PersonJobRolesPanel() {
       <ReportListToolbar framed={false} searchPlaceholder="Search name, employee ID or Work Position…" search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
         filters={filters} dates={[]} hasActiveFilters={Boolean(held || departmentFilter || roleFilter || table.searchQuery)} onClear={() => { setHeld(""); setDepartmentFilter(""); setRoleFilter(""); table.setSearchQuery(""); table.setCurrentPage(1); }} customControl={control}>
         <div aria-busy={table.isLoading}>
-        <DataTable rows={table.items} getRowKey={(r) => r.personId} isLoading={table.isLoading && !hasLoaded} loadingContent={<SectionLoading text="Loading people…" />} columns={columns} columnLayout={layout}
+        <DataTable rows={table.items} getRowKey={(r) => r.personId} isLoading={table.isLoading && !hasLoaded} columns={columns} columnLayout={layout}
           emptyState={<TableEmptyState title="No People" description="Try changing your search or filter." />}
           pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined} />
         </div>

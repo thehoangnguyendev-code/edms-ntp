@@ -37,7 +37,8 @@ export function useStickyPinnedColumns(
           cell.style.backgroundColor = isHeader ? "#f8fafc" : "#ffffff";
           // The divider marks the edge of the fixed block: the last pinned column carries it.
           // box-shadow sits inside the cell, so it shows whatever the table's border model is.
-          cell.style.boxShadow = id === lastId ? "inset -1px 0 0 #e2e8f0" : "";
+          // A cell that already draws its own right border needs no second line (the table uses separate borders, so both would show).
+          cell.style.boxShadow = id === lastId && parseFloat(getComputedStyle(cell).borderRightWidth) === 0 ? "inset -1px 0 0 #e2e8f0" : "";
           cell.dataset.pinned = "true";
         });
         const header = root.querySelector<HTMLElement>(`thead [${attr}="${id}"]`);

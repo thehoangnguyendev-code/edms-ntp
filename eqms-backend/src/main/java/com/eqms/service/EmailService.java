@@ -37,6 +37,9 @@ public class EmailService {
 
     private record CachedSender(String configHash, JavaMailSenderImpl sender) {}
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private EmailDesignService emailDesignService;
+
     public EmailService(
             SystemConfigurationService systemConfigurationService,
             EmailTemplateService emailTemplateService
@@ -180,6 +183,14 @@ public class EmailService {
         return sendRenderedEmail(to, subject, htmlBody, null, null);
     }
 
+    private String framed(String body) {
+        if (body == null || com.eqms.util.EmailFrameRenderer.isFullDocument(body)) {
+            return body;
+        }
+        String content = com.eqms.util.EmailFrameRenderer.paragraphs(body);
+        return emailDesignService == null ? com.eqms.util.EmailFrameRenderer.render(null, content) : emailDesignService.frame(content);
+    }
+
     /** A rendered mail with one attachment (the attendance list of a training as PDF, for example); with no attachment it is the plain mail. */
     public boolean sendRenderedEmail(String to, String subject, String htmlBody, String attachmentFileName, byte[] attachmentBytes) throws Exception {
         SystemConfiguration config = systemConfigurationService.requireConfiguration();
@@ -203,7 +214,8 @@ public class EmailService {
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
         helper.setTo(to);
         helper.setSubject(stripHeaderInjectionChars(subject));
-        helper.setText(htmlBody, true);
+        // every mail has the one look of the system: a body that is not already a whole page is put in the shared frame
+        helper.setText(framed(htmlBody), true);
         helper.setFrom(senderEmail, senderName);
         if (attachmentBytes != null && attachmentBytes.length > 0 && StringUtils.hasText(attachmentFileName)) {
             helper.addAttachment(attachmentFileName, new org.springframework.core.io.ByteArrayResource(attachmentBytes));

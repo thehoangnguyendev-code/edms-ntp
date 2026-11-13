@@ -12,15 +12,15 @@ import java.util.Set;
 public final class AdministrativeOperationCatalog {
     private AdministrativeOperationCatalog() {}
     private static final Set<String> ADMIN_CONTROLLERS = Set.of(
-            "AdministrativeNetworkPolicyController", "NotificationPolicyController", "SecurityAccessProfileController",
+            "AdministrativeNetworkPolicyController", "NotificationPolicyController", "NotificationAdministrationController", "SecurityAccessProfileController",
             "SecurityPermissionSetController", "LifecycleStatePolicyController", "ObjectAccessRuleController",
             "SodConstraintController", "WorkflowActionPolicyController", "ReportConfigurationController",
             "EmailTemplateController", "StorageUsageController", "SettingsAnnouncementController",
             "AccessReviewController", "KnowledgeShareOversightController", "AuthorizationParticipantReconciliationController",
             "AuthorizationShadowEvaluationController", "EffectiveAccessDiagnosisController",
-            "BackupAlertController", "BackupDrDrillController", "BackupDrPlanController", "BackupExportController",
-            "BackupInspectionController", "BackupPolicyController", "BackupRehearsalController",
-            "BackupRestoreController", "BackupRestoreRequestController", "BackupRestoreRulesController",
+            "BackupAlertController", "BackupDrPlanController",
+            "BackupPolicyController", "BackupRehearsalController",
+            "BackupRestoreController", "BackupProductionRestoreController",
             "ReportPropertiesController", "ReportNameFormatController", "ReportTypeController",
             "ReportLayoutController", "KnowledgeHierarchyController", "KnowledgeComponentController"
     );
@@ -35,7 +35,7 @@ public final class AdministrativeOperationCatalog {
             Map.entry("com.eqms.controller.DocumentTypeAdminController", Set.of(
                     "createDocumentType", "updateDocumentType", "createDocumentSubType", "updateDocumentSubType")),
             Map.entry("com.eqms.controller.SecurityAccessProfileController", Set.of(
-                    "create", "createFull", "updateConfiguration", "setManagedPermissions",
+                    "createFull", "updateConfiguration", "setManagedPermissions",
                     "update", "delete", "duplicate", "toggleStatus", "setPermissionSets",
                     "addPermissionSet", "removePermissionSet", "setWorkflowRoles", "addWorkflowRole",
                     "removeWorkflowRole", "assignUser", "removeUser")),
@@ -58,7 +58,7 @@ public final class AdministrativeOperationCatalog {
             Map.entry("com.eqms.controller.ControlledCopyPolicyController", Set.of("getPolicy", "savePolicy", "markingPreview")),
             Map.entry("com.eqms.controller.UncontrolledCopyPolicyController", Set.of("getPolicy", "savePolicy", "markingPreview", "listEligibilityRules", "listEligibilityRulesPaged", "createEligibilityRule", "updateEligibilityRule", "deleteEligibilityRule")),
             Map.entry("com.eqms.controller.ReportConfigurationController", Set.of("list", "get", "update", "updateFields", "history")),
-            Map.entry("com.eqms.controller.EmailTemplateController", Set.of("getAllTemplates", "exportTemplates", "getTemplateById", "createTemplate", "updateTemplate", "deleteTemplate", "duplicateTemplate", "toggleStatus", "getVersionHistory", "publishTemplate", "restoreTemplateVersion", "previewTemplate", "previewDraftTemplate", "testSendTemplate")),
+            Map.entry("com.eqms.controller.EmailTemplateController", Set.of("getAllTemplates", "getTemplateTypes", "exportTemplates", "getTemplateById", "updateTemplate", "toggleStatus", "getVersionHistory", "publishTemplate", "restoreTemplateVersion", "previewTemplate", "previewDraftTemplate", "testSendTemplate")),
             Map.entry("com.eqms.controller.PublishingTemplateController", Set.of("savePlaceholderStyles", "deletePlaceholderStyle", "createTemplate", "updateTemplate", "duplicateTemplate", "toggleStatus", "deleteTemplate", "uploadComponent", "deleteComponent"))
     );
 

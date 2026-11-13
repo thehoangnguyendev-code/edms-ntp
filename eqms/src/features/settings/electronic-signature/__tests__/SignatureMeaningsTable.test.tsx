@@ -10,8 +10,8 @@ import { SignatureMeaningsTable } from "../SignatureMeaningsTable";
 
 const page = () => ({
   data: [
-    { id: "1", code: "APPROVED", displayName: "Approved", module: "APPROVED", updatedAt: "2026-10-13T03:28:52Z" },
-    { id: "2", code: "BACKUP_DR_TARGET_CHANGE", displayName: "Disaster Recovery Target Change", module: "BACKUP", updatedAt: null },
+    { id: "1", code: "APPROVED", actionName: "Approved", displayName: "Approved", module: "APPROVED", updatedAt: "2026-10-13T03:28:52Z" },
+    { id: "2", code: "BACKUP_DR_TARGET_CHANGE", actionName: "Disaster Recovery Target Change", displayName: "DR Target (renamed)", module: "BACKUP", updatedAt: null },
   ],
   pagination: { page: 1, limit: 10, total: 2, totalPages: 1 },
   modules: ["APPROVED", "BACKUP"],
@@ -32,20 +32,23 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("SignatureMeaningsTable", () => {
-  it("asks the server for a page, sorted by code, and shows code, module and display name", async () => {
+  it("asks the server for a page, sorted by code, and shows the action, the code, the module and the meaning", async () => {
     renderTable();
 
     expect(await screen.findByText("BACKUP_DR_TARGET_CHANGE")).toBeTruthy();
     expect(api.meaningsPage).toHaveBeenCalledWith(expect.objectContaining({ sortBy: "code", sortDirection: "asc", page: 1 }));
-    expect((screen.getByLabelText("Display name of APPROVED") as HTMLInputElement).value).toBe("Approved");
+    expect((screen.getByLabelText("Meaning of APPROVED") as HTMLInputElement).value).toBe("Approved");
+    // the action keeps its own name; what is typed shows over the meaning the server holds
+    expect(screen.getByText("Disaster Recovery Target Change")).toBeTruthy();
+    expect((screen.getByLabelText("Meaning of BACKUP_DR_TARGET_CHANGE") as HTMLInputElement).value).toBe("Disaster Recovery Target Change");
   });
 
   it("reports a renamed display name without changing the server's rows, and shows what is typed over them", async () => {
     const onRename = renderTable({ meanings: [{ code: "APPROVED", displayName: "Signed Off" }, { code: "BACKUP_DR_TARGET_CHANGE", displayName: "Disaster Recovery Target Change" }] });
 
     await screen.findByText("BACKUP_DR_TARGET_CHANGE");
-    expect((screen.getByLabelText("Display name of APPROVED") as HTMLInputElement).value).toBe("Signed Off");
-    fireEvent.change(screen.getByLabelText("Display name of BACKUP_DR_TARGET_CHANGE"), { target: { value: "DR Target" } });
+    expect((screen.getByLabelText("Meaning of APPROVED") as HTMLInputElement).value).toBe("Signed Off");
+    fireEvent.change(screen.getByLabelText("Meaning of BACKUP_DR_TARGET_CHANGE"), { target: { value: "DR Target" } });
     expect(onRename).toHaveBeenCalledWith("BACKUP_DR_TARGET_CHANGE", "DR Target");
   });
 
@@ -53,7 +56,7 @@ describe("SignatureMeaningsTable", () => {
     renderTable({ canEdit: false });
 
     await screen.findByText("BACKUP_DR_TARGET_CHANGE");
-    expect((screen.getByLabelText("Display name of APPROVED") as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText("Meaning of APPROVED") as HTMLInputElement).disabled).toBe(true);
   });
 
   it("asks the server again when the settings were saved", async () => {

@@ -126,6 +126,13 @@ export const Popover: React.FC<PopoverProps> = ({
     if (!mounted || !popoverRef.current || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
     setComputed(computePosition(rect, popoverRef.current, placement));
+    // Tailwind's CDN generates a class the first time it appears in the DOM, a moment after this
+    // measurement, so the first open can be measured at the wrong width: measure once more next frame.
+    const raf = requestAnimationFrame(() => {
+      if (!popoverRef.current || !triggerRef.current) return;
+      setComputed(computePosition(triggerRef.current.getBoundingClientRect(), popoverRef.current, placement));
+    });
+    return () => cancelAnimationFrame(raf);
   }, [mounted, placement]);
 
   // ── 2. Trigger open transition AFTER position is committed ──────────────────

@@ -781,7 +781,7 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
           <Select
             value={formData.headOfUnitId}
             onChange={(value) => setFormData({ ...formData, headOfUnitId: String(value) })}
-            options={formData.headOfUnitId ? [{ label: formData.headOfUnitLabel || formData.headOfUnitId, value: formData.headOfUnitId }] : []}
+            options={formData.headOfUnitId ? [{ label: formData.headOfUnitLabel || "—", value: formData.headOfUnitId }] : []}
             onSearch={searchHeadOfUnitOptions}
             enableSearch
             placeholder="Search and select a user..."

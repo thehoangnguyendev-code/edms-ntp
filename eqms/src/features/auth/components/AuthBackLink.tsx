@@ -17,7 +17,7 @@ export const AuthBackLink: React.FC<AuthBackLinkProps> = ({ onClick, label, disa
       >
         <ArrowLeft size={16} />
       </span>
-      <span className="text-xs leading-5 text-slate-500 sm:text-sm sm:leading-7">{label}</span>
+      <span className="text-sm leading-6 text-slate-500 sm:leading-7">{label}</span>
     </button>
   );
 };

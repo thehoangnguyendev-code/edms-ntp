@@ -40,7 +40,6 @@ const KnowledgeLinkPage = lazy(() => import('@/features/self-service/knowledge/K
 const KnowledgeDocumentPreviewPage = lazy(() => import('@/features/self-service/knowledge/KnowledgeDocumentPreviewPage').then(m => ({ default: m.KnowledgeDocumentPreviewPage })));
 const OnlyOfficeEditorPage = lazy(() => import('@/features/documents/shared/pages/OnlyOfficeEditorPage').then(m => ({ default: m.OnlyOfficeEditorPage })));
 const NotificationsView = lazy(() => import('@/features/notifications').then(m => ({ default: m.NotificationsView })));
-const CalendarView = lazy(() => import('@/features/calendar/CalendarView').then(m => ({ default: m.CalendarView })));
 
 // ==================== MAIN ROUTES ====================
 
@@ -280,7 +279,8 @@ export const AppRoutes: React.FC = () => {
       <Route
         path={ROUTES.DOCUMENTS.KNOWLEDGE_EXPLORER}
         element={
-          <ProtectedRoute requiredPermissions={["documents.module.view", "self_service.knowledge.view"]}>
+          /* The Knowledge Base is its own permission (DC-VISIBILITY-TIERS-2026-11-07): it must not depend on, nor be opened by, the Document Control module permission. */
+          <ProtectedRoute requiredPermissions={["self_service.knowledge.view"]}>
             <SessionTimeoutGuard />
             <Suspense fallback={<LoadingFallback />}>
               <KnowledgeExplorerPage />
@@ -425,7 +425,6 @@ export const AppRoutes: React.FC = () => {
         {/* Dashboard & Notifications are baseline surfaces for every authenticated user — auth-only guard, no permission gate (same policy as Work Management) */}
         <Route path="dashboard" element={<ProtectedRoute requiredPermissions={["dashboard.module.view"]}><Suspense fallback={<LoadingFallback />}><DashboardView /></Suspense></ProtectedRoute>} />
         <Route path="notifications" element={<ProtectedRoute requiredPermissions={["notifications.module.view"]}><Suspense fallback={<LoadingFallback />}><NotificationsView /></Suspense></ProtectedRoute>} />
-        <Route path="calendar" element={<ProtectedRoute><Suspense fallback={<LoadingFallback />}><CalendarView /></Suspense></ProtectedRoute>} />
         {/* Self-Service > Knowledge -- moved out of the Documents module; Dashboard above is also
             a Self-Service child but keeps its long-standing top-level /dashboard path. */}
         {/* the address of the old Knowledge Base page (bookmarks, e-mails already sent) leads to the Explorer */}

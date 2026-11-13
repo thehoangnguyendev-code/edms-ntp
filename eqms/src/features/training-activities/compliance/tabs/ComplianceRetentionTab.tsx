@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { trainingError, trainingFollowUpApi, type TrainingRetentionRow } from "@/services/api/trainingActivities";
@@ -62,7 +61,7 @@ export function ComplianceRetentionTab({ departmentId, departmentFilter }: { dep
         customControl={control} framed={false} flush
       >
         <DataTable
-          rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading} loadingContent={<SectionLoading text="Loading…" />}
+          rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading}
           columns={columns} columnLayout={layout}
           emptyState={<TableEmptyState title="Nobody has left" description="No person of the department who has left has training records." />}
           pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined}

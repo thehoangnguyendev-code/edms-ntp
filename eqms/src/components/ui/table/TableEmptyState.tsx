@@ -1,15 +1,30 @@
-import React from "react";
-import { Search } from "lucide-react";
+import React, { useLayoutEffect, useRef, useState } from "react";
+import noResultImage from "@/assets/images/image-file/no_result.svg";
 
 export interface TableEmptyStateProps {
+  /** Replaces the default "no result" illustration. */
   icon?: React.ReactNode;
   title?: string;
   description?: string;
 }
 
+/** Nearest ancestor that scrolls horizontally (the table's drag-scroll wrapper); null when the page itself scrolls. */
+function findHorizontalScroller(el: HTMLElement): HTMLElement | null {
+  for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+    const overflowX = getComputedStyle(node).overflowX;
+    if (overflowX === "auto" || overflowX === "scroll" || overflowX === "hidden") return node;
+  }
+  return null;
+}
+
 /**
  * Table Empty State Component
  * Hiển thị khi không có dữ liệu sau khi filter
+ *
+ * The empty state usually sits in a cell that spans every column. On a wide table that cell is
+ * wider than the screen, so centred content would end up off-screen. The block is therefore pinned
+ * to the left edge (sticky) and sized to the visible width of the scrolling wrapper, so it stays
+ * centred in view however far the table is scrolled.
  *
  * @example
  * ```tsx
@@ -24,17 +39,41 @@ export const TableEmptyState: React.FC<TableEmptyStateProps> = ({
   title = "No Results Found",
   description = "We couldn't find any items matching your filters. Try adjusting your search criteria.",
 }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const scroller = findHorizontalScroller(el);
+    if (!scroller) return;
+    const measure = () => setWidth(scroller.clientWidth);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(scroller);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="flex flex-col items-center justify-center py-8 sm:py-12 md:py-16 px-3 sm:px-4 bg-white text-center">
-      <div className="h-11 w-11 sm:h-14 sm:w-14 md:h-16 md:w-16 bg-slate-50 rounded-full flex items-center justify-center mb-2.5 sm:mb-3 md:mb-4 [&>svg]:h-5 [&>svg]:w-5 sm:[&>svg]:h-7 sm:[&>svg]:w-7 md:[&>svg]:h-8 md:[&>svg]:w-8">
-        {icon || <Search className="h-5 w-5 sm:h-7 sm:w-7 md:h-8 md:w-8 text-slate-300" />}
+    <div
+      ref={ref}
+      style={width ? { width } : undefined}
+      className="animate-fade-in sticky left-0 flex w-full max-w-full flex-col items-center justify-center bg-white px-3 py-6 text-center sm:px-4 sm:py-10 md:py-12"
+    >
+      <div className="mb-2 flex w-full items-center justify-center sm:mb-3">
+        {icon ?? (
+          <img
+            src={noResultImage}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            className="h-auto w-36 max-w-full select-none sm:w-48 md:w-60 lg:w-64"
+          />
+        )}
       </div>
-      <h3 className="text-sm sm:text-base md:text-lg font-bold text-slate-900 mb-1">
-        {title}
-      </h3>
-      <p className="text-xs sm:text-sm md:text-base text-slate-500 max-w-xs sm:max-w-sm mx-auto">
-        {description}
-      </p>
+      <h3 className="mb-1 text-sm font-bold text-slate-900 sm:text-base md:text-lg">{title}</h3>
+      <p className="mx-auto max-w-xs text-xs text-slate-500 sm:max-w-sm sm:text-sm md:text-base">{description}</p>
     </div>
   );
 };

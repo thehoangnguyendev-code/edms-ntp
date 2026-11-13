@@ -289,6 +289,7 @@ export interface RevisionUpgradeImpactItemResponse {
   status?: string | null;
   statusInfo?: { id?: string | null; name?: string | null; code?: string | null; label?: string | null } | null;
   type?: string | null;
+  typeShortCode?: string | null;
   businessUnit?: string | null;
   department?: string | null;
   author?: string | null;
@@ -492,6 +493,12 @@ export const documentApi = {
       responseType: "blob",
     });
     return response.data as Blob;
+  },
+
+  /** GET /documents/workflow-steps -- the Revision and Document lifecycles in order, for screens that draw a stepper before a record exists. */
+  getWorkflowSteps: async () => {
+    const response = await api.get<{ revision: import('@/types/document').WorkflowStep[]; document: import('@/types/document').WorkflowStep[]; legacyImportSkippedSteps: string[] }>(`${DOCUMENTS_ENDPOINT}/workflow-steps`);
+    return response.data;
   },
 
   /** GET /documents/filters */
@@ -2001,6 +2008,13 @@ export const documentApi = {
 
     controlledCopyByIdRequestCache.set(id, request);
     return request;
+  },
+
+  /** GET /controlled-copies/:id/workflow (or /batches/:id/workflow) -- the lifecycle stepper, worked out on the server. */
+  getControlledCopyWorkflow: async (id: string, isBatch = false) => {
+    const path = isBatch ? `batches/${id}/workflow` : `${id}/workflow`;
+    const response = await api.get<import('@/types/document').WorkflowProgress>(`${CONTROLLED_COPIES_ENDPOINT}/${path}`);
+    return response.data;
   },
 
   /** GET /controlled-copies/:id/detail */

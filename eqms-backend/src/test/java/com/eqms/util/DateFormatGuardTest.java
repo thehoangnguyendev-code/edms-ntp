@@ -29,7 +29,6 @@ class DateFormatGuardTest {
             "dd/MM/yyyy", "dd/MM/yyyy HH:mm:ss", "dd/MM/yyyy HH:mm", "dd/MM/uuuu HH:mm:ss",
             "HH:mm",                    // a time of day of a notification window
             "yyyy",                     // the year in a signature number
-            "MMMM yyyy",                // the title of a month of the calendar
             "yyyy-MM-dd'T'HH:mm");      // what a datetime-local field sends (parsed, never shown)
 
     /** Files that may read an ISO text or cut one (they parse a value, they do not show it). */
@@ -67,7 +66,7 @@ class DateFormatGuardTest {
             Matcher m = variable.matcher(read(p));
             while (m.find()) {
                 boolean fromTheUtility = m.group(1).startsWith("DATE_PATTERN") || m.group(1).startsWith("DATETIME_PATTERN") || m.group(1).startsWith("DateTimeFormatUtils.");
-                boolean catalogControlled = name.equals("ElectronicSignatureRendererService.java") && m.group(1).equals("pattern");
+                boolean catalogControlled = name.equals("ElectronicSignatureRendererService.java") && (m.group(1).equals("pattern") || m.group(1).equals("SIGNATURE_TIMESTAMP_PATTERN"));
                 if (!fromTheUtility && !catalogControlled) found.add(name + ": ofPattern(" + m.group(1) + ")");
             }
         }

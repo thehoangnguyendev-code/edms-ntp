@@ -4,7 +4,7 @@ import com.eqms.entity.UserAccount;
 import com.eqms.entity.UserStatus;
 import com.eqms.repository.UserAccountRepository;
 import com.eqms.service.EmailService;
-import com.eqms.service.NotificationService;
+import com.eqms.service.NotificationDispatcher;
 import com.eqms.service.PermissionEvaluationService;
 import com.eqms.service.SystemConfigurationService;
 import org.slf4j.Logger;
@@ -26,15 +26,15 @@ public class MaintenanceAdminAlerts {
 
     private final UserAccountRepository users;
     private final PermissionEvaluationService permissions;
-    private final NotificationService notifications;
+    private final NotificationDispatcher dispatcher;
     private final EmailService email;
     private final SystemConfigurationService configuration;
 
-    public MaintenanceAdminAlerts(UserAccountRepository users, PermissionEvaluationService permissions, NotificationService notifications,
+    public MaintenanceAdminAlerts(UserAccountRepository users, PermissionEvaluationService permissions, NotificationDispatcher dispatcher,
                                   EmailService email, SystemConfigurationService configuration) {
         this.users = users;
         this.permissions = permissions;
-        this.notifications = notifications;
+        this.dispatcher = dispatcher;
         this.email = email;
         this.configuration = configuration;
     }
@@ -49,8 +49,12 @@ public class MaintenanceAdminAlerts {
                 .filter(u -> permissions.hasPermission(u, BYPASS_PERMISSION))
                 .toList();
         for (UserAccount admin : admins) {
-            notifications.recordNotification(admin, null, "personal", "backup", "BACKUP_MAINTENANCE_DRAINED", title, message,
-                    "/backup-restore", null, null, requestId, null, "high", null);
+            try {
+                dispatcher.dispatchIndependently(com.eqms.service.OperationalNotificationEvents.BACKUP_MAINTENANCE_DRAINED, List.of(admin),
+                        NotificationDispatcher.noticeVariables(title, message, "/backup-restore"));
+            } catch (RuntimeException failure) {
+                log.warn("The maintenance notice for {} could not be sent to {}: {}", requestId, admin.getUsername(), failure.getMessage());
+            }
         }
         sendEmail(requestId, title, message);
         return admins.size();

@@ -30,7 +30,7 @@ class ReportArtifactPublisherFailureTest {
         publisher().fail(runId, 1, new IllegalArgumentException("REPORT_ROW_LIMIT_EXCEEDED"));
 
         verify(jdbc).update(anyString(), eq("FAILED"), eq("REPORT_ROW_LIMIT_EXCEEDED"),
-                eq("The result has more than 10,000 rows. Add a filter to narrow it and start a new request."), any(), eq(runId));
+                eq("The result has more rows than a report file may hold. Add a filter to narrow it and start a new request."), any(), eq(runId));
     }
 
     @Test

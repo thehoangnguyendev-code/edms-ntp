@@ -6,7 +6,6 @@ import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { FilterSearchInput } from "@/components/ui/filter/FilterSearchInput";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { trainingFollowUpApi, type TrainingImpactPosition } from "@/services/api/trainingActivities";
@@ -48,7 +47,7 @@ export function ImpactPositionsTable({ activityId, selected, onChange }: { activ
       </div>
       <div className={refreshing ? "pointer-events-none opacity-60 transition-opacity" : "transition-opacity"} aria-busy={refreshing}>
       <DataTable
-        rows={table.items} getRowKey={(p) => p.id} isLoading={table.isLoading && !refreshing} loadingContent={<SectionLoading text="Loading Work Positions…" />}
+        rows={table.items} getRowKey={(p) => p.id} isLoading={table.isLoading && !refreshing}
         columns={columns}
         selection={{
           visible: true,

@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 class AuditTrailReportSourceTest {
     private final AuditTrailReportMetadataProvider audit = new AuditTrailReportMetadataProvider();
     private final EffectivePermissionService permissions = mock(EffectivePermissionService.class);
-    private final ReportTypeService types = new ReportTypeService(mock(JdbcTemplate.class), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider(), audit));
+    private final ReportTypeService types = new ReportTypeService(mock(JdbcTemplate.class), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything()), audit));
 
     private UserAccount actor(String... codes) {
         UserAccount user = new UserAccount();

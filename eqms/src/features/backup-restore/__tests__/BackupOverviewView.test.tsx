@@ -2,10 +2,13 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
+import { ToastProvider } from "@/components/ui/toast/Toast";
 import type { BackupOverview } from "@/services/api/backupRestore";
 import { BackupOverviewView, groupAlerts, toAlerts } from "../views/BackupOverviewView";
 
-const api = vi.hoisted(() => ({ overview: vi.fn(), overviewDaily: vi.fn() }));
+const api = vi.hoisted(() => ({ overview: vi.fn(), overviewDaily: vi.fn(), storeScrubs: vi.fn(), manualCopyStatus: vi.fn(), startStoreScrub: vi.fn() }));
+const perms = vi.hoisted(() => ({ granted: new Set<string>() }));
+vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermission: (code: string) => perms.granted.has(code) }) }));
 vi.mock("@/services/api/backupRestore", () => ({ backupRestoreApi: api }));
 
 const healthy: BackupOverview = {
@@ -23,16 +26,24 @@ const alert = (id: string, code: string, severity: string, at: string, detail = 
 
 const renderOverview = () =>
   render(
-    <BreadcrumbProvider>
-      <MemoryRouter>
-        <BackupOverviewView />
-      </MemoryRouter>
-    </BreadcrumbProvider>,
+    <ToastProvider>
+      <BreadcrumbProvider>
+        <MemoryRouter>
+          <BackupOverviewView />
+        </MemoryRouter>
+      </BreadcrumbProvider>
+    </ToastProvider>,
   );
 
 beforeEach(() => {
   api.overview.mockReset();
   api.overviewDaily.mockReset();
+  api.storeScrubs.mockReset();
+  api.manualCopyStatus.mockReset();
+  api.startStoreScrub.mockReset();
+  perms.granted = new Set(["backup.module.view", "backup.backup.verify"]);
+  api.storeScrubs.mockResolvedValue({ data: [], pagination: { page: 1, limit: 1, total: 0, totalPages: 1 } });
+  api.manualCopyStatus.mockResolvedValue({ declared: true, description: "Safe", everyDays: 7, lastCopiedOn: "2026-11-10", nextDueOn: "2026-11-17", state: "ON_TIME" });
   api.overviewDaily.mockResolvedValue([{ date: "2026-10-08", completed: 2, failed: 1, notVerified: 1 }]);
 });
 afterEach(cleanup);
@@ -111,11 +122,44 @@ describe("BackupOverviewView", () => {
     await waitFor(() => expect(screen.getByText("None yet")).toBeTruthy());
   });
 
-  it("tells what is not covered yet instead of implying it is fine", async () => {
+  it("says when the file store was last checked and what the check found, from the server", async () => {
+    api.overview.mockResolvedValue(healthy);
+    api.storeScrubs.mockResolvedValue({
+      data: [{ id: "s1", trigger: "SCHEDULED", requestedBy: "system:scrub", startedAt: "2026-11-09T20:30:00Z", finishedAt: "2026-11-09T20:31:00Z", status: "COMPLETED", backupNumber: "BK-1", checkedFiles: 120, checkedBytes: 5000, differentFiles: 1, missingFiles: 0, referenceDifferences: 0, errorCode: null }],
+      pagination: { page: 1, limit: 1, total: 1, totalPages: 1 },
+    });
+    renderOverview();
+    const card = await screen.findByRole("region", { name: "File store check" });
+    expect(await within(card).findByText("Differences found")).toBeTruthy();
+    expect(within(card).getByText("120")).toBeTruthy();
+    expect(api.storeScrubs).toHaveBeenCalledWith({ page: 1, limit: 1 });
+  });
+
+  it("says when no file store check has run, and starts one only for a person who may verify", async () => {
+    api.overview.mockResolvedValue(healthy);
+    api.startStoreScrub.mockResolvedValue({ jobId: "j-9" });
+    renderOverview();
+    const card = await screen.findByRole("region", { name: "File store check" });
+    expect(await within(card).findByText(/No check has run yet/)).toBeTruthy();
+    fireEvent.click(within(card).getByRole("button", { name: "Check Now" }));
+    await waitFor(() => expect(api.startStoreScrub).toHaveBeenCalled());
+    cleanup();
+    perms.granted = new Set(["backup.module.view"]);
+    renderOverview();
+    const again = await screen.findByRole("region", { name: "File store check" });
+    expect(within(again).queryByRole("button", { name: "Check Now" })).toBeNull();
+  });
+
+  it("shows the manual copy as the policy asks for it, and says nothing when it may not be read", async () => {
     api.overview.mockResolvedValue(healthy);
     renderOverview();
-    const card = await screen.findByRole("region", { name: "Not covered yet" });
-    expect(within(card).getByText("Object storage and file backups")).toBeTruthy();
+    const card = await screen.findByRole("region", { name: "Manual copy" });
+    expect(within(card).getByText("On time")).toBeTruthy();
+    cleanup();
+    api.manualCopyStatus.mockRejectedValue(new Error("forbidden"));
+    renderOverview();
+    await screen.findByRole("region", { name: "File store check" });
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Manual copy" })).toBeNull());
   });
 });
 

@@ -11,6 +11,16 @@ public final class DateRangeFilter {
 
     private DateRangeFilter() { }
 
+    /** The day a dd/MM/yyyy text names, or null when it is empty or not a real date (31/02/2026): a list then simply does not filter by it. */
+    public static LocalDate dayOrNull(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            LocalDate day = LocalDate.parse(value.trim(), FORMAT);
+            // the lenient parser moves 31/02 to 28/02: only a text that names the day it stands for is a date
+            return day.format(FORMAT).equals(value.trim()) ? day : null;
+        } catch (RuntimeException ignored) { return null; }
+    }
+
     public static boolean matches(Instant value, String from, String to) {
         if ((from == null || from.isBlank()) && (to == null || to.isBlank())) return true;
         if (value == null) return false;

@@ -29,7 +29,7 @@ class ReportTypeServiceTest {
     private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
     private final EffectivePermissionService permissions = mock(EffectivePermissionService.class);
     private final AuditTrailService audit = mock(AuditTrailService.class);
-    private final ReportMetadataProvider documents = new DocumentReportMetadataProvider();
+    private final ReportMetadataProvider documents = new DocumentReportMetadataProvider(ReportTestVisibility.everything());
     private final ReportMetadataProvider audits = new FakeProvider("AUDIT_TRAIL", "Audit Trail", "Audit", List.of("audit.view"));
     private final ReportTypeService service = new ReportTypeService(jdbc, permissions, audit, List.of(documents, audits));
 
@@ -37,7 +37,7 @@ class ReportTypeServiceTest {
     private static class FakeProvider extends DocumentReportMetadataProvider {
         private final String code, name, category;
         private final List<String> use;
-        FakeProvider(String code, String name, String category, List<String> use) { this.code = code; this.name = name; this.category = category; this.use = use; }
+        FakeProvider(String code, String name, String category, List<String> use) { super(ReportTestVisibility.everything()); this.code = code; this.name = name; this.category = category; this.use = use; }
         @Override public String code() { return code; }
         @Override public String name() { return name; }
         @Override public String category() { return category; }

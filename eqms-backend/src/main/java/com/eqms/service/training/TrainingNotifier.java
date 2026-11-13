@@ -1,8 +1,7 @@
 package com.eqms.service.training;
 
 import com.eqms.entity.UserAccount;
-import com.eqms.service.EmailNotificationService;
-import com.eqms.service.NotificationService;
+import com.eqms.service.NotificationDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -13,30 +12,30 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
-import org.springframework.web.util.HtmlUtils;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 /**
  * Notices of Training Management: an in-app notice and an e-mail to the person who has something to do (a step to sign, a training to attend, an assignment to
- * accept). A notice is sent after the business change is committed, in a transaction of its own, so a failure to notify never undoes or blocks the work; every notice
- * (sent, failed or skipped) is written to {@code training_notification_log}. A reminder carries a key so that it is sent once for each person and day.
+ * accept). A notice goes through the notification registry ({@link TrainingNotificationEvents}), so the policy of the event (on or off, channels, wording, icon)
+ * and the shared e-mail design apply. A notice is sent after the business change is committed, in a transaction of its own, so a failure to notify never undoes
+ * or blocks the work; every notice (sent, failed or skipped) is written to {@code training_notification_log}. A reminder carries a key so that it is sent once
+ * for each person and day. The e-mail is "sent" when it is queued in the outbox, whose own record tells whether it was delivered. A notice whose e-mail carries a
+ * file (the attendance list and the results sent to QA) goes the same way: the outbox seals the file with the wording and sends it with the e-mail.
  */
 @Component
 public class TrainingNotifier {
     private static final Logger log = LoggerFactory.getLogger(TrainingNotifier.class);
-    public static final String MODULE = "Training";
 
     private final JdbcTemplate jdbc;
-    private final NotificationService notifications;
-    private final EmailNotificationService email;
+    private final NotificationDispatcher dispatcher;
     private final TransactionTemplate separate;
 
-    public TrainingNotifier(JdbcTemplate jdbc, NotificationService notifications, EmailNotificationService email, PlatformTransactionManager transactions) {
+    public TrainingNotifier(JdbcTemplate jdbc, NotificationDispatcher dispatcher, PlatformTransactionManager transactions) {
         this.jdbc = jdbc;
-        this.notifications = notifications;
-        this.email = email;
+        this.dispatcher = dispatcher;
         this.separate = new TransactionTemplate(transactions);
         this.separate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -105,32 +104,58 @@ public class TrainingNotifier {
     }
 
     private void deliver(String event, UserAccount recipient, UserAccount sender, String title, String message, String objectType, UUID objectId, String dedupeKey, String attachmentName, byte[] attachment) {
-        String path = path(objectType, objectId);
+        boolean withFile = attachment != null;
         UUID inApp = claim(event, recipient, "IN_APP", title, objectType, objectId, dedupeKey);
-        if (inApp != null) {
-            try {
-                var created = notifications.recordNotification(recipient, sender, "personal", MODULE, event.toLowerCase().replace('_', '-'), title, message, path, objectType, objectId, null, title, "medium", null);
-                finish(inApp, created == null ? "SKIPPED" : "SENT", created == null ? "PREFERENCE_OFF" : null);
-            } catch (Exception failure) {
-                finish(inApp, "FAILED", failure.getClass().getSimpleName());
-            }
-        }
         UUID mail = claim(event, recipient, "EMAIL", title, objectType, objectId, dedupeKey);
-        if (mail != null) {
-            if (!StringUtils.hasText(recipient.getEmail())) {
-                finish(mail, "SKIPPED", "NO_EMAIL_ADDRESS");
-                return;
-            }
-            try {
-                String link = email.resolvePublicAppBaseUrl() + path;
-                String body = "<p>" + HtmlUtils.htmlEscape(com.eqms.util.DateTimeFormatUtils.normalizeText(message)) + "</p><p><a href=\"" + HtmlUtils.htmlEscape(link) + "\">Open in EQMS</a></p>";
-                boolean sent = email.sendRenderedEmailWithTracking(recipient.getEmail(), "EQMS: " + com.eqms.util.DateTimeFormatUtils.normalizeText(title), body, event, "TRAINING",
-                        Map.of("fullName", StringUtils.hasText(recipient.getFullName()) ? recipient.getFullName() : recipient.getUsername()), attachmentName, attachment);
-                finish(mail, sent ? "SENT" : "FAILED", sent ? null : "EMAIL_NOT_SENT");
-            } catch (Exception failure) {
-                finish(mail, "FAILED", failure.getClass().getSimpleName());
-            }
+        if (inApp == null && mail == null) return; // the same keyed notice was already sent
+        Map<String, String> variables = NotificationDispatcher.noticeVariables(title, message, path(objectType, objectId));
+        addContext(variables, sender, objectType, objectId);
+        variables.put("recipientName", StringUtils.hasText(recipient.getFullName()) ? recipient.getFullName() : String.valueOf(recipient.getUsername()));
+        NotificationDispatcher.Outcome outcome;
+        try {
+            // a transaction of its own: a failure of the dispatch must not roll back the log of the notice
+            outcome = withFile
+                    ? dispatcher.dispatchIndependently(TrainingNotificationEvents.registryCode(event), List.of(recipient), variables, new NotificationDispatcher.MailFile(attachmentName, attachment))
+                    : dispatcher.dispatchIndependently(TrainingNotificationEvents.registryCode(event), List.of(recipient), variables);
+        } catch (Exception failure) {
+            if (inApp != null) finish(inApp, "FAILED", failure.getClass().getSimpleName());
+            if (mail != null) finish(mail, "FAILED", failure.getClass().getSimpleName());
+            return;
         }
+        if (outcome == null) outcome = new NotificationDispatcher.Outcome("NOT_REGISTERED", false, false, false, false);
+        if (inApp != null) {
+            finish(inApp, outcome.inAppSent() ? "SENT" : "SKIPPED", outcome.inAppReason());
+        }
+        if (mail != null) {
+            finish(mail, outcome.emailSent() ? "SENT" : "SKIPPED", outcome.emailReason(StringUtils.hasText(recipient.getEmail())));
+        }
+    }
+
+    /**
+     * The placeholders an administrator can write into the wording of a Training notice, found from the record the notice is about (the training, the requirement)
+     * and from the person who acted. A value that cannot be found is left out, so the placeholder shows empty and the notice is still sent.
+     */
+    private void addContext(Map<String, String> variables, UserAccount sender, String objectType, UUID objectId) {
+        if (sender != null && StringUtils.hasText(sender.getFullName())) variables.put("actorName", sender.getFullName());
+        if (objectId == null) return;
+        try {
+            if ("TRAINING_ACTIVITY".equals(objectType)) {
+                jdbc.queryForList("select training_number, document_number, due_date from training_activities where id = ?", objectId).stream().findFirst().ifPresent(row -> {
+                    putIfPresent(variables, "trainingNumber", row.get("training_number"));
+                    putIfPresent(variables, "documentNumber", row.get("document_number"));
+                    putIfPresent(variables, "trainingDueDate", row.get("due_date") == null ? null : com.eqms.util.DateTimeFormatUtils.formatDate(row.get("due_date")));
+                });
+            } else if ("TRAINING_REQUIREMENT".equals(objectType)) {
+                jdbc.queryForList("select request_no from training_requirements where id = ?", objectId).stream().findFirst()
+                        .ifPresent(row -> putIfPresent(variables, "requestNumber", row.get("request_no")));
+            }
+        } catch (RuntimeException failure) {
+            log.debug("The context of the Training notice {} could not be read: {}", objectId, failure.getMessage());
+        }
+    }
+
+    private static void putIfPresent(Map<String, String> variables, String name, Object value) {
+        if (value != null && StringUtils.hasText(String.valueOf(value))) variables.put(name, String.valueOf(value));
     }
 
     /** Takes the place of the notice in the log; null when the same keyed notice was already sent to this person on this channel. */

@@ -46,7 +46,7 @@ export const WarningBanner: React.FC<WarningBannerProps> = ({
   return (
     <div
       className={cn(
-        "rounded-lg border px-4 py-2.5 text-xs leading-relaxed",
+        "animate-fade-in rounded-lg border px-4 py-2.5 text-xs leading-relaxed",
         variantStyles.wrapper,
         className
       )}

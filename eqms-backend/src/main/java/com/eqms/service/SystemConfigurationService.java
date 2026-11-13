@@ -70,6 +70,14 @@ public class SystemConfigurationService {
     /** Stateless apart from its render cache; the controller serving the icons has its own instance. Only the version and the checks are used here. */
     private final PwaBrandingService pwaBranding = new PwaBrandingService();
 
+    private com.eqms.repository.InAppDesignRepository inAppDesignRepository;
+
+    /** Set by Spring; a setter keeps the constructor as it is (the design is read only to publish the toast). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setInAppDesignRepository(com.eqms.repository.InAppDesignRepository inAppDesignRepository) {
+        this.inAppDesignRepository = inAppDesignRepository;
+    }
+
     public SystemConfigurationService(
             SystemConfigurationRepository repository,
             UserAccountRepository userRepository,
@@ -192,8 +200,6 @@ public class SystemConfigurationService {
         validatePageBackgrounds(nextGeneral);
         JsonNode videoBackground = nextGeneral.path("appearance").path("authBackground");
         if ("video".equals(videoBackground.path("mode").asText()) && (authBackgroundVideoStore == null || !authBackgroundVideoStore.exists(UUID.fromString(videoBackground.path("videoId").asText())))) throw new IllegalArgumentException("Authentication background video does not exist");
-        validateToastPosition(nextGeneral);
-        validateToastDuration(nextGeneral);
         validateTrainingMaterialsLayout(nextGeneral);
         validateKnowledgeFolderNames(nextGeneral);
         validateSystemHeaderTitle(nextGeneral);
@@ -208,7 +214,9 @@ public class SystemConfigurationService {
             validateDocumentsConfig(request.documents());
         }
         config.setDocumentsConfig(mergeDocumentsConfig(request.documents(), config.getDocumentsConfig()));
+        validateNotificationRetention(request.notifications());
         config.setNotificationsConfig(defaultIfNull(request.notifications(), config.getNotificationsConfig()));
+        validateStorageProvider(request.integrations());
         config.setIntegrationsConfig(request.integrations() == null
                 ? config.getIntegrationsConfig()
                 : mergeIntegrationsConfigForStorage(request.integrations(), config.getIntegrationsConfig()));
@@ -360,6 +368,8 @@ public class SystemConfigurationService {
     public com.eqms.dto.configuration.PublicBrandingResponse getPublicBranding() {
         JsonNode general = requireConfiguration().getGeneralConfig();
         JsonNode appearance = general == null ? null : general.get("appearance");
+        // the look of the toast is the in-app notification design of the Notifications Administration
+        com.eqms.entity.InAppDesign inAppDesign = inAppDesignRepository == null ? new com.eqms.entity.InAppDesign() : inAppDesignRepository.findAll().stream().findFirst().orElseGet(com.eqms.entity.InAppDesign::new);
         return new com.eqms.dto.configuration.PublicBrandingResponse(
                 textValue(general, "systemDisplayName"),
                 textValue(general, "systemLogo"),
@@ -374,8 +384,10 @@ public class SystemConfigurationService {
                 publicPageBackground(appearance, "mainBackground"),
                 publicPageBackground(appearance, "authBackground"),
                 publicPageBackground(appearance, "knowledgeBackground"),
-                toastPosition(appearance),
-                toastDurationSeconds(appearance),
+                inAppDesign.getToastPosition(),
+                inAppDesign.getToastDurationSeconds(),
+                inAppDesign.getToastColor(),
+                inAppDesign.getToastShadow(),
                 trainingMaterialsLayout(appearance),
                 knowledgeFolderNames(appearance),
                 knowledgeSidebarFolderNames(appearance),
@@ -465,30 +477,6 @@ public class SystemConfigurationService {
         }
     }
 
-    /** Machine values only; the admin UI owns the labels. Missing or unknown values fall back to the top-right default. */
-    static final java.util.Set<String> TOAST_POSITIONS = java.util.Set.of("center", "top-right", "top-left", "bottom-right", "bottom-left");
-    static final String DEFAULT_TOAST_POSITION = "top-right";
-
-    String toastPosition(JsonNode appearance) {
-        String value = appearance == null ? null : textValue(appearance, "toastPosition");
-        return value != null && TOAST_POSITIONS.contains(value) ? value : DEFAULT_TOAST_POSITION;
-    }
-
-    static final int DEFAULT_TOAST_SECONDS = 5, MIN_TOAST_SECONDS = 2, MAX_TOAST_SECONDS = 60;
-
-    int toastDurationSeconds(JsonNode appearance) {
-        JsonNode value = appearance == null ? null : appearance.get("toastDurationSeconds");
-        return value != null && value.isInt() && value.asInt() >= MIN_TOAST_SECONDS && value.asInt() <= MAX_TOAST_SECONDS ? value.asInt() : DEFAULT_TOAST_SECONDS;
-    }
-
-    static void validateToastDuration(JsonNode general) {
-        JsonNode appearance = general == null ? null : general.get("appearance");
-        JsonNode seconds = appearance == null ? null : appearance.get("toastDurationSeconds");
-        if (seconds != null && !seconds.isNull() && (!seconds.isInt() || seconds.asInt() < MIN_TOAST_SECONDS || seconds.asInt() > MAX_TOAST_SECONDS)) {
-            throw new IllegalArgumentException("toastDurationSeconds must be a whole number from " + MIN_TOAST_SECONDS + " to " + MAX_TOAST_SECONDS);
-        }
-    }
-
     /** Machine values only; the admin UI owns the labels. Missing or unknown values fall back to the table. */
     static final java.util.Set<String> TRAINING_MATERIALS_LAYOUTS = java.util.Set.of("TABLE", "TILES");
     static final String DEFAULT_TRAINING_MATERIALS_LAYOUT = "TABLE";
@@ -528,14 +516,6 @@ public class SystemConfigurationService {
         JsonNode layout = appearance == null ? null : appearance.get("trainingMaterialsLayout");
         if (layout != null && !layout.isNull() && (!layout.isTextual() || !TRAINING_MATERIALS_LAYOUTS.contains(layout.asText()))) {
             throw new IllegalArgumentException("trainingMaterialsLayout must be one of " + TRAINING_MATERIALS_LAYOUTS);
-        }
-    }
-
-    static void validateToastPosition(JsonNode general) {
-        JsonNode appearance = general == null ? null : general.get("appearance");
-        JsonNode position = appearance == null ? null : appearance.get("toastPosition");
-        if (position != null && (!position.isTextual() || !TOAST_POSITIONS.contains(position.asText()))) {
-            throw new IllegalArgumentException("toastPosition must be one of " + TOAST_POSITIONS);
         }
     }
 
@@ -1074,6 +1054,17 @@ public class SystemConfigurationService {
         return new SecurityConfigurationResponse(getSessionTimeoutMinutes(saved), isSessionTimeoutEnabled(saved));
     }
 
+    /** The days read in-app notifications are kept: 0 (for ever), or from 30 to 3650 days. Empty leaves the default (180). */
+    static void validateNotificationRetention(JsonNode notifications) {
+        if (notifications == null) return;
+        JsonNode days = notifications.path("inAppRetentionDays");
+        if (days.isMissingNode() || days.isNull()) return;
+        if (!days.isInt() || (days.asInt() != 0 && (days.asInt() < NotificationRetentionScheduler.MIN_DAYS || days.asInt() > NotificationRetentionScheduler.MAX_DAYS))) {
+            throw new IllegalArgumentException("Keep read in-app notifications for 0 (for ever) or for " + NotificationRetentionScheduler.MIN_DAYS + " to "
+                    + NotificationRetentionScheduler.MAX_DAYS + " days.");
+        }
+    }
+
     public SystemConfiguration requireConfiguration() {
         SystemConfiguration config = repository.findByConfigKey(DEFAULT_CONFIG_KEY)
                 .orElseGet(() -> repository.save(buildDefaultConfiguration()));
@@ -1420,23 +1411,7 @@ public class SystemConfigurationService {
               "maintenanceMode": false,
               "dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
               "timeZone": "Asia/Ho_Chi_Minh",
-              "companyInfo": {
-                "companyName": "ACME Corporation",
-                "companyAddress": "123 Business Street, Tech City, TC 12345",
-                "companyPhone": "+1-555-0123",
-                "companyWebsite": "https://www.acme-corp.com",
-                "taxId": "TAX-123456789",
-                "industry": "Pharmaceutical Manufacturing",
-                "regulatoryBody": "FDA, ISO 9001:2015"
-              },
-              "backupSettings": {
-                "enableAutoBackup": true,
-                "backupFrequency": "daily",
-                "backupTime": "02:00",
-                "retentionDays": 30,
-                "backupLocation": "cloud",
-                "notifyOnBackupFailure": true
-              },
+              "backupSettings": {},
               "locale": {
                 "language": "en",
                 "numberFormat": "en-US",
@@ -1524,27 +1499,6 @@ public class SystemConfigurationService {
             """));
         String integrationsConfigJson = String.format(Locale.ROOT, """
             {
-              "sso": {
-                "enableSso": false,
-                "provider": "azure-ad",
-                "entityId": "",
-                "ssoUrl": "",
-                "certificate": "",
-                "autoProvisionUsers": false,
-                "defaultRole": "viewer"
-              },
-              "ldap": {
-                "enableLdap": false,
-                "serverUrl": "",
-                "baseDn": "",
-                "bindDn": "",
-                "bindPassword": "",
-                "userSearchFilter": "(sAMAccountName={username})",
-                "groupSearchFilter": "(member={dn})",
-                "syncSchedule": "daily",
-                "lastSyncDate": ""
-              },
-              "webhooks": [],
               "storage": {
                 "provider": "minio",
                 "minioEndpoint": "%s",
@@ -1561,13 +1515,7 @@ public class SystemConfigurationService {
                 "minioRetentionYears": %d,
                 "enableCdn": false,
                 "cdnUrl": ""
-              },
-              "enableApiKeyAuth": true,
-              "apiRateLimitPerMinute": 60,
-              "corsAllowedOrigins": [
-                "https://eqms.company.com",
-                "https://admin.eqms.company.com"
-              ]
+              }
             }
             """,
                 defaultMinioEndpoint,
@@ -1716,6 +1664,20 @@ public class SystemConfigurationService {
     }
 
     /** Server-side limits for the Documents policy (the screens clamp too, but the API is also called directly). */
+    /** Only the providers that really store files: MinIO, a NAS and the local folder. The cloud providers once offered were never connected. */
+    static void validateStorageProvider(JsonNode integrations) {
+        if (integrations == null) {
+            return;
+        }
+        JsonNode provider = integrations.path("storage").path("provider");
+        if (provider.isMissingNode() || provider.isNull() || provider.asText().isBlank()) {
+            return;
+        }
+        if (!java.util.Set.of("local", "minio", "nas").contains(provider.asText().toLowerCase(Locale.ROOT))) {
+            throw new IllegalArgumentException("The storage provider '" + provider.asText() + "' is not supported. Use MinIO, a NAS or the local server folder.");
+        }
+    }
+
     private void validateDocumentsConfig(JsonNode documents) {
         if (!documents.isObject()) {
             throw new IllegalArgumentException("Documents configuration must be an object");
@@ -1819,7 +1781,7 @@ public class SystemConfigurationService {
     private void validateSecurityConfig(JsonNode securityConfig) {
         JsonNode enabled = securityConfig == null ? null : securityConfig.get("sessionTimeoutEnabled");
         if (enabled != null && !enabled.isBoolean()) throw new IllegalArgumentException("Session timeout enabled must be true or false");
-        if (securityConfig == null || securityConfig.get("sessionTimeoutMinutes") == null || securityConfig.get("sessionTimeoutMinutes").isNull()) {
+        if (securityConfig == null) {
             return;
         }
         JsonNode passwordMinLengthNode = securityConfig.get("passwordMinLength");
@@ -1860,12 +1822,15 @@ public class SystemConfigurationService {
                 throw new IllegalArgumentException("Password History Count must be between 3 and 24");
             }
         }
-        if (!securityConfig.get("sessionTimeoutMinutes").isNumber()) {
-            throw new IllegalArgumentException("Session Timeout (Minutes) must be an integer");
-        }
-        int value = securityConfig.get("sessionTimeoutMinutes").asInt();
-        if (value < 1 || value > 1440) {
-            throw new IllegalArgumentException("Session Timeout (Minutes) must be between 1 and 1440");
+        JsonNode sessionTimeoutNode = securityConfig.get("sessionTimeoutMinutes");
+        if (sessionTimeoutNode != null && !sessionTimeoutNode.isNull()) {
+            if (!sessionTimeoutNode.isNumber()) {
+                throw new IllegalArgumentException("Session Timeout (Minutes) must be an integer");
+            }
+            int value = sessionTimeoutNode.asInt();
+            if (value < 1 || value > 1440) {
+                throw new IllegalArgumentException("Session Timeout (Minutes) must be between 1 and 1440");
+            }
         }
         JsonNode maxLoginAttemptsNode = securityConfig.get("maxLoginAttempts");
         if (maxLoginAttemptsNode != null && !maxLoginAttemptsNode.isNull()) {

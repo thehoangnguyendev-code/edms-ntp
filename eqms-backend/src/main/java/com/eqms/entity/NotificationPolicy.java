@@ -74,6 +74,14 @@ public class NotificationPolicy {
     @JoinColumn(name = "updated_by")
     private UserAccount updatedBy;
 
+    /** The icon of the in-app notification (NotificationPolicyService.ICON_KEY); null means the icon of its kind. */
+    @Column(name = "icon", length = 40)
+    private String icon;
+
+    /** The tone of the colour of that icon (one of NotificationPolicyService.ICON_TONES); null means the tone of its kind. */
+    @Column(name = "icon_tone", length = 20)
+    private String iconTone;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
@@ -86,6 +94,10 @@ public class NotificationPolicy {
     public void setEventCode(String eventCode) { this.eventCode = eventCode; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getIcon() { return icon; }
+    public void setIcon(String icon) { this.icon = icon; }
+    public String getIconTone() { return iconTone; }
+    public void setIconTone(String iconTone) { this.iconTone = iconTone; }
     public String getEnabledChannels() { return enabledChannels; }
     public void setEnabledChannels(String enabledChannels) { this.enabledChannels = enabledChannels; }
     public JsonNode getRecipientRules() { return recipientRules; }

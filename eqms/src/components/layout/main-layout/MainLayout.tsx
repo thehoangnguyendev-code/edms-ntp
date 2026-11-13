@@ -19,6 +19,7 @@ import { authApi } from '@/services/api/auth';
 import { settingsApi } from '@/services/api/settings';
 import { SECURITY_CONFIG_STORAGE_KEY } from '@/config/security';
 import { AnnouncementHost } from '../AnnouncementHost';
+import { RouteFade } from './RouteFade';
 import { subscribeNotificationRealtime } from '@/features/notifications/notificationRealtime';
 
 const MainLayoutContent: React.FC = () => {
@@ -409,7 +410,9 @@ const MainLayoutContent: React.FC = () => {
               <main className="w-full px-4 pt-2 pb-6 md:px-6 md:pt-3 lg:px-8 lg:pt-4">
                 <div className="w-full max-w-[1920px] mx-auto space-y-4 md:space-y-6">
                   <AnnouncementHost />
-                  <Outlet />
+                  <RouteFade routeKey={location.pathname} className="space-y-4 md:space-y-6">
+                    <Outlet />
+                  </RouteFade>
                 </div>
               </main>
             </div>

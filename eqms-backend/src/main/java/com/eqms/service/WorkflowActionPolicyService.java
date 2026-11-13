@@ -176,7 +176,7 @@ public class WorkflowActionPolicyService {
     public WorkflowActionPolicyResponse getById(UUID id) {
         return policyRepo.findById(id)
                 .map(p -> toResponse(p, null))
-                .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found: " + id));
+                .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found"));
     }
 
     public List<WorkflowActionPolicyResponse> getDefaultDocumentRevisionPolicies() {
@@ -442,7 +442,7 @@ public class WorkflowActionPolicyService {
     public WorkflowActionPolicyResponse updatePolicy(UUID id, WorkflowActionPolicyRequest request, UserAccount actor) {
         securityChangeSignatureService.requireValidToken(actor, request.signatureToken());
         WorkflowActionPolicy policy = policyRepo.findById(id)
-                .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found: " + id));
+                .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found"));
 
         validateRequest(request, policy);
 
@@ -487,7 +487,7 @@ public class WorkflowActionPolicyService {
     ) {
         securityChangeSignatureService.requireValidToken(actor, signatureToken);
         WorkflowActionPolicy policy = policyRepo.findById(id)
-                .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found: " + id));
+                .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found"));
 
         String oldValue = summarize(policy);
         policy.setRelationMatchRule("ALL".equalsIgnoreCase(relationMatchRule) ? "ALL" : "ANY");
@@ -524,7 +524,7 @@ public class WorkflowActionPolicyService {
 
     public WorkflowActionPolicyPreviewResponse previewUpdate(UUID id, WorkflowActionPolicyRequest request) {
         WorkflowActionPolicy policy = policyRepo.findById(id)
-                .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found: " + id));
+                .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found"));
 
         try {
             validateRequest(request, policy);
@@ -590,7 +590,7 @@ public class WorkflowActionPolicyService {
             UUID id, UserAccount actor, com.eqms.dto.settings.SecurityChangeRequest signature) {
         securityChangeSignatureService.requireValidToken(actor, signature.signatureToken());
         WorkflowActionPolicy policy = policyRepo.findById(id)
-                .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found: " + id));
+                .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found"));
 
         if (policy.isActive()) return toResponse(policy, null);
 
@@ -615,7 +615,7 @@ public class WorkflowActionPolicyService {
             UUID id, UserAccount actor, com.eqms.dto.settings.SecurityChangeRequest signature) {
         securityChangeSignatureService.requireValidToken(actor, signature.signatureToken());
         WorkflowActionPolicy policy = policyRepo.findById(id)
-                .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found: " + id));
+                .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found"));
 
         if (!policy.isActive()) return toResponse(policy, null);
 
@@ -651,7 +651,7 @@ public class WorkflowActionPolicyService {
     public WorkflowActionPolicyResponse resetToSystemDefault(UUID id, UserAccount actor, String signatureToken, String reason) {
         securityChangeSignatureService.requireValidToken(actor, signatureToken);
         WorkflowActionPolicy policy = policyRepo.findById(id)
-                .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found: " + id));
+                .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found"));
 
         if (!policy.isSystem()) {
             throw WorkflowPolicyException.resetNotAllowed(

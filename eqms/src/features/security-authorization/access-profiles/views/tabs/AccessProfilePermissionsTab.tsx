@@ -7,6 +7,7 @@ import { settingsApi } from "@/services/api/settings";
 import type { PermissionSetResponse } from "@/services/api/settings";
 import { PermissionSplitExplorer } from "@/features/security-authorization/shared/explorer/PermissionSplitExplorer";
 import { usePermissionCatalog } from "@/features/security-authorization/shared/usePermissionCatalog";
+import { DOCUMENT_CONTROL_VIEW_ALL_CODES, missingViewAllCodes } from "../../shared/documentControlVisibility";
 
 /**
  * Module-accurate permission matrix for a role. Shows the UNION of everything the
@@ -111,12 +112,21 @@ export const AccessProfilePermissionsTab: React.FC<{
     return missing;
   }, [viewCodes, selectedCodes]);
 
+  // The three view-all permissions make one bundle ("View everything"): holding only some of them lets a person see all of one kind and only their own of another.
+  const incompleteViewAll = useMemo(() => missingViewAllCodes(selectedCodes), [selectedCodes]);
+
   const handleToggle = (code: string, checked: boolean) => {
     if (lockedCodes.has(code)) return;
     setDirectCodes((prev) => {
       const next = new Set(prev);
       if (checked) {
         next.add(code);
+        // Ticking one of the view-all permissions ticks the other two: the bundle goes together (unticking one leaves a warning, it is not forced).
+        if ((DOCUMENT_CONTROL_VIEW_ALL_CODES as readonly string[]).includes(code)) {
+          for (const sibling of DOCUMENT_CONTROL_VIEW_ALL_CODES) {
+            if (!lockedCodes.has(sibling)) next.add(sibling);
+          }
+        }
         // Auto-tick every dependent "<prefix>.view" this code lives behind (e.g. checking
         // settings.user.create also checks settings.user.view) -- like Salesforce's permission
         // dependencies, so the profile can never end up with an action permission whose page is
@@ -139,7 +149,7 @@ export const AccessProfilePermissionsTab: React.FC<{
 
   return (
     <div className="space-y-4">
-      <WarningBanner
+      {canEdit && <WarningBanner
         variant="info"
         description={
           <>
@@ -149,11 +159,22 @@ export const AccessProfilePermissionsTab: React.FC<{
           auto-ticks the "view" permission its page lives behind, so it's never granted unreachable.
           </>
         }
-      />
+      />}
       {!canEdit && (
         <WarningBanner
           variant="warning"
           description={deniedReason || "You can review this Access Profile's permissions, but cannot change them."}
+        />
+      )}
+      {incompleteViewAll.length > 0 && (
+        <WarningBanner
+          variant="warning"
+          description={
+            <>
+              This profile grants only part of <b>View everything</b> in Document Control. Missing: {incompleteViewAll.join(", ")}.
+              Without them its people see everything of one kind and only what has their name for the others.
+            </>
+          }
         />
       )}
       {modulesMissingViewPermission.length > 0 && (
@@ -190,6 +211,7 @@ export const AccessProfilePermissionsTab: React.FC<{
         selectedCodes={selectedCodes}
         onToggle={handleToggle}
         readOnly={!canEdit}
+        selectedOnly={!canEdit}
         isLoading={catalogLoading}
         lockedCodes={lockedCodes}
         lockedNotes={lockedNotes}

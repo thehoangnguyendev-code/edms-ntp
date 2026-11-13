@@ -7,7 +7,6 @@ import { documentApi } from "@/services/api/documents";
 import type { SelectOption } from "@/components/ui/select/Select";
 import type { User } from "@/types";
 import type { DocumentStatus } from "@/types/document";
-import type { DocumentType } from "@/types/documentTypes";
 import type { DocumentFiltersLookup } from "@/features/documents/document-list/types";
 import type { Revision } from "@/features/documents/document-revisions/views/types";
 
@@ -54,8 +53,8 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
       return readString(searchParams, "status", "All") as DocumentStatus | "All";
     }
   );
-  const [typeFilter, setTypeFilter] = useState<DocumentType | "All">(
-    () => readString(searchParams, "documentType", "All") as DocumentType | "All"
+  const [typeFilter, setTypeFilter] = useState<string>(
+    () => readString(searchParams, "documentType", "All") as string
   );
   const [businessUnitFilter, setBusinessUnitFilter] = useState(() => readString(searchParams, "businessUnit", "All"));
   const [departmentFilter, setDepartmentFilter] = useState(() => readString(searchParams, "department", "All"));
@@ -112,7 +111,7 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
       viewType === "pending-approval" ? "PENDING_APPROVAL" as DocumentStatus :
       readString(searchParams, "status", "All") as DocumentStatus | "All",
     );
-    setTypeFilter(readString(searchParams, "documentType", "All") as DocumentType | "All");
+    setTypeFilter(readString(searchParams, "documentType", "All") as string);
     setBusinessUnitFilter(readString(searchParams, "businessUnit", "All"));
     setDepartmentFilter(readString(searchParams, "department", "All"));
     setRelatedDocumentFilter(readString(searchParams, "relatedDocument", "All"));

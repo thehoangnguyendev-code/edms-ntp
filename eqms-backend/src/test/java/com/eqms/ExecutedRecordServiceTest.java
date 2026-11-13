@@ -301,13 +301,12 @@ class ExecutedRecordServiceTest {
     }
 
     @Test
-    void previewFile_showsTheScanInlineToABlanketCopyViewer() throws Exception {
+    void previewFile_showsTheScanInlineToWhoeverHoldsTheViewPermission() throws Exception {
         ControlledCopyRecord copy = sopCopy(filler);
         ExecutedRecord record = scanRecord(copy);
         when(executedRecordRepository.findById(record.getId())).thenReturn(Optional.of(record));
         when(fileStorageService.readFile("stored://scan.pdf")).thenReturn(PDF_BYTES);
         actAs(approverUser, ExecutedRecordService.P_VIEW);
-        when(documentAuthorizationService.canViewAllControlledCopies(approverUser)).thenReturn(true);
 
         ExecutedRecordService.RecordFile file = service.previewFile(record.getId());
 
@@ -330,16 +329,25 @@ class ExecutedRecordServiceTest {
     }
 
     @Test
-    void previewFile_isDeniedToAnyoneElseEvenWithTheViewPermission() throws Exception {
+    void aRecordHasNoFlow_aPersonWithoutThePermissionSeesNothingEvenAsTheRecipientOfTheCopy() {
+        ControlledCopyRecord copy = sopCopy(filler);
+        ExecutedRecord record = scanRecord(copy);
+        actAs(filler); // the named recipient of the copy, no Records permission
+
+        assertThrows(AccessDeniedException.class, () -> service.previewFile(record.getId()));
+        assertThrows(AccessDeniedException.class, () -> service.getDetail(record.getId()));
+        assertThrows(AccessDeniedException.class, () -> service.list(1, 20, null, null, null, null, null, null, null));
+        verifyNoInteractions(fileStorageService);
+    }
+
+    @Test
+    void getDetail_showsAnyRecordToWhoeverHoldsThePermission_notOnlyTheRecipientOfTheCopy() {
         ControlledCopyRecord copy = sopCopy(filler);
         ExecutedRecord record = scanRecord(copy);
         when(executedRecordRepository.findById(record.getId())).thenReturn(Optional.of(record));
         actAs(approverUser, ExecutedRecordService.P_VIEW);
-        when(documentAuthorizationService.canViewAllControlledCopies(approverUser)).thenReturn(false);
 
-        assertThrows(AccessDeniedException.class, () -> service.previewFile(record.getId()));
-        assertThrows(AccessDeniedException.class, () -> service.getDetail(record.getId()));
-        verifyNoInteractions(fileStorageService);
+        assertEquals(record.getId().toString(), service.getDetail(record.getId()).id());
     }
 
     @Test
@@ -365,14 +373,19 @@ class ExecutedRecordServiceTest {
     }
 
     @Test
-    void downloadFile_followsTheSameCopyVisibility() {
+    void downloadFile_needsBothThePermissionToViewAndTheOneToDownload() throws Exception {
         ControlledCopyRecord copy = sopCopy(filler);
         ExecutedRecord record = scanRecord(copy);
         when(executedRecordRepository.findById(record.getId())).thenReturn(Optional.of(record));
-        actAs(approverUser, ExecutedRecordService.P_VIEW, ExecutedRecordService.P_DOWNLOAD);
-        when(documentAuthorizationService.canViewAllControlledCopies(approverUser)).thenReturn(false);
+        when(fileStorageService.readFile("stored://scan.pdf")).thenReturn(PDF_BYTES);
 
+        actAs(approverUser, ExecutedRecordService.P_DOWNLOAD); // download alone is not enough
+        assertThrows(AccessDeniedException.class, () -> service.downloadFile(record.getId()));
+        actAs(filler, ExecutedRecordService.P_VIEW); // view alone is not enough
         assertThrows(AccessDeniedException.class, () -> service.downloadFile(record.getId()));
         verifyNoInteractions(fileStorageService);
+
+        actAs(approverUser, ExecutedRecordService.P_VIEW); // the approver now holds both
+        assertNotNull(service.downloadFile(record.getId()));
     }
 }

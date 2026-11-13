@@ -36,26 +36,6 @@ export interface RevisionActionCapabilitiesResponse {
   actions?: Partial<Record<RevisionActionCapabilityKey, RevisionActionCapabilityDecision>>;
 }
 
-export const REVISION_ACTION_CAPABILITY_KEYS: RevisionActionCapabilityKey[] = [
-  "preview",
-  "editOnline",
-  "uploadSource",
-  "replaceSource",
-  "syncToOffice",
-  "syncFromOffice",
-  "updateDraftMetadata",
-  "openPublishingWorkspace",
-  "submitForReview",
-  "completeReview",
-  "rejectReview",
-  "completeApproval",
-  "rejectApproval",
-  "completeTraining",
-  "publish",
-  "cancel",
-  "upgradeRevision",
-];
-
 export const getRevisionActionCapabilityDecision = (
   capabilities: RevisionActionCapabilitiesResponse | null | undefined,
   action: RevisionActionCapabilityKey,

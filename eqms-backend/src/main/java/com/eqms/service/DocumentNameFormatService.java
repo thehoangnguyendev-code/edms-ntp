@@ -368,7 +368,7 @@ public class DocumentNameFormatService {
         for (DocumentNameFormatRequest.ComponentRef ref : refs) {
             DocumentComponent component = componentsById.get(ref.componentId());
             if (component == null) {
-                throw new EntityNotFoundException("Document component not found: " + ref.componentId());
+                throw new EntityNotFoundException("Document component not found");
             }
             DocumentNameFormatComponent link = existing.get(ref.componentId());
             if (link == null) {

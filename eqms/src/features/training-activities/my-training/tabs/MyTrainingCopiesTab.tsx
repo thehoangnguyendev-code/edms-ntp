@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
-import { useEntityChanged } from "@/features/realtime/useEntityChanged";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
-import { SectionLoading } from "@/components/ui/loading/Loading";
+import { TablePagination } from "@/components/ui/table/TablePagination";
+import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { useToast } from "@/components/ui/toast/Toast";
 import { trainingCopyApi, trainingError, type TrainingMyCopy } from "@/services/api/trainingActivities";
-import { usePersistedState } from "@/hooks/usePersistedState";
 import { day } from "../../shared/trainingLabels";
 
 const TYPE_LABEL = { TRAINING_REQUIREMENT: "Training Requirement", TRAINING_JOB_ASSIGNMENT: "Job Assignment" } as const;
@@ -17,20 +16,16 @@ const TYPE_LABEL = { TRAINING_REQUIREMENT: "Training Requirement", TRAINING_JOB_
 export function MyTrainingCopiesTab() {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [rows, setRows] = useState<TrainingMyCopy[]>();
   const [busy, setBusy] = useState(false);
-  // The list is short and not paged, but it is still sorted by the server, from the column the person chose.
-  const [sort, setSort] = usePersistedState<{ key: string; direction: "asc" | "desc" }>("training.my.copies.sort", { key: "sent", direction: "desc" });
-  const load = useCallback(() => { trainingCopyApi.mine(sort.key, sort.direction).then(setRows).catch(() => setRows([])); }, [sort]);
-  const sorted = (key: string) => ({ direction: sort.key === key ? sort.direction : undefined, onSort: () => setSort((old) => ({ key, direction: old.key === key && old.direction === "asc" ? "desc" : "asc" })) });
-  useEffect(load, [load]);
-  useEntityChanged(["TRAINING"], load);
+  // Sorted, paged and limited to the kinds of copy the person may read by the server.
+  const table = useServerTable<TrainingMyCopy>({ persistKey: "training.my.copies", liveTypes: ["TRAINING"], fetcher: trainingCopyApi.mine, defaultSortBy: "sent", defaultSortDirection: "desc", initialItemsPerPage: 10, syncToUrl: false });
+  const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
   const receive = async (row: TrainingMyCopy) => {
     setBusy(true);
     try {
       await trainingCopyApi.receive(row.id);
-      load();
+      table.reload();
     } catch (e) {
       showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
     } finally {
@@ -38,7 +33,7 @@ export function MyTrainingCopiesTab() {
     }
   };
   const columns: DataTableColumn<TrainingMyCopy>[] = [
-    { id: "no", header: "No.", locked: true, cell: (_r, i) => i + 1 },
+    { id: "no", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
     { id: "type", header: "Type", sort: sorted("type"), cell: (r) => TYPE_LABEL[r.objectType] },
     {
       id: "name",
@@ -58,10 +53,9 @@ export function MyTrainingCopiesTab() {
         : <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => void receive(r)}>Confirm received</Button>),
     },
   ];
-  if (!rows) return <SectionLoading text="Loading…" />;
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <DataTable rows={rows} getRowKey={(r) => r.id} columns={columns} emptyState={<TableEmptyState title="No copy" description="Copies of requirements and job assignments sent to your department appear here." />} />
+      <DataTable rows={table.items} getRowKey={(r) => r.id} columns={columns} isLoading={table.isLoading} pagination={<TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} />} emptyState={<TableEmptyState title="No copy" description="Copies of requirements and job assignments sent to your department appear here." />} />
     </div>
   );
 }

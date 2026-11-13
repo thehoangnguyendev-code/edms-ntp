@@ -19,10 +19,14 @@ export interface PublicBranding {
   authBackground?: PageBackground | null;
   /** Background of the Knowledge Base explorer: a colour or a gradient. */
   knowledgeBackground?: PageBackground | null;
-  /** Machine value: center | top-right | top-left | bottom-right | bottom-left. */
-  toastPosition?: 'center' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
+  /** Machine value: center | top-center | bottom-center | top-right | top-left | bottom-right | bottom-left. */
+  toastPosition?: 'center' | 'top-center' | 'bottom-center' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
   /** How long a system message stays on screen, in seconds (2 to 60). */
   toastDurationSeconds?: number;
+  /** The colour of the border and the time bar of every system message, a six-digit hex colour (blue when nothing was set). */
+  toastColor?: string;
+  /** How strong the shadow of every system message is, 0 (none) to 100 (40 when nothing was set). */
+  toastShadow?: number;
   /** How the materials of a training are drawn: TABLE (default) or TILES. Chosen by the administrator. */
   trainingMaterialsLayout?: 'TABLE' | 'TILES';
   /** How the folders of the Knowledge Base are named: FULL (the name, default) or ABBREVIATION. Chosen by the administrator. */

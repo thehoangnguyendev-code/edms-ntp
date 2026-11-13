@@ -6,7 +6,7 @@ import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker
 import { Button } from "@/components/ui/button/Button";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { cn } from "@/components/ui/utils";
-import type { DocumentType, DocumentStatus } from "@/features/documents/types";
+import type { DocumentStatus } from "@/features/documents/types";
 import { IconFilter2 } from "@tabler/icons-react";
 import { DesktopFilterPanel, type DesktopFilterField } from '@/components/ui/filter/DesktopFilterPanel';
 import { FilterOptionList } from '@/components/ui/filter/FilterOptionList';
@@ -18,8 +18,8 @@ interface DocumentFiltersProps {
   onSearchChange: (value: string) => void;
   statusFilter: DocumentStatus | "All";
   onStatusChange: (value: DocumentStatus | "All") => void;
-  typeFilter: DocumentType | "All";
-  onTypeChange: (value: DocumentType | "All") => void;
+  typeFilter: string;
+  onTypeChange: (value: string) => void;
   departmentFilter: string;
   onDepartmentChange: (value: string) => void;
   authorFilter: string;
@@ -223,7 +223,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
   const applyCompactFilters = (draft: Record<string, string>) => {
     const setters: Record<string, (value: string) => void> = {
       status: value => onStatusChange(value as DocumentStatus | 'All'),
-      documentType: value => onTypeChange(value as DocumentType | 'All'), businessUnit: onBusinessUnitChange,
+      documentType: value => onTypeChange(value as string), businessUnit: onBusinessUnitChange,
       department: onDepartmentChange, authorId: onAuthorChange, relatedDocument: onRelatedDocumentFilterChange,
       correlatedDocument: onCorrelatedDocumentFilterChange, isTemplate: onTemplateFilterChange,
       reviewerId: onReviewerChange, approverId: onApproverChange, requiresTraining: onRequiresTrainingChange,
@@ -320,7 +320,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
             <Select
               label="Document Type"
               value={typeFilter}
-              onChange={(value) => onTypeChange(value as DocumentType | "All")}
+              onChange={(value) => onTypeChange(value as string)}
               options={resolvedTypeOptions}
               placeholder="Select type"
               searchPlaceholder="Search type..."
@@ -530,7 +530,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
               {resolvedTypeOptions.map((opt) => (
                 <button
                   key={String(opt.value)}
-                  onClick={() => onTypeChange(opt.value as DocumentType | "All")}
+                  onClick={() => onTypeChange(opt.value as string)}
                   className={getOptionClassName(typeFilter === opt.value)}
                 >
                   <span className="text-xs">{opt.label}</span>

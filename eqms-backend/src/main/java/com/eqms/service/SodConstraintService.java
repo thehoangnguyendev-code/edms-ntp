@@ -171,7 +171,7 @@ public class SodConstraintService {
     public com.eqms.dto.user.SodViolationScanDetailResponse getScanDetail(UUID id) {
         requireView();
         com.eqms.entity.SodViolationScan run = violationScanRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Scan run not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Scan run not found"));
         List<SodViolationResponse> results = objectMapper.convertValue(
                 run.getResults(), objectMapper.getTypeFactory().constructCollectionType(List.class, SodViolationResponse.class));
         return new com.eqms.dto.user.SodViolationScanDetailResponse(
@@ -607,7 +607,7 @@ public class SodConstraintService {
 
     private SodConstraint require(UUID id) {
         return sodRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("SoD constraint not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("SoD constraint not found"));
     }
 
     private void requireView() {

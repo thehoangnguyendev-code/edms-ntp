@@ -96,6 +96,8 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
   const [focusedField, setFocusedField] = useState<"new" | "confirm" | null>(null);
 
   const strength = checkPasswordStrength(formData.newPassword, passwordPolicy);
+  const continueDisabled =
+    isLoading || !strength.isValid || formData.newPassword !== formData.confirmPassword || !formData.currentPassword;
   const passwordChangeContext = {
     FIRST_LOGIN: {
       title: "Create Your Password",
@@ -213,7 +215,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
     <button
       type="button"
       onClick={() => togglePasswordVisibility(field)}
-      className="flex items-center p-1 text-slate-400 transition-colors hover:text-slate-600 focus:outline-none"
+      className={AUTH_UI.eyeButton}
       aria-label={showPasswords[field] ? "Hide password" : "Show password"}
       tabIndex={-1}
     >
@@ -295,7 +297,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                     disabled={isLoading}
                     placeholder='Enter Current Password'
                   />
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-1 sm:pr-1.5">
                     <PasswordIcon field="current" />
                   </div>
                 </div>
@@ -323,7 +325,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                     onBlur={() => setFocusedField(null)}
                     placeholder='Enter New Password'
                   />
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-1 sm:pr-1.5">
                     {isCapsLockOn && focusedField === "new" && (
                       <div className="mr-2 rounded-md border border-emerald-100 bg-emerald-50 p-1" title="Caps Lock is ON">
                         <IconArrowBigUpFilled className="h-4 w-4 text-emerald-700" />
@@ -387,7 +389,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                     onBlur={() => setFocusedField(null)}
                     placeholder='Confirm New Password'
                   />
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-1 sm:pr-1.5">
                     {isCapsLockOn && focusedField === "confirm" && (
                       <div className="mr-2 rounded-md border border-emerald-100 bg-emerald-50 p-1" title="Caps Lock is ON">
                         <IconArrowBigUpFilled className="h-4 w-4 text-emerald-700" />
@@ -397,7 +399,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                   </div>
                 </div>
                 {formData.confirmPassword && formData.confirmPassword !== formData.newPassword && (
-                  <p className="mt-1.5 text-[11px] font-medium text-red-500 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <p className="mt-1.5 text-xs font-medium text-red-600 animate-in fade-in slide-in-from-top-1 duration-200">
                     Passwords do not match yet
                   </p>
                 )}
@@ -406,10 +408,16 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
               <Button
                 type="submit"
                 className={cn(AUTH_UI.submitButton, "mt-2")}
-                disabled={isLoading || !strength.isValid || formData.newPassword !== formData.confirmPassword || !formData.currentPassword}
+                disabled={continueDisabled}
+                aria-describedby={continueDisabled && !isLoading ? "continue-hint" : undefined}
               >
                 Continue
               </Button>
+              {continueDisabled && !isLoading && (
+                <p id="continue-hint" className={AUTH_UI.hintText}>
+                  Enter your current password and meet every password rule to continue.
+                </p>
+              )}
 
               <div className="hidden sm:block">
                 <AuthBackLink onClick={onBackToLogin} label="Back to Sign In" disabled={isLoading} />
@@ -431,6 +439,6 @@ const StrengthCheck = ({ label, checked }: { label: string; checked: boolean }) 
     )}>
       {checked && <svg className="h-2 w-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
     </div>
-    <span className={cn("text-[11px] font-medium transition-colors sm:text-xs", checked ? "text-slate-900" : "text-slate-400")}>{label}</span>
+    <span className={cn("font-medium transition-colors", AUTH_UI.hintText, checked && "text-slate-900")}>{label}</span>
   </div>
 );

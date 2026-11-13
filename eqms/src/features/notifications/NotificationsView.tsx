@@ -215,8 +215,8 @@ const NotificationRow: React.FC<{
   isSelected,
   onToggleSelect,
 }) => {
-    const Icon = getNotificationTypeIcon(notification.type);
-    const colors = getNotificationTypeIconStyles(notification.type);
+    const Icon = getNotificationTypeIcon(notification.type, notification.icon);
+    const colors = getNotificationTypeIconStyles(notification.type, notification.iconTone);
     const tdClass = "py-3 px-4 text-xs md:text-sm text-slate-700 border-b border-slate-200 whitespace-nowrap";
     const reviewerSequenceLabel = (() => {
       const metadata = notification.metadata as Record<string, unknown> | undefined;
@@ -279,8 +279,9 @@ const NotificationRow: React.FC<{
                   colors.bg,
                   notification.status === "read" && "opacity-60"
                 )}
+                style={colors.tileStyle}
               >
-                <Icon className={cn("h-4 w-4 md:h-5 md:w-5", colors.text)} />
+                <Icon className={cn("h-4 w-4 md:h-5 md:w-5", colors.text)} style={colors.iconStyle} />
               </div>
               {notification.status === "unread" && (
                 <div className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 md:h-3 md:w-3 bg-emerald-500 rounded-full border-2 border-white animate-pulse" />

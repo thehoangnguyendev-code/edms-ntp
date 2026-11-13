@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '../utils';
 import { InlineLoading } from '../loading/Loading';
 import { CONTROL_STATE_CLASSES } from '../controlState';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export interface SelectOption {
   label: string;
@@ -72,6 +73,9 @@ export const Select: React.FC<SelectProps> = ({
   const selectId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  // Remote searches already have their own timer below; only debounce local filtering here.
+  const debouncedLocalQuery = useDebounce(onSearch ? "" : searchQuery, debounceMs);
+  const localQuery = searchQuery ? debouncedLocalQuery : "";
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0, showAbove: false, zIndex: 50 });
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const [asyncOptions, setAsyncOptions] = useState<SelectOption[]>([]);
@@ -105,7 +109,7 @@ export const Select: React.FC<SelectProps> = ({
 
   const filteredOptions = enableSearch && !onSearch
     ? displayOptions.filter((opt) =>
-      opt.label.toLowerCase().includes(searchQuery.toLowerCase())
+      opt.label.toLowerCase().includes(localQuery.toLowerCase())
     )
     : displayOptions;
 
@@ -114,7 +118,7 @@ export const Select: React.FC<SelectProps> = ({
     ? safeGroups.map(g => ({
       ...g,
       options: g.options.filter(opt =>
-        opt.label.toLowerCase().includes(searchQuery.toLowerCase())
+        opt.label.toLowerCase().includes(localQuery.toLowerCase())
       )
     })).filter(g => g.options.length > 0)
     : safeGroups;

@@ -48,7 +48,20 @@ public class DatabaseBackupService {
     private static final DateTimeFormatter YEAR = DateTimeFormatter.ofPattern("yyyy").withZone(ZoneOffset.UTC);
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MM").withZone(ZoneOffset.UTC);
 
-    public record Request(String type, String trigger, String requestedBy, String reason, String changeControlRef) {
+    /**
+     * What a backup may contain: the whole database (the system settings are part of it) and the stored files. The separate settings part
+     * was removed on 2026-11-11; backups made with it stay valid and are not changed.
+     */
+    public static final java.util.Set<String> ALL_COMPONENTS = java.util.Set.of("DATABASE", "OBJECT_STORE");
+
+    /**
+     * {@code components} are the parts the person chose (one or more of {@link #ALL_COMPONENTS}); null or empty means what the active policy
+     * covers, which is how scheduled backups run.
+     */
+    public record Request(String type, String trigger, String requestedBy, String reason, String changeControlRef, java.util.Set<String> components) {
+        public Request(String type, String trigger, String requestedBy, String reason, String changeControlRef) {
+            this(type, trigger, requestedBy, reason, changeControlRef, null);
+        }
     }
 
     public record Outcome(String backupNumber, boolean ok, String errorCode, String errorDetail, VerificationService.Outcome verification) {
@@ -109,7 +122,14 @@ public class DatabaseBackupService {
 
         // The active policy decides what is backed up and where it is copied. With no policy only the database is written, to T1.
         PolicyView policy = policies.active().orElse(null);
-        boolean withObjects = objects.enabled() && policy != null && policy.includes("OBJECT_STORE");
+        java.util.Set<String> wanted;
+        try {
+            wanted = resolveComponents(request, policy);
+        } catch (BackupException e) {
+            return fail(runId, backupNumber, null, e.code, e.getMessage());
+        }
+        boolean withDatabase = wanted.contains("DATABASE");
+        boolean withObjects = wanted.contains("OBJECT_STORE");
         java.util.Set<String> copyTo = policy == null ? java.util.Set.of("T1") : policy.targetCodes();
         Path partial = null;
         try {
@@ -117,20 +137,32 @@ public class DatabaseBackupService {
             Path setRoot = envRoot.resolve(YEAR.format(started)).resolve(MONTH.format(started));
             partial = setRoot.resolve(backupNumber + ".partial");
             preChecks(setRoot);
-            Files.createDirectories(partial.resolve("database"));
+            Files.createDirectories(partial);
 
-            Path dumpFile = partial.resolve("database").resolve("eqms.dump.gpg");
+            List<Object> components = new ArrayList<>();
+            StringBuilder sums = new StringBuilder();
+            long totalBytes = 0;
+            Instant snapshotAt = null;
+            String firstSha = null;
             Map<String, Object> dbInfo = new LinkedHashMap<>();
-            CommandRunner.PipelineResult dump = dumpDatabase(dumpFile, dbInfo);
-            Instant snapshotAt = (Instant) dbInfo.get("snapshotAt");
+            CommandRunner.PipelineResult dump = null;
 
-            Map<String, Object> component = new LinkedHashMap<>();
-            component.put("key", "DATABASE");
-            component.put("file", "database/eqms.dump.gpg");
-            component.put("sizeBytes", dump.bytes());
-            component.put("sha256", dump.sha256());
-            component.put("rowCounts", dbInfo.get("rowCounts"));
-            component.put("largeObjectCount", dbInfo.get("largeObjectCount"));
+            if (withDatabase) {
+                Files.createDirectories(partial.resolve("database"));
+                dump = dumpDatabase(partial.resolve("database").resolve("eqms.dump.gpg"), dbInfo);
+                snapshotAt = (Instant) dbInfo.get("snapshotAt");
+                Map<String, Object> component = new LinkedHashMap<>();
+                component.put("key", "DATABASE");
+                component.put("file", "database/eqms.dump.gpg");
+                component.put("sizeBytes", dump.bytes());
+                component.put("sha256", dump.sha256());
+                component.put("rowCounts", dbInfo.get("rowCounts"));
+                component.put("largeObjectCount", dbInfo.get("largeObjectCount"));
+                components.add(component);
+                sums.append(dump.sha256()).append("  database/eqms.dump.gpg\n");
+                totalBytes += dump.bytes();
+                firstSha = dump.sha256();
+            }
 
             // The document store is listed after the database snapshot, so the manifest can say exactly when each was read.
             ObjectBackupService.Result stored = null;
@@ -140,12 +172,6 @@ public class DatabaseBackupService {
                 } catch (ObjectBackupService.ObjectBackupException e) {
                     throw new BackupException(e.code, e.getMessage());
                 }
-            }
-            List<Object> components = new ArrayList<>();
-            components.add(component);
-            StringBuilder sums = new StringBuilder(dump.sha256() + "  database/eqms.dump.gpg\n");
-            long totalBytes = dump.bytes();
-            if (stored != null) {
                 Map<String, Object> objectComponent = new LinkedHashMap<>();
                 objectComponent.put("key", "OBJECT_STORE");
                 objectComponent.put("file", "objects/index.json.gpg");
@@ -159,6 +185,8 @@ public class DatabaseBackupService {
                 components.add(objectComponent);
                 sums.append(stored.indexSha256()).append("  objects/index.json.gpg\n");
                 totalBytes += stored.indexBytes() + stored.newBytes();
+                if (firstSha == null) firstSha = stored.indexSha256();
+                if (snapshotAt == null) snapshotAt = stored.listedAt();
             }
 
             Map<String, Object> manifest = new LinkedHashMap<>();
@@ -168,7 +196,7 @@ public class DatabaseBackupService {
             manifest.put("trigger", request.trigger());
             manifest.put("environment", properties.getEnvironment().toUpperCase());
             manifest.put("startedAt", ISO.format(started));
-            manifest.put("dbSnapshotAt", ISO.format(snapshotAt));
+            manifest.put("dbSnapshotAt", withDatabase ? ISO.format((Instant) dbInfo.get("snapshotAt")) : null);
             manifest.put("objectListedAt", stored == null ? null : ISO.format(stored.listedAt()));
             manifest.put("app", Map.of("postgres", String.valueOf(dbInfo.get("serverVersion")), "flywayLatest", String.valueOf(dbInfo.get("flywayLatest")), "agent", "0.0.1"));
             manifest.put("providers", stored == null ? List.of() : List.of(Map.of("type", "S3", "buckets", stored.buckets())));
@@ -189,18 +217,19 @@ public class DatabaseBackupService {
             partial = null;
 
             Instant finished = Instant.now();
-            repository.insertComponent(runId, "DATABASE", "COMPLETED", dump.bytes(), null, dump.sha256(), CanonicalJson.of(dbInfo.get("rowCounts")));
+            if (dump != null) repository.insertComponent(runId, "DATABASE", "COMPLETED", dump.bytes(), null, dump.sha256(), CanonicalJson.of(dbInfo.get("rowCounts")));
             if (stored != null) {
                 repository.insertComponent(runId, "OBJECT_STORE", "COMPLETED", stored.indexBytes() + stored.newBytes(), stored.totalVersions(), stored.indexSha256(), null);
             }
-            repository.insertLocation(runId, "T1", finalDir.toString(), finished, dump.sha256(), true);
+            repository.insertLocation(runId, "T1", finalDir.toString(), finished, firstSha, true);
             repository.insertManifest(runId, signed.text(), signed.sha256(), signed.signatureBase64(), signed.keyId(), previous);
             repository.markCompleted(runId, finished, snapshotAt, totalBytes);
             Map<String, Object> done = new LinkedHashMap<>();
-            done.put("sizeBytes", dump.bytes());
-            done.put("sha256", dump.sha256());
+            done.put("components", wanted.stream().sorted().toList());
+            done.put("sizeBytes", totalBytes);
+            done.put("sha256", firstSha);
             done.put("manifestSha256", signed.sha256());
-            done.put("dbSnapshotAt", ISO.format(snapshotAt));
+            done.put("snapshotAt", ISO.format(snapshotAt));
             if (stored != null) {
                 done.put("objectVersions", stored.totalVersions());
                 done.put("newObjectVersions", stored.newVersions());
@@ -214,6 +243,7 @@ public class DatabaseBackupService {
                 }
             }
 
+            if (withDatabase && stored != null) checkReferences(backupNumber);
             VerificationService.Outcome v1 = verification.verifyV1(backupNumber, "agent");
             // Other targets get a copy only after T1 has proved sound; a failed copy is recorded and alerted, never silent.
             if (v1.verified()) replication.replicate(runId, backupNumber, finalDir, properties.getEnvironment().toUpperCase() + "/" + YEAR.format(started) + "/" + MONTH.format(started), envRoot, copyTo);
@@ -266,9 +296,78 @@ public class DatabaseBackupService {
         }
     }
 
+    /**
+     * When a backup holds both the database and the files: every file the database refers to (the registered columns) must be in the file
+     * index. One that is not is reported, never silently left out; the backup is still valid (decision of 2026-11-09).
+     */
+    private void checkReferences(String backupNumber) {
+        AgentProperties.Source s = properties.getSource();
+        try (Connection c = DriverManager.getConnection(sourceUrl(), s.getUser(), s.getPassword())) {
+            c.setReadOnly(true);
+            java.util.Set<String> indexed = new java.util.HashSet<>();
+            java.util.Set<String> indexedKeys = new java.util.HashSet<>();
+            for (BackupRepository.Blob b : repository.allBlobs()) {
+                indexed.add(b.bucket() + "\0" + b.key() + "\0" + b.versionId());
+                indexedKeys.add(b.bucket() + "\0" + b.key());
+            }
+            java.util.Set<String> aliased = new java.util.HashSet<>();
+            try (Statement st = c.createStatement(); ResultSet rs = st.executeQuery("select bucket, object_key, original_version_id from object_version_alias")) {
+                while (rs.next()) aliased.add(rs.getString(1) + "\0" + rs.getString(2) + "\0" + rs.getString(3));
+            } catch (SQLException e) {
+                // no alias table in this database: nothing was ever restored into it
+            }
+            List<String> missing = new ArrayList<>();
+            int checked = 0;
+            for (var col : com.eqms.backup.agent.restore.MissingFileRestorer.REGISTRY) {
+                String versionExpr = col.version() == null ? "null" : "\"" + col.version() + "\"";
+                String sql = "select distinct \"" + col.bucket() + "\", \"" + col.key() + "\", " + versionExpr + " from \"" + col.table() + "\" where \"" + col.key() + "\" is not null";
+                try (Statement st = c.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+                    while (rs.next()) {
+                        String bucket = rs.getString(1);
+                        String key = rs.getString(2);
+                        String version = rs.getString(3);
+                        if (bucket == null || !properties.getObjects().getBuckets().contains(bucket)) continue;
+                        checked++;
+                        boolean found = version == null ? indexedKeys.contains(bucket + "\0" + key)
+                                : indexed.contains(bucket + "\0" + key + "\0" + version) || aliased.contains(bucket + "\0" + key + "\0" + version);
+                        if (!found) missing.add(col.table() + " -> " + bucket + "/" + key + (version == null ? "" : "@" + version));
+                    }
+                } catch (SQLException e) {
+                    // a table or column that does not exist in this database holds no reference
+                }
+            }
+            if (!missing.isEmpty()) {
+                repository.insertAlert("WARNING", "BACKUP_REFERENCE_MISSING", "Backup " + backupNumber + ": " + missing.size() + " of " + checked
+                        + " file reference(s) in the database are not in the file index, for example " + String.join("; ", missing.subList(0, Math.min(5, missing.size()))), backupNumber);
+                ledger.append("agent", "BACKUP_REFERENCES_MISSING", backupNumber, Map.of("missing", missing.size(), "checked", checked));
+            }
+        } catch (SQLException e) {
+            log.warn("The file references of backup {} could not be checked: {}", backupNumber, e.getMessage());
+        }
+    }
+
     private String sourceUrl() {
         AgentProperties.Source s = properties.getSource();
         return "jdbc:postgresql://" + s.getHost() + ":" + s.getPort() + "/" + s.getDatabase();
+    }
+
+    /** The parts to back up: what the person chose, or what the active policy covers. */
+    private java.util.Set<String> resolveComponents(Request request, PolicyView policy) throws BackupException {
+        java.util.Set<String> wanted = new java.util.LinkedHashSet<>();
+        if (request.components() == null || request.components().isEmpty()) {
+            wanted.add("DATABASE");
+            if (objects.enabled() && policy != null && policy.includes("OBJECT_STORE")) wanted.add("OBJECT_STORE");
+            return wanted;
+        }
+        for (String c : request.components()) {
+            if ("CONFIGURATION".equals(c)) throw new BackupException("BACKUP_COMPONENT_REMOVED", "The system settings are part of the database backup; they are no longer backed up as a separate part");
+            if (!ALL_COMPONENTS.contains(c)) throw new BackupException("BACKUP_COMPONENT_UNKNOWN", "Unknown backup component " + c);
+            wanted.add(c);
+        }
+        if (wanted.contains("OBJECT_STORE") && !objects.enabled()) {
+            throw new BackupException("BACKUP_OBJECTS_NOT_CONFIGURED", "The document store is not configured on this agent, so the files cannot be backed up");
+        }
+        return wanted;
     }
 
     private CommandRunner.PipelineResult dumpDatabase(Path out, Map<String, Object> info) throws Exception {
@@ -284,7 +383,9 @@ public class DatabaseBackupService {
                 info.put("snapshotAt", rs.getTimestamp(2).toInstant());
                 info.put("serverVersion", rs.getString(3));
             }
-            info.put("rowCounts", rowCounts(c));
+            List<String> allTables = tableNames(c);
+            info.put("allTables", allTables);
+            info.put("rowCounts", rowCounts(c, allTables));
             // Large objects live outside the tables, so a table row count alone would not notice losing them.
             try (Statement st = c.createStatement(); ResultSet rs = st.executeQuery("select count(*) from pg_largeobject_metadata")) {
                 rs.next();
@@ -292,9 +393,10 @@ public class DatabaseBackupService {
             }
             info.put("flywayLatest", flywayLatest(c));
 
+            List<String> dumpArgs = new ArrayList<>(List.of(properties.getTools().getPgDump(), "-h", s.getHost(), "-p", String.valueOf(s.getPort()), "-U", s.getUser(),
+                    "-d", s.getDatabase(), "-Fc", "--no-owner", "--no-privileges", "--snapshot=" + snapshotId));
             List<CommandRunner.Command> pipeline = List.of(
-                    new CommandRunner.Command(List.of(properties.getTools().getPgDump(), "-h", s.getHost(), "-p", String.valueOf(s.getPort()), "-U", s.getUser(),
-                            "-d", s.getDatabase(), "-Fc", "--no-owner", "--no-privileges", "--snapshot=" + snapshotId), Map.of("PGPASSWORD", s.getPassword())),
+                    new CommandRunner.Command(dumpArgs, Map.of("PGPASSWORD", s.getPassword())),
                     keyring.encryptCommand());
             CommandRunner.PipelineResult result = runner.pipelineToFile(pipeline, out, 3600);
             c.rollback();
@@ -311,11 +413,16 @@ public class DatabaseBackupService {
         }
     }
 
-    private Map<String, Object> rowCounts(Connection c) throws SQLException {
+    private List<String> tableNames(Connection c) throws SQLException {
         List<String> tables = new ArrayList<>();
         try (Statement st = c.createStatement(); ResultSet rs = st.executeQuery("select tablename from pg_tables where schemaname = 'public' order by tablename")) {
             while (rs.next()) tables.add(rs.getString(1));
         }
+        return tables;
+    }
+
+    private Map<String, Object> rowCounts(Connection c, List<String> wanted) throws SQLException {
+        List<String> tables = tableNames(c).stream().filter(wanted::contains).toList();
         Map<String, Object> counts = new LinkedHashMap<>();
         for (String table : tables) {
             try (PreparedStatement ps = c.prepareStatement("select count(*) from public.\"" + table.replace("\"", "\"\"") + "\""); ResultSet rs = ps.executeQuery()) {

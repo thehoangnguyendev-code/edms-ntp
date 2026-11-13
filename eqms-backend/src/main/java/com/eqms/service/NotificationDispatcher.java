@@ -45,8 +45,8 @@ import java.util.regex.Pattern;
  * only place that turns a policy + variables into an actual in-app notification / email —
  * modules never hardcode title/body text themselves anymore.
  *
- * Mandatory (GMP) events always fire on every enabled channel regardless of the recipient's
- * notification preferences or the policy's digest setting; optional events respect both.
+ * Every notification is always sent on every enabled channel: a recipient cannot opt out of one. Only the digest and quiet-hours
+ * of the policy can delay an email.
  */
 @Service
 public class NotificationDispatcher {
@@ -67,6 +67,14 @@ public class NotificationDispatcher {
     private final ObjectMapper objectMapper;
     private final NotificationDispatchQueueRepository dispatchQueueRepository;
     private final NotificationEmailOutbox emailOutbox;
+
+    /** Only for the address of the button of an email; without it the mail simply has no button. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @org.springframework.context.annotation.Lazy
+    private EmailNotificationService emailNotificationService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private EmailDesignService emailDesignService;
 
     public NotificationDispatcher(
             NotificationEventDefinitionRepository eventRepository,
@@ -103,34 +111,131 @@ public class NotificationDispatcher {
      * when the outcome the message reports is certain; called from another bean, so that the proxy starts the new transaction.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void dispatchIndependently(String eventCode, List<UserAccount> recipients, Map<String, String> variables) {
-        dispatch(eventCode, recipients, variables);
+    public Outcome dispatchIndependently(String eventCode, List<UserAccount> recipients, Map<String, String> variables) {
+        return dispatch(eventCode, recipients, variables, null, null);
+    }
+
+    /** The same, limited to some of the channels the policy has on. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Outcome dispatchIndependently(String eventCode, List<UserAccount> recipients, Map<String, String> variables, Set<String> onlyChannels) {
+        return dispatch(eventCode, recipients, variables, onlyChannels, null);
+    }
+
+    /** A file that goes with the e-mail of a notice (the in-app notification has none). */
+    public record MailFile(String name, byte[] content) {
+    }
+
+    /** The same, with a file attached to the e-mail. The e-mail of such a notice is sent at once: a digest or quiet hours do not hold a file back. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Outcome dispatchIndependently(String eventCode, List<UserAccount> recipients, Map<String, String> variables, MailFile file) {
+        return dispatch(eventCode, recipients, variables, null, file);
+    }
+
+    /**
+     * What a dispatch did, for a caller that keeps its own log of the notices it sent: why nothing was sent ({@code blocked}: NOT_REGISTERED, POLICY_OFF or
+     * NO_RECIPIENT), which channels the policy has on, and whether a notification was recorded or an e-mail queued for at least one recipient.
+     */
+    public record Outcome(String blocked, boolean inAppChannelOn, boolean emailChannelOn, boolean inAppSent, boolean emailSent) {
+        static Outcome blocked(String reason) {
+            return new Outcome(reason, false, false, false, false);
+        }
+
+        /** Why no in-app notification was recorded, or null when one was. */
+        public String inAppReason() {
+            return inAppSent ? null : blocked != null ? blocked : !inAppChannelOn ? "CHANNEL_OFF" : "NOT_SENT";
+        }
+
+        /** Why no e-mail was queued, or null when one was. */
+        public String emailReason(boolean personHasAddress) {
+            return emailSent ? null : blocked != null ? blocked : !emailChannelOn ? "CHANNEL_OFF" : !personHasAddress ? "NO_EMAIL_ADDRESS" : "NOT_SENT";
+        }
+    }
+
+    /** What a notification is about, found from the values the sender gave: the record it opens, its number and its title, as the bell and the calendar show them. */
+    record Related(String type, java.util.UUID id, String number, String title) {
+    }
+
+    static Related relatedOf(Map<String, String> variables, String fallbackType) {
+        String type = firstText(variables, "relatedEntityType", "entityType");
+        if (type == null) {
+            type = firstText(variables, "controlledCopyNumber", "batchNumber") != null ? "controlled-copy" : fallbackType;
+        }
+        java.util.UUID id = null;
+        String rawId = firstText(variables, "relatedEntityId", "documentId", "revisionId", "controlledCopyId");
+        if (rawId != null) {
+            try {
+                id = java.util.UUID.fromString(rawId);
+            } catch (IllegalArgumentException ignored) {
+                // not a record id: the notification simply has none
+            }
+        }
+        return new Related(type, id, firstText(variables, "documentNumber", "revisionNumber", "controlledCopyNumber", "batchNumber"),
+                firstText(variables, "documentTitle", "revisionTitle", "controlledCopyTitle"));
+    }
+
+    private static String firstText(Map<String, String> values, String... keys) {
+        if (values == null) return null;
+        for (String key : keys) {
+            String value = values.get(key);
+            if (StringUtils.hasText(value)) return value.trim();
+        }
+        return null;
+    }
+
+    /** The values kept with an in-app notification are read by anyone who can open it: a password or a token written in the e-mail is not one of them. */
+    static Map<String, String> withoutSecrets(Map<String, String> variables) {
+        Map<String, String> kept = new java.util.LinkedHashMap<>();
+        variables.forEach((name, value) -> {
+            String key = name == null ? "" : name.toLowerCase(Locale.ROOT);
+            if (!key.contains("password") && !key.contains("token") && !key.contains("secret")) kept.put(name, value);
+        });
+        return kept;
+    }
+
+    /** The variables of a notice whose title and text the module composes (the registry events that pass them through: {title}, {message}, {actionUrl}). */
+    public static Map<String, String> noticeVariables(String title, String message, String actionUrl) {
+        Map<String, String> variables = new java.util.LinkedHashMap<>();
+        variables.put("title", title == null ? "" : com.eqms.util.DateTimeFormatUtils.normalizeText(title));
+        variables.put("message", message == null ? "" : com.eqms.util.DateTimeFormatUtils.normalizeText(message));
+        variables.put("actionUrl", actionUrl == null ? "" : actionUrl);
+        return variables;
     }
 
     @Transactional
-    public void dispatch(String eventCode, List<UserAccount> recipients, Map<String, String> variables) {
+    public Outcome dispatch(String eventCode, List<UserAccount> recipients, Map<String, String> variables) {
+        return dispatch(eventCode, recipients, variables, null, null);
+    }
+
+    private Outcome dispatch(String eventCode, List<UserAccount> recipients, Map<String, String> variables, Set<String> onlyChannels, MailFile file) {
         NotificationEventDefinition event = eventRepository.findByCode(eventCode).orElse(null);
         if (event == null || !event.isActive()) {
             logger.warn("Notification dispatch skipped: unknown or inactive event '{}'", eventCode);
-            return;
+            return Outcome.blocked("NOT_REGISTERED");
         }
         NotificationPolicy policy = policyRepository.findByEventCode(eventCode).orElse(null);
         if (policy == null) {
             logger.warn("Notification dispatch skipped: no policy configured for event '{}'", eventCode);
-            return;
+            return Outcome.blocked("NOT_REGISTERED");
         }
-        boolean mandatory = event.isMandatory();
-        if (!mandatory && NotificationPolicy.STATUS_DISABLED.equalsIgnoreCase(policy.getStatus())) {
-            return;
+        if (NotificationPolicy.STATUS_DISABLED.equalsIgnoreCase(policy.getStatus())) {
+            return Outcome.blocked("POLICY_OFF");
         }
 
         List<UserAccount> resolvedRecipients = resolveRecipients(policy.getRecipientRules(), recipients);
         if (resolvedRecipients.isEmpty()) {
             logger.warn("Notification dispatch skipped: no recipients resolved for event '{}'", eventCode);
-            return;
+            return Outcome.blocked("NO_RECIPIENT");
         }
 
+        // a recipient rule may name its own channels (the author by in-app and e-mail, the approvers by in-app only): the people of each channel are then
+        // worked out on their own; without such a rule every recipient gets every channel the event sends on
+        JsonNode policyRules = policy.getRecipientRules();
+        boolean ruleChannels = NotificationRecipientRules.hasChannelRules(policyRules);
+        Set<java.util.UUID> inAppPeople = ruleChannels ? idsOf(resolveRecipients(NotificationRecipientRules.forChannel(policyRules, NotificationTemplateVersion.CHANNEL_IN_APP), recipients)) : null;
+        Set<java.util.UUID> emailPeople = ruleChannels ? idsOf(resolveRecipients(NotificationRecipientRules.forChannel(policyRules, NotificationTemplateVersion.CHANNEL_EMAIL), recipients)) : null;
+
         Set<String> channels = parseChannels(policy.getEnabledChannels());
+        if (onlyChannels != null) channels.retainAll(onlyChannels);
         NotificationTemplateVersion inAppVersion = channels.contains(NotificationTemplateVersion.CHANNEL_IN_APP)
                 ? activeVersion(policy.getId(), NotificationTemplateVersion.CHANNEL_IN_APP) : null;
         NotificationTemplateVersion emailVersion = channels.contains(NotificationTemplateVersion.CHANNEL_EMAIL)
@@ -138,44 +243,69 @@ public class NotificationDispatcher {
 
         String moduleKey = event.getModule();
         String priority = event.getPriority() == null ? "medium" : event.getPriority().toLowerCase(Locale.ROOT);
+        boolean inAppSent = false;
+        boolean emailSent = false;
 
         for (UserAccount recipient : resolvedRecipients) {
             if (recipient == null || recipient.getId() == null) {
                 continue;
             }
             Map<String, String> recipientVariables = withRecipientDefaults(variables, recipient);
+            Related related = relatedOf(recipientVariables, event.getDataObject());
 
-            if (inAppVersion != null) {
+            if (inAppVersion != null && (inAppPeople == null || inAppPeople.contains(recipient.getId()))) {
                 String title = render(inAppVersion.getTitle(), recipientVariables);
                 String summary = render(inAppVersion.getSummary(), recipientVariables);
                 String actionUrl = render(inAppVersion.getActionUrlTemplate(), recipientVariables);
                 if (StringUtils.hasText(title)) {
                     notificationService.recordNotification(
                             recipient, null, "personal", moduleKey, event.getCode(),
-                            title, summary, actionUrl, event.getDataObject(), null, null, null,
-                            priority, objectMapper.valueToTree(recipientVariables), mandatory
+                            title, summary, actionUrl, related.type(), related.id(), related.number(), related.title(),
+                            priority, objectMapper.valueToTree(withoutSecrets(recipientVariables))
                     );
+                    inAppSent = true;
                 }
             }
 
-            if (emailVersion != null && StringUtils.hasText(recipient.getEmail()) && recipient.isEmailNotificationsEnabled()
-                    && (mandatory || NotificationPreferenceUtils.canReceiveEmailNotification(objectMapper, recipient, moduleKey))) {
+            if (emailVersion != null && (emailPeople == null || emailPeople.contains(recipient.getId())) && StringUtils.hasText(recipient.getEmail())) {
                 String subject = render(emailVersion.getSubject(), recipientVariables);
-                String body = render(emailVersion.getBody(), recipientVariables);
+                String body = composeEmailBody(emailVersion, inAppVersion, recipientVariables);
                 if (StringUtils.hasText(subject) && StringUtils.hasText(body)) {
-                    // Mandatory GMP events always send immediately -- digest/quiet-hours exist to
-                    // reduce noise for optional events, not to delay a compliance-required alert.
-                    Instant deferredUntil = mandatory ? null : computeDeferredSendTime(policy);
+                    Instant deferredUntil = file == null ? computeDeferredSendTime(policy) : null;
                     if (deferredUntil != null) {
                         queueDeferredSend(policy, event.getCode(), recipient,
                                 NotificationTemplateVersion.CHANNEL_EMAIL, subject, body, deferredUntil);
                     } else {
-                        emailOutbox.enqueue(
-                                recipient.getEmail(), subject, body, event.getCode(), moduleKey, recipientVariables, mandatory);
+                        if (file == null) {
+                            emailOutbox.enqueue(recipient.getEmail(), subject, body, event.getCode(), moduleKey, recipientVariables);
+                        } else {
+                            emailOutbox.enqueue(recipient.getEmail(), subject, body, event.getCode(), moduleKey, recipientVariables, file.name(), file.content());
+                        }
                     }
+                    emailSent = true;
                 }
             }
         }
+        return new Outcome(null, channels.contains(NotificationTemplateVersion.CHANNEL_IN_APP), channels.contains(NotificationTemplateVersion.CHANNEL_EMAIL), inAppSent, emailSent);
+    }
+
+    /**
+     * The message of an email: the wording as paragraphs, then the action button (its words from the email, its address from the email or,
+     * failing that, from the in-app notification). The shared frame is put around it when the mail is sent.
+     */
+    private String composeEmailBody(NotificationTemplateVersion emailVersion, NotificationTemplateVersion inAppVersion, Map<String, String> variables) {
+        String message = EmailTemplateService.sanitizeRenderedHtml(render(emailVersion.getBody(), variables));
+        String urlTemplate = StringUtils.hasText(emailVersion.getActionUrlTemplate()) ? emailVersion.getActionUrlTemplate()
+                : inAppVersion == null ? null : inAppVersion.getActionUrlTemplate();
+        String url = render(urlTemplate, variables);
+        String html = com.eqms.util.EmailFrameRenderer.paragraphs(message);
+        if (StringUtils.hasText(url) && emailNotificationService != null) {
+            String absolute = url.startsWith("http://") || url.startsWith("https://") ? url
+                    : emailNotificationService.resolvePublicAppBaseUrl() + (url.startsWith("/") ? url : "/" + url);
+            String brand = emailDesignService == null ? null : emailDesignService.current().getButtonColor();
+            html += com.eqms.util.EmailFrameRenderer.button(emailVersion.getActionLabel(), absolute, brand);
+        }
+        return html;
     }
 
     private NotificationTemplateVersion activeVersion(java.util.UUID policyId, String channel) {
@@ -197,21 +327,27 @@ public class NotificationDispatcher {
         java.util.LinkedHashMap<java.util.UUID, UserAccount> recipients = new java.util.LinkedHashMap<>();
         Set<String> types = new java.util.LinkedHashSet<>();
         Set<String> permissionAudienceCodes = new java.util.LinkedHashSet<>();
+        Set<String> roleAudience = new java.util.LinkedHashSet<>();
+        Set<String> departmentAudience = new java.util.LinkedHashSet<>();
         if (rules != null && rules.isArray()) {
             for (JsonNode rule : rules) {
                 String type = rule.path("type").asText("").trim().toUpperCase(Locale.ROOT);
                 if (StringUtils.hasText(type)) {
                     types.add(type);
-                    if ("PERMISSION".equals(type)) {
-                        String permissionCode = rule.path("value").asText("").trim();
-                        if (StringUtils.hasText(permissionCode)) permissionAudienceCodes.add(permissionCode);
+                    String value = rule.path("value").asText("").trim();
+                    if (StringUtils.hasText(value)) {
+                        switch (type) {
+                            case "PERMISSION" -> permissionAudienceCodes.add(value);
+                            case "ROLE" -> roleAudience.add(value.toLowerCase(Locale.ROOT));
+                            case "DEPARTMENT" -> departmentAudience.add(value.toLowerCase(Locale.ROOT));
+                            default -> { }
+                        }
                     }
                 }
             }
         }
 
-        boolean needsContextualRecipients = types.stream().anyMatch(type -> Set.of(
-                "OWNER", "AUTHOR", "ASSIGNEE", "REVIEWER", "APPROVER", "RECIPIENT", "AFFECTED_USERS").contains(type));
+        boolean needsContextualRecipients = types.stream().anyMatch(NotificationRecipientRules::isContext);
         // AFFECTED_USERS is the one contextual type that is expected to be non-Active by the
         // time dispatch() runs -- e.g. "you have just been suspended/terminated" must still
         // reach the person it happened to, even though the status change (which may already be
@@ -237,7 +373,24 @@ public class NotificationDispatcher {
                 }
             }
         }
+        if (!roleAudience.isEmpty() || !departmentAudience.isEmpty()) {
+            for (UserAccount user : userAccountRepository.findAllByStatus(UserStatus.Active)) {
+                String role = user.getRoleName() == null ? "" : user.getRoleName().trim().toLowerCase(Locale.ROOT);
+                String department = user.getDepartment() == null ? "" : user.getDepartment().trim().toLowerCase(Locale.ROOT);
+                if (roleAudience.contains(role) || departmentAudience.contains(department)) {
+                    recipients.put(user.getId(), user);
+                }
+            }
+        }
         return new java.util.ArrayList<>(recipients.values());
+    }
+
+    private static Set<java.util.UUID> idsOf(List<UserAccount> users) {
+        Set<java.util.UUID> ids = new java.util.HashSet<>();
+        for (UserAccount user : users) {
+            if (user != null && user.getId() != null) ids.add(user.getId());
+        }
+        return ids;
     }
 
     private boolean isActive(UserAccount user) {

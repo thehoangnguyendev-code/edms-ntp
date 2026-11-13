@@ -19,7 +19,7 @@ class StorageUsageAlertServiceTest {
     private final StorageUsagePolicyService policies = mock(StorageUsagePolicyService.class);
     private final UserAccountRepository users = mock(UserAccountRepository.class);
     private final PermissionEvaluationService permissions = mock(PermissionEvaluationService.class);
-    private final NotificationService notifications = mock(NotificationService.class);
+    private final NotificationDispatcher notifications = mock(NotificationDispatcher.class);
     private final StorageUsageAlertService service = new StorageUsageAlertService(jdbc, policies, users, permissions, notifications);
 
     private UserAccount user(UserStatus status) {
@@ -54,9 +54,9 @@ class StorageUsageAlertServiceTest {
 
         assertEquals(1, service.afterSuccessfulScan(85));
 
-        verify(notifications).recordNotification(eq(admin), any(), eq("personal"), eq("system"), eq("STORAGE_USAGE_WARNING"), any(), any(), eq("/settings/configuration"),
-                any(), any(), any(), any(), eq("high"), any(), eq(true));
-        verify(notifications, times(1)).recordNotification(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyBoolean());
+        verify(notifications).dispatchIndependently(eq("system.storage_usage_warning"), eq(List.of(admin)), argThat(v -> "Storage is near its limit".equals(v.get("title"))
+                && "/settings/configuration".equals(v.get("actionUrl")) && v.get("message").contains("85%")));
+        verify(notifications, times(1)).dispatchIndependently(any(), any(), any());
         verify(jdbc).update(contains("warning_notified=true"));
     }
 

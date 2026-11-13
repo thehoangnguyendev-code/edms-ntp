@@ -154,7 +154,7 @@ export function ComplianceGapsTab({ departmentId, departmentFilter }: { departme
           rows={table.items}
           getRowKey={(g) => rowKey(g)}
           isLoading={table.isLoading}
-          loadingContent={<SectionLoading text="Loading…" />}
+
           columns={columns}
           columnLayout={layout}
           selection={selection}

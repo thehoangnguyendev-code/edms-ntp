@@ -1,16 +1,5 @@
 export { BackupOverviewView } from './views/BackupOverviewView';
 export { BackupsView } from './views/BackupsView';
-export { RestoreRequestsView } from './views/RestoreRequestsView';
-export { RestoreRequestView } from './RestoreRequestView';
-export { DrDrillsView } from './views/DrDrillsView';
 export { BackupSchedulesView } from './views/BackupSchedulesView';
-export { BackupExportsView } from './views/BackupExportsView';
-export { BackupVerificationResultsView } from './views/BackupVerificationResultsView';
-export { RestoreVerificationReportsView } from './views/RestoreVerificationReportsView';
-export { RestoreHistoryView } from './views/RestoreHistoryView';
-export { InspectionsView } from './views/InspectionsView';
-export { BackupAlertsView } from './views/BackupAlertsView';
-export { RestoreRulesView } from './views/RestoreRulesView';
+export { ProductionRestoresView } from './views/ProductionRestoresView';
 export { BackupDetailView } from './views/BackupDetailView';
-export { RestoreRequestDetailView } from './views/RestoreRequestDetailView';
-export { RestoreExecutionView } from './views/RestoreExecutionView';

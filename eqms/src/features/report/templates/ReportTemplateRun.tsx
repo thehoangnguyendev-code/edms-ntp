@@ -9,6 +9,7 @@ import { SearchInput } from "@/components/ui/form/SearchInput";
 import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
 import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
 import { Input } from "@/components/ui/form/ResponsiveForm";
+import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
@@ -31,6 +32,62 @@ function isoDate(value: string): string {
   const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   return match ? `${match[3]}-${match[2]}-${match[1]}` : value;
 }
+/**
+ * The preview table. It is its own component so that its column layout is made when the columns exist: the columns come from the first
+ * answer of the server, and a layout made earlier (with no columns) would show an empty table.
+ */
+function PreviewResults({
+  preview,
+  criteria,
+  busy,
+  onSort,
+  onPage,
+}: {
+  preview: TemplatePreview;
+  criteria: TemplateCriteria;
+  busy: boolean;
+  onSort: (field: string) => void;
+  onPage: (page: number) => void;
+}) {
+  const drag = useTableDragScroll();
+  const columns: DataTableColumn<string[]>[] = (preview.rows[0] ?? []).map((name, index) => {
+    const field = criteria.fields[index];
+    return {
+      id: String(index),
+      header: name,
+      sort: { direction: criteria.sortBy === field ? criteria.direction : undefined, onSort: (): void => onSort(field) },
+      cell: (row: string[]) => row[index],
+    };
+  });
+  const { layout, control } = useCustomColumnLayout("reportRunPreview", columns);
+  return (
+    <>
+      <div className="flex justify-end">{control}</div>
+      <DataTable
+        rows={preview.rows.slice(1)}
+        columns={columns}
+        columnLayout={layout}
+        getRowKey={(_row, index) => index}
+        scrollerRef={drag.scrollerRef}
+        scrollProps={drag.dragEvents}
+        isDragging={drag.isDragging}
+        isLoading={busy}
+        loadingContent={<p className="p-6 text-sm text-slate-500">Loading preview…</p>}
+        pagination={
+          <TablePagination
+            currentPage={preview.pagination.page}
+            totalPages={preview.pagination.totalPages}
+            totalItems={preview.pagination.total}
+            itemsPerPage={10}
+            onPageChange={onPage}
+            showItemsPerPageSelector={false}
+          />
+        }
+      />
+    </>
+  );
+}
+
 export function ReportTemplateRun({
   template,
   onBack,
@@ -62,8 +119,20 @@ export function ReportTemplateRun({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  /** The choice to run without a filter (REPORT-FULL-RUN-2026-11-12). */
+  const [full, setFull] = useState(false);
   const key = useRef<string | undefined>(undefined);
-  const drag = useTableDragScroll();
+  /** A run of the Audit Trail report is signed; the reason is the one given in the signature window (REPORT-RUN-SIGNATURE-2026-11-12). */
+  const [signing, setSigning] = useState(false);
+  const narrowed = (template.filterFields ?? []).some((field) => (criteria.filters[field.code] ?? "").trim() !== "");
+  const canPreview = narrowed || full;
+  const total = preview?.pagination.total ?? 0;
+  const standardLimit = preview?.maxRows ?? 10000;
+  const fullLimit = preview?.maxRowsFull ?? 100000;
+  const limit = full ? fullLimit : standardLimit;
+  const tooLarge = !!preview && total > limit;
+  /** Above the ordinary limit only CSV and XLSX can be made. */
+  const formatOptions = template.allowedFormats.filter((value) => total <= standardLimit || value === "CSV" || value === "XLSX");
   const changeCriteria = (next: TemplateCriteria) => {
     setCriteria(next);
     setPreview(undefined);
@@ -85,24 +154,11 @@ export function ReportTemplateRun({
     }
   };
   /** Column sort on the preview runs on the server: it reloads the preview with the new sort (REPORT-LIST-STANDARD-2026-10-14). */
-  const previewSort = (index: number) => {
-    const field = criteria.fields[index];
+  const sortPreview = (field: string) => {
     const direction: "asc" | "desc" = criteria.sortBy === field && criteria.direction === "asc" ? "desc" : "asc";
-    return {
-      direction: criteria.sortBy === field ? criteria.direction : undefined,
-      onSort: (): void => {
-        void loadPreview(1, { ...criteria, sortBy: field, direction });
-      },
-    };
+    void loadPreview(1, { ...criteria, sortBy: field, direction });
   };
-  const previewColumns: DataTableColumn<string[]>[] = (preview?.rows[0] ?? []).map((name, index) => ({
-    id: String(index),
-    header: name,
-    sort: previewSort(index),
-    cell: (row: string[]) => row[index],
-  }));
-  const { layout: previewLayout, control: previewControl } = useCustomColumnLayout("reportRunPreview", previewColumns);
-  const generate = async () => {
+  const generate = async (signatureToken?: string, reason?: string) => {
     setBusy(true);
     setError("");
     key.current ??= crypto.randomUUID();
@@ -118,6 +174,8 @@ export function ReportTemplateRun({
             reportTitle,
           },
           sort: [{ field: criteria.sortBy, direction: criteria.direction }],
+          full,
+          ...(template.runNeedsSignature ? { reason: (reason ?? "").trim(), signatureToken } : {}),
         },
         key.current,
       );
@@ -142,7 +200,7 @@ export function ReportTemplateRun({
           onClick: onBack,
         })}
         actions={
-          <Button variant="outline" size="sm" disabled={busy} onClick={onBack}>
+          <Button variant="outline-emerald" size="sm" disabled={busy} onClick={onBack}>
             Back
           </Button>
         }
@@ -193,6 +251,21 @@ export function ReportTemplateRun({
                     value={criteria.filters[field.code] ?? ""}
                     onChange={(value) => filter(field.code, value)}
                   />
+                ) : field.type === "NUMBER" ? (
+                  <div key={field.code}>
+                    <label htmlFor={`report-filter-${field.code}`} className="mb-1.5 block text-sm font-medium text-slate-700">
+                      {field.name}
+                    </label>
+                    <Input
+                      id={`report-filter-${field.code}`}
+                      type="number"
+                      min={0}
+                      max={3650}
+                      inputMode="numeric"
+                      value={criteria.filters[field.code] ?? ""}
+                      onChange={(event) => filter(field.code, event.target.value)}
+                    />
+                  </div>
                 ) : (
                   <div key={field.code} className="sm:col-span-2">
                     <label className="mb-1.5 block text-sm font-medium text-slate-700 capitalize">
@@ -201,7 +274,7 @@ export function ReportTemplateRun({
                     <SearchInput
                       value={criteria.filters[field.code] ?? ""}
                       onChange={(value) => filter(field.code, value)}
-                      placeholder="Search documents..."
+                      placeholder={`${field.name}...`}
                     />
                   </div>
                 ),
@@ -233,6 +306,7 @@ export function ReportTemplateRun({
                 }
               />
             </div>
+            <div className="space-y-4">
             <FormSection
               title="Included columns"
               description="Required columns and chart fields remain included."
@@ -265,41 +339,48 @@ export function ReportTemplateRun({
                   ))}
               </div>
             </FormSection>
+            <FormSection
+              title="Filter required"
+              description="A report is run with at least one filter. To run it without one, choose Full."
+            >
+              <Checkbox
+                label="Full report (no filter)"
+                checked={full}
+                onChange={(checked) => {
+                  setFull(checked);
+                  setPreview(undefined);
+                  key.current = undefined;
+                }}
+              />
+              <p className="mt-2 text-xs text-slate-500">
+                A Full report is made in the background as CSV or XLSX when it is large, and is written to the Audit Trail.
+              </p>
+              {!canPreview && (
+                <p role="status" className="mt-3 text-xs font-medium text-amber-700">
+                  Choose at least one filter, or choose Full, to continue.
+                </p>
+              )}
+            </FormSection>
+            </div>
           </div>
         )}
         {stage === 1 && preview && (
           <div className="space-y-4">
             <p className="text-sm text-slate-500">
-              {preview.pagination.total} matching records · Previewed{" "}
+              {preview.pagination.total.toLocaleString()} matching records · Previewed{" "}
               {displayDateTime(preview.asOfAt)}
             </p>
-            <div className="flex justify-end">{previewControl}</div>
-            <DataTable
-              rows={preview.rows.slice(1)}
-              columns={previewColumns}
-              columnLayout={previewLayout}
-              getRowKey={(_row, index) => index}
-              scrollerRef={drag.scrollerRef}
-              scrollProps={drag.dragEvents}
-              isDragging={drag.isDragging}
-              isLoading={busy}
-              loadingContent={
-                <p className="p-6 text-sm text-slate-500">Loading preview…</p>
-              }
-              pagination={
-                <TablePagination
-                  currentPage={preview.pagination.page}
-                  totalPages={preview.pagination.totalPages}
-                  totalItems={preview.pagination.total}
-                  itemsPerPage={10}
-                  onPageChange={(page) => void loadPreview(page)}
-                  showItemsPerPageSelector={false}
-                />
-              }
+            <PreviewResults
+              preview={preview}
+              criteria={criteria}
+              busy={busy}
+              onSort={sortPreview}
+              onPage={(page) => void loadPreview(page)}
             />
-            <p className="text-xs text-slate-500">
-              Export is limited to 10,000 records. Narrow criteria if the result
-              exceeds this limit; the server never silently truncates it.
+            <p className={tooLarge ? "text-xs font-medium text-red-700" : "text-xs text-slate-500"} role={tooLarge ? "alert" : undefined}>
+              {tooLarge
+                ? `This result has ${total.toLocaleString()} records, more than a ${full ? "Full " : ""}report file may hold (${limit.toLocaleString()}). ${full ? "Add a filter to narrow it." : "Add a filter to narrow it, or choose Full (up to " + fullLimit.toLocaleString() + ")."} The server never silently truncates a report.`
+                : `A report file holds up to ${limit.toLocaleString()} records${full ? " (Full)" : ""}. The server never silently truncates a report.${total > standardLimit ? " A result this large is made as CSV or XLSX only." : ""}`}
             </p>
           </div>
         )}
@@ -310,7 +391,7 @@ export function ReportTemplateRun({
                 label="Output format"
                 value={format}
                 enableSearch={false}
-                options={template.allowedFormats.map((value) => ({
+                options={formatOptions.map((value) => ({
                   value,
                   label: value,
                 }))}
@@ -325,19 +406,30 @@ export function ReportTemplateRun({
                 Report History. Downloads require authentication and checksum
                 verification. No source document content is included.
               </div>
+              {template.runNeedsSignature && (
+                <p className="text-xs text-slate-500">This report is signed electronically when you generate it. You give the reason in the signature window.</p>
+              )}
             </div>
-            <RealtimeReportPreview
-              requestKey={JSON.stringify([criteria, reportTitle])}
-              disabled={!reportTitle.trim()}
-              load={(signal) =>
-                reportTemplatesApi.previewPdf(
-                  template.code,
-                  criteria,
-                  reportTitle,
-                  signal,
-                )
-              }
-            />
+            {total > standardLimit ? (
+              <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-600">
+                <p>
+                  A page preview is not made for a result of {total.toLocaleString()} records. The file is made in the background as CSV or XLSX and listed in Report Run History when it is ready.
+                </p>
+              </div>
+            ) : (
+              <RealtimeReportPreview
+                requestKey={JSON.stringify([criteria, reportTitle])}
+                disabled={!reportTitle.trim()}
+                load={(signal) =>
+                  reportTemplatesApi.previewPdf(
+                    template.code,
+                    criteria,
+                    reportTitle,
+                    signal,
+                  )
+                }
+              />
+            )}
           </div>
         )}
         <div className="mt-6 flex flex-wrap justify-between gap-3 border-t border-slate-100 pt-5">
@@ -354,14 +446,17 @@ export function ReportTemplateRun({
             {stage === 0 ? "Clear Filters" : "Previous"}
           </Button>
           {stage === 0 ? (
-            <Button size="sm" loading={busy} onClick={() => void loadPreview()}>
+            <Button size="sm" loading={busy} disabled={!canPreview} onClick={() => void loadPreview()}>
               Preview Report
             </Button>
           ) : stage === 1 ? (
             <Button
               size="sm"
-              disabled={busy || !preview}
-              onClick={() => setStage(2)}
+              disabled={busy || !preview || tooLarge}
+              onClick={() => {
+                if (!formatOptions.includes(format)) setFormat(formatOptions[0] ?? format);
+                setStage(2);
+              }}
             >
               Continue to Output
             </Button>
@@ -370,13 +465,28 @@ export function ReportTemplateRun({
               size="sm"
               loading={busy}
               disabled={!reportTitle.trim()}
-              onClick={() => void generate()}
+              onClick={() => (template.runNeedsSignature ? setSigning(true) : void generate())}
             >
-              Generate Report
+              {template.runNeedsSignature ? "Sign And Generate Report" : "Generate Report"}
             </Button>
           )}
         </div>
       </FormSection>
+      {template.runNeedsSignature && (
+        <ESignatureModal
+          isOpen={signing}
+          onClose={() => setSigning(false)}
+          deferConfirm
+          onConfirm={(data) => {
+            setSigning(false);
+            void generate(data.signatureToken, data.reason);
+          }}
+          actionTitle="Generate Report"
+          meaningDisplayName="Report Run Requested"
+          meaningCode="REPORT_RUN_REQUESTED"
+          targetDetails={{ code: template.code, title: reportTitle }}
+        />
+      )}
     </div>
   );
 }

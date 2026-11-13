@@ -235,7 +235,7 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
               onChange={(e) => setNote(e.target.value)}
               placeholder="Enter notes about this revision..."
               rows={4}
-              className="w-full px-4 py-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+              className="w-full px-3 py-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
             />
           </div>
 

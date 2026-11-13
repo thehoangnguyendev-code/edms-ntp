@@ -19,6 +19,18 @@ class NotificationEmailCipherTest {
         byte[] otherKey=new byte[32];otherKey[0]=1;
         assertThrows(IllegalStateException.class,()->new NotificationEmailCipher(Base64.getEncoder().encodeToString(otherKey),new ObjectMapper()).open(id,"recipient","event","domain",first));
     }
+    @Test void aFileThatGoesWithTheMessageIsSealedWithItAndComesBackUnchanged(){
+        var cipher=new NotificationEmailCipher(key,new ObjectMapper());var id=UUID.randomUUID();
+        byte[] pdf="%PDF-1.7 attendance list of Nguyen Van A".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        String envelope=cipher.seal(id,"recipient","event","domain",new NotificationEmailCipher.Content("Subject","Body",Map.of(),"list.pdf",pdf));
+        assertFalse(envelope.contains(Base64.getEncoder().encodeToString(pdf)));   // the file is not in the clear in the row
+        var opened=cipher.open(id,"recipient","event","domain",envelope);
+        assertEquals("list.pdf",opened.attachmentName());
+        assertArrayEquals(pdf,opened.attachment());
+        // a row written before files existed opens with no file
+        var plain=cipher.open(id,"recipient","event","domain",cipher.seal(id,"recipient","event","domain",new NotificationEmailCipher.Content("S","B",Map.of())));
+        assertNull(plain.attachment());assertNull(plain.attachmentName());
+    }
     @Test void missingOrInvalidKeyFailsClosedWithoutEchoingTheKey(){
         for(String value:List.of("","secret-not-base64","AA==")){
             var error=assertThrows(IllegalStateException.class,()->new NotificationEmailCipher(value,new ObjectMapper()));

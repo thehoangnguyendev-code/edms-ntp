@@ -15,7 +15,6 @@
 // TYPES (explicit exports to avoid conflicts)
 // =============================================================================
 export type {
-  DocumentType,
   DocumentStatus,
   DocumentViewType,
   TableColumn,

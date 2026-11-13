@@ -24,11 +24,8 @@ import {
   buildRevisionDetailNavigationState,
   buildRevisionWorkspaceSourceState,
 } from "@/features/documents/shared/navigationContext";
-import {
-  normalizeRevisionStatusForStepper,
-  revisionWorkflowStepIndex,
-  REVISION_WORKFLOW_STEPS,
-} from "@/features/documents/shared/statusMapping";
+import { resolveStatusCode } from "@/features/documents/shared/statusMapping";
+import { stepLabels, useWorkflowSteps } from "@/features/documents/shared/useWorkflowSteps";
 import {
   GeneralInformationTab,
   WorkingNotesTab,
@@ -168,7 +165,7 @@ const mapReviewersFromRevision = (
 ): Reviewer[] =>
   (reviewers ?? []).map((reviewer, index) => ({
     id: reviewer.id,
-    fullName: reviewer.fullName || reviewer.username || reviewer.id,
+    fullName: reviewer.fullName || reviewer.username || "",
     username: reviewer.username || "",
     position: reviewer.position || "",
     email: reviewer.email || "",
@@ -181,7 +178,7 @@ const mapApproversFromRevision = (
 ): Approver[] =>
   (approvers ?? []).map((approver) => ({
     id: approver.id,
-    fullName: approver.fullName || approver.username || approver.id,
+    fullName: approver.fullName || approver.username || "",
     username: approver.username || "",
     position: approver.position || "",
     email: approver.email || "",
@@ -356,6 +353,7 @@ const buildGeneralForm = (
     titleLocalLanguage:
       revision?.titleLocalLanguage || source?.titleLocalLanguage || "",
     type: revision?.type || source?.type || "",
+    typeShortCode: revision?.typeShortCode,
   };
 };
 
@@ -512,11 +510,7 @@ const RevisionCreateViewContent: React.FC = () => {
       return true;
     }
 
-    const normalized = normalizeRevisionStatusForStepper(
-      revisionRecord.status,
-      revisionRecord.statusInfo,
-    );
-    return normalized === "Draft";
+    return resolveStatusCode(revisionRecord.status, revisionRecord.statusInfo) === "DRAFT";
   }, [revisionRecord?.status, revisionRecord?.statusInfo]);
 
   const revisionDisplay = useMemo<RevisionDetailResponse | null>(() => {
@@ -729,25 +723,9 @@ const RevisionCreateViewContent: React.FC = () => {
   useEffect(() => {
   }, [revisionDisplay?.id]);
 
-  const currentStatus = useMemo(
-    () =>
-      normalizeRevisionStatusForStepper(
-        revisionDisplay?.status,
-        revisionDisplay?.statusInfo,
-      ),
-    [revisionDisplay?.status, revisionDisplay?.statusInfo],
-  );
-  const currentStepIndex = useMemo(
-    () =>
-      revisionWorkflowStepIndex(
-        revisionDisplay?.status,
-        revisionDisplay?.statusInfo,
-      ),
-    [revisionDisplay?.status, revisionDisplay?.statusInfo],
-  );
-  const skippedSteps = revisionDisplay?.requiresTraining
-    ? []
-    : (["Pending Training"] as const);
+  // A saved draft carries the stepper the server worked out; before it exists the lifecycle is drawn at its first step.
+  const lifecycleSteps = useWorkflowSteps().revision;
+  const workflow = revisionRecord?.workflow;
   const tabs: TabItem[] = [
     { id: "general", label: "General Information" },
     { id: "workingNotes", label: "Working Notes" },
@@ -1708,9 +1686,9 @@ const RevisionCreateViewContent: React.FC = () => {
       </div>
 
       <WorkflowStepper
-        steps={REVISION_WORKFLOW_STEPS}
-        currentStepIndex={currentStepIndex}
-        skippedSteps={skippedSteps}
+        steps={stepLabels(workflow?.steps ?? lifecycleSteps)}
+        currentStepIndex={workflow?.currentStepIndex ?? 0}
+        skippedSteps={workflow?.skippedSteps}
       />
 
       {!revisionDisplay?.id && (

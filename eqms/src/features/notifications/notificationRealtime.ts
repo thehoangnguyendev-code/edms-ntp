@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
+import { config } from '@/config';
 import { secureStorage } from '@/utils/security';
 import { authTokenStore } from '@/services/authTokenStore';
 import { emitNotificationsChanged } from './events';
 
-const STREAM_ENDPOINT = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/notifications/stream`;
+const STREAM_ENDPOINT = `${config.api.baseURL}/notifications/stream`;
 
 type RealtimeListener = (event: { type: string; data: string }) => void;
 

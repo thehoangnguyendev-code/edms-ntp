@@ -44,5 +44,8 @@ public record EmailTemplateRequest(
 
     String reason,
 
-    String signatureToken
+    String signatureToken,
+
+    /** The "Updated" time of the message as the person saw it when they opened it; when another change was saved since, this one is refused. Empty skips the check. */
+    java.time.Instant expectedUpdatedDate
 ) {}

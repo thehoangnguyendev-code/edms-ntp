@@ -81,6 +81,7 @@ public class DocumentCancelObsoleteGuardTest {
     @Mock private WorkflowParticipantEligibilityService workflowParticipantEligibilityService;
     @Mock private SecureFileAccessService secureFileAccessService;
     @Mock private SignatureTokenConsumptionService signatureTokenConsumptionService;
+    @Mock private com.eqms.service.WorkflowProgressService workflowProgressService;
     @Mock private ControlledCopyLifecycleObsolescenceService controlledCopyLifecycleObsolescenceService;
     @Mock private ApplicationEventPublisher applicationEventPublisher;
 

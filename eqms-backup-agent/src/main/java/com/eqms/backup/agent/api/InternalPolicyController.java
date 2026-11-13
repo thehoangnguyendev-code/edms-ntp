@@ -43,8 +43,16 @@ public class InternalPolicyController {
     @GetMapping
     public Map<String, Object> list(@RequestParam(required = false) String search, @RequestParam(required = false) String status,
                                     @RequestParam(defaultValue = "version") String sortBy, @RequestParam(defaultValue = "desc") String sortDirection,
-                                    @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        PolicyService.Page result = policies.page(search, status, sortBy, "asc".equalsIgnoreCase(sortDirection), page, limit);
+                                    @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit,
+                                    @RequestParam(required = false) String component, @RequestParam(required = false) String target,
+                                    @RequestParam(required = false) String filesSchedule, @RequestParam(required = false) String approval,
+                                    @RequestParam(required = false) String proposedFrom, @RequestParam(required = false) String proposedTo,
+                                    @RequestParam(required = false) String activatedFrom, @RequestParam(required = false) String activatedTo,
+                                    @RequestParam(required = false) String people) {
+        PolicyService.Filters filters = new PolicyService.Filters(component, target, filesSchedule, approval,
+                instant(proposedFrom), instant(proposedTo), instant(activatedFrom), instant(activatedTo),
+                people == null || people.isBlank() ? List.of() : java.util.Arrays.stream(people.split(",")).map(String::trim).filter(p -> !p.isEmpty()).toList());
+        PolicyService.Page result = policies.page(search, status, filters, sortBy, "asc".equalsIgnoreCase(sortDirection), page, limit);
         Map<String, Object> pagination = new LinkedHashMap<>();
         pagination.put("page", result.page());
         pagination.put("limit", result.limit());
@@ -54,6 +62,15 @@ public class InternalPolicyController {
         out.put("data", result.data());
         out.put("pagination", pagination);
         return out;
+    }
+
+    private static java.time.Instant instant(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return java.time.Instant.parse(value.trim());
+        } catch (java.time.format.DateTimeParseException e) {
+            return null;
+        }
     }
 
     @GetMapping("/{version}")

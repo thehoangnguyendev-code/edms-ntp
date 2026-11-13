@@ -1,9 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const perms = vi.hoisted(() => ({ granted: new Set<string>() }));
 vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermission: (code: string) => perms.granted.has(code) }) }));
+vi.mock("@/components/branding/BrandLogo", () => ({ useBranding: () => ({ compactDesktopFilters: false }) }));
 
 // The disaster recovery plan reads the backup agent; this file checks the layout only.
 vi.mock("@/services/api/backupRestore", async () => {
@@ -15,81 +16,56 @@ vi.mock("@/services/api/backupRestore", async () => {
       drScenarios: async () => [],
       drKit: async () => [],
       drAuthority: async () => ({ key: "DECLARATION_AUTHORITY", value: "admin" }),
-      restoreRules: async () => [],
+      drReadiness: async () => [],
+      drDeclarations: async () => ({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 1 } }),
     },
   };
 });
 import { ToastProvider } from "@/components/ui/toast/Toast";
 import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import { ROUTES } from "@/app/routes.constants";
-import { BackupAlertsView } from "../BackupAlertsView";
 import { DisasterRecoveryPlanView } from "../DisasterRecoveryPlanView";
-import { BackupControlsView } from "../BackupControlsView";
 
 afterEach(cleanup);
+beforeEach(() => {
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} unobserve() {} });
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: true, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), onchange: null, dispatchEvent: vi.fn() }));
+  perms.granted = new Set(["backup.admin.disaster_recovery.view", "backup.admin.disaster_recovery.manage"]);
+});
 
 const A = ROUTES.SETTINGS.BACKUP_ADMINISTRATION;
-const screens = [
-  [A.ALERTS, <BackupAlertsView />, "Recipients"],
-  [A.DISASTER_RECOVERY, <DisasterRecoveryPlanView />, "Recovery Targets"],
-] as const;
 
 const renderAt = (path: string) =>
   render(
     <ToastProvider>
       <BreadcrumbProvider>
         <MemoryRouter initialEntries={[path]}>
-          <Routes>?
-            <Route path={A.CONTROLS} element={<BackupControlsView />} />?
-            {screens.map(([route, element]) => (
-              <Route key={route} path={route} element={element} />
-            ))}
+          <Routes>
+            <Route path={A.DISASTER_RECOVERY} element={<DisasterRecoveryPlanView />} />
           </Routes>
         </MemoryRouter>
       </BreadcrumbProvider>
     </ToastProvider>,
   );
 
-it.each(screens.map(([route, , text]) => [route, text]))("%s is its own screen and says it is a design preview", (route, text) => {
-  renderAt(route);
-  expect(screen.getByText("Design preview")).toBeTruthy();
-  expect(screen.getAllByText(text).length).toBeGreaterThan(0);
-});
-
-it("shows the restore rules as fixed facts, with no switch and no save bar", () => {
-  perms.granted = new Set(["backup.admin.restore_controls.view"]);
-  renderAt(`${A.CONTROLS}?tab=restore-rules`);
-  expect(screen.queryAllByRole("switch")).toHaveLength(0);
+it("the Disaster Recovery Plan is a live screen: it reads the server and carries no design-preview notice or Save Changes bar", async () => {
+  renderAt(A.DISASTER_RECOVERY);
+  expect((await screen.findAllByText("Recovery Targets")).length).toBeGreaterThan(0);
+  expect(screen.queryByText("Design preview")).toBeNull();
   expect(screen.queryByText("Save Changes")).toBeNull();
 });
 
-describe("Backup Controls", () => {
-  const ALL_CONTROLS = ["backup.admin.restore_controls.view", "backup.admin.verification.view", "backup.admin.retention.view"];
+it.each([
+  ["plan", "Rebuild Kit"],
+  ["declarations", "Declare a Disaster"],
+])("opens the %s tab named in the address", async (tab, text) => {
+  renderAt(`${A.DISASTER_RECOVERY}?tab=${tab}`);
+  expect((await screen.findAllByText(text)).length).toBeGreaterThan(0);
+});
 
-  beforeEach(() => {
-    perms.granted = new Set(ALL_CONTROLS);
-  });
-
-  it.each([
-    ["restore-rules", "Approval"],
-    ["verification", "Post-Restore Checks"],
-    ["retention", "Legal Hold"],
-  ])("opens the %s tab named in the address", (tab, text) => {
-    renderAt(`${A.CONTROLS}?tab=${tab}`);
-    expect(screen.getAllByText(text).length).toBeGreaterThan(0);
-  });
-
-  it("opens the first tab the person may view when the address names none", () => {
-    renderAt(A.CONTROLS);
-    expect(screen.getAllByText("Approval").length).toBeGreaterThan(0);
-  });
-
-  it("offers only the tabs the person may view", () => {
-    perms.granted = new Set(["backup.admin.retention.view"]);
-    renderAt(A.CONTROLS);
-    expect(screen.getByText("Retention & Legal Hold")).toBeTruthy();
-    expect(screen.queryByText("Verification & Drills")).toBeNull();
-    expect(screen.queryByText("Restore Rules")).toBeNull();
-    expect(screen.getAllByText("Permanently").length).toBeGreaterThan(0);
-  });
+it("offers no declaration to someone who may only view the plan", async () => {
+  perms.granted = new Set(["backup.admin.disaster_recovery.view"]);
+  renderAt(`${A.DISASTER_RECOVERY}?tab=declarations`);
+  await screen.findByText("How a declaration works");
+  expect(screen.queryByRole("button", { name: "Declare a Disaster" })).toBeNull();
 });

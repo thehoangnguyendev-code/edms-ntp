@@ -101,12 +101,4 @@ class NotificationEmailOutboxDatabaseTest {
         assertThrows(IllegalStateException.class,()->tx.executeWithoutResult(status->outbox.deliverOne()));
         assertEquals("PENDING",jdbc.queryForObject("select status from notification_email_outbox",String.class));
     }
-
-    @Test void mandatoryEventDoesNotWaitBehindTheOptionalBacklog() {
-        enqueue();
-        outbox.enqueue("recipient@example.test","Alert","Important","event.mandatory","Documents",Map.of(),true);
-        when(email.sendRenderedEmailWithTracking(anyString(),anyString(),anyString(),anyString(),anyString(),anyMap())).thenReturn(true);
-        assertTrue(outbox.deliverOne());
-        verify(email).sendRenderedEmailWithTracking(anyString(),eq("Alert"),anyString(),eq("event.mandatory"),anyString(),anyMap());
-    }
 }

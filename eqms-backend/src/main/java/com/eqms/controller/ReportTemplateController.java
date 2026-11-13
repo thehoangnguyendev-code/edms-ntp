@@ -19,6 +19,11 @@ public class ReportTemplateController {
                                  @RequestParam(defaultValue="") String format,@RequestParam(defaultValue="") String orientation,@RequestParam(defaultValue="10") String limit) {
         return ResponseEntity.ok(templates.catalog(users.requireCurrentUser(), search, page, sortBy, direction,java.util.Map.of("status",status,"sourceCode",sourceCode,"format",format,"orientation",orientation,"limit",limit)));
     }
+    /** The lifecycle stepper of a template that is being created and has no record yet: a draft. */
+    @GetMapping("/workflow/new") public ResponseEntity<?> newWorkflow() {
+        users.requireCurrentUser();
+        return ResponseEntity.ok(com.eqms.service.report.ReportRevisionWorkflow.of(null));
+    }
     @GetMapping("/sources") public ResponseEntity<?> sources() { return ResponseEntity.ok(templates.sources(users.requireCurrentUser())); }
     @GetMapping("/configuration") public ResponseEntity<?> configuration(@RequestParam(defaultValue="") String search, @RequestParam(defaultValue="1") int page,
             @RequestParam(defaultValue="displayName") String sortBy, @RequestParam(defaultValue="asc") String direction,

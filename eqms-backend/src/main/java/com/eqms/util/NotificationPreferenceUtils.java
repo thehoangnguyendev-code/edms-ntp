@@ -102,54 +102,6 @@ public final class NotificationPreferenceUtils {
         }
     }
 
-    public static boolean canReceiveInAppNotification(ObjectMapper objectMapper, UserAccount user, String module) {
-        return isChannelEnabled(objectMapper, user, CHANNEL_IN_APP) && isModuleEnabled(objectMapper, user, module);
-    }
-
-    public static boolean canReceiveEmailNotification(ObjectMapper objectMapper, UserAccount user, String module) {
-        return isChannelEnabled(objectMapper, user, CHANNEL_EMAIL) && isModuleEnabled(objectMapper, user, module);
-    }
-
-    public static boolean isChannelEnabled(ObjectMapper objectMapper, UserAccount user, String channelKey) {
-        if (user == null) {
-            return false;
-        }
-        String normalizedKey = normalizeKey(channelKey);
-        if (CHANNEL_EMAIL.equals(normalizedKey)) {
-            return user.isEmailNotificationsEnabled();
-        }
-        Map<String, Object> preferences = parsePreferences(objectMapper, user.getNotificationPreferences());
-        Map<String, Object> channels = asMap(preferences.get("channels"));
-        if (channels == null) {
-            return DEFAULT_CHANNELS.getOrDefault(normalizedKey, Boolean.TRUE);
-        }
-        Object value = channels.get(normalizedKey);
-        if (value instanceof Boolean boolValue) {
-            return boolValue;
-        }
-        return DEFAULT_CHANNELS.getOrDefault(normalizedKey, Boolean.TRUE);
-    }
-
-    public static boolean isModuleEnabled(ObjectMapper objectMapper, UserAccount user, String module) {
-        if (user == null) {
-            return false;
-        }
-        String normalizedModule = normalizeModuleKey(module);
-        if (!StringUtils.hasText(normalizedModule)) {
-            return true;
-        }
-        Map<String, Object> preferences = parsePreferences(objectMapper, user.getNotificationPreferences());
-        Map<String, Object> modules = asMap(preferences.get("modules"));
-        if (modules == null) {
-            return DEFAULT_MODULES.getOrDefault(normalizedModule, Boolean.TRUE);
-        }
-        Object value = modules.get(normalizedModule);
-        if (value instanceof Boolean boolValue) {
-            return boolValue;
-        }
-        return DEFAULT_MODULES.getOrDefault(normalizedModule, Boolean.TRUE);
-    }
-
     public static String normalizeModuleKey(String module) {
         if (!StringUtils.hasText(module)) {
             return MODULE_SYSTEM;

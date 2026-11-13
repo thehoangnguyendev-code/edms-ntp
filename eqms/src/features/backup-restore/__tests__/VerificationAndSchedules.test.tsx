@@ -5,7 +5,6 @@ import { ToastProvider } from "@/components/ui/toast/Toast";
 import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import type { BackupRecord } from "../types";
 import { BackupSchedulesView } from "../views/BackupSchedulesView";
-import { BackupVerificationResultsView } from "../views/BackupVerificationResultsView";
 
 const api = vi.hoisted(() => ({ list: vi.fn(), verify: vi.fn(), schedules: vi.fn(), scheduleRows: vi.fn() }));
 const perms = vi.hoisted(() => ({ granted: new Set<string>() }));
@@ -52,77 +51,6 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
-});
-
-describe("Backup Verification Results", () => {
-  it("asks the server for completed backups with problems first", async () => {
-    api.list.mockResolvedValue(one([backup("BK-1", "FAILED"), backup("BK-2", "VERIFIED")]));
-    renderView(<BackupVerificationResultsView />);
-    expect(await screen.findByText("BK-1")).toBeTruthy();
-    expect(lastList()).toMatchObject({ status: "COMPLETED", sortBy: "verification", sortDirection: "asc", page: 1, limit: 10 });
-  });
-
-  it("searches, filters, sorts and pages on the server", async () => {
-    api.list.mockResolvedValue(one([backup("BK-1", "FAILED")]));
-    renderView(<BackupVerificationResultsView />);
-    await screen.findByText("BK-1");
-    fireEvent.change(screen.getAllByPlaceholderText("Backup Number or person…")[0], { target: { value: "sched" } });
-    await waitFor(() => expect(lastList().search).toBe("sched"), { timeout: 2000 });
-    fireEvent.click(header("started"));
-    await waitFor(() => expect(lastList()).toMatchObject({ sortBy: "startedAt", sortDirection: "asc" }));
-    fireEvent.click(header("id"));
-    await waitFor(() => expect(lastList().sortBy).toBe("backupNumber"));
-  });
-
-  it("lets the person limit by when the backup was taken and when it was checked, as date ranges with a time", async () => {
-    api.list.mockResolvedValue(one([backup("BK-1", "FAILED")]));
-    renderView(<BackupVerificationResultsView />);
-    await screen.findByText("BK-1");
-    for (const label of ["Backup Taken Date Range", "Checked Date Range"]) {
-      expect(screen.getAllByText(label).length).toBeGreaterThan(0);
-    }
-    expect(screen.queryByText("Backup taken from")).toBeNull();
-    expect(lastList().startedFrom).toBeUndefined();
-    expect(lastList().checkedFrom).toBeUndefined();
-  });
-
-  it("sorts by when the backup was checked", async () => {
-    api.list.mockResolvedValue(one([backup("BK-1", "FAILED")]));
-    renderView(<BackupVerificationResultsView />);
-    await screen.findByText("BK-1");
-    fireEvent.click(header("verifiedAt"));
-    await waitFor(() => expect(lastList()).toMatchObject({ sortBy: "verifiedAt", sortDirection: "asc" }));
-  });
-
-  it("offers Custom Column beside Clear Filters", async () => {
-    api.list.mockResolvedValue(one([backup("BK-1", "FAILED")]));
-    renderView(<BackupVerificationResultsView />);
-    await screen.findByText("BK-1");
-    const custom = await screen.findByRole("button", { name: /Custom Column/ });
-    expect(custom.parentElement).toBe(screen.getByRole("button", { name: "Clear Filters" }).parentElement);
-  });
-
-  it("re-checks a backup on request and reloads the list", async () => {
-    api.list.mockResolvedValue(one([backup("BK-1", "NOT_VERIFIED")]));
-    api.verify.mockResolvedValue({ jobId: "j-1" });
-    renderView(<BackupVerificationResultsView />);
-    fireEvent.click(await screen.findByRole("button", { name: "Verify Again" }));
-    await waitFor(() => expect(api.verify).toHaveBeenCalledWith("BK-1"));
-    await waitFor(() => expect(api.list.mock.calls.length).toBeGreaterThanOrEqual(2));
-  });
-
-  it("does not offer the re-check without the permission", async () => {
-    perms.granted = new Set(["backup.module.view"]);
-    api.list.mockResolvedValue(one([backup("BK-1", "VERIFIED")]));
-    renderView(<BackupVerificationResultsView />);
-    expect(((await screen.findByRole("button", { name: "Verify Again" })) as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it("reports an unreachable agent instead of an empty list", async () => {
-    api.list.mockRejectedValue(new Error("network"));
-    renderView(<BackupVerificationResultsView />);
-    expect((await screen.findAllByText(/could not be loaded/)).length).toBeGreaterThan(0);
-  });
 });
 
 describe("Backup Schedules", () => {

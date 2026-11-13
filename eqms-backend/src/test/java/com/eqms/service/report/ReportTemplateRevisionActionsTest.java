@@ -64,7 +64,7 @@ class ReportTemplateRevisionActionsTest {
         actor.setId(UUID.randomUUID());
         actor.setStatus(UserStatus.Active);
         when(permissionsMock.getEffectivePermissionCodes(any(UserAccount.class))).thenReturn(Set.of("reports.definition.manage", "reports.definition.upgrade", "reports.definition.discard_revision", "reports.definition.set_enabled", "reports.catalog.view"));
-        service = new ReportTemplateService(jdbc, new ObjectMapper(), permissionsMock, audit, List.of(new DocumentReportMetadataProvider()));
+        service = new ReportTemplateService(jdbc, new ObjectMapper(), permissionsMock, audit, List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
         service.configureRevisions(revisions);
         when(revisions.effective(anyString())).thenReturn(null);
         when(revisions.open(anyString())).thenReturn(null);

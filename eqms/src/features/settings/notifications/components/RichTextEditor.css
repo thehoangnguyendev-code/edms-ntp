@@ -1,0 +1,44 @@
+/* The editing surface of the notification wording: close to what the reader of the mail will see. */
+.rt-surface .ProseMirror {
+  min-height: 220px;
+  padding: 14px 16px;
+  outline: none;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #334155;
+}
+.rt-surface .ProseMirror p { margin: 0 0 12px; }
+.rt-surface .ProseMirror h1 { font-size: 22px; font-weight: 700; margin: 0 0 12px; color: #0f172a; }
+.rt-surface .ProseMirror h2 { font-size: 18px; font-weight: 700; margin: 0 0 10px; color: #0f172a; }
+.rt-surface .ProseMirror h3 { font-size: 16px; font-weight: 700; margin: 0 0 8px; color: #0f172a; }
+.rt-surface .ProseMirror ul { list-style: disc; padding-left: 22px; margin: 0 0 12px; }
+.rt-surface .ProseMirror ol { list-style: decimal; padding-left: 22px; margin: 0 0 12px; }
+.rt-surface .ProseMirror blockquote { border-left: 3px solid #cbd5e1; padding-left: 12px; color: #64748b; margin: 0 0 12px; }
+.rt-surface .ProseMirror a { color: #059669; text-decoration: underline; }
+.rt-surface .ProseMirror hr { border: 0; border-top: 1px solid #e2e8f0; margin: 14px 0; }
+.rt-surface .ProseMirror table { border-collapse: collapse; width: 100%; margin: 0 0 12px; }
+.rt-surface .ProseMirror th,
+.rt-surface .ProseMirror td { border: 1px solid #e2e8f0; padding: 6px 10px; vertical-align: top; }
+.rt-surface .ProseMirror th { background: #f8fafc; font-weight: 600; text-align: left; }
+.rt-surface .ProseMirror mark { border-radius: 3px; padding: 0 2px; }
+.rt-surface .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: #94a3b8;
+  pointer-events: none;
+}
+/* placeholders ({{name}}) */
+.rt-token {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 5px;
+  padding: 1px 4px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+}
+.rt-token-unknown {
+  background: #fef2f2;
+  color: #b91c1c;
+  text-decoration: underline wavy #ef4444;
+}

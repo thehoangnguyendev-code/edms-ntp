@@ -4,7 +4,6 @@ export { PermissionSetFormView } from './permission-sets/PermissionSetFormView';
 export { WorkflowTransitionsView } from './lifecycle-policies/views/WorkflowTransitionsView';
 export { StateCapabilitiesView } from './lifecycle-policies/views/StateCapabilitiesView';
 export { LifecyclePoliciesView } from './lifecycle-policies/views/LifecyclePoliciesView';
-export { PolicyResolverView } from './lifecycle-policies/policy-resolver/PolicyResolverView';
 export { AuthorizationDiagnosticsView } from './lifecycle-policies/views/AuthorizationDiagnosticsView';
 export { LifecyclePolicyFormView } from './lifecycle-policies/views/LifecyclePolicyFormView';
 export { WorkflowPolicyDuplicateView } from './lifecycle-policies/views/WorkflowPolicyDuplicateView';

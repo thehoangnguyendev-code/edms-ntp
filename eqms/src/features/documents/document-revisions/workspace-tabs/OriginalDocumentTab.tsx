@@ -2,7 +2,7 @@
 import { Search } from "lucide-react";
 import { StatusBadge } from "@/components/ui";
 import type { StatusType } from "@/components/ui";
-import { toDocumentBadgeStatus } from "@/features/documents/shared/statusMapping";
+import { toStatusBadge } from "@/features/documents/shared/statusMapping";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { ROUTES } from "@/app/routes.constants";
 import { useNavigateWithLoading } from "@/hooks";
@@ -44,7 +44,7 @@ interface OriginalDocumentTabProps {
 const mapDocumentStateToStatusType = (
   status?: DocumentState | null,
   statusInfo?: OriginalDocumentInfo["statusInfo"],
-): StatusType => toDocumentBadgeStatus(status, statusInfo);
+): StatusType => toStatusBadge(status, statusInfo);
 
 const displayValue = (value?: string | null): string => {
   return value && value.trim() ? value : "-";

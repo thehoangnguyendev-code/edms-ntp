@@ -11,9 +11,9 @@ import { NewBackupPolicyView, previewGate } from "../NewBackupPolicyView";
 
 const api = vi.hoisted(() => ({
   policies: vi.fn(),
+  targets: vi.fn(),
   policy: vi.fn(),
   policyGate: vi.fn(),
-  targets: vi.fn(),
   proposePolicy: vi.fn(),
   activatePolicy: vi.fn(),
   discardPolicy: vi.fn(),
@@ -102,6 +102,7 @@ const renderApp = (path: string) =>
 
 beforeEach(() => {
   Object.values(api).forEach((fn) => fn.mockReset());
+  api.targets.mockResolvedValue([{ code: "T1", kind: "FOLDER", immutable: false, location: "/backups" }, { code: "T2", kind: "FOLDER", immutable: false, location: "/nas" }]);
   perms.granted = new Set(["backup.admin.policy.view", "backup.admin.policy.propose", "backup.admin.policy.approve"]);
   perms.username = "bob";
   vi.stubGlobal("matchMedia", (query: string) => ({ matches: true, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), onchange: null, dispatchEvent: vi.fn() }));
@@ -138,6 +139,23 @@ describe("Backup Policy list", () => {
     await waitFor(() => expect(lastList()).toMatchObject({ sortBy: "status", sortDirection: "asc" }));
     fireEvent.click(header("approvedBy"));
     await waitFor(() => expect(lastList().sortBy).toBe("approvedBy"));
+  });
+
+  it("opens a version from the More actions menu at the end of its row", async () => {
+    api.policy.mockResolvedValue(policy());
+    api.policyGate.mockResolvedValue(gateOf(true));
+    renderApp(A.POLICY);
+    await screen.findAllByRole("button", { name: "2" });
+    fireEvent.click(screen.getAllByRole("button", { name: "More actions" })[0]);
+    fireEvent.click(await screen.findByText("View Details"));
+    expect(await screen.findByText("Policy Information")).toBeTruthy();
+  });
+
+  it("offers more filters and asks the server for them", async () => {
+    renderApp(A.POLICY);
+    await screen.findAllByRole("button", { name: "2" });
+    for (const label of ["Backs Up", "Copied To", "Files Backup", "Approval", "Proposed", "Activated"]) expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+    await waitFor(() => expect(api.targets).toHaveBeenCalled());
   });
 
   it("offers Propose Policy Change only with the permission", async () => {
@@ -183,13 +201,14 @@ describe("Backup Policy version", () => {
     expect(await screen.findByText(/does not meet the 3-2-1-1 rule, so it was not activated and nothing was signed/)).toBeTruthy();
   });
 
-  it("blocks the person who proposed it from approving, and says why", async () => {
+  it("lets the person who proposed it activate it with their own signature", async () => {
     perms.username = "alice";
     api.policy.mockResolvedValue(policy());
     api.policyGate.mockResolvedValue(gateOf(true));
     renderApp(A.POLICY_DETAIL(2));
-    expect(await screen.findByText("Waiting for another person")).toBeTruthy();
-    expect((screen.getAllByRole("button", { name: "Approve and Activate" }) as HTMLButtonElement[]).every((b) => b.disabled)).toBe(true);
+    await screen.findAllByRole("button", { name: "Approve and Activate" });
+    expect(screen.queryByText("Waiting for another person")).toBeNull();
+    expect((screen.getAllByRole("button", { name: "Approve and Activate" }) as HTMLButtonElement[]).some((b) => !b.disabled)).toBe(true);
   });
 
   it("warns that a draft which fails the rule cannot be activated", async () => {
@@ -275,6 +294,24 @@ describe("Propose a policy change", () => {
     expect(await screen.findByText("Backup Policy Detail")).toBeTruthy();
   });
 
+  it("gives the files a time of their own only when the person switches it on, and sends it as a second schedule", async () => {
+    api.proposePolicy.mockResolvedValue(policy({ version: 4 }));
+    api.policy.mockResolvedValue(policy({ version: 4 }));
+    api.policyGate.mockResolvedValue(gateOf(true));
+    renderApp(A.POLICY_NEW);
+    await screen.findByText("/backup/t1");
+    expect(screen.getByText("With the database")).toBeTruthy();
+    fireEvent.click(screen.getByRole("switch", { name: "Files at their own time" }));
+    expect(screen.getByText("At its own time")).toBeTruthy();
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Files at night" } });
+    await confirmProposal();
+    await waitFor(() => expect(api.proposePolicy).toHaveBeenCalled());
+    expect(api.proposePolicy.mock.calls[0][0].schedule).toEqual({
+      database: { enabled: true, frequency: "DAILY", time: "02:00", type: "FULL" },
+      files: { enabled: true, frequency: "DAILY", time: "03:00", type: "FULL" },
+    });
+  });
+
   it("reports a refusal from the server in plain words and stays on the form", async () => {
     api.proposePolicy.mockRejectedValue({ response: { data: { code: "POLICY_DRAFT_EXISTS" } } });
     renderApp(A.POLICY_NEW);
@@ -301,19 +338,22 @@ describe("previewGate", () => {
     expect(failing(previewGate([choice("T1", "FOLDER")] as never))).toEqual(["COPIES", "MEDIA", "OFFSITE", "IMMUTABLE"]);
   });
 
-  it("passes with T1 and an off-site immutable object store that the agent has locked", () => {
-    const gate = previewGate([choice("T1", "FOLDER"), choice("T3", "S3", { offsite: true, immutable: true, configuredImmutable: true })] as never);
+  it("an off-site NAS share alone is not enough: nothing is out of the server's reach", () => {
+    const nas = { included: true, medium: "NETWORK_SHARE", offsite: true, immutable: false, info: info("T2", "FOLDER") };
+    expect(failing(previewGate([choice("T1", "FOLDER"), nas] as never))).toEqual(["IMMUTABLE"]);
+  });
+
+  it("passes with the folder, the NAS share and a declared manual copy", () => {
+    const nas = { included: true, medium: "NETWORK_SHARE", offsite: false, immutable: false, info: info("T2", "FOLDER") };
+    const choices = [choice("T1", "FOLDER"), nas] as never;
+    expect(failing(previewGate(choices))).toEqual(["OFFSITE", "IMMUTABLE"]);
+    const gate = previewGate(choices, true);
     expect(failing(gate)).toEqual([]);
     expect(gate.passed).toBe(true);
   });
 
-  it("refuses an immutable claim for a target the agent has not locked", () => {
-    const gate = previewGate([choice("T1", "FOLDER"), choice("T3", "S3", { offsite: true, immutable: true })] as never);
-    expect(failing(gate)).toEqual(["IMMUTABLE_CONFIGURED"]);
-  });
-
   it("ignores a target that is not included", () => {
-    const gate = previewGate([choice("T1", "FOLDER"), choice("T3", "S3", { included: false, offsite: true, immutable: true, configuredImmutable: true })] as never);
+    const gate = previewGate([choice("T1", "FOLDER"), choice("T2", "FOLDER", { included: false, offsite: true })] as never);
     expect(failing(gate)).toContain("COPIES");
   });
 });

@@ -8,6 +8,8 @@ interface PermissionResourceGroupProps {
   selectedCodes: Set<string>;
   onToggle: (code: string, checked: boolean) => void;
   readOnly?: boolean;
+  /** Details list only granted permissions: no tick box on the rows. */
+  hideCheckbox?: boolean;
   /** Single-choice pickers must not expose a group-level bulk selection action. */
   showSelectAll?: boolean;
   /** Master-detail pickers display the module in their left navigation, not a repeated resource heading. */
@@ -30,6 +32,7 @@ export const PermissionResourceGroup: React.FC<
   selectedCodes,
   onToggle,
   readOnly = false,
+  hideCheckbox = false,
   showSelectAll = true,
   hideHeader = false,
   filteredPermissionIds,
@@ -107,6 +110,7 @@ export const PermissionResourceGroup: React.FC<
             checked={selectedCodes.has(permission.id)}
             onChange={onToggle}
             disabled={readOnly}
+            hideCheckbox={hideCheckbox}
             locked={lockedCodes?.has(permission.id) ?? false}
             lockedNote={lockedNotes?.get(permission.id)}
           />

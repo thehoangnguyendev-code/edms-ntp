@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ROUTES } from '@/app/routes.constants';
 import logoNoBg from '@/assets/images/logo_nobg.png';
 import { useBranding } from '@/components/branding/BrandLogo';
+import { LoginLogoTarget } from '@/components/branding/SidebarLoginLogo';
 import { DEFAULT_SYSTEM_HEADER_TITLE } from '@/services/api/branding';
 
 interface HeaderProps {
@@ -195,7 +196,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
                 ? "opacity-100 translate-y-0"
                 : "opacity-0 translate-y-2 pointer-events-none"
             )}>
-              <img src={logoNoBg} alt="Logo" className="h-7 w-auto object-contain" />
+              <LoginLogoTarget><img src={logoNoBg} alt="Logo" className="h-7 w-auto object-contain" /></LoginLogoTarget>
             </div>
 
             {/* Breadcrumbs - Desktop/Tablet only, visible when NOT scrolled */}

@@ -9,7 +9,7 @@ interface RevisionWorkspaceApproversTabProps {
 export const RevisionWorkspaceApproversTab: React.FC<RevisionWorkspaceApproversTabProps> = ({ approvers }) => {
   const items: ParticipantSignatureRecord[] = approvers.map((approver, index) => ({
     label: `Approver ${index + 1}`,
-    name: approver.fullName || approver.username || approver.id || "",
+    name: approver.fullName || approver.username || "",
     signedOn: approver.signedOn || approver.actedAt || "",
   }));
 

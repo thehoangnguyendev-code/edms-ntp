@@ -3340,12 +3340,12 @@ public class ControlledCopyService {
             );
         } catch (java.io.IOException ex) {
             throw new IllegalStateException(
-                    "Failed to compose controlled-copy-specific PDF for copy " + copy.getId(), ex);
+                    "Failed to compose controlled-copy-specific PDF for copy " + copy.getControlledCopyNumber(), ex);
         }
         byte[] composedPdf = composition == null ? null : composition.pdfBytes();
         if (composedPdf == null || composedPdf.length == 0) {
             throw new IllegalStateException(
-                    "Controlled-copy-specific PDF composition returned no bytes for copy " + copy.getId());
+                    "Controlled-copy-specific PDF composition returned no bytes for copy " + copy.getControlledCopyNumber());
         }
         return composedPdf;
     }
@@ -3372,7 +3372,7 @@ public class ControlledCopyService {
                 try {
                     base = StringUtils.hasText(copy.getControlledCopyFilePath()) ? fileStorageService.readFile(copy.getControlledCopyFilePath()) : null;
                 } catch (IOException ex) {
-                    throw new IllegalStateException("Failed to read the controlled copy PDF to mark it: " + copy.getId(), ex);
+                    throw new IllegalStateException("Failed to read the controlled copy PDF to mark it: " + copy.getControlledCopyNumber(), ex);
                 }
             }
             List<ControlledCopyPdfMarkingService.Placement> placements = new java.util.ArrayList<>();

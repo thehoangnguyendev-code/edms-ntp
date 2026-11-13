@@ -36,7 +36,7 @@ class ControlledCopyDeliveryScopeTest {
             assertTrue(ControlledCopyDeliveryScope.active());
         }
         assertFalse(ControlledCopyDeliveryScope.active());
-        verify(outbox).enqueue(eq("recipient@example.invalid"),eq("rendered subject"),eq("rendered body"),eq(template.getType()),eq("CONTROLLED_COPY"),argThat(payload->template.getId().toString().equals(payload.get("outboxLegacyTemplateId"))),eq(true));
+        verify(outbox).enqueue(eq("recipient@example.invalid"),eq("rendered subject"),eq("rendered body"),eq(template.getType()),eq("CONTROLLED_COPY"),argThat(payload->template.getId().toString().equals(payload.get("outboxLegacyTemplateId"))));
         verifyNoInteractions(smtp);verify(renderer,never()).incrementUsage(any());
     }
     @Test void renderFailurePropagatesSoCopyTransactionCannotCommitWithoutDelivery(){

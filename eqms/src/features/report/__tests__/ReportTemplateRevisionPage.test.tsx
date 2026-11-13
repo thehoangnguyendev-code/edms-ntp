@@ -1,5 +1,5 @@
 import "../testing/browserStubs";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/components/ui/toast/Toast";
@@ -24,6 +24,19 @@ beforeEach(() => {
   vi.mocked(reportTemplatesApi.revisions).mockResolvedValue({ data: [{ revision: 1 }, { revision: 2 }], pagination: { page: 1, limit: 100, total: 2, totalPages: 1 } } as never);
   vi.mocked(reportTemplatesApi.revision).mockResolvedValue({
     definitionCode: "RPT.0003", revision: 2, status: "EFFECTIVE", changeReason: "Add PDF", createdByName: "Author", approvedByName: "Approver",
+    // the stepper comes from the server with the revision
+    workflow: {
+      steps: [
+        { code: "DRAFT", label: "Draft", terminal: false },
+        { code: "PENDING_APPROVAL", label: "Pending Approval", terminal: false },
+        { code: "EFFECTIVE", label: "Effective", terminal: false },
+        { code: "OBSOLETE", label: "Obsoleted", terminal: true },
+        { code: "DISCARDED", label: "Closed - Cancelled", terminal: true },
+      ],
+      currentStepIndex: 2,
+      skippedSteps: [],
+      terminalProgressStep: "",
+    },
     approvedAt: "2026-10-14T10:00:00Z", effectiveAt: "2026-10-14T10:00:00Z",
     content: { displayName: "Register", sourceCode: "DOCUMENT_STATUS", active: true, allowedFormats: ["CSV", "PDF"], fields: [{ code: "documentNumber", name: "Document Number", type: "TEXT", allowed: true, defaultSelected: true, required: true, order: 0 }], roleScopes: [] },
   } as never);
@@ -45,12 +58,15 @@ it("shows a revision on its own page, its approval facts, its content and what c
   );
   expect(await screen.findByRole("heading", { name: "Report Template Revision" })).toBeInTheDocument();
   expect(screen.getByRole("navigation", { name: "Breadcrumb" })).toHaveTextContent("Report Template Details");
-  expect(await screen.findByText("Rev 2")).toBeInTheDocument();
-  expect(screen.getAllByText("Effective").length).toBeGreaterThan(1); // the stepper and the status badge
+  expect(await screen.findByLabelText("Revision")).toHaveValue("2.0.0");
+  expect(screen.getByLabelText("Status")).toHaveValue("Effective");
+  expect(screen.getAllByText("Effective").length).toBeGreaterThan(0); // the stepper
   expect(screen.getAllByText("Pending Approval").length).toBeGreaterThan(0); // the stepper shows the steps of a revision
-  expect(screen.getByText("Approver")).toBeInTheDocument();
-  expect(screen.getAllByText("Output formats").length).toBe(2);
-  expect(screen.getByText("CSV, PDF")).toBeInTheDocument();
-  expect(screen.getByText("Document Number")).toBeInTheDocument();
+  expect(screen.getByLabelText("Approved By")).toHaveValue("Approver");
+  expect(screen.getByLabelText("Output Formats")).toHaveValue("CSV · PDF");
+  // the content is in tabs, as in the Report Template Details
+  fireEvent.click(screen.getByRole("tab", { name: /Fields/ }));
+  expect(await screen.findByText("Document Number")).toBeInTheDocument();
+  expect(screen.getAllByRole("button", { name: "Back" }).length).toBeGreaterThan(0);
   expect(reportTemplatesApi.compareRevision).toHaveBeenCalledWith("RPT.0003", 2, "previous");
 });

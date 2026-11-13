@@ -39,9 +39,6 @@ export function TrainingSpecimenDetailPage() {
   }
 
   const caps = specimen.capabilities;
-  // the newest scan is Current; an earlier one is Superseded. A scan that was waiting for a confirmation when the workflow ended stays as it was (shown as Not confirmed).
-  const steps = ["Current", "Superseded"];
-  const stepIndex = specimen.status === "OBSOLETED" ? 1 : 0;
   const tabs: TabItem[] = [{ id: "overview", label: "General Information" }, { id: "audit", label: "Audit Trail" }];
   const footer = (
     <>
@@ -55,8 +52,7 @@ export function TrainingSpecimenDetailPage() {
         title={title}
         breadcrumbItems={crumbs}
         onBack={() => navigate("/training-management/specimen-signatures")}
-        steps={steps}
-        currentStepIndex={stepIndex}
+        workflow={specimen.workflow}
         tabs={tabs}
         activeTab={tab}
         onTab={setTab}

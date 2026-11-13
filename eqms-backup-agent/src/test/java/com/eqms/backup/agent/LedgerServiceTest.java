@@ -126,17 +126,57 @@ class LedgerServiceTest {
 
     @Test
     void concurrentWritersNeverForkTheChain() throws Exception {
-        ExecutorService pool = Executors.newFixedThreadPool(6);
+        // enough writers and events that two of them reach the file copy in the wrong order if the append is not serialised with the database
+        ExecutorService pool = Executors.newFixedThreadPool(12);
         List<Future<?>> futures = new ArrayList<>();
-        for (int i = 0; i < 30; i++) {
+        for (int i = 0; i < 300; i++) {
             int n = i;
             futures.add(pool.submit(() -> ledger.append("agent-" + (n % 3), "TICK", "R-" + n, Map.of("n", n))));
         }
         for (Future<?> f : futures) f.get();
         pool.shutdown();
-        assertThat(ledger.all()).hasSize(30);
-        assertThat(ledger.verify().ok()).isTrue();
-        assertThat(ledger.all().stream().map(LedgerService.Event::seq).distinct().count()).isEqualTo(30);
+        assertThat(ledger.all()).hasSize(300);
+        LedgerService.Verification verification = ledger.verify();
+        assertThat(verification.ok()).as(String.valueOf(verification.reason())).isTrue();
+        assertThat(verification.fileCompared()).isTrue();
+        assertThat(ledger.all().stream().map(LedgerService.Event::seq).distinct().count()).isEqualTo(300);
+    }
+
+    /** A ledger whose file write is slow for one event, as a write to a mounted folder can be. */
+    static final class SlowFileLedger extends LedgerService {
+        SlowFileLedger(ControlDbTestSupport db, AgentProperties properties) {
+            super(db.jdbc, db.tx, properties);
+        }
+
+        @Override
+        protected void appendToFile(Event e) {
+            if ("SLOW".equals(e.ref())) {
+                try {
+                    Thread.sleep(400);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            super.appendToFile(e);
+        }
+    }
+
+    @Test
+    void aSlowFileWriteNeverPutsTheFileCopyOutOfOrder() throws Exception {
+        AgentProperties properties = new AgentProperties();
+        properties.setLedgerDir(tmp.resolve("slow-ledger"));
+        LedgerService slow = new SlowFileLedger(db, properties);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        Future<?> first = pool.submit(() -> slow.append("admin", "RESTORE_RUN_STARTED", "SLOW", Map.of()));
+        Thread.sleep(150); // the first event is committed and its file write is still waiting
+        Future<?> second = pool.submit(() -> slow.append("system", "MAINTENANCE_SESSIONS_REVOKED", "FAST", Map.of()));
+        first.get();
+        second.get();
+        pool.shutdown();
+        LedgerService.Verification verification = slow.verify();
+        assertThat(verification.ok()).as(String.valueOf(verification.reason())).isTrue();
+        assertThat(verification.fileCompared()).isTrue();
+        assertThat(Files.readAllLines(tmp.resolve("slow-ledger").resolve("ledger.jsonl")).stream().map(l -> l.split(" ")[0]).toList()).containsExactly("1", "2");
     }
 
     @Test

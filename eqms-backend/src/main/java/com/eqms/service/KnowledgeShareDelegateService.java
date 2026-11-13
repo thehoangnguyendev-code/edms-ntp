@@ -19,7 +19,6 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
@@ -33,7 +32,7 @@ import java.util.UUID;
  */
 @Service
 public class KnowledgeShareDelegateService {
-    private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(com.eqms.util.DateTimeFormatUtils.ZONE);
 
     private final KnowledgeShareDelegateRepository delegateRepository;
     private final DepartmentRepository departmentRepository;

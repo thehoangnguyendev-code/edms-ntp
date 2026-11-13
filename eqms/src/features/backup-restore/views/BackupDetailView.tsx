@@ -1,33 +1,38 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { HardDrive, Info } from "lucide-react";
-import { IconBrandHeadlessui, IconDatabase, IconHistory, IconPackage, IconShieldCheck } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
-import { FormSection } from "@/components/ui/form";
+import { TabNav } from "@/components/ui/tabs/TabNav";
+import { WorkflowProgressStepper } from "@/components/ui/workflow-stepper/WorkflowProgressStepper";
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { DataTable } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
-import { backupRestoreApi, type BackupDetail, type RestoreRehearsal } from "@/services/api/backupRestore";
+import { backupRestoreApi, type BackupDetail } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupRestorePage } from "../components/BackupRestorePage";
-import { ExportBackupModal } from "../components/ExportBackupModal";
 import { FormField, Textarea } from "@/components/ui/form/ResponsiveForm";
 import { FormModal } from "@/components/ui/modal/FormModal";
-import { useBackupJobs } from "../components/useBackupJobs";
+import { VerifyIntegrityModal } from "../components/VerifyIntegrityModal";
+import { BackupRehearsalList } from "../components/BackupRehearsalList";
+import { LocalListTable } from "../components/LocalListTable";
+import { ProductionRestoreDialog } from "../components/ProductionRestoreDialog";
+import { useProductionRestoreRun } from "../components/useProductionRestoreRun";
 import { BACKUP_STATUS_COLOR, COMPONENT_LABEL, VERIFICATION_COLOR, statusLabel } from "../types";
 import { formatBytes, formatDateTime, formatDuration } from "../format";
-import { exportErrorMessage } from "@/features/settings/backup-restore-administration/mediaLabels";
 import { displayDate } from "@/utils/format";
 
-/** One label and its value, laid out like the rest of the detail screens: stacked on small screens, side by side on large. */
-const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-  <div className="flex flex-col gap-1.5 border-b border-slate-200 pb-3 last:border-b-0 last:pb-0 lg:flex-row lg:items-center lg:gap-2 lg:pb-4 last:lg:pb-0">
-    <label className="w-full flex-shrink-0 text-xs font-medium text-slate-700 sm:text-sm lg:w-40 capitalize">{label}</label>
-    <div className="min-w-0 flex-1 break-words text-xs text-slate-900 lg:text-sm">{children}</div>
+type MainTab = "general" | "integrity" | "stored" | "contents";
+type SubTab = "verifications" | "restoreTests";
+
+/** One read-only value in a labelled box, the same control the document detail tabs use. */
+const ReadOnlyInput: React.FC<{ label: string; value: string; mono?: boolean; className?: string }> = ({ label, value, mono, className }) => (
+  <div className={`flex flex-col gap-1.5 ${className ?? ""}`}>
+    <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{label}</label>
+    <input type="text" value={value} readOnly className={`${CONTROL_STATE_CLASSES.readonlyField} ${mono ? "font-mono text-xs" : ""}`} />
   </div>
 );
 
@@ -41,16 +46,19 @@ export const BackupDetailView: React.FC = () => {
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
-  const { working, follow } = useBackupJobs(reload);
+  const [verifying, setVerifying] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const restoreRun = useProductionRestoreRun(reload);
   const canVerify = hasPermission("backup.backup.verify");
-  const canExport = hasPermission("backup.backup.export");
   const canRehearse = hasPermission("backup.restore.test");
-  const [rehearsals, setRehearsals] = useState<RestoreRehearsal[]>([]);
+  // Only the figures the page needs (how many, is one running); the list itself is read, paged, by BackupRehearsalList.
+  const [rehearsalTotal, setRehearsalTotal] = useState(0);
+  const [busyRehearsal, setBusyRehearsal] = useState(false);
   const [rehearsing, setRehearsing] = useState(false);
   const [rehearseReason, setRehearseReason] = useState("");
   const [rehearseBusy, setRehearseBusy] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [exportBusy, setExportBusy] = useState(false);
+  const [activeTab, setActiveTab] = useState<MainTab>("general");
+  const [activeSubTab, setActiveSubTab] = useState<SubTab>("verifications");
 
   useEffect(() => {
     let active = true;
@@ -64,35 +72,24 @@ export const BackupDetailView: React.FC = () => {
     };
   }, [backupNumber, reloadKey]);
 
-  const verify = async () => {
-    try {
-      const { jobId } = await backupRestoreApi.verify(backupNumber);
-      showToast({ type: "info", title: "Integrity check requested", message: backupNumber });
-      void follow(jobId, "Integrity check");
-    } catch (e) {
-      showToast({ type: "error", title: "Unable to start the check", message: getApiErrorMessage(e, "The request was refused.") });
-    }
-  };
-
-  const requestExport = async (mediaId: string, reason: string) => {
-    setExportBusy(true);
-    try {
-      const created = await backupRestoreApi.requestExport(backupNumber, mediaId, reason);
-      showToast({ type: "success", title: "Export requested", message: `${created.exportId} is waiting for another person to approve it.` });
-      setExporting(false);
-    } catch (e) {
-      showToast({ type: "error", title: "The export was not requested", message: exportErrorMessage(e, "The request was refused.") });
-    } finally {
-      setExportBusy(false);
-    }
-  };
-
   useEffect(() => {
     let live = true;
     backupRestoreApi
-      .rehearsals({ backupNumber, sortBy: "requestedAt", sortDirection: "desc", limit: 10 })
-      .then((data) => live && setRehearsals(data.data))
-      .catch(() => live && setRehearsals([]));
+      .rehearsals({ backupNumber, limit: 1 })
+      .then(async (all) => {
+        const [queued, running] = await Promise.all([
+          backupRestoreApi.rehearsals({ backupNumber, status: "QUEUED", limit: 1 }),
+          backupRestoreApi.rehearsals({ backupNumber, status: "RUNNING", limit: 1 }),
+        ]);
+        if (!live) return;
+        setRehearsalTotal(all.pagination.total);
+        setBusyRehearsal(queued.pagination.total + running.pagination.total > 0);
+      })
+      .catch(() => {
+        if (!live) return;
+        setRehearsalTotal(0);
+        setBusyRehearsal(false);
+      });
     return () => {
       live = false;
     };
@@ -107,7 +104,7 @@ export const BackupDetailView: React.FC = () => {
       setRehearseReason("");
       reload();
     } catch (e) {
-      showToast({ type: "error", title: "The test restore was not requested", message: exportErrorMessage(e, "The request was refused.") });
+      showToast({ type: "error", title: "The test restore was not requested", message: getApiErrorMessage(e, "The request was refused.") });
     } finally {
       setRehearseBusy(false);
     }
@@ -139,39 +136,53 @@ export const BackupDetailView: React.FC = () => {
   const restorable = backup.status === "COMPLETED";
   const verified = backup.verification === "VERIFIED";
   const canRestore = restorable && verified;
-  const busyRehearsal = rehearsals.some((r) => r.status === "QUEUED" || r.status === "RUNNING");
+  const locations = backup.locations ?? [];
+  const verifications = backup.verifications ?? [];
 
-  const actions = (
+  // The same buttons sit above and below the tabs so they are always close to where the person is reading.
+  const actionButtons = (
     <>
       <Button variant="outline-emerald" size="sm" onClick={back} className="whitespace-nowrap touch-manipulation">
         Back
       </Button>
-      <Button variant="outline-emerald" size="sm" disabled={!restorable || !canVerify || working > 0} onClick={() => void verify()} className="whitespace-nowrap touch-manipulation">
-        {working > 0 ? "Checking…" : "Verify Integrity"}
+      <Button variant="outline-emerald" size="sm" disabled={!restorable || !canVerify || verifying} onClick={() => setVerifying(true)} className="whitespace-nowrap touch-manipulation">
+        Verify Integrity
       </Button>
       {canRehearse && (
         <Button variant="outline-emerald" size="sm" disabled={!canRestore || busyRehearsal} onClick={() => setRehearsing(true)} className="whitespace-nowrap touch-manipulation">
           Test Restore
         </Button>
       )}
-      {canExport && (
-        <Button variant="outline-emerald" size="sm" disabled={!canRestore} onClick={() => setExporting(true)} className="whitespace-nowrap touch-manipulation">
-          Export Backup Set
-        </Button>
-      )}
       <Button
         size="sm"
-        disabled={!canRestore}
-        onClick={() => navigate(`${ROUTES.BACKUP_RESTORE.RESTORE_NEW}?backup=${encodeURIComponent(backup.id)}`)}
+        disabled={!canRestore || restoreRun.working > 0}
+        onClick={() => setRestoring(true)}
         className="whitespace-nowrap touch-manipulation"
       >
-        Request Restore
+        Restore
       </Button>
     </>
   );
 
+  const tabs = [
+    { id: "general" as MainTab, label: "General Information" },
+    { id: "integrity" as MainTab, label: "Integrity and Retention" },
+    { id: "stored" as MainTab, label: "Stored At", count: locations.length },
+    { id: "contents" as MainTab, label: "Contents", count: backup.components.length },
+  ];
+  const subTabs = [
+    { id: "verifications" as SubTab, label: "Verification History", count: verifications.length },
+    { id: "restoreTests" as SubTab, label: "Restore Tests", count: rehearsalTotal },
+  ];
+
   return (
-    <BackupRestorePage title="Backup Details" group="Backup" parent={parent} preview={false} actions={actions}>
+    <BackupRestorePage
+      title="Backup Details"
+      group="Backup"
+      parent={parent}
+      preview={false}
+      actions={<div className="flex flex-wrap items-center justify-end gap-2 md:gap-3">{actionButtons}</div>}
+    >
       {backup.status === "FAILED" && <WarningBanner variant="error" title="This backup failed" description={backup.errorMessage ?? "No detail recorded."} />}
       {restorable && !verified && (
         <WarningBanner
@@ -181,96 +192,8 @@ export const BackupDetailView: React.FC = () => {
         />
       )}
 
-      <FormSection title="Backup Information" icon={<Info className="h-4 w-4" />}>
-        <div className="grid grid-cols-1 gap-x-10 gap-y-3 lg:gap-y-4 xl:grid-cols-2">
-          <div className="space-y-3 lg:space-y-4">
-            <Field label="Backup Number">
-              <span className="font-medium">{backup.id}</span>
-            </Field>
-            <Field label="Status">
-              <Badge color={BACKUP_STATUS_COLOR[backup.status]}>{statusLabel(backup.status)}</Badge>
-            </Field>
-            <Field label="Type">{statusLabel(backup.type)}</Field>
-            <Field label="Trigger">{statusLabel(backup.trigger)}</Field>
-            <Field label="Requested by">{backup.createdBy}</Field>
-          </div>
-          <div className="space-y-3 lg:space-y-4">
-            <Field label="Started">{formatDateTime(backup.startedAt)}</Field>
-            <Field label="Duration">{formatDuration(backup.durationSec)}</Field>
-            <Field label="Total size">{formatBytes(backup.sizeBytes)}</Field>
-            <Field label="Database schema">{backup.schemaVersion ? `V${backup.schemaVersion}` : "—"}</Field>
-            <Field label="Reason">{backup.reason || "—"}</Field>
-            {backup.changeControlRef && <Field label="Change control">{backup.changeControlRef}</Field>}
-            {backup.errorCode && (
-              <Field label="Error code">
-                <span className="font-mono text-xs">{backup.errorCode}</span>
-              </Field>
-            )}
-          </div>
-        </div>
-      </FormSection>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <FormSection title="Integrity and Retention" icon={<IconShieldCheck className="h-4 w-4" />}>
-          <div className="space-y-3 lg:space-y-4">
-            <Field label="Verification">
-              <span className="inline-flex flex-wrap items-center gap-2">
-                <Badge color={VERIFICATION_COLOR[backup.verification]}>{statusLabel(backup.verification)}</Badge>
-                {backup.verifiedAt && <span className="text-xs text-slate-500">{formatDateTime(backup.verifiedAt)}</span>}
-              </span>
-            </Field>
-            <Field label="Retained">{backup.retention === "PERMANENT" ? "Permanently" : backup.retentionUntil ? displayDate(backup.retentionUntil) : "—"}</Field>
-            <Field label="Legal hold">{backup.legalHold ? <Badge color="amber">On hold: will not be purged</Badge> : "No"}</Field>
-          </div>
-        </FormSection>
-
-        <FormSection title="Stored At" icon={<HardDrive className="h-4 w-4" />}>
-          {backup.locations && backup.locations.length > 0 ? (
-            <div className="space-y-3 lg:space-y-4">
-              {backup.locations.map((location) => (
-                <Field key={location.target} label={location.target}>
-                  <span className="break-all font-mono text-xs">{location.path}</span>
-                  {!location.ok && (
-                    <span className="ml-2">
-                      <Badge color="red">Not confirmed</Badge>
-                    </span>
-                  )}
-                </Field>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-slate-500 lg:text-sm">No stored copy is recorded for this backup.</p>
-          )}
-        </FormSection>
-      </div>
-
-      <FormSection title="Contents" icon={<IconBrandHeadlessui className="h-4 w-4" />}>
-        <DataTable
-          rows={backup.components}
-          getRowKey={(row) => row.key}
-          columns={[
-            { id: "component", header: "Component", cell: (row) => COMPONENT_LABEL[row.key] ?? row.key },
-            { id: "size", header: "Size", cell: (row) => formatBytes(row.sizeBytes) },
-            { id: "status", header: "Result", cell: (row) => <Badge color={row.status === "COMPLETED" ? "emerald" : "red"}>{statusLabel(row.status)}</Badge> },
-            { id: "sha", header: "SHA-256", cell: (row) => <span className="break-all font-mono text-xs text-slate-500">{row.sha256 ?? "—"}</span> },
-          ]}
-        />
-      </FormSection>
-
-      {backup.verifications && backup.verifications.length > 0 && (
-        <FormSection title="Verification History" icon={<IconHistory className="h-4 w-4" />} description="Every check is kept; a later check never replaces an earlier one.">
-          <DataTable
-            rows={backup.verifications}
-            getRowKey={(row) => `${row.tier}-${row.verified_at}`}
-            columns={[
-              { id: "tier", header: "Check", cell: (row) => row.tier },
-              { id: "result", header: "Result", cell: (row) => <Badge color={row.result === "VERIFIED" ? "emerald" : "red"}>{statusLabel(row.result)}</Badge> },
-              { id: "at", header: "When", cell: (row) => formatDateTime(row.verified_at) },
-              { id: "by", header: "By", cell: (row) => row.verified_by },
-            ]}
-          />
-        </FormSection>
-      )}
+      {/* The stages a backup goes through, shown like the document status stepper; the server works them out. */}
+      <WorkflowProgressStepper workflow={backup.workflow} />
 
       <div className={canRestore ? "rounded-xl border border-emerald-200 bg-emerald-50 p-4 md:p-5" : "rounded-xl border border-amber-200 bg-amber-50 p-4 md:p-5"}>
         <h3 className={canRestore ? "mb-3 text-sm font-semibold text-emerald-900" : "mb-3 text-sm font-semibold text-amber-900"}>What this means</h3>
@@ -282,32 +205,110 @@ export const BackupDetailView: React.FC = () => {
           )}
           <li>{backup.retention === "PERMANENT" ? "It is kept permanently and is never removed by age." : "Its retention period is set by the backup policy."}</li>
           <li>The data is encrypted. It can only be opened by the people who hold the decryption key, never by the Backup Agent.</li>
-          <li>Every check on this backup is recorded in the history above and in the tamper-evident ledger.</li>
+          <li>Every check on this backup is recorded in the Verification History below and in the tamper-evident ledger.</li>
         </ul>
       </div>
 
-      <div className="flex items-center gap-3">{actions}</div>
-      <FormSection title="Restore Tests" icon={<IconHistory className="h-4 w-4" />} description="A test restore puts this backup into a scratch database, runs the checks and drops the database. Production is not changed.">
-        {rehearsals.length === 0 ? (
-          <p className="text-xs text-slate-500 lg:text-sm">No test restore has been run for this backup.</p>
-        ) : (
-          <DataTable
-            rows={rehearsals}
-            getRowKey={(row) => row.rehearsalId}
-            columns={[
-              { id: "id", header: "Test", cell: (row) => <span className="font-medium">{row.rehearsalId}</span> },
-              { id: "status", header: "Result", cell: (row) => <Badge color={row.status === "PASSED" ? "emerald" : row.status === "FAILED" ? "red" : "amber"}>{statusLabel(row.status)}</Badge> },
-              { id: "checks", header: "Checks", cell: (row) => (row.checkCount > 0 ? `${row.checkCount - row.failedCount} of ${row.checkCount} passed` : "—") },
-              { id: "error", header: "Problem", cell: (row) => (row.errorCode ? <span className="font-mono text-xs">{row.errorCode}</span> : "—") },
-              { id: "by", header: "Requested by", cell: (row) => row.requestedBy },
-              { id: "at", header: "Requested", cell: (row) => formatDateTime(row.requestedAt) },
-              { id: "took", header: "Restore time", cell: (row) => (row.restoreSeconds == null ? "—" : `${row.restoreSeconds} s`) },
-            ]}
-          />
-        )}
-      </FormSection>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <TabNav tabs={tabs} activeTab={activeTab} onChange={(id) => setActiveTab(id as MainTab)} layoutId="backup-detail-main-tab" />
+        <div className="p-4 md:p-5">
+          {activeTab === "general" && (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+              <ReadOnlyInput label="Backup Number" value={backup.id} />
+              <ReadOnlyInput label="Status" value={statusLabel(backup.status)} />
+              <ReadOnlyInput label="Type" value={statusLabel(backup.type)} />
+              <ReadOnlyInput label="Trigger" value={statusLabel(backup.trigger)} />
+              <ReadOnlyInput label="Requested by" value={backup.createdBy} />
+              <ReadOnlyInput label="Started" value={formatDateTime(backup.startedAt)} />
+              <ReadOnlyInput label="Duration" value={formatDuration(backup.durationSec)} />
+              <ReadOnlyInput label="Total size" value={formatBytes(backup.sizeBytes)} />
+              <ReadOnlyInput label="Database schema" value={backup.schemaVersion ? `V${backup.schemaVersion}` : "—"} />
+              {backup.changeControlRef && <ReadOnlyInput label="Change control" value={backup.changeControlRef} />}
+              {backup.errorCode && <ReadOnlyInput label="Error code" value={backup.errorCode} mono />}
+              <ReadOnlyInput label="Reason" value={backup.reason || "—"} className="md:col-span-2" />
+            </div>
+          )}
 
-      <ExportBackupModal backupNumber={backupNumber} isOpen={exporting} busy={exportBusy} onClose={() => setExporting(false)} onConfirm={(mediaId, reason) => void requestExport(mediaId, reason)} />
+          {activeTab === "integrity" && (
+            <div className="space-y-4 md:space-y-5">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+                <ReadOnlyInput label="Verification" value={statusLabel(backup.verification)} />
+                <ReadOnlyInput label="Verified" value={backup.verifiedAt ? formatDateTime(backup.verifiedAt) : "—"} />
+                <ReadOnlyInput label="Retained" value={backup.retention === "PERMANENT" ? "Permanently" : backup.retentionUntil ? displayDate(backup.retentionUntil) : "—"} />
+                <ReadOnlyInput label="Legal hold" value={backup.legalHold ? "On hold: will not be purged" : "No"} />
+              </div>
+            </div>
+          )}
+
+          {activeTab === "stored" &&
+            (locations.length === 0 ? (
+              <p className="text-xs text-slate-500 lg:text-sm">No stored copy is recorded for this backup.</p>
+            ) : (
+              <DataTable
+                rows={locations}
+                getRowKey={(row) => row.target}
+                columns={[
+                  { id: "target", header: "Target", cell: (row) => <span className="font-medium">{row.target}</span> },
+                  { id: "path", header: "Location", cell: (row) => <span className="break-all font-mono text-xs">{row.path}</span> },
+                  { id: "ok", header: "Result", cell: (row) => <Badge color={row.ok ? "emerald" : "red"}>{row.ok ? "Confirmed" : "Not confirmed"}</Badge> },
+                ]}
+              />
+            ))}
+
+          {activeTab === "contents" && (
+            <DataTable
+              rows={backup.components}
+              getRowKey={(row) => row.key}
+              columns={[
+                { id: "component", header: "Component", cell: (row) => COMPONENT_LABEL[row.key] ?? row.key },
+                { id: "size", header: "Size", cell: (row) => formatBytes(row.sizeBytes) },
+                { id: "status", header: "Result", cell: (row) => <Badge color={row.status === "COMPLETED" ? "emerald" : "red"}>{statusLabel(row.status)}</Badge> },
+                { id: "sha", header: "SHA-256", cell: (row) => <span className="break-all font-mono text-xs text-slate-500">{row.sha256 ?? "—"}</span> },
+              ]}
+            />
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 md:gap-3">{actionButtons}</div>
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <TabNav tabs={subTabs} activeTab={activeSubTab} onChange={(id) => setActiveSubTab(id as SubTab)} variant="simple-underline" />
+        <div className="p-4 md:p-5">
+          {activeSubTab === "verifications" && (
+            <LocalListTable
+              rows={verifications}
+              getRowKey={(row) => `${row.tier}-${row.verified_at}`}
+              searchText={(row) => `${row.tier} ${statusLabel(row.result)} ${row.verified_by} ${formatDateTime(row.verified_at)}`}
+              searchLabel="Search checks"
+              searchPlaceholder="Check, result or person…"
+              emptyTitle="No checks yet"
+              emptyDescription="Every check is kept; a later check never replaces an earlier one."
+              columns={[
+                { id: "tier", header: "Check", cell: (row) => row.tier, sortValue: (row) => row.tier },
+                { id: "result", header: "Result", cell: (row) => <Badge color={row.result === "VERIFIED" ? "emerald" : "red"}>{statusLabel(row.result)}</Badge>, sortValue: (row) => row.result },
+                { id: "at", header: "When", cell: (row) => formatDateTime(row.verified_at), sortValue: (row) => row.verified_at },
+                { id: "by", header: "By", cell: (row) => row.verified_by, sortValue: (row) => row.verified_by },
+              ]}
+            />
+          )}
+
+          {activeSubTab === "restoreTests" && <BackupRehearsalList backupNumber={backupNumber} reloadKey={reloadKey} />}
+        </div>
+      </div>
+
+      <ProductionRestoreDialog
+        isOpen={restoring}
+        onlyBackup={backup.id}
+        onClose={() => setRestoring(false)}
+        onContinue={(backupNumber, parts) => {
+          setRestoring(false);
+          restoreRun.begin(backupNumber, parts);
+        }}
+      />
+      {restoreRun.signatureModal}
+      <VerifyIntegrityModal isOpen={verifying} backupNumber={backupNumber} onClose={() => setVerifying(false)} onFinished={reload} />
+
       <FormModal
         isOpen={rehearsing}
         onClose={() => setRehearsing(false)}

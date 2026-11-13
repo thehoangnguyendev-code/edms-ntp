@@ -19,7 +19,7 @@ public final class ReportCharts {
             for(var row:rows.subList(1,rows.size())) {
                 String key=row.get(column);if(key==null||key.isBlank())key="Unspecified";
                 if("LINE".equals(chart.type())&&!key.equals("Unspecified")) {
-                    try {key=YearMonth.from(LocalDate.parse(key.substring(0,10))).toString();}
+                    try {key=YearMonth.from(chartDate(key)).toString();}
                     catch(Exception invalid){throw new IllegalArgumentException("REPORT_CHART_DATE_REQUIRED");}
                 }
                 counts.merge(key,1L,Long::sum);
@@ -37,10 +37,16 @@ public final class ReportCharts {
                 counts=grouped;
             }
             long total=rows.size()-1;
-            var points=counts.entrySet().stream().map(e->new Point(e.getKey(),e.getValue(),"PERCENT".equals(chart.metric())?(total==0?0:Math.round(e.getValue()*10000.0/total)/100.0):e.getValue())).toList();
+            var points=counts.entrySet().stream().map(e->new Point("LINE".equals(chart.type())&&!e.getKey().equals("Unspecified")?com.eqms.util.DateTimeFormatUtils.displayMonth(e.getKey()):e.getKey(),e.getValue(),"PERCENT".equals(chart.metric())?(total==0?0:Math.round(e.getValue()*10000.0/total)/100.0):e.getValue())).toList();
             results.add(new Result(chart.title(),chart.type(),chart.metric(),total,points));
         }
         return results;
+    }
+    /** The date a cell holds: the display format dd/MM/yyyy (with or without a time) or, for a value that was never formatted, ISO. */
+    private static LocalDate chartDate(String text) {
+        var shown=java.util.regex.Pattern.compile("^(\\d{2})/(\\d{2})/(\\d{4})").matcher(text.trim());
+        if(shown.find())return LocalDate.of(Integer.parseInt(shown.group(3)),Integer.parseInt(shown.group(2)),Integer.parseInt(shown.group(1)));
+        return LocalDate.parse(text.trim().substring(0,10));
     }
     public static BufferedImage image(Result chart) throws Exception {
         return image(chart,null);

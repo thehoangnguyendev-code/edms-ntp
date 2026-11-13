@@ -86,7 +86,7 @@ public class NotificationDigestScheduler {
                     channel, group.size(), recipient.getId());
             return;
         }
-        if (!StringUtils.hasText(recipient.getEmail()) || !recipient.isEmailNotificationsEnabled()) {
+        if (!StringUtils.hasText(recipient.getEmail())) {
             group.forEach(item -> item.setStatus(NotificationDispatchQueue.STATUS_CANCELLED));
             queueRepository.saveAll(group);
             return;

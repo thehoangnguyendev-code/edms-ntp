@@ -21,6 +21,10 @@ public record PublicBrandingResponse(
         String toastPosition,
         /** How long a system message stays on screen, in seconds (2 to 60; 5 when the administrator set nothing). */
         int toastDurationSeconds,
+        /** The colour of the border and the time bar of every system message, a six-digit hex colour (blue when the administrator set nothing). */
+        String toastColor,
+        /** How strong the shadow of every system message is, 0 (none) to 100 (40 when the administrator set nothing). */
+        int toastShadow,
         /** How the materials of a training are drawn: TABLE or TILES (TABLE when the administrator set nothing). */
         String trainingMaterialsLayout,
         /** How the folders of the Knowledge Base are named: FULL (the name) or ABBREVIATION (the short form); FULL when the administrator set nothing. */

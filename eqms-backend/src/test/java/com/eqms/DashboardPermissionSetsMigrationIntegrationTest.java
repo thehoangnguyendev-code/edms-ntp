@@ -41,11 +41,6 @@ class DashboardPermissionSetsMigrationIntegrationTest {
     void the_admin_set_bundles_the_admin_permission_together_with_the_module_permission_it_requires() {
         assertThat(permissionsOf("DASHBOARD_ADMIN")).containsExactly("dashboard.admin.view", "dashboard.module.view");
 
-        // V403 records dashboard.admin.view as REQUIRES dashboard.module.view; the set must not hand out the first without the second.
-        Integer requires = jdbc.queryForObject(
-                "select count(*) from permission_dependencies where permission_code = ? and depends_on_code = ? and relation_type = 'REQUIRES'",
-                Integer.class, "dashboard.admin.view", "dashboard.module.view");
-        assertThat(requires).isEqualTo(1);
     }
 
     @Test

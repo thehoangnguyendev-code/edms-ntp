@@ -26,5 +26,22 @@ it("queries each server page and retains the complete pending assignment diff ac
   expect(changed).toHaveBeenLastCalledWith({ added: ["two"], removed: [] });
   fireEvent.change(screen.getByPlaceholderText("Search permission sets…"), { target: { value: "server-query" } });
   await waitFor(() => expect(api.listPermissionSetsPaged).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, limit: 10, search: "server-query" })));
-  expect(screen.getByText("2 assigned")).toBeTruthy();
+  expect(changed).toHaveBeenLastCalledWith({ added: ["two"], removed: [] });
+});
+
+it("read-only details list only this profile's sets from the server, with no tick boxes, and open the drawer from the row", async () => {
+  api.getAccessProfileEditorSummary.mockResolvedValue({ profile: { permissionSets: [{ id: "one", code: "SET_ONE" }] }, assignedUserIds: [] });
+  api.listPermissionSetsPaged.mockResolvedValue({
+    data: [{ id: "one", name: "First Set", code: "SET_ONE", permissionCount: 2, system: false, permissionCodes: [], modules: ["training"] }],
+    pagination: { total: 1, totalPages: 1 },
+  });
+  const onOpenDrawer = vi.fn();
+  const { container } = render(<MemoryRouter><PermissionSetsTab profileId="p1" canAssign={false} onOpenDrawer={onOpenDrawer} /></MemoryRouter>);
+  await screen.findByText("First Set");
+  expect(api.listPermissionSetsPaged).toHaveBeenLastCalledWith(expect.objectContaining({ accessProfileId: "p1" }));
+  expect(container.querySelector("#profile-ps-one")).toBeNull();
+  fireEvent.click(screen.getByText("First Set"));
+  expect(onOpenDrawer).toHaveBeenCalledWith(expect.objectContaining({ id: "one" }));
+  fireEvent.click(screen.getByText("Name"));
+  await waitFor(() => expect(api.listPermissionSetsPaged).toHaveBeenLastCalledWith(expect.objectContaining({ sortBy: "name", sortDir: "desc" })));
 });

@@ -75,6 +75,9 @@ export interface Notification {
   };
   metadata?: Record<string, unknown>;
   actionUrl?: string;
+  /** The icon (lucide:Name or tabler:Name) and the tone chosen for this kind of notification in Edit Notification; none means the icon of its kind. */
+  icon?: string;
+  iconTone?: string;
 }
 
 export type NotificationFilterTab = 'all' | 'for-me' | 'system';

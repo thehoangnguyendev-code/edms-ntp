@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bar, BarChart, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { AlertOctagon, AlertTriangle, CheckCircle2, ChevronDown, ShieldCheck } from "lucide-react";
+import { AlertOctagon, AlertTriangle, ChevronDown, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { cn } from "@/components/ui/utils";
 import { Card, CardHeader, KpiStrip, type KpiCellData } from "@/features/self-service/dashboard/shared/dashboardUi";
-import { backupRestoreApi, type BackupDailyPoint, type BackupOverview } from "@/services/api/backupRestore";
+import { backupRestoreApi, type BackupDailyPoint, type BackupOverview, type ManualCopyStatus, type StoreScrubRecord } from "@/services/api/backupRestore";
+import { useToast } from "@/components/ui/toast/Toast";
+import { usePermissions } from "@/hooks/usePermissions";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupRestorePage } from "../components/BackupRestorePage";
 import { statusLabel } from "../types";
@@ -284,6 +286,123 @@ const RunningCard: React.FC<{ running: number }> = ({ running }) => (
   </Card>
 );
 
+/** The newest check of the live file store: what it read, and what differed from the backup index or from the checksum recorded when a document was signed. */
+const StoreScrubCard: React.FC = () => {
+  const { hasPermission } = usePermissions();
+  const canStart = hasPermission("backup.backup.verify");
+  const { showToast } = useToast();
+  const [run, setRun] = useState<StoreScrubRecord | null | undefined>();
+  const [failed, setFailed] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let live = true;
+    backupRestoreApi
+      .storeScrubs({ page: 1, limit: 1 })
+      .then((page) => {
+        if (!live) return;
+        setRun(page.data[0] ?? null);
+        setFailed(false);
+      })
+      .catch(() => live && setFailed(true));
+    return () => {
+      live = false;
+    };
+  }, [reloadKey]);
+
+  const start = async () => {
+    setStarting(true);
+    try {
+      await backupRestoreApi.startStoreScrub();
+      showToast({ type: "success", title: "Check started", message: "The result appears here when it ends." });
+      window.setTimeout(() => setReloadKey((k) => k + 1), 4000);
+    } catch (e) {
+      showToast({ type: "error", title: "The check was not started", message: getApiErrorMessage(e, "The request was refused.") });
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const differences = run ? run.differentFiles + run.missingFiles + run.referenceDifferences : 0;
+  return (
+    <Card aria-label="File store check" role="region">
+      <CardHeader
+        title="File store check"
+        subtitle="Reads the stored files and compares them with the backup. Reports only; nothing is changed."
+        badge={
+          run ? (
+            <Badge color={run.status === "RUNNING" ? "blue" : run.status === "FAILED" || differences > 0 ? "red" : "emerald"} size="sm">
+              {run.status === "RUNNING" ? "Running" : run.status === "FAILED" ? "Failed" : differences > 0 ? "Differences found" : "No differences"}
+            </Badge>
+          ) : undefined
+        }
+      />
+      {failed ? (
+        <p className="px-4 pb-4 pt-2 text-sm text-slate-600">The result could not be read.</p>
+      ) : run === undefined ? (
+        <p className="px-4 pb-4 pt-2 text-sm text-slate-500">Reading…</p>
+      ) : run === null ? (
+        <p className="px-4 pb-4 pt-2 text-sm text-slate-600">No check has run yet. One runs every Sunday at 03:30.</p>
+      ) : (
+        <dl className="divide-y divide-slate-100 px-4 pb-3 pt-2 text-sm">
+          <Fact label="Last check">{formatDateTime(run.finishedAt ?? run.startedAt)}</Fact>
+          <Fact label="Started by">{run.trigger === "SCHEDULED" ? "The weekly schedule" : run.requestedBy}</Fact>
+          <Fact label="Files read">
+            <span className="tabular-nums">{run.checkedFiles}</span>
+          </Fact>
+          <Fact label="Differ from the backup">
+            <span className="tabular-nums">{run.differentFiles}</span>
+          </Fact>
+          <Fact label="Missing from the store">
+            <span className="tabular-nums">{run.missingFiles}</span>
+          </Fact>
+          <Fact label="Checksum recorded at signing differs">
+            <span className="tabular-nums">{run.referenceDifferences}</span>
+          </Fact>
+        </dl>
+      )}
+      {canStart && (
+        <div className="px-4 pb-4">
+          <Button size="sm" variant="outline-emerald" disabled={starting || run?.status === "RUNNING"} onClick={() => void start()}>
+            Check Now
+          </Button>
+        </div>
+      )}
+    </Card>
+  );
+};
+
+/** The copy a person makes by hand, as the active policy asks for it. It is recorded on the Backup Storage & Encryption screen. */
+const ManualCopyCard: React.FC = () => {
+  const [status, setStatus] = useState<ManualCopyStatus | undefined>();
+  const [hidden, setHidden] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    backupRestoreApi
+      .manualCopyStatus()
+      .then((s) => live && setStatus(s))
+      .catch(() => live && setHidden(true));
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  if (hidden || !status) return null;
+  const tone = status.state === "ON_TIME" ? "emerald" : status.state === "NOT_DECLARED" ? "slate" : status.state === "OVERDUE" ? "red" : "amber";
+  const label = { ON_TIME: "On time", OVERDUE: "Overdue", NEVER_RECORDED: "None recorded", NOT_DECLARED: "Not in the policy" }[status.state];
+  return (
+    <Card aria-label="Manual copy" role="region">
+      <CardHeader title="Manual copy" subtitle="The copy a person makes by hand. The system cannot see it, so it is recorded." badge={<Badge color={tone} size="sm">{label}</Badge>} />
+      <dl className="divide-y divide-slate-100 px-4 pb-3 pt-2 text-sm">
+        <Fact label="Last copy">{status.lastCopiedOn ? formatDateTime(status.lastCopiedOn) : "—"}</Fact>
+        <Fact label="Next one due">{status.nextDueOn ? formatDateTime(status.nextDueOn) : "—"}</Fact>
+      </dl>
+    </Card>
+  );
+};
+
 export const BackupOverviewView: React.FC = () => {
   const [overview, setOverview] = useState<BackupOverview>();
   const [daily, setDaily] = useState<BackupDailyPoint[] | null>(null);
@@ -418,18 +537,9 @@ export const BackupOverviewView: React.FC = () => {
           <AttentionCard alerts={alerts} />
         </div>
 
-        <div className="min-w-0">
-          <Card aria-label="Not covered yet" role="region">
-            <CardHeader title="Not covered yet" subtitle="This page reports only what the Backup Agent has actually done." />
-            <ul className="space-y-2 px-4 pb-4 pt-3 text-sm text-slate-600">
-              {["Object storage and file backups", "Off-site and immutable copies", "Restore and disaster recovery drills"].map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-slate-300" aria-hidden="true" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
+        <div className="min-w-0 space-y-4 md:space-y-6">
+          <StoreScrubCard />
+          <ManualCopyCard />
         </div>
       </div>
     </BackupRestorePage>

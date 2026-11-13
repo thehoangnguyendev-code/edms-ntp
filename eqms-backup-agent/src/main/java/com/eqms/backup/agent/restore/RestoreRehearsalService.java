@@ -87,6 +87,10 @@ public class RestoreRehearsalService {
             + "from restore_rehearsal h join backup_run r on r.id = h.run_id";
 
     public Page page(String search, String status, String backupNumber, String sortBy, boolean ascending, int page, int limit) {
+        return page(search, status, backupNumber, sortBy, ascending, page, limit, List.of());
+    }
+
+    public Page page(String search, String status, String backupNumber, String sortBy, boolean ascending, int page, int limit, List<String> people) {
         int safeLimit = Math.min(Math.max(limit, 1), 100);
         int safePage = Math.max(page, 1);
         List<Object> args = new ArrayList<>();
@@ -100,9 +104,12 @@ public class RestoreRehearsalService {
             args.add(backupNumber.trim());
         }
         if (search != null && !search.isBlank()) {
-            where.append(" and (lower(h.rehearsal_id) like ? or lower(r.backup_number) like ? or lower(h.requested_by) like ?)");
-            String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            for (int i = 0; i < 3; i++) args.add(like);
+            new com.eqms.backup.agent.api.SearchClause(search)
+                    .text("lower(h.rehearsal_id)").text("lower(r.backup_number)").text("lower(h.requested_by)")
+                    .text("replace(lower(h.status),'_',' ')").text("lower(coalesce(h.error_code,''))")
+                    .date("h.requested_at")
+                    .people(people, "h.requested_by")
+                    .appendTo(where, args);
         }
         String column = switch (sortBy == null ? "" : sortBy) {
             case "status" -> "h.status";

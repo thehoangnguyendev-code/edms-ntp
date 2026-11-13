@@ -1,0 +1,76 @@
+{
+ "X": {
+  "doc": "2457fc06-2c0a-4703-ac93-d701748a422a",
+  "number": "SOP.10423",
+  "rx": "3fc33695-c8af-42cf-824b-64dae26ff733",
+  "state": "EFFECTIVE",
+  "cc": "f5401459-901a-439b-8021-9aaa7378ba51",
+  "uc": "6b135e1c-76dd-4d62-9cca-4fe9a778ae2f",
+  "uc2": "bc37da6a-b8c8-4823-a88c-d28bb06d2941",
+  "rx2": "9b28f96e-ac9c-483b-a81a-971cc3423d94"
+ },
+ "Y": {
+  "doc": "65a4e30d-bf85-4ad7-b356-9e3c17efd9c5",
+  "number": "INS.0005",
+  "rx": "7fa25559-c638-42df-9cbb-ff6e7579bc08",
+  "state": "EFFECTIVE"
+ },
+ "kb": {
+  "DCO": [
+   200,
+   null
+  ],
+  "U1": [
+   200,
+   null
+  ],
+  "U2": [
+   200,
+   null
+  ],
+  "U3": [
+   200,
+   null
+  ],
+  "ALLVIEW": [
+   200,
+   null
+  ],
+  "UCAPP": [
+   200,
+   null
+  ],
+  "READER": [
+   200,
+   null
+  ]
+ },
+ "rec": {
+  "DCO": 200,
+  "U1": 403,
+  "U2": 403,
+  "U3": 403,
+  "ALLVIEW": 403,
+  "UCAPP": 403,
+  "READER": 403
+ },
+ "Z": {
+  "doc": "0b186594-a173-42b6-b020-fdd6256cfeed",
+  "number": "SOP.10424",
+  "rx": "aa020215-4ca6-4a4b-9f6f-f4a18d9d1e7b",
+  "rejected": true
+ },
+ "W": {
+  "doc": "f5fd16ad-d443-4781-bace-bc16e11820e8",
+  "number": "SOP.10425",
+  "rx": "56180465-dccf-45f4-b0c1-1a5d873a4f59"
+ },
+ "W2": {
+  "doc": "3dfcad78-683d-4ae6-b52a-a22cd39581af"
+ },
+ "V": {
+  "doc": "eccd8317-8b1d-4215-9f1f-bef337d4c5e3",
+  "number": "SOP.10427",
+  "rx": "1bdb5510-3800-4a1b-99db-a0846735587a"
+ }
+}

@@ -3,7 +3,6 @@ import { RotateCcw } from 'lucide-react';
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from '@/components/ui/table/DataTable';
 import { TableEmptyState } from '@/components/ui/table/TableEmptyState';
 import { TablePagination } from '@/components/ui/table/TablePagination';
-import { SectionLoading } from '@/components/ui/loading/Loading';
 import { Badge } from '@/components/ui/badge/Badge';
 import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
@@ -107,7 +106,7 @@ export const DeliveryFailuresTable: React.FC = () => {
           rows={table.items}
           getRowKey={(r) => r.id}
           isLoading={table.isLoading}
-          loadingContent={<SectionLoading text="Loading…" />}
+
           columns={columns}
           columnLayout={layout}
           emptyState={<TableEmptyState title="No Delivery Failures" description="No failed notification delivery matches the search or the filters." />}

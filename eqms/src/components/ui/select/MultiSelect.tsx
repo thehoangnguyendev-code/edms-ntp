@@ -9,6 +9,7 @@ import { InlineLoading } from '../loading/Loading';
 import { Button } from '../button/Button';
 import { Checkbox } from '../checkbox/Checkbox';
 import { Popover } from '../popover/Popover';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export interface MultiSelectOption {
   label: string;
@@ -63,6 +64,8 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
   const selectId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedLocalQuery = useDebounce(onSearch ? "" : searchQuery, debounceMs);
+  const localQuery = searchQuery ? debouncedLocalQuery : "";
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0, showAbove: false });
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const [asyncOptions, setAsyncOptions] = useState<MultiSelectOption[]>([]);
@@ -104,7 +107,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
 
   const filteredOptions = enableSearch && !onSearch
     ? displayOptions.filter((opt) =>
-      opt.label.toLowerCase().includes(searchQuery.toLowerCase())
+      opt.label.toLowerCase().includes(localQuery.toLowerCase())
     )
     : displayOptions;
 

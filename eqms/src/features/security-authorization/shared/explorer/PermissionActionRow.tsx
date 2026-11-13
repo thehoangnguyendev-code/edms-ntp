@@ -10,6 +10,8 @@ interface PermissionActionRowProps {
   checked: boolean;
   onChange: (code: string, checked: boolean) => void;
   disabled?: boolean;
+  /** Read-only details: the row is only listed, there is no tick box. */
+  hideCheckbox?: boolean;
   /** Row is checked but not editable here (e.g. granted via an attached shared permission set). */
   locked?: boolean;
   /** Tooltip explaining why the row is locked. */
@@ -53,6 +55,7 @@ export const PermissionActionRow: React.FC<PermissionActionRowProps> = ({
   checked,
   onChange,
   disabled = false,
+  hideCheckbox = false,
   locked = false,
   lockedNote,
 }) => {
@@ -67,11 +70,13 @@ export const PermissionActionRow: React.FC<PermissionActionRowProps> = ({
         disabled && !checked && "opacity-70"
       )}
     >
-      <Checkbox
-        checked={checked}
-        onChange={(c) => !effectiveDisabled && onChange(permission.id, c)}
-        disabled={effectiveDisabled}
-      />
+      {!hideCheckbox && (
+        <Checkbox
+          checked={checked}
+          onChange={(c) => !effectiveDisabled && onChange(permission.id, c)}
+          disabled={effectiveDisabled}
+        />
+      )}
       {locked && (
         <span title={lockedNote ?? "Granted by an attached permission set"} className="leading-none shrink-0">
           <Lock className="h-3 w-3 text-slate-400" />

@@ -88,15 +88,43 @@ public class BackupPolicyController {
     @GetMapping("/policies")
     public ResponseEntity<JsonNode> list(@RequestParam(required = false) String search, @RequestParam(required = false) String status,
                                          @RequestParam(defaultValue = "version") String sortBy, @RequestParam(defaultValue = "desc") String sortDirection,
-                                         @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
+                                         @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit,
+                                         @RequestParam(required = false) String component, @RequestParam(required = false) String target,
+                                         @RequestParam(required = false) String filesSchedule, @RequestParam(required = false) String approval,
+                                         @RequestParam(required = false) String proposedFrom, @RequestParam(required = false) String proposedTo,
+                                         @RequestParam(required = false) String activatedFrom, @RequestParam(required = false) String activatedTo) {
         require(currentUserService.requireCurrentUser(), VIEW_PERMISSION);
         org.springframework.web.util.UriComponentsBuilder uri = org.springframework.web.util.UriComponentsBuilder.fromPath("/internal/policies");
         if (search != null && !search.isBlank()) uri.queryParam("search", "{search}");
         if (status != null && !status.isBlank()) uri.queryParam("status", "{status}");
+        Map<String, String> extra = new java.util.LinkedHashMap<>();
+        extra.put("component", component);
+        extra.put("target", target);
+        extra.put("filesSchedule", filesSchedule);
+        extra.put("approval", approval);
+        extra.put("proposedFrom", instantOrNull(proposedFrom));
+        extra.put("proposedTo", instantOrNull(proposedTo));
+        extra.put("activatedFrom", instantOrNull(activatedFrom));
+        extra.put("activatedTo", instantOrNull(activatedTo));
+        extra.forEach((name, value) -> {
+            if (value != null && !value.isBlank()) uri.queryParam(name, "{" + name + "}");
+        });
         uri.queryParam("sortBy", "{sortBy}").queryParam("sortDirection", "{dir}").queryParam("page", Math.max(page, 1)).queryParam("limit", Math.min(Math.max(limit, 1), 100));
-        String path = uri.buildAndExpand(Map.of("search", search == null ? "" : cut(search, 200), "status", status == null ? "" : cut(status, 20),
-                "sortBy", cut(sortBy, 30), "dir", "asc".equalsIgnoreCase(sortDirection) ? "asc" : "desc")).encode().toUriString();
+        Map<String, String> values = new java.util.LinkedHashMap<>(Map.of("search", search == null ? "" : cut(search, 200), "status", status == null ? "" : cut(status, 20),
+                "sortBy", cut(sortBy, 30), "dir", "asc".equalsIgnoreCase(sortDirection) ? "asc" : "desc"));
+        extra.forEach((name, value) -> values.put(name, value == null ? "" : cut(value, 40)));
+        String path = uri.buildAndExpand(values).encode().toUriString();
         return reply(agent.exchange(HttpMethod.GET, path, null));
+    }
+
+    /** A date filter must be an ISO instant; anything else is refused instead of being dropped, which would show the wrong rows. */
+    private static String instantOrNull(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return java.time.Instant.parse(value.trim()).toString();
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "INVALID_DATE");
+        }
     }
 
     private static String cut(String value, int max) {

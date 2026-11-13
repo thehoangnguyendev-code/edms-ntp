@@ -76,8 +76,6 @@ const TYPE_PALETTE: { hex: string; badge: BadgeColor }[] = [
   { hex: "#ea580c", badge: "orange" },
   { hex: "#0891b2", badge: "cyan" },
 ];
-/** The colours a Document Type icon is offered in (the automatic colour is one of them). */
-export const TYPE_ICON_COLORS: string[] = TYPE_PALETTE.map((slot) => slot.hex);
 const FOLDER_PALETTE = ["#f59e0b", "#0ea5e9", "#8b5cf6", "#10b981", "#ec4899", "#6366f1", "#14b8a6", "#f97316"];
 
 const hash = (value: string): number => {

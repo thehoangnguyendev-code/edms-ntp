@@ -68,6 +68,9 @@ public class NotificationService {
     private final AuditTrailService auditTrailService;
     private final NotificationRealtimeService notificationRealtimeService;
     private final ObjectMapper objectMapper;
+    /** The icon a person chose for a kind of notification; absent in a context without the notification policies. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.eqms.repository.NotificationPolicyRepository policyRepository;
 
     public NotificationService(
             UserNotificationRepository notificationRepository,
@@ -124,7 +127,8 @@ public class NotificationService {
                 buildSort(sortBy, sortDirection)
         );
         Page<UserNotification> result = notificationRepository.findAll(specification, pageable);
-        List<NotificationResponse> data = result.getContent().stream().map(this::toResponse).toList();
+        java.util.Map<String, String[]> icons = iconsOf(result.getContent().stream().map(UserNotification::getType).collect(java.util.stream.Collectors.toSet()));
+        List<NotificationResponse> data = result.getContent().stream().map(n -> toResponse(n, icons)).toList();
         return new PageResponse<>(
                 data,
                 new PaginationResponse(
@@ -406,32 +410,7 @@ public class NotificationService {
             String priority,
             JsonNode metadata
     ) {
-        return recordNotification(recipient, sender, scope, module, type, title, message, actionUrl,
-                relatedEntityType, relatedEntityId, relatedEntityNumber, relatedEntityTitle, priority, metadata, false);
-    }
-
-    @Transactional
-    public NotificationResponse recordNotification(
-            UserAccount recipient,
-            UserAccount sender,
-            String scope,
-            String module,
-            String type,
-            String title,
-            String message,
-            String actionUrl,
-            String relatedEntityType,
-            UUID relatedEntityId,
-            String relatedEntityNumber,
-            String relatedEntityTitle,
-            String priority,
-            JsonNode metadata,
-            boolean mandatory
-    ) {
         if (recipient == null || recipient.getId() == null || !StringUtils.hasText(title)) {
-            return null;
-        }
-        if (!mandatory && !NotificationPreferenceUtils.canReceiveInAppNotification(objectMapper, recipient, module)) {
             return null;
         }
 
@@ -597,6 +576,28 @@ public class NotificationService {
     }
 
     private NotificationResponse toResponse(UserNotification notification) {
+        return toResponse(notification, iconsOf(java.util.Collections.singleton(notification.getType())));
+    }
+
+    /** The icon and tone chosen for each kind (the event code is the type of the notification); a kind with none chosen is not in the map. */
+    private java.util.Map<String, String[]> iconsOf(java.util.Collection<String> types) {
+        java.util.Map<String, String[]> icons = new java.util.HashMap<>();
+        if (policyRepository == null) return icons;
+        for (String type : types) {
+            if (type == null || type.isBlank()) continue;
+            try {
+                policyRepository.findByEventCode(type).ifPresent(policy -> {
+                    if (policy.getIcon() != null || policy.getIconTone() != null) icons.put(type, new String[] {policy.getIcon(), policy.getIconTone()});
+                });
+            } catch (RuntimeException ignored) {
+                // an icon is a decoration: never let it stop the list of notifications
+            }
+        }
+        return icons;
+    }
+
+    private NotificationResponse toResponse(UserNotification notification, java.util.Map<String, String[]> icons) {
+        String[] icon = icons.get(notification.getType());
         return new NotificationResponse(
                 notification.getId(),
                 notification.getType(),
@@ -619,7 +620,9 @@ public class NotificationService {
                         notification.getRelatedEntityNumber(),
                         notification.getRelatedEntityTitle()
                 ),
-                notification.getMetadata()
+                notification.getMetadata(),
+                icon == null ? null : icon[0],
+                icon == null ? null : icon[1]
         );
     }
 

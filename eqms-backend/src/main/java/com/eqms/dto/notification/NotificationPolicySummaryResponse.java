@@ -8,8 +8,6 @@ public record NotificationPolicySummaryResponse(
         String description,
         String module,
         String priority,
-        String complianceGroup,
-        boolean mandatory,
         String supportedChannels,
         String policyStatus,
         String enabledChannels,

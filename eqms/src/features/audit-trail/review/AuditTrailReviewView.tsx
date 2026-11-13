@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Select } from "@/components/ui/select/Select";
+import { ReviewerSelect } from "@/components/ui/ReviewerSelect";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -129,6 +130,7 @@ export const AuditTrailReviewView: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [campaignName, setCampaignName] = useState("");
   const [campaignDescription, setCampaignDescription] = useState("");
+  const [reviewerUserId, setReviewerUserId] = useState("");
   const [reviewPeriodStart, setReviewPeriodStart] = useState("");
   const [reviewPeriodEnd, setReviewPeriodEnd] = useState("");
   const [creating, setCreating] = useState(false);
@@ -202,6 +204,7 @@ export const AuditTrailReviewView: React.FC = () => {
   const openCreateModal = () => {
     setCampaignName("");
     setCampaignDescription("");
+    setReviewerUserId("");
     setReviewPeriodStart("");
     setReviewPeriodEnd("");
     setIsCreateModalOpen(true);
@@ -225,6 +228,7 @@ export const AuditTrailReviewView: React.FC = () => {
         description: campaignDescription.trim() || undefined,
         reviewPeriodStart: startIso,
         reviewPeriodEnd: endIso,
+        reviewerUserId: reviewerUserId || undefined,
       });
       setIsCreateModalOpen(false);
       showToast({
@@ -649,6 +653,7 @@ export const AuditTrailReviewView: React.FC = () => {
               onChange={(event) => setCampaignDescription(event.target.value)}
             />
           </div>
+          <ReviewerSelect load={auditTrailApi.getReviewReviewers} value={reviewerUserId} onChange={setReviewerUserId} disabled={creating} />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <DateTimePicker
               label={

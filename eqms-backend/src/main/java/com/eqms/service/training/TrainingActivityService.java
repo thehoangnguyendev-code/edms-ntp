@@ -356,6 +356,7 @@ public class TrainingActivityService {
         out.put("resultsToQa", resultsToQa(activity));
         // The status the activity was cancelled from, so that the stepper shows how far it had come (read from the event written at the cancellation).
         out.put("cancelledFromStatus", "CANCELLED".equals(activity.get("status")) ? jdbc.queryForList("select payload->>'from' from training_events where activity_id=? and event_type='CANCELLED' order by occurred_at desc limit 1", String.class, id).stream().findFirst().orElse(null) : null);
+        out.put("workflow", TrainingWorkflows.activity((String) activity.get("status"), (String) out.get("cancelledFromStatus")));
         Integer proposed = jdbc.queryForObject("select count(*) from training_proposed_participants where activity_id=? and applied_at is null", Integer.class, id);
         out.put("proposedParticipantCount", proposed == null ? 0 : proposed);
         out.put("capabilities", capabilities(actor, activity));

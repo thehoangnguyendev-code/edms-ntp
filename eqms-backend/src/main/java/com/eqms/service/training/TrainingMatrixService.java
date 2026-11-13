@@ -189,6 +189,7 @@ public class TrainingMatrixService {
         out.put("positions", positions(department));
         out.put("approvers", TrainingRows.camel(approvals.assignments(TYPE, versionId)));
         out.put("capabilities", capabilities(actor, v, department));
+        out.put("workflow", TrainingWorkflows.matrixVersion((String) v.get("status")));
         return out;
     }
 

@@ -110,6 +110,22 @@ public class PolicyService implements ActivePolicyProvider {
 
     /** One page of versions, newest first (or by the chosen column), filtered by status and a search over people and reason. */
     public Page page(String search, String status, String sortBy, boolean ascending, int page, int limit) {
+        return page(search, status, Filters.NONE, sortBy, ascending, page, limit);
+    }
+
+    /** The extra ways to narrow the list: what a version backs up, where it copies, how files are scheduled, whether it was approved, and two date ranges. */
+    public record Filters(String component, String target, String filesSchedule, String approval,
+                          java.time.Instant proposedFrom, java.time.Instant proposedTo, java.time.Instant activatedFrom, java.time.Instant activatedTo,
+                          List<String> people) {
+        public static final Filters NONE = new Filters(null, null, null, null, null, null, null, null);
+
+        public Filters(String component, String target, String filesSchedule, String approval,
+                       java.time.Instant proposedFrom, java.time.Instant proposedTo, java.time.Instant activatedFrom, java.time.Instant activatedTo) {
+            this(component, target, filesSchedule, approval, proposedFrom, proposedTo, activatedFrom, activatedTo, List.of());
+        }
+    }
+
+    public Page page(String search, String status, Filters filters, String sortBy, boolean ascending, int page, int limit) {
         int safeLimit = Math.min(Math.max(limit, 1), 100);
         int safePage = Math.max(page, 1);
         List<Object> args = new ArrayList<>();
@@ -119,13 +135,51 @@ public class PolicyService implements ActivePolicyProvider {
             args.add(status.trim().toUpperCase(Locale.ROOT));
         }
         if (search != null && !search.isBlank()) {
-            where.append(" and (lower(coalesce(proposed_by,'')) like ? or lower(coalesce(approved_by,'')) like ? or lower(coalesce(reason,'')) like ? or cast(version as text) = ?)");
+            // everything the table shows: the version, status, what it backs up, where it copies, the people (by user name or full name),
+            // the reason and the two dates as they are written on screen
+            where.append(" and (lower(coalesce(proposed_by,'')) like ? or lower(coalesce(approved_by,'')) like ? or lower(coalesce(reason,'')) like ? or cast(version as text) = ?"
+                    + " or lower(status) like ?"
+                    + " or (scope_json::text like '%\"DATABASE\"%' and 'database' like ?)"
+                    + " or (scope_json::text like '%\"OBJECT_STORE\"%' and 'document files' like ?)"
+                    + " or exists (select 1 from jsonb_array_elements(targets_json->'targets') t where lower(t->>'code') like ?)"
+                    + " or to_char(created_at at time zone ?, 'DD/MM/YYYY HH24:MI:SS') like ?"
+                    + " or to_char(activated_at at time zone ?, 'DD/MM/YYYY HH24:MI:SS') like ?");
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
             args.add(like);
             args.add(like);
             args.add(like);
             args.add(search.trim());
+            args.add(like);
+            args.add(like);
+            args.add(like);
+            args.add(like);
+            args.add(properties.getZone());
+            args.add(like);
+            args.add(properties.getZone());
+            args.add(like);
+            if (filters.people() != null && !filters.people().isEmpty()) {
+                String marks = String.join(",", java.util.Collections.nCopies(filters.people().size(), "?"));
+                where.append(" or lower(proposed_by) in (").append(marks).append(") or lower(approved_by) in (").append(marks).append(")");
+                filters.people().forEach(person -> args.add(person.toLowerCase(Locale.ROOT)));
+                filters.people().forEach(person -> args.add(person.toLowerCase(Locale.ROOT)));
+            }
+            where.append(")");
         }
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        if (filters.component() != null && !filters.component().isBlank()) {
+            where.append(" and scope_json @> ?::jsonb");
+            args.add(mapper.createObjectNode().set("components", mapper.createArrayNode().add(filters.component().trim().toUpperCase(Locale.ROOT))).toString());
+        }
+        if (filters.target() != null && !filters.target().isBlank()) {
+            where.append(" and targets_json @> ?::jsonb");
+            args.add(mapper.createObjectNode().set("targets", mapper.createArrayNode().add(mapper.createObjectNode().put("code", filters.target().trim()))).toString());
+        }
+        if ("OWN".equalsIgnoreCase(filters.filesSchedule())) where.append(" and schedule_json->'files' is not null");
+        else if ("WITH_DATABASE".equalsIgnoreCase(filters.filesSchedule())) where.append(" and schedule_json->'files' is null");
+        if ("APPROVED".equalsIgnoreCase(filters.approval())) where.append(" and approved_by is not null");
+        else if ("NOT_APPROVED".equalsIgnoreCase(filters.approval())) where.append(" and approved_by is null");
+        addRange(where, args, "created_at", filters.proposedFrom(), filters.proposedTo());
+        addRange(where, args, "activated_at", filters.activatedFrom(), filters.activatedTo());
         String column = switch (sortBy == null ? "" : sortBy) {
             case "status" -> "status";
             case "proposedBy" -> "proposed_by";
@@ -141,6 +195,17 @@ public class PolicyService implements ActivePolicyProvider {
         List<Map<String, Object>> rows = jdbc.queryForList(SELECT + where + " order by " + column + (ascending ? " asc" : " desc") + " nulls last, version desc limit ? offset ?", pageArgs.toArray())
                 .stream().map(PolicyService::view).toList();
         return new Page(rows, safePage, safeLimit, total == null ? 0 : total);
+    }
+
+    private static void addRange(StringBuilder where, List<Object> args, String column, java.time.Instant from, java.time.Instant to) {
+        if (from != null) {
+            where.append(" and ").append(column).append(" >= ?");
+            args.add(java.sql.Timestamp.from(from));
+        }
+        if (to != null) {
+            where.append(" and ").append(column).append(" <= ?");
+            args.add(java.sql.Timestamp.from(to));
+        }
     }
 
     public Map<String, Object> get(int version) {
@@ -185,6 +250,9 @@ public class PolicyService implements ActivePolicyProvider {
         if (blank(proposal.reason())) throw invalid("POLICY_REASON_REQUIRED", "A reason is required for a policy change");
         ObjectNode scope = normalizeScope(proposal.scope());
         ObjectNode schedule = normalizeSchedule(proposal.schedule());
+        if (schedule.has("files") && !scopeIncludes(scope, "OBJECT_STORE")) {
+            throw invalid("POLICY_SCHEDULE_FILES_SCOPE", "The files have their own schedule, so they must be part of the policy");
+        }
         ObjectNode retention = normalizeRetention(proposal.retention());
         ObjectNode targets = normalizeTargets(proposal.targets());
         if (scopeIncludes(scope, "OBJECT_STORE") && !properties.getObjects().isEnabled()) {
@@ -225,21 +293,26 @@ public class PolicyService implements ActivePolicyProvider {
         boolean enforced = !"DEV".equalsIgnoreCase(properties.getEnvironment());
         List<Condition> conditions = new ArrayList<>();
 
-        int copies = 1 + declared.size();
-        conditions.add(new Condition("COPIES", copies >= 3, false, false, copies + " copies of the data (the live system plus " + declared.size() + " target(s)); at least 3 are required"));
+        boolean manual = targetsJson.path("manualCopy").path("declared").asBoolean(false);
+        int copies = 1 + declared.size() + (manual ? 1 : 0);
+        conditions.add(new Condition("COPIES", copies >= 3, false, false, copies + " copies of the data (the live system plus " + declared.size() + " target(s)"
+                + (manual ? " plus the manual copy" : "") + "); at least 3 are required"));
 
         Set<String> media = declared.stream().map(n -> n.path("medium").asText()).collect(Collectors.toCollection(LinkedHashSet::new));
+        if (manual) media.add("MANUAL_COPY");
         conditions.add(new Condition("MEDIA", media.size() >= 2, false, false, media.size() + " kind(s) of medium (" + String.join(", ", media) + "); at least 2 are required"));
 
         List<String> offsite = declared.stream().filter(n -> n.path("offsite").asBoolean(false)).map(n -> n.path("code").asText()).toList();
-        boolean offsiteOk = !offsite.isEmpty();
+        boolean offsiteOk = !offsite.isEmpty() || manual;
         // Whether a place is really somewhere else is a fact about the building, not something the agent can measure. A person declares it.
         conditions.add(new Condition("OFFSITE", offsiteOk, !offsiteOk && !enforced, false,
-                offsiteOk ? "Declared off-site: " + String.join(", ", offsite) : "No target is declared off-site; at least 1 is required" + (enforced ? "" : " (not enforced in DEV, where everything runs on one PC)")));
+                offsiteOk ? "Declared off-site: " + String.join(", ", offsite) + (manual ? (offsite.isEmpty() ? "" : ", ") + "the manual copy" : "") : "No target is declared off-site; at least 1 is required" + (enforced ? "" : " (not enforced in DEV, where everything runs on one PC)")));
 
         List<String> immutable = declared.stream().filter(n -> n.path("immutable").asBoolean(false)).map(n -> n.path("code").asText()).toList();
-        conditions.add(new Condition("IMMUTABLE", !immutable.isEmpty(), false, false,
-                immutable.isEmpty() ? "No target is declared immutable; at least 1 is required" : "Declared immutable: " + String.join(", ", immutable)));
+        // A copy that cannot be changed from the server: a target locked against deletes, or the copy a person keeps offline.
+        conditions.add(new Condition("IMMUTABLE", !immutable.isEmpty() || manual, false, false,
+                immutable.isEmpty() && !manual ? "No target is declared immutable and no manual offline copy is declared; at least 1 is required"
+                        : "Held out of the server's reach: " + String.join(", ", immutable) + (manual ? (immutable.isEmpty() ? "" : ", ") + "the manual copy" : "")));
 
         List<String> mismatched = new ArrayList<>();
         for (JsonNode n : declared) {
@@ -282,10 +355,9 @@ public class PolicyService implements ActivePolicyProvider {
         Map<String, Object> policy = get(version);
         if (!"DRAFT".equals(policy.get("status"))) throw new PolicyException(Kind.CONFLICT, "POLICY_NOT_DRAFT", "Only a draft can be activated", null);
         String proposer = (String) policy.get("proposedBy");
-        if (proposer != null && proposer.equalsIgnoreCase(approvedBy.trim())) {
-            ledger.append(approvedBy.trim(), "POLICY_ACTIVATION_REFUSED", "policy-v" + version, Map.of("version", version, "reason", "SAME_PERSON"));
-            throw new PolicyException(Kind.SEPARATION, "POLICY_SAME_PERSON", "The person who proposed a policy cannot be the one who activates it", null);
-        }
+        // Decision BACKUP-POLICY-SIGNER-2026-11-11: the proposer may activate the policy. Only administrators can do either, so the
+        // control is the electronic signature, not a second person. The ledger event records whether it was the same person.
+        boolean sameActor = proposer != null && proposer.equalsIgnoreCase(approvedBy.trim());
         JsonNode targets = parse((String) policy.get("targets"));
         Map<String, TargetTester.Result> results = new LinkedHashMap<>();
         for (JsonNode n : targets.path("targets")) {
@@ -308,6 +380,7 @@ public class PolicyService implements ActivePolicyProvider {
         data.put("version", version);
         data.put("policySha256", policy.get("sha256"));
         data.put("proposedBy", proposer);
+        data.put("sameActor", sameActor);
         data.put("signatureRef", signatureRef.trim());
         data.put("gateEnforced", gate.enforced());
         data.put("relaxed", gate.conditions().stream().filter(c -> !c.ok() && c.relaxed()).map(Condition::code).toList());
@@ -371,6 +444,24 @@ public class PolicyService implements ActivePolicyProvider {
         d.put("frequency", frequency);
         d.put("time", time.length() == 5 ? time : time.substring(0, 5));
         d.put("type", type);
+        // optional: the files at a time of their own. Without it they are backed up in the same run as the database.
+        JsonNode files = schedule.path("files");
+        if (files.isObject() && files.path("enabled").asBoolean(false)) {
+            String filesFrequency = files.path("frequency").asText("DAILY").toUpperCase(Locale.ROOT);
+            if (!"DAILY".equals(filesFrequency)) throw invalid("POLICY_SCHEDULE_FREQUENCY", "Only a daily files backup is supported by the scheduler for now");
+            if (!"FULL".equals(files.path("type").asText("FULL").toUpperCase(Locale.ROOT))) throw invalid("POLICY_SCHEDULE_TYPE", "Only a full backup can be scheduled for now");
+            String filesTime = files.path("time").asText("03:00");
+            try {
+                filesTime = LocalTime.parse(filesTime).toString();
+            } catch (DateTimeParseException e) {
+                throw invalid("POLICY_SCHEDULE_TIME", "The files backup time must be HH:mm");
+            }
+            ObjectNode f = out.putObject("files");
+            f.put("enabled", true);
+            f.put("frequency", filesFrequency);
+            f.put("time", filesTime.substring(0, 5));
+            f.put("type", "FULL");
+        }
         return out;
     }
 
@@ -404,6 +495,18 @@ public class PolicyService implements ActivePolicyProvider {
             t.put("immutable", n.path("immutable").asBoolean(false));
         }
         if (!seen.contains("T1")) throw invalid("POLICY_TARGET_T1", "T1 must be in the policy: it is where every backup is written first");
+        // The copy a person makes by hand and keeps off the server (T3). The agent cannot reach it, so it is declared, never tested.
+        JsonNode manual = targets == null ? null : targets.path("manualCopy");
+        if (manual != null && manual.path("declared").asBoolean(false)) {
+            String description = manual.path("description").asText("").trim();
+            if (description.isEmpty()) throw invalid("POLICY_MANUAL_COPY_DESCRIPTION", "Say where the manual copy is kept and who makes it");
+            int everyDays = manual.path("everyDays").asInt(0);
+            if (everyDays < 1 || everyDays > 365) throw invalid("POLICY_MANUAL_COPY_INTERVAL", "The manual copy must be made every 1 to 365 days");
+            ObjectNode m = out.putObject("manualCopy");
+            m.put("declared", true);
+            m.put("description", description.length() > 500 ? description.substring(0, 500) : description);
+            m.put("everyDays", everyDays);
+        }
         return out;
     }
 

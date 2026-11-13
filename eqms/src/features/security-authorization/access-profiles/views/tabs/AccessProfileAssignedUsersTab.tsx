@@ -4,8 +4,8 @@ import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
-import { SectionLoading } from "@/components/ui/loading/Loading";
-import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, TableEmptyState, TablePagination, TABLE_STYLES, type DataTableColumn, type DataTableSortDirection } from "@/components/ui/table";
+import { formatDateTime } from "@/utils/format";
 import { useToast } from "@/components/ui/toast";
 import { useDebounce } from "@/hooks";
 import { settingsApi } from "@/services/api/settings";
@@ -16,10 +16,17 @@ import type { AssignDiff } from "../AccessProfileDetailView";
 interface UserRow {
   id: string;
   fullName: string;
+  employeeCode?: string | null;
   email: string | null;
   department: string | null;
   status: string | null;
+  assignedAt?: string | null;
 }
+
+type SortKey = "fullName" | "employeeCode" | "email" | "department" | "status" | "assignedAt";
+
+/** The all-users lookup sorts by name, email and department only; the other columns fall back to name. */
+const lookupSortKey = (key: SortKey): "fullName" | "employeeCode" | "email" | "department" => (key === "employeeCode" || key === "email" || key === "department" ? key : "fullName");
 
 export const AccessProfileAssignedUsersTab: React.FC<{
   profileId: string;
@@ -32,7 +39,6 @@ export const AccessProfileAssignedUsersTab: React.FC<{
   const [assignedMeta, setAssignedMeta] = useState<Map<string, UserRow>>(new Map());
   const [original, setOriginal] = useState<string[]>([]);
   const [assignedIds, setAssignedIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
   const [searchResults, setSearchResults] = useState<UserRow[]>([]);
@@ -42,13 +48,14 @@ export const AccessProfileAssignedUsersTab: React.FC<{
   const [rowsPage, setRowsPage] = useState<UserRow[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [sort, setSort] = useState<{ key: SortKey; direction: DataTableSortDirection }>({ key: "fullName", direction: "asc" });
   const [pendingRemove, setPendingRemove] = useState<{ id: string; fullName: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
       const detail = await settingsApi.getAccessProfileUsersPage(profileId, 1, limit);
       const meta = new Map<string, UserRow>();
-      detail.data.forEach(u => meta.set(u.id, { id: u.id, fullName: u.fullName, email: u.email, department: u.department, status: u.status }));
+      detail.data.forEach(u => meta.set(u.id, { id: u.id, fullName: u.fullName, employeeCode: u.employeeCode ?? null, email: u.email, department: u.department, status: u.status }));
       setAssignedMeta(meta);
       const ids = detail.assignedIds;
       setOriginal(ids);
@@ -56,8 +63,6 @@ export const AccessProfileAssignedUsersTab: React.FC<{
       onChangesChange?.({ added: [], removed: [] });
     } catch {
       showToast({ type: "error", message: "Failed to load users" });
-    } finally {
-      setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileId, showToast, reloadKey]);
@@ -69,17 +74,18 @@ export const AccessProfileAssignedUsersTab: React.FC<{
   // searchManagerOptions and DepartmentsTab's searchDepartmentHeadOptions.
   useEffect(() => {
     const q = debouncedSearch.trim();
-    if (!q) {
+    // Searching ALL active users (to add someone) only makes sense while the assignments can be changed.
+    if (!q || !canAssign) {
       setSearchResults([]);
       return;
     }
     let cancelled = false;
     setSearchLoading(true);
     // Assignment picker: the metadata lookup returns Active users only.
-    metadataApi.getUsersLookupPaged({ search: q, page, limit, sortBy: "fullName", sortDir: "asc" })
+    metadataApi.getUsersLookupPaged({ search: q, page, limit, sortBy: lookupSortKey(sort.key), sortDir: sort.direction })
       .then((result) => {
         if (cancelled) return;
-        const users = result.data.map(u => ({ id: u.id, fullName: u.fullName, email: u.email ?? null, department: u.department ?? null, status: "Active" }));
+        const users = result.data.map(u => ({ id: u.id, fullName: u.fullName, employeeCode: u.employeeCode ?? null, email: u.email ?? null, department: u.department ?? null, status: "Active" }));
         setSearchResults(users);
         setAssignedMeta(previous => new Map([...previous, ...users.map(u => [u.id, u] as const)]));
         setTotal(result.pagination.total);
@@ -89,13 +95,13 @@ export const AccessProfileAssignedUsersTab: React.FC<{
       .catch(() => { if (!cancelled) { setSearchResults([]); setTotal(0); setTotalPages(1); } })
       .finally(() => { if (!cancelled) setSearchLoading(false); });
     return () => { cancelled = true; };
-  }, [debouncedSearch, page, limit]);
+  }, [debouncedSearch, page, limit, canAssign, sort]);
 
   useEffect(() => {
-    if (debouncedSearch.trim()) return;
+    if (debouncedSearch.trim() && canAssign) return;
     let cancelled = false;
     setSearchLoading(true);
-    settingsApi.getAccessProfileUsersPage(profileId, page, limit).then((result) => {
+    settingsApi.getAccessProfileUsersPage(profileId, page, limit, { search: debouncedSearch.trim() || undefined, sortBy: sort.key, sortDir: sort.direction }).then((result) => {
       if (cancelled) return;
       setRowsPage(result.data);
       setAssignedMeta(previous => new Map([...previous, ...result.data.map(u => [u.id, u] as const)]));
@@ -105,9 +111,7 @@ export const AccessProfileAssignedUsersTab: React.FC<{
     }).catch(() => { if (!cancelled) { setRowsPage([]); setTotal(0); setTotalPages(1); showToast({ type: "error", message: "Failed to load users" }); } })
       .finally(() => { if (!cancelled) setSearchLoading(false); });
     return () => { cancelled = true; };
-  }, [profileId, page, limit, debouncedSearch, reloadKey, showToast]);
-
-  if (loading) return <SectionLoading />;
+  }, [profileId, page, limit, debouncedSearch, reloadKey, showToast, canAssign, sort]);
 
   const reportDiff = (next: string[]) => {
     const originalSet = new Set(original);
@@ -145,73 +149,91 @@ export const AccessProfileAssignedUsersTab: React.FC<{
   };
 
   const q = search.trim();
-  // No search text: show the currently-assigned set (the primary "manage this profile's
-  // membership" view). With search text: show server-matched results instead, merged with any
-  // already-assigned rows the search also matched so their checked state stays visible.
-  const rows: UserRow[] = q
-    ? searchResults
-    : rowsPage;
-  const pendingAdded = q ? [] : assignedIds.filter(id => !original.includes(id)).map(id => assignedMeta.get(id)).filter((r): r is UserRow => Boolean(r));
+  const searchingAll = Boolean(q) && canAssign;
+  // Editing with no search text: the assigned users (plus the ones just ticked). Editing with search text: every active user that matches,
+  // so someone can be added. Viewing: only the assigned users, searched and sorted by the server.
+  const rows: UserRow[] = searchingAll ? searchResults : rowsPage;
+  const pendingAdded = searchingAll || page !== 1 || !canAssign ? [] : assignedIds.filter(id => !original.includes(id)).map(id => assignedMeta.get(id)).filter((r): r is UserRow => Boolean(r));
+  const tableRows = [...pendingAdded, ...rows.filter((u) => !pendingAdded.some((a) => a.id === u.id))];
+
+  const sortOf = (key: SortKey) => {
+    // The all-users lookup cannot order by these.
+    if (searchingAll && (key === "status" || key === "assignedAt")) return undefined;
+    return {
+      direction: sort.key === key ? sort.direction : undefined,
+      onSort: () => { setSort((s) => ({ key, direction: s.key === key && s.direction === "asc" ? "desc" : "asc" })); setPage(1); },
+    };
+  };
+  const columns: DataTableColumn<UserRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: "text-center text-slate-500", cell: (_u, index) => (page - 1) * limit + index + 1 },
+    { id: "employeeCode", header: "Employee Code", label: "Employee Code", sort: sortOf("employeeCode"), cellClassName: "text-slate-600", cell: (u) => u.employeeCode || "-" },
+    { id: "fullName", header: "Full Name", label: "Full Name", sort: sortOf("fullName"), cellClassName: "font-medium text-slate-900", cell: (u) => u.fullName },
+    { id: "email", header: "Email", label: "Email", sort: sortOf("email"), cellClassName: "text-slate-600", cell: (u) => u.email || "-" },
+    { id: "department", header: "Department", label: "Department", sort: sortOf("department"), cellClassName: "text-slate-600", cell: (u) => u.department || "-" },
+    {
+      id: "status",
+      header: "Status",
+      label: "Status",
+      sort: sortOf("status"),
+      cell: (u) => (u.status ? <Badge color={u.status === "Active" ? "emerald" : "slate"} size="sm">{u.status}</Badge> : "-"),
+    },
+    { id: "assignedAt", header: "Assigned At", label: "Assigned At", sort: sortOf("assignedAt"), cellClassName: "text-slate-600", cell: (u) => (u.assignedAt ? formatDateTime(u.assignedAt) : "-") },
+  ];
 
   return (
     <div className="space-y-4">
-      <WarningBanner
-        variant="info"
-        description={
-          <>
-          Removing a user from this profile only removes their access profile assignment — the user account is not affected.
-          Changes are applied when you click <b>Save</b> (a single electronic signature covers all changes).
-          </>
-        }
-      />
-      {!canAssign && (
+      {canAssign && (
         <WarningBanner
-          variant="warning"
-          description={deniedReason || "You can preview assigned users, but cannot change assignments."}
+          variant="info"
+          description={
+            <>
+            Removing a user from this profile only removes their access profile assignment — the user account is not affected.
+            Changes are applied when you click <b>Save</b> (a single electronic signature covers all changes).
+            </>
+          }
         />
       )}
-      <div className="relative max-w-md">
+      {!canAssign && deniedReason && (
+        <WarningBanner variant="warning" description={deniedReason} />
+      )}
+      <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
         <input
           className="w-full h-9 pl-9 pr-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400"
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          placeholder="Search all users to assign…"
+          placeholder={canAssign ? "Search all users to assign…" : "Search assigned users…"}
         />
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge color="emerald" size="sm">{assignedIds.length} assigned</Badge>
-        {q && <span className="text-xs text-slate-500">{searchLoading ? "Searching…" : `${total} match(es)`}</span>}
-      </div>
-      <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
-        {rows.length === 0 && pendingAdded.length === 0 && (
-          <p className="p-4 text-sm text-slate-400">
-            {q ? (searchLoading ? "Searching…" : "No users match your search.") : "No users assigned yet — search above to add some."}
-          </p>
-        )}
-        {[...pendingAdded, ...rows].map((u) => (
-          <label key={u.id} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer">
+      <DataTable
+        rows={tableRows}
+        getRowKey={(u) => u.id}
+        columns={columns}
+        isLoading={searchLoading}
+        // The tick boxes exist only while the assignments can be changed (edit / create), never on the read-only details.
+        selection={{
+          visible: canAssign,
+          header: "",
+          cell: (u) => (
             <Checkbox
               id={`profile-user-${u.id}`}
               checked={assignedSet.has(u.id)}
               onChange={() => handleToggle(u.id, u.fullName)}
-              disabled={!canAssign}
             />
-            <span className="min-w-0 flex-1">
-              <span className="flex flex-wrap items-center gap-2">
-                <span className="text-xs sm:text-sm font-medium text-slate-800">{u.fullName}</span>
-                {u.status && (
-                  <span className="text-2xs text-slate-400">{u.status}</span>
-                )}
-              </span>
-              <span className="block text-xs text-slate-500 mt-0.5">
-                {[u.department, u.email].filter(Boolean).join(" · ")}
-              </span>
-            </span>
-          </label>
-        ))}
-      </div>
-      {total > 0 && <TablePagination currentPage={page} totalPages={totalPages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} />}
+          ),
+        }}
+        emptyState={
+          <TableEmptyState
+            title={q ? "No users match your search" : "No users assigned"}
+            description={q ? "Try a different search." : canAssign ? "Search above to add some." : "No user has this access profile."}
+          />
+        }
+        pagination={total > 0 ? (
+          <div className="border-t border-slate-200">
+            <TablePagination currentPage={page} totalPages={totalPages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} />
+          </div>
+        ) : undefined}
+      />
       <AlertModal
         isOpen={Boolean(pendingRemove)}
         onClose={() => setPendingRemove(null)}

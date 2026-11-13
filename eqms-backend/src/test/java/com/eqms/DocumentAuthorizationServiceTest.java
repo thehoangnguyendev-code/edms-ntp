@@ -169,6 +169,16 @@ class DocumentAuthorizationServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
     }
 
+    @Test
+    void canManageRevisionWorkspace_followsWorkspaceManage_notViewEverything() {
+        when(permissionEvaluationService.hasPermission(user, "documents.workspace.manage")).thenReturn(true);
+        lenient().when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
+        assertThat(service.canManageRevisionWorkspace(user)).isTrue();
+        when(permissionEvaluationService.hasPermission(user, "documents.workspace.manage")).thenReturn(false);
+        lenient().when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(true);
+        assertThat(service.canManageRevisionWorkspace(user)).isFalse();
+    }
+
     // ── canViewRevision ──────────────────────────────────────────────────────
 
     @Test
@@ -229,6 +239,43 @@ class DocumentAuthorizationServiceTest {
         when(documentWorkflowParticipantRepository.findAllByDocument_IdOrderBySequenceOrderAsc(document.getId()))
                 .thenReturn(List.of(participant));
         assertThat(service.isDirectStakeholder(user, document)).isTrue();
+    }
+
+    @Test
+    void isDirectStakeholder_true_forCreatorOwner_documentAndItsRevisions() {
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
+        document.setOwner(user);
+        assertThat(service.isDirectStakeholder(user, document)).isTrue();
+        DocumentRevisionRecord revision = revisionWithStatus("DRAFT");
+        revision.setDocument(document);
+        assertThat(service.isDirectStakeholder(user, revision)).isTrue();
+    }
+
+    @Test
+    void isDirectStakeholder_false_whenAnotherPersonCreatedTheDocument() {
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
+        UserAccount creator = new UserAccount();
+        creator.setId(UUID.randomUUID());
+        document.setOwner(creator);
+        assertThat(service.isDirectStakeholder(user, document)).isFalse();
+        DocumentRevisionRecord revision = revisionWithStatus("DRAFT");
+        revision.setDocument(document);
+        lenient().when(revisionWorkflowParticipantRepository.findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(any(), anyString()))
+                .thenReturn(List.of());
+        assertThat(service.isDirectStakeholder(user, revision)).isFalse();
+    }
+
+    @Test
+    void isDirectStakeholder_true_forCoAuthorParticipant_revision() {
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
+        DocumentRevisionRecord revision = revisionWithStatus("DRAFT");
+        RevisionWorkflowParticipant participant = new RevisionWorkflowParticipant();
+        participant.setUser(user);
+        lenient().when(revisionWorkflowParticipantRepository.findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(any(), anyString()))
+                .thenReturn(List.of());
+        when(revisionWorkflowParticipantRepository.findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(revision.getId(), "CO_AUTHOR"))
+                .thenReturn(List.of(participant));
+        assertThat(service.isDirectStakeholder(user, revision)).isTrue();
     }
 
     @Test

@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { X, Info, XCircle, CheckCircle2, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { DEFAULT_TOAST_HEX, DEFAULT_TOAST_SHADOW } from "@/styles/tokens";
 import { cn } from "../utils";
 import { IconAlertTriangle, IconCheck, IconX } from "@tabler/icons-react";
 import { useBranding } from "@/components/branding/BrandLogo";
@@ -20,6 +21,19 @@ export interface Toast {
   message: string;
   title?: string;
   duration?: number; // ms
+  /** A toast that shows a notification of the bell carries the icon and the colours of that notification (the ones chosen in Edit Notification), so that the toast and the list look the same. */
+  icon?: React.ComponentType<{ className?: string }>;
+  /** The background and text colour classes of that icon (for example "bg-purple-50 text-purple-600"). */
+  iconClassName?: string;
+  /** The same as styles, for a colour that is not a class (one chosen with the colour picker). */
+  iconStyle?: React.CSSProperties;
+  /** A colour (six-digit hex) and a place for this toast alone, instead of the ones of the system: for the preview of a setting that is not saved yet. */
+  color?: string;
+  position?: "center" | "top-center" | "bottom-center" | "top-right" | "top-left" | "bottom-right" | "bottom-left";
+  /** The strength of the shadow (0 to 100) for this toast alone, as the colour and the position above. */
+  shadow?: number;
+  /** What happens when the toast is clicked (open the notification); the toast closes after it. Without it the toast is not clickable. */
+  onOpen?: () => void;
 }
 
 interface ToastContextProps {
@@ -41,26 +55,18 @@ const ICONS = {
   info: Info,
 };
 
-const COLORS = {
-  success:
-    "bg-white/95 border-emerald-500 text-emerald-900 shadow-emerald-400/5",
-  error: "bg-white/95 border-red-500 text-red-900 shadow-red-400/5",
-  warning: "bg-white/95 border-amber-500 text-amber-900 shadow-amber-400/5",
-  info: "bg-white/95 border-blue-500 text-blue-900 shadow-blue-400/5",
-};
+/**
+ * Every toast has the one colour the administrator chose (Configuration, Notifications): its border, its time bar and, unless the caller gives the colours of a
+ * notification icon, the tile of its icon. The kind of the toast (success, error…) only picks the icon and the default heading.
+ */
+const HEX = /^#[0-9a-f]{6}$/i;
+const toastHex = (color?: string) => (color && HEX.test(color) ? color : DEFAULT_TOAST_HEX);
 
-const ICON_COLORS = {
-  success: "text-emerald-500 bg-emerald-50",
-  error: "text-red-500 bg-red-50",
-  warning: "text-amber-500 bg-amber-50",
-  info: "text-blue-500 bg-blue-50",
-};
-
-const PROGRESS_COLORS = {
-  success: "bg-emerald-500",
-  error: "bg-red-500",
-  warning: "bg-amber-500",
-  info: "bg-blue-500",
+/** The shadow of a toast for a strength from 0 (none) to 100: it grows in offset, blur and darkness together. */
+export const toastShadowCss = (strength?: number): string => {
+  const level = typeof strength === "number" && Number.isFinite(strength) ? Math.min(100, Math.max(0, Math.round(strength))) : DEFAULT_TOAST_SHADOW;
+  if (level === 0) return "none";
+  return `0 ${Math.round(level * 0.25)}px ${Math.round(level * 0.5)}px rgba(15, 23, 42, ${(level * 0.0035).toFixed(3)})`;
 };
 
 /** Every toast must have a concise, visible heading. Callers can override this with an action-specific title. */
@@ -76,7 +82,7 @@ const resolveToastTitle = (toast: Pick<Toast, "type" | "title">) =>
 
 const MAX_TOASTS = 3;
 
-type ToastPlacement = 'center' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
+type ToastPlacement = 'center' | 'top-center' | 'bottom-center' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
 
 const SAFE_TOP = "max(1rem, env(safe-area-inset-top, 1rem))";
 const SAFE_BOTTOM = "max(1rem, env(safe-area-inset-bottom, 1rem))";
@@ -87,6 +93,8 @@ const TOAST_CONTAINER: Record<ToastPlacement, { align: string; style: React.CSSP
   'top-left': { align: "items-center md:items-start", style: { top: SAFE_TOP, left: 0 } },
   center: { align: "items-center", style: { top: "50%", left: 0, transform: "translateY(-50%)" } },
   'bottom-right': { align: "items-center md:items-end", style: { bottom: SAFE_BOTTOM, right: 0 } },
+  'top-center': { align: "items-center", style: { top: SAFE_TOP, left: 0 } },
+  'bottom-center': { align: "items-center", style: { bottom: SAFE_BOTTOM, left: 0 } },
   'bottom-left': { align: "items-center md:items-start", style: { bottom: SAFE_BOTTOM, left: 0 } },
 };
 
@@ -94,7 +102,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const { toastPosition: configuredPosition, toastDurationSeconds } = useBranding();
+  const { toastPosition: configuredPosition, toastDurationSeconds, toastColor, toastShadow } = useBranding();
   const defaultDuration = (toastDurationSeconds ?? 5) * 1000;
   const toastPosition: ToastPlacement =
     configuredPosition && configuredPosition in TOAST_CONTAINER ? configuredPosition : 'top-right';
@@ -125,29 +133,38 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
     <ToastContext.Provider value={{ showToast }}>
       {children}
 
-      <div
-        className={cn(
-          "fixed z-[9999] pointer-events-none flex flex-col w-full px-4 md:px-6",
-          TOAST_CONTAINER[toastPosition].align,
-        )}
-        style={TOAST_CONTAINER[toastPosition].style}
-      >
-        <div className="flex flex-col gap-3 w-full max-w-[400px] pointer-events-auto">
-          <AnimatePresence mode="popLayout">
-            {toasts.map((toast) => (
-              <ToastItem key={toast.id} toast={toast} onRemove={removeToast} />
-            ))}
-          </AnimatePresence>
+      {/* one stack for each place a toast is shown in: the place of the system, and the one of a preview that has its own */}
+      {Array.from(new Set(toasts.map((t) => t.position ?? toastPosition))).map((place) => (
+        <div
+          key={place}
+          className={cn(
+            "fixed z-[9999] pointer-events-none flex flex-col w-full px-4 md:px-6",
+            TOAST_CONTAINER[place].align,
+          )}
+          style={TOAST_CONTAINER[place].style}
+        >
+          <div className="flex flex-col gap-3 w-full max-w-[400px] pointer-events-auto">
+            <AnimatePresence mode="popLayout">
+              {toasts
+                .filter((toast) => (toast.position ?? toastPosition) === place)
+                .map((toast) => (
+                  <ToastItem key={toast.id} toast={toast} color={toast.color ?? toastColor} shadow={toast.shadow ?? toastShadow} onRemove={removeToast} />
+                ))}
+            </AnimatePresence>
+          </div>
         </div>
-      </div>
+      ))}
     </ToastContext.Provider>
   );
 };
 
-const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
+const ToastItem: React.FC<{ toast: Toast; color?: string; shadow?: number; onRemove: (id: string) => void }> = ({
   toast,
+  color,
+  shadow,
   onRemove,
 }) => {
+  const hex = toastHex(color);
   const [isPaused, setIsPaused] = useState(false);
   const [remaining, setRemaining] = useState(toast.duration ?? 5000);
   const startTime = useRef(Date.now());
@@ -170,6 +187,24 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
     };
   }, [startTimer, remaining, isPaused]);
 
+  // The bar shows the time left. It is drawn from the clock, not from a CSS animation: a phone that asks for reduced motion (or saves battery) has every
+  // animation cut to 0.01ms by the global rule, and an animated bar was then empty from the first moment.
+  const duration = toast.duration ?? 5000;
+  const [fraction, setFraction] = useState(1);
+  useEffect(() => {
+    if (isPaused) return;
+    const from = remaining;
+    const began = Date.now();
+    let frame = 0;
+    const tick = () => {
+      const left = Math.max(0, from - (Date.now() - began));
+      setFraction(duration > 0 ? left / duration : 0);
+      if (left > 0) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [remaining, isPaused, duration]);
+
   const handleMouseEnter = () => {
     setIsPaused(true);
     if (timerRef.current) {
@@ -185,8 +220,8 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
     // But since we want to resume, we just let the effect handle it or trigger a re-render
   };
 
-  const Icon = ICONS[toast.type];
-  const duration = toast.duration ?? 5000;
+  const Icon = toast.icon ?? ICONS[toast.type];
+  const open = toast.onOpen;
 
   return (
     <motion.div
@@ -208,17 +243,21 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       className={cn(
-        "relative group w-full border rounded-xl shadow-lg overflow-hidden backdrop-blur-sm",
-        COLORS[toast.type],
+        "relative group w-full border rounded-xl overflow-hidden backdrop-blur-sm bg-white/95 text-slate-900",
+        open && "cursor-pointer",
       )}
       role="alert"
+      style={{ borderColor: hex, boxShadow: toastShadowCss(shadow) }}
+      onClick={open ? () => { open(); onRemove(toast.id); } : undefined}
     >
       <div className="flex items-center gap-3 px-3 py-2.5 md:py-3">
         <div
           className={cn(
             "flex items-center justify-center h-8 w-8 rounded-lg shrink-0 shadow-sm",
-            ICON_COLORS[toast.type],
+            toast.iconClassName,
           )}
+          // without the colours of a notification icon, the tile is the toast colour: a light tint behind the icon in the colour itself
+          style={toast.iconStyle ?? (toast.iconClassName ? undefined : { backgroundColor: `${hex}1A`, color: hex })}
         >
           <Icon className="h-4 w-4" />
         </div>
@@ -231,7 +270,7 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
             <button
               className="shrink-0 -mr-1 p-1 rounded-lg text-slate-400 hover:text-slate-600 transition-all"
               aria-label="Close"
-              onClick={() => onRemove(toast.id)}
+              onClick={(event) => { event.stopPropagation(); onRemove(toast.id); }}
             >
               <X className="h-4 w-4" />
             </button>
@@ -245,21 +284,15 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
       {/* Enhanced Progress Bar with Pause Support */}
       <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-slate-100/50">
         <div
-          className={cn("h-full origin-left", PROGRESS_COLORS[toast.type])}
-          style={{
-            width: "100%",
-            animation: `shrink ${duration}ms linear forwards`,
-            animationPlayState: isPaused ? "paused" : "running",
-          }}
+          className="h-full origin-left"
+          role="progressbar"
+          aria-label="Time left"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(fraction * 100)}
+          style={{ width: "100%", transform: `scaleX(${fraction})`, backgroundColor: hex }}
         />
       </div>
-
-      <style>{`
-        @keyframes shrink {
-          from { width: 100%; }
-          to { width: 0%; }
-        }
-      `}</style>
     </motion.div>
   );
 };

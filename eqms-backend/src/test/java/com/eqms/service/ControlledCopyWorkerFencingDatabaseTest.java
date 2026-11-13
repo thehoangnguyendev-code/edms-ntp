@@ -86,7 +86,7 @@ class ControlledCopyWorkerFencingDatabaseTest {
         when(processing.finalizeDistributedCopy(copyId,actorId)).thenAnswer(call->{
             assertTrue(ControlledCopyDeliveryScope.active());
             jdbc.update("update controlled_copies set finalized=true where id=?",copyId);
-            outbox.enqueue("recipient@example.test","Delivery","Link and test credential","controlled_copy.distributed","Documents",Map.of(),true);
+            outbox.enqueue("recipient@example.test","Delivery","Link and test credential","controlled_copy.distributed","Documents",Map.of());
             throw new IllegalStateException("simulated crash before commit");
         });
         assertThrows(IllegalStateException.class,()->store.processItem(claim,itemId));

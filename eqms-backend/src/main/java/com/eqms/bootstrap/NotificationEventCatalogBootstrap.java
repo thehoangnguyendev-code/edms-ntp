@@ -38,20 +38,48 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
             NotificationEventDefinitionRepository eventRepository,
             NotificationPolicyRepository policyRepository,
             NotificationTemplateVersionRepository templateVersionRepository,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            com.eqms.repository.EmailTemplateRepository emailTemplateRepository
     ) {
         this.eventRepository = eventRepository;
         this.policyRepository = policyRepository;
         this.templateVersionRepository = templateVersionRepository;
         this.objectMapper = objectMapper;
+        this.emailTemplateRepository = emailTemplateRepository;
     }
+
+    private final com.eqms.repository.EmailTemplateRepository emailTemplateRepository;
 
     private record EventSeed(
             String code, String name, String description, String module, String priority,
-            String complianceGroup, String relatedAction, String dataObject, String channels,
-            String variables, boolean mandatory, String mandatoryReason,
-            String[] defaultRecipientRoles, String inAppTitle, String inAppSummary
+            String relatedAction, String dataObject, String channels,
+            String variables,
+            String[] defaultRecipientRoles, String inAppTitle, String inAppSummary,
+            com.fasterxml.jackson.databind.JsonNode rules, String status
     ) {
+        EventSeed(String code, String name, String description, String module, String priority, String relatedAction, String dataObject, String channels,
+                  String variables, String[] defaultRecipientRoles, String inAppTitle, String inAppSummary) {
+            this(code, name, description, module, priority, relatedAction, dataObject, channels, variables, defaultRecipientRoles, inAppTitle, inAppSummary, null, null);
+        }
+    }
+
+    /** The codes of every event this seeds (the registry events of the modules, Training, Reports, Backup, the audit-driven ones and those created from e-mail messages). */
+    java.util.Set<String> seededCodes() {
+        java.util.Set<String> codes = new java.util.TreeSet<>();
+        catalog().forEach(seed -> codes.add(seed.code()));
+        com.eqms.service.LegacyMessageEvents.all().forEach(e -> codes.add(e.code()));
+        return codes;
+    }
+
+    /** Every placeholder the seeded events declare, for the contract test that keeps them inside the placeholder catalogue. */
+    java.util.Set<String> declaredPlaceholders() {
+        java.util.Set<String> names = new java.util.TreeSet<>();
+        for (EventSeed seed : catalog()) {
+            for (String name : seed.variables().split(",")) {
+                if (!name.isBlank()) names.add(name.trim());
+            }
+        }
+        return names;
     }
 
     @Override
@@ -70,13 +98,10 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
             event.setDescription(seed.description());
             event.setModule(seed.module());
             event.setPriority(seed.priority());
-            event.setComplianceGroup(seed.complianceGroup());
             event.setRelatedAction(seed.relatedAction());
             event.setDataObject(seed.dataObject());
-            event.setSupportedChannels(seed.channels());
+            event.setSupportedChannels(supportedChannels(seed));
             event.setAvailableVariables(seed.variables());
-            event.setMandatory(seed.mandatory());
-            event.setMandatoryReason(seed.mandatoryReason());
             event.setActive(true);
             event.setDisplayOrder(order);
             eventRepository.save(event);
@@ -84,28 +109,121 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
             if (!policyRepository.existsByEventCode(seed.code())) {
                 NotificationPolicy policy = new NotificationPolicy();
                 policy.setEventCode(seed.code());
-                policy.setStatus(NotificationPolicy.STATUS_ACTIVE);
-                policy.setEnabledChannels(seed.channels());
-                policy.setRecipientRules(buildDefaultRecipientRules(seed.defaultRecipientRoles()));
+                String enabledChannels = com.eqms.service.NotificationDefaultChannels.of(seed.code(), supportedChannels(seed));
+                policy.setStatus(seed.status() == null ? NotificationPolicy.STATUS_ACTIVE : seed.status());
+                policy.setEnabledChannels(enabledChannels);
+                policy.setRecipientRules(seed.rules() != null ? seed.rules() : buildDefaultRecipientRules(seed.defaultRecipientRoles()));
                 policy.setDigestMode(NotificationPolicy.DIGEST_IMMEDIATE);
                 policy.setEscalationEnabled(false);
                 policy.setEscalationRecipientRules(objectMapper.createArrayNode());
                 policy = policyRepository.save(policy);
 
-                if (seed.channels().contains(NotificationTemplateVersion.CHANNEL_IN_APP)) {
-                    templateVersionRepository.save(buildVersion(policy, NotificationTemplateVersion.CHANNEL_IN_APP,
-                            seed.inAppTitle(), seed.inAppSummary(), seed.variables()));
-                }
-                if (seed.channels().contains(NotificationTemplateVersion.CHANNEL_EMAIL) && EMAIL_CONTENT.containsKey(seed.code())) {
-                    String[] content = EMAIL_CONTENT.get(seed.code());
+                templateVersionRepository.save(buildVersion(policy, NotificationTemplateVersion.CHANNEL_IN_APP,
+                        seed.inAppTitle(), seed.inAppSummary(), seed.variables()));
+                // an event that is sent by e-mail by default has e-mail wording: its own, or the in-app wording as a start
+                String[] content = enabledChannels.contains(NotificationTemplateVersion.CHANNEL_EMAIL)
+                        ? java.util.Objects.requireNonNullElseGet(emailContent(seed), () -> new String[]{"[EQMS] " + seed.inAppTitle(), "<p>" + seed.inAppSummary() + "</p>"})
+                        : null;
+                if (content != null) {
                     NotificationTemplateVersion email = buildVersion(policy, NotificationTemplateVersion.CHANNEL_EMAIL,
                             seed.inAppTitle(), seed.inAppSummary(), seed.variables());
                     email.setSubject(content[0]);
                     email.setBody(content[1]);
+                    email.setActionLabel("Open in EQMS");
                     templateVersionRepository.save(email);
                 }
             }
         }
+        seedLegacyMessageEvents();
+    }
+
+    /**
+     * Events whose e-mail cannot go through the outbox stay in-app only: the notice of a maintenance window (the outbox does not run during maintenance; the
+     * administrator address is e-mailed directly). Every other event can be sent on both channels: the channels it is sent on by default are
+     * {@code seed.channels()}, and an administrator turns the others on.
+     */
+    private static final java.util.Set<String> IN_APP_ONLY = java.util.Set.of("backup.maintenance_drained");
+
+    private static String supportedChannels(EventSeed seed) {
+        return IN_APP_ONLY.contains(seed.code()) ? "IN_APP" : "IN_APP,EMAIL";
+    }
+
+    /** The e-mail of an event: its own wording, or for a Training notice the title and text the module composes. */
+    private static String[] emailContent(EventSeed seed) {
+        if (EMAIL_CONTENT.containsKey(seed.code())) return EMAIL_CONTENT.get(seed.code());
+        if (AUDIT_VARS.equals(seed.variables())) return new String[]{"[EQMS] " + seed.name(), "<p>" + AUDIT_SUMMARY + "</p>"};
+        return seed.variables().startsWith(PASS_THROUGH_VARS) ? new String[]{"[EQMS] {{title}}", "<p>{{message}}</p>"} : null;
+    }
+
+    /**
+     * The registry event of each notice that is still raised as an e-mail message type is created from the active message of the type (its title as the
+     * in-app title, the start of its text as the in-app message, its subject and text as the e-mail), once. An event that exists is not touched: the
+     * administrator owns its wording from then on. A type without an active message gets no event until it has one.
+     */
+    private void seedLegacyMessageEvents() {
+        if (emailTemplateRepository == null) return;
+        int order = 1000;
+        for (com.eqms.service.LegacyMessageEvents.Event legacy : com.eqms.service.LegacyMessageEvents.all()) {
+            order += 10;
+            if (policyRepository.existsByEventCode(legacy.code())) continue;
+            com.eqms.entity.EmailTemplate template = emailTemplateRepository
+                    .findTopByTypeIgnoreCaseAndStatusIgnoreCaseOrderByUpdatedDateDesc(legacy.messageType(), "Active").orElse(null);
+            if (template == null) continue;
+            java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>(java.util.List.of("recipientName", "actionUrl", "systemName"));
+            if (template.getVariablesList() != null) template.getVariablesList().stream().filter(v -> v != null && !v.isBlank()).map(String::trim).forEach(names::add);
+            String variables = String.join(",", names);
+
+            NotificationEventDefinition event = eventRepository.findByCode(legacy.code()).orElseGet(NotificationEventDefinition::new);
+            event.setCode(legacy.code());
+            event.setName(legacy.name());
+            event.setDescription("Raised by the module as the e-mail message \"" + template.getName() + "\". Its in-app wording and its e-mail wording started from that message and are edited separately.");
+            event.setModule(legacy.module());
+            event.setPriority(legacy.priority());
+            event.setRelatedAction("NOTIFY");
+            event.setDataObject(legacy.module());
+            event.setSupportedChannels("IN_APP,EMAIL");
+            event.setAvailableVariables(variables);
+            event.setActive(true);
+            event.setDisplayOrder(order);
+            eventRepository.save(event);
+
+            NotificationPolicy policy = new NotificationPolicy();
+            policy.setEventCode(legacy.code());
+            policy.setStatus(NotificationPolicy.STATUS_ACTIVE);
+            policy.setEnabledChannels(com.eqms.service.NotificationDefaultChannels.of(legacy.code(), "IN_APP,EMAIL"));
+            policy.setRecipientRules(buildDefaultRecipientRules(new String[]{"RECIPIENT"}));
+            policy.setDigestMode(NotificationPolicy.DIGEST_IMMEDIATE);
+            policy.setEscalationEnabled(false);
+            policy.setEscalationRecipientRules(objectMapper.createArrayNode());
+            policy = policyRepository.save(policy);
+
+            // the e-mail messages of the older senders were rendered with {name} as well as {{name}}; the registry writes {{name}}
+            String title = doubleBraces(template.getSubject() == null ? legacy.name() : template.getSubject());
+            String content = doubleBraces(template.getContent());
+            NotificationTemplateVersion inApp = buildVersion(policy, NotificationTemplateVersion.CHANNEL_IN_APP, clip(title, 255), clip(plainText(content), 480), variables);
+            inApp.setChangeSummary("Created from the e-mail message " + template.getName());
+            templateVersionRepository.save(inApp);
+            NotificationTemplateVersion email = buildVersion(policy, NotificationTemplateVersion.CHANNEL_EMAIL, null, null, variables);
+            email.setSubject(clip(title, 255));
+            email.setBody(content);
+            email.setActionLabel("Open in EQMS");
+            email.setChangeSummary("Created from the e-mail message " + template.getName());
+            templateVersionRepository.save(email);
+        }
+    }
+
+    private static String doubleBraces(String text) {
+        return text == null ? null : text.replaceAll("(^|[^{])\\{([A-Za-z0-9_]+)\\}(?!\\})", "$1{{$2}}");
+    }
+
+    private static String plainText(String html) {
+        if (html == null) return "";
+        return html.replaceAll("(?s)<[^>]*>", " ").replace("&nbsp;", " ").replaceAll("\\s+", " ").trim();
+    }
+
+    private static String clip(String value, int max) {
+        if (value == null) return null;
+        return value.length() <= max ? value : value.substring(0, max - 3) + "...";
     }
 
     private NotificationTemplateVersion buildVersion(
@@ -149,76 +267,107 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
 
     private static final String STD_VARS = "recipientName,documentNumber,documentTitle,revisionNumber,actionUrl,systemName";
 
+    /** The events whose module composes the title and the text and hands them over as they are. */
+    private static final String PASS_THROUGH_VARS = "recipientName,title,message,actionUrl,systemName";
+    /** What the Audit Trail raises says, in its own words: what was done, to which record, by whom, with which comment (the wording an administrator edits). */
+    static final String AUDIT_SUMMARY = "{{actionName}}: {{entityName}} by {{actorName}}. {{actionComment}}";
+    private static final String AUDIT_VARS = PASS_THROUGH_VARS + ",actorName,entityName,actionComment,actionName";
+
+    /** The registry events of the modules and the notices of Training Management. */
     private List<EventSeed> catalog() {
+        List<EventSeed> all = new java.util.ArrayList<>(coreCatalog());
+        for (com.eqms.service.training.TrainingNotificationEvents.Event event : com.eqms.service.training.TrainingNotificationEvents.all()) {
+            all.add(new EventSeed(event.registryCode(), event.name(), event.description(), "TRAINING", event.priority(),
+                    "NOTIFY", "TRAINING", event.channels(), PASS_THROUGH_VARS + ",actorName,trainingNumber,documentNumber,trainingDueDate,requestNumber",
+                    new String[]{"RECIPIENT"}, "{{title}}", "{{message}}"));
+        }
+        for (com.eqms.service.OperationalNotificationEvents.Event event : com.eqms.service.OperationalNotificationEvents.all()) {
+            // the holder the module names, and for a recall that was not followed up also the people who run recalls
+            ArrayNode rules = objectMapper.createArrayNode();
+            rules.addObject().put("type", "RECIPIENT");
+            if (com.eqms.service.OperationalNotificationEvents.RECALL_OVERDUE.equals(event.code())) {
+                rules.addObject().put("type", "PERMISSION").put("value", "documents.controlled_copy.recall");
+            }
+            all.add(new EventSeed(event.code(), event.name(), event.description(), event.module(), event.priority(),
+                    "NOTIFY", event.module(), event.channels(), PASS_THROUGH_VARS, new String[]{"RECIPIENT"}, "{{title}}", "{{message}}", rules, null));
+        }
+        for (com.eqms.service.AuditNotificationEvents.Event event : com.eqms.service.AuditNotificationEvents.all()) {
+            ArrayNode rules = objectMapper.createArrayNode();
+            for (com.eqms.service.AuditNotificationEvents.Rule rule : event.rules()) {
+                var node = rules.addObject().put("type", rule.type());
+                if (rule.value() != null) node.put("value", rule.value());
+            }
+            // the channel an event is sent on by default is in-app; an administrator turns the e-mail on
+            all.add(new EventSeed(event.code(), event.name(), event.description(), event.module(), event.priority(), "NOTIFY", event.module(), "IN_APP",
+                    AUDIT_VARS, new String[]{}, event.name(), AUDIT_SUMMARY, rules, event.defaultStatus()));
+        }
+        return all;
+    }
+
+    private List<EventSeed> coreCatalog() {
         return List.of(
                 // ── Document Control ────────────────────────────────────────────
                 new EventSeed(
                         "document.submitted_for_review", "Document Submitted for Review",
                         "A document draft has been submitted and is awaiting reviewer action.",
-                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_MEDIUM, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "SUBMIT_FOR_REVIEW", "DOCUMENT_REVISION", "IN_APP", STD_VARS, true,
-                        "A Reviewer must not miss an assignment: the review cannot proceed unless they are told about it.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_MEDIUM,
+                        "SUBMIT_FOR_REVIEW", "DOCUMENT_REVISION", "IN_APP", STD_VARS,
                         new String[]{"REVIEWER"},
                         "Document ready for review", "{{documentNumber}} — {{documentTitle}} is awaiting your review."
                 ),
                 new EventSeed(
                         "document.review_completed", "Document Review Completed",
                         "All reviewers have completed their review of a document revision.",
-                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_MEDIUM, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "REVIEW_COMPLETE", "DOCUMENT_REVISION", "IN_APP", STD_VARS, true,
-                        "The Approver (or next Reviewer) must be told the revision is waiting for them.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_MEDIUM,
+                        "REVIEW_COMPLETE", "DOCUMENT_REVISION", "IN_APP", STD_VARS,
                         new String[]{"AUTHOR", "APPROVER"},
                         "Review completed", "{{documentNumber}} — {{documentTitle}} review is complete and ready for approval."
                 ),
                 new EventSeed(
                         "document.review_rejected", "Document Review Rejected",
                         "A Reviewer rejected the revision; it is back in Draft.",
-                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "REVIEW_REJECT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",actorName,workflowComment", true,
-                        "Everyone involved must know a review round was closed and why.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
+                        "REVIEW_REJECT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",actorName,workflowComment",
                         new String[]{"AUTHOR", "REVIEWER"},
                         "Review rejected", "{{documentNumber}} — {{documentTitle}} was rejected in review by {{actorName}}: {{workflowComment}}"
                 ),
                 new EventSeed(
                         "document.approval_rejected", "Document Approval Rejected",
                         "The Approver rejected the revision; it is back in Draft.",
-                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "APPROVE_REJECT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",actorName,workflowComment", true,
-                        "Everyone involved must know the approval was rejected and why.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
+                        "APPROVE_REJECT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",actorName,workflowComment",
                         new String[]{"AUTHOR", "REVIEWER"},
                         "Approval rejected", "{{documentNumber}} — {{documentTitle}} was rejected at approval by {{actorName}}: {{workflowComment}}"
                 ),
                 new EventSeed(
                         "document.approved", "Document Approved",
                         "A document revision has been approved by all approvers.",
-                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH, NotificationEventDefinition.COMPLIANCE_COMPLIANCE,
-                        "APPROVE_COMPLETE", "DOCUMENT_REVISION", "IN_APP", STD_VARS, false, null,
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
+                        "APPROVE_COMPLETE", "DOCUMENT_REVISION", "IN_APP", STD_VARS,
                         new String[]{"AUTHOR", "OWNER"},
                         "Document approved", "{{documentNumber}} — {{documentTitle}} has been approved."
                 ),
                 new EventSeed(
                         "knowledge.document_published", "Knowledge Document Published",
                         "A new Effective document was published in a Knowledge Base the user subscribed to.",
-                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_LOW, NotificationEventDefinition.COMPLIANCE_OPTIONAL,
-                        "PUBLISH", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",knowledgeBase", false, null,
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_LOW,
+                        "PUBLISH", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",knowledgeBase",
                         new String[]{"RECIPIENT"},
                         "New in {{knowledgeBase}}", "{{documentNumber}} — {{documentTitle}} (Rev {{revisionNumber}}) is now Effective."
                 ),
                 new EventSeed(
                         "document.upgrade_ready", "Document Ready for Upgrade",
                         "The DCO configured the next revision of an Active document; its Author may now upload the new revision.",
-                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "CONFIGURE_NEXT_REVISION", "DOCUMENT", "IN_APP", STD_VARS, true,
-                        "The Author only gets Upload Revision after this configuration; without a notice the upgrade would go unnoticed.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
+                        "CONFIGURE_NEXT_REVISION", "DOCUMENT", "IN_APP", STD_VARS,
                         new String[]{"AUTHOR"},
                         "Document ready for upgrade", "{{documentNumber}} — {{documentTitle}} has been configured for upgrade. You can now upload the new revision."
                 ),
                 new EventSeed(
                         "document.participant_unavailable", "Workflow Assignee Unavailable",
                         "A Reviewer or Approver with a pending action was suspended or terminated; the assignment must be replaced.",
-                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "REPLACE_PARTICIPANT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",participantType,userName", true,
-                        "Document Control must know a revision cannot progress until the assignment is replaced.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
+                        "REPLACE_PARTICIPANT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",participantType,userName",
                         new String[]{"RECIPIENT"},
                         "Workflow assignee unavailable",
                         "{{documentNumber}} — {{documentTitle}}: the pending {{participantType}} {{userName}} is no longer available. Replace the assignment so the revision can continue."
@@ -226,9 +375,8 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                 new EventSeed(
                         "document.action_reminder", "Pending Review/Approval Reminder",
                         "A Reviewer or Approver has had a revision waiting for their action for longer than the configured reminder period.",
-                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_MEDIUM, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "REMIND_PARTICIPANT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",participantType,daysPending", true,
-                        "A revision waiting on a person for days must keep reminding that person.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_MEDIUM,
+                        "REMIND_PARTICIPANT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",participantType,daysPending",
                         new String[]{"RECIPIENT"},
                         "Action pending",
                         "{{documentNumber}} — {{documentTitle}} has been waiting for your {{participantType}} action for {{daysPending}} day(s)."
@@ -236,9 +384,8 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                 new EventSeed(
                         "document.action_escalated", "Pending Review/Approval Escalation",
                         "A revision has been waiting on a Reviewer or Approver for longer than the configured escalation period.",
-                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "ESCALATE_PARTICIPANT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",participantType,userName,daysPending", true,
-                        "Document Control must be told when a revision is stuck.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
+                        "ESCALATE_PARTICIPANT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",participantType,userName,daysPending",
                         new String[]{"RECIPIENT"},
                         "Revision stuck in workflow",
                         "{{documentNumber}} — {{documentTitle}} has been waiting for {{participantType}} {{userName}} for {{daysPending}} day(s)."
@@ -246,172 +393,121 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                 new EventSeed(
                         "document.published", "Document Published (Effective)",
                         "A document revision has been published and is now the effective version.",
-                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "PUBLISH", "DOCUMENT_REVISION", "IN_APP", STD_VARS, true,
-                        "GMP requires all workflow participants (author, reviewers, approvers) to be notified when a document becomes effective.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
+                        "PUBLISH", "DOCUMENT_REVISION", "IN_APP", STD_VARS,
                         new String[]{"AUTHOR", "REVIEWER", "APPROVER"},
                         "Document is now effective", "{{documentNumber}} — {{documentTitle}} (Rev {{revisionNumber}}) is now Effective."
                 ),
                 new EventSeed(
-                        // TBR-DOC-016: Document Obsolete notification. Mandatory/GMP so it always
-                        // fires (bypassing recipient preference/quiet-hours/digest) for Author + the
+                        // TBR-DOC-016: Document Obsolete notification. It always
+                        // fires for Author + the
                         // permission-equivalent DCO/Coordinator audience; Distributed-copy recipients
                         // affected by the cascade are added as explicit recipients at dispatch time
                         // (see DocumentObsoleteNotificationService), not via defaultRecipientRoles.
                         "document.obsoleted", "Document Obsoleted",
                         "A document master record has been obsoleted.",
-                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "OBSOLETE", "DOCUMENT", "IN_APP", STD_VARS, true,
-                        "GMP requires the document's author, the document coordinator, and recipients of controlled copies that were distributed and became obsoleted by this action to be notified when a document is obsoleted.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
+                        "OBSOLETE", "DOCUMENT", "IN_APP", STD_VARS,
                         new String[]{"AUTHOR", "OWNER"},
                         "Document obsoleted", "{{documentNumber}} — {{documentTitle}} has been obsoleted."
                 ),
                 new EventSeed(
                         // Owner decision DOCUMENT-EXPIRY-2026-10-16: every Active user is told when a document passes its
-                        // Valid Until day. Mandatory so it bypasses preferences; sent by DocumentExpiryNotifier, not by a
+                        // Valid Until day. Sent by DocumentExpiryNotifier, not by a
                         // recipient rule (the audience is every Active account).
                         "document.expired", "Document Expired",
                         "An Active document has reached its Valid Until date. Its controlled copies are voided and no copy can be requested.",
-                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "EXPIRE", "DOCUMENT", "IN_APP,EMAIL", STD_VARS, true,
-                        "GMP requires every user to be told that a document has expired and must no longer be used.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
+                        "EXPIRE", "DOCUMENT", "IN_APP,EMAIL", STD_VARS,
                         new String[]{},
                         "Document expired", "{{documentNumber}} — {{documentTitle}} has passed its Valid Until date. Do not use it."
                 ),
                 new EventSeed(
                         "document.expired_copy_holder", "Document Expired (Copy Holder)",
                         "Sent to the holders of controlled copies that were voided because the document expired.",
-                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "EXPIRE", "DOCUMENT", "IN_APP,EMAIL", STD_VARS, true,
-                        "GMP requires a copy holder to be told that the copy is void and that the paper copy will be recalled.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
+                        "EXPIRE", "DOCUMENT", "IN_APP,EMAIL", STD_VARS,
                         new String[]{},
                         "Your copy is void", "{{documentNumber}} — {{documentTitle}} has expired. Your copy is void. Do not use it; the DCO will recall the paper copy."
                 ),
                 new EventSeed(
                         "document.periodic_review_due", "Document Periodic Review Due",
                         "A published document is approaching its periodic review date.",
-                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_MEDIUM, NotificationEventDefinition.COMPLIANCE_COMPLIANCE,
-                        "REVIEW_DUE", "DOCUMENT", "IN_APP", STD_VARS, false, null,
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_MEDIUM,
+                        "REVIEW_DUE", "DOCUMENT", "IN_APP", STD_VARS + ",reviewDate,reviewStatus",
                         new String[]{"OWNER", "AFFECTED_USERS"},
-                        "Periodic review due", "{{documentNumber}} — {{documentTitle}} is due for periodic review."
+                        "Periodic review due", "{{documentNumber}} — {{documentTitle}} {{reviewStatus}} {{reviewDate}}."
                 ),
 
                 // ── Controlled Copies ───────────────────────────────────────────
                 new EventSeed(
                         "controlled_copy.distributed", "Controlled Copy Distributed",
                         "A controlled copy has been issued/distributed to a recipient.",
-                        "CONTROLLED_COPIES", NotificationEventDefinition.PRIORITY_HIGH, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "DISTRIBUTE", "CONTROLLED_COPY", "IN_APP", STD_VARS + ",controlledCopyNumber,expiryDateDisplay", true,
-                        "Recipients must be notified of controlled copy issuance for distribution traceability (21 CFR Part 11 / Annex 11).",
+                        "CONTROLLED_COPIES", NotificationEventDefinition.PRIORITY_HIGH,
+                        "DISTRIBUTE", "CONTROLLED_COPY", "IN_APP", STD_VARS + ",controlledCopyNumber,expiryDateDisplay",
                         new String[]{"RECIPIENT"},
                         "Controlled copy available", "A new controlled copy is available: {{documentTitle}}."
                 ),
                 new EventSeed(
                         "controlled_copy.recalled", "Controlled Copy Recalled",
                         "A controlled copy has been recalled and must no longer be used.",
-                        "CONTROLLED_COPIES", NotificationEventDefinition.PRIORITY_CRITICAL, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "RECALL", "CONTROLLED_COPY", "IN_APP", STD_VARS + ",controlledCopyNumber,recallReason", true,
-                        "Recalled controlled copies must be actively communicated to holders to prevent use of an invalid copy.",
+                        "CONTROLLED_COPIES", NotificationEventDefinition.PRIORITY_CRITICAL,
+                        "RECALL", "CONTROLLED_COPY", "IN_APP", STD_VARS + ",controlledCopyNumber,recallReason",
                         new String[]{"RECIPIENT"},
                         "Controlled copy recalled", "{{controlledCopyNumber}} has been recalled. Reason: {{recallReason}}."
                 ),
-                new EventSeed(
-                        "controlled_copy.expiring_soon", "Controlled Copy Expiring Soon",
-                        "A distributed controlled copy is approaching its expiry date.",
-                        "CONTROLLED_COPIES", NotificationEventDefinition.PRIORITY_MEDIUM, NotificationEventDefinition.COMPLIANCE_COMPLIANCE,
-                        "EXPIRY_REMINDER", "CONTROLLED_COPY", "IN_APP", STD_VARS + ",controlledCopyNumber,expiryDateDisplay", false, null,
-                        new String[]{"RECIPIENT"},
-                        "Controlled copy expiring soon", "{{controlledCopyNumber}} expires on {{expiryDateDisplay}}."
-                ),
-                new EventSeed(
+new EventSeed(
                         "controlled_copy.destroyed", "Controlled Copy Destroyed",
                         "A controlled copy has been destroyed and its destruction recorded.",
-                        "CONTROLLED_COPIES", NotificationEventDefinition.PRIORITY_MEDIUM, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "DESTROY", "CONTROLLED_COPY", "IN_APP", STD_VARS + ",controlledCopyNumber", true,
-                        "Destruction of a controlled copy must be recorded and communicated for chain-of-custody.",
+                        "CONTROLLED_COPIES", NotificationEventDefinition.PRIORITY_MEDIUM,
+                        "DESTROY", "CONTROLLED_COPY", "IN_APP", STD_VARS + ",controlledCopyNumber",
                         new String[]{"RECIPIENT", "OWNER"},
                         "Controlled copy destroyed", "{{controlledCopyNumber}} has been destroyed."
                 ),
 
                 // ── Audit Trail ──────────────────────────────────────────────────
-                new EventSeed(
-                        "audit_trail.review_campaign_assigned", "Audit Trail Review Campaign Assigned",
-                        "An audit trail review campaign has been assigned to a reviewer.",
-                        "AUDIT_TRAIL", NotificationEventDefinition.PRIORITY_MEDIUM, NotificationEventDefinition.COMPLIANCE_OPTIONAL,
-                        "ASSIGN", "AUDIT_TRAIL_REVIEW_CAMPAIGN", "IN_APP", STD_VARS + ",campaignName", false, null,
-                        new String[]{"ASSIGNEE"},
-                        "Audit review assigned", "You have been assigned audit review campaign {{campaignName}}."
-                ),
-                new EventSeed(
-                        "audit_trail.export_completed", "Audit Trail Export Completed",
-                        "A requested audit trail export has finished generating.",
-                        "AUDIT_TRAIL", NotificationEventDefinition.PRIORITY_LOW, NotificationEventDefinition.COMPLIANCE_OPTIONAL,
-                        "EXPORT", "AUDIT_LOG", "IN_APP", STD_VARS, false, null,
-                        new String[]{"OWNER"},
-                        "Export ready", "Your audit trail export is ready to download."
-                ),
-
-                // ── Security ─────────────────────────────────────────────────────
+// ── Security ─────────────────────────────────────────────────────
                 new EventSeed(
                         "security.password_changed", "Password Changed",
                         "A user's password has been changed.",
-                        "SECURITY", NotificationEventDefinition.PRIORITY_MEDIUM, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "CHANGE_PASSWORD", "USER_ACCOUNT", "IN_APP", STD_VARS, true,
-                        "Security-relevant account changes must always notify the account owner.",
+                        "SECURITY", NotificationEventDefinition.PRIORITY_MEDIUM,
+                        "CHANGE_PASSWORD", "USER_ACCOUNT", "IN_APP", STD_VARS,
                         new String[]{"OWNER"},
                         "Password changed", "Your password was recently changed."
                 ),
                 new EventSeed(
                         "security.mfa_updated", "MFA Settings Updated",
                         "A user's multi-factor authentication settings have changed.",
-                        "SECURITY", NotificationEventDefinition.PRIORITY_MEDIUM, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "UPDATE_MFA", "USER_ACCOUNT", "IN_APP", STD_VARS, true,
-                        "MFA changes must always be communicated to the account owner for account security.",
+                        "SECURITY", NotificationEventDefinition.PRIORITY_MEDIUM,
+                        "UPDATE_MFA", "USER_ACCOUNT", "IN_APP", STD_VARS,
                         new String[]{"OWNER"},
                         "MFA settings updated", "Your multi-factor authentication settings were updated."
                 ),
-                new EventSeed(
-                        "security.access_profile_changed", "Access Profile Changed",
-                        "A user's assigned access profile(s) have changed.",
-                        "SECURITY", NotificationEventDefinition.PRIORITY_MEDIUM, NotificationEventDefinition.COMPLIANCE_COMPLIANCE,
-                        "UPDATE_ACCESS", "USER_ACCOUNT", "IN_APP", STD_VARS, false, null,
-                        new String[]{"OWNER"},
-                        "Access profile updated", "Your access profile assignment has changed."
-                ),
-                new EventSeed(
+new EventSeed(
                         "security.account_locked", "Account Locked",
                         "A user account has been locked after repeated failed sign-in attempts.",
-                        "SECURITY", NotificationEventDefinition.PRIORITY_HIGH, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
-                        "LOCK_ACCOUNT", "USER_ACCOUNT", "IN_APP", STD_VARS, true,
-                        "Account lockouts must always notify the affected user.",
+                        "SECURITY", NotificationEventDefinition.PRIORITY_HIGH,
+                        "LOCK_ACCOUNT", "USER_ACCOUNT", "IN_APP", STD_VARS,
                         new String[]{"OWNER"},
                         "Account locked", "Your account has been locked due to repeated failed sign-in attempts."
                 ),
                 new EventSeed(
                         "user.time_limited_access_expired", "Time-Limited User Access Expired",
                         "A \"Time-Limited User\" grant window has ended and the account was automatically suspended.",
-                        "SECURITY", NotificationEventDefinition.PRIORITY_MEDIUM, NotificationEventDefinition.COMPLIANCE_OPTIONAL,
-                        "TIME_LIMITED_EXPIRE", "USER_ACCOUNT", "IN_APP", STD_VARS, false, null,
+                        "SECURITY", NotificationEventDefinition.PRIORITY_MEDIUM,
+                        "TIME_LIMITED_EXPIRE", "USER_ACCOUNT", "IN_APP", STD_VARS,
                         new String[]{"OWNER"},
                         "Your access has expired", "Your time-limited access ended on {{endDate}} and your account has been suspended."
                 ),
 
                 // ── System ───────────────────────────────────────────────────────
-                new EventSeed(
-                        "system.preference_updated", "Notification Preference Updated",
-                        "A user's notification/security preference has been updated.",
-                        "SYSTEM", NotificationEventDefinition.PRIORITY_LOW, NotificationEventDefinition.COMPLIANCE_OPTIONAL,
-                        "UPDATE_PREFERENCE", "USER_PREFERENCE", "IN_APP", STD_VARS, false, null,
-                        new String[]{"OWNER"},
-                        "Preference updated", "Your preference or security setting has been updated."
-                ),
-                new EventSeed(
+new EventSeed(
                         "system.maintenance_scheduled", "System Maintenance Scheduled",
                         "A system maintenance window has been scheduled.",
-                        "SYSTEM", NotificationEventDefinition.PRIORITY_MEDIUM, NotificationEventDefinition.COMPLIANCE_OPTIONAL,
-                        "SCHEDULE_MAINTENANCE", "SYSTEM", "IN_APP", STD_VARS, false, null,
+                        "SYSTEM", NotificationEventDefinition.PRIORITY_MEDIUM,
+                        "SCHEDULE_MAINTENANCE", "SYSTEM", "IN_APP", PASS_THROUGH_VARS,
                         new String[]{"ALL_USERS"},
-                        "Maintenance scheduled", "A system maintenance window has been scheduled."
+                        "{{title}}", "{{message}}"
                 )
         );
     }

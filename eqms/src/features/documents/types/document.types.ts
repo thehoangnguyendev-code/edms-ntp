@@ -7,13 +7,11 @@
 import { 
   Document as GlobalDocument, 
   DocumentStatus, 
-  DocumentType,
   DocumentSummary,
   User 
 } from '@/types';
 
-export type { DocumentStatus, DocumentType };
-export { DOCUMENT_TYPES, DOCUMENT_TYPE_CODES, DOCUMENT_TYPE_LABELS } from '@/types/documentTypes';
+export type { DocumentStatus };
 
 // View type for document lists
 export type DocumentViewType = "all" | "owned-by-me";

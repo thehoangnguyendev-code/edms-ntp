@@ -19,16 +19,21 @@ import { BackupRestorePage } from "../components/BackupRestorePage";
 import { CreateBackupModal, type CreateBackupInput } from "../components/CreateBackupModal";
 import { ServerListPanel } from "../components/ServerListPanel";
 import { useBackupJobs } from "../components/useBackupJobs";
-import { BACKUP_STATUS_COLOR, VERIFICATION_COLOR, statusLabel, type BackupRecord } from "../types";
-import { formatBytes, formatDateTime } from "../format";
+import { VerifyIntegrityModal } from "../components/VerifyIntegrityModal";
+import { BACKUP_STATUS_COLOR, CONTENT_COLOR, VERIFICATION_COLOR, statusLabel, type BackupRecord } from "../types";
+import { formatBytes, formatDateTime, formatDuration } from "../format";
 import { displayDate } from "@/utils/format";
 
-type SortKey = "startedAt" | "backupNumber" | "status" | "type" | "sizeBytes" | "createdBy" | "verification";
+type SortKey = "startedAt" | "backupNumber" | "status" | "type" | "trigger" | "duration" | "sizeBytes" | "createdBy" | "verification" | "verifiedAt";
 
 const ALL = "ALL";
 const option = (value: string) => ({ label: statusLabel(value), value });
 const STATUS_OPTIONS = [{ label: "All", value: ALL }, ...["COMPLETED", "RUNNING", "FAILED"].map(option)];
 const TYPE_OPTIONS = [{ label: "All", value: ALL }, { label: "Full", value: "FULL" }, { label: "Pre-change", value: "PRE_CHANGE" }];
+const TRIGGER_OPTIONS = [{ label: "All", value: ALL }, { label: "Scheduled", value: "SCHEDULED" }, { label: "Manual", value: "MANUAL" }, { label: "Pre-change", value: "PRE_CHANGE" }];
+const CONTENT_OPTIONS = [{ label: "All", value: ALL }, { label: "Database", value: "DATABASE" }, { label: "Files", value: "OBJECT_STORE" }];
+/** Short names for the parts a backup holds, shown in the table only. */
+const CONTENT_SHORT: Record<string, string> = { CONFIGURATION: "Settings", DATABASE: "Database", OBJECT_STORE: "Files", FILE_STORAGE: "Files" };
 const INTEGRITY_OPTIONS = [{ label: "All", value: ALL }, ...["VERIFIED", "NOT_VERIFIED", "FAILED"].map(option)];
 
 /**
@@ -46,6 +51,10 @@ export const BackupsView: React.FC = () => {
   const [status, setStatus] = useState(ALL);
   const [type, setType] = useState(ALL);
   const [integrity, setIntegrity] = useState(ALL);
+  const [trigger, setTrigger] = useState(ALL);
+  const [component, setComponent] = useState(ALL);
+  const [checkedFrom, setCheckedFrom] = useState("");
+  const [checkedTo, setCheckedTo] = useState("");
   const [startedFrom, setStartedFrom] = useState("");
   const [startedTo, setStartedTo] = useState("");
   const [page, setPage] = useState(1);
@@ -60,6 +69,7 @@ export const BackupsView: React.FC = () => {
   const [reloadKey, setReloadKey] = useState(0);
   const [creating, setCreating] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [verifyTarget, setVerifyTarget] = useState<string | null>(null);
 
   const canRun = hasPermission("backup.backup.run");
   const canVerify = hasPermission("backup.backup.verify");
@@ -77,6 +87,10 @@ export const BackupsView: React.FC = () => {
         status: status === ALL ? undefined : status,
         type: type === ALL ? undefined : type,
         verification: integrity === ALL ? undefined : integrity,
+        trigger: trigger === ALL ? undefined : trigger,
+        component: component === ALL ? undefined : component,
+        checkedFrom: dateToInstant(checkedFrom, "start"),
+        checkedTo: dateToInstant(checkedTo, "end"),
         startedFrom: dateToInstant(startedFrom, "start"),
         startedTo: dateToInstant(startedTo, "end"),
         sortBy: sort.key,
@@ -105,18 +119,22 @@ export const BackupsView: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [debouncedSearch, status, type, integrity, startedFrom, startedTo, sort, page, pageSize, reloadKey]);
+  }, [debouncedSearch, status, type, integrity, trigger, component, startedFrom, startedTo, checkedFrom, checkedTo, sort, page, pageSize, reloadKey]);
 
   // A different search, filter or page size starts again from the first page.
-  useEffect(() => setPage(1), [debouncedSearch, status, type, integrity, startedFrom, startedTo, pageSize]);
+  useEffect(() => setPage(1), [debouncedSearch, status, type, integrity, trigger, component, startedFrom, startedTo, checkedFrom, checkedTo, pageSize]);
 
   const clearFilters = () => {
     setSearch("");
     setStatus(ALL);
     setType(ALL);
     setIntegrity(ALL);
+    setTrigger(ALL);
+    setComponent(ALL);
     setStartedFrom("");
     setStartedTo("");
+    setCheckedFrom("");
+    setCheckedTo("");
     setPage(1);
   };
 
@@ -143,18 +161,8 @@ export const BackupsView: React.FC = () => {
     }
   };
 
-  const verify = async (backupNumber: string) => {
-    try {
-      const { jobId } = await backupRestoreApi.verify(backupNumber);
-      showToast({ type: "info", title: "Integrity check requested", message: backupNumber });
-      void follow(jobId, "Integrity check");
-    } catch (e) {
-      showToast({ type: "error", title: "Unable to start the check", message: getApiErrorMessage(e, "The request was refused.") });
-    }
-  };
-
   const open = (backupNumber: string) => navigate(ROUTES.BACKUP_RESTORE.BACKUP_DETAIL(backupNumber));
-  const requestRestore = (backupNumber: string) => navigate(`${ROUTES.BACKUP_RESTORE.RESTORE_NEW}?backup=${encodeURIComponent(backupNumber)}`);
+  const requestRestore = (backupNumber: string) => navigate(`${ROUTES.BACKUP_RESTORE.PRODUCTION_RESTORES}?backup=${encodeURIComponent(backupNumber)}`);
 
   const columns: DataTableColumn<BackupRecord>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_b, i) => (page - 1) * pageSize + i + 1 },
@@ -164,22 +172,32 @@ export const BackupsView: React.FC = () => {
       label: "Backup Number",
       sort: sortFor("backupNumber"),
       cell: (b) => (
-        <div>
-          <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => open(b.id)}>
-            {b.id}
-          </button>
-          <span className="block text-xs text-slate-500">
-            {statusLabel(b.type)} · {statusLabel(b.trigger)}
-          </span>
-        </div>
+        <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => open(b.id)}>
+          {b.id}
+        </button>
       ),
     },
     { id: "status", header: "Status", label: "Status", sort: sortFor("status"), cell: (b) => <Badge color={BACKUP_STATUS_COLOR[b.status]}>{statusLabel(b.status)}</Badge> },
     { id: "type", header: "Type", label: "Type", sort: sortFor("type"), cell: (b) => statusLabel(b.type) },
+    { id: "trigger", header: "Trigger", label: "Trigger", sort: sortFor("trigger"), cell: (b) => statusLabel(b.trigger) },
     { id: "started", header: "Started", label: "Started", sort: sortFor("startedAt"), cell: (b) => formatDateTime(b.startedAt) },
+    { id: "duration", header: "Duration", label: "Duration", sort: sortFor("duration"), cell: (b) => formatDuration(b.durationSec) },
+    {
+      id: "contents",
+      header: "Contents",
+      label: "Contents",
+      cell: (b) => (
+        <span className="inline-flex flex-wrap gap-1">
+          {b.components.length === 0 ? "—" : b.components.map((c) => <Badge key={c.key} color={c.status === "COMPLETED" ? CONTENT_COLOR[c.key] ?? "slate" : "red"}>{CONTENT_SHORT[c.key] ?? c.key}</Badge>)}
+        </span>
+      ),
+    },
+    { id: "schema", header: "Schema", label: "Schema", cell: (b) => (b.schemaVersion ? `V${b.schemaVersion}` : "—") },
     { id: "size", header: "Size", label: "Size", sort: sortFor("sizeBytes"), cell: (b) => formatBytes(b.sizeBytes) },
     { id: "verify", header: "Integrity", label: "Integrity", sort: sortFor("verification"), cell: (b) => <Badge color={VERIFICATION_COLOR[b.verification]}>{statusLabel(b.verification)}</Badge> },
+    { id: "checked", header: "Last Checked", label: "Last Checked", sort: sortFor("verifiedAt"), cell: (b) => (b.verifiedAt ? formatDateTime(b.verifiedAt) : "—") },
     { id: "by", header: "Requested by", label: "Requested by", sort: sortFor("createdBy"), cell: (b) => b.createdBy },
+    { id: "reason", header: "Reason", label: "Reason", cell: (b) => <span className="line-clamp-2 break-words">{b.reason || "—"}</span> },
     {
       id: "retention",
       header: "Retained",
@@ -239,8 +257,13 @@ export const BackupsView: React.FC = () => {
           { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setStatus },
           { id: "type", label: "Type", value: type, options: TYPE_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setType },
           { id: "integrity", label: "Integrity", value: integrity, options: INTEGRITY_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setIntegrity },
+          { id: "trigger", label: "Trigger", value: trigger, options: TRIGGER_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setTrigger },
+          { id: "contents", label: "Contents", value: component, options: CONTENT_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setComponent },
         ]}
-        dates={[{ id: "started", label: "Started", from: startedFrom, to: startedTo, onFromChange: setStartedFrom, onToChange: setStartedTo }]}
+        dates={[
+          { id: "started", label: "Started", from: startedFrom, to: startedTo, onFromChange: setStartedFrom, onToChange: setStartedTo },
+          { id: "checked", label: "Last Checked", from: checkedFrom, to: checkedTo, onFromChange: setCheckedFrom, onToChange: setCheckedTo },
+        ]}
         onClear={clearFilters}
         page={page}
         totalPages={totalPages}
@@ -256,16 +279,17 @@ export const BackupsView: React.FC = () => {
             <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { open(actionRow.id); menu.close(); }}>
               View Detail
             </DropdownMenuItem>
-            <DropdownMenuItem icon={<IconChecks className="h-4 w-4" />} disabled={actionRow.status !== "COMPLETED" || !canVerify} onClick={() => { void verify(actionRow.id); menu.close(); }}>
+            <DropdownMenuItem icon={<IconChecks className="h-4 w-4" />} disabled={actionRow.status !== "COMPLETED" || !canVerify} onClick={() => { setVerifyTarget(actionRow.id); menu.close(); }}>
               Verify Integrity
             </DropdownMenuItem>
             <DropdownMenuItem icon={<IconRestore className="h-4 w-4" />} disabled={actionRow.status !== "COMPLETED" || actionRow.verification !== "VERIFIED"} onClick={() => { requestRestore(actionRow.id); menu.close(); }}>
-              Request Restore
+              Restore
             </DropdownMenuItem>
           </div>
         )}
       </PortalDropdownMenu>
 
+      <VerifyIntegrityModal isOpen={verifyTarget !== null} backupNumber={verifyTarget ?? ""} onClose={() => setVerifyTarget(null)} onFinished={reload} />
       <CreateBackupModal isOpen={creating} busy={starting} onClose={() => setCreating(false)} onConfirm={(input) => void create(input)} />
     </BackupRestorePage>
   );

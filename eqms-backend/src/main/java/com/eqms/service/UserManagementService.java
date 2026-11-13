@@ -364,6 +364,38 @@ public class UserManagementService {
         return "NTP." + String.format("%04d", max + 1);
     }
 
+    /**
+     * A free username for the New User form, worked out by the server so the screen does not load the list of users to look for a collision.
+     * Format: the last word of the name plus the first letters of the others, without accents ("Nguyễn Thế Hoàng" gives "hoangnt"); a number
+     * is added when the name is taken. Terminated accounts count: their username stays unique. The server still checks again when the user is created.
+     */
+    public String suggestUsername(String fullName) {
+        String base = usernameBase(fullName);
+        String candidate = base;
+        for (int counter = 1; !base.isEmpty() && userRepository.findByUsernameIgnoreCase(candidate).isPresent() && counter < 1000; counter++) {
+            candidate = base + counter;
+        }
+        return candidate;
+    }
+
+    /** The last word of the name plus the first letters of the others, lower case, without accents; empty when the name has no letter or digit. */
+    static String usernameBase(String fullName) {
+        if (fullName == null || fullName.isBlank() || fullName.length() > 200) {
+            return "";
+        }
+        String plain = java.text.Normalizer.normalize(fullName.trim(), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").replace('đ', 'd').replace('Đ', 'D').toLowerCase(java.util.Locale.ROOT);
+        String[] words = java.util.Arrays.stream(plain.split("\\s+")).map(word -> word.replaceAll("[^a-z0-9]", "")).filter(word -> !word.isEmpty()).toArray(String[]::new);
+        if (words.length == 0) {
+            return "";
+        }
+        StringBuilder base = new StringBuilder(words[words.length - 1]);
+        for (int index = 0; index < words.length - 1; index++) {
+            base.append(words[index].charAt(0));
+        }
+        return base.toString();
+    }
+
     @Transactional
     public UserCreationResponse createUser(CreateUserRequest request, HttpServletRequest httpRequest) {
         validateCreateRequest(request);
@@ -2054,7 +2086,7 @@ public class UserManagementService {
                 .map(id -> {
                     UUID parsed = parseUuid(id);
                     if (parsed == null) {
-                        throw new IllegalArgumentException("Invalid Access Profile id: " + id);
+                        throw new IllegalArgumentException("Invalid Access Profile id");
                     }
                     return parsed;
                 })

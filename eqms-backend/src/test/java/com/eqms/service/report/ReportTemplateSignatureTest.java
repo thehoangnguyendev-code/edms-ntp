@@ -68,7 +68,7 @@ class ReportTemplateSignatureTest {
         var jdbc = mock(JdbcTemplate.class);
         var permissions = mock(EffectivePermissionService.class);
         when(permissions.getEffectivePermissionCodes(any(UserAccount.class))).thenReturn(Set.of("reports.definition.manage"));
-        var service = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider()));
+        var service = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
         service.configureSignatures(signatures);
         doThrow(new AccessDeniedException("Electronic signature is required")).when(signatures).requireValidToken(any(), any());
 
@@ -82,7 +82,7 @@ class ReportTemplateSignatureTest {
         var jdbc = mock(JdbcTemplate.class);
         var permissions = mock(EffectivePermissionService.class);
         when(permissions.getEffectivePermissionCodes(any(UserAccount.class))).thenReturn(Set.of("reports.definition.manage"));
-        var service = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider()));
+        var service = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
 
         assertThatThrownBy(() -> service.save(manager(), "NEW_REGISTER", newDefinition("tok"), true))
                 .isInstanceOf(IllegalStateException.class)
@@ -95,7 +95,7 @@ class ReportTemplateSignatureTest {
         var jdbc = mock(JdbcTemplate.class);
         var permissions = mock(EffectivePermissionService.class);
         when(permissions.getEffectivePermissionCodes(any(UserAccount.class))).thenReturn(Set.of("reports.definition.manage"));
-        var service = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider()));
+        var service = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
         var blank = new ReportTemplateService.TemplateWrite(null, "DOCUMENT_STATUS", "New register", "  ", true, List.of("PDF"), List.of(NUMBER, NAME), List.of(), "", null, "tok");
         assertThatThrownBy(() -> service.save(manager(), "NEW_REGISTER", blank, true)).isInstanceOf(IllegalArgumentException.class).hasMessage("REPORT_DESCRIPTION_REQUIRED");
         var noReason = new ReportTemplateService.TemplateWrite(null, "DOCUMENT_STATUS", "New register", " Quarterly register ", true, List.of("PDF"), List.of(NUMBER, NAME), List.of(), "", null, "tok");

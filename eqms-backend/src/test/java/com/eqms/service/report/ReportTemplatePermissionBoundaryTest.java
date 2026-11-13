@@ -18,7 +18,7 @@ class ReportTemplatePermissionBoundaryTest {
         var fresh=mock(EffectivePermissionService.class);when(fresh.getEffectivePermissionCodes(actor)).thenReturn(Set.of());
         var cached=mock(PermissionEvaluationService.class);when(cached.hasPermission(eq(actor),anyString())).thenReturn(true);
         var jdbc=mock(JdbcTemplate.class);var storage=mock(FileStorageService.class);var audit=mock(AuditTrailService.class);
-        var templates=new ReportTemplateService(jdbc,new ObjectMapper(),fresh,audit,List.of(new DocumentReportMetadataProvider()));
+        var templates=new ReportTemplateService(jdbc,new ObjectMapper(),fresh,audit,List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
         var platform=new ReportPlatformService(jdbc,new ObjectMapper(),cached,mock(DocumentRecordRepository.class),mock(UserAccountRepository.class),mock(DocumentAuthorizationService.class),storage,audit);platform.configureTemplates(templates);
         assertThrows(SecurityException.class,()->platform.download(actor,UUID.randomUUID(),UUID.randomUUID()));
         assertThrows(SecurityException.class,()->platform.retryRun(actor,UUID.randomUUID()));

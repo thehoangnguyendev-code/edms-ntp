@@ -80,11 +80,10 @@ class NotificationDispatcherDigestDeferralTest {
         policy.setRecipientRules(rules);
     }
 
-    private NotificationEventDefinition event(boolean mandatory) {
+    private NotificationEventDefinition event() {
         NotificationEventDefinition event = new NotificationEventDefinition();
         event.setCode("test.event");
         event.setModule("Security");
-        event.setMandatory(mandatory);
         event.setActive(true);
         return event;
     }
@@ -102,7 +101,7 @@ class NotificationDispatcherDigestDeferralTest {
         when(templateVersionRepository.findFirstByPolicy_IdAndChannelAndStatusOrderByVersionNumberDesc(
                 policy.getId(), NotificationTemplateVersion.CHANNEL_EMAIL, NotificationTemplateVersion.STATUS_ACTIVE))
                 .thenReturn(Optional.of(emailVersion()));
-        when(eventRepository.findByCode("test.event")).thenReturn(Optional.of(event(false)));
+        when(eventRepository.findByCode("test.event")).thenReturn(Optional.of(event()));
         when(policyRepository.findByEventCode("test.event")).thenReturn(Optional.of(policy));
     }
 
@@ -114,7 +113,7 @@ class NotificationDispatcherDigestDeferralTest {
         dispatcher.dispatch("test.event", List.of(recipient), Map.of());
 
         verify(emailOutbox).enqueue(
-                eq("a@example.local"), any(), any(), eq("test.event"), any(), any(),org.mockito.ArgumentMatchers.anyBoolean());
+                eq("a@example.local"), any(), any(), eq("test.event"), any(), any());
         verify(dispatchQueueRepository, never()).save(any());
     }
 
@@ -126,7 +125,7 @@ class NotificationDispatcherDigestDeferralTest {
         dispatcher.dispatch("test.event", List.of(recipient), Map.of());
 
         verify(emailOutbox, never()).enqueue(
-                any(), any(), any(), any(), any(), any(),org.mockito.ArgumentMatchers.anyBoolean());
+                any(), any(), any(), any(), any(), any());
         ArgumentCaptor<NotificationDispatchQueue> captor = ArgumentCaptor.forClass(NotificationDispatchQueue.class);
         verify(dispatchQueueRepository).save(captor.capture());
         NotificationDispatchQueue queued = captor.getValue();
@@ -159,23 +158,7 @@ class NotificationDispatcherDigestDeferralTest {
         dispatcher.dispatch("test.event", List.of(recipient), Map.of());
 
         verify(emailOutbox, never()).enqueue(
-                any(), any(), any(), any(), any(), any(),org.mockito.ArgumentMatchers.anyBoolean());
+                any(), any(), any(), any(), any(), any());
         verify(dispatchQueueRepository).save(any(NotificationDispatchQueue.class));
-    }
-
-    @Test
-    void mandatoryEvent_ignoresDigestMode_sendsImmediately() {
-        policy.setDigestMode(NotificationPolicy.DIGEST_DAILY);
-        when(templateVersionRepository.findFirstByPolicy_IdAndChannelAndStatusOrderByVersionNumberDesc(
-                policy.getId(), NotificationTemplateVersion.CHANNEL_EMAIL, NotificationTemplateVersion.STATUS_ACTIVE))
-                .thenReturn(Optional.of(emailVersion()));
-        when(eventRepository.findByCode("test.event")).thenReturn(Optional.of(event(true)));
-        when(policyRepository.findByEventCode("test.event")).thenReturn(Optional.of(policy));
-
-        dispatcher.dispatch("test.event", List.of(recipient), Map.of());
-
-        verify(emailOutbox).enqueue(
-                eq("a@example.local"), any(), any(), eq("test.event"), any(), any(),eq(true));
-        verify(dispatchQueueRepository, never()).save(any());
     }
 }

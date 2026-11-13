@@ -11,7 +11,6 @@ export * from './useSecurity';
 export { useDropdownPosition } from './useDropdownPosition';
 export * from './usePortalDropdown';
 export { useNavigateWithLoading } from './useNavigateWithLoading';
-export { useTableFilter } from './useTableFilter';
 export { useTableDragScroll } from './useTableDragScroll';
 export { useLocalizationPreferences } from './useLocalizationPreferences';
 export {

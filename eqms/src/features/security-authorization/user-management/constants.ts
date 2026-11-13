@@ -19,14 +19,6 @@ export const USER_MANAGEMENT_ROUTES = {
   PROFILE: (userId: string) => `/settings/users/profile/${userId}`,
 } as const;
 
-// Business Units and their Departments mapping
-export const BUSINESS_UNIT_DEPARTMENTS: { [key: string]: string[] } = {
-  "Corporate": ["IT Department", "Human Resources", "Finance", "Legal"],
-  "Operations": ["Production", "Warehouse", "Logistics", "Maintenance"],
-  "Quality": ["Quality Assurance", "Quality Control", "Regulatory Affairs"],
-  "Research": ["R&D", "Laboratory", "Clinical Research"],
-};
-
 // Default table columns configuration
 export const DEFAULT_COLUMNS: TableColumn[] = [
   { id: "no", label: "No.", visible: true, order: 0, locked: true },

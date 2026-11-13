@@ -219,7 +219,7 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
                       .slice(0, APP_SHORT_NAME_MAX),
                   })
                 }
-                className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                 placeholder={(config.systemDisplayName || "EQMS").slice(
                   0,
                   APP_SHORT_NAME_MAX,

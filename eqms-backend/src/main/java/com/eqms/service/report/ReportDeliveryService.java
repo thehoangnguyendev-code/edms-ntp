@@ -3,8 +3,8 @@ package com.eqms.service.report;
 import com.eqms.entity.UserAccount;
 import com.eqms.entity.UserStatus;
 import com.eqms.repository.UserAccountRepository;
-import com.eqms.service.EmailNotificationService;
-import com.eqms.service.NotificationService;
+import com.eqms.service.NotificationDispatcher;
+import com.eqms.service.OperationalNotificationEvents;
 import com.eqms.service.PermissionEvaluationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,22 +29,21 @@ public class ReportDeliveryService {
     private static final Logger log = LoggerFactory.getLogger(ReportDeliveryService.class);
     static final String EVENT_REPORT_READY = "REPORT_READY";
     static final String EVENT_SCHEDULE_SUSPENDED = "REPORT_SCHEDULE_SUSPENDED";
+    static final String EVENT_RUN_FAILED = "REPORT_RUN_FAILED";
     static final String CHANNEL_IN_APP = "IN_APP";
     static final String CHANNEL_EMAIL = "EMAIL";
 
     private final JdbcTemplate jdbc;
     private final UserAccountRepository users;
     private final PermissionEvaluationService permissions;
-    private final NotificationService notifications;
-    private final EmailNotificationService email;
+    private final NotificationDispatcher dispatcher;
 
     public ReportDeliveryService(JdbcTemplate jdbc, UserAccountRepository users, PermissionEvaluationService permissions,
-                                 NotificationService notifications, EmailNotificationService email) {
+                                 NotificationDispatcher dispatcher) {
         this.jdbc = jdbc;
         this.users = users;
         this.permissions = permissions;
-        this.notifications = notifications;
-        this.email = email;
+        this.dispatcher = dispatcher;
     }
 
     /** Tells the recipients of a scheduled run that its report is ready to view. Never throws. */
@@ -52,11 +51,21 @@ public class ReportDeliveryService {
         try {
             List<Map<String, Object>> rows = jdbc.queryForList(
                     "select schedule_id, requester_user_id, coalesce(report_title, definition_code) as title from report_runs where id=?", runId);
-            if (rows.isEmpty() || rows.getFirst().get("schedule_id") == null) return;
+            if (rows.isEmpty()) return;
             Map<String, Object> run = rows.getFirst();
-            UUID scheduleId = UUID.fromString(run.get("schedule_id").toString());
             UUID requester = UUID.fromString(run.get("requester_user_id").toString());
             String title = String.valueOf(run.get("title"));
+            if (run.get("schedule_id") == null) {
+                // a report a person asked for themselves: they are told it is ready (the file is not sent, as for a schedule)
+                Notice own = new Notice(EVENT_REPORT_READY, "Report ready: " + title,
+                        "The report you asked for is ready to view. The file itself is not sent; open the link and sign in to see it.",
+                        "/report/runs/" + runId, "REPORT_RUN", runId, runId, null);
+                UserAccount owner = users.findById(requester).orElse(null);
+                if (owner == null) { recordMissing(requester, own); return; }
+                deliver(owner, own, owner.getStatus() == UserStatus.Active);
+                return;
+            }
+            UUID scheduleId = UUID.fromString(run.get("schedule_id").toString());
             List<UUID> recipients = jdbc.queryForList("select user_id from report_schedule_recipients where schedule_id=? order by user_id", UUID.class, scheduleId);
             for (UUID recipientId : recipients) {
                 Notice notice = new Notice(EVENT_REPORT_READY, "Report ready: " + title,
@@ -68,6 +77,25 @@ public class ReportDeliveryService {
             }
         } catch (Exception failure) {
             log.error("Report-ready notices could not be processed for run {}: {}", runId, failure.getMessage(), failure);
+        }
+    }
+
+    /** Tells the person who asked for a report that it could not be produced, once the run has failed for good (a run that will be tried again is not reported). Never throws. */
+    public void notifyRequesterOfFailedRun(UUID runId) {
+        try {
+            List<Map<String, Object>> rows = jdbc.queryForList(
+                    "select schedule_id, requester_user_id, status, coalesce(report_title, definition_code) as title from report_runs where id=?", runId);
+            if (rows.isEmpty() || !"FAILED".equals(String.valueOf(rows.getFirst().get("status")))) return;
+            Map<String, Object> run = rows.getFirst();
+            UUID requester = UUID.fromString(run.get("requester_user_id").toString());
+            UUID scheduleId = run.get("schedule_id") == null ? null : UUID.fromString(run.get("schedule_id").toString());
+            Notice notice = new Notice(EVENT_RUN_FAILED, "Report failed: " + run.get("title"),
+                    "The report could not be produced. Open the run to see the reason, or ask for it again.", "/report/runs/" + runId, "REPORT_RUN", runId, runId, scheduleId);
+            UserAccount owner = users.findById(requester).orElse(null);
+            if (owner == null) { recordMissing(requester, notice); return; }
+            deliver(owner, notice, owner.getStatus() == UserStatus.Active);
+        } catch (Exception failure) {
+            log.error("The failed-run notice could not be processed for run {}: {}", runId, failure.getMessage(), failure);
         }
     }
 
@@ -115,6 +143,7 @@ public class ReportDeliveryService {
             case "SUSPENDED_INVALID_SCHEDULE" -> "its timing or format is no longer valid";
             case "SUSPENDED_TEMPLATE_DISABLED" -> "its report template was disabled";
             case "SUSPENDED_TEMPLATE_NOT_APPROVED" -> "its report template is not approved for its current version";
+            case "SUSPENDED_SIGNATURE_REQUIRED" -> "a report of this type is signed each time it is run, so it cannot run on a schedule";
             default -> "it was stopped by the system";
         };
     }
@@ -132,36 +161,29 @@ public class ReportDeliveryService {
             record(recipient.getId(), CHANNEL_EMAIL, notice, "SKIPPED_NOT_AUTHORIZED", null);
             return;
         }
-        sendInApp(recipient, notice);
-        sendEmail(recipient, notice);
+        sendThroughRegistry(recipient, notice);
     }
 
-    private void sendInApp(UserAccount recipient, Notice notice) {
+    /**
+     * Both notices go through the registry event of the report notice, so its policy applies (on or off, channels, wording, icon, e-mail design). What
+     * the dispatch did is written to the delivery log channel by channel; a policy that is off or a channel that is off is a SKIPPED attempt, not a failure.
+     */
+    private void sendThroughRegistry(UserAccount recipient, Notice notice) {
+        NotificationDispatcher.Outcome outcome;
         try {
-            notifications.recordNotification(recipient, null, "personal", "Report", notice.event().toLowerCase().replace('_', '-'),
-                    notice.title(), notice.message(), notice.path(), notice.entityType(), notice.entityId(), null, notice.title(),
-                    "medium", null);
-            record(recipient.getId(), CHANNEL_IN_APP, notice, "SENT", null);
+            outcome = dispatcher.dispatchIndependently(OperationalNotificationEvents.reportRegistryCode(notice.event()), List.of(recipient),
+                    NotificationDispatcher.noticeVariables(notice.title(), notice.message(), notice.path()));
         } catch (Exception failure) {
             record(recipient.getId(), CHANNEL_IN_APP, notice, "FAILED", failure.getClass().getSimpleName());
-        }
-    }
-
-    private void sendEmail(UserAccount recipient, Notice notice) {
-        if (!StringUtils.hasText(recipient.getEmail())) {
-            record(recipient.getId(), CHANNEL_EMAIL, notice, "FAILED", "NO_EMAIL_ADDRESS");
+            record(recipient.getId(), CHANNEL_EMAIL, notice, "FAILED", failure.getClass().getSimpleName());
             return;
         }
-        try {
-            String link = email.resolvePublicAppBaseUrl() + notice.path();
-            String body = "<p>" + HtmlUtils.htmlEscape(notice.message()) + "</p>"
-                    + "<p><a href=\"" + HtmlUtils.htmlEscape(link) + "\">Open in EQMS</a></p>";
-            boolean sent = email.sendRenderedEmailWithTracking(recipient.getEmail(), "EQMS: " + notice.title(), body,
-                    notice.event(), "REPORT", Map.of("fullName", StringUtils.hasText(recipient.getFullName()) ? recipient.getFullName() : recipient.getUsername()));
-            record(recipient.getId(), CHANNEL_EMAIL, notice, sent ? "SENT" : "FAILED", sent ? null : "EMAIL_NOT_SENT");
-        } catch (Exception failure) {
-            record(recipient.getId(), CHANNEL_EMAIL, notice, "FAILED", failure.getClass().getSimpleName());
-        }
+        if (outcome == null) outcome = new NotificationDispatcher.Outcome("NOT_REGISTERED", false, false, false, false);
+        String inApp = outcome.inAppReason();
+        record(recipient.getId(), CHANNEL_IN_APP, notice, inApp == null ? "SENT" : "SKIPPED", inApp);
+        String mail = outcome.emailReason(StringUtils.hasText(recipient.getEmail()));
+        // a person without an address is a failure of the delivery as before; a policy or a channel that is off is a skipped attempt
+        record(recipient.getId(), CHANNEL_EMAIL, notice, mail == null ? "SENT" : "NO_EMAIL_ADDRESS".equals(mail) || "NOT_SENT".equals(mail) ? "FAILED" : "SKIPPED", mail);
     }
 
     private void recordMissing(UUID recipientId, Notice notice) {

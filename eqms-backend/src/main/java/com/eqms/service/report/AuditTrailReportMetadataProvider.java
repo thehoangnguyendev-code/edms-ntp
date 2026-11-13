@@ -23,7 +23,8 @@ public class AuditTrailReportMetadataProvider implements ReportMetadataProvider 
         column("timestamp", "Timestamp", "al.created_at");
         column("module", "Module", "al.entity_type");
         column("action", "Action", "al.action_type");
-        column("record", "Record", "coalesce(nullif(al.entity_name,''), nullif(al.entity_code,''), nullif(al.document_number,''), cast(al.entity_id as text))");
+        // An identifier is never shown to a person: a record known only by its identifier is left empty (REPORT-NO-IDENTIFIER, the rule of every screen).
+        column("record", "Record", "case when coalesce(nullif(al.entity_name,''), nullif(al.entity_code,''), nullif(al.document_number,'')) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then null else coalesce(nullif(al.entity_name,''), nullif(al.entity_code,''), nullif(al.document_number,'')) end");
         column("fromStatus", "From Status", "al.from_status");
         column("toStatus", "To Status", "al.to_status");
         column("description", "Description", "al.comment");
@@ -42,6 +43,7 @@ public class AuditTrailReportMetadataProvider implements ReportMetadataProvider 
     public String description() { return "Records of the Audit Trail: who did what to which record, when, from where, and whether an electronic signature was applied."; }
     public List<String> requiredPermissions() { return List.of("audit.view", "audit.export"); }
     public List<String> allowedScopes() { return List.of("SYSTEM"); }
+    @Override public boolean runNeedsSignature() { return true; }
     public Map<String, String> columns() { return COLUMNS; }
     public Map<String, String> labels() { return LABELS; }
     public String identityColumn() { return "al.id"; }

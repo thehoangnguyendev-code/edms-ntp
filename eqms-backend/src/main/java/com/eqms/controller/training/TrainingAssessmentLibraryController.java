@@ -29,6 +29,12 @@ public class TrainingAssessmentLibraryController {
         return ResponseEntity.ok(library.page(users.requireCurrentUser(), search, status, kind, sortBy, sortDirection, page, limit, filters));
     }
 
+    /** The people who changed an assessment, for the Last Changed By filter: every one, from the server, not the ones of the first page. */
+    @GetMapping("/assessments/editors")
+    public ResponseEntity<?> editors() {
+        return ResponseEntity.ok(library.editors(users.requireCurrentUser()));
+    }
+
     /** The revisions of the assessment, as the revisions of a document are listed on its detail. */
     @GetMapping("/assessments/{id}/revisions")
     public ResponseEntity<?> revisions(@PathVariable UUID id, @RequestParam(required = false) String search, @RequestParam(required = false) String sortBy,

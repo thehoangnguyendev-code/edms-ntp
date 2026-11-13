@@ -16,7 +16,7 @@ vi.mock("@/services/api", () => ({
   documentApi: { getPendingCounts: vi.fn(async () => ({ pendingReview: 0, pendingApproval: 0 })) },
   navigationApi: {
     getNavigation: vi.fn(async () => [
-      { id: "self-service", label: "Self-Service", children: [{ id: "dashboard", label: "Dashboard" }, { id: "knowledge-base", label: "Knowledge" }] },
+      { id: "self-service", label: "Self-Service", children: [{ id: "dashboard", label: "Dashboard" }, { id: "knowledge-base", label: "Knowledge Base" }] },
       { id: "doc-control", label: "Document Control", children: [{ id: "doc-all", label: "All Documents" }] },
     ]),
   },

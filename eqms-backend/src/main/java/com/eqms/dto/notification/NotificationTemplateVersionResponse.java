@@ -12,6 +12,7 @@ public record NotificationTemplateVersionResponse(
         String subject,
         String body,
         String actionUrlTemplate,
+        String actionLabel,
         String variablesUsed,
         String changeSummary,
         String createdByName,

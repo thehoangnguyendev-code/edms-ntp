@@ -31,7 +31,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -53,7 +52,7 @@ import java.util.UUID;
 @Service
 public class KnowledgeShareLinkService {
     static final Set<Integer> EXPIRY_DAYS = Set.of(1, 7, 30, 90);
-    private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(com.eqms.util.DateTimeFormatUtils.ZONE);
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final KnowledgeShareLinkRepository linkRepository;

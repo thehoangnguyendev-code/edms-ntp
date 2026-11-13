@@ -840,7 +840,9 @@ export const AuditTrailView: React.FC = () => {
                         const signature = hasESignature(record) ? "Yes" : "No";
                         const device = record.device || "-";
 
-                        const moduleLabel = mapModuleLabel(record.module);
+                        const moduleLabel =
+                          (record.metadata?.menuModule as string | undefined) ||
+                          mapModuleLabel(record.module);
                         const objectType =
                           record.metadata?.entityType ||
                           record.metadata?.objectType ||

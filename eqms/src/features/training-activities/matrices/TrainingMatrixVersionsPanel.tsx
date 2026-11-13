@@ -2,13 +2,12 @@ import { useCallback, useMemo, useState } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate } from "react-router-dom";
 import { MoreVertical } from "lucide-react";
-import { IconEye, IconGitCompare } from "@tabler/icons-react";
+import { IconEye, IconGitCompare, IconInfoCircle } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
@@ -77,7 +76,6 @@ export function TrainingMatrixVersionsPanel({ matrixId, currentVersionId }: { ma
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-500">An approved version is never changed. Each change is a new version that is prepared, then approved with an electronic signature. The effective version tells who must be trained on what; obsoleted versions stay as history. Use Compare with previous to see what a version changed.</p>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar
         searchPlaceholder="Search version, change or person…" search={table.searchQuery}
@@ -87,7 +85,7 @@ export function TrainingMatrixVersionsPanel({ matrixId, currentVersionId }: { ma
         framed={false} flush
       >
         <DataTable
-          rows={table.items} getRowKey={(v) => v.id} isLoading={table.isLoading} loadingContent={<SectionLoading text="Loading versions…" />}
+          rows={table.items} getRowKey={(v) => v.id} isLoading={table.isLoading}
           emptyState={<TableEmptyState title="No version found" description="Change the search or the filter." />}
           scrollerRef={drag.scrollerRef} scrollProps={drag.dragEvents} isDragging={drag.isDragging}
           columns={columns} columnLayout={layout} action={action}
@@ -97,9 +95,9 @@ export function TrainingMatrixVersionsPanel({ matrixId, currentVersionId }: { ma
       <PortalDropdownMenu isOpen={!!actionRow} onClose={menu.close} position={menu.position} minWidth={220}>
         {actionRow && (
           <div className="py-1">
-            <DropdownMenuItem icon={<IconEye className="h-4 w-4" />} onClick={() => { open(actionRow); menu.close(); }}>View Details</DropdownMenuItem>
+            <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { open(actionRow); menu.close(); }}>View Details</DropdownMenuItem>
             {actionRow.previousId && ["EFFECTIVE", "OBSOLETED"].includes(actionRow.status) && (
-              <DropdownMenuItem icon={<IconGitCompare className="h-4 w-4" />} onClick={() => { void compare(actionRow); menu.close(); }}>Compare with previous</DropdownMenuItem>
+              <DropdownMenuItem icon={<IconGitCompare className="h-4 w-4" />} onClick={() => { void compare(actionRow); menu.close(); }}>Compare With Previous</DropdownMenuItem>
             )}
           </div>
         )}

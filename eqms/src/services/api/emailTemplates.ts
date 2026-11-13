@@ -26,6 +26,12 @@ export const emailTemplateApi = {
     return response.data;
   },
 
+  /** The types the messages have, for the Type filter of the list. */
+  getEmailTemplateTypes: async () => {
+    const response = await api.get<string[]>(`${ENDPOINT}/types`);
+    return response.data;
+  },
+
   getEmailTemplate: async (id: string) => {
     const response = await api.get<EmailTemplate>(`${ENDPOINT}/${id}`);
     return response.data;

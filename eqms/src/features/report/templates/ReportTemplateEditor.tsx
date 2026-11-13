@@ -15,9 +15,10 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { reportsApi, type ReportFormat } from "@/services/api/reports";
 import { ReportChartsEditor } from "./ReportChartsEditor";
+import { reportRevisionLabel } from "../shared/reportLabels";
 import { ReportTemplateUpgradeModal } from "./ReportTemplateUpgradeModal";
 import { useReportTemplateCapabilities } from "./useReportTemplateCapabilities";
-import { ReportRevisionStepper, latestRevisionStatus } from "../shared/ReportRevisionStepper";
+import { ReportRevisionStepper } from "../shared/ReportRevisionStepper";
 import { ReportTemplateAccessScope } from "./ReportTemplateAccessScope";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
 import { defaultReportLayout } from "@/services/api/reportTemplates";
@@ -450,7 +451,7 @@ export function ReportTemplateEditor() {
           onUpgraded={(upgraded) => {
             setUpgrading(false);
             setStored(upgraded);
-            setNotice(`Rev ${upgraded.openRevision} started from Rev ${upgraded.effectiveRevision}. Edit it, then submit it for approval.`);
+            setNotice(`Revision ${reportRevisionLabel(upgraded.openRevision, "DRAFT")} started from ${reportRevisionLabel(upgraded.effectiveRevision)}. Edit it, then submit it for approval.`);
             navigate(0);
           }}
         />
@@ -529,13 +530,13 @@ export function ReportTemplateEditor() {
         value && (
           <>
           {/* The same stepper as a document revision: where this revision of the template stands. */}
-          <ReportRevisionStepper status={create || !stored ? "DRAFT" : latestRevisionStatus(stored)} />
+          <ReportRevisionStepper isNew={create || !stored} workflow={stored?.workflow} />
           {locked && stored && (
             <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p>
-                  Rev {stored.effectiveRevision} is effective and cannot be edited. To change this template, upgrade it: the new revision is written and approved
-                  while Rev {stored.effectiveRevision} stays in use, then Rev {stored.effectiveRevision} becomes Obsoleted.
+                  Revision {reportRevisionLabel(stored.effectiveRevision)} is effective and cannot be edited. To change this template, upgrade it: the new revision is written and approved
+                  while {reportRevisionLabel(stored.effectiveRevision)} stays in use, then {reportRevisionLabel(stored.effectiveRevision)} becomes Obsoleted.
                 </p>
                 {can("upgrade") && (
                   <Button size="sm" onClick={() => setUpgrading(true)}>
@@ -600,9 +601,9 @@ export function ReportTemplateEditor() {
                       <input
                         type="text"
                         readOnly
-                        value={create || !stored ? "" : `Rev ${stored.revision ?? stored.openRevision ?? stored.effectiveRevision ?? ""}`}
+                        value={create || !stored ? "" : stored.openRevision != null ? reportRevisionLabel(stored.openRevision, stored.openRevisionStatus ?? "DRAFT") : reportRevisionLabel(stored.revision ?? stored.effectiveRevision)}
                         className={CONTROL_STATE_CLASSES.readonlyField}
-                        placeholder="Rev 1 when saved"
+                        placeholder="0.0.1 when saved"
                       />
                     </div>
 

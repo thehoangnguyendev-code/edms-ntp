@@ -16,7 +16,7 @@ vi.mock("@/services/api", () => ({
   documentApi: { getPendingCounts: vi.fn(async () => ({ pendingReview: 0, pendingApproval: 0 })) },
   navigationApi: {
     getNavigation: vi.fn(async () => [
-      { id: "self-service", label: "Self-Service", children: [{ id: "dashboard", label: "Dashboard" }, { id: "knowledge-base", label: "Knowledge" }] },
+      { id: "self-service", label: "Self-Service", children: [{ id: "dashboard", label: "Dashboard" }, { id: "knowledge-base", label: "Knowledge Base" }] },
       { id: "doc-control", label: "Document Control", children: [{ id: "doc-all", label: "All Documents" }] },
     ]),
   },
@@ -115,12 +115,12 @@ describe("Collapsed sidebar", () => {
       </MemoryRouter>,
     );
     fireEvent.click(await screen.findByRole("button", { name: /^Self-Service/ }));
-    fireEvent.click(await screen.findByRole("button", { name: "Add Knowledge to favourites" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add Knowledge Base to favourites" }));
     expect(prefs.save).toHaveBeenLastCalledWith("sidebar-favorites", { ids: ["knowledge-base"] });
-    expect(screen.getByRole("button", { name: "Remove Knowledge from favourites" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Remove Knowledge Base from favourites" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: /^Dashboard/ })).toBeInTheDocument();
     expect(onNavigate).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Remove Knowledge from favourites" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Knowledge Base from favourites" }));
     expect(prefs.save).toHaveBeenLastCalledWith("sidebar-favorites", { ids: [] });
   });
 

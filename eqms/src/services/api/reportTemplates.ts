@@ -1,5 +1,6 @@
 import apiClient, { uploadFile } from "./client";
 import type { ReportDefinition, ReportFormat } from "./reports";
+import type { WorkflowProgress } from "@/types/document";
 
 export type MetadataScope =
   "PERSONAL" | "DEPARTMENT" | "BUSINESS_UNIT" | "SYSTEM";
@@ -11,7 +12,7 @@ export interface RoleScope {
 export interface TemplateFilter {
   code: string;
   name: string;
-  type: "TEXT" | "LOOKUP" | "DATE";
+  type: "TEXT" | "LOOKUP" | "DATE" | "NUMBER";
 }
 export interface ReportMark {
   color: string;
@@ -125,6 +126,12 @@ export interface ReportTemplate extends ReportDefinition {
   gmpUse?: boolean;
   /** Approval of the current version (REPORT-TEMPLATE-APPROVAL-2026-10-14): only an APPROVED current version runs. */
   approvalStatus?: ReportApprovalStatus;
+  /** The key of this template in the Audit Trail (not shown); the Audit Trail tab reads the entries of this template only. */
+  auditEntityId?: string;
+  /** A run of this template is signed electronically, with a reason (the Audit Trail report). */
+  runNeedsSignature?: boolean;
+  /** What the person may do with this template; the list carries it so the row menu opens with its items decided (the detail page asks again). */
+  capabilities?: ReportTemplateCapabilities;
   /** Draft, Pending approval, Active or Inactive; computed by the server from the approval state and the enabled flag. */
   lifecycleStatus?: ReportLifecycleStatus;
   approvedVersion?: number | null;
@@ -143,6 +150,8 @@ export interface ReportTemplate extends ReportDefinition {
   effectiveRevision?: number | null;
   openRevision?: number | null;
   openRevisionStatus?: "DRAFT" | "PENDING_APPROVAL" | null;
+  /** The lifecycle stepper of the revision that matters on the screens (the one being written, else the effective one), worked out on the server. */
+  workflow?: WorkflowProgress;
   roleScopes?: RoleScope[];
   filterFields?: TemplateFilter[];
   layout?: ReportLayout;
@@ -183,6 +192,8 @@ export interface ReportRevisionPage {
   pagination: { page: number; limit: number; total: number; totalPages: number };
 }
 export interface ReportRevisionDetail extends ReportRevisionRow {
+  /** The lifecycle stepper of this revision, worked out on the server. */
+  workflow?: WorkflowProgress;
   definitionCode: string;
   lastChangedByName?: string | null;
   submittedAt?: string | null;
@@ -301,8 +312,13 @@ export interface TemplatePreview {
   rows: string[][];
   asOfAt: string;
   pagination: Pagination;
+  /** Most rows of a report file, and of a file run with Full (Report Properties). */
+  maxRows?: number;
+  maxRowsFull?: number;
 }
 export const reportTemplatesApi = {
+  /** The lifecycle stepper of a template that is being created and has no record yet. */
+  newWorkflow: async () => (await apiClient.get<WorkflowProgress>("/reports/templates/workflow/new")).data,
   uploadComponent: async (type: "cover" | "header" | "footer", file: File) => {
     return (
       await uploadFile(`/reports/templates/layout/components/${type}`, file)
@@ -456,10 +472,12 @@ export const reportTemplatesApi = {
 export function reportError(error: unknown): string {
   const response = (
     error as {
-      response?: { status?: number; data?: { error?: { message?: string } } };
+      response?: { status?: number; data?: { error?: { message?: string; code?: string } } };
     }
   )?.response;
   const wordMessage = response?.data?.error?.message ?? "";
+  if (response?.status === 403 && response?.data?.error?.code === "REPORT_GMP_APPROVER_REQUIRED")
+    return "This template is for GMP decisions. Only a person who may approve a report for GMP use can approve or return it.";
   if (response?.status === 400 && wordMessage.startsWith("REPORT_WORD_")) {
     if (wordMessage.startsWith("REPORT_WORD_TOKEN"))
       return "The Word template contains an unsupported or incomplete placeholder. Use the Report Placeholders catalog; page numbering is configured separately.";
@@ -486,8 +504,8 @@ export function reportError(error: unknown): string {
       REPORT_LOGO_INVALID: "The logo position or width is outside the page. Keep it inside the page and at least 5% wide.",
       REPORT_LAYOUT_INVALID: "The layout has a value that is not allowed. Check the texts, marks and page settings.",
       REPORT_CHART_INVALID: "A chart in the layout is incomplete. Give it a title, a type, a field and a metric.",
-      REPORT_AUDIT_RANGE_REQUIRED: "Choose the dates the report covers: both From date and To date are required for the Audit Trail.",
-      REPORT_AUDIT_RANGE_TOO_WIDE: "An Audit Trail report may cover at most 92 days. Choose a shorter range.",
+      REPORT_AUDIT_RANGE_REQUIRED: "Choose the dates the report covers: both From date and To date are required for this report type.",
+      REPORT_AUDIT_RANGE_TOO_WIDE: "A report of this type may cover at most 92 days. Choose a shorter range.",
       REPORT_SCOPE_NOT_ALLOWED_FOR_TYPE: "This report type cannot be given that data scope. Choose a scope the type allows.",
       REPORT_TYPE_DISABLED: "This report type is disabled. Ask the person who manages Report Types to enable it.",
       REPORT_TYPE_UNCHANGED: "The report type already has that status.",
@@ -499,6 +517,14 @@ export function reportError(error: unknown): string {
       REPORT_FONT_INVALID: "The report font is not one of the fonts offered.",
       REPORT_PREVIEW_PAGE_INVALID: "That page does not exist in the preview.",
       REPORT_DESCRIPTION_REQUIRED: "The description is required.",
+      REPORT_FILTER_REQUIRED: "Choose at least one filter, or choose Full to run the report without one.",
+      REPORT_ROW_LIMIT_EXCEEDED: "The result has more rows than a report file may hold. Add a filter to narrow it, or choose Full if the Full limit is enough.",
+      REPORT_FORMAT_ROW_LIMIT_EXCEEDED: "The result is too large for a PDF or Word file. Choose CSV or XLSX, or add a filter.",
+      REPORT_REVIEW_DAYS_INVALID: "Review due within must be a whole number of days from 0 to 3,650.",
+      REPORT_RUN_REASON_REQUIRED: "Give the reason for this report: it is signed with the request.",
+      REPORT_REVISION_OBSOLETE: "The template revision this report was requested with is no longer effective. Start a new report request.",
+      REPORT_SIGNED_TYPE_NOT_SCHEDULABLE: "A report of this type is signed each time it is run, so it cannot be scheduled.",
+      REPORT_MAX_ROWS_FULL_INVALID: "The Full limit must be between 10,000 and 100,000 rows and not lower than the ordinary limit.",
     };
     if (wordMessage in known) return known[wordMessage];
     return "The server rejected this request. Check required columns, criteria and active role assignments.";

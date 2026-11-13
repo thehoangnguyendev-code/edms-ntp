@@ -52,7 +52,10 @@ export function subscribeLoginLogoTransition(target: HTMLElement) {
     if (pending.expires < Date.now()) { removeTransition(pending); return; }
     const image = target.querySelector('img');
     const rect = image?.getBoundingClientRect();
-    if (!image || !rect?.width || !rect.height) {
+    // A target that is not on screen is not where the logo lives now: the sidebar is an off-canvas drawer on a phone and the
+    // header logo is hidden on desktop. Leave the transition for the target that is shown (the other one keeps waiting).
+    const onScreen = !!rect && rect.left + rect.width > 0 && rect.top + rect.height > 0 && rect.left < window.innerWidth && rect.top < window.innerHeight;
+    if (!image || !rect?.width || !rect.height || !onScreen) {
       frame = requestAnimationFrame(run);
       return;
     }

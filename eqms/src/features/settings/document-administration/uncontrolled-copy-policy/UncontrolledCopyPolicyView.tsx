@@ -14,7 +14,7 @@ import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
-import { FullPageLoading, SectionLoading } from "@/components/ui/loading/Loading";
+import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { IconFileTypePdf } from "@tabler/icons-react";
 import { useToast } from "@/components/ui/toast/Toast";
@@ -658,7 +658,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                 columns={ruleColumns}
                 getRowKey={(rule) => rule.id}
                 isLoading={rulesLoading}
-                loadingContent={<SectionLoading minHeight="200px" />}
+
                 rowClassName={(rule) => cn(!rule.active && "opacity-60")}
                 emptyState={<TableEmptyState title="No eligibility rules" description="Add a rule to configure which Document Types may be issued as an Uncontrolled Copy." />}
                 action={{

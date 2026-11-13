@@ -359,7 +359,7 @@ public class ObjectAccessRuleService {
             case DOCUMENT -> false;
         };
         if (!exists) {
-            throw new IllegalArgumentException("Resource does not exist for type " + resourceType + ": " + resourceId);
+            throw new IllegalArgumentException("Resource does not exist for type " + resourceType);
         }
     }
 
@@ -367,7 +367,7 @@ public class ObjectAccessRuleService {
         // A rule that belongs to a Department is a Knowledge Base share made by its Department Head; it is not managed here.
         return ruleRepository.findById(id)
                 .filter(r -> r.getOwnerDepartment() == null && r.getOwnerBusinessUnit() == null)
-                .orElseThrow(() -> new IllegalArgumentException("Object access rule not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Object access rule not found"));
     }
 
     private void requireView() {

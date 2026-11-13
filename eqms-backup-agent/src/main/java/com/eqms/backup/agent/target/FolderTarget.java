@@ -21,6 +21,14 @@ public class FolderTarget implements BackupTarget {
     }
 
     @Override public String code() { return code; }
+
+    /** How much of the disk under this folder is used, 0-100. */
+    public double usedPercent() throws IOException {
+        java.nio.file.FileStore store = Files.getFileStore(Files.exists(root) ? root : root.getParent());
+        long total = store.getTotalSpace();
+        return total <= 0 ? 0 : 100.0 * (total - store.getUsableSpace()) / total;
+    }
+
     @Override public String kind() { return "FOLDER"; }
     @Override public boolean immutable() { return immutable; }
     @Override public String describe(String key) { return resolve(key).toString(); }

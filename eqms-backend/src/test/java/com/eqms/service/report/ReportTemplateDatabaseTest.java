@@ -57,7 +57,7 @@ class ReportTemplateDatabaseTest {
                 UUID.randomUUID(),String.format("FORM-%03d",i),"Yêu cầu "+i,type,i==13?other:ntp,i==13?qc:qa,i==1?actor.getId():UUID.randomUUID());
         var permissions=mock(EffectivePermissionService.class);when(permissions.getEffectivePermissionCodes(actor)).thenReturn(Set.of("reports.run.create","reports.catalog.view","reports.definition.manage","reports.definition.view","reports.artifact.download","reports.run.view_own","reports.schedule.manage","reports.schedule.view"));
         audit=mock(AuditTrailService.class);
-        var target=new ReportTemplateService(jdbc,json,permissions,audit,List.of(new DocumentReportMetadataProvider()));
+        var target=new ReportTemplateService(jdbc,json,permissions,audit,List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
         ProxyFactory factory=new ProxyFactory(target);factory.setProxyTargetClass(true);
         factory.addAdvice(new TransactionInterceptor(new DataSourceTransactionManager(ds),new AnnotationTransactionAttributeSource()));
         service=(ReportTemplateService)factory.getProxy();

@@ -7,7 +7,6 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
 import { OnlyOfficeDocumentViewer } from "@/features/documents/shared/components/OnlyOfficeDocumentViewer";
 import { FilterSearchInput } from "@/components/ui/filter/FilterSearchInput";
@@ -156,7 +155,7 @@ export function TrainingScannedTestsModal({ personId, activityId, onClose }: { p
           rows={table.items}
           getRowKey={(e) => e.id}
           isLoading={table.isLoading}
-          loadingContent={<SectionLoading text="Loading the scanned files…" />}
+
           emptyState={<TableEmptyState title="No scanned file" description="A test done in the system, or a record written before the files were kept, has none." />}
           columns={columns}
           action={action}

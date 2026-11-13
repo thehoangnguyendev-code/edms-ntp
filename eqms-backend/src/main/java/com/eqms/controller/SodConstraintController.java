@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping({"/security/sod-constraints", "/settings/sod-constraints"})
+@RequestMapping("/security/sod-constraints")
 public class SodConstraintController {
 
     private final SodConstraintService service;

@@ -199,7 +199,7 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
                                         value={passwordData.newPassword}
                                         onChange={(e) => onPasswordChange('newPassword', e.target.value)}
                                         className={cn(
-                                            "w-full h-9 px-3.5 pr-24 text-sm border rounded-lg bg-white focus:outline-none focus:ring-1 transition-all",
+                                            "w-full h-9 px-3 pr-24 text-sm border rounded-lg bg-white focus:outline-none focus:ring-1 transition-all",
                                             passwordErrors.newPassword
                                                 ? "border-red-300 focus:ring-red-500 focus:border-red-500"
                                                 : "border-slate-200 focus:ring-emerald-500 focus:border-emerald-500"
@@ -243,7 +243,7 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
                                         value={passwordData.confirmPassword}
                                         onChange={(e) => onPasswordChange('confirmPassword', e.target.value)}
                                         className={cn(
-                                            "w-full h-9 px-3.5 pr-10 text-sm border rounded-lg bg-white focus:outline-none focus:ring-1 transition-all",
+                                            "w-full h-9 px-3 pr-10 text-sm border rounded-lg bg-white focus:outline-none focus:ring-1 transition-all",
                                             passwordErrors.confirmPassword
                                                 ? "border-red-300 focus:ring-red-500 focus:border-red-500"
                                                 : "border-slate-200 focus:ring-emerald-500 focus:border-emerald-500"

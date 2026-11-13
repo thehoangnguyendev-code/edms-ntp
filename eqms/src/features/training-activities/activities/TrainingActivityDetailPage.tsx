@@ -108,14 +108,6 @@ import {
   fileSafe, when, statusChange } from "../shared/trainingLabels";
 import { useTrainingBack } from "../shared/useTrainingBack";
 
-const ACTIVITY_STEPS = [
-  { status: "RESERVED", label: "Pending Document Approval" },
-  { status: "PLANNED", label: "Planned" },
-  { status: "NOTIFIED", label: "Notified" },
-  { status: "IN_PROGRESS", label: "In Progress" },
-  { status: "PENDING_QA_CONFIRMATION", label: "Pending QA Confirmation" },
-  { status: "COMPLETED", label: "Completed" },
-];
 const EMPTY_PARTICIPANT_STATS = { total: 0, pending: 0, attendancePending: 0, eligible: 0, unscored: 0, present: 0, absent: 0, actualAbsent: 0, passed: 0, failed: 0, readPending: 0 };
 
 /** One screen for each thing a person does with an activity; the Details screen only looks (like Document Details and the Review, Approval and Training screens of a revision). */
@@ -1597,19 +1589,6 @@ export function TrainingActivityDetailPage({
       )}
     </>
   );
-  const cancelled = activity.status === "CANCELLED";
-  const steps = cancelled
-    ? [...ACTIVITY_STEPS.map((x) => x.label), STATUS_LABEL.CANCELLED]
-    : ACTIVITY_STEPS.map((x) => x.label);
-  // A cancelled activity shows how far it had come: the steps up to the one it was cancelled from are done, the ones after it are striped.
-  const reachedBeforeCancel = ACTIVITY_STEPS.find((x) => x.status === activity.cancelledFromStatus) ?? ACTIVITY_STEPS[0];
-  const stepIndex = cancelled
-    ? steps.length - 1
-    : Math.max(
-        0,
-        ACTIVITY_STEPS.findIndex((x) => x.status === activity.status),
-      );
-
   return (
     <>
       {workspace ? (
@@ -1711,9 +1690,7 @@ export function TrainingActivityDetailPage({
           title={title}
           breadcrumbItems={trainingBreadcrumbs(navigate, "activities", title)}
           onBack={goBack}
-          steps={steps}
-          currentStepIndex={stepIndex}
-          terminalProgressStep={reachedBeforeCancel.label}
+          workflow={activity.workflow}
           tabs={tabs}
           activeTab={tab}
           onTab={setTab}

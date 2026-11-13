@@ -72,14 +72,14 @@ public class PromptSpecificationService {
     @Transactional(readOnly = true)
     public PromptSpecificationResponse getById(UUID id) {
         PromptSpecification specification = promptSpecificationRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Prompt specification not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Prompt specification not found"));
         return toResponse(specification);
     }
 
     @Transactional
     public PromptGenerationRunResponse createRun(UUID specificationId, CreatePromptGenerationRunRequest request) {
         PromptSpecification specification = promptSpecificationRepository.findById(specificationId)
-                .orElseThrow(() -> new EntityNotFoundException("Prompt specification not found: " + specificationId));
+                .orElseThrow(() -> new EntityNotFoundException("Prompt specification not found"));
 
         PromptGenerationRun run = new PromptGenerationRun();
         run.setPromptSpecification(specification);

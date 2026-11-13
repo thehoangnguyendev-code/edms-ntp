@@ -52,6 +52,16 @@ services:
       AGENT_RESTORE_TESTOBJECTS_ENDPOINT: http://minio:9000
       AGENT_RESTORE_TESTOBJECTS_ACCESSKEY: eqms-test-worker
       AGENT_RESTORE_TESTOBJECTS_SECRETKEY: ${BACKUP_RESTORE_OBJECT_SECRET:?BACKUP_RESTORE_OBJECT_SECRET is required}
+      # production restore (SDS-BR-003). Off until both are set: the add-only MinIO account for the live buckets, and the database role
+      # that may rename the live database. Left empty, a production restore refuses to start.
+      AGENT_RESTORE_LIVEOBJECTS_ENDPOINT: http://minio:9000
+      AGENT_RESTORE_LIVEOBJECTS_ACCESSKEY: ${BACKUP_RESTORE_WRITER_USER:-}
+      AGENT_RESTORE_LIVEOBJECTS_SECRETKEY: ${BACKUP_RESTORE_WRITER_SECRET:-}
+      AGENT_RESTORE_SWAP_USER: ${BACKUP_RESTORE_SWAP_USER:-}
+      AGENT_RESTORE_SWAP_PASSWORD: ${BACKUP_RESTORE_SWAP_PASSWORD:-}
+      AGENT_RESTORE_SWAP_LIVEDATABASE: ${BACKUP_RESTORE_LIVE_DATABASE:-}
+      AGENT_RESTORE_SWAP_ENDSESSIONSFUNCTION: ${BACKUP_RESTORE_END_SESSIONS_FUNCTION:-}
+      AGENT_RESTORE_SWAP_OWNERROLE: ${BACKUP_RESTORE_SWAP_OWNER_ROLE:-}
     volumes:
       # the private key ring: read only, copied into a throw-away folder for each run
       - ${BACKUP_PRIVATE_KEYS_DIR:-./backups/dev-keys/gnupg-home}:/restore-keys/gnupg-home:ro

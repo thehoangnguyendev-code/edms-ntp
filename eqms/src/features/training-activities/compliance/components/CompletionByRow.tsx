@@ -3,6 +3,7 @@ import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 import type { CompletionColumn, CompletionState, CompletionSummary } from "@/services/api/trainingActivities";
 import { STATE_STYLE } from "./CompletionHeatmap";
+import { Collapsible } from "@/components/ui/collapsible";
 
 /** The three groups of rows of APD.0011 (SOP.0003 5.3.1), in the order of the form. */
 const GROUPS: { id: CompletionColumn["group"]; title: string }[] = [
@@ -154,7 +155,7 @@ export function CompletionByRow({ columns, summary }: { columns: CompletionColum
                           <button type="button" aria-expanded={expanded} onClick={() => setOpenRow(expanded ? undefined : id)} className="flex w-full items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
                             <span>{f.openTotal} still to be trained</span>{expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                           </button>
-                          {expanded && <div className="mt-2"><OpenPeople facts={f} /></div>}
+                          <Collapsible open={expanded}><div className="mt-2"><OpenPeople facts={f} /></div></Collapsible>
                         </>
                       )}
                     </div>

@@ -114,7 +114,7 @@ function TrainingNumberAllocationLog({ ownDepartmentId }: { ownDepartmentId: str
           rows={table.items}
           getRowKey={(r) => r.trainingNumber}
           isLoading={table.isLoading}
-          loadingContent={<SectionLoading text="Loading the register…" />}
+
           emptyState={<TableEmptyState title="No Training Numbers" description="No number was issued for this department and year." />}
           scrollerRef={drag.scrollerRef}
           scrollProps={drag.dragEvents}

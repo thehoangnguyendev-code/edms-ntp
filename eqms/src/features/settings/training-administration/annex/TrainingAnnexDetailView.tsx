@@ -28,6 +28,7 @@ import {
   type TrainingFormTemplate,
 } from "@/services/api/trainingActivities";
 import { TokenCheckBadge } from "./TokenCheckBadge";
+import { Collapsible } from "@/components/ui/collapsible";
 
 const STATUS_LABEL = { ENABLED: "Enabled", DISABLED: "Disabled" } as const;
 /** The code of the form as Document Control writes it: APD.0024 with the revision 2.0.0 is APD.0024.02. */
@@ -40,7 +41,7 @@ const fullCode = (code: string, revision: string) => {
 function Fold({ title, icon, open, onToggle, children, headerRight }: { title: string; icon: React.ReactNode; open: boolean; onToggle: () => void; children: React.ReactNode; headerRight?: React.ReactNode }) {
   return (
     <FormSection title={title} icon={icon} headerRight={<div className="flex items-center gap-2">{headerRight}<button type="button" aria-label={`${open ? "Collapse" : "Expand"} ${title}`} aria-expanded={open} onClick={onToggle} className="rounded p-1 text-slate-500 hover:bg-slate-100"><ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} /></button></div>}>
-      {open ? children : null}
+      <Collapsible open={open}>{children}</Collapsible>
     </FormSection>
   );
 }

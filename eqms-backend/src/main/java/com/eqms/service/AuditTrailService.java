@@ -214,6 +214,9 @@ public class AuditTrailService {
     private final ObjectProvider<DocumentAuthorizationService> documentAuthorizationServiceProvider;
     @org.springframework.beans.factory.annotation.Autowired
     private ObjectProvider<com.eqms.service.training.TrainingAuditAccess> trainingAuditAccess;
+    /** Resolved lazily: the Uncontrolled Copy service writes audit records itself. */
+    @org.springframework.beans.factory.annotation.Autowired
+    private ObjectProvider<UncontrolledCopyService> uncontrolledCopyService;
 
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager entityManager;
@@ -709,11 +712,47 @@ public class AuditTrailService {
         if (normalized.startsWith("TRAINING ") && trainingAuditAccess.getObject().require(actor, module, entityId)) {
             return;
         }
-        // GMP decision: the Audit Trail tab is folded into Document/Revision detail access --
-        // no separate documents.document.view_audit / global audit.view permission exists anymore.
-        // Whoever can view the Document or Revision (Author, Co-author, Reviewer/Approver, Admin/DCO,
-        // or a broad viewer via Record visibility = "All") can see its Audit Trail tab.
-        requireScopedEntityView(module, entityId.toString());
+        // The same rule for every other screen that carries an Audit Trail tab: the tab is part of the screen, so whoever may open the screen may
+        // read all of its Audit Trail, with no separate audit permission (owner rule 2026-11-07). The check is the one the screen's own read applies.
+        switch (normalized) {
+            case "UNCONTROLLED COPY" -> {
+                if (!uncontrolledCopyService.getObject().canViewAudit(actor, entityId)) {
+                    throw new AccessDeniedException("Uncontrolled copy audit access denied");
+                }
+                return;
+            }
+            case "ACCESS PROFILE" -> {
+                requireScreenPermission(actor, "Access profile", "security.access_profiles.view", "security.access_profiles.update", "security.access_profiles.assign");
+                return;
+            }
+            case "PERMISSION SET" -> {
+                requireScreenPermission(actor, "Permission set", "security.permission_sets.view", "security.permission_sets.update");
+                return;
+            }
+            case "BACKUP RESTORE" -> {
+                requireScreenPermission(actor, "Restore request", "backup.module.view");
+                return;
+            }
+            case "DOCUMENT", "REVISION" -> {
+                // GMP decision: the Audit Trail tab is folded into Document/Revision detail access --
+                // no separate documents.document.view_audit / global audit.view permission exists anymore.
+                // Whoever can view the Document or Revision (Author, Co-author, Reviewer/Approver, Admin/DCO,
+                // or a broad viewer via Record visibility = "All") can see its Audit Trail tab.
+                requireScopedEntityView(module, entityId.toString());
+                return;
+            }
+            default -> {
+                // A kind of record with no screen of its own that is known here: only the global Audit Trail permission opens it. Before, any such
+                // kind was looked up as a Revision, which failed for everyone with a misleading "Revision audit access denied".
+                requireAuditView();
+            }
+        }
+    }
+
+    private void requireScreenPermission(UserAccount actor, String screen, String... permissions) {
+        if (!permissionEvaluationService.hasAnyPermission(actor, permissions)) {
+            throw new AccessDeniedException(screen + " audit access denied");
+        }
     }
 
     /**
@@ -906,6 +945,18 @@ public class AuditTrailService {
         persistAudit(currentUserService.requireCurrentUser(), entityType, entityName, entityId, actionType, fromStatus, toStatus, comment, summarized[0], summarized[1], null, changes);
     }
 
+    /**
+     * Like {@link #logAs}, and also records the reason the person typed, apart from the system comment. Use it only where the text is
+     * really what the user entered (a cancel reason, an activity summary): the Audit Trail shows it as "Why".
+     */
+    @Transactional
+    public void logAsWithUserReason(UserAccount actor, String entityType, String entityName, UUID entityId, String actionType, String fromStatus, String toStatus,
+            String comment, String userReason, List<AuditTrailChangeResponse> changes, UUID signatureId) {
+        UserAccount who = actor != null ? actor : currentUserService.requireCurrentUser();
+        String[] summarized = summarizeChanges(changes);
+        persistAudit(who, entityType, entityName, entityId, actionType, fromStatus, toStatus, comment, summarized[0], summarized[1], signatureId, changes, userReason);
+    }
+
     @Transactional
     public void logAs(UserAccount actor, String entityType, String entityName, UUID entityId, String actionType, String fromStatus, String toStatus, String comment) {
         if (actor == null) {
@@ -1014,6 +1065,24 @@ public class AuditTrailService {
             UUID signatureId,
             List<AuditTrailChangeResponse> changes
     ) {
+        persistAudit(actor, entityType, entityName, entityId, actionType, fromStatus, toStatus, comment, oldValue, newValue, signatureId, changes, null);
+    }
+
+    private void persistAudit(
+            UserAccount actor,
+            String entityType,
+            String entityName,
+            UUID entityId,
+            String actionType,
+            String fromStatus,
+            String toStatus,
+            String comment,
+            String oldValue,
+            String newValue,
+            UUID signatureId,
+            List<AuditTrailChangeResponse> changes,
+            String userReason
+    ) {
         // A date or time written in the text of the comment is shown in the display format (dd/MM/yyyy), never as ISO.
         comment = DateTimeFormatUtils.normalizeText(comment);
         RequestSnapshot requestSnapshot = resolveRequestSnapshot();
@@ -1037,6 +1106,7 @@ public class AuditTrailService {
         log.setToStatus(clampColumn(toStatus, 40));
         log.setComment(comment);
         log.setReason(comment);
+        log.setUserReason(StringUtils.hasText(userReason) ? DateTimeFormatUtils.normalizeText(userReason.trim()) : null);
         log.setOldValue(oldValue);
         log.setNewValue(newValue);
         log.setIpAddress(clampColumn(requestSnapshot.ipAddress(), 80));
@@ -1068,6 +1138,21 @@ public class AuditTrailService {
         }
         persistChanges(log, changes, fromStatus, toStatus);
         auditLogRepository.save(log);
+        publishAuditedAction(actor, entityType, log.getEntityName(), entityId, actionType, comment);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.context.ApplicationEventPublisher auditEvents;
+
+    /** Tells the notification bridge about the action, to be notified once the surrounding transaction has committed. Never throws. */
+    private void publishAuditedAction(UserAccount actor, String entityType, String entityName, UUID entityId, String actionType, String comment) {
+        try {
+            if (auditEvents != null) {
+                auditEvents.publishEvent(new AuditNotificationBridge.AuditedAction(actor, entityType, entityName, entityId, actionType, comment));
+            }
+        } catch (RuntimeException failure) {
+            // an audit row is never lost for the sake of a notification
+        }
     }
 
     public void logSafely(String entityType, String entityName, UUID entityId, String actionType, String fromStatus, String toStatus, String comment) {
@@ -1255,9 +1340,9 @@ public class AuditTrailService {
         AuditEntitySnapshot entitySnapshot = resolveEntitySnapshot(log, module);
         String entityLabel = entitySnapshot.entityLabel();
         String objectCode = entitySnapshot.entityCode();
-        String changeSummary = buildChangeSummary(log, changes);
-        String normalizedDescription = buildDescription(log, action, entityLabel, changeSummary);
-        String resolvedReason = resolveReason(log, normalizedDescription);
+        String changeSummary = com.eqms.util.AuditDisplayText.hideIds(buildChangeSummary(log, changes));
+        String normalizedDescription = com.eqms.util.AuditDisplayText.hideIds(buildDescription(log, action, entityLabel, changeSummary));
+        String resolvedReason = com.eqms.util.AuditDisplayText.hideIds(resolveReason(log, normalizedDescription));
 
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("entityType", log.getEntityType());
@@ -1271,9 +1356,9 @@ public class AuditTrailService {
         metadata.put("fromStatus", log.getFromStatus());
         metadata.put("toStatus", log.getToStatus());
         metadata.put("reason", resolvedReason);
-        metadata.put("comment", log.getComment());
-        metadata.put("oldValue", log.getOldValue());
-        metadata.put("newValue", log.getNewValue());
+        metadata.put("comment", com.eqms.util.AuditDisplayText.hideIds(log.getComment()));
+        metadata.put("oldValue", com.eqms.util.AuditDisplayText.hideIds(log.getOldValue()));
+        metadata.put("newValue", com.eqms.util.AuditDisplayText.hideIds(log.getNewValue()));
         metadata.put("changeSummary", changeSummary);
         metadata.put("userId", log.getUserId() == null ? null : log.getUserId().toString());
         metadata.put("username", log.getUsername());
@@ -1281,6 +1366,8 @@ public class AuditTrailService {
         metadata.put("electronicSignatureApplied", log.isElectronicSignatureApplied());
         metadata.put("eventTime", formatInstant(log.getEventTime()));
         metadata.put("progressDurationSeconds", log.getProcessingDurationSeconds());
+        metadata.put("menuModule", com.eqms.util.AuditMenuModule.forEntityType(log.getEntityType()));
+        metadata.put("userReason", com.eqms.util.AuditDisplayText.hideIds(log.getUserReason()));
 
         return new AuditTrailRecordResponse(
                 log.getId() == null ? null : log.getId().toString(),
@@ -1315,9 +1402,9 @@ public class AuditTrailService {
         AuditEntitySnapshot entitySnapshot = resolveEntitySnapshot(log, module);
         String entityLabel = entitySnapshot.entityLabel();
         String objectCode = entitySnapshot.entityCode();
-        String changeSummary = buildChangeSummary(log, changes);
-        String normalizedDescription = buildDescription(log, action, entityLabel, changeSummary);
-        String resolvedReason = resolveReason(log, normalizedDescription);
+        String changeSummary = com.eqms.util.AuditDisplayText.hideIds(buildChangeSummary(log, changes));
+        String normalizedDescription = com.eqms.util.AuditDisplayText.hideIds(buildDescription(log, action, entityLabel, changeSummary));
+        String resolvedReason = com.eqms.util.AuditDisplayText.hideIds(resolveReason(log, normalizedDescription));
         Map<String, Object> metadata = buildDetailMetadata(log, entitySnapshot, changeSummary, resolvedReason, module, action);
 
         return new AuditTrailDetailResponse(
@@ -1352,8 +1439,8 @@ public class AuditTrailService {
                 // and the frontend renders the null side as "None" for a creation.
                 log.getFromStatus(),
                 log.getToStatus(),
-                log.getOldValue(),
-                log.getNewValue(),
+                com.eqms.util.AuditDisplayText.hideIds(log.getOldValue()),
+                com.eqms.util.AuditDisplayText.hideIds(log.getNewValue()),
                 log.getIpAddress(),
                 formatDevice(log),
                 log.getUserAgent(),
@@ -1363,6 +1450,17 @@ public class AuditTrailService {
                 log.getProcessingDurationSeconds(),
                 metadata
         );
+    }
+
+    private String actorEmail(AuditLog log) {
+        UserAccount account = log.getActedBy();
+        if (account == null && log.getUserId() != null) {
+            account = userAccountRepository.findById(log.getUserId()).orElse(null);
+        }
+        if (account == null && StringUtils.hasText(log.getUsername())) {
+            account = userAccountRepository.findByUsername(log.getUsername()).orElse(null);
+        }
+        return account == null ? null : account.getEmail();
     }
 
     private Map<String, Object> buildDetailMetadata(
@@ -1385,7 +1483,7 @@ public class AuditTrailService {
         metadata.put("fromStatus", log.getFromStatus());
         metadata.put("toStatus", log.getToStatus());
         metadata.put("reason", resolvedReason);
-        metadata.put("comment", log.getComment());
+        metadata.put("comment", com.eqms.util.AuditDisplayText.hideIds(log.getComment()));
         metadata.put("changeSummary", changeSummary);
         metadata.put("userId", log.getUserId() == null ? null : log.getUserId().toString());
         metadata.put("username", log.getUsername());
@@ -1393,6 +1491,10 @@ public class AuditTrailService {
         metadata.put("electronicSignatureApplied", log.isElectronicSignatureApplied());
         metadata.put("timestamp", formatInstant(log.getEventTime() == null ? log.getCreatedAt() : log.getEventTime()));
         metadata.put("module", module);
+        metadata.put("menuModule", com.eqms.util.AuditMenuModule.forEntityType(log.getEntityType()));
+        metadata.put("userReason", com.eqms.util.AuditDisplayText.hideIds(log.getUserReason()));
+        // The e-mail address of the actor's account as it is now (the log keeps no snapshot of it); empty when the account is gone.
+        metadata.put("userEmail", actorEmail(log));
         metadata.put("action", action);
         return metadata;
     }
@@ -1753,7 +1855,7 @@ public class AuditTrailService {
         if (field != null && field.toLowerCase(Locale.ROOT).matches(".*(status|state).*")) {
             return humanizeField(normalized);
         }
-        return normalized;
+        return com.eqms.util.AuditDisplayText.hideIds(normalized);
     }
 
     private boolean isBooleanAuditField(String field) {
@@ -2098,6 +2200,17 @@ public class AuditTrailService {
             case "EMAIL_TEMPLATE_TEST_SENT" -> "Test Send Email Template";
             case "EMAIL_TEMPLATE_PUBLISHED" -> "Publish Email Template";
             case "EMAIL_TEMPLATE_VERSION_RESTORED" -> "Restore Email Template Version";
+            case "ALERT_RULE_CHANGED" -> "Change Backup Alert Rule";
+            case "ALERT_RECIPIENT_ADDED" -> "Add Backup Alert Recipient";
+            case "ALERT_RECIPIENT_REMOVED" -> "Remove Backup Alert Recipient";
+            case "ALERT_ACKNOWLEDGED" -> "Acknowledge Backup Alert";
+            case "MANUAL_COPY_RECORDED" -> "Record Manual Backup Copy";
+            case "STORE_SCRUB_STARTED" -> "Start File Store Check";
+            case "DR_TARGET_CHANGED" -> "Change Recovery Targets";
+            case "DR_AUTHORITY_CHANGED" -> "Change Disaster Declaration Authority";
+            case "DR_KIT_VERIFIED" -> "Verify Rebuild Kit Item";
+            case "DR_DECLARED" -> "Declare Disaster";
+            case "DR_DECLARATION_CLOSED" -> "Close Disaster Declaration";
             case "SYSTEM_ANNOUNCEMENT_CREATED" -> "Create System Announcement";
             case "SYSTEM_ANNOUNCEMENT_UPDATED" -> "Update System Announcement";
             case "SYSTEM_ANNOUNCEMENT_ENABLED" -> "Enable System Announcement";

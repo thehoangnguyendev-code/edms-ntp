@@ -68,7 +68,7 @@ class BackupRestoreControllerTest {
     void everyReadNeedsTheViewPermission() {
         allow();
         assertThatThrownBy(() -> controller.overview()).isInstanceOf(AccessDeniedException.class);
-        assertThatThrownBy(() -> controller.list(null, null, null, null, null, null, null, null, "startedAt", "desc", 1, 10)).isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> controller.list(null, null, null, null, null, null, null, null, "startedAt", "desc", 1, 10, null, null)).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> controller.get("BK-20261008-0200-0001")).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> controller.schedules()).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> controller.job(UUID.randomUUID())).isInstanceOf(AccessDeniedException.class);
@@ -78,7 +78,7 @@ class BackupRestoreControllerTest {
     @Test
     void startingABackupNeedsItsOwnPermission() {
         allow("backup.module.view", "backup.backup.verify");
-        assertThatThrownBy(() -> controller.create(new BackupRestoreController.CreateBackupRequest("because", null, null)))
+        assertThatThrownBy(() -> controller.create(new BackupRestoreController.CreateBackupRequest("because", null, null, null)))
                 .isInstanceOf(AccessDeniedException.class);
         verify(agent, never()).post(anyString(), any());
         verifyNoInteractions(audit);
@@ -94,7 +94,7 @@ class BackupRestoreControllerTest {
     @Test
     void aBackupNeedsAReason() {
         for (String reason : new String[]{null, "", "   ", "x".repeat(501)}) {
-            assertThatThrownBy(() -> controller.create(new BackupRestoreController.CreateBackupRequest(reason, null, null)))
+            assertThatThrownBy(() -> controller.create(new BackupRestoreController.CreateBackupRequest(reason, null, null, null)))
                     .isInstanceOf(ResponseStatusException.class).hasMessageContaining("BACKUP_REASON_REQUIRED");
         }
         verify(agent, never()).post(anyString(), any());
@@ -102,23 +102,42 @@ class BackupRestoreControllerTest {
 
     @Test
     void aPreChangeBackupNeedsAChangeControlReference() {
-        assertThatThrownBy(() -> controller.create(new BackupRestoreController.CreateBackupRequest("before upgrade", " ", "PRE_CHANGE")))
+        assertThatThrownBy(() -> controller.create(new BackupRestoreController.CreateBackupRequest("before upgrade", " ", "PRE_CHANGE", null)))
                 .hasMessageContaining("BACKUP_CHANGE_REFERENCE_REQUIRED");
-        assertThat(controller.create(new BackupRestoreController.CreateBackupRequest("before upgrade", "CC-2026-0150", "PRE_CHANGE")).getStatusCode())
+        assertThat(controller.create(new BackupRestoreController.CreateBackupRequest("before upgrade", "CC-2026-0150", "PRE_CHANGE", null)).getStatusCode())
                 .isEqualTo(HttpStatus.ACCEPTED);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void thePartsToBackUpAreCheckedAndSentToTheAgent() {
+        var ok = controller.create(new BackupRestoreController.CreateBackupRequest("files before a change", null, null, java.util.List.of("DATABASE", "DATABASE", "OBJECT_STORE")));
+        assertThat(ok.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        ArgumentCaptor<Map<String, Object>> body = ArgumentCaptor.forClass(Map.class);
+        verify(agent).post(eq("/internal/backups"), body.capture());
+        assertThat(body.getValue().get("components")).isEqualTo(java.util.List.of("DATABASE", "OBJECT_STORE"));
+    }
+
+    @Test
+    void aBackupOfNothingOrOfAnUnknownPartIsRefusedBeforeTheAgentIsAsked() {
+        assertThatThrownBy(() -> controller.create(new BackupRestoreController.CreateBackupRequest("r", null, null, java.util.List.of())))
+                .hasMessageContaining("BACKUP_COMPONENTS_REQUIRED");
+        assertThatThrownBy(() -> controller.create(new BackupRestoreController.CreateBackupRequest("r", null, null, java.util.List.of("DATABASE", "EVERYTHING"))))
+                .hasMessageContaining("BACKUP_COMPONENT_UNKNOWN");
+        verify(agent, never()).post(anyString(), any());
     }
 
     @Test
     void onlyKnownBackupTypesAreAccepted() {
         for (String type : new String[]{"INCREMENTAL", "PRE_RESTORE", "full", "DROP"}) {
-            assertThatThrownBy(() -> controller.create(new BackupRestoreController.CreateBackupRequest("r", null, type)))
+            assertThatThrownBy(() -> controller.create(new BackupRestoreController.CreateBackupRequest("r", null, type, null)))
                     .hasMessageContaining("BACKUP_TYPE_NOT_ALLOWED");
         }
     }
 
     @Test
     void anAcceptedBackupIsAttributedToThePersonAndAudited() {
-        var response = controller.create(new BackupRestoreController.CreateBackupRequest("  quarterly check  ", "", null));
+        var response = controller.create(new BackupRestoreController.CreateBackupRequest("  quarterly check  ", "", null, null));
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Object>> body = ArgumentCaptor.forClass(Map.class);
@@ -147,19 +166,30 @@ class BackupRestoreControllerTest {
 
     @Test
     void theListPassesOnlyBoundedValuesToTheAgent() {
-        controller.list("a".repeat(500), "COMPLETED", null, "", null, null, null, null, "startedAt", "asc", -5, 100000);
+        controller.list("a".repeat(500), "COMPLETED", null, "", null, null, null, null, "startedAt", "asc", -5, 100000, null, null);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<MultiValueMap<String, String>> query = ArgumentCaptor.forClass(MultiValueMap.class);
         verify(agent).get(eq("/internal/backups"), query.capture());
         assertThat(query.getValue().getFirst("search")).hasSize(200);
         assertThat(query.getValue().getFirst("page")).isEqualTo("1");
         assertThat(query.getValue().getFirst("limit")).isEqualTo("100");
-        assertThat(query.getValue()).doesNotContainKeys("type", "verification");
+        assertThat(query.getValue()).doesNotContainKeys("type", "verification", "trigger", "component");
+    }
+
+    @Test
+    void theHowItStartedAndPartFiltersArePassedOnBounded() {
+        controller.list(null, null, null, null, null, null, null, null, "duration", "asc", 1, 10, "t".repeat(100), "DATABASE");
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<MultiValueMap<String, String>> query = ArgumentCaptor.forClass(MultiValueMap.class);
+        verify(agent).get(eq("/internal/backups"), query.capture());
+        assertThat(query.getValue().getFirst("trigger")).hasSize(20);
+        assertThat(query.getValue().getFirst("component")).isEqualTo("DATABASE");
+        assertThat(query.getValue().getFirst("sortBy")).isEqualTo("duration");
     }
 
     @Test
     void dateFiltersMustBeIsoInstantsAndArePassedOnNormalised() {
-        controller.list(null, null, null, null, " 2026-10-01T00:00:00Z ", "2026-10-08T23:59:59.999Z", "2026-10-02T00:00:00Z", "2026-10-03T00:00:00Z", "startedAt", "desc", 1, 10);
+        controller.list(null, null, null, null, " 2026-10-01T00:00:00Z ", "2026-10-08T23:59:59.999Z", "2026-10-02T00:00:00Z", "2026-10-03T00:00:00Z", "startedAt", "desc", 1, 10, null, null);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<MultiValueMap<String, String>> query = ArgumentCaptor.forClass(MultiValueMap.class);
         verify(agent).get(eq("/internal/backups"), query.capture());
@@ -168,7 +198,7 @@ class BackupRestoreControllerTest {
         assertThat(query.getValue().getFirst("checkedFrom")).isEqualTo("2026-10-02T00:00:00Z");
         assertThat(query.getValue().getFirst("checkedTo")).isEqualTo("2026-10-03T00:00:00Z");
         for (String bad : new String[]{"yesterday", "2026-10-08", "1; drop table x"}) {
-            assertThatThrownBy(() -> controller.list(null, null, null, null, null, null, bad, null, "startedAt", "desc", 1, 10))
+            assertThatThrownBy(() -> controller.list(null, null, null, null, null, null, bad, null, "startedAt", "desc", 1, 10, null, null))
                     .isInstanceOf(ResponseStatusException.class).hasMessageContaining("INVALID_DATE");
         }
     }

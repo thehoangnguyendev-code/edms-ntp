@@ -5,7 +5,6 @@ import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { FilterSearchInput } from "@/components/ui/filter/FilterSearchInput";
@@ -43,7 +42,7 @@ function RelatedTable<T extends { id: string }>({ persistKey, personId, fetcher,
     <div className="space-y-3 pb-4">
       <FilterSearchInput aria-label="Search" value={table.searchQuery} onChange={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }} placeholder={searchPlaceholder} />
       <DataTable
-        rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading} loadingContent={<SectionLoading text="Loading…" />}
+        rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading}
         columns={columns((table.currentPage - 1) * table.itemsPerPage, sorted)}
         emptyState={<TableEmptyState title={empty} description={table.searchQuery ? "Change the search." : ""} />}
         scrollerRef={drag.scrollerRef} scrollProps={drag.dragEvents} isDragging={drag.isDragging}

@@ -117,7 +117,7 @@ export const Input: React.FC<InputProps> = ({
   return (
     <input
       className={cn(
-        'h-9 rounded-lg border transition-all',
+        'h-9 rounded-lg border transition-[border-color,box-shadow,background-color]',
         // Responsive padding and font
         'px-3',
         'text-sm',
@@ -155,7 +155,7 @@ export const Textarea: React.FC<TextareaProps> = ({
   return (
     <textarea
       className={cn(
-        'rounded-lg border transition-all resize-none',
+        'rounded-lg border transition-[border-color,box-shadow,background-color] resize-none',
         // Responsive padding and font
         'px-3 py-2',
         'text-sm',

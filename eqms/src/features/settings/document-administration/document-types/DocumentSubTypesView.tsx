@@ -745,7 +745,7 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
     return [
       ...documentTypeOptions,
       {
-        label: item.documentType || item.documentTypeId,
+        label: item.documentType || "—",
         value: item.documentTypeId,
       },
     ];

@@ -70,6 +70,7 @@ class NotificationHandoverTest {
     @Mock private UserAccessProfileRepository userAccessProfileRepository;
     @Mock private UserAccountRepository userAccountRepository;
     @Mock private SignatureTokenConsumptionService signatureTokenConsumptionService;
+    @Mock private com.eqms.service.WorkflowProgressService workflowProgressService;
 
     @InjectMocks
     private RevisionService revisionService;

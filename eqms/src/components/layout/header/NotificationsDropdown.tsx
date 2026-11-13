@@ -47,6 +47,9 @@ export type DropdownNotification = {
   avatar: typeof Bell;
   avatarBg: string;
   avatarColor: string;
+  /** The tint of the tile and the colour of the icon when the colour was chosen with the colour picker (the classes above are then empty). */
+  avatarTileStyle?: React.CSSProperties;
+  avatarIconStyle?: React.CSSProperties;
   badge: typeof Bell;
   badgeBg: string;
   title: React.ReactNode;
@@ -134,9 +137,11 @@ const toDropdownNotification = (item: NotificationApiItem): DropdownNotification
     status: viewModel.status,
     type: viewModel.type,
     ...TYPE_UI_MAP[viewModel.type],
-    avatar: getNotificationTypeIcon(viewModel.type),
-    avatarBg: getNotificationTypeIconStyles(viewModel.type).bg,
-    avatarColor: getNotificationTypeIconStyles(viewModel.type).text,
+    avatar: getNotificationTypeIcon(viewModel.type, viewModel.icon),
+    avatarBg: getNotificationTypeIconStyles(viewModel.type, viewModel.iconTone).bg,
+    avatarColor: getNotificationTypeIconStyles(viewModel.type, viewModel.iconTone).text,
+    avatarTileStyle: getNotificationTypeIconStyles(viewModel.type, viewModel.iconTone).tileStyle,
+    avatarIconStyle: getNotificationTypeIconStyles(viewModel.type, viewModel.iconTone).iconStyle,
     title: <span className="font-medium">{viewModel.title || viewModel.description}</span>,
     time: formatNotificationDateTime(viewModel.createdAt),
     actionUrl: viewModel.actionUrl,
@@ -175,8 +180,8 @@ const NotificationItem: React.FC<{
             "rounded-xl flex items-center justify-center ring-1 ring-inset ring-black/5 transition-transform group-hover:scale-105",
             compact ? "h-10 w-10" : "h-9 w-9",
             notification.avatarBg
-          )}>
-            <AvatarIcon className={cn(compact ? "h-4 w-4" : "h-4.5 w-4.5", notification.avatarColor)} />
+          )} style={notification.avatarTileStyle}>
+            <AvatarIcon className={cn(compact ? "h-4 w-4" : "h-4.5 w-4.5", notification.avatarColor)} style={notification.avatarIconStyle} />
           </div>
         </div>
         <div className="flex-1 min-w-0 space-y-1">

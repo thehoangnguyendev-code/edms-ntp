@@ -33,6 +33,10 @@ public class PermissionSet {
     @Column(name = "system", nullable = false)
     private boolean system = false;
 
+    /** Display flag: a DEV/UAT/test set. Never changes what the set grants. */
+    @Column(name = "test_data", nullable = false)
+    private boolean testData = false;
+
     @OneToMany(mappedBy = "permissionSet", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<PermissionSetItem> items = new ArrayList<>();
 
@@ -71,6 +75,8 @@ public class PermissionSet {
     public void setDescription(String description) { this.description = description; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+    public boolean isTestData() { return testData; }
+    public void setTestData(boolean testData) { this.testData = testData; }
     public boolean isSystem() { return system; }
     public void setSystem(boolean system) { this.system = system; }
     public List<PermissionSetItem> getItems() { return items; }

@@ -347,7 +347,7 @@ class DatabaseBackupServiceTest {
         assertThat(schedules.rows(null, null, "INCREMENTAL", null, "component", true, 1, 10).get("data")).asList().isEmpty();
         assertThat(schedules.rows(null, null, null, "DAILY", "component", true, 1, 10).get("data")).asList().hasSize(1);
         assertThat(schedules.rows(null, null, null, "WEEKLY", "component", true, 1, 10).get("data")).asList().isEmpty();
-        assertThat(schedules.rows(null, null, "ALL", "ALL", "component", true, 1, 10).get("data")).asList().hasSize(4);
+        assertThat(schedules.rows(null, null, "ALL", "ALL", "component", true, 1, 10).get("data")).asList().hasSize(2);
         assertThat(schedules.rows(null, "ACTIVE", "FULL", "DAILY", "component", true, 1, 10).get("data")).asList().hasSize(1);
     }
 
@@ -355,11 +355,25 @@ class DatabaseBackupServiceTest {
     void theScheduleIsListedPerComponentWithoutInventingAScheduleForTheOnesNotBackedUpYet() {
         var schedules = new com.eqms.backup.agent.api.ScheduleQueryService(db.jdbc);
         var all = schedules.rows(null, null, null, null, "component", true, 1, 10);
-        assertThat(all.get("data")).asList().hasSize(4);
+        assertThat(all.get("data")).asList().hasSize(2);
         @SuppressWarnings("unchecked")
         var rows = (java.util.List<java.util.Map<String, Object>>) all.get("data");
         assertThat(rows.get(0)).containsEntry("component", "DATABASE").containsEntry("status", "ACTIVE").containsEntry("time", "02:00").containsEntry("frequency", "DAILY");
         assertThat(rows.stream().skip(1)).allSatisfy(r -> assertThat(r).containsEntry("status", "NOT_SCHEDULED").containsEntry("time", ""));
+    }
+
+    @Test
+    void theFilesFollowTheDatabaseScheduleWhenThePolicyIncludesThemAndSaySo() {
+        var schedules = new com.eqms.backup.agent.api.ScheduleQueryService(db.jdbc);
+        @SuppressWarnings("unchecked")
+        var before = (java.util.List<java.util.Map<String, Object>>) schedules.rows(null, null, null, null, "component", true, 1, 10).get("data");
+        assertThat(before.get(1)).containsEntry("component", "OBJECT_STORE").containsEntry("status", "NOT_SCHEDULED").containsEntry("note", "Not part of the active policy");
+        db.jdbc.update("update backup_policy set scope_json = '{\"components\":[\"DATABASE\",\"OBJECT_STORE\"]}'::jsonb where status = 'ACTIVE'");
+        @SuppressWarnings("unchecked")
+        var after = (java.util.List<java.util.Map<String, Object>>) schedules.rows(null, null, null, null, "component", true, 1, 10).get("data");
+        assertThat(after.get(1)).containsEntry("component", "OBJECT_STORE").containsEntry("status", "ACTIVE").containsEntry("time", "02:00").containsEntry("frequency", "DAILY")
+                .containsEntry("note", "Backed up in the same run as the database");
+        assertThat(after.stream().map(r -> r.get("component"))).doesNotContain("FILE_STORAGE");
     }
 
     @Test
@@ -369,11 +383,11 @@ class DatabaseBackupServiceTest {
         var active = (java.util.List<java.util.Map<String, Object>>) schedules.rows(null, "ACTIVE", null, null, "component", true, 1, 10).get("data");
         assertThat(active).hasSize(1);
         @SuppressWarnings("unchecked")
-        var found = (java.util.List<java.util.Map<String, Object>>) schedules.rows("file_st", null, null, null, "component", true, 1, 10).get("data");
-        assertThat(found).extracting(r -> r.get("component")).containsExactly("FILE_STORAGE");
+        var found = (java.util.List<java.util.Map<String, Object>>) schedules.rows("object_st", null, null, null, "component", true, 1, 10).get("data");
+        assertThat(found).extracting(r -> r.get("component")).containsExactly("OBJECT_STORE");
         @SuppressWarnings("unchecked")
         var descending = (java.util.List<java.util.Map<String, Object>>) schedules.rows(null, null, null, null, "component", false, 1, 2).get("data");
-        assertThat(descending).extracting(r -> r.get("component")).containsExactly("CONFIGURATION", "FILE_STORAGE");
+        assertThat(descending).extracting(r -> r.get("component")).containsExactly("OBJECT_STORE", "DATABASE");
         var hostile = schedules.rows("x'; drop table backup_policy; --", null, null, null, "nonsense; drop", true, 1, 1000);
         assertThat(((java.util.List<?>) hostile.get("data"))).isEmpty();
         assertThat(db.jdbc.queryForObject("select count(*) from backup_policy", Integer.class)).isEqualTo(1);
@@ -411,5 +425,31 @@ class DatabaseBackupServiceTest {
         Map<String, Object> detail = queries.get(all.data().get(0).get("id").toString()).orElseThrow();
         assertThat(detail).containsKeys("components", "locations", "verifications");
         assertThat(detail).doesNotContainKey("_runId");
+    }
+
+    @Test
+    void anIntegrityCheckReportsRealProgressThatOnlyMovesForward() throws Exception {
+        DatabaseBackupService.Outcome outcome = service.run(request());
+        java.util.List<Integer> seen = new java.util.ArrayList<>();
+        VerificationService.Outcome again = verification.verifyV1(outcome.backupNumber(), "operator.one", seen::add);
+        assertThat(again.verified()).isTrue();
+        assertThat(seen).isNotEmpty().isSorted().allMatch(p -> p >= 0 && p <= 100);
+        assertThat(seen.get(0)).isLessThanOrEqualTo(10);
+        assertThat(seen.get(seen.size() - 1)).as("the last report comes before the result, which the job finishes with 100").isGreaterThanOrEqualTo(90);
+    }
+
+    @Test
+    void theListFiltersByHowItStartedAndByPartAndSortsByDuration() throws Exception {
+        service.run(request());
+        service.run(new DatabaseBackupService.Request("FULL", "SCHEDULED", "scheduler", "scheduled", null));
+        var queries = new com.eqms.backup.agent.api.BackupQueryService(db.jdbc);
+        java.util.function.BiFunction<String, String, Long> count = (trigger, component) -> queries.list(new com.eqms.backup.agent.api.BackupQueryService.Query(
+                null, null, null, null, null, null, null, null, "duration", true, 1, 10, trigger, component)).total();
+        assertThat(count.apply(null, null)).isEqualTo(2);
+        assertThat(count.apply("SCHEDULED", null)).isEqualTo(1);
+        assertThat(count.apply("MANUAL", null)).isEqualTo(1);
+        assertThat(count.apply("ALL", "DATABASE")).isEqualTo(2);
+        assertThat(count.apply(null, "FILE_STORAGE")).as("no backup holds this part").isZero();
+        assertThat(count.apply("x' or '1'='1", null)).as("typed text is only ever a value").isZero();
     }
 }

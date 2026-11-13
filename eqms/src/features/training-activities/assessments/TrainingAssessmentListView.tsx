@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
@@ -31,10 +30,10 @@ export function TrainingAssessmentListView() {
   const [kind, setKind] = usePersistedState("training.assessments.kind", "");
   const [updatedBy, setUpdatedBy] = usePersistedState("training.assessments.updatedBy", "");
   const changedRange = useDateRange("training.assessments.changed", "Last Changed Date Range");
-  // The people who changed an assessment, for the filter: taken from the first page of the library (up to 100 assessments).
+  // The people who changed an assessment, for the filter: every one, listed by the server.
   const [people, setPeople] = useState<{ label: string; value: string }[]>([]);
   useEffect(() => {
-    trainingAssessmentsApi.list({ limit: 100, page: 1 }).then((p) => setPeople([...new Set(p.data.map((a) => a.updatedByName).filter(Boolean))].sort().map((v) => ({ label: v, value: v })))).catch(() => setPeople([]));
+    trainingAssessmentsApi.editors().then((names) => setPeople(names.map((v) => ({ label: v, value: v })))).catch(() => setPeople([]));
   }, []);
   const [error, setError] = useState("");
 
@@ -121,7 +120,7 @@ export function TrainingAssessmentListView() {
           rows={table.items}
           getRowKey={(r) => r.id}
           isLoading={table.isLoading}
-          loadingContent={<SectionLoading text="Loading…" />}
+
           columns={columns}
           columnLayout={layout}
           action={rowMenu.action}

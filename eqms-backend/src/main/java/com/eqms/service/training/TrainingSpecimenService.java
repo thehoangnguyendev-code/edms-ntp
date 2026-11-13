@@ -132,6 +132,7 @@ public class TrainingSpecimenService {
     public Map<String, Object> get(UserAccount actor, UUID id) {
         Map<String, Object> row = TrainingRows.camel(visibleRow(actor, id));
         row.put("capabilities", capabilities(actor, id, (UUID) row.get("personUserId"), String.valueOf(row.get("status")), row.get("rejectReason") != null));
+        row.put("workflow", TrainingWorkflows.specimen(String.valueOf(row.get("status"))));
         return row;
     }
 

@@ -62,6 +62,8 @@ public class ReportTemplateService {
 
     /** The most rows a report file may hold: a setting of Report Properties (10,000 until an administrator changes it). */
     public int maxRows() { return properties == null ? ReportPropertiesService.DEFAULT_MAX_ROWS : properties.maxRows(); }
+    /** The most rows of a report file run with the Full choice (Report Properties; 100,000 by default and at most). */
+    public int maxRowsFull() { return properties == null ? ReportPropertiesService.DEFAULT_MAX_ROWS_FULL : properties.maxRowsFull(); }
     /** The most people a scheduled report may be sent to (Report Properties). */
     public int maxScheduleRecipients() { return properties == null ? ReportPropertiesService.DEFAULT_MAX_SCHEDULE_RECIPIENTS : properties.maxScheduleRecipients(); }
     /** Minutes before a schedule is tried again after a temporary failure (Report Properties). */
@@ -136,7 +138,14 @@ public class ReportTemplateService {
         long total=Objects.requireNonNullElse(jdbc.queryForObject("select count(*)"+where,Long.class,args.toArray()),0L);
         int safePage=Math.max(1,page);args.add(pageSize);args.add((safePage-1L)*pageSize);
         var rows=jdbc.queryForList("select d.code"+where+" order by "+order+" "+direction+",d.code asc limit ? offset ?",args.toArray());
-        var data=rows.stream().map(row->admin?withRevisionInfo(definition(row.get("code").toString())):publicDefinition(row.get("code").toString())).toList();
+        // The row menu opens with its items decided: what the person may do with each template on the page comes with the list (one read of the permissions for the whole page).
+        Set<String> held=permissions.getEffectivePermissionCodes(actor);
+        var data=rows.stream().map(row->{
+            String code=row.get("code").toString();
+            Map<String,Object> item=new LinkedHashMap<>(admin?withRevisionInfo(definition(code)):publicDefinition(code));
+            item.put("capabilities",capabilitiesOf(actor,held,code));
+            return item;
+        }).toList();
         String sourceWhere=" from report_definitions d where d.source_code is not null and d.deleted_at is null";
         List<Object> sourceArgs=new ArrayList<>();
         if(!admin) {
@@ -193,6 +202,10 @@ public class ReportTemplateService {
         if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "REPORT_TEMPLATE_NOT_FOUND");
         var result = new LinkedHashMap<>(rows.getFirst());
         result.put("layout", read(String.valueOf(result.get("layout"))));
+        // The key under which every change of this template is written in the Audit Trail (the Audit Trail tab of the details page reads it).
+        result.put("auditEntityId", UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)).toString());
+        // The Create Report screen asks for the electronic signature and a reason when the type of the template needs it.
+        result.put("runNeedsSignature", runNeedsSignature(String.valueOf(result.get("sourceCode"))));
         result.put("nameValues", read(String.valueOf(result.get("nameValues"))));
         result.put("lifecycleStatus", lifecycleOf(result));
         result.put("allowedFormats", read(String.valueOf(result.remove("allowed_formats"))));
@@ -301,7 +314,7 @@ public class ReportTemplateService {
     public List<Map<String, Object>> sources(UserAccount actor) {
         require(actor, "reports.definition.manage", "settings.configuration.manage");
         return providers.values().stream().filter(provider -> types == null || (types.isEnabled(provider.code()) && types.mayUse(actor, provider.code()))).map(provider -> Map.<String,Object>of("code", provider.code(), "name", provider.name(), "category", provider.category(), "description", provider.description(), "allowedScopes", provider.allowedScopes(), "fields", provider.labels(), "requiredFields", provider.requiredFields(),
-            "dateFields",provider.filters().stream().filter(filter->"DATE".equals(filter.get("type"))).map(filter->provider.filterColumns().get(filter.get("code"))).filter(Objects::nonNull).filter(provider.columns()::containsKey).distinct().toList())).toList();
+            "dateFields",List.copyOf(provider.dateColumns()))).toList();
     }
 
     /** A new template. Its number is issued by the system from the numbering rule; the caller cannot choose it (REPORT-TEMPLATE-NUMBER-2026-10-14). */
@@ -408,6 +421,8 @@ public class ReportTemplateService {
         if (revisions != null && !create) revisions.touchLive(code, actor.getId(), request.reason().trim());
         String auditReason = request.reason().trim() + (signature == null ? "" : " [signature " + signature.getSignatureId() + "]");
         audit.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), create ? "REPORT_TEMPLATE_CREATED" : "REPORT_TEMPLATE_UPDATED", null, null, auditReason);
+        // The stepper goes with every answer the editor keeps; this answer carries no revision info, so it follows the approval status as the screen did.
+        after.put("workflow", ReportRevisionWorkflow.ofTemplate(after.get("openRevision"), after.get("openRevisionStatus"), after.get("effectiveRevision"), after.get("approvalStatus")));
         return after;
     }
 
@@ -493,6 +508,10 @@ public class ReportTemplateService {
     public ResourceCapabilitiesResponse capabilities(UserAccount actor, String code) {
         if (actor == null || actor.getId() == null || actor.getStatus() != UserStatus.Active) throw new SecurityException("REPORT_SCOPE_DENIED");
         Set<String> held = permissions.getEffectivePermissionCodes(actor);
+        return capabilitiesOf(actor, held, code);
+    }
+
+    private ResourceCapabilitiesResponse capabilitiesOf(UserAccount actor, Set<String> held, String code) {
         if (Stream.of("reports.catalog.view", "report.module.view", "reports.definition.view", "settings.configuration.view").noneMatch(held::contains)) throw new SecurityException("REPORT_SCOPE_DENIED");
         var rows = jdbc.queryForList("select active, deleted_at, gmp_use, approval_status from report_definitions where code=?", code);
         if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "REPORT_TEMPLATE_NOT_FOUND");
@@ -513,8 +532,9 @@ public class ReportTemplateService {
         actions.put("submitForApproval", decide(held, MANAGE, !deleted && open != null && "DRAFT".equals(openStatus) && active,
                 deleted ? "REPORT_TEMPLATE_DELETED" : !active ? "REPORT_TEMPLATE_DISABLED" : "REPORT_TEMPLATE_NOT_DRAFT", false));
         boolean pending = open != null && "PENDING_APPROVAL".equals(openStatus);
-        actions.put("approve", decide(held, List.of("reports.definition.approve"), pending && !mine, !pending ? "REPORT_TEMPLATE_NOT_PENDING" : "REPORT_APPROVER_IS_AUTHOR", true));
-        actions.put("reject", decide(held, List.of("reports.definition.approve"), pending && !mine, !pending ? "REPORT_TEMPLATE_NOT_PENDING" : "REPORT_APPROVER_IS_AUTHOR", true));
+        String reviewPermission = reviewPermissionFor(gmp, open);
+        actions.put("approve", decide(held, List.of(reviewPermission), pending && !mine, !pending ? "REPORT_TEMPLATE_NOT_PENDING" : "REPORT_APPROVER_IS_AUTHOR", true));
+        actions.put("reject", decide(held, List.of(reviewPermission), pending && !mine, !pending ? "REPORT_TEMPLATE_NOT_PENDING" : "REPORT_APPROVER_IS_AUTHOR", true));
         actions.put("upgrade", decide(held, List.of("reports.definition.upgrade"), !deleted && hasEffective && open == null,
                 deleted ? "REPORT_TEMPLATE_DELETED" : !hasEffective ? "REPORT_NO_EFFECTIVE_REVISION" : "REPORT_REVISION_ALREADY_OPEN", false));
         actions.put("discardRevision", decide(held, List.of("reports.definition.discard_revision"), !deleted && hasEffective && open != null && open.get("snapshot") != null && "DRAFT".equals(openStatus),
@@ -692,6 +712,8 @@ public class ReportTemplateService {
         result.put("openRevision", open == null ? null : open.get("revision"));
         result.put("openRevisionStatus", open == null ? null : open.get("status"));
         result.put("revision", open != null ? open.get("revision") : effective);
+        // The lifecycle stepper of the revision that matters on the screens, worked out here; the screen only draws it.
+        result.put("workflow", ReportRevisionWorkflow.ofTemplate(result.get("openRevision"), result.get("openRevisionStatus"), effective, result.get("approvalStatus")));
         return result;
     }
 
@@ -719,9 +741,10 @@ public class ReportTemplateService {
     /** Approves the submitted version with an electronic signature. The approver must not be the author of that version or the submitter. */
     @Transactional
     public Map<String, Object> approve(UserAccount actor, String code, Integer version, String reason, String signatureToken) {
-        require(actor, "reports.definition.approve");
+        require(actor, PERMISSION_APPROVE, PERMISSION_APPROVE_GMP);
         if (reason == null || reason.isBlank() || reason.length() > 1000) throw new IllegalArgumentException("REPORT_CHANGE_REASON_REQUIRED");
         var row = lockedForReview(code, version);
+        requireReviewPermission(actor, code, row);
         requireIndependentReviewer(actor, code, version, row);
         if (signatures == null) throw new IllegalStateException("REPORT_SIGNATURE_UNAVAILABLE");
         signatures.requireValidToken(actor, signatureToken);
@@ -755,9 +778,10 @@ public class ReportTemplateService {
     /** Returns the submitted version to Draft with the reason kept. Signed electronically (REPORT-TEMPLATE-APPROVAL-2026-10-14). */
     @Transactional
     public Map<String, Object> reject(UserAccount actor, String code, Integer version, String reason, String signatureToken) {
-        require(actor, "reports.definition.approve");
+        require(actor, PERMISSION_APPROVE, PERMISSION_APPROVE_GMP);
         if (reason == null || reason.isBlank() || reason.length() > 1000) throw new IllegalArgumentException("REPORT_CHANGE_REASON_REQUIRED");
         var row = lockedForReview(code, version);
+        requireReviewPermission(actor, code, row);
         requireIndependentReviewer(actor, code, version, row);
         if (signatures == null) throw new IllegalStateException("REPORT_SIGNATURE_UNAVAILABLE");
         signatures.requireValidToken(actor, signatureToken);
@@ -859,6 +883,19 @@ public class ReportTemplateService {
                 "direction", criteria.direction() == null ? "asc" : criteria.direction()));
     }
 
+    /**
+     * A report is run with a filter. Without one, the person must choose Full, which is allowed up to its own ceiling and is written to the Audit Trail
+     * (owner decision D3, REPORT-FULL-RUN-2026-11-12).
+     */
+    public void requireNarrowing(String sourceCode, Map<String,Object> filters, boolean full) {
+        if (full) return;
+        var provider = provider(sourceCode);
+        var narrowing = provider.narrowingFilters();
+        boolean narrowed = filters != null && filters.entrySet().stream().anyMatch(entry -> narrowing.contains(entry.getKey())
+                && entry.getValue() != null && !entry.getValue().toString().isBlank());
+        if (!narrowed) throw new IllegalArgumentException("REPORT_FILTER_REQUIRED");
+    }
+
     @Transactional
     public void delete(UserAccount actor,String code,Integer version,String reason) {
         require(actor,"reports.definition.manage","settings.configuration.manage");
@@ -878,7 +915,9 @@ public class ReportTemplateService {
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public Map<String, Object> preview(UserAccount actor, String code, Criteria criteria, int page) {
         var result = render(actor, code, snapshot(actor, code, criteria), Math.max(1, page), 10, false);
-        return Map.of("definitionCode", code, "rows", result.rows(), "asOfAt", Instant.now().toString(), "pagination", pagination(Math.max(1, page), 10, result.total()));
+        // The limits are told with the preview so the screen can say what a report file may hold before the person generates it.
+        return Map.of("definitionCode", code, "rows", result.rows(), "asOfAt", Instant.now().toString(), "pagination", pagination(Math.max(1, page), 10, result.total()),
+                "maxRows", maxRows(), "maxRowsFull", maxRowsFull());
     }
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
@@ -900,16 +939,19 @@ public class ReportTemplateService {
         var query = provider.query(actor, scopes(actor, code), filters);
         long total = Objects.requireNonNullElse(jdbc.queryForObject("select count(*) " + query.fromWhere(), Long.class, query.arguments().toArray()), 0L);
         String asOfAt = jdbc.queryForObject("select transaction_timestamp()::text",String.class);
-        if (export && total > maxRows()) throw new IllegalArgumentException("REPORT_ROW_LIMIT_EXCEEDED");
+        // A run with the Full choice (pinned in its snapshot) has its own ceiling; every other file keeps the ordinary limit.
+        int rowLimit = export ? (snapshot.path("full").asBoolean(false) ? maxRowsFull() : maxRows()) : limit;
+        if (export && total > rowLimit) throw new IllegalArgumentException("REPORT_ROW_LIMIT_EXCEEDED");
         String projection = provider.identityColumn() + "," + String.join(",", selected.stream().map(provider.columns()::get).toList());
         String order = sort(provider, snapshot.path("sortBy").asText(), snapshot.path("direction").asText());
         validateSortField(current,snapshot.path("sortBy").asText());
-        var args = new ArrayList<>(query.arguments()); args.add(limit); args.add((page - 1L) * limit);
+        var args = new ArrayList<>(query.arguments()); args.add(rowLimit); args.add((page - 1L) * rowLimit);
         List<String> ids = new ArrayList<>(); List<List<String>> rows = new ArrayList<>();
+        Set<String> dateFields = provider.dateColumns();
         rows.add(selected.stream().map(provider.labels()::get).toList());
         jdbc.query("select " + projection + " " + query.fromWhere() + " order by " + order + "," + provider.identityColumn() + " asc limit ? offset ?", rs -> {
             ids.add(rs.getString(1)); List<String> row = new ArrayList<>();
-            for (int i = 0; i < selected.size(); i++) row.add(Objects.toString(rs.getObject(i + 2), ""));
+            for (int i = 0; i < selected.size(); i++) row.add(cell(rs.getObject(i + 2), dateFields.contains(selected.get(i))));
             rows.add(row);
         }, args.toArray());
         return new MetadataRows(rows, ids, total, asOfAt);
@@ -970,9 +1012,9 @@ public class ReportTemplateService {
         var snapshot=snapshot(actor,code,criteria);var metadata=render(actor,code,snapshot,1,maxRows(),true);
         var layout=json.treeToValue(snapshot.path("definition").path("layout"),ReportLayout.class);
         var name=validatedTitle(title,snapshot.path("definition").path("displayName").asText());
-        var values=Map.of("report.title",name,"report.code",code,"template.version",snapshot.path("definition").hasNonNull("revision")?snapshot.path("definition").path("revision").asText():snapshot.path("definition").path("definitionVersion").asText(),
-            "report.executor",Objects.toString(actor.getFullName(),Objects.toString(actor.getUsername(),actor.getId().toString())),"report.generatedAt",Instant.now().toString(),"report.asOfAt",metadata.asOfAt(),
-            "template.name",snapshot.path("definition").path("displayName").asText(),"report.runId","PREVIEW");
+        var values=Map.of("report.title",name,"report.code",code,"template.version",snapshot.path("definition").hasNonNull("revision")?com.eqms.service.report.ReportTemplateRevisionService.effectiveLabel(snapshot.path("definition").path("revision").asInt()):snapshot.path("definition").path("definitionVersion").asText(),
+            "report.executor",Objects.toString(actor.getFullName(),Objects.toString(actor.getUsername(),actor.getId().toString())),"report.generatedAt",com.eqms.util.DateTimeFormatUtils.formatDateTime(Instant.now()),"report.asOfAt",com.eqms.util.DateTimeFormatUtils.display(metadata.asOfAt()),
+            "template.name",snapshot.path("definition").path("displayName").asText(),"report.runId","PREVIEW","report.gmpNotice","Preview. Not confirmed for GMP decisions.");
         var charts=ReportCharts.calculate(layout.effectiveCharts(),json.convertValue(snapshot.path("fields"),json.getTypeFactory().constructCollectionType(List.class,String.class)),metadata.rows());
         return words==null?ReportPresentationRenderer.render("PDF",metadata.rows(),layout,values,charts):words.render("PDF",metadata.rows(),layout,values,charts);
     }
@@ -1002,6 +1044,80 @@ public class ReportTemplateService {
         if (column == null || (direction != null && !Set.of("asc", "desc").contains(direction))) throw new IllegalArgumentException("REPORT_SORT_NOT_ALLOWED");
         return column + ("desc".equals(direction) ? " desc nulls last" : " asc nulls last");
     }
+    static final String PERMISSION_APPROVE = "reports.definition.approve";
+    static final String PERMISSION_APPROVE_GMP = "reports.definition.approve_gmp";
+
+    /**
+     * REPORT-GMP-APPROVER-2026-11-13: a template for GMP decisions is reviewed (approved or returned) only by a person who holds the permission to approve a report for GMP use;
+     * every other template by a person who holds the ordinary approval permission. It counts as a GMP template when it is one now or when the version under review makes it one, so a
+     * template cannot be made GMP, or taken out of GMP use, by an approver who may not review GMP templates.
+     */
+    String reviewPermissionFor(boolean liveGmpUse, Map<String, Object> openRevision) {
+        boolean gmp = liveGmpUse;
+        if (!gmp && openRevision != null && revisions != null) {
+            var payload = revisions.payloadOf(openRevision);
+            gmp = payload != null && Boolean.TRUE.equals(payload.get("gmpUse"));
+        }
+        return gmp ? PERMISSION_APPROVE_GMP : PERMISSION_APPROVE;
+    }
+
+    private void requireReviewPermission(UserAccount actor, String code, Map<String, Object> lockedRow) {
+        var live = jdbc.queryForList("select gmp_use from report_definitions where code=?", code);
+        boolean liveGmp = !live.isEmpty() && Boolean.TRUE.equals(live.getFirst().get("gmp_use"));
+        @SuppressWarnings("unchecked") Map<String, Object> open = lockedRow.get("open_revision") instanceof Map<?, ?> m ? (Map<String, Object>) m : null;
+        String needed = reviewPermissionFor(liveGmp, open);
+        if (!permissions.getEffectivePermissionCodes(actor).contains(needed)) {
+            throw new SecurityException(PERMISSION_APPROVE_GMP.equals(needed) ? "REPORT_GMP_APPROVER_REQUIRED" : "REPORT_SCOPE_DENIED");
+        }
+    }
+
+    /**
+     * REPORT-GMP-NOTICE-2026-11-12: the statement every report file carries. A template marked for GMP decisions whose current version is approved says who approved
+     * which revision and when; every other report says it is not confirmed for GMP decisions, so nobody mistakes it for a validated output.
+     */
+    public static String gmpNotice(JsonNode definition, String approverName) {
+        boolean approved = "APPROVED".equals(definition.path("approvalStatus").asText())
+                && definition.hasNonNull("approvedVersion") && definition.path("approvedVersion").asInt() == definition.path("definitionVersion").asInt();
+        if (!definition.path("gmpUse").asBoolean(false) || !approved) return "Not confirmed for GMP decisions.";
+        String revision = definition.hasNonNull("revision") ? ReportTemplateRevisionService.effectiveLabel(definition.path("revision").asInt()) : definition.path("definitionVersion").asText();
+        String on = definition.hasNonNull("approvedAt") ? com.eqms.util.DateTimeFormatUtils.displayText(definition.path("approvedAt").asText()) : "";
+        return "For GMP decisions. Template revision " + revision + " approved"
+                + (approverName == null || approverName.isBlank() ? "" : " by " + approverName) + (on.isBlank() ? "" : " on " + on) + ".";
+    }
+
+    /**
+     * REPORT-TIME-FORMAT-2026-11-12: a date is dd/MM/yyyy and a moment is dd/MM/yyyy HH:mm:ss in the time zone of the site (UTC+7), as everywhere in the system. A date or a
+     * moment read from the database, and the text of a column that holds one, is written that way in every file and in the preview; any other text is left exactly as it is.
+     */
+    static String cell(Object value, boolean dateColumn) {
+        if (value == null) return "";
+        if (value instanceof CharSequence text) return dateColumn ? com.eqms.util.DateTimeFormatUtils.displayText(text.toString()) : text.toString();
+        return com.eqms.util.DateTimeFormatUtils.display(value);
+    }
+
+    /** True when a run of the Report Type must be signed electronically by the person who requests it. */
+    public boolean runNeedsSignature(String sourceCode) {
+        var provider = providers.get(sourceCode);
+        return provider != null && provider.runNeedsSignature();
+    }
+
+    /**
+     * REPORT-OBSOLETE-REVISION-2026-11-12: a run is made with the revision that is effective. When a newer revision has become effective, or the template is no longer
+     * approved for the version the run was queued with, the run must not be generated, and a failed run must not be retried. A run made before revisions existed has no
+     * version in its snapshot and is not checked.
+     */
+    public void requireRunRevisionEffective(String code, JsonNode snapshot) {
+        JsonNode version = snapshot.path("definition").path("definitionVersion");
+        if (!version.isInt()) return;
+        var rows = jdbc.queryForList("select definition_version, approval_status, approved_version from report_definitions where code=?", code);
+        if (rows.isEmpty()) throw new IllegalArgumentException("REPORT_REVISION_OBSOLETE");
+        var live = rows.getFirst();
+        boolean current = ((Number) live.get("definition_version")).intValue() == version.asInt();
+        boolean approved = "APPROVED".equals(live.get("approval_status")) && live.get("approved_version") != null
+                && ((Number) live.get("approved_version")).intValue() == version.asInt();
+        if (!current || !approved) throw new IllegalArgumentException("REPORT_REVISION_OBSOLETE");
+    }
+
     private ReportMetadataProvider provider(String code) {
         var provider = providers.get(code);
         if (provider == null) throw new IllegalArgumentException("REPORT_SOURCE_NOT_SUPPORTED");

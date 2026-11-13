@@ -76,20 +76,20 @@ export const PermissionSetsView: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<PermissionSetResponse | null>(null);
 
   // Server-side query state — every change triggers a refetch.
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
   const debouncedSearch = useDebounce(search, 300);
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [typeFilter, setTypeFilter] = useState("ALL");
-  const [moduleFilter, setModuleFilter] = useState("ALL");
-  const [categoryFilter, setCategoryFilter] = useState("ALL");
-  const [createdFrom, setCreatedFrom] = useState("");
-  const [createdTo, setCreatedTo] = useState("");
-  const [updatedFrom, setUpdatedFrom] = useState("");
-  const [updatedTo, setUpdatedTo] = useState("");
-  const [sortKey, setSortKey] = useState<string>("name");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") ?? "ALL");
+  const [typeFilter, setTypeFilter] = useState(() => searchParams.get("type") ?? "ALL");
+  const [moduleFilter, setModuleFilter] = useState(() => searchParams.get("module") ?? "ALL");
+  const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get("category") ?? "ALL");
+  const [createdFrom, setCreatedFrom] = useState(() => searchParams.get("createdFrom") ?? "");
+  const [createdTo, setCreatedTo] = useState(() => searchParams.get("createdTo") ?? "");
+  const [updatedFrom, setUpdatedFrom] = useState(() => searchParams.get("updatedFrom") ?? "");
+  const [updatedTo, setUpdatedTo] = useState(() => searchParams.get("updatedTo") ?? "");
+  const [sortKey, setSortKey] = useState<string>(() => searchParams.get("sortBy") ?? "name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(() => (searchParams.get("sortDir") === "desc" ? "desc" : "asc"));
+  const [currentPage, setCurrentPage] = useState(() => Math.max(1, Number(searchParams.get("page")) || 1));
+  const [itemsPerPage, setItemsPerPage] = useState(() => Math.max(1, Number(searchParams.get("limit")) || 10));
 
   React.useLayoutEffect(() => {
     setSearch(searchParams.get("search") ?? "");
@@ -333,7 +333,10 @@ export const PermissionSetsView: React.FC = () => {
       sort: { direction: sortKey === "name" ? sortDir : undefined, onSort: () => handleSort("name") },
       cell: (ps) => (
         <>
-          <div className="font-semibold text-slate-900">{ps.name}</div>
+          <div className="flex items-center gap-1.5 font-semibold text-slate-900">
+            <span>{ps.name}</span>
+            {ps.testData && <Badge color="amber" size="xs">Test</Badge>}
+          </div>
           <div className="mt-0.5 text-xs text-slate-400">{ps.code}</div>
         </>
       ),

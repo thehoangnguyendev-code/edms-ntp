@@ -2,10 +2,9 @@ package com.eqms.dto.notification;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-/** Any field left null is left unchanged (partial update). Mandatory-event fields that GMP
- * locks (status/recipientRules on a mandatory event) are rejected server-side regardless of
- * what's sent here — see NotificationPolicyService.updatePolicy. This feature is in-app/webapp
- * notifications only, so there is no channel selection to update. */
+/** Any field left null is left unchanged (partial update). Every notification can be switched off, given other channels and other recipients by an
+ * administrator (D6: no notification is locked); the change is validated and written to the Audit Trail by NotificationPolicyService.updatePolicy.
+ * {@code enabledChannels} is the list of channels the notification is sent on (IN_APP, EMAIL), a subset of the channels the event supports. */
 public record UpdateNotificationPolicyRequest(
         String status,
         JsonNode recipientRules,
@@ -14,6 +13,19 @@ public record UpdateNotificationPolicyRequest(
         String quietHoursEnd,
         Boolean escalationEnabled,
         Integer escalationAfterMinutes,
-        JsonNode escalationRecipientRules
+        JsonNode escalationRecipientRules,
+        java.util.List<String> enabledChannels,
+        /** The "Updated" time of the notification as the person saw it when they opened it; when another change was saved since, the change is refused. Empty skips the check. */
+        java.time.Instant expectedUpdatedAt
 ) {
+    /** The request without a change of channels. */
+    public UpdateNotificationPolicyRequest(String status, JsonNode recipientRules, String digestMode, String quietHoursStart, String quietHoursEnd,
+                                           Boolean escalationEnabled, Integer escalationAfterMinutes, JsonNode escalationRecipientRules) {
+        this(status, recipientRules, digestMode, quietHoursStart, quietHoursEnd, escalationEnabled, escalationAfterMinutes, escalationRecipientRules, null, null);
+    }
+
+    public UpdateNotificationPolicyRequest(String status, JsonNode recipientRules, String digestMode, String quietHoursStart, String quietHoursEnd,
+                                           Boolean escalationEnabled, Integer escalationAfterMinutes, JsonNode escalationRecipientRules, java.util.List<String> enabledChannels) {
+        this(status, recipientRules, digestMode, quietHoursStart, quietHoursEnd, escalationEnabled, escalationAfterMinutes, escalationRecipientRules, enabledChannels, null);
+    }
 }

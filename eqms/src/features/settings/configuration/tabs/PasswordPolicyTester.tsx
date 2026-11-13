@@ -3,7 +3,7 @@ import { Check, Eye, EyeOff, X } from 'lucide-react';
 import { evaluatePasswordPolicy } from '@/features/auth/passwordPolicyRules';
 import type { SecurityConfig } from '../types';
 
-const inputClass = 'w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500';
+const inputClass = 'w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500';
 
 /**
  * Lets the administrator type a password and see at once which of the rules being edited it meets.

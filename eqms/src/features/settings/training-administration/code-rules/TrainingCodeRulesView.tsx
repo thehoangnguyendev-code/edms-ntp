@@ -6,7 +6,6 @@ import { trainingAdministrationBase } from "@/components/ui/breadcrumb/breadcrum
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
-import { SectionLoading } from "@/components/ui/loading/Loading";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
@@ -142,7 +141,7 @@ export function TrainingCodeRulesView() {
           rows={rows}
           getRowKey={(r) => r.entity}
           isLoading={table.isLoading}
-          loadingContent={<SectionLoading text="Loading the code rules…" />}
+
           emptyState={<TableEmptyState title="No Code Rules" description="Try changing your search or filter." />}
           scrollerRef={drag.scrollerRef}
           scrollProps={drag.dragEvents}

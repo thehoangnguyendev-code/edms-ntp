@@ -10,12 +10,21 @@ public final class AuditTrailReviewDtos {
 
     private AuditTrailReviewDtos() {}
 
+    /** {@code reviewerUserId} is the person who reviews the campaign; empty means the person who creates it. */
     public record CampaignCreateRequest(
             String name,
             String description,
             LocalDate reviewPeriodStart,
-            LocalDate reviewPeriodEnd
-    ) {}
+            LocalDate reviewPeriodEnd,
+            java.util.UUID reviewerUserId
+    ) {
+        public CampaignCreateRequest(String name, String description, LocalDate reviewPeriodStart, LocalDate reviewPeriodEnd) {
+            this(name, description, reviewPeriodStart, reviewPeriodEnd, null);
+        }
+    }
+
+    /** A person who may be given a campaign to review. */
+    public record ReviewerOption(java.util.UUID id, String name) {}
 
     public record ItemDecisionRequest(
             String decision,

@@ -30,10 +30,16 @@ vi.mock("@/services/api/reportTemplates", async (importOriginal) => ({
   ...(await importOriginal<any>()),
   reportTemplatesApi: { list: vi.fn(), detail: vi.fn(), revisions: vi.fn(), setEnabled: vi.fn(), discardRevision: vi.fn(), capabilities: vi.fn() },
 }));
+// The Audit Trail tab is the shared one of the Document details; here it only shows what it was asked to read.
+vi.mock("@/features/documents/shared/components/AuditTrailTab", () => ({
+  AuditTrailTab: (props: { entityType?: string; entityId?: string }) => <div>{`Audit Trail of ${props.entityType} ${props.entityId}`}</div>,
+}));
 vi.mock("@/services/api/reports", () => ({
   reportsApi: {
     catalog: vi.fn().mockResolvedValue([]),
     listScheduleRecipients: vi.fn().mockResolvedValue([]),
+    recipientPeople: vi.fn().mockResolvedValue({ data: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 1 } }),
+    recipientGroups: vi.fn().mockResolvedValue([]),
     scheduleDetail: vi.fn(),
     createSchedule: vi.fn(),
     updateSchedule: vi.fn(),
@@ -61,7 +67,7 @@ const template = {
 
 /** The server's decision for the template: the listed actions are allowed, the others are not. */
 function allow(...allowed: string[]) {
-  const every = ["viewRevisions", "edit", "submitForApproval", "approve", "reject", "upgrade", "discardRevision", "disable", "enable", "delete", "createReport"];
+  const every = ["viewAuditTrail", "viewRevisions", "edit", "submitForApproval", "approve", "reject", "upgrade", "discardRevision", "disable", "enable", "delete", "createReport"];
   vi.mocked(reportTemplatesApi.capabilities).mockResolvedValue({
     resourceType: "REPORT_TEMPLATE", resourceId: "DOCUMENT_STATUS", state: "ACTIVE",
     actions: Object.fromEntries(every.map((action) => [action, { allowed: allowed.includes(action) }])),
@@ -103,8 +109,12 @@ it("a new schedule opens on its own page, with a title, a full breadcrumb, and n
   expect(trail).toHaveTextContent("Scheduled Reports");
   expect(trail).toHaveTextContent("New Report Schedule");
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
-  fireEvent.click(screen.getByRole("button", { name: "Back" }));
+  // Back and Save Changes are in the actions and again under the card, as on the other pages; the page has tabs.
+  for (const save of screen.getAllByRole("button", { name: "Save Changes" })) expect(save).toBeDisabled();
+  expect(screen.getAllByRole("button", { name: "Back" })).toHaveLength(2);
+  for (const name of [/General Information/, /Criteria & Columns/, /Recipients/]) expect(screen.getByRole("tab", { name })).toBeInTheDocument();
+  expect(screen.getByLabelText(/Schedule Name/)).toBeInTheDocument();
+  fireEvent.click(screen.getAllByRole("button", { name: "Back" })[0]);
   expect(await screen.findByText("Scheduled list")).toBeInTheDocument();
 });
 
@@ -116,7 +126,23 @@ it("an existing schedule is edited on its page and needs a reason before it can 
   renderAt("/report/scheduled/s1", <ScheduleEditorPage />, "/report/scheduled/:id");
   expect(await screen.findByRole("heading", { name: "Edit Report Schedule" })).toBeInTheDocument();
   expect(await screen.findByDisplayValue("Monthly register")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
+  expect(screen.getByLabelText(/Reason For The Change/)).toBeInTheDocument();
+  for (const save of screen.getAllByRole("button", { name: "Save Changes" })) expect(save).toBeDisabled();
+  fireEvent.change(screen.getByLabelText(/Reason For The Change/), { target: { value: "Move to the first of the month" } });
+  for (const save of screen.getAllByRole("button", { name: "Save Changes" })) expect(save).toBeEnabled();
+});
+
+it("a schedule whose template is not in the catalog still names its template and offers every format the template allows", async () => {
+  vi.mocked(reportsApi.scheduleDetail).mockResolvedValue({
+    id: "s2", version: 1, name: "Weekly register", definitionCode: "DOCUMENT_STATUS", cronExpression: "0 0 8 * * MON", format: "PDF", recipientUserIds: [], parameters: {}, fields: [],
+    definitionName: "Document Status Report", allowedFormats: ["PDF", "XLSX", "CSV"],
+  } as never);
+  renderAt("/report/scheduled/s2", <ScheduleEditorPage />, "/report/scheduled/:id");
+
+  expect(await screen.findByDisplayValue("Weekly register")).toBeInTheDocument();
+  expect(screen.getByText("Document Status Report")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("combobox", { name: "Output Format" }));
+  for (const format of ["PDF", "XLSX", "CSV"]) expect(await screen.findByRole("option", { name: format })).toBeInTheDocument();
 });
 
 it("the library shows a template on its page, and Create Report opens the run page", async () => {
@@ -128,11 +154,11 @@ it("the library shows a template on its page, and Create Report opens the run pa
   // The page and the breadcrumb name the screen; the name of the template is a fact in the details.
   expect(trail).toHaveTextContent("Report Template Details");
   expect(trail).not.toHaveTextContent("Document Register");
-  expect(screen.getByText("Template name")).toBeInTheDocument();
-  expect(screen.getByText("Document Register")).toBeInTheDocument();
+  expect(screen.getByLabelText("Template Name")).toHaveValue("Document Register");
+  fireEvent.click(screen.getByRole("tab", { name: /Fields/ }));
   expect(screen.getByText("Document Number")).toBeInTheDocument();
-  expect(screen.queryByText("Role scopes")).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
+  expect(screen.queryByRole("tab", { name: /Role Scopes/ })).not.toBeInTheDocument();
+  fireEvent.click(screen.getAllByRole("button", { name: "Create Report" })[0]);
   expect(await screen.findByText("Run page")).toBeInTheDocument();
 });
 
@@ -142,24 +168,25 @@ it("Report Definitions shows the approval and the role scopes of a template, und
   const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
   expect(trail).toHaveTextContent("Report Administration");
   expect(trail).toHaveTextContent("Report Definitions");
-  await waitFor(() => expect(screen.getByText("Role scopes")).toBeInTheDocument());
-  expect(screen.getByText("Approval")).toBeInTheDocument();
+  expect(await screen.findByLabelText("Approval State")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("tab", { name: /Role Scopes/ }));
+  expect(await screen.findByText("Data scope")).toBeInTheDocument();
   expect(screen.getByText("QA")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Create Report" })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Back" }));
+  fireEvent.click(screen.getAllByRole("button", { name: "Back" })[0]);
   expect(await screen.findByText("Definitions list")).toBeInTheDocument();
 });
 
 it("every detail page puts Back in the actions, beside the other buttons, and none uses the arrow beside the title", async () => {
   renderAt("/report/templates/DOCUMENT_STATUS", <ReportTemplateDetailPage />, "/report/templates/:code");
   await screen.findByRole("heading", { name: "Report Template Details" });
-  expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Back" }).nextElementSibling).toHaveTextContent("Edit Report Template");
+  expect(screen.getAllByRole("button", { name: "Back" })[0]).toBeInTheDocument();
+  expect(screen.getAllByRole("button", { name: "Back" })[0].nextElementSibling).toHaveTextContent("Edit Report Template");
   expect(screen.queryByRole("button", { name: "Title arrow" })).not.toBeInTheDocument();
   cleanup();
   renderAt("/report/scheduled/new", <ScheduleEditorPage />, "/report/scheduled/new");
   await screen.findByRole("heading", { name: "New Report Schedule" });
-  expect(screen.getByRole("button", { name: "Back" }).nextElementSibling).toHaveTextContent("Save Changes");
+  expect(screen.getAllByRole("button", { name: "Back" })[0].nextElementSibling).toHaveTextContent("Save Changes");
   expect(screen.queryByRole("button", { name: "Title arrow" })).not.toBeInTheDocument();
 });
 
@@ -200,5 +227,42 @@ it("shows no action the server does not allow for this user, whoever the user is
   for (const label of ["Upgrade Report Template", "Edit Report Template", "Disable Report Template", "Enable Report Template", "Discard Revision", "Create Report"]) {
     expect(screen.queryByRole("button", { name: label })).not.toBeInTheDocument();
   }
-  expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
+  expect(screen.getAllByRole("button", { name: "Back" })[0]).toBeInTheDocument();
+});
+
+it("the Audit Trail is a tab of the page and reads the entries of this template only", async () => {
+  allow("viewRevisions", "viewAuditTrail");
+  vi.mocked(reportTemplatesApi.detail).mockResolvedValue({ ...template, auditEntityId: "audit-key-1" } as never);
+  renderAt("/settings/report-configuration/DOCUMENT_STATUS/details", <ReportTemplateDetailPage inAdministration />, "/settings/report-configuration/:code/details");
+  expect(await screen.findByRole("heading", { name: "Report Template Details" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Audit Trail" })).not.toBeInTheDocument();
+  fireEvent.click(await screen.findByRole("tab", { name: "Audit Trail" }));
+  expect(await screen.findByText("Audit Trail of REPORT_DEFINITION audit-key-1")).toBeInTheDocument();
+});
+
+it("a person without the Audit Trail permission has no Audit Trail tab", async () => {
+  allow("createReport");
+  vi.mocked(reportTemplatesApi.detail).mockResolvedValue({ ...template, auditEntityId: "audit-key-1" } as never);
+  renderAt("/settings/report-configuration/DOCUMENT_STATUS/details", <ReportTemplateDetailPage inAdministration />, "/settings/report-configuration/:code/details");
+  expect(await screen.findByRole("heading", { name: "Report Template Details" })).toBeInTheDocument();
+  await screen.findByRole("tab", { name: /Fields/ });
+  expect(screen.queryByRole("tab", { name: "Audit Trail" })).not.toBeInTheDocument();
+});
+
+it("Back and Create Report are in the footer, and Revisions is a tab below them with one search and no status filter or column control", async () => {
+  renderAt("/report/templates/DOCUMENT_STATUS", <ReportTemplateDetailPage />, "/report/templates/:code");
+  expect(await screen.findByRole("heading", { name: "Report Template Details" })).toBeInTheDocument();
+  // the main tabs do not hold Revisions; it is the one tab of the card under the footer buttons
+  const tabs = screen.getAllByRole("tab").map((tab) => tab.textContent ?? "");
+  expect(tabs.filter((text) => /Revisions/.test(text))).toHaveLength(1);
+  expect(screen.getAllByRole("button", { name: "Back" })).toHaveLength(2);
+  expect(screen.getAllByRole("button", { name: "Create Report" })).toHaveLength(2);
+  expect(await screen.findByRole("textbox", { name: "Search revisions" })).toBeInTheDocument();
+  expect(screen.queryByText("Custom Column")).not.toBeInTheDocument();
+  // the sentence about source documents is gone, and the first facts are the time the template was created and last updated
+  expect(screen.queryByText(/does not grant access to source-document content/)).not.toBeInTheDocument();
+  const labels = screen.getAllByText(/^(Created Time|Last Updated|Template Name)$/).map((node) => node.textContent);
+  expect(labels.slice(0, 3)).toEqual(["Created Time", "Last Updated", "Template Name"]);
+  // the revision is read as 3.0.0, as a Document revision is
+  expect(await screen.findByText("3.0.0")).toBeInTheDocument();
 });

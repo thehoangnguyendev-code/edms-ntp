@@ -11,13 +11,10 @@ public record NotificationPolicyDetailResponse(
         String description,
         String module,
         String priority,
-        String complianceGroup,
         String relatedAction,
         String dataObject,
         String supportedChannels,
         String availableVariables,
-        boolean mandatory,
-        String mandatoryReason,
         String policyStatus,
         String enabledChannels,
         JsonNode recipientRules,
@@ -29,6 +26,8 @@ public record NotificationPolicyDetailResponse(
         JsonNode escalationRecipientRules,
         String updatedByName,
         Instant updatedAt,
-        List<NotificationTemplateVersionResponse> activeTemplates
+        List<NotificationTemplateVersionResponse> activeTemplates,
+        String icon,
+        String iconTone
 ) {
 }

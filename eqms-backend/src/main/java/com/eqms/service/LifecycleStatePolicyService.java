@@ -268,7 +268,7 @@ public class LifecycleStatePolicyService {
         }
         if (request.documentTypeId() != null
                 && documentTypeRepository.findById(request.documentTypeId()).isEmpty()) {
-            throw new IllegalArgumentException("Unknown document type: " + request.documentTypeId());
+            throw new IllegalArgumentException("Unknown document type");
         }
         if (StringUtils.hasText(request.requiredPermissionCode())
                 && permissionRepository.findByCode(request.requiredPermissionCode().trim()).isEmpty()) {
@@ -297,7 +297,7 @@ public class LifecycleStatePolicyService {
 
     private LifecycleStatePolicy require(UUID id) {
         return policyRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Lifecycle state policy not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Lifecycle state policy not found"));
     }
 
     private Map<String, String> statusLabelMap() {

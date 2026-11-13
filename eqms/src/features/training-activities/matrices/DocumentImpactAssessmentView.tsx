@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ROUTES } from "@/app/routes.constants";
 import { IconCircleOpenArrowRight, IconListCheck, IconPhotoSensor } from "@tabler/icons-react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -82,9 +83,9 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
 
   const columns: DataTableColumn<TrainingImpactRow>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "documentNumber", header: "Document Number", sort: sorted("documentNumber"), cell: (r) => <span className="font-medium text-slate-900">{r.documentNumber ?? "—"}</span> },
+    { id: "documentNumber", header: "Document Number", sort: sorted("documentNumber"), cell: (r) => (r.documentId && r.documentNumber ? <button type="button" className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left" onClick={() => navigate(ROUTES.DOCUMENTS.DETAIL(r.documentId))}>{r.documentNumber}</button> : <span className="font-medium text-slate-900">{r.documentNumber ?? "—"}</span>) },
     { id: "documentName", header: "Document Name", sort: sorted("documentName"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.documentName ?? "—"}</div> },
-    { id: "revision", header: "Revision Number", sort: sorted("revisionNumber"), cell: (r) => r.revisionNumber ?? "—" },
+    { id: "revision", header: "Revision Number", sort: sorted("revisionNumber"), cell: (r) => (r.revisionId && r.revisionNumber ? <button type="button" className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left" onClick={() => navigate(ROUTES.DOCUMENTS.REVISIONS.DETAIL(r.revisionId!))}>{r.revisionNumber}</button> : r.revisionNumber ?? "—") },
     { id: "training", header: "Training Number", sort: sorted("trainingNumber"), cell: (r) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/activities/${r.id}`)}>{r.trainingNumber}</button> },
     { id: "activity", header: "Training Status", sort: sorted("activityStatus"), cell: (r) => <Badge color={STATUS_COLOR[r.activityStatus] ?? "slate"}>{STATUS_LABEL[r.activityStatus] ?? r.activityStatus}</Badge> },
     { id: "impact", header: "Impact on the Matrix", sort: sorted("impactStatus"), cell: (r) => <Badge color={IMPACT_COLOR[r.impactStatus]}>{IMPACT_LABEL[r.impactStatus]}</Badge> },
@@ -126,7 +127,7 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
         customControl={control}
       >
         <DataTable
-          rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading} loadingContent={<SectionLoading text="Loading…" />}
+          rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading}
           columns={columns} columnLayout={layout} action={rowMenu.action}
           emptyState={<TableEmptyState title="Nothing waits for an assessment" description="Every new or revised document of the department has been assessed." />}
           pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined}

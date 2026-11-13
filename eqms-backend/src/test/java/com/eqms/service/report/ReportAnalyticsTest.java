@@ -22,7 +22,7 @@ class ReportAnalyticsTest {
     }
     @Test void trendUsesOrderedCalendarMonthsAndBlankHasExplicitCategory() {
         var result=ReportCharts.calculate(List.of(chart("LINE","createdAt","COUNT")),List.of("createdAt"),List.of(List.of("Created"),List.of("2026-12-01"),List.of("2026-10-05T10:00:00Z"),List.of("2026-10-03"))).getFirst();
-        assertEquals("2026-10",result.points().getFirst().label());assertEquals(2,result.points().getFirst().count());
+        assertEquals("10/2026",result.points().getFirst().label());assertEquals(2,result.points().getFirst().count());
         assertEquals("Unspecified",ReportCharts.calculate(List.of(chart("BAR","status","COUNT")),List.of("status"),List.of(List.of("Status"),List.of(""))).getFirst().points().getFirst().label());
         assertTrue(ReportCharts.calculate(List.of(chart("PIE","status","PERCENT")),List.of("status"),List.of(List.of("Status"))).getFirst().points().isEmpty());
     }

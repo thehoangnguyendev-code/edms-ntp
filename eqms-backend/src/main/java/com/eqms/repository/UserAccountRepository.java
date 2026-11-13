@@ -88,6 +88,10 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID>,
     @Query("select u from UserAccount u where lower(u.department) in (lower(:first), lower(:second)) and u.status = :status")
     java.util.List<UserAccount> findAllByDepartmentNameOrCodeAndStatus(@Param("first") String first, @Param("second") String second, @Param("status") UserStatus status);
 
+    /** User names of the people whose full name contains the text; the backup screens search people by the name they show. */
+    @Query("select u.username from UserAccount u where lower(u.fullName) like lower(concat('%', :text, '%'))")
+    java.util.List<String> findUsernamesByFullNameContaining(@Param("text") String text);
+
     @Query("select u from UserAccount u where lower(u.fullName) = lower(:fullName)")
     Optional<UserAccount> findByFullNameIgnoreCase(@Param("fullName") String fullName);
 

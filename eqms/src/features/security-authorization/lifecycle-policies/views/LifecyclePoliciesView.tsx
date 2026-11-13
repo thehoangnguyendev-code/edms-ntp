@@ -10,6 +10,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { WorkflowTransitionsView, type WorkflowTransitionsViewHandle } from "./WorkflowTransitionsView";
 import { StateCapabilitiesView } from "./StateCapabilitiesView";
 import { ActionStatusMatrix } from "../components/ActionStatusMatrix";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 
 type TabId = "matrix" | "transitions" | "capabilities";
 
@@ -32,7 +33,7 @@ export const LifecyclePoliciesView: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab: TabId = useMemo(() => {
     const tab = searchParams.get("tab");
-    return tab === "capabilities" || tab === "matrix" ? tab : "transitions";
+    return tab === "capabilities" || tab === "transitions" ? tab : "matrix";
   }, [searchParams]);
 
   const handleTabChange = (tab: string) => {
@@ -87,6 +88,18 @@ export const LifecyclePoliciesView: React.FC = () => {
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <TabNav tabs={TABS} activeTab={activeTab} onChange={handleTabChange} variant="underline" />
         <div className="p-4 md:p-5 flex-1 flex flex-col">
+          {activeTab !== "matrix" && (
+            <div className="mb-4">
+              <WarningBanner
+                variant="info"
+                description={
+                  activeTab === "transitions"
+                    ? "Advanced: this is the full list of rules behind the Action Matrix, one row per rule. Open it to change a rule or add an exception. To just see who may do what, use the Action Matrix tab."
+                    : "Advanced: these rules decide what each status allows (for example whether a record can be edited). Change them only when the lifecycle itself changes. To see who may do what, use the Action Matrix tab."
+                }
+              />
+            </div>
+          )}
           {activeTab === "matrix" && <ActionStatusMatrix />}
           {activeTab === "capabilities" && <StateCapabilitiesView embedded />}
           {activeTab === "transitions" && <WorkflowTransitionsView ref={transitionViewRef} embedded />}

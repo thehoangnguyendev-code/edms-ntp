@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDebounce } from "@/hooks/useDebounce";
 import { IconArrowLeft, IconArrowRight, IconCheck } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -122,6 +123,7 @@ export function TrainingJobCreatePage() {
     return role ? positionTitle(role) : id;
   };
   const [positionQuery, setPositionQuery] = useState("");
+  const debouncedPositionQuery = useDebounce(positionQuery, 300);
   const selectedPositions = useMemo(
     () =>
       positionIds
@@ -130,7 +132,7 @@ export function TrainingJobCreatePage() {
     [positionIds, positions],
   );
   const availablePositions = useMemo(() => {
-    const q = positionQuery.trim().toLowerCase();
+    const q = debouncedPositionQuery.trim().toLowerCase();
     return positions.filter(
       (p) =>
         p.departmentId &&
@@ -138,7 +140,7 @@ export function TrainingJobCreatePage() {
         !positionIds.includes(p.id) &&
         (!q || positionTitle(p).toLowerCase().includes(q)),
     );
-  }, [positions, held, positionIds, positionQuery]);
+  }, [positions, held, positionIds, debouncedPositionQuery]);
   const personLabel = people.find((p) => p.value === personId)?.label ?? "";
   const replacing = held.length > 0 && mode === "CHANGE";
   const stepOneReady =

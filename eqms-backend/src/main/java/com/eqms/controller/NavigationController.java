@@ -34,12 +34,21 @@ public class NavigationController {
 
     @GetMapping
     public List<NavigationItemResponse> getNavigation() {
-        return navigationService.getNavigation(resolvePermissions());
+        return navigationService.getNavigation(resolveUser(), resolvePermissions());
     }
 
     @GetMapping("/search")
     public List<NavigationService.FlatMenuItem> searchNavigation(@RequestParam("q") String query) {
-        return navigationService.searchNavigation(query, resolvePermissions());
+        return navigationService.searchNavigation(query, resolveUser(), resolvePermissions());
+    }
+
+    /** The signed-in account, or null when it cannot be loaded: the menu then follows permissions alone (the server still decides every list and action). */
+    private UserAccount resolveUser() {
+        try {
+            return currentUserService.requireCurrentUser();
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private Set<String> resolvePermissions() {

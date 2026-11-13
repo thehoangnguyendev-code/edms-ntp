@@ -20,8 +20,11 @@ import java.util.Map;
 @Service
 public class ScheduleQueryService {
 
-    /** Every component the product will back up, in the order the screens show them. Only DATABASE is backed up so far. */
-    static final List<String> COMPONENTS = List.of("DATABASE", "OBJECT_STORE", "FILE_STORAGE", "CONFIGURATION");
+    /**
+     * The parts a scheduled backup can hold, in the order the screens show them. By default the files are written in the same run
+     * as the database (one manifest records both snapshot times); the policy can instead give them a time of their own.
+     */
+    static final List<String> COMPONENTS = List.of("DATABASE", "OBJECT_STORE");
     private static final Map<String, Comparator<Map<String, Object>>> SORT = Map.of(
             // the product order (database first), not alphabetical
             "component", Comparator.comparingInt(row -> COMPONENTS.indexOf((String) row.get("component"))),
@@ -73,21 +76,33 @@ public class ScheduleQueryService {
 
     private List<Map<String, Object>> allRows() {
         JsonNode database = JSON.createObjectNode();
+        JsonNode filesOwn = JSON.createObjectNode();
+        boolean filesInPolicy = false;
         try {
-            String schedule = jdbc.queryForList("select schedule_json::text from backup_policy where status = 'ACTIVE'", String.class).stream().findFirst().orElse("{}");
-            database = JSON.readTree(schedule).path("database");
+            var active = jdbc.queryForList("select schedule_json::text as schedule, scope_json::text as scope from backup_policy where status = 'ACTIVE'").stream().findFirst();
+            JsonNode schedule = JSON.readTree(active.map(r -> (String) r.get("schedule")).orElse("{}"));
+            database = schedule.path("database");
+            filesOwn = schedule.path("files");
+            for (JsonNode part : JSON.readTree(active.map(r -> (String) r.get("scope")).orElse("{}")).path("components")) {
+                if ("OBJECT_STORE".equals(part.asText())) filesInPolicy = true;
+            }
         } catch (Exception ignored) {
             // an unreadable policy means nothing is scheduled; the screen shows that rather than a guess
         }
         List<Map<String, Object>> rows = new ArrayList<>();
         for (String component : COMPONENTS) {
-            boolean scheduled = "DATABASE".equals(component) && database.path("enabled").asBoolean(false);
+            boolean own = "OBJECT_STORE".equals(component) && filesInPolicy && filesOwn.path("enabled").asBoolean(false);
+            JsonNode source = own ? filesOwn : database;
+            boolean scheduled = own || (database.path("enabled").asBoolean(false) && ("DATABASE".equals(component) || ("OBJECT_STORE".equals(component) && filesInPolicy)));
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("component", component);
-            row.put("type", scheduled ? database.path("type").asText("") : "");
-            row.put("frequency", scheduled ? database.path("frequency").asText("") : "");
-            row.put("time", scheduled ? database.path("time").asText("") : "");
+            row.put("type", scheduled ? source.path("type").asText("") : "");
+            row.put("frequency", scheduled ? source.path("frequency").asText("") : "");
+            row.put("time", scheduled ? source.path("time").asText("") : "");
             row.put("status", scheduled ? "ACTIVE" : "NOT_SCHEDULED");
+            row.put("note", own ? "Has a schedule of its own, apart from the database"
+                    : scheduled && "OBJECT_STORE".equals(component) ? "Backed up in the same run as the database"
+                    : "OBJECT_STORE".equals(component) ? "Not part of the active policy" : "");
             rows.add(row);
         }
         return rows;

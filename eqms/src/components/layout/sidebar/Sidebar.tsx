@@ -26,7 +26,9 @@ import { KNOWLEDGE_BASE_NAV_ID, openKnowledgeExplorer } from "@/features/self-se
 import { Avatar } from "@/components/ui/avatar";
 import { TabNav, type TabItem } from "@/components/ui/tabs";
 import { useSidebarFavorites } from "./useSidebarFavorites";
-import { APP_SIDEBAR_COLLAPSED_WIDTH, APP_SIDEBAR_WIDTH } from "./sidebarWidths";
+import { APP_SIDEBAR_COLLAPSED_WIDTH, MOBILE_SIDEBAR_WIDTH } from "./sidebarWidths";
+import { useSidebarWidth } from "./useSidebarWidth";
+import { SidebarResizeHandle } from "./SidebarResizeHandle";
 import "./Sidebar.module.css";
 import { resolvePermissionAliasCodes } from "@/features/settings/permissionCatalog";
 import { notificationApi } from "@/services/api/notifications";
@@ -36,13 +38,30 @@ import { IconLogout, IconPointFilled, IconUser } from "@tabler/icons-react";
 
 // Constants
 const BASE_PADDING = 12;
-const LEVEL_PADDING = 16;
+// Nested rows are indented only as far as the guide rail needs, so long names keep their room.
+const LEVEL_PADDING = 8;
 /** Space between a nested item's guide rail and the left edge of its highlight. */
-const NESTED_RAIL_GAP = 4;
-const NESTED_PADDING = 10;
-const SIDEBAR_WIDTH = APP_SIDEBAR_WIDTH;
-/** Room kept at the right of every row for the favourite star, so it never covers the label. */
-const STAR_SLOT = 40;
+const NESTED_RAIL_GAP = 2;
+const NESTED_PADDING = 6;
+
+/**
+ * A menu name that does not fit is cut with "…", and the full name appears as a tooltip only then
+ * (a name that fits needs no tooltip).
+ */
+const TruncatedLabel: React.FC<{ label: string }> = ({ label }) => {
+  const [cut, setCut] = useState(false);
+  const check = (element: HTMLSpanElement) => setCut(element.scrollWidth > element.clientWidth + 1);
+  return (
+    <span
+      className="truncate"
+      title={cut ? label : undefined}
+      onMouseEnter={(event) => check(event.currentTarget)}
+      onFocus={(event) => check(event.currentTarget)}
+    >
+      {label}
+    </span>
+  );
+};
 const MENU_WIDTH = 300;
 const MENU_GAP = 8;
 const SAFE_PADDING = 8;
@@ -428,6 +447,25 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
       position: { top: 0, left: 0 },
     });
 
+    // Width the user chose by dragging the edge (desktop and tablet only; the phone menu has a fixed width).
+    const { width: chosenWidth, commit: commitChosenWidth, reset: resetChosenWidth } = useSidebarWidth();
+    const asideRef = useRef<HTMLElement | null>(null);
+    const [isResizing, setIsResizing] = useState(false);
+    const [isWideScreen, setIsWideScreen] = useState(() => typeof window === "undefined" || window.matchMedia?.("(min-width: 768px)").matches !== false);
+    useEffect(() => {
+      if (typeof window === "undefined" || !window.matchMedia) return;
+      const query = window.matchMedia("(min-width: 768px)");
+      const update = () => setIsWideScreen(query.matches);
+      update();
+      query.addEventListener("change", update);
+      return () => query.removeEventListener("change", update);
+    }, []);
+    const expandedWidth = isWideScreen ? chosenWidth : MOBILE_SIDEBAR_WIDTH;
+    /** Live width while dragging: written straight to the element, no React render per pointer move. */
+    const applyLiveWidth = useCallback((value: number) => {
+      asideRef.current?.style.setProperty("--sidebar-w", `${value}px`);
+    }, []);
+
     const currentScreenLabel = useMemo(() => {
       const item = findNodeByPath(NAV_CONFIG, location.pathname);
       return item?.label || "";
@@ -723,7 +761,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                   style={{ left: `${level === 1 ? BASE_PADDING + 4 : BASE_PADDING + LEVEL_PADDING}px` }}
                 />
               )}
-              <div className="relative">
+              <div className="relative group/row">
               <button
                 type="button"
                 onClick={(e) => {
@@ -744,7 +782,9 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 className={cn(
                   "w-full flex items-center group relative overflow-visible z-10 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/20",
                   level === 0 ? "h-11 md:h-11" : "h-10 mr-1.5",
-                  isCollapsed ? "justify-center px-0" : "justify-start",
+                  // Right padding: touch screens keep a 40px slot for the always-visible star; with a
+                  // mouse the star only appears on hover (over the end of the name), so the name gets the room.
+                  isCollapsed ? "justify-center px-0" : "justify-start pr-10 [@media(hover:hover)]:pr-3.5",
                   isActive
                     ? "text-emerald-700"
                     : "text-slate-600 hover:text-slate-900 active:bg-slate-100",
@@ -752,7 +792,6 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 )}
                 style={{
                   paddingLeft: isCollapsed ? 0 : `${paddingLeft}px`,
-                  paddingRight: isCollapsed ? 0 : `${STAR_SLOT}px`,
                   ...(!isCollapsed && level > 0 ? { marginLeft: `${nestedMarginLeft}px`, width: `calc(100% - ${nestedMarginLeft + 6}px)` } : null),
                 }}
               >
@@ -849,16 +888,18 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                           : "font-medium",
                     )}
                   >
-                    <span className="truncate">{item.label}</span>
+                    <TruncatedLabel label={item.label} />
 
-                    {/* Pending/unread count, same pill styling the collapsed flyout uses for the same data. */}
+                    {/* Pending/unread count, same pill styling the collapsed flyout uses for the same data.
+                        With a mouse it steps aside while the row is hovered, where the favourite star appears. */}
                     {(() => {
                       const val = item.count ?? navCounts[item.id];
                       if (val === undefined || val <= 0) return null;
                       return (
                         <span
                           className={cn(
-                            "ml-auto mr-1.5 text-2xs px-1.5 py-0.5 rounded-full font-semibold min-w-[20px] text-center shrink-0",
+                            "ml-auto mr-1.5 text-2xs px-1.5 py-0.5 rounded-full font-semibold min-w-[20px] text-center shrink-0 transition-opacity",
+                            "[@media(hover:hover)]:group-hover/row:opacity-0 [@media(hover:hover)]:group-focus-within/row:opacity-0",
                             isActive
                               ? "bg-emerald-100 text-emerald-800"
                               : "bg-slate-100 text-slate-600 group-hover/navitem:bg-slate-200",
@@ -897,11 +938,15 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                   aria-label={starred ? `Remove ${item.label} from favourites` : `Add ${item.label} to favourites`}
                   title={hasChildren ? (starred ? "Remove with everything beneath it" : "Add with everything beneath it") : starred ? "Remove from favourites" : "Add to favourites"}
                   className={cn(
-                    "absolute top-1/2 z-20 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md transition-colors",
+                    "absolute top-1/2 z-20 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md transition-[color,opacity]",
                     "outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
                     starred ? "text-amber-500" : "text-slate-300 hover:text-amber-500",
+                    level === 0 ? "right-2.5" : "right-2",
+                    // Mouse: the bare star appears when the row is hovered or focused (a starred row keeps its
+                    // star). On a parent row it sits just left of the chevron. Touch screens always show it.
+                    !starred && "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:focus-visible:opacity-100",
+                    hasChildren && (level === 0 ? "[@media(hover:hover)]:right-12" : "[@media(hover:hover)]:right-[46px]"),
                   )}
-                  style={{ right: level === 0 ? 10 : 8 }}
                 >
                   <Star className={cn("h-4 w-4", starred && "fill-amber-400")} />
                 </button>
@@ -924,7 +969,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                     }}
                     className="overflow-hidden will-change-[height,opacity,transform]"
                   >
-                    <div className="pl-3 py-1">
+                    <div className="pl-2 py-1">
                       {item.children?.map((child, childIndex) =>
                         renderMenuItem(child, level + 1, childIndex),
                       )}
@@ -1283,12 +1328,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
 
         {/* Sidebar */}
         <motion.aside
-          initial={false}
-          animate={{ width: isCollapsed ? APP_SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH }}
-          transition={{
-            width: shouldReduceMotion ? { duration: 0 } : { duration: 0.56, ease: [0.22, 1, 0.36, 1] },
-            transform: shouldReduceMotion ? { duration: 0 } : { duration: 0.46, ease: [0.22, 1, 0.36, 1] },
-          }}
+          ref={asideRef}
           className={cn(
             "bg-white border-r border-slate-200 flex flex-col sidebar-mobile",
             "fixed top-0 left-0 bottom-0 z-50",
@@ -1296,17 +1336,23 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
 
             isCollapsed
               ? "w-16 md:w-20"
-              : "w-[360px] max-w-[92vw]",
+              : "w-[320px] max-w-[92vw]",
 
             "md:translate-x-0",
             isMobileOpen
               ? "translate-x-0"
               : "-translate-x-full md:translate-x-0",
+            // While the edge is dragged nothing inside may react to the pointer (hover chips, tooltips) or get selected.
+            isResizing && "select-none [&>*:not([role=separator])]:pointer-events-none",
           )}
           style={{
+            // The width comes from a CSS variable, so dragging the edge can change it without re-rendering
+            // the menu on every pointer move. It eases only when collapsing/expanding, never while dragging.
+            "--sidebar-w": `${expandedWidth}px`,
+            width: isCollapsed ? APP_SIDEBAR_COLLAPSED_WIDTH : "var(--sidebar-w)",
             // Mobile and narrow screens use the translate-x classes above. Keep
             // their off-canvas motion aligned with the desktop width animation.
-            transition: shouldReduceMotion ? "none" : "transform 560ms cubic-bezier(0.22, 1, 0.36, 1)",
+            transition: shouldReduceMotion || isResizing ? "none" : "transform 560ms cubic-bezier(0.22, 1, 0.36, 1), width 560ms cubic-bezier(0.22, 1, 0.36, 1)",
             willChange: "transform, width",
             // Safe area for notch/Dynamic Island (top) and landscape edges
             // Bottom is NOT set here - handled by nav container padding for proper scroll
@@ -1315,7 +1361,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
             // Use dvh for iOS Safari
             height: "100dvh",
             minHeight: "100vh",
-          }}
+          } as React.CSSProperties}
         >
           {/* Header / Logo Area */}
           <div
@@ -1431,7 +1477,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
               transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             >
               {/* Keep tab geometry stable while the sidebar width animates. */}
-              <div style={{ width: `min(${SIDEBAR_WIDTH - 25}px, calc(92vw - 25px))` }}>
+              <div style={{ width: "min(calc(var(--sidebar-w) - 25px), calc(92vw - 25px))" }}>
               <TabNav
                 tabs={sidebarTabs}
                 activeTab={sidebarTab}
@@ -1602,6 +1648,17 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 )}
               </button>
             </div>
+          )}
+
+          {!isCollapsed && (
+            <SidebarResizeHandle
+              width={chosenWidth}
+              getLeft={() => asideRef.current?.getBoundingClientRect().left ?? 0}
+              onResize={applyLiveWidth}
+              onCommit={commitChosenWidth}
+              onReset={resetChosenWidth}
+              onDraggingChange={setIsResizing}
+            />
           )}
 
         </motion.aside>

@@ -23,7 +23,6 @@ import {
   TrainingInformationTab,
 } from "@/features/documents/document-revisions/workspace-tabs";
 
-import type { DocumentStatus } from "@/features/documents/types";
 import { documentApi } from "@/services/api/documents";
 import { auditTrailApi } from "@/services/api/auditTrail";
 import type { RevisionDetailResponse, RevisionReviewCommentItem } from "@/features/documents/document-revisions/detail-revision/types";
@@ -37,7 +36,6 @@ import { buildRevisionDetailSnapshotState, isRevisionDetailSnapshotPreload, refr
 import { buildRevisionDetailNavigationState } from "@/features/documents/shared/navigationContext";
 import { ROUTES } from "@/app/routes.constants";
 import { isLiveViewStage } from "@/features/documents/shared/liveDocumentView";
-import { resolveTerminalProgressStep } from "@/features/documents/shared/statusMapping";
 import type { RevisionWorkspaceState } from "@/features/documents/shared/navigationContext";
 import {
   buildRevisionPreviewFileName,
@@ -125,11 +123,6 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
       currentRevision?.coAuthors,
       currentRevision?.workingNotesEditable,
     ],
-  );
-  const skippedSteps = currentRevision?.requiresTraining ? [] : (["Pending Training"] as const);
-  const terminalProgressStep = useMemo(
-    () => resolveTerminalProgressStep(document?.status, document?.history ?? []),
-    [document?.history, document?.status],
   );
   const signatureRecords = useMemo<SignatureTabRecord[]>(
     () => buildRevisionSignatureRecords(document),
@@ -551,18 +544,6 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
   // Approve/Reject actions still wait for a ready snapshot; "Open File to Comment" (Word Online)
   // stays available regardless, so reviewers are never blocked from viewing the source content.
 
-  // Status workflow steps
-  const statusSteps: DocumentStatus[] = [
-    "Draft",
-    "Pending Review",
-    "Pending Approval",
-    "Pending Training",
-    "Ready for Publishing",
-    "Effective",
-    "Obsoleted",
-    "Closed - Cancelled",
-  ];
-
   // Breadcrumbs
   const breadcrumbs = revisionReview(
     navigate,
@@ -590,10 +571,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
         title="Review Revision"
         breadcrumbs={breadcrumbs}
         onBack={handleBack}
-        statusSteps={statusSteps}
-        currentStatus={document?.status || "Draft"}
-        skippedSteps={skippedSteps}
-        terminalProgressStep={terminalProgressStep}
+        workflow={document?.workflow}
         tabs={DEFAULT_WORKFLOW_TABS}
         activeTab={activeTab}
         onTabChange={(tab) => setActiveTab(tab as TabType)}
@@ -661,6 +639,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
                 coAuthors: (currentRevision.coAuthors || []).map((item: any) => item.fullName),
                 isTemplate: currentRevision.isTemplate || false,
                 type: currentRevision.type || "",
+                typeShortCode: currentRevision.typeShortCode,
                 subType: currentRevision.subType || "",
                 effectiveDate: currentRevision.effectiveDate,
                 validUntil: currentRevision.validUntil,

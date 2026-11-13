@@ -156,7 +156,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
             readOnly
             className={CONTROL_STATE_CLASSES.readonlyField}
           />
-          {controlledCopy.status === "Obsoleted" && controlledCopy.obsoleteReason === "EXPIRED" && (
+          {controlledCopy.statusCode === "OBSOLETED" && controlledCopy.obsoleteReason === "EXPIRED" && (
             <p className="text-[11px] sm:text-xs text-amber-600 font-medium">
               This controlled copy has been automatically obsoleted because the expiry date was reached.
             </p>
@@ -266,7 +266,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
               type="button"
               onClick={() => onNavigateToLinkedCopy?.(controlledCopy.replacedControlledCopyId!)}
               disabled={!onNavigateToLinkedCopy}
-              className="flex h-9 w-full items-center rounded-lg border border-slate-200 bg-slate-50 px-3.5 text-left text-sm font-medium text-emerald-600 hover:underline disabled:cursor-default disabled:text-slate-700 disabled:no-underline"
+              className="flex h-9 w-full items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-left text-sm font-medium text-emerald-600 hover:underline disabled:cursor-default disabled:text-slate-700 disabled:no-underline"
             >
               {formatControlledCopyNumber(controlledCopy.replacedControlledCopyNumber) || "-"}
             </button>
@@ -279,7 +279,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
               type="button"
               onClick={() => onNavigateToLinkedCopy?.(controlledCopy.replacementControlledCopyId!)}
               disabled={!onNavigateToLinkedCopy}
-              className="flex h-9 w-full items-center rounded-lg border border-slate-200 bg-slate-50 px-3.5 text-left text-sm font-medium text-emerald-600 hover:underline disabled:cursor-default disabled:text-slate-700 disabled:no-underline"
+              className="flex h-9 w-full items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-left text-sm font-medium text-emerald-600 hover:underline disabled:cursor-default disabled:text-slate-700 disabled:no-underline"
             >
               {formatControlledCopyNumber(controlledCopy.replacementControlledCopyNumber) || "-"}
             </button>

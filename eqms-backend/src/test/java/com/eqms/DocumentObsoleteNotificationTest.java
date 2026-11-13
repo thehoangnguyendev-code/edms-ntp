@@ -432,8 +432,8 @@ class DocumentObsoleteNotificationTest {
         DocumentRecord document = newActiveDocument("TCDOC066", author);
         DocumentRevisionRecord revision = newEffectiveRevision(document, author);
 
-        doThrow(new RuntimeException("TC-DOC-066 simulated SMTP failure"))
-                .when(emailService).sendRenderedEmail(any(), any(), any());
+        // the provider refuses the mail (the production code sends through the 5-argument overload): recorded at once as a durable failure
+        doReturn(false).when(emailService).sendRenderedEmail(any(), any(), any(), any(), any());
 
         long auditRowsBeforeNotification = auditLogRepository.count();
         Instant testStart = Instant.now();
@@ -492,8 +492,7 @@ class DocumentObsoleteNotificationTest {
         DocumentRecord document = newActiveDocument("TCDOC067", author);
         DocumentRevisionRecord revision = newEffectiveRevision(document, author);
 
-        doThrow(new RuntimeException("TC-DOC-067 simulated SMTP failure"))
-                .when(emailService).sendRenderedEmail(any(), any(), any());
+        doReturn(false).when(emailService).sendRenderedEmail(any(), any(), any(), any(), any());
         Instant testStart = Instant.now();
 
         runAsActor(author, () -> documentService.obsoleteDocument(document.getId(), obsoleteRequest(author)));
@@ -523,7 +522,7 @@ class DocumentObsoleteNotificationTest {
         // Now make the retry succeed. The manual-retry path for a policy-driven failure re-renders
         // the ACTIVE EMAIL NotificationTemplateVersion and resends via sendRenderedEmail -- the
         // same method used for the original send, no legacy sendTemplateEmail path involved.
-        doReturn(true).when(emailService).sendRenderedEmail(any(), any(), any());
+        doReturn(true).when(emailService).sendRenderedEmail(any(), any(), any(), any(), any());
         var retryResult = runAsActorReturning(operator, () -> notificationController.retryDeliveryFailure(failureId));
         NotificationDeliveryFailureResponse retried = retryResult.getBody();
         assertNotNull(retried);

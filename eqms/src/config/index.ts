@@ -6,7 +6,9 @@
 export const config = {
   // API Configuration
   api: {
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
+    // A build sets VITE_API_BASE_URL. Without it, the dev server talks to the local backend and any other build
+    // uses the same address it was served from -- a localhost address is never baked into a built bundle.
+    baseURL: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:5000/api' : '/api'),
     timeout: Number(import.meta.env.VITE_API_TIMEOUT) || 30000,
   },
 
@@ -53,7 +55,7 @@ export const config = {
 
   // OnlyOffice Document Server (browser-reachable address for the DocsAPI script + editor iframe)
   onlyOffice: {
-    documentServerUrl: import.meta.env.VITE_ONLYOFFICE_URL || 'http://localhost:8082',
+    documentServerUrl: import.meta.env.VITE_ONLYOFFICE_URL || (import.meta.env.DEV ? 'http://localhost:8082' : '/onlyoffice'),
   },
 
 } as const;

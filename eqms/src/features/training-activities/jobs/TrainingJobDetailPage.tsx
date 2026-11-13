@@ -53,11 +53,6 @@ import {
 import { useTrainingBack } from "../shared/useTrainingBack";
 
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
-const JOB_STEPS = [
-  { status: "DRAFT", label: "Draft" },
-  { status: "PENDING_RECEIVER", label: "Pending Employee Acceptance" },
-  { status: "EFFECTIVE", label: "Effective" },
-];
 
 type Dialog = "exception" | "cancel" | undefined;
 interface SignRequest {
@@ -379,18 +374,6 @@ export function TrainingJobDetailPage() {
       )}
     </>
   );
-  const cancelled = job.status === "CANCELLED";
-  const obsoleted = job.status === "OBSOLETED";
-  const steps = cancelled
-    ? ["Draft", "Pending Employee Acceptance", "Effective", "Cancelled"]
-    : [...JOB_STEPS.map((x) => x.label), "Obsoleted"];
-  const stepIndex =
-    cancelled || obsoleted
-      ? 3
-      : Math.max(
-          0,
-          JOB_STEPS.findIndex((x) => x.status === job.status),
-        );
 
   return (
     <>
@@ -398,9 +381,7 @@ export function TrainingJobDetailPage() {
         title={title}
         breadcrumbItems={crumbs}
         onBack={goBack}
-        steps={steps}
-        currentStepIndex={stepIndex}
-        terminalProgressStep={obsoleted ? "Effective" : "Draft"}
+        workflow={job.workflow}
         tabs={tabs}
         activeTab={tab}
         onTab={setTab}

@@ -31,7 +31,23 @@ public class AlertService {
         this.ledger = ledger;
     }
 
+    /** Sort keys the API accepts, mapped to fixed SQL; anything else falls back to the newest first. */
+    private static final Map<String, String> SORT = Map.of(
+            "at", "a.at",
+            "severity", "a.severity",
+            "code", "a.code",
+            "ref", "a.ref",
+            "acknowledgedAt", "a.acknowledged_at");
+
     public Map<String, Object> page(String state, String severity, String search, int page, int limit) {
+        return page(state, severity, search, null, null, null, false, page, limit);
+    }
+
+    public Map<String, Object> page(String state, String severity, String search, java.time.Instant from, java.time.Instant to, String sortBy, boolean ascending, int page, int limit) {
+        return page(state, severity, search, from, to, sortBy, ascending, page, limit, List.of());
+    }
+
+    public Map<String, Object> page(String state, String severity, String search, java.time.Instant from, java.time.Instant to, String sortBy, boolean ascending, int page, int limit, List<String> people) {
         int safeLimit = Math.min(Math.max(limit, 1), 100);
         int safePage = Math.max(page, 1);
         String s = state == null || state.isBlank() ? "OPEN" : state.trim().toUpperCase(Locale.ROOT);
@@ -46,16 +62,28 @@ public class AlertService {
             args.add(sev);
         }
         if (search != null && !search.isBlank()) {
-            where.append(" and (lower(a.code) like ? or lower(coalesce(a.detail,'')) like ? or lower(coalesce(a.ref,'')) like ?)");
-            String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            for (int i = 0; i < 3; i++) args.add(like);
+            new com.eqms.backup.agent.api.SearchClause(search)
+                    .text("lower(a.code)").text("lower(coalesce(a.detail,''))").text("lower(coalesce(a.ref,''))")
+                    .text("lower(a.severity)").text("lower(coalesce(a.acknowledged_by,''))")
+                    .date("a.at").date("a.acknowledged_at")
+                    .people(people, "a.acknowledged_by")
+                    .appendTo(where, args);
         }
+        if (from != null) {
+            where.append(" and a.at >= ?");
+            args.add(java.sql.Timestamp.from(from));
+        }
+        if (to != null) {
+            where.append(" and a.at <= ?");
+            args.add(java.sql.Timestamp.from(to));
+        }
+        String order = SORT.getOrDefault(sortBy == null ? "" : sortBy, "a.at") + (ascending ? " asc" : " desc") + " nulls last, a.at desc, a.id desc";
         Long total = jdbc.queryForObject("select count(*) from backup_alert a" + where, Long.class, args.toArray());
         List<Object> pageArgs = new ArrayList<>(args);
         pageArgs.add(safeLimit);
         pageArgs.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("select a.id, a.at, a.severity, a.code, a.detail, a.ref, a.acknowledged_at, a.acknowledged_by "
-                + "from backup_alert a" + where + " order by a.at desc, a.id desc limit ? offset ?", pageArgs.toArray()).stream().map(row -> {
+                + "from backup_alert a" + where + " order by " + order + " limit ? offset ?", pageArgs.toArray()).stream().map(row -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", String.valueOf(row.get("id")));
             m.put("at", instant(row.get("at")));

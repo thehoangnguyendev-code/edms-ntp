@@ -226,6 +226,7 @@ public class RevisionService {
     private final DocumentRevisionTemplateLineageRepository templateLineageRepository;
     private final WorkflowParticipantEligibilityService workflowParticipantEligibilityService;
     private final SignatureTokenConsumptionService signatureTokenConsumptionService;
+    private final WorkflowProgressService workflowProgressService;
 
     private final DocumentTypeRepository documentTypeRepository;
     private final DocumentSubTypeRepository documentSubTypeRepository;
@@ -271,8 +272,10 @@ public class RevisionService {
             RevisionUploadSecurityAuditService revisionUploadSecurityAuditService,
             DocumentRevisionTemplateLineageRepository templateLineageRepository,
             WorkflowParticipantEligibilityService workflowParticipantEligibilityService,
-            SignatureTokenConsumptionService signatureTokenConsumptionService
+            SignatureTokenConsumptionService signatureTokenConsumptionService,
+            WorkflowProgressService workflowProgressService
     ) {
+        this.workflowProgressService = workflowProgressService;
         this.revisionRepository = revisionRepository;
         this.revisionStatusRepository = revisionStatusRepository;
         this.documentRepository = documentRepository;
@@ -2439,7 +2442,7 @@ public class RevisionService {
                 "ACTIVATE",
                 "DRAFT",
                 "ACTIVE",
-                "Document activated: initial revision source uploaded (Revision " + revision.getId() + ")"
+                "Document activated: initial revision source uploaded (Revision " + revision.getRevisionNumber() + ")"
         );
     }
 
@@ -3192,7 +3195,6 @@ public class RevisionService {
             if (isAssignmentOrRejectionNotification(templateType)) {
                 // Someone has to act, or must learn their work was sent back -- a personal
                 // preference must not be able to silence that (see NotificationEventCatalogBootstrap).
-                overrides.put("notificationMandatory", "true");
             }
             Map<String, String> variables = emailNotificationService.buildDocumentVariables(
                     document,
@@ -3896,6 +3898,7 @@ public class RevisionService {
                 revision.getStatus() == null ? null : revision.getStatus().getLabel(),
                 new StatusResponse(revision.getStatus() == null ? null : revision.getStatus().getCode(), revision.getStatus() == null ? null : revision.getStatus().getLabel()),
                 revision.getDocumentType() == null ? null : revision.getDocumentType().getName(),
+                revision.getDocumentType() == null ? null : revision.getDocumentType().getShortCode(),
                 revision.getBusinessUnit() == null ? null : revision.getBusinessUnit().getName(),
                 revision.getDepartment() == null ? null : revision.getDepartment().getName(),
                 revision.getAuthor() == null ? null : revision.getAuthor().getFullName(),
@@ -3976,7 +3979,13 @@ public class RevisionService {
                 canPublishRevision,
                 message,
                 legacyImportInfo,
-                relatedDocumentsPublishingTogether
+                relatedDocumentsPublishingTogether,
+                workflowProgressService.forRevision(
+                        revisionStatusCode,
+                        revision.isRequiresTraining(),
+                        history.stream()
+                                .map(h -> new WorkflowProgressService.Transition(h.actionType(), h.fromStatus(), h.toStatus()))
+                                .toList())
         );
     }
 
@@ -4551,7 +4560,7 @@ public class RevisionService {
         for (String userId : coAuthorIds) {
             UserAccount user = resolveUser(userId);
             if (user == null) {
-                throw new IllegalArgumentException("Co-author not found: " + userId);
+                throw new IllegalArgumentException("Co-author not found");
             }
             saveRevisionParticipant(revision, user, "CO_AUTHOR", sequence++);
         }
@@ -4560,7 +4569,7 @@ public class RevisionService {
         for (String userId : reviewerUserIds) {
             UserAccount user = resolveUser(userId);
             if (user == null) {
-                throw new IllegalArgumentException("Reviewer not found: " + userId);
+                throw new IllegalArgumentException("Reviewer not found");
             }
             workflowParticipantEligibilityService.requirePoolMembership("REVIEWER", user);
             saveRevisionParticipant(revision, user, "REVIEWER", sequence++);
@@ -4570,7 +4579,7 @@ public class RevisionService {
         for (String userId : approverUserIds) {
             UserAccount user = resolveUser(userId);
             if (user == null) {
-                throw new IllegalArgumentException("Approver not found: " + userId);
+                throw new IllegalArgumentException("Approver not found");
             }
             workflowParticipantEligibilityService.requirePoolMembership("APPROVER", user);
             saveRevisionParticipant(revision, user, "APPROVER", sequence++);

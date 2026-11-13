@@ -59,6 +59,8 @@ public class ReportPlatformService {
     private SecurityChangeSignatureService signatures;
     /** Meaning of the electronic signature for releasing a legal hold (seeded by V579). */
     public static final String MEANING_LEGAL_HOLD_RELEASE = "REPORT_LEGAL_HOLD_RELEASE";
+    /** REPORT-RUN-SIGNATURE-2026-11-12: the person who requests a run of a type that needs it signs the request. */
+    public static final String MEANING_RUN_REQUEST = "REPORT_RUN_REQUESTED";
     @org.springframework.beans.factory.annotation.Autowired
     public void configureSignatures(SecurityChangeSignatureService signatures) { this.signatures = signatures; }
 
@@ -219,6 +221,47 @@ public class ReportPlatformService {
         return jdbc.queryForList("select id, full_name as \"fullName\", employee_code as \"employeeCode\", email, department, business_unit as \"businessUnit\" from app_users where status='Active' and (full_name ilike ? or employee_code ilike ? or email ilike ?) order by full_name limit 30", term, term, term).stream().filter(candidate -> users.findById(UUID.fromString(candidate.get("id").toString())).map(this::hasArtifactDownloadPermission).orElse(false)).toList();
     }
 
+    /**
+     * The people who may be chosen as recipients of a scheduled report: active people who hold a permission to download report files (through an active access profile and
+     * an active permission set), found by name, user name, employee code or e-mail, narrowed to a business unit and a department, paged by the server like the people of a Training.
+     */
+    private static final String ELIGIBLE_RECIPIENT = " u.status='Active' and exists (select 1 from user_access_profiles uap join roles r on r.id=uap.access_profile_id and r.is_active=true"
+            + " join access_profile_permission_sets aps on aps.access_profile_id=r.id join permission_sets ps on ps.id=aps.permission_set_id and ps.active=true"
+            + " join permission_set_items i on i.permission_set_id=ps.id join permissions p on p.id=i.permission_id"
+            + " where uap.user_id=u.id and p.code in ('reports.artifact.download','report.module.export'))";
+
+    public Map<String,Object> recipientPeople(UserAccount actor, String search, String businessUnit, String department, int page, int limit) {
+        require(actor, "reports.schedule.manage", "report.module.export");
+        String text = search == null ? "" : search.trim();
+        if (text.length() > 200) throw new IllegalArgumentException("REPORT_SEARCH_TOO_LONG");
+        String like = "%" + text.toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+        StringBuilder where = new StringBuilder(" where" + ELIGIBLE_RECIPIENT
+                + " and (lower(u.full_name) like ? escape '\\' or lower(u.username) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\' or lower(coalesce(u.email,'')) like ? escape '\\')");
+        List<Object> args = new ArrayList<>(List.of(like, like, like, like));
+        if (businessUnit != null && !businessUnit.isBlank()) { where.append(" and u.business_unit=?"); args.add(businessUnit); }
+        if (department != null && !department.isBlank()) { where.append(" and u.department=?"); args.add(department); }
+        Long total = jdbc.queryForObject("select count(*) from app_users u" + where, Long.class, args.toArray());
+        int safePage = Math.max(1, page);
+        int size = Math.min(50, Math.max(1, limit));
+        args.add(size);
+        args.add((long) (safePage - 1) * size);
+        List<Map<String,Object>> data = jdbc.queryForList("select u.id, u.full_name as \"fullName\", u.username, u.email, u.employee_code as \"employeeCode\", u.department, u.position, u.business_unit as \"businessUnit\", u.avatar from app_users u"
+                + where + " order by lower(u.full_name), u.id limit ? offset ?", args.toArray());
+        long count = total == null ? 0 : total;
+        return Map.of("data", data, "pagination", Map.of("page", safePage, "limit", size, "total", count, "totalPages", Math.max(1, (int) Math.ceil((double) count / size))));
+    }
+
+    /** The business units or departments of the people who may be chosen, with how many each holds: the choices that narrow the list. */
+    public List<Map<String,Object>> recipientGroups(UserAccount actor, String by) {
+        require(actor, "reports.schedule.manage", "report.module.export");
+        String column = switch (by == null ? "" : by) {
+            case "BUSINESS_UNIT" -> "u.business_unit";
+            case "DEPARTMENT" -> "u.department";
+            default -> throw new IllegalArgumentException("REPORT_FILTER_NOT_ALLOWED");
+        };
+        return jdbc.queryForList("select " + column + " as name, count(*) as total from app_users u where" + ELIGIBLE_RECIPIENT + " and " + column + " is not null and trim(" + column + ") <> '' group by " + column + " order by " + column);
+    }
+
     @org.springframework.transaction.annotation.Transactional
     public UUID createSchedule(UserAccount actor, ScheduleRequest request) {
         templates.require(actor,"reports.schedule.manage","report.module.export");
@@ -228,9 +271,13 @@ public class ReportPlatformService {
         Map<String,Object> definition = jdbc.queryForMap("select * from report_definitions where code=? and active=true", request.definitionCode());
         String format = request.format() == null ? "CSV" : request.format().toUpperCase(Locale.ROOT);
         validateFormat(definition, format); validateFields(request.definitionCode(), request.fields());
+        // A scheduled run has nobody to sign it, so a type whose runs are signed cannot be scheduled (REPORT-RUN-SIGNATURE-2026-11-12).
+        if (templates.runNeedsSignature(String.valueOf(definition.get("source_code")))) throw new IllegalArgumentException("REPORT_SIGNED_TYPE_NOT_SCHEDULABLE");
         var filters=new LinkedHashMap<>(request.parameters()==null?Map.of():request.parameters());filters.remove("definitionVersion");
         Object title=filters.remove("reportTitle");com.eqms.service.report.ReportTemplateService.validatedTitle(title,String.valueOf(definition.get("display_name")));
         var accepted=templates.snapshot(actor,request.definitionCode(),new com.eqms.service.report.ReportTemplateService.Criteria(null,request.fields(),filters,null,"asc"));
+        // A schedule runs without anyone watching, so it is never Full: it needs a filter (REPORT-FULL-RUN-2026-11-12).
+        templates.requireNarrowing(accepted.path("definition").path("sourceCode").asText(), filters, false);
         List<UUID> recipients = request.recipientUserIds() == null ? List.of() : request.recipientUserIds().stream().distinct().toList();
         if(request.name().length()>255||recipients.size()>templates.maxScheduleRecipients()||recipients.contains(null))throw new IllegalArgumentException("REPORT_SCHEDULE_INVALID");
         for (UUID recipientId : recipients) {
@@ -284,7 +331,8 @@ public class ReportPlatformService {
         Object requestedTitle=filters.remove("reportTitle");
         List<Map<String,String>> sorting = request.sort() == null ? List.of() : request.sort();
         if (sorting.size() > 1) throw new IllegalArgumentException("REPORT_SORT_NOT_ALLOWED");
-        String sortField = sorting.isEmpty() ? "documentNumber" : sorting.getFirst().get("field");
+        // No sort given: the type chooses its own default (a null field), never a column that only the Document Register has.
+        String sortField = sorting.isEmpty() ? null : sorting.getFirst().get("field");
         String sortDirection = sorting.isEmpty() ? "asc" : sorting.getFirst().get("direction");
         JsonNode templateSnapshot = templates.snapshot(actor, request.definitionCode(), new com.eqms.service.report.ReportTemplateService.Criteria(
                 version == null ? null : Integer.valueOf(version.toString()), request.fields(), filters, sortField, sortDirection));
@@ -293,6 +341,20 @@ public class ReportPlatformService {
         Map<String, Object> definition = jdbc.queryForMap("select * from report_definitions where code=? and active=true", request.definitionCode());
         validateFormat(definition, request.format());
         validateFields(request.definitionCode(), request.fields());
+        // REPORT-RUN-SIGNATURE-2026-11-12: a run of the Audit Trail report is signed by the person who requests it, with a reason.
+        boolean signedRun = templates.runNeedsSignature(templateSnapshot.path("definition").path("sourceCode").asText());
+        String runReason = request.reason() == null ? "" : request.reason().trim();
+        if (signedRun) {
+            if (runReason.isEmpty() || runReason.length() > 1000) throw new IllegalArgumentException("REPORT_RUN_REASON_REQUIRED");
+            signatures.requireValidToken(actor, request.signatureToken());
+        }
+        // REPORT-FULL-RUN-2026-11-12: a run needs a filter unless the person chooses Full; the size is checked now, so a report that cannot be made is refused here and not as a failed run later.
+        boolean full = Boolean.TRUE.equals(request.full());
+        templates.requireNarrowing(templateSnapshot.path("definition").path("sourceCode").asText(), filters, full);
+        ((com.fasterxml.jackson.databind.node.ObjectNode)templateSnapshot).put("full", full);
+        long totalRows = templates.render(actor, request.definitionCode(), templateSnapshot, 1, 1, false).total();
+        if (totalRows > (full ? templates.maxRowsFull() : templates.maxRows())) throw new IllegalArgumentException("REPORT_ROW_LIMIT_EXCEEDED");
+        if (totalRows > templates.maxRows() && !Set.of("CSV", "XLSX").contains(request.format().toUpperCase(Locale.ROOT))) throw new IllegalArgumentException("REPORT_FORMAT_ROW_LIMIT_EXCEEDED");
         UUID id = UUID.randomUUID();
         JsonNode parameters = safeJson(request.parameters());
         JsonNode fields = templateSnapshot.path("fields");
@@ -300,28 +362,34 @@ public class ReportPlatformService {
         JsonNode authSnapshot = templateSnapshot;
         String normalizedKey = normalizeKey(idempotencyKey);
         int inserted = jdbc.update("""
-                insert into report_runs(id,definition_code,definition_version,requester_user_id,request_type,requested_format,parameters,selected_fields,sort_spec,authorization_snapshot,status,idempotency_key)
-                values(?,?,?,?,?,?,cast(? as jsonb),cast(? as jsonb),cast(? as jsonb),cast(? as jsonb),'QUEUED',?)
+                insert into report_runs(id,definition_code,definition_version,requester_user_id,request_type,requested_format,parameters,selected_fields,sort_spec,authorization_snapshot,status,idempotency_key,full_run)
+                values(?,?,?,?,?,?,cast(? as jsonb),cast(? as jsonb),cast(? as jsonb),cast(? as jsonb),'QUEUED',?,?)
                 on conflict(requester_user_id,idempotency_key) do nothing
                 """, id, request.definitionCode(), templateSnapshot.path("definition").path("definitionVersion").asInt(), actor.getId(), "ON_DEMAND",
-                request.format().toUpperCase(Locale.ROOT), parameters.toString(), fields.toString(), sort.toString(), authSnapshot.toString(), normalizedKey);
+                request.format().toUpperCase(Locale.ROOT), parameters.toString(), fields.toString(), sort.toString(), authSnapshot.toString(), normalizedKey, full);
         UUID resolved = jdbc.query("select id from report_runs where requester_user_id=? and idempotency_key=?", rs -> rs.next() ? UUID.fromString(rs.getString(1)) : id,
                 actor.getId(), normalizedKey);
         if (inserted == 0) {
-            Map<String,Object> existing = jdbc.queryForMap("select definition_code,requested_format,parameters,selected_fields,sort_spec from report_runs where id=?", resolved);
+            Map<String,Object> existing = jdbc.queryForMap("select definition_code,requested_format,parameters,selected_fields,sort_spec,full_run from report_runs where id=?", resolved);
             try {
                 if (!request.definitionCode().equals(existing.get("definition_code")) || !request.format().toUpperCase(Locale.ROOT).equals(existing.get("requested_format"))
                     || !parameters.equals(objectMapper.readTree(String.valueOf(existing.get("parameters"))))
                     || !fields.equals(objectMapper.readTree(String.valueOf(existing.get("selected_fields"))))
-                    || !sort.equals(objectMapper.readTree(String.valueOf(existing.get("sort_spec")))))
+                    || !sort.equals(objectMapper.readTree(String.valueOf(existing.get("sort_spec"))))
+                    || full != Boolean.TRUE.equals(existing.get("full_run")))
                     throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "REPORT_IDEMPOTENCY_CONFLICT");
             } catch (java.io.IOException invalid) { throw new IllegalStateException("REPORT_SNAPSHOT_INVALID"); }
             return resolved;
         }
         jdbc.update("update report_runs set report_title=? where id=?",reportTitle,resolved);
+        com.eqms.entity.ElectronicSignature runSignature = signedRun
+                ? signatures.record(actor, request.signatureToken(), MEANING_RUN_REQUEST, "REPORT_RUN", resolved, reportTitle, runReason, null, "QUEUED") : null;
         jdbc.update("insert into report_run_events(run_id,event_type,detail) values(?, 'QUEUED', cast(? as jsonb))", resolved,
-                objectMapper.valueToTree(Map.of("definition", request.definitionCode(), "format", request.format())).toString());
-        auditTrail.logAs(actor, "REPORT_RUN", request.definitionCode(), resolved, "REPORT_RUN_QUEUED", null, "QUEUED", "Report run requested; definition version " + definition.get("definition_version"));
+                objectMapper.valueToTree(runSignature == null ? Map.of("definition", request.definitionCode(), "format", request.format(), "full", full)
+                        : Map.of("definition", request.definitionCode(), "format", request.format(), "full", full, "signatureRef", runSignature.getSignatureId())).toString());
+        auditTrail.logAs(actor, "REPORT_RUN", request.definitionCode(), resolved, "REPORT_RUN_QUEUED", null, "QUEUED", "Report run requested; definition version " + definition.get("definition_version")
+                + (runSignature == null ? "" : "; signed (" + runReason + ") [signature " + runSignature.getSignatureId() + "]")
+                + (full ? "; Full run (no filter required), " + totalRows + " rows" : "; " + totalRows + " rows"));
         return resolved;
     }
 
@@ -353,7 +421,7 @@ public class ReportPlatformService {
         if (!all) dataArgs.add(actor.getId());
         dataArgs.addAll(filterArgs);
         dataArgs.add(safeLimit); dataArgs.add(offset);
-        List<Map<String, Object>> data = jdbc.queryForList("select r.report_title as \"reportTitle\", r.id, r.definition_code as \"definitionCode\", r.definition_version as \"definitionVersion\", (select rv.revision from report_template_revisions rv where rv.definition_code=r.definition_code and rv.definition_version=r.definition_version) as \"revision\", r.status, r.progress, r.reason_code as \"reasonCode\", r.error_message as \"errorMessage\", r.queued_at as \"queuedAt\", r.completed_at as \"completedAt\", a.id as \"artifactId\" from report_runs r left join report_artifacts a on a.run_id=r.id where (r.definition_code ilike ? or cast(r.id as text) ilike ? or r.report_title ilike ?) " + where + " order by " + orderColumn + " " + direction + " nulls last, r.id desc limit ? offset ?", dataArgs.toArray());
+        List<Map<String, Object>> data = jdbc.queryForList("select r.report_title as \"reportTitle\", r.full_run as \"fullRun\", r.id, r.definition_code as \"definitionCode\", r.definition_version as \"definitionVersion\", (select rv.revision from report_template_revisions rv where rv.definition_code=r.definition_code and rv.definition_version=r.definition_version) as \"revision\", r.status, r.progress, r.reason_code as \"reasonCode\", r.error_message as \"errorMessage\", r.queued_at as \"queuedAt\", r.completed_at as \"completedAt\", a.id as \"artifactId\" from report_runs r left join report_artifacts a on a.run_id=r.id where (r.definition_code ilike ? or cast(r.id as text) ilike ? or r.report_title ilike ?) " + where + " order by " + orderColumn + " " + direction + " nulls last, r.id desc limit ? offset ?", dataArgs.toArray());
         List<Object> countArgs = new ArrayList<>(List.of(term, term, term)); if (!all) countArgs.add(actor.getId());
         countArgs.addAll(filterArgs);
         Long total = jdbc.queryForObject("select count(*) from report_runs r where (r.definition_code ilike ? or cast(r.id as text) ilike ? or r.report_title ilike ?) " + where, Long.class, countArgs.toArray());
@@ -365,7 +433,7 @@ public class ReportPlatformService {
     public Map<String,Object> runDetail(UserAccount actor, UUID runId) {
         templates.require(actor, "reports.run.view_own", "report.module.view");
         require(actor, "reports.run.view_own", "report.module.view");
-        Map<String,Object> run = new LinkedHashMap<>(jdbc.queryForMap("select id, report_title as \"reportTitle\", definition_code as \"definitionCode\", definition_version as \"definitionVersion\", (select rv.revision from report_template_revisions rv where rv.definition_code=report_runs.definition_code and rv.definition_version=report_runs.definition_version) as \"revision\", requester_user_id as \"requesterUserId\", (select u.full_name from app_users u where u.id = requester_user_id) as \"requesterName\", request_type as \"requestType\", schedule_id as \"scheduleId\", (select s.name from report_schedules s where s.id = schedule_id) as \"scheduleName\", requested_format as \"requestedFormat\", parameters, selected_fields as \"selectedFields\", sort_spec as \"sortSpec\", authorization_snapshot as \"authorizationSnapshot\", status, progress, attempt_count as \"attemptCount\", reason_code as \"reasonCode\", error_message as \"errorMessage\", queued_at as \"queuedAt\", started_at as \"startedAt\", as_of_at as \"asOfAt\", completed_at as \"completedAt\" from report_runs where id=?", runId));
+        Map<String,Object> run = new LinkedHashMap<>(jdbc.queryForMap("select id, report_title as \"reportTitle\", full_run as \"fullRun\", definition_code as \"definitionCode\", definition_version as \"definitionVersion\", (select rv.revision from report_template_revisions rv where rv.definition_code=report_runs.definition_code and rv.definition_version=report_runs.definition_version) as \"revision\", requester_user_id as \"requesterUserId\", (select u.full_name from app_users u where u.id = requester_user_id) as \"requesterName\", request_type as \"requestType\", schedule_id as \"scheduleId\", (select s.name from report_schedules s where s.id = schedule_id) as \"scheduleName\", requested_format as \"requestedFormat\", parameters, selected_fields as \"selectedFields\", sort_spec as \"sortSpec\", authorization_snapshot as \"authorizationSnapshot\", status, progress, attempt_count as \"attemptCount\", reason_code as \"reasonCode\", error_message as \"errorMessage\", queued_at as \"queuedAt\", started_at as \"startedAt\", as_of_at as \"asOfAt\", completed_at as \"completedAt\" from report_runs where id=?", runId));
         boolean all = permissions.hasPermission(actor, "reports.run.view_all");
         if (!all && !actor.getId().toString().equals(String.valueOf(run.get("requesterUserId")))) throw new SecurityException("REPORT_SCOPE_DENIED");
         // Internal snapshots contain source identities, aggregate data and embedded assets.
@@ -386,6 +454,9 @@ public class ReportPlatformService {
         templateAtRun.put("approvedAt", definition.hasNonNull("approvedAt") ? definition.get("approvedAt").asText() : null);
         templateAtRun.put("nameFormatId", definition.hasNonNull("nameFormatId") ? definition.get("nameFormatId").asText() : null);
         run.put("templateAtRun", templateAtRun);
+        // A run of a type that is signed (the Audit Trail report): who signed it, when, and the reason they gave. Never the signature identifiers.
+        var signatures = jdbc.queryForList("select full_name as \"signedBy\", signed_at as \"signedAt\", reason from electronic_signatures where meaning=? and entity_type='REPORT_RUN' and entity_id=? order by signed_at desc limit 1", MEANING_RUN_REQUEST, runId);
+        run.put("signature", signatures.isEmpty() ? null : signatures.getFirst());
         run.put("artifacts", jdbc.queryForList("select id, format, generated_filename as \"generatedFilename\", mime_type as \"mimeType\", byte_size as \"byteSize\", sha256, expires_at as \"expiresAt\", legal_hold as \"legalHold\", purged_at as \"purgedAt\", created_at as \"createdAt\" from report_artifacts where run_id=? order by created_at", runId));
         List<Map<String,Object>> events = jdbc.queryForList("select event_type as \"eventType\", reason_code as \"reasonCode\", detail::text as \"detail\", created_at as \"createdAt\" from report_run_events where run_id=? order by created_at", runId);
         for (Map<String,Object> event : events) event.put("detail", readSnapshot(event.get("detail")));
@@ -446,10 +517,13 @@ public class ReportPlatformService {
     public void retryRun(UserAccount actor, UUID runId) {
         templates.require(actor,"reports.run.create","report.module.export");
         require(actor, "reports.run.create", "report.module.export");
-        Map<String,Object> run = jdbc.queryForMap("select requester_user_id,status from report_runs where id=? for update", runId);
+        Map<String,Object> run = jdbc.queryForMap("select requester_user_id,status,definition_code,authorization_snapshot from report_runs where id=? for update", runId);
         boolean all = permissions.hasPermission(actor, "reports.run.view_all");
         if (!all && !actor.getId().toString().equals(String.valueOf(run.get("requester_user_id")))) throw new SecurityException("REPORT_SCOPE_DENIED");
         if (!Set.of("FAILED", "RETRY_SCHEDULED").contains(String.valueOf(run.get("status")))) throw new IllegalStateException("REPORT_GENERATION_FAILED");
+        // A run of a revision that is no longer effective is not generated again: the person starts a new request (REPORT-OBSOLETE-REVISION-2026-11-12).
+        JsonNode queuedWith = readSnapshot(run.get("authorization_snapshot"));
+        if ("METADATA_V1".equals(queuedWith.path("protocol").asText())) templates.requireRunRevisionEffective(String.valueOf(run.get("definition_code")), queuedWith);
         jdbc.update("update report_runs set status='QUEUED',reason_code=null,error_message=null,next_attempt_at=now(),lease_until=null where id=?", runId);
         jdbc.update("insert into report_run_events(run_id,event_type,detail) values(?,'RETRY_REQUESTED',cast(? as jsonb))",runId,objectMapper.valueToTree(Map.of("requestedBy",actor.getId().toString())).toString());
         auditTrail.logAs(actor, "REPORT_RUN", runId.toString(), runId, "REPORT_RUN_RETRY_REQUESTED", String.valueOf(run.get("status")), "QUEUED", "Retry requested");
@@ -532,10 +606,13 @@ public class ReportPlatformService {
             JsonNode snapshot = objectMapper.readTree(String.valueOf(run.get("authorization_snapshot")));
             RenderedReport report;
             if ("METADATA_V1".equals(snapshot.path("protocol").asText())) {
+                templates.requireRunRevisionEffective(run.get("definition_code").toString(), snapshot);
                 validateFormat(jdbc.queryForMap("select allowed_formats from report_definitions where code=?",run.get("definition_code")),format);
                 var metadata = templates.render(requester, run.get("definition_code").toString(), snapshot, 1, templates.maxRows(), true);
                 ((com.fasterxml.jackson.databind.node.ObjectNode)snapshot).put("asOfAt",metadata.asOfAt());
                 report = new RenderedReport(metadata.rows(), metadata.sourceIds());
+                // A file above the ordinary limit exists only as CSV or XLSX; a PDF or Word file of that size cannot be made safely.
+                if (metadata.rows().size() - 1 > templates.maxRows() && !Set.of("CSV", "XLSX").contains(format)) throw new IllegalArgumentException("REPORT_FORMAT_ROW_LIMIT_EXCEEDED");
             } else {
                 // Preserve authorization semantics of historic queued runs; new requests pin METADATA_V1.
                 report = renderRows(run.get("definition_code").toString(), requester, selected, templates.maxRows());
@@ -543,17 +620,20 @@ public class ReportPlatformService {
             byte[] bytes;
             if(snapshot.path("definition").hasNonNull("layout")&&!"CSV".equals(format)) {
                 var layout=objectMapper.treeToValue(snapshot.path("definition").path("layout"),com.eqms.service.report.ReportLayout.class);
-                var presentation=Map.of("report.title",snapshot.path("reportTitle").asText(snapshot.path("definition").path("displayName").asText()),
-                        "report.code",run.get("definition_code").toString(),"template.version",snapshot.path("definition").hasNonNull("revision")?snapshot.path("definition").path("revision").asText():snapshot.path("definition").path("definitionVersion").asText(),
-                        "report.executor",Objects.toString(requester.getFullName(),Objects.toString(requester.getUsername(),requester.getId().toString())),"report.generatedAt",Instant.now().toString(),
-                        "report.asOfAt",snapshot.path("asOfAt").asText(),
-                        "template.name",snapshot.path("definition").path("displayName").asText(),"report.runId",run.get("id").toString());
+                Map<String,String> presentation=new HashMap<>(Map.of("report.title",snapshot.path("reportTitle").asText(snapshot.path("definition").path("displayName").asText()),
+                        "report.code",run.get("definition_code").toString(),"template.version",snapshot.path("definition").hasNonNull("revision")?com.eqms.service.report.ReportTemplateRevisionService.effectiveLabel(snapshot.path("definition").path("revision").asInt()):snapshot.path("definition").path("definitionVersion").asText(),
+                        "report.executor",Objects.toString(requester.getFullName(),Objects.toString(requester.getUsername(),requester.getId().toString())),"report.generatedAt",com.eqms.util.DateTimeFormatUtils.formatDateTime(Instant.now()),
+                        "report.asOfAt",com.eqms.util.DateTimeFormatUtils.display(snapshot.path("asOfAt").asText()),
+                        "template.name",snapshot.path("definition").path("displayName").asText(),"report.runId",run.get("id").toString(),"report.gmpNotice",gmpNoticeOf(snapshot.path("definition"))));
+                presentation.putAll(signatureValuesOf(runId));
                 ((com.fasterxml.jackson.databind.node.ObjectNode)snapshot).set("presentation",objectMapper.valueToTree(presentation));
                 var charts=com.eqms.service.report.ReportCharts.calculate(layout.effectiveCharts(),selected,report.rows());
                 ((com.fasterxml.jackson.databind.node.ObjectNode)snapshot).set("charts",objectMapper.valueToTree(charts));
                 bytes=words==null?com.eqms.service.report.ReportPresentationRenderer.render(format,report.rows(),layout,presentation,charts):words.render(format,report.rows(),layout,presentation,charts);
             } else bytes=render(format, report.rows());
             if (bytes.length > 52_428_800) throw new IllegalArgumentException("REPORT_ARTIFACT_LIMIT_EXCEEDED");
+            // A newer revision may have become effective while this one was being rendered: nothing is stored then.
+            if ("METADATA_V1".equals(snapshot.path("protocol").asText())) templates.requireRunRevisionEffective(run.get("definition_code").toString(), snapshot);
             runLease.requireOwned();
             String hash=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
             UUID artifactId=UUID.randomUUID(); String code=run.get("definition_code").toString().toLowerCase(Locale.ROOT);
@@ -571,15 +651,46 @@ public class ReportPlatformService {
             runLease.requireOwned();
             publisher.publish(runId,attempt,artifactId,run.get("definition_code").toString(),snapshot,format,code+"-"+runId+"."+extension,stored,mimeFor(format),bytes.length,hash,expiresAt);
             if (delivery != null) delivery.notifyRecipientsOfCompletedRun(runId);
+        } catch (OutOfMemoryError tooBig) {
+            // An Error is not an Exception: without this the run would stay PROCESSING until its lease expired and then be tried again, and again.
+            publisher.fail(runId,((Number)run.get("attempt_count")).intValue(),new IllegalArgumentException("REPORT_TOO_LARGE"));
+            if (delivery != null) delivery.notifyRequesterOfFailedRun(runId);
         } catch (Exception failure) {
             publisher.fail(runId,((Number)run.get("attempt_count")).intValue(),failure);
+            if (delivery != null) delivery.notifyRequesterOfFailedRun(runId);
         }
         return true;
     }
 
+    /**
+     * REPORT-SIGNATURE-IN-FILE-2026-11-13: a run that was signed at the request (the audit-record reports) says so in its file: who signed, when, the reason and the number of the
+     * signature, so a file held on its own can be traced to the signature. A run that was not signed adds nothing.
+     */
+    Map<String,String> signatureValuesOf(UUID runId) {
+        var rows = jdbc.queryForList("select full_name, signed_at, reason, signature_id from electronic_signatures where meaning=? and entity_type='REPORT_RUN' and entity_id=? order by signed_at desc limit 1", MEANING_RUN_REQUEST, runId);
+        if (rows.isEmpty()) return Map.of();
+        var row = rows.getFirst();
+        Map<String,String> values = new HashMap<>();
+        values.put("report.signedBy", Objects.toString(row.get("full_name"), ""));
+        values.put("report.signedAt", com.eqms.util.DateTimeFormatUtils.display(row.get("signed_at")));
+        values.put("report.signatureReason", Objects.toString(row.get("reason"), ""));
+        values.put("report.signatureId", Objects.toString(row.get("signature_id"), ""));
+        return values;
+    }
+
+    /** The statement of GMP status the file carries (REPORT-GMP-NOTICE-2026-11-12); the approver is named by the user table, never by an identifier. */
+    private String gmpNoticeOf(JsonNode definition) {
+        String approver = null;
+        if (definition.hasNonNull("approvedByUserId")) {
+            try { approver = users.findById(UUID.fromString(definition.path("approvedByUserId").asText())).map(UserAccount::getFullName).orElse(null); }
+            catch (IllegalArgumentException malformed) { approver = null; }
+        }
+        return com.eqms.service.report.ReportTemplateService.gmpNotice(definition, approver);
+    }
+
     /** Recovers a run whose worker died or lost its lease without issuing a duplicate artifact. */
     public int recoverExpiredLeases() {
-        return jdbc.update("update report_runs set status='RETRY_SCHEDULED', reason_code='REPORT_GENERATION_FAILED', error_message='Worker lease expired', next_attempt_at=now(), lease_until=null where status='PROCESSING' and lease_until is not null and lease_until<now()");
+        return jdbc.update("update report_runs set status=case when attempt_count>=3 then 'FAILED' else 'RETRY_SCHEDULED' end, reason_code='REPORT_GENERATION_FAILED', error_message='Worker lease expired', next_attempt_at=now(), lease_until=null where status='PROCESSING' and lease_until is not null and lease_until<now()");
     }
 
     /** Purge only expired, non-held artifacts; the database row remains as immutable evidence. */
@@ -659,6 +770,8 @@ public class ReportPlatformService {
             Map<String,Object> definition = jdbc.queryForMap("select * from report_definitions where code=?", schedule.get("definition_code"));
             // A template that was disabled or deleted stops its schedules; they are suspended and the people responsible are told, not retried in silence.
             if (!Boolean.TRUE.equals(definition.get("active")) || definition.get("deleted_at") != null) { suspendSchedule(scheduleId, "SUSPENDED_TEMPLATE_DISABLED"); return true; }
+            // REPORT-RUN-SIGNATURE-2026-11-12: nobody is there to sign a scheduled run, so a schedule of a type whose runs are signed never produces a file.
+            if (templates.runNeedsSignature(String.valueOf(definition.get("source_code")))) { suspendSchedule(scheduleId, "SUSPENDED_SIGNATURE_REQUIRED"); return true; }
             String format = String.valueOf(schedule.get("requested_format")); validateFormat(definition, format);
             List<String> fields = objectMapper.readValue(String.valueOf(schedule.get("selected_fields")), objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)); validateFields(String.valueOf(schedule.get("definition_code")), fields);
             Instant next = nextOccurrence(parseCron(String.valueOf(schedule.get("cron_expression")))); if (next == null) { suspendSchedule(scheduleId, "SUSPENDED_INVALID_SCHEDULE"); return true; }
@@ -738,7 +851,15 @@ public class ReportPlatformService {
     private String csv(String value) { String v=value==null?"":value.replace("\"","\"\""); String probe=v.stripLeading(); if (probe.startsWith("=")||probe.startsWith("+")||probe.startsWith("-")||probe.startsWith("@")||v.startsWith("\t")||v.startsWith("\r")||v.startsWith("\n")) v="'"+v; return "\""+v+"\""; }
     private String safeFailureMessage(Exception exception) { return exception.getClass().getSimpleName()+": report generation failed"; }
 
-    public record RunRequest(String definitionCode, String format, Map<String,Object> parameters, List<String> fields, List<Map<String,String>> sort) {}
+    /** {@code full}: the choice to run without a filter (REPORT-FULL-RUN-2026-11-12). Missing means false. */
+    public record RunRequest(String definitionCode, String format, Map<String,Object> parameters, List<String> fields, List<Map<String,String>> sort, Boolean full, String reason, String signatureToken) {
+        public RunRequest(String definitionCode, String format, Map<String,Object> parameters, List<String> fields, List<Map<String,String>> sort, Boolean full) {
+            this(definitionCode, format, parameters, fields, sort, full, null, null);
+        }
+        public RunRequest(String definitionCode, String format, Map<String,Object> parameters, List<String> fields, List<Map<String,String>> sort) {
+            this(definitionCode, format, parameters, fields, sort, null, null, null);
+        }
+    }
     public record ScheduleRequest(String name, String definitionCode, String cronExpression, String format, Map<String,Object> parameters, List<String> fields, List<UUID> recipientUserIds) {}
     public record DownloadArtifact(String filename, String mimeType, byte[] bytes) {}
     private record RenderedReport(List<List<String>> rows, List<String> sourceDocumentIds) {}

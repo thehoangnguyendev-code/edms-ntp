@@ -35,11 +35,12 @@ public class SecurityPermissionSetController {
             @RequestParam(required = false) String updatedTo,
             @RequestParam(defaultValue = "name") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir,
-            @RequestParam(defaultValue = "false") boolean includeManaged) {
+            @RequestParam(defaultValue = "false") boolean includeManaged,
+            @RequestParam(required = false) java.util.UUID accessProfileId) {
         return ResponseEntity.ok(service.listPaged(
                 page, limit, search, status, type, module, category,
                 createdFrom, createdTo, updatedFrom, updatedTo,
-                sortBy, sortDir, includeManaged));
+                sortBy, sortDir, includeManaged, accessProfileId));
     }
 
     @GetMapping("/list-options")

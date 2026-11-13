@@ -35,8 +35,14 @@ public class ReportArtifactPublisher {
         jdbc.update("update report_artifact_publication_journal set status='PUBLISHED',published_at=now() where artifact_id=?",artifactId);
     }
 
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ReportArtifactPublisher.class);
+
     @Transactional
     public void fail(UUID runId,int attempt,Exception failure) {
+        // The reason code stored with the run is deliberately general; the cause is kept in the service log, so a failed run can be explained (the stack is logged for failures that are not known conditions).
+        boolean known = failure instanceof SecurityException || failure instanceof IllegalArgumentException || failure instanceof org.springframework.web.server.ResponseStatusException;
+        if (known) LOG.info("Report run {} failed at attempt {}: {}", runId, attempt, failure.getMessage());
+        else LOG.warn("Report run {} failed at attempt {}: {}", runId, attempt, failure.toString(), failure);
         var run=jdbc.queryForMap("select status,attempt_count,lease_until>now() as leased from report_runs where id=? for update",runId);
         if (!"PROCESSING".equals(run.get("status")) || ((Number)run.get("attempt_count")).intValue()!=attempt || !Boolean.TRUE.equals(run.get("leased"))) return;
         boolean denied=failure instanceof SecurityException;
@@ -44,8 +50,11 @@ public class ReportArtifactPublisher {
         boolean retry=!denied&&!invalid&&attempt<3;
         // A row limit is a known, correctable condition (decision-time limit of 10,000 rows, no silent truncation): it gets its own code and text.
         boolean rowLimit="REPORT_ROW_LIMIT_EXCEEDED".equals(failure.getMessage());
-        String reason=denied?"REPORT_AUTHORIZATION_CHANGED":rowLimit?"REPORT_ROW_LIMIT_EXCEEDED":invalid?"REPORT_INVALID_CRITERIA":"REPORT_GENERATION_FAILED";
-        String message=denied?"Current metadata authorization no longer permits this report.":rowLimit?"The result has more than 10,000 rows. Add a filter to narrow it and start a new request.":invalid?"Report criteria or template policy is no longer valid. Start a new report request.":"Report generation failed. Check service availability.";
+        boolean formatLimit="REPORT_FORMAT_ROW_LIMIT_EXCEEDED".equals(failure.getMessage());
+        boolean obsolete="REPORT_REVISION_OBSOLETE".equals(failure.getMessage());
+        boolean tooLarge="REPORT_TOO_LARGE".equals(failure.getMessage());
+        String reason=denied?"REPORT_AUTHORIZATION_CHANGED":rowLimit?"REPORT_ROW_LIMIT_EXCEEDED":formatLimit?"REPORT_FORMAT_ROW_LIMIT_EXCEEDED":obsolete?"REPORT_REVISION_OBSOLETE":tooLarge?"REPORT_TOO_LARGE":invalid?"REPORT_INVALID_CRITERIA":"REPORT_GENERATION_FAILED";
+        String message=denied?"Current metadata authorization no longer permits this report.":rowLimit?"The result has more rows than a report file may hold. Add a filter to narrow it and start a new request.":formatLimit?"The result is too large for a PDF or Word file. Choose CSV or XLSX, or add a filter, and start a new request.":obsolete?"The template revision this report was requested with is no longer effective. Start a new report request.":tooLarge?"The report is too large for the server to build. Add a filter to narrow it and start a new request.":invalid?"Report criteria or template policy is no longer valid. Start a new report request.":"Report generation failed. Check service availability.";
         long delay=Math.min(300L,15L*(1L<<Math.max(0,attempt-1)));
         jdbc.update("update report_runs set status=?,reason_code=?,error_message=?,next_attempt_at=now()+(?*interval '1 second'),lease_until=null where id=?",retry?"RETRY_SCHEDULED":"FAILED",reason,message,delay,runId);
         jdbc.update("insert into report_run_events(run_id,event_type,reason_code,detail) values(?,?,?,jsonb_build_object('attempt',cast(? as integer),'delaySeconds',cast(? as bigint)))",runId,retry?"RETRY_SCHEDULED":"DEAD_LETTERED",reason,attempt,delay);

@@ -1,7 +1,6 @@
 package com.eqms.controller;
 
 import com.eqms.auth.CurrentUserService;
-import com.eqms.dto.backup.BackupRestoreStatusResponse;
 import com.eqms.entity.UserAccount;
 import com.eqms.service.AuditTrailService;
 import com.eqms.service.BackupAgentClient;
@@ -45,8 +44,11 @@ public class BackupRestoreController {
     private static final int MAX_REASON = 500;
     private static final int MAX_REFERENCE = 120;
 
-    public record CreateBackupRequest(String reason, String changeControlRef, String type) {
+    /** {@code components} are the parts to back up: DATABASE (the system settings are part of it) and OBJECT_STORE (the files). Null means what the policy covers. */
+    public record CreateBackupRequest(String reason, String changeControlRef, String type, java.util.List<String> components) {
     }
+
+    static final java.util.Set<String> BACKUP_COMPONENTS = java.util.Set.of("DATABASE", "OBJECT_STORE");
 
     private final CurrentUserService currentUserService;
     private final PermissionEvaluationService permissionEvaluationService;
@@ -59,13 +61,6 @@ public class BackupRestoreController {
         this.permissionEvaluationService = permissionEvaluationService;
         this.agent = agent;
         this.auditTrailService = auditTrailService;
-    }
-
-    /** Kept for the module landing check. */
-    @GetMapping("/status")
-    public ResponseEntity<BackupRestoreStatusResponse> status() {
-        require(currentUserService.requireCurrentUser(), VIEW_PERMISSION);
-        return noStore(BackupRestoreStatusResponse.notImplemented());
     }
 
     @GetMapping("/overview")
@@ -89,13 +84,16 @@ public class BackupRestoreController {
                                          @RequestParam(required = false) String startedFrom, @RequestParam(required = false) String startedTo,
                                          @RequestParam(required = false) String checkedFrom, @RequestParam(required = false) String checkedTo,
                                          @RequestParam(defaultValue = "startedAt") String sortBy, @RequestParam(defaultValue = "desc") String sortDirection,
-                                         @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
+                                         @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit,
+                                         @RequestParam(required = false) String trigger, @RequestParam(required = false) String component) {
         require(currentUserService.requireCurrentUser(), VIEW_PERMISSION);
         MultiValueMap<String, String> query = new LinkedMultiValueMap<>();
         addIfText(query, "search", search, 200);
         addIfText(query, "status", status, 20);
         addIfText(query, "type", type, 20);
         addIfText(query, "verification", verification, 20);
+        addIfText(query, "trigger", trigger, 20);
+        addIfText(query, "component", component, 20);
         addInstant(query, "startedFrom", startedFrom);
         addInstant(query, "startedTo", startedTo);
         addInstant(query, "checkedFrom", checkedFrom);
@@ -107,10 +105,17 @@ public class BackupRestoreController {
         return noStore(agent.get("/internal/backups", query));
     }
 
+    private static final com.fasterxml.jackson.databind.ObjectMapper WORKFLOW_JSON = new com.fasterxml.jackson.databind.ObjectMapper();
+
     @GetMapping("/backups/{backupNumber}")
     public ResponseEntity<JsonNode> get(@PathVariable String backupNumber) {
         require(currentUserService.requireCurrentUser(), VIEW_PERMISSION);
-        return noStore(agent.get("/internal/backups/" + validId(backupNumber)));
+        JsonNode detail = agent.get("/internal/backups/" + validId(backupNumber));
+        // The stages of the backup are worked out here from its status and verification; the screen only draws them.
+        if (detail instanceof com.fasterxml.jackson.databind.node.ObjectNode node && node.hasNonNull("status")) {
+            node.set("workflow", WORKFLOW_JSON.valueToTree(com.eqms.service.BackupWorkflow.of(node.path("status").asText(), node.path("verification").asText(null))));
+        }
+        return noStore(detail);
     }
 
     @PostMapping("/backups")
@@ -132,14 +137,22 @@ public class BackupRestoreController {
         if ("PRE_CHANGE".equals(type) && reference.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "BACKUP_CHANGE_REFERENCE_REQUIRED");
         }
+        java.util.List<String> components = null;
+        if (request.components() != null) {
+            components = request.components().stream().map(c -> c == null ? "" : c.trim()).distinct().toList();
+            if (components.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "BACKUP_COMPONENTS_REQUIRED");
+            if (!BACKUP_COMPONENTS.containsAll(components)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "BACKUP_COMPONENT_UNKNOWN");
+        }
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("requestedBy", identity(actor));
         body.put("reason", reason);
         body.put("changeControlRef", reference);
         body.put("type", type);
+        if (components != null) body.put("components", components);
         JsonNode accepted = agent.post("/internal/backups", body);
         auditTrailService.logAs(actor, "BACKUP", "Backup request", jobId(accepted), "BACKUP_REQUESTED", null, "QUEUED",
-                "Requested a " + type + " backup. Reason: " + reason + (reference.isEmpty() ? "" : " (" + reference + ")"));
+                "Requested a " + type + " backup of " + (components == null ? "what the policy covers" : String.join(", ", components))
+                        + ". Reason: " + reason + (reference.isEmpty() ? "" : " (" + reference + ")"));
         return ResponseEntity.status(HttpStatus.ACCEPTED).cacheControl(CacheControl.noStore()).body(accepted);
     }
 

@@ -65,7 +65,7 @@ class ReportTemplateApprovalTest {
         var permissions = mock(EffectivePermissionService.class);
         when(permissions.getEffectivePermissionCodes(any(UserAccount.class)))
                 .thenReturn(Set.of("reports.definition.approve", "reports.definition.manage"));
-        service = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider()));
+        service = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
         service.configureSignatures(signatures);
     }
 
@@ -126,6 +126,73 @@ class ReportTemplateApprovalTest {
         verify(jdbc).update(anyString(), eq(2), eq(approver.getId()), eq("ESIG-42"), eq(CODE));
     }
 
+    // ---- REPORT-GMP-APPROVER-2026-11-13: a template for GMP decisions is reviewed only by a person who holds the permission to approve a report for GMP use.
+    private ReportTemplateService serviceFor(String... permissionCodes) {
+        var permissions = mock(EffectivePermissionService.class);
+        when(permissions.getEffectivePermissionCodes(any(UserAccount.class))).thenReturn(Set.of(permissionCodes));
+        var made = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
+        made.configureSignatures(signatures);
+        return made;
+    }
+
+    private void pendingTemplate(boolean gmp) {
+        var locked = row("PENDING_APPROVAL", 2, UUID.randomUUID());
+        locked.put("gmp_use", gmp);
+        when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(locked));
+        when(jdbc.queryForList(anyString(), eq(String.class), anyObj(), anyObj())).thenReturn(List.of(author.toString()));
+    }
+
+    @Test
+    void anOrdinaryApproverCannotApproveOrReturnATemplateForGmpDecisions() {
+        pendingTemplate(true);
+        var ordinary = serviceFor("reports.definition.approve");
+
+        assertThatThrownBy(() -> ordinary.approve(approver, CODE, 2, "Reviewed", "tok")).isInstanceOf(SecurityException.class).hasMessage("REPORT_GMP_APPROVER_REQUIRED");
+        assertThatThrownBy(() -> ordinary.reject(approver, CODE, 2, "Not clear", "tok")).isInstanceOf(SecurityException.class).hasMessage("REPORT_GMP_APPROVER_REQUIRED");
+        verify(jdbc, never()).update(anyString(), anyObj(), anyObj(), anyObj());
+        verify(signatures, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void aGmpApproverApprovesATemplateForGmpDecisionsWithASignature() {
+        pendingTemplate(true);
+        var signature = mock(ElectronicSignature.class);
+        when(signature.getSignatureId()).thenReturn("ESIG-43");
+        when(signatures.record(any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(signature);
+
+        serviceFor("reports.definition.approve_gmp").approve(approver, CODE, 2, "Checked for GMP use", "tok");
+
+        verify(signatures).requireValidToken(approver, "tok");
+        verify(jdbc).update(anyString(), eq(2), eq(approver.getId()), eq("ESIG-43"), eq(CODE));
+    }
+
+    @Test
+    void theGmpApproverStillCannotApproveHisOwnVersion() {
+        var locked = row("PENDING_APPROVAL", 2, UUID.randomUUID());
+        locked.put("gmp_use", true);
+        when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(locked));
+        when(jdbc.queryForList(anyString(), eq(String.class), anyObj(), anyObj())).thenReturn(List.of(approver.getId().toString()));
+
+        assertThatThrownBy(() -> serviceFor("reports.definition.approve_gmp").approve(approver, CODE, 2, "Reviewed", "tok"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getReason()).isEqualTo("REPORT_APPROVER_IS_AUTHOR"));
+    }
+
+    @Test
+    void aTemplateThatIsNotForGmpDecisionsNeedsTheOrdinaryApprovalPermission() {
+        pendingTemplate(false);
+
+        assertThatThrownBy(() -> serviceFor("reports.definition.approve_gmp").approve(approver, CODE, 2, "Reviewed", "tok"))
+                .isInstanceOf(SecurityException.class).hasMessage("REPORT_SCOPE_DENIED");
+        verify(signatures, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void theReviewPermissionIsDecidedByTheTemplateNotByTheReviewer() {
+        var any = serviceFor("reports.definition.approve");
+        assertThat(any.reviewPermissionFor(true, null)).isEqualTo("reports.definition.approve_gmp");
+        assertThat(any.reviewPermissionFor(false, null)).isEqualTo("reports.definition.approve");
+    }
+
     @Test
     void aVersionThatIsNotPendingCannotBeDecided() {
         when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(row("DRAFT", null, null)));
@@ -183,7 +250,7 @@ class ReportTemplateApprovalTest {
         // The approve permission is what matters, not the manage permission: a manager without it cannot approve.
         var permissions = mock(EffectivePermissionService.class);
         when(permissions.getEffectivePermissionCodes(any(UserAccount.class))).thenReturn(Set.of("reports.definition.manage"));
-        var onlyManager = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider()));
+        var onlyManager = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
         assertThatThrownBy(() -> onlyManager.approve(approver, CODE, 2, "Reviewed", "tok")).isInstanceOf(SecurityException.class);
     }
 }

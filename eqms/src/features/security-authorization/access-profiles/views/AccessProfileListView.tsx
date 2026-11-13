@@ -3,11 +3,12 @@ import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDeskt
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
-import { Plus, Download, Search, Copy, MoreVertical, Users, ChevronUp, ChevronDown, Check, X, Trash2, Settings2 } from "lucide-react";
-import { IconPencilMinus, IconToggleLeft, IconToggleRight, IconFilter2, IconInfoCircle, IconSparkles } from "@tabler/icons-react";
+import { Plus, Download, Search, Copy, MoreVertical, Users, ChevronUp, ChevronDown, Check, X, Trash2 } from "lucide-react";
+import { IconPencilMinus, IconToggleLeft, IconToggleRight, IconFilter2, IconInfoCircle } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { DOCUMENT_CONTROL_VISIBILITY_COLOR, DOCUMENT_CONTROL_VISIBILITY_LABEL } from "../shared/documentControlVisibility";
 import { Select } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
@@ -147,13 +148,14 @@ const DuplicateModal: React.FC<{
 
 type SortKey = "name" | "type" | "permissionSetCount" | "assignedUserCount" | "createdAt" | "updatedAt";
 
-const TABLE_COLS: { id: SortKey | "no" | "workflowRoles" | "status" | "action"; label: string; sortable: boolean }[] = [
+const TABLE_COLS: { id: SortKey | "no" | "workflowRoles" | "visibility" | "status" | "action"; label: string; sortable: boolean }[] = [
   { id: "no",               label: "No.",              sortable: false },
   { id: "name",             label: "Access Profile",   sortable: true  },
   { id: "type",             label: "Type",             sortable: true  },
   { id: "status",           label: "Status",           sortable: false },
   { id: "permissionSetCount", label: "Permission Sets", sortable: true },
   { id: "workflowRoles",   label: "Workflow Eligibility",   sortable: false },
+  { id: "visibility",      label: "Document Control Visibility", sortable: false },
   { id: "assignedUserCount", label: "Assigned Users", sortable: true  },
   { id: "createdAt",       label: "Created Date",     sortable: true  },
   { id: "updatedAt",       label: "Last Updated",     sortable: true  },
@@ -169,27 +171,35 @@ export const AccessProfileListView: React.FC = () => {
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
   const { hasPermissionAlias } = usePermissions();
   const canManageRoles = hasPermissionAlias('security.access_profiles.update');
+  // The wizard creates the profile and assigns permission sets/users in one step, so it needs both permissions (same as its route and the server).
+  const canCreateProfile = canManageRoles && hasPermissionAlias('security.access_profiles.assign');
 
   const [profiles, setProfiles] = useState<AccessProfileResponse[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRoleCreationModalOpen, setIsRoleCreationModalOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(() => Math.max(1, Number(searchParams.get("page")) || 1));
+  const [itemsPerPage, setItemsPerPage] = useState(() => Math.max(1, Number(searchParams.get("limit")) || 10));
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState("ALL");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [createdFromDate, setCreatedFromDate] = useState("");
-  const [createdToDate, setCreatedToDate] = useState("");
-  const [updatedFromDate, setUpdatedFromDate] = useState("");
-  const [updatedToDate, setUpdatedToDate] = useState("");
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") ?? "");
+  const [typeFilter, setTypeFilter] = useState(() => searchParams.get("type") ?? "ALL");
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") ?? "all");
+  const [createdFromDate, setCreatedFromDate] = useState(() => searchParams.get("createdFrom") ?? "");
+  const [createdToDate, setCreatedToDate] = useState(() => searchParams.get("createdTo") ?? "");
+  const [updatedFromDate, setUpdatedFromDate] = useState(() => searchParams.get("updatedFrom") ?? "");
+  const [updatedToDate, setUpdatedToDate] = useState(() => searchParams.get("updatedTo") ?? "");
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["type", "status"]));
 
-  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "name", direction: "asc" });
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: "asc" | "desc" }>(() => {
+    const sortKey = searchParams.get("sortBy");
+    const allowedSortKeys: SortKey[] = ["name", "type", "permissionSetCount", "assignedUserCount", "createdAt", "updatedAt"];
+    return {
+      key: allowedSortKeys.includes(sortKey as SortKey) ? sortKey as SortKey : "name",
+      direction: searchParams.get("sortDir") === "desc" ? "desc" : "asc",
+    };
+  });
 
   React.useLayoutEffect(() => {
     setSearchQuery(searchParams.get("search") ?? "");
@@ -367,7 +377,10 @@ export const AccessProfileListView: React.FC = () => {
       sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") },
       cell: (profile) => (
         <div className="min-w-0">
-          <p className="text-sm font-medium text-slate-800 truncate">{profile.name}</p>
+          <p className="flex items-center gap-1.5 text-sm font-medium text-slate-800">
+            <span className="truncate">{profile.name}</span>
+            {profile.testData && <Badge color="amber" size="xs">Test</Badge>}
+          </p>
           {profile.description && <p className="text-xs text-slate-400 truncate max-w-[220px]">{profile.description}</p>}
         </div>
       ),
@@ -418,6 +431,15 @@ export const AccessProfileListView: React.FC = () => {
           {profile.workflowRoles.length === 0 && <span className="text-slate-400">—</span>}
         </div>
       ),
+    },
+    {
+      id: "visibility",
+      header: "Document Control Visibility",
+      label: "Document Control Visibility",
+      cell: (profile) => {
+        const visibility = profile.documentControlVisibility ?? "NAMED_IN_FLOW";
+        return <Badge color={DOCUMENT_CONTROL_VISIBILITY_COLOR[visibility]} size="sm">{DOCUMENT_CONTROL_VISIBILITY_LABEL[visibility]}</Badge>;
+      },
     },
     {
       id: "assignedUserCount",
@@ -490,8 +512,8 @@ export const AccessProfileListView: React.FC = () => {
               <Download className="h-4 w-4" />
               Export
             </Button>
-            {canManageRoles && (
-              <Button size="sm" className="whitespace-nowrap gap-2" onClick={() => setIsRoleCreationModalOpen(true)}>
+            {canCreateProfile && (
+              <Button size="sm" className="whitespace-nowrap gap-2" onClick={() => navigateTo(`${ROUTES.SECURITY.ACCESS_PROFILES}/wizard`)}>
                 <Plus className="h-4 w-4" />
                 New Access Profile
               </Button>
@@ -500,66 +522,6 @@ export const AccessProfileListView: React.FC = () => {
         }
       />
 
-      <FormModal
-        isOpen={isRoleCreationModalOpen}
-        onClose={() => setIsRoleCreationModalOpen(false)}
-        title="Create Access Profile"
-        description="Choose the setup experience that best fits this Access Profile. Both options create a custom Access Profile."
-        confirmText="Close"
-        onConfirm={() => setIsRoleCreationModalOpen(false)}
-        showCancel={false}
-        size="xl"
-      >
-        <div className="grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => {
-              setIsRoleCreationModalOpen(false);
-              navigateTo(`${ROUTES.SECURITY.ACCESS_PROFILES}/wizard`);
-            }}
-            className="group rounded-xl border-2 border-emerald-200 bg-emerald-50/40 p-4 text-left transition-all hover:border-emerald-500 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-          >
-            <div className="flex items-start gap-3">
-              <span className="rounded-lg bg-emerald-100 p-2 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                <IconSparkles className="h-5 w-5" />
-              </span>
-              <span className="min-w-0">
-                <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
-                  Guided setup
-                  <Badge color="emerald" size="xs">Recommended</Badge>
-                </span>
-                <span className="mt-1 block text-xs leading-5 text-slate-600">
-                  Configure permissions, workflow eligibility, scope and optional user assignments in one guided flow.
-                </span>
-                <span className="mt-3 inline-flex text-xs font-semibold text-emerald-700 group-hover:underline">Continue with guided setup</span>
-              </span>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setIsRoleCreationModalOpen(false);
-              navigateTo(`${ROUTES.SECURITY.ACCESS_PROFILES}/new`);
-            }}
-            className="group rounded-xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-          >
-            <div className="flex items-start gap-3">
-              <span className="rounded-lg bg-slate-100 p-2 text-slate-600 group-hover:bg-slate-700 group-hover:text-white transition-colors">
-                <Settings2 className="h-5 w-5" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-slate-900">Advanced setup</span>
-                <span className="mt-1 block text-xs leading-5 text-slate-600">
-                  Create the Access Profile identity first, then configure permissions and assignments in separate steps.
-                </span>
-                <span className="mt-3 inline-flex text-xs font-semibold text-slate-700 group-hover:underline">Continue with advanced setup</span>
-              </span>
-            </div>
-          </button>
-        </div>
-      </FormModal>
-
       {migrationHealth && (
         <div className={`rounded-xl border px-4 py-3 text-sm ${migrationHealth.usersWithoutAccessProfile > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -567,13 +529,13 @@ export const AccessProfileListView: React.FC = () => {
               <p className="font-semibold text-slate-800">Authorization Migration Health</p>
               <p className="mt-0.5 text-xs text-slate-600">
                 {migrationHealth.usersWithoutAccessProfile > 0
-                  ? `${migrationHealth.usersWithoutAccessProfile} user(s) have no Access Profile and cannot access protected functions until one is assigned.`
-                  : "All users have at least one Access Profile. Access Profiles are enforced for protected functions."}
+                  ? `${migrationHealth.usersWithoutAccessProfile} active user(s) have no Access Profile and cannot access protected functions until one is assigned. Suspended and terminated accounts are not counted.`
+                  : "All active users have at least one Access Profile. Access Profiles are enforced for protected functions."}
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <Badge color={migrationHealth.accessProfilesEnforced ? "emerald" : "amber"} size="sm">Access Profiles {migrationHealth.accessProfilesEnforced ? "enforced" : "pending"}</Badge>
-              <Badge color="slate" size="sm">{migrationHealth.usersWithProfile}/{migrationHealth.totalUsers} mapped</Badge>
+              <Badge color="slate" size="sm">{migrationHealth.usersWithProfile}/{migrationHealth.totalUsers} active users mapped</Badge>
             </div>
           </div>
         </div>

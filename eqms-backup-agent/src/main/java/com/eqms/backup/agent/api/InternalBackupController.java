@@ -28,7 +28,7 @@ import java.util.UUID;
 @RequestMapping("/internal")
 public class InternalBackupController {
 
-    public record CreateBackupRequest(String requestedBy, String reason, String changeControlRef, String type) {
+    public record CreateBackupRequest(String requestedBy, String reason, String changeControlRef, String type, List<String> components) {
     }
 
     public record VerifyRequest(String requestedBy) {
@@ -81,8 +81,10 @@ public class InternalBackupController {
                                     @RequestParam(required = false) String startedFrom, @RequestParam(required = false) String startedTo,
                                     @RequestParam(required = false) String checkedFrom, @RequestParam(required = false) String checkedTo,
                                     @RequestParam(defaultValue = "startedAt") String sortBy, @RequestParam(defaultValue = "desc") String sortDirection,
-                                    @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        BackupQueryService.Page result = queries.list(new BackupQueryService.Query(search, status, type, verification, instant(startedFrom), instant(startedTo), instant(checkedFrom), instant(checkedTo), sortBy, "asc".equalsIgnoreCase(sortDirection), page, limit));
+                                    @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit,
+                                    @RequestParam(required = false) String trigger, @RequestParam(required = false) String component,
+                                    @RequestParam(required = false) String people) {
+        BackupQueryService.Page result = queries.list(new BackupQueryService.Query(search, status, type, verification, instant(startedFrom), instant(startedTo), instant(checkedFrom), instant(checkedTo), sortBy, "asc".equalsIgnoreCase(sortDirection), page, limit, trigger, component, SearchClause.split(people)));
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("data", result.data());
         Map<String, Object> pagination = new LinkedHashMap<>();
@@ -109,8 +111,19 @@ public class InternalBackupController {
             return ResponseEntity.badRequest().body(Map.of("code", "BACKUP_TYPE_NOT_ALLOWED"));
         }
         String trigger = "PRE_CHANGE".equals(type) ? "PRE_CHANGE" : "MANUAL";
-        UUID job = queue.enqueue("BACKUP_DB", CanonicalJson.of(Map.of("type", type, "trigger", trigger, "reason", request.reason().trim(),
-                "changeControlRef", request.changeControlRef() == null ? "" : request.changeControlRef().trim())), request.requestedBy());
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("type", type);
+        payload.put("trigger", trigger);
+        payload.put("reason", request.reason().trim());
+        payload.put("changeControlRef", request.changeControlRef() == null ? "" : request.changeControlRef().trim());
+        if (request.components() != null) {
+            if (request.components().isEmpty()) return ResponseEntity.badRequest().body(Map.of("code", "BACKUP_COMPONENTS_REQUIRED"));
+            if (!com.eqms.backup.agent.backup.DatabaseBackupService.ALL_COMPONENTS.containsAll(request.components())) {
+                return ResponseEntity.badRequest().body(Map.of("code", "BACKUP_COMPONENT_UNKNOWN"));
+            }
+            payload.put("components", request.components().stream().distinct().sorted().toList());
+        }
+        UUID job = queue.enqueue("BACKUP_DB", CanonicalJson.of(payload), request.requestedBy());
         return ResponseEntity.accepted().body(Map.of("jobId", job.toString()));
     }
 

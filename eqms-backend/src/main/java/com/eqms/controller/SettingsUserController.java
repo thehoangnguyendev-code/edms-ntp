@@ -98,6 +98,12 @@ public class SettingsUserController {
         return ResponseEntity.ok(service.getNextEmployeeCodeSuggestion());
     }
 
+    @GetMapping("/users/suggest-username")
+    public ResponseEntity<String> suggestUsername(@RequestParam String fullName) {
+        requireUserView();
+        return ResponseEntity.ok(service.suggestUsername(fullName));
+    }
+
     @GetMapping("/users/{id}")
     public ResponseEntity<UserManagementResponse> getUser(
             @PathVariable UUID id,

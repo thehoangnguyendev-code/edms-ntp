@@ -15,7 +15,7 @@ export const AuthField: React.FC<AuthFieldProps> = ({ htmlFor, label, required, 
   return (
     <div className={AUTH_UI.fieldBlock}>
       <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-900 sm:text-sm capitalize">
-        {label} {required && <span className="text-red-500" aria-hidden="true">*</span>}
+        {label} {required && <span className="text-red-600" aria-hidden="true">*</span>}
       </label>
       {children}
       {error && (

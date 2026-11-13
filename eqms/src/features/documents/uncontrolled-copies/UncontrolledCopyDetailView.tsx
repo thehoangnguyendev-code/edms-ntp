@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
-import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
+import { WorkflowProgressStepper } from "@/components/ui/workflow-stepper/WorkflowProgressStepper";
+import type { WorkflowProgress } from "@/types/document";
 import { uncontrolledCopyDetail as uncontrolledCopyDetailBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { useNavigateWithLoading } from "@/hooks/useNavigateWithLoading";
 import { navigateBack } from "@/app/navigation/backNavigation";
@@ -33,41 +34,6 @@ import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrail
 type DetailTab =
   "information" | "recipient" | "document" | "timeline" | "audit";
 
-/** Same 3 phases ControlledCopyDetailView's own stepper uses (minus "Obsoleted", which does not
- *  apply here -- an uncontrolled copy is never superseded, only ever distributed or not).
- *  "Closed - Cancelled" is a real trailing step so WorkflowStepper's built-in terminal-status
- *  detection (and its automatic grey/striped treatment of the skipped "Distributed" step) applies
- *  exactly as it does for Controlled Copy. */
-const UNCONTROLLED_COPY_STEPS = [
-  "Ready for Distribution",
-  "Distributed",
-  "Closed - Cancelled",
-] as const;
-
-/** Maps the server's granular machine status code to one of the 3 display phases. REQUESTED,
- *  APPROVED and GENERATED are all still "Ready for Distribution" -- the approver rejecting the
- *  request (or the requester cancelling it) is what actually ends the flow, which is why REJECTED
- *  and CANCELLED both map to "Closed - Cancelled" here. EXPIRED still displays as "Distributed":
- *  expiry is not a failure, the copy was already successfully distributed. */
-const stepLabelForStatus = (
-  statusCode: UncontrolledCopy["statusCode"],
-): string => {
-  switch (statusCode) {
-    case "REQUESTED":
-    case "APPROVED":
-    case "GENERATED":
-      return "Ready for Distribution";
-    case "DISTRIBUTED":
-    case "EXPIRED":
-      return "Distributed";
-    case "REJECTED":
-    case "CANCELLED":
-      return "Closed - Cancelled";
-    default:
-      return "Ready for Distribution";
-  }
-};
-
 const DETAIL_TABS: TabItem[] = [
   { id: "information", label: "General Information" },
   { id: "recipient", label: "Recipient & Validity" },
@@ -82,6 +48,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
   const location = useLocation();
   const { navigateTo, isNavigating } = useNavigateWithLoading();
   const [copy, setCopy] = useState<UncontrolledCopy | null>(null);
+  const [workflow, setWorkflow] = useState<WorkflowProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
@@ -110,6 +77,14 @@ export const UncontrolledCopyDetailView: React.FC = () => {
         if (!active) return;
         setCopy(data);
         setError("");
+        uncontrolledCopyApi
+          .getUncontrolledCopyWorkflow(id)
+          .then((result) => {
+            if (active) setWorkflow(result);
+          })
+          .catch(() => {
+            if (active) setWorkflow(null);
+          });
       })
       .catch((err) => {
         if (active)
@@ -207,15 +182,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
         }
       />
 
-      <WorkflowStepper
-        steps={UNCONTROLLED_COPY_STEPS}
-        currentStepIndex={UNCONTROLLED_COPY_STEPS.indexOf(
-          stepLabelForStatus(
-            copy.statusCode,
-          ) as (typeof UNCONTROLLED_COPY_STEPS)[number],
-        )}
-        terminalProgressStep="Ready for Distribution"
-      />
+      <WorkflowProgressStepper workflow={workflow} />
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <TabNav

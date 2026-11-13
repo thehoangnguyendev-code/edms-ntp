@@ -12,7 +12,6 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { DataTable } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast/Toast";
-import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
 import { Fact } from "@/features/backup-restore/components/Fact";
@@ -28,7 +27,7 @@ import {
 } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
-import { COMPONENT_LABEL, GATE_LABEL, MEDIUM_LABEL, POLICY_STATUS_COLOR, policyErrorMessage } from "./policyLabels";
+import { COMPONENT_LABEL, filesText, GATE_LABEL, MEDIUM_LABEL, POLICY_STATUS_COLOR, policyErrorMessage } from "./policyLabels";
 
 const conditionState = (c: PolicyGateCondition) => {
   if (c.ok) return { label: "Met", color: "emerald" as const };
@@ -56,7 +55,6 @@ export const BackupPolicyDetailView: React.FC = () => {
   const version = Number(versionParam);
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const canApprove = hasPermission("backup.admin.policy.approve");
   const canPropose = hasPermission("backup.admin.policy.propose");
@@ -116,7 +114,6 @@ export const BackupPolicyDetailView: React.FC = () => {
 
   const body = readPolicyBody(policy);
   const draft = policy.status === "DRAFT";
-  const mine = !!user?.username && user.username.toLowerCase() === (policy.proposedBy ?? "").toLowerCase();
   const gateBlocks = !!gate && !gate.passed;
 
   const activate = async (data: { signatureToken?: string }) => {
@@ -161,7 +158,7 @@ export const BackupPolicyDetailView: React.FC = () => {
         </Button>
       )}
       {draft && canApprove && (
-        <Button size="sm" disabled={busy || mine} onClick={() => setSigning(true)} className="whitespace-nowrap touch-manipulation">
+        <Button size="sm" disabled={busy} onClick={() => setSigning(true)} className="whitespace-nowrap touch-manipulation">
           Approve and Activate
         </Button>
       )}
@@ -170,9 +167,6 @@ export const BackupPolicyDetailView: React.FC = () => {
 
   return (
     <BackupAdminLivePage title="Backup Policy Detail" parent={parent} actions={actions}>
-      {draft && mine && (
-        <WarningBanner variant="info" title="Waiting for another person" description="You proposed this version, so someone else with the approval permission has to activate it." />
-      )}
       {draft && gateBlocks && (
         <WarningBanner variant="warning" title="This version does not meet the 3-2-1-1 rule yet" description="It cannot be activated until every condition below is met. Propose a corrected version instead." />
       )}
@@ -210,6 +204,7 @@ export const BackupPolicyDetailView: React.FC = () => {
           <div className="space-y-3">
             <Fact label="Components">{body.components.map((c) => COMPONENT_LABEL[c] ?? c).join(", ") || "—"}</Fact>
             <Fact label="Database backup">{body.enabled ? `Daily at ${body.time}` : "Switched off"}</Fact>
+            <Fact label="Files backup">{filesText(body)}</Fact>
             <Fact label="Kept">Permanently. Backups are never deleted by age.</Fact>
           </div>
         </FormSection>
@@ -225,6 +220,12 @@ export const BackupPolicyDetailView: React.FC = () => {
               { id: "immutable", header: "Immutable", cell: (row) => (row.immutable ? <Badge color="emerald">Yes</Badge> : "No") },
             ]}
           />
+          {body.manualCopy && (
+            <div className="mt-4 space-y-3">
+              <Fact label="Manual copy">{body.manualCopy.description}</Fact>
+              <Fact label="Made every">{body.manualCopy.everyDays} day(s), by a person. The Backup Agent cannot see it, so it is declared, not tested.</Fact>
+            </div>
+          )}
         </FormSection>
       </div>
 

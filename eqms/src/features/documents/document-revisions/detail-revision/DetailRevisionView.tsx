@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { cn } from "@/components/ui/utils";
-import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import { ReplaceAssigneeBanner } from "./components/ReplaceAssigneeBanner";
 import { PublishBatchProgressModal } from "./components/PublishBatchProgressModal";
@@ -34,7 +33,6 @@ import { useToast } from "@/components/ui/toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { hasWorkingNotesEditAccess } from "@/features/documents/document-revisions/shared/workingNotesPermissions";
 
-import type { DocumentStatus } from "@/features/documents/types";
 import { documentApi } from "@/services/api/documents";
 import {
   refreshDetailAfterSnapshot,
@@ -42,13 +40,8 @@ import {
   isSnapshotGenerating,
   pollSnapshotInBackground,
 } from "@/features/documents/shared/detailSnapshotHelpers";
-import {
-  normalizeRevisionStatusForStepper,
-  resolveRevisionSkippedSteps,
-  resolveTerminalProgressStep,
-  revisionWorkflowStepIndex,
-  REVISION_WORKFLOW_STEPS,
-} from "@/features/documents/shared/statusMapping";
+import { resolveStatusCode } from "@/features/documents/shared/statusMapping";
+import { WorkflowProgressStepper } from "@/components/ui/workflow-stepper/WorkflowProgressStepper";
 import {
   buildControlledCopyRequestStateFromRevision,
   buildControlledCopyRequestRouteStateFromRevision,
@@ -291,11 +284,8 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
   const { user } = usePermissions();
   const [isRegeneratingPdf, setIsRegeneratingPdf] = useState(false);
   const currentRevision = revision;
-  const currentStatus = normalizeRevisionStatusForStepper(
-    currentRevision?.status,
-    currentRevision?.statusInfo,
-  ) as DocumentStatus;
-  const isReadyForPublishing = currentStatus === "Ready for Publishing";
+  const isReadyForPublishing =
+    resolveStatusCode(currentRevision?.status, currentRevision?.statusInfo) === "READY_FOR_PUBLISHING";
 
   const revisionActionCapabilities = useRevisionActionCapabilities(currentRevision?.id ?? null);
   // Refresh in place when anyone changes this revision (status, signatures, actions ...) without a manual reload.
@@ -330,14 +320,6 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     });
   };
 
-  const terminalProgressStep = useMemo(
-    () =>
-      resolveTerminalProgressStep(
-        currentRevision?.status,
-        currentRevision?.history || [],
-      ),
-    [currentRevision?.status, currentRevision?.history],
-  );
   const revisionStatus = String(currentRevision?.status ?? "").toUpperCase();
   const showHistoricalReviewComparison = ["PENDING_REVIEW", "PENDING_APPROVAL"].includes(revisionStatus)
     || (revisionStatus === "DRAFT" && Boolean((currentRevision as any)?.rejectedAt));
@@ -470,7 +452,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     () =>
       (currentRevision?.reviewers ?? []).map((item, index) => ({
         id: item.id || String(index),
-        name: item.fullName || item.username || item.id,
+        name: item.fullName || item.username || "",
         signedOn: item.actedAt || undefined,
       })),
     [currentRevision?.reviewers],
@@ -480,7 +462,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     () =>
       (currentRevision?.approvers ?? []).map((item, index) => ({
         id: item.id || String(index),
-        name: item.fullName || item.username || item.id,
+        name: item.fullName || item.username || "",
         signedOn: item.actedAt || undefined,
       })),
     [currentRevision?.approvers],
@@ -883,18 +865,6 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
   };
 
   const canRequestControlledCopy = Boolean(currentRevision?.canRequestControlledCopy);
-  const skippedSteps = useMemo(
-    () => resolveRevisionSkippedSteps(
-      currentRevision?.status,
-      currentRevision?.history,
-      currentRevision?.requiresTraining,
-    ),
-    [currentRevision?.status, currentRevision?.history, currentRevision?.requiresTraining],
-  );
-  const currentStepIndex = revisionWorkflowStepIndex(
-    currentRevision?.status,
-    currentRevision?.statusInfo,
-  );
 
   useEffect(() => {
     let mounted = true;
@@ -1204,14 +1174,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       </div>
 
       {/* Status Stepper */}
-      {currentRevision && (
-        <WorkflowStepper
-          steps={REVISION_WORKFLOW_STEPS}
-          currentStepIndex={currentStepIndex}
-          skippedSteps={skippedSteps}
-          terminalProgressStep={terminalProgressStep}
-        />
-      )}
+      <WorkflowProgressStepper workflow={currentRevision?.workflow} />
 
       {currentRevision && (
         <ReplaceAssigneeBanner
@@ -1255,13 +1218,14 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
                   (item) => item.id,
                 ),
                 coAuthorDisplayNames: (currentRevision?.coAuthors || []).map(
-                  (item) => item.fullName || item.username || item.id,
+                  (item) => item.fullName || item.username || "",
                 ),
                 isTemplate: Boolean(currentRevision?.isTemplate ?? false),
                 businessUnit: currentRevision?.businessUnit || "",
                 department: currentRevision?.department || "",
                 subType: currentRevision?.subType || "",
                 type: currentRevision?.type || "",
+                typeShortCode: currentRevision?.typeShortCode,
                 effectiveDate: currentRevision?.effectiveDate,
                 validUntil: currentRevision?.validUntil,
                 knowledgeBase: currentRevision?.knowledgeBase || "",

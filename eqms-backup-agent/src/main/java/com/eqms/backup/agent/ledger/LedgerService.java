@@ -53,9 +53,15 @@ public class LedgerService {
         this.ledgerFile = properties.getLedgerDir().resolve("ledger.jsonl");
     }
 
-    /** Appends one event and returns it. Serialised by an advisory lock, so two writers never fork the chain. */
+    /**
+     * Appends one event and returns it. Serialised by an advisory lock, so two writers never fork the chain. The copy in the file is
+     * written while the lock is still held: written after the commit, a slow write by one process (the agent and the restore worker
+     * both write) could land after the next event, and the two copies would then differ in order although both are intact. If the
+     * commit itself fails after the file write, the file has a line the database lacks, which verify() reports; the other order,
+     * a database event without its line, would be a silent gap in the evidence.
+     */
     public Event append(String actor, String event, String ref, Map<String, Object> data) {
-        Event written = tx.execute(status -> {
+        return tx.execute(status -> {
             jdbc.queryForList("select pg_advisory_xact_lock(?)", LOCK_KEY);
             Map<String, Object> last = jdbc.queryForList("select seq, hash from ledger_event order by seq desc limit 1").stream().findFirst().orElse(null);
             long seq = last == null ? 1 : ((Number) last.get("seq")).longValue() + 1;
@@ -65,10 +71,10 @@ public class LedgerService {
             String hash = hashOf(prev, seq, at, actor, event, ref, dataJson);
             jdbc.update("insert into ledger_event(seq, at, actor, event, ref, data_json, prev_hash, hash) values (?,?,?,?,?,?,?,?)",
                     seq, Timestamp.from(at), actor, event, ref, dataJson, prev, hash);
-            return new Event(seq, at, actor, event, ref, dataJson, prev, hash);
+            Event written = new Event(seq, at, actor, event, ref, dataJson, prev, hash);
+            appendToFile(written);
+            return written;
         });
-        appendToFile(written);
-        return written;
     }
 
     public List<Event> all() {
@@ -131,7 +137,7 @@ public class LedgerService {
         }
     }
 
-    private void appendToFile(Event e) {
+    protected void appendToFile(Event e) {
         try {
             Files.createDirectories(ledgerFile.getParent());
             String line = e.seq() + " " + e.hash() + "|" + AT_FORMAT.format(e.at()) + "|" + e.actor() + "|" + e.event() + "|" + e.ref() + "|" + e.dataJson() + "\n";

@@ -1,6 +1,7 @@
 import apiClient from "./client";
 import { getBrowserReachableApiBaseUrl } from "./documents";
 import type { TrainingActivityStatus } from "./trainingLinks";
+import type { WorkflowProgress } from "@/types/document";
 
 /** Training Management: activities, sessions, people and approval steps (SDS-TR-001 section 7). Everything is decided by the server; the screens only show it. */
 
@@ -159,6 +160,8 @@ export interface TrainingActivityDetail extends Omit<TrainingActivitySummary, "p
   proposedParticipantCount?: number;
   /** For a cancelled activity: the status it was cancelled from (null for an old one). */
   cancelledFromStatus?: string | null;
+  /** The lifecycle stepper of this activity, worked out on the server. */
+  workflow?: WorkflowProgress;
   /** SOP.0003 5.3.6: where a new or revised document training stands against "the list goes to QA on the day of the training". Null when the rule does not apply. */
   resultsToQa?: { state: "WAITING" | "DUE" | "DUE_TODAY" | "OVERDUE" | "SENT" | "SENT_LATE"; days: number; dueOn?: string | null; sentOn?: string | null } | null;
   contentRules?: { materialsRequired: boolean; materialsSatisfied: boolean; materialsSource: "DOCUMENT" | "FILES" | "NONE"; testRequired: boolean; checklistRequired: boolean; assessmentFormSatisfied: boolean; onlineTest: boolean; inherited: boolean; missing: string[] } | null;
@@ -208,6 +211,11 @@ export interface TrainingParticipantStats { total: number; pending: number; atte
 export interface TrainingMyApproval { id: string; stepCode: TrainingApprovalStep | "MATRIX_APPROVE" | "REQUIREMENT_REVIEW" | "REQUIREMENT_APPROVE"; objectType: string; objectId: string; activityId?: string | null; trainingNumber: string; subject: string; status: TrainingActivityStatus; assignedAt: string }
 
 const command = async (path: string, body: unknown) => (await apiClient.post<TrainingActivityDetail>(path, body)).data;
+
+/** The lifecycle stepper of a record that is being created and does not exist yet; the server defines it like every other stepper. */
+export const trainingWorkflowApi = {
+  newRecord: async (type: "ACTIVITY" | "ASSESSMENT") => (await apiClient.get<WorkflowProgress>(`/training/workflows/new/${type}`)).data,
+};
 
 export const trainingActivitiesApi = {
   list: async (params: Record<string, string | number | boolean | undefined>) =>
@@ -364,6 +372,8 @@ export interface TrainingMatrixRow {
   documentNumber?: string | null; documentName?: string | null; positionIds: string[]; /** The row is for all employees of the department (with or without a Work Position); ticked for every Work Position. */ allEmployees?: boolean; /** Required by Quality Assurance (Training Topics): it cannot be changed or taken out. */ locked?: boolean;
 }
 export interface TrainingMatrixVersion {
+  /** The lifecycle stepper of this record, worked out on the server; the screen only draws it. */
+  workflow?: WorkflowProgress;
   id: string; matrixId: string; matrixCode: string; departmentId: string; departmentName: string; versionNo: number; status: TrainingMatrixVersionRef["status"];
   changeReason?: string | null; rejectReason?: string | null; version: number; rows: TrainingMatrixRow[]; positions: TrainingPosition[]; approvers: TrainingApproverRow[];
   capabilities: { edit: boolean; submit: boolean; approve: boolean; reject: boolean; upgrade: boolean };
@@ -562,6 +572,8 @@ export type EssayNumbering = "CONTINUE" | "RESTART";
 export interface TrainingAssessmentRevision { id: string; revisionNumber: string; name: string; status: TrainingAssessmentSummary["status"]; createdAt: string; createdByName: string; approvedAt?: string | null; current: boolean }
 export interface TrainingAssessmentItem { no: number; kind: AssessmentItemKind; prompt: string; options: { id: string; text: string }[]; correct: string[]; points: number; modelAnswer?: string | null; optionLayout?: "VERTICAL" | "TWO_COLUMNS"; answerLines?: number | null; /** A picture under the question, as a data URL (PNG or JPEG); a test only. */ image?: string | null }
 export interface TrainingAssessmentDetail extends TrainingAssessmentSummary {
+  /** The lifecycle stepper of this record, worked out on the server; the screen only draws it. */
+  workflow?: WorkflowProgress;
   version: number; durationMinutes?: number | null; essayNumbering?: EssayNumbering; createdByName?: string | null; submittedByName?: string | null; usedByActivities: number; items: TrainingAssessmentItem[];
   capabilities: { edit: boolean; delete: boolean; submit: boolean; returnToDraft: boolean; approve: boolean; upgradeRevision: boolean };
   /** Why Approve is not offered to a person who holds the permission (no item yet, or the person last changed the draft). */
@@ -574,6 +586,8 @@ export interface TrainingAssessmentSave {
 export interface TrainingAssessmentChoice { id: string; code: string; revisionNumber: string; name: string; kind: AssessmentKind; itemCount: number; maxScore: number | null }
 export const trainingAssessmentsApi = {
   list: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingAssessmentSummary>>("/training/assessments", { params })).data,
+  /** The people who changed an assessment (each once), for the Last Changed By filter. */
+  editors: async () => (await apiClient.get<string[]>("/training/assessments/editors")).data,
   approved: async (search?: string, kind?: AssessmentKind) => (await apiClient.get<{ data: TrainingAssessmentChoice[] }>("/training/assessments/approved", { params: { search, kind } })).data.data,
   get: async (id: string) => (await apiClient.get<TrainingAssessmentDetail>(`/training/assessments/${id}`)).data,
   /** Every revision of the assessment of {id}: searched, sorted and paged by the server. */
@@ -641,6 +655,8 @@ export interface TrainingReviewItem {
 }
 export interface TrainingPersonMatrixGaps { positionName?: string | null; required: number; missing: number; due: number; done: number; gaps: TrainingGap[] }
 export interface TrainingPersonnelReview extends TrainingPersonnelReviewSummary {
+  /** The lifecycle stepper of this record, worked out on the server; the screen only draws it. */
+  workflow?: WorkflowProgress;
   absenceFrom?: string | null; absenceTo?: string | null; absenceOverSixMonths?: boolean; departmentFrom?: string | null; departmentTo?: string | null; note?: string | null; closedAt?: string | null; closedByName?: string | null;
   cancelReason?: string | null; items: TrainingReviewItem[]; closerUserId?: string | null; closerName?: string | null; readyToClose?: boolean;
   capabilities: { editItems: boolean; close: boolean; changeCloser?: boolean; cancel: boolean };
@@ -697,7 +713,8 @@ export const trainingCopyApi = {
   list: async (type: TrainingCopyType, id: string) => (await apiClient.get<TrainingCopyLog>(`/training/copies/${type}/${id}`)).data,
   send: async (type: TrainingCopyType, id: string, departmentIds: string[], note?: string) => (await apiClient.post<TrainingCopyLog>(`/training/copies/${type}/${id}`, { departmentIds, note })).data,
   receive: async (copyId: string) => (await apiClient.post(`/training/copy-distributions/${copyId}/receive`)).data,
-  mine: async (sortBy?: string, sortDirection?: "asc" | "desc") => (await apiClient.get<TrainingMyCopy[]>("/training/copy-distributions/mine", { params: { sortBy, sortDirection } })).data,
+  /** The copies sent to the department of the person: sorted, paged and limited to the kinds the person may read by the server. */
+  mine: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingMyCopy>>("/training/copy-distributions/mine", { params })).data,
 };
 
 /** Work suspended after a failed assessment (D-12). */
@@ -711,7 +728,7 @@ export interface TrainingRetentionRow {
   id: string; fullName: string; employeeCode?: string | null; avatar?: string | null; position?: string | null; terminationDate: string; retainedUntil: string; records: number; ended: boolean;
 }
 export interface TrainingImpactRow {
-  id: string; trainingNumber: string; trainingTopics: string; activityStatus: TrainingActivityStatus; documentId: string; documentNumber?: string | null; documentName?: string | null; revisionNumber?: string | null;
+  id: string; trainingNumber: string; trainingTopics: string; activityStatus: TrainingActivityStatus; documentId: string; revisionId?: string | null; documentNumber?: string | null; documentName?: string | null; revisionNumber?: string | null;
   departmentName: string; createdAt: string; outcome?: "MATRIX_UPDATE_NEEDED" | "MATRIX_ALREADY_COVERS" | "NO_TRAINING_IMPACT" | null; assessedAt?: string | null; assessedByName?: string | null;
   assessmentReason?: string | null; impactStatus: "PENDING" | "MATRIX_UPDATE_PENDING" | "DONE"; canAssess: boolean;
 }
@@ -782,6 +799,8 @@ export interface TrainingJobDuty { sortOrder?: number; responsibility: string; d
 export interface TrainingEligibilityItem { title: string; code?: string | null; jobRoleName?: string; annualRequired: boolean; lastDone?: string | null; /** The matrix of the department, or a training ticked for this assignment. */ source?: "MATRIX" | "CHOSEN" | "FACTORY" | "ALL_EMPLOYEES" }
 export interface TrainingEligibility { openSuspensions?: number; matrixMissing: boolean; matrixVersionId?: string | null; items: TrainingEligibilityItem[]; complete: boolean; missingCount?: number }
 export interface TrainingJobDetail extends Omit<TrainingJobSummary, "fullName" | "employeeCode" | "positionName"> {
+  /** The lifecycle stepper of this record, worked out on the server; the screen only draws it. */
+  workflow?: WorkflowProgress;
   personUserId: string; personName: string; positionId: string; positionName: string; departmentNames?: string; /** Every Work Position of this issuance; `carried` is a role the person already held. */ roles?: { id: string; name: string; department: string; carried: boolean }[]; previousPositionName?: string | null; directSuperiorTitle?: string | null; subordinateTitles?: string | null;
   substituteTitle?: string | null; changeReason?: string | null; jurisdiction?: string | null; exceptionReason?: string | null; exceptionApprovedBy?: string | null; assignorTitle?: string | null; cancelReason?: string | null;
   version: number; duties: TrainingJobDuty[]; requiredItems?: { topicText?: string | null; documentId?: string | null; title: string; code?: string | null }[]; approvers: TrainingApproverRow[]; signatures?: { meaning: string; fullName: string; signedAt: string }[]; eligibility?: TrainingEligibility;
@@ -805,6 +824,8 @@ export const trainingJobsApi = {
 };
 
 export interface TrainingSpecimen {
+  /** The lifecycle stepper of this record, worked out on the server; the screen only draws it. */
+  workflow?: WorkflowProgress;
   hasSecond?: boolean;
   /** True when a watermark was stamped on the pictures: the original can be opened beside the stamped picture the screens show. */
   watermarked?: boolean;
@@ -857,6 +878,8 @@ export interface TrainingRequirementLine {
   lineStatus: "PLANNED" | "POSTPONED" | "IN_PROGRESS" | "DONE" | "OVERDUE";
 }
 export interface TrainingRequirementDetail extends Omit<TrainingRequirementSummary, "lineCount"> {
+  /** The lifecycle stepper of this record, worked out on the server; the screen only draws it. */
+  workflow?: WorkflowProgress;
   departmentId: string; version: number; rejectReason?: string | null; createdByName?: string | null; preparedByName?: string | null; reviewedByName?: string | null; approvedByName?: string | null; preparedAt?: string | null; reviewedAt?: string | null; approvedAt?: string | null;
   lines: TrainingRequirementLine[]; approvers: TrainingApproverRow[];
   capabilities: { edit: boolean; submit: boolean; review: boolean; approve: boolean; reject: boolean; postpone: boolean; openActivity: boolean; qaSign: boolean };

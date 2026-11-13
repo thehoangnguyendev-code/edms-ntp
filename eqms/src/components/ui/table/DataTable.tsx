@@ -5,6 +5,7 @@ import { EXPAND_CONTENT_MOTION, useExpandTransition } from "./expandMotion";
 import { cn } from "../utils";
 import { TableEmptyState } from "./TableEmptyState";
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
+import { SkeletonTable } from "../loading/Skeleton";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { useToast } from "@/components/ui/toast";
@@ -27,7 +28,7 @@ export interface DataTableColumn<T> {
   header: React.ReactNode;
   /** Plain-text name shown in the Custom Column drawer. Falls back to `header` when it is a string. */
   label?: string;
-  /** Locked columns (for example "No.") cannot be hidden, pinned or moved by the user. */
+  /** Locked columns (for example "No.") cannot be hidden or moved. */
   locked?: boolean;
   cell: (row: T, index: number) => React.ReactNode;
   headerClassName?: string;
@@ -160,7 +161,7 @@ export function useCustomColumnLayout<T>(
         label: plainLabel(column),
         visible: true,
         order: index,
-        pinned: Boolean(column.locked),
+        pinned: false,
         locked: column.locked,
       })),
     [columns],
@@ -176,8 +177,8 @@ export function useCustomColumnLayout<T>(
   const shown = ordered
     .map((column) => byId.get(column.id))
     .filter((column): column is DataTableColumn<T> => column !== undefined);
-  // A locked column (No.) keeps its place and stays visible, but it is not fixed while the table scrolls sideways: only the columns the person pins are.
-  const pinnedIds = isDesktop ? ordered.filter((column) => column.pinned && !column.locked).map((column) => column.id) : [];
+  // Structural columns keep their position, but pinning is a separate per-user choice.
+  const pinnedIds = isDesktop ? ordered.filter((column) => column.pinned).map((column) => column.id) : [];
 
   const fixedActionLabel = action ? (typeof action.header === "string" ? action.header : "Action") : null;
 
@@ -381,7 +382,9 @@ function DataTableBase<T>({
     >
       {!showLoading && toolbar}
       {showLoading ? (
-        loadingContent
+        // The first load, with nothing to keep on screen: a placeholder with the shape of the table instead of a spinner, so the page does not
+        // jump when the rows arrive. A screen that needs something else passes `loadingContent`.
+        loadingContent ?? <SkeletonTable rows={8} columns={Math.max(columns.length, 2)} className="rounded-none border-0" />
       ) : (
         <div
           ref={attachScroller}
@@ -396,7 +399,7 @@ function DataTableBase<T>({
           <TableMarkup.Root
             data-record-table="true"
             className={cn(
-              "w-full min-w-max border-spacing-0 text-left",
+              "w-full min-w-max border-separate border-spacing-0 text-left",
               tableClassName,
             )}
           >

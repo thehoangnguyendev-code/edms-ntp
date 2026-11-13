@@ -1,6 +1,8 @@
 package com.eqms.service;
 
 import com.eqms.dto.navigation.NavigationItemResponse;
+import com.eqms.entity.UserAccount;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -25,8 +27,16 @@ public class NavigationService {
 
     private final SystemConfigurationService systemConfigurationService;
 
+    /** Optional so the menu can still be built from permissions alone (tests, and the fallback when the signed-in user cannot be loaded). */
+    private DocumentControlMenuAccess documentControlMenuAccess;
+
     public NavigationService(SystemConfigurationService systemConfigurationService) {
         this.systemConfigurationService = systemConfigurationService;
+    }
+
+    @Autowired(required = false)
+    void setDocumentControlMenuAccess(DocumentControlMenuAccess documentControlMenuAccess) {
+        this.documentControlMenuAccess = documentControlMenuAccess;
     }
 
     /**
@@ -35,6 +45,14 @@ public class NavigationService {
      * Segregation of Duties, visibility must come from explicit grants, including for admins.
      */
     public List<NavigationItemResponse> getNavigation(Set<String> permissions) {
+        return getNavigation(null, permissions);
+    }
+
+    /**
+     * Same, and the Document Control groups are listed only where the person has something to do (DC-VISIBILITY-TIERS-2026-11-07):
+     * the permission AND (the matching view-everything permission OR a name in that flow). Without a user the groups follow permissions alone.
+     */
+    public List<NavigationItemResponse> getNavigation(UserAccount user, Set<String> permissions) {
         Set<String> normalizedPermissions = permissions == null
                 ? Set.of()
                 : permissions.stream()
@@ -48,8 +66,6 @@ public class NavigationService {
                 && systemConfigurationService.isFeatureEnabled("feat-notifications")) {
             menu.add(new NavigationItemResponse("notifications", "Notifications", "Bell", "/notifications", false, null));
         }
-        // Every authenticated user has a private calendar. Source data retains its own authorization.
-        menu.add(new NavigationItemResponse("calendar", "Calendar", "CalendarDays", "/calendar", false, null));
         // Self-Service groups the two personal-workspace surfaces (Dashboard, Knowledge) that used
         // to live at top-level / nested inside Document Control -- shown if either child is visible.
         List<NavigationItemResponse> selfServiceChildren = new ArrayList<>();
@@ -59,7 +75,7 @@ public class NavigationService {
         }
         if (hasPermission(normalizedPermissions, "self_service.knowledge.view")
                 && systemConfigurationService.isFeatureEnabled("feat-edms-kb")) {
-            selfServiceChildren.add(new NavigationItemResponse("knowledge-base", "Knowledge", null, "/documents/knowledge/explorer", false, null));
+            selfServiceChildren.add(new NavigationItemResponse("knowledge-base", "Knowledge Base", null, "/documents/knowledge/explorer", false, null));
         }
         if (!selfServiceChildren.isEmpty()) {
             menu.add(new NavigationItemResponse("self-service", "Self-Service", "IconLayoutGrid", null, true, selfServiceChildren));
@@ -67,14 +83,18 @@ public class NavigationService {
         if (hasPermission(normalizedPermissions, "documents.module.view")
                 && systemConfigurationService.isFeatureEnabled("feat-edms")) {
             List<NavigationItemResponse> docChildren = new ArrayList<>();
-            if (systemConfigurationService.isFeatureEnabled("feat-edms-owned")) {
+            DocumentControlMenuAccess.Sections sections = user == null || documentControlMenuAccess == null ? null : documentControlMenuAccess.sectionsFor(user);
+            boolean showDocuments = sections == null || sections.documents();
+            boolean showControlledCopies = sections == null || sections.controlledCopies();
+            boolean showUncontrolledCopies = sections == null || sections.uncontrolledCopies();
+            if (showDocuments && systemConfigurationService.isFeatureEnabled("feat-edms-owned")) {
                 docChildren.add(new NavigationItemResponse("doc-owned-me", "Documents Owned By Me", null, "/documents/owned", false, null));
             }
-            if (systemConfigurationService.isFeatureEnabled("feat-edms-all")) {
+            if (showDocuments && systemConfigurationService.isFeatureEnabled("feat-edms-all")) {
                 docChildren.add(new NavigationItemResponse("doc-all", "All Documents", null, "/documents/all", false, null));
             }
 
-            if (systemConfigurationService.isFeatureEnabled("feat-edms-revisions")) {
+            if (showDocuments && systemConfigurationService.isFeatureEnabled("feat-edms-revisions")) {
                 List<NavigationItemResponse> revisionChildren = new ArrayList<>();
                 revisionChildren.add(new NavigationItemResponse("rev-owned-me", "Revisions Owned By Me", null, "/documents/revisions/owned", false, null));
                 revisionChildren.add(new NavigationItemResponse("rev-all", "All Revisions", null, "/documents/revisions/all", false, null));
@@ -84,13 +104,15 @@ public class NavigationService {
             }
 
             if (systemConfigurationService.isFeatureEnabled("feat-edms-copies")) {
-                List<NavigationItemResponse> copyChildren = new ArrayList<>();
-                copyChildren.add(new NavigationItemResponse("cc-all", "All Controlled Copies", null, "/documents/controlled-copies/all", false, null));
-                copyChildren.add(new NavigationItemResponse("cc-ready", "Ready for Distribution", null, "/documents/controlled-copies/ready", false, null));
-                copyChildren.add(new NavigationItemResponse("cc-distributed", "Distributed Copies", null, "/documents/controlled-copies/distributed", false, null));
-                docChildren.add(new NavigationItemResponse("controlled-copies", "Controlled Copies", null, null, false, copyChildren));
+                if (showControlledCopies) {
+                    List<NavigationItemResponse> copyChildren = new ArrayList<>();
+                    copyChildren.add(new NavigationItemResponse("cc-all", "All Controlled Copies", null, "/documents/controlled-copies/all", false, null));
+                    copyChildren.add(new NavigationItemResponse("cc-ready", "Ready for Distribution", null, "/documents/controlled-copies/ready", false, null));
+                    copyChildren.add(new NavigationItemResponse("cc-distributed", "Distributed Copies", null, "/documents/controlled-copies/distributed", false, null));
+                    docChildren.add(new NavigationItemResponse("controlled-copies", "Controlled Copies", null, null, false, copyChildren));
+                }
                 // Uncontrolled Copies: a separate feature/table/API from Controlled Copies, listed as a sibling node.
-                if (hasAnyPermission(normalizedPermissions, "documents.uncontrolled_copy.view", "documents.uncontrolled_copy.request")) {
+                if (showUncontrolledCopies && hasAnyPermission(normalizedPermissions, "documents.uncontrolled_copy.view", "documents.uncontrolled_copy.request")) {
                     List<NavigationItemResponse> uncontrolledChildren = new ArrayList<>();
                     uncontrolledChildren.add(new NavigationItemResponse("uc-all", "All Uncontrolled Copies", null, "/documents/uncontrolled-copies/all", false, null));
                     uncontrolledChildren.add(new NavigationItemResponse("uc-pending-approval", "Pending Approval", null, "/documents/uncontrolled-copies/pending-approval", false, null));
@@ -175,11 +197,9 @@ public class NavigationService {
         if (hasPermission(normalizedPermissions, "report.module.view")
                 && systemConfigurationService.isFeatureEnabled("feat-system-reports")) {
             List<NavigationItemResponse> reportChildren = new ArrayList<>();
-            // REPORT-ANALYTICS-PRODUCTION-2026-10-14: the analytics screens are sample-data previews, listed only when enabled.
-            if (systemConfigurationService.isFeatureEnabled("feat-report-analytics")) {
-                reportChildren.add(new NavigationItemResponse("report-overview", "Reports Overview", null, "/report/overview", false, null));
-                reportChildren.add(new NavigationItemResponse("report-analytics", "Quality Analytics", null, "/report/analytics", false, null));
-            }
+            // REPORT-COMPLETION-2026-11-12: Overview and Analytics read real data now, so the sample-data switch is gone.
+            reportChildren.add(new NavigationItemResponse("report-overview", "Reports Overview", null, "/report/overview", false, null));
+            reportChildren.add(new NavigationItemResponse("report-analytics", "Quality Analytics", null, "/report/analytics", false, null));
             reportChildren.add(new NavigationItemResponse("report-templates", "Report Library", null, "/report/templates", false, null));
             reportChildren.add(new NavigationItemResponse("report-history", "Report Run History", null, "/report/history", false, null));
             reportChildren.add(new NavigationItemResponse("report-scheduled", "Scheduled Reports", null, "/report/scheduled", false, null));
@@ -200,31 +220,17 @@ public class NavigationService {
             }
         }
 
-        // Backup & Restore: one screen per sub-menu; the UI is a preview until the feature is developed. Gated by its own view permission.
+        // Backup & Restore: one screen per sub-menu. Gated by its own view permission.
         if (hasPermission(normalizedPermissions, "backup.module.view")) {
             List<NavigationItemResponse> backupChildren = new ArrayList<>();
             backupChildren.add(new NavigationItemResponse("backup-overview", "Backup Status Overview", null, "/backup-restore/overview", false, null));
             List<NavigationItemResponse> backupGroupChildren = new ArrayList<>();
             backupGroupChildren.add(new NavigationItemResponse("backup-backups", "Backup History", null, "/backup-restore/backups", false, null));
-            backupGroupChildren.add(new NavigationItemResponse("backup-verifications", "Backup Verification Results", null, "/backup-restore/backups/verifications", false, null));
             backupGroupChildren.add(new NavigationItemResponse("backup-schedules", "Backup Schedules", null, "/backup-restore/backups/schedules", false, null));
-            backupGroupChildren.add(new NavigationItemResponse("backup-exports", "Export Requests", null, "/backup-restore/backups/exports", false, null));
-            // Each screen is listed only when the person may open it, the same permission its route checks.
-            if (hasPermission(normalizedPermissions, "backup.admin.alerts.view")) {
-                backupGroupChildren.add(new NavigationItemResponse("backup-alerts", "Backup Alerts & Recipients", null, "/backup-restore/alerts", false, null));
-            }
             backupChildren.add(new NavigationItemResponse("backup-group", "Backup", null, null, false, backupGroupChildren));
             List<NavigationItemResponse> restoreGroupChildren = new ArrayList<>();
-            restoreGroupChildren.add(new NavigationItemResponse("backup-restores", "Restore Requests", null, "/backup-restore/restores", false, null));
-            restoreGroupChildren.add(new NavigationItemResponse("restore-verifications", "Restore Verification Reports", null, "/backup-restore/restores/verification-reports", false, null));
-            restoreGroupChildren.add(new NavigationItemResponse("restore-history", "Restore History & Evidence", null, "/backup-restore/restores/history", false, null));
-            restoreGroupChildren.add(new NavigationItemResponse("backup-inspections", "Backup Inspections", null, "/backup-restore/restores/inspections", false, null));
-            if (hasPermission(normalizedPermissions, "backup.admin.restore_controls.view")) {
-                restoreGroupChildren.add(new NavigationItemResponse("restore-rules", "Restore Approval & Execution Rules", null, "/backup-restore/restore-rules", false, null));
-            }
-            if (hasPermission(normalizedPermissions, "backup.admin.disaster_recovery.view")) {
-                restoreGroupChildren.add(new NavigationItemResponse("backup-dr-drills", "Disaster Recovery Drills", null, "/backup-restore/dr-drills", false, null));
-            }
+            // One screen: the list of restores, the restore dialog, and finalize / roll back. The approval flow was removed (SDS-BR-003).
+            restoreGroupChildren.add(new NavigationItemResponse("production-restores", "Restore Backup", null, "/backup-restore/production-restores", false, null));
             backupChildren.add(new NavigationItemResponse("restore-group", "Restore", null, null, false, restoreGroupChildren));
             menu.add(new NavigationItemResponse("backup-restore", "Backup & Restore", "DatabaseBackup", null, true, backupChildren));
         }
@@ -310,14 +316,9 @@ public class NavigationService {
             if (!educationChildren.isEmpty()) {
                 settingsChildren.add(new NavigationItemResponse("education", "Education", "GraduationCap", null, false, educationChildren));
             }
-            if (hasAnyPermission(normalizedPermissions, "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view")) {
-                settingsChildren.add(new NavigationItemResponse("email-templates", "Email Templates", "IconMailForward", "/settings/email-templates", false, null));
-            }
+            // "Notifications Administration" lives in System Administration (see below).
             if (hasAnyPermission(normalizedPermissions, "settings.announcement.view", "settings.announcement.manage")) {
                 settingsChildren.add(new NavigationItemResponse("system-announcements", "System Announcements", "IconSpeakerphone", "/settings/announcements", false, null));
-            }
-            if (hasPermission(normalizedPermissions, "settings.configuration.view")) {
-                settingsChildren.add(new NavigationItemResponse("notification-policy", "Notification In-app", "Bell", "/settings/notification-policy", false, null));
             }
 
             // "Document Administration" moved to the System Administration group (see below).
@@ -332,6 +333,10 @@ public class NavigationService {
             if (hasPermission(normalizedPermissions, "settings.configuration.view")) {
                 sysAdminChildren.add(new NavigationItemResponse("config", "Configuration", "IconDeviceDesktopCog", "/settings/configuration", false, null));
                 sysAdminChildren.add(new NavigationItemResponse("electronic-signature-policies", "E-Sign Config", "PenTool", "/settings/electronic-signature", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "settings.notification_policy.view", "settings.notification_policy.manage",
+                    "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view")) {
+                sysAdminChildren.add(new NavigationItemResponse("notification-settings", "Notifications Administration", "Bell", "/settings/notifications", false, null));
             }
 
             // "Document Administration" -- moved here from the Document Control module (was nested
@@ -399,12 +404,6 @@ public class NavigationService {
             }
             if (hasPermission(normalizedPermissions, "backup.admin.storage.view")) {
                 backupAdminChildren.add(new NavigationItemResponse("backup-admin-storage", "Backup Storage & Encryption", null, "/settings/administration/backup/storage", false, null));
-            }
-            // One screen with a tab for each of these three views; it is listed when the person may open any of them.
-            if (hasPermission(normalizedPermissions, "backup.admin.restore_controls.view")
-                    || hasPermission(normalizedPermissions, "backup.admin.verification.view")
-                    || hasPermission(normalizedPermissions, "backup.admin.retention.view")) {
-                backupAdminChildren.add(new NavigationItemResponse("backup-admin-controls", "Backup Controls", null, "/settings/administration/backup/controls", false, null));
             }
             if (hasPermission(normalizedPermissions, "backup.admin.alerts.view")) {
                 backupAdminChildren.add(new NavigationItemResponse("backup-admin-alerts", "Backup Alerts & Recipients", null, "/settings/administration/backup/alerts", false, null));
@@ -479,11 +478,15 @@ public class NavigationService {
     }
 
     public List<FlatMenuItem> searchNavigation(String query, Set<String> permissions) {
+        return searchNavigation(query, null, permissions);
+    }
+
+    public List<FlatMenuItem> searchNavigation(String query, UserAccount user, Set<String> permissions) {
         if (query == null || query.isBlank()) {
             return Collections.emptyList();
         }
         String q = query.trim().toLowerCase(Locale.ROOT);
-        List<NavigationItemResponse> menu = getNavigation(permissions);
+        List<NavigationItemResponse> menu = getNavigation(user, permissions);
         List<FlatMenuItem> flatList = new ArrayList<>();
         flattenAndFilter(menu, null, null, q, flatList);
 

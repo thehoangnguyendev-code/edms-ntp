@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class ReportMetadataProviderTest {
-    final DocumentReportMetadataProvider provider=new DocumentReportMetadataProvider();
+    final DocumentReportMetadataProvider provider=new DocumentReportMetadataProvider(ReportTestVisibility.everything());
     UserAccount actor() { var actor=new UserAccount(); actor.setId(UUID.randomUUID()); actor.setStatus(UserStatus.Active); return actor; }
     @Test void denyMissingScope() { assertThrows(SecurityException.class,()->provider.query(actor(),List.of(),Map.of())); }
     @Test void denyMissingDepartment() { assertThrows(SecurityException.class,()->provider.query(actor(),List.of("DEPARTMENT"),Map.of())); }

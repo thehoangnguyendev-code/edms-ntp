@@ -28,6 +28,8 @@ final class FakeCommandRunner implements CommandRunner {
     /** Recent gpg versions write an AEAD packet instead of the classic "encrypted data" packet. */
     boolean aead;
     int pipelines;
+    /** The arguments of the first command of every pipeline, so a test can see which tables were asked for. */
+    final java.util.List<java.util.List<String>> dumpArgs = new java.util.ArrayList<>();
 
     @Override
     public Result run(Command command, long timeoutSeconds) {
@@ -84,6 +86,7 @@ final class FakeCommandRunner implements CommandRunner {
     @Override
     public PipelineResult pipelineToFile(List<Command> commands, Path out, long timeoutSeconds) throws IOException {
         pipelines++;
+        dumpArgs.add(commands.get(0).argv());
         if (dumpFails) {
             return new PipelineResult(List.of(1, 0), "", 0, "pg_dump: error: connection refused");
         }

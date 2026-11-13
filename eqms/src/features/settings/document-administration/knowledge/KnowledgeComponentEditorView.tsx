@@ -15,7 +15,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
 import { knowledgeApi, type KnowledgeComponent, type KnowledgeSourceOption } from "@/services/api/knowledge";
 
-const inputClass = "w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50";
+const inputClass = "w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50";
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 
 const errorMessage = (error: unknown, fallback: string) =>
@@ -159,7 +159,7 @@ export const KnowledgeComponentEditorView: React.FC = () => {
           <div>
             <label className={labelClass}>Description</label>
             <textarea
-              className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 resize-none"
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 resize-none"
               rows={3} value={description} disabled={!canManage} onChange={(e) => setDescription(e.target.value)}
             />
             {isNew && sourceField && (

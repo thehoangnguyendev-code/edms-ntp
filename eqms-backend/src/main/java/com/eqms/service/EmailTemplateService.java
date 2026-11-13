@@ -47,10 +47,7 @@ import java.util.stream.Collectors;
 @Service
 public class EmailTemplateService {
 
-    private static final String ACTION_EMAIL_TEMPLATE_CREATED = "EMAIL_TEMPLATE_CREATED";
     private static final String ACTION_EMAIL_TEMPLATE_UPDATED = "EMAIL_TEMPLATE_UPDATED";
-    private static final String ACTION_EMAIL_TEMPLATE_DELETED = "EMAIL_TEMPLATE_DELETED";
-    private static final String ACTION_EMAIL_TEMPLATE_DUPLICATED = "EMAIL_TEMPLATE_DUPLICATED";
     private static final String ACTION_EMAIL_TEMPLATE_STATUS_TOGGLED = "EMAIL_TEMPLATE_STATUS_TOGGLED";
     private static final String ACTION_EMAIL_TEMPLATE_TEST_SENT = "EMAIL_TEMPLATE_TEST_SENT";
     private static final String ACTION_EMAIL_TEMPLATE_PUBLISHED = "EMAIL_TEMPLATE_PUBLISHED";
@@ -69,6 +66,9 @@ public class EmailTemplateService {
 
     @org.springframework.beans.factory.annotation.Autowired
     private ElectronicSignatureService electronicSignatureService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private EmailDesignService emailDesignService;
 
     public EmailTemplateService(
             EmailTemplateRepository repository,
@@ -91,6 +91,7 @@ public class EmailTemplateService {
             String createdTo,
             String updatedFrom,
             String updatedTo,
+            String usage,
             String sortBy,
             String sortDirection,
             int page,
@@ -102,7 +103,7 @@ public class EmailTemplateService {
         Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
 
         Page<EmailTemplate> result = repository.findAll(
-                buildSpecification(search, type, status, createdFrom, createdTo, updatedFrom, updatedTo),
+                buildSpecification(search, type, status, createdFrom, createdTo, updatedFrom, updatedTo, usage),
                 PageRequest.of(safePage - 1, safeLimit, Sort.by(direction, sortProperty))
         );
 
@@ -133,7 +134,7 @@ public class EmailTemplateService {
         Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
 
         return repository.findAll(
-                        buildSpecification(search, type, status, createdFrom, createdTo, updatedFrom, updatedTo),
+                        buildSpecification(search, type, status, createdFrom, createdTo, updatedFrom, updatedTo, null),
                         Sort.by(direction, sortProperty)
                 ).stream()
                 .map(this::toResponse)
@@ -143,14 +144,14 @@ public class EmailTemplateService {
     @Transactional(readOnly = true)
     public EmailTemplateResponse getTemplateById(UUID id) {
         EmailTemplate template = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Email template not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Email template not found"));
         return toResponse(template);
     }
 
     @Transactional(readOnly = true)
     public EmailTemplate getTemplateEntityById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Email template not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Email template not found"));
     }
 
     @Transactional(readOnly = true)
@@ -159,9 +160,10 @@ public class EmailTemplateService {
                 .orElseThrow(() -> new EntityNotFoundException("Email template not found: " + name));
     }
 
+    /** A signature is not required to save an email template (the change is written to the Audit Trail); one that is sent must still be valid. */
     private void requireValidTemplateSignature(UserAccount currentUser, String signatureToken) {
         if (!StringUtils.hasText(signatureToken)) {
-            throw new IllegalArgumentException("Electronic signature is required to save an email template");
+            return;
         }
         var parsedSignature = tokenService.parseSignatureToken(signatureToken)
                 .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Electronic signature is invalid or expired"));
@@ -171,52 +173,16 @@ public class EmailTemplateService {
     }
 
     @Transactional
-    public EmailTemplateResponse createTemplate(EmailTemplateRequest request) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        requireValidTemplateSignature(currentUser, request.signatureToken());
-        EmailTemplate template = new EmailTemplate();
-        template.setName(request.name());
-        template.setType(normalizeTemplateType(request.type()));
-        template.setSubject(request.subject());
-        template.setContent(request.content());
-        template.setStatus(request.status());
-        template.setDescription(request.description());
-        template.setLogoUrl(normalizeOptional(request.logoUrl()));
-        template.setLogoFileName(normalizeOptional(request.logoFileName()));
-        template.setCopyright(normalizeOptional(request.copyright()));
-        template.setContactEmail(normalizeOptional(request.contactEmail()));
-        template.setPrimaryColor(normalizeOptional(request.primaryColor()));
-        template.setVariablesList(resolveVariables(request.variables(), request.subject(), request.content()));
-        template.setCreatedBy(currentUser.getFullName());
-        template.setUpdatedBy(currentUser.getFullName());
-
-        EmailTemplate saved = repository.save(template);
-        createVersionSnapshot(saved, "Created template", currentUser, null, null);
-        String reason = request.reason();
-        ElectronicSignature signature = electronicSignatureService.createEntitySignature("EmailTemplate", saved.getId(), saved.getName(), currentUser, request.signatureToken(), "EMAIL_TEMPLATE_CREATED", reason, null, null, saved.getStatus());
-        auditTrailService.logAs(
-                currentUser,
-                "EMAIL_TEMPLATE",
-                saved.getName(),
-                saved.getId(),
-                ACTION_EMAIL_TEMPLATE_CREATED,
-                null,
-                saved.getStatus(),
-                (reason != null && !reason.isBlank())
-                        ? "Created email template: " + reason
-                        : "Created email template",
-                List.of(),
-                signature.getId()
-        );
-        return toResponse(saved);
-    }
-
-    @Transactional
     public EmailTemplateResponse updateTemplate(UUID id, EmailTemplateRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         requireValidTemplateSignature(currentUser, request.signatureToken());
-        EmailTemplate template = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Email template not found: " + id));
+        // the row is locked until the transaction ends: two administrators saving the same message are served one after the other, and the second sees the first
+        EmailTemplate template = repository.lockById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Email template not found"));
+        if (request.expectedUpdatedDate() != null && template.getUpdatedDate() != null
+                && !request.expectedUpdatedDate().truncatedTo(java.time.temporal.ChronoUnit.MICROS).equals(template.getUpdatedDate().truncatedTo(java.time.temporal.ChronoUnit.MICROS))) {
+            throw new IllegalStateException("This was changed by someone else after you opened it. Reload it to see their change, then make yours again.");
+        }
 
         String previousStatus = template.getStatus();
         String previousName = template.getName();
@@ -224,23 +190,19 @@ public class EmailTemplateService {
         String previousContent = template.getContent();
         String previousDescription = template.getDescription();
 
-        template.setName(request.name());
-        template.setType(normalizeTemplateType(request.type()));
+        // The system finds a template by its type, so the name and the type are not editable; the look of the mail is the shared email design.
         template.setSubject(request.subject());
         template.setContent(request.content());
         template.setStatus(request.status());
         template.setDescription(request.description());
-        template.setLogoUrl(normalizeOptional(request.logoUrl()));
-        template.setLogoFileName(normalizeOptional(request.logoFileName()));
-        template.setCopyright(normalizeOptional(request.copyright()));
-        template.setContactEmail(normalizeOptional(request.contactEmail()));
-        template.setPrimaryColor(normalizeOptional(request.primaryColor()));
         template.setVariablesList(resolveVariables(request.variables(), request.subject(), request.content()));
         template.setUpdatedBy(currentUser.getFullName());
 
         EmailTemplate saved = repository.save(template);
         createVersionSnapshot(saved, "Updated template", currentUser, null, null);
-        ElectronicSignature signature = electronicSignatureService.createEntitySignature("EmailTemplate", saved.getId(), saved.getName(), currentUser, request.signatureToken(), "EMAIL_TEMPLATE_UPDATED", request.reason(), null, previousStatus, saved.getStatus());
+        ElectronicSignature signature = StringUtils.hasText(request.signatureToken())
+                ? electronicSignatureService.createEntitySignature("EmailTemplate", saved.getId(), saved.getName(), currentUser, request.signatureToken(), "EMAIL_TEMPLATE_UPDATED", request.reason(), null, previousStatus, saved.getStatus())
+                : null;
 
         // Previously recorded only the status with an empty changes list -- an inspector could
         // see THAT a GxP-facing notification template was edited but never WHAT changed (subject
@@ -265,7 +227,7 @@ public class EmailTemplateService {
                         ? "Updated email template: " + request.reason()
                         : "Updated email template",
                 changes,
-                signature.getId()
+                signature == null ? null : signature.getId()
         );
         return toResponse(saved);
     }
@@ -277,65 +239,10 @@ public class EmailTemplateService {
     }
 
     @Transactional
-    public void deleteTemplate(UUID id) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        EmailTemplate template = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Email template not found: " + id));
-        repository.delete(template);
-        auditTrailService.logAs(
-                currentUser,
-                "EMAIL_TEMPLATE",
-                template.getName(),
-                template.getId(),
-                ACTION_EMAIL_TEMPLATE_DELETED,
-                template.getStatus(),
-                null,
-                "Deleted email template"
-        );
-    }
-
-    @Transactional
-    public EmailTemplateResponse duplicateTemplate(UUID id) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        EmailTemplate template = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Email template not found: " + id));
-
-        EmailTemplate duplicate = new EmailTemplate();
-        duplicate.setName(template.getName() + " (Copy)");
-        duplicate.setType(template.getType());
-        duplicate.setSubject(template.getSubject());
-        duplicate.setContent(template.getContent());
-        duplicate.setStatus("Draft");
-        duplicate.setDescription(template.getDescription());
-        duplicate.setLogoUrl(template.getLogoUrl());
-        duplicate.setLogoFileName(template.getLogoFileName());
-        duplicate.setCopyright(template.getCopyright());
-        duplicate.setContactEmail(template.getContactEmail());
-        duplicate.setPrimaryColor(template.getPrimaryColor());
-        duplicate.setVariables(template.getVariables());
-        duplicate.setCreatedBy(currentUser.getFullName());
-        duplicate.setUpdatedBy(currentUser.getFullName());
-
-        EmailTemplate saved = repository.save(duplicate);
-        createVersionSnapshot(saved, "Duplicated from template: " + template.getName(), currentUser, null, null);
-        auditTrailService.logAs(
-                currentUser,
-                "EMAIL_TEMPLATE",
-                saved.getName(),
-                saved.getId(),
-                ACTION_EMAIL_TEMPLATE_DUPLICATED,
-                template.getStatus(),
-                saved.getStatus(),
-                "Duplicated from template: " + template.getName()
-        );
-        return toResponse(saved);
-    }
-
-    @Transactional
     public EmailTemplateResponse toggleStatus(UUID id) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         EmailTemplate template = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Email template not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Email template not found"));
 
         String previousStatus = template.getStatus();
         String newStatus = "Active".equalsIgnoreCase(template.getStatus()) ? "Inactive" : "Active";
@@ -360,7 +267,7 @@ public class EmailTemplateService {
     @Transactional(readOnly = true)
     public EmailTemplatePreviewResponse previewTemplate(UUID id, Map<String, String> variables) {
         EmailTemplate template = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Email template not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Email template not found"));
         return previewTemplate(template, variables);
     }
 
@@ -389,7 +296,7 @@ public class EmailTemplateService {
                 template.getName(),
                 template.getType(),
                 renderTemplateText(template.getSubject(), variables),
-                renderTemplateContent(template, variables),
+                renderPreviewContent(template, variables),
                 template.getStatus(),
                 template.getVariablesList(),
                 template.getDescription(),
@@ -414,7 +321,7 @@ public class EmailTemplateService {
     public EmailTemplateTestSendResponse recordTestSend(UUID id, String to) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         EmailTemplate template = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Email template not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Email template not found"));
         auditTrailService.logAs(
                 currentUser,
                 "EMAIL_TEMPLATE",
@@ -439,7 +346,7 @@ public class EmailTemplateService {
     public EmailTemplateResponse publishTemplate(UUID id, EmailTemplatePublishRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         EmailTemplate template = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Email template not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Email template not found"));
         String previousStatus = template.getStatus();
         template.setStatus("Active");
         template.setUpdatedBy(currentUser.getFullName());
@@ -461,13 +368,19 @@ public class EmailTemplateService {
         return toResponse(saved);
     }
 
+    /** The types the messages have, for the Type filter. */
+    @Transactional(readOnly = true)
+    public List<String> listTypes() {
+        return repository.findDistinctTypes();
+    }
+
     @Transactional
     public EmailTemplateResponse restoreVersion(UUID templateId, UUID versionId, EmailTemplateRestoreVersionRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         EmailTemplate template = repository.findById(templateId)
-                .orElseThrow(() -> new EntityNotFoundException("Email template not found: " + templateId));
+                .orElseThrow(() -> new EntityNotFoundException("Email template not found"));
         EmailTemplateVersion version = versionRepository.findByIdAndTemplateId(versionId, templateId)
-                .orElseThrow(() -> new EntityNotFoundException("Email template version not found: " + versionId));
+                .orElseThrow(() -> new EntityNotFoundException("Email template version not found"));
 
         String previousStatus = template.getStatus();
         template.setName(version.getName());
@@ -516,7 +429,8 @@ public class EmailTemplateService {
             String createdFrom,
             String createdTo,
             String updatedFrom,
-            String updatedTo
+            String updatedTo,
+            String usage
     ) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -543,6 +457,13 @@ public class EmailTemplateService {
             addDateRangePredicate(predicates, cb, root.get("createdDate"), createdFrom, createdTo);
             addDateRangePredicate(predicates, cb, root.get("updatedDate"), updatedFrom, updatedTo);
 
+            // SENT: the system has sent it at least once; NEVER_SENT: it has not
+            if ("SENT".equalsIgnoreCase(usage)) {
+                predicates.add(cb.greaterThan(root.<Integer>get("usageCount"), 0));
+            } else if ("NEVER_SENT".equalsIgnoreCase(usage)) {
+                predicates.add(cb.equal(root.<Integer>get("usageCount"), 0));
+            }
+
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
@@ -560,78 +481,24 @@ public class EmailTemplateService {
         return result.replaceAll("\\{\\{\\s*[a-zA-Z0-9_]+\\s*\\}\\}", "");
     }
 
+    /**
+     * The content of a template put in the one frame the whole system uses (owner decision D2, 2026-11-12). The logo, colour, font and footer
+     * that each template used to carry are no longer read: they come from the shared email design.
+     */
+    /** The same mail as {@link #renderTemplateContent}, for a preview on a screen: the card alone, without the grey page around it. */
+    public String renderPreviewContent(EmailTemplate template, Map<String, String> variables) {
+        String renderedContent = sanitizeRenderedHtml(renderTemplateText(template.getContent(), variables));
+        return emailDesignService == null
+                ? com.eqms.util.EmailFrameRenderer.render(null, renderedContent, null, true)
+                : emailDesignService.framePreview(renderedContent);
+    }
+
     public String renderTemplateContent(EmailTemplate template, Map<String, String> variables) {
         String renderedContent = renderTemplateText(template.getContent(), variables);
         renderedContent = sanitizeRenderedHtml(renderedContent);
-
-        String brandColor = (template.getPrimaryColor() != null && !template.getPrimaryColor().isBlank())
-                ? template.getPrimaryColor()
-                : "#059669";
-
-        String copyright = template.getCopyright() != null ? template.getCopyright().trim() : "";
-        String contactEmail = template.getContactEmail() != null ? template.getContactEmail().trim() : "";
-        String currentYear = String.valueOf(Year.now().getValue());
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("<!DOCTYPE html>")
-          .append("<html lang=\"en\"><head>")
-          .append("<meta charset=\"UTF-8\" />")
-          .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />")
-          .append("<style>")
-          .append("body{margin:0;padding:0;background:#f4f5f7;font-family:-apple-system,'Segoe UI',Arial,sans-serif;}")
-          .append("a{color:").append(brandColor).append(";}")
-          .append("h1,h2,h3{color:#111827;margin-top:0;}")
-          .append("p{margin:0 0 14px;}")
-          .append("ul,ol{padding-left:20px;margin:0 0 14px;}")
-          .append("table{border-collapse:collapse;}")
-          .append("@media only screen and (max-width:620px){")
-          .append(".email-container{width:100%!important;border-radius:0!important;}")
-          .append(".email-content{padding:20px!important;}")
-          .append("}")
-          .append("</style>")
-          .append("</head><body style=\"margin:0;padding:0;background:#f4f5f7;\">")
-          // Outer wrapper
-          .append("<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f5f7;padding:32px 16px;\">")
-          .append("<tr><td align=\"center\">")
-          // Container card
-          .append("<table class=\"email-container\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.07);\">")
-          // Header band
-          .append("<tr><td style=\"background-color:").append(brandColor).append(";padding:24px 32px;text-align:center;\">");
-
-        if (template.getLogoUrl() != null && !template.getLogoUrl().isBlank()) {
-            sb.append("<img src=\"").append(escapeHtmlAttr(template.getLogoUrl()))
-              .append("\" alt=\"Logo\" style=\"max-height:56px;max-width:200px;height:auto;width:auto;object-fit:contain;display:block;margin:0 auto;\" />");
-        } else {
-            sb.append("<span style=\"color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;\">EQMS System</span>");
-        }
-
-        sb.append("</td></tr>")
-          // Content area
-          .append("<tr><td class=\"email-content\" style=\"padding:32px 40px;font-size:15px;line-height:1.7;color:#374151;\">")
-          .append(renderedContent)
-          .append("</td></tr>")
-          // Footer
-          .append("<tr><td style=\"background:#f8fafc;padding:20px 40px;border-top:1px solid #e5e7eb;text-align:center;font-size:12px;color:#6b7280;line-height:1.8;\">");
-
-        if (!copyright.isBlank()) {
-            sb.append("<div>").append(escapeHtml(copyright)).append("</div>");
-        } else {
-            sb.append("<div>&copy; ").append(currentYear).append(" EQMS System. All rights reserved.</div>");
-        }
-
-        if (!contactEmail.isBlank()) {
-            sb.append("<div style=\"margin-top:4px;\">Questions? Contact <a href=\"mailto:")
-              .append(escapeHtmlAttr(contactEmail)).append("\" style=\"color:").append(brandColor)
-              .append(";text-decoration:none;font-weight:600;\">").append(escapeHtml(contactEmail)).append("</a></div>");
-        }
-
-        sb.append("<div style=\"margin-top:8px;color:#9ca3af;font-size:11px;\">This email was sent automatically by the EQMS System. Please do not reply.</div>")
-          .append("</td></tr>")
-          .append("</table>")
-          .append("</td></tr></table>")
-          .append("</body></html>");
-
-        return sb.toString();
+        return emailDesignService == null
+                ? com.eqms.util.EmailFrameRenderer.render(null, renderedContent)
+                : emailDesignService.frame(renderedContent);
     }
 
     public EmailTemplateResponse toResponse(EmailTemplate template) {
@@ -827,12 +694,16 @@ public class EmailTemplateService {
         return escapeHtml(value).replace("'", "&#39;");
     }
 
-    private static String sanitizeRenderedHtml(String html) {
+    /** What a person may put in the wording of an email: the usual text formatting, lists, links and tables, nothing that runs. */
+    public static String sanitizeRenderedHtml(String html) {
         if (html == null || html.isBlank()) {
             return html;
         }
         Safelist safelist = Safelist.relaxed()
-                .addTags("div", "span", "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption", "colgroup", "col")
+                .addTags("div", "span", "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption", "colgroup", "col", "s", "mark", "hr")
+                .addAttributes("p", "style")
+                .addAttributes("h1", "style").addAttributes("h2", "style").addAttributes("h3", "style")
+                .addAttributes("li", "style").addAttributes("mark", "style", "data-color")
                 .addAttributes("div", "style", "class")
                 .addAttributes("span", "style", "class")
                 .addAttributes("table", "style", "class", "border", "cellpadding", "cellspacing", "width")

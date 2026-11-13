@@ -28,6 +28,12 @@ public class SignatureTokenConsumptionService {
 
     private final TokenService tokenService;
     private final UsedSignatureTokenRepository usedSignatureTokenRepository;
+    /**
+     * SIGNATURE-TOKEN-REPLAY-2026-11-12: a token is used once. This switch exists only so the check can be turned off at once if a screen is found that reuses a token across two
+     * requests (that screen is then corrected); it is on by default and is not a setting an administrator is meant to change.
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.security.signature-token-single-use:true}")
+    private boolean singleUse = true;
 
     public SignatureTokenConsumptionService(
             TokenService tokenService,
@@ -72,8 +78,13 @@ public class SignatureTokenConsumptionService {
         if (TransactionSynchronizationManager.hasResource(txResourceKey)) {
             return tokenId;
         }
+        // The id of the token is assigned by the code, so save() alone does a merge (read, then update): a second use of the same token would update the row and raise nothing.
+        // The row is looked for first, and written with a real insert that is flushed here, so that a second use in another request, or at the same moment, is refused.
+        if (singleUse && usedSignatureTokenRepository.existsById(tokenId)) {
+            throw new UnauthorizedException("This electronic signature has already been used and cannot be reused");
+        }
         try {
-            usedSignatureTokenRepository.save(new UsedSignatureToken(tokenId, currentUser, Instant.now()));
+            usedSignatureTokenRepository.saveAndFlush(new UsedSignatureToken(tokenId, currentUser, Instant.now()));
         } catch (DataIntegrityViolationException alreadyUsed) {
             throw new UnauthorizedException("This electronic signature has already been used and cannot be reused");
         }

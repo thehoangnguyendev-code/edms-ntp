@@ -25,5 +25,20 @@ it("pages existing and searched users while preserving assignments outside the c
   expect(changed).toHaveBeenLastCalledWith({ added: ["three"], removed: [] });
   fireEvent.change(screen.getByPlaceholderText("Search all users to assign…"), { target: { value: "" } });
   await waitFor(() => expect(screen.getByText("Charlie")).toBeTruthy());
-  expect(screen.getByText("3 assigned")).toBeTruthy();
+  expect((container.querySelector("#profile-user-three") as HTMLInputElement).checked).toBe(true);
+});
+it("read-only details show a sortable table of the assigned users with no tick boxes, and search/sort go to the server", async () => {
+  api.getAccessProfileUsersPage.mockResolvedValue({
+    data: [{ id: "one", fullName: "Alice", email: "alice@example.local", department: "QA", status: "Active", assignedAt: "2026-11-01T10:00:00Z" }],
+    assignedIds: ["one"], pagination: { total: 1, totalPages: 1 },
+  });
+  const { container } = render(<AccessProfileAssignedUsersTab profileId="profile" canAssign={false} />);
+  await screen.findByText("Alice");
+  expect(container.querySelector("#profile-user-one")).toBeNull();
+  for (const header of ["Employee Code", "Full Name", "Email", "Department", "Status", "Assigned At"]) expect(screen.getByText(header)).toBeTruthy();
+  fireEvent.click(screen.getByText("Email"));
+  await waitFor(() => expect(api.getAccessProfileUsersPage).toHaveBeenLastCalledWith("profile", 1, 10, expect.objectContaining({ sortBy: "email", sortDir: "asc" })));
+  fireEvent.change(screen.getByPlaceholderText("Search assigned users…"), { target: { value: "ali" } });
+  await waitFor(() => expect(api.getAccessProfileUsersPage).toHaveBeenLastCalledWith("profile", 1, 10, expect.objectContaining({ search: "ali" })));
+  expect(api.getUsersLookupPaged).not.toHaveBeenCalled();
 });

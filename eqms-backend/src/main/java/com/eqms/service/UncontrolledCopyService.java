@@ -218,11 +218,16 @@ public class UncontrolledCopyService {
         int safePage = page == null || page < 1 ? 1 : page;
         int safeLimit = limit == null || limit < 1 ? 20 : Math.min(limit, MAX_LIST_PAGE_SIZE);
         boolean seesAll = seesAllCopies(currentUser);
+        boolean approver = isApprover(currentUser);
         Specification<UncontrolledCopyRecord> specification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (!seesAll) {
-                // Everyone else sees only the copies they hold as the named recipient (account id).
-                predicates.add(cb.equal(root.get("recipientUserId"), currentUser.getId()));
+                // Everyone else sees only the copies they hold as the named recipient (account id); an approver also sees the requests that wait for a decision.
+                Predicate visible = cb.equal(root.get("recipientUserId"), currentUser.getId());
+                if (approver) {
+                    visible = cb.or(visible, cb.equal(root.get("statusCode"), STATUS_REQUESTED));
+                }
+                predicates.add(visible);
             }
             if (StringUtils.hasText(status) && !"all".equalsIgnoreCase(status.trim())) {
                 predicates.add(cb.equal(root.get("statusCode"), status.trim().toUpperCase(Locale.ROOT)));
@@ -376,7 +381,7 @@ public class UncontrolledCopyService {
         }
         UncontrolledCopyDistributionJob job = jobRepository.findByUncontrolledCopy_IdOrderByCreatedAtDesc(id).stream()
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("No distribution job found for uncontrolled copy: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("No distribution job found for this uncontrolled copy"));
         List<UncontrolledCopyDistributionJobItem> items = jobItemRepository.findAllByJob_IdOrderByIdAsc(job.getId());
         boolean finished = "COMPLETED".equals(job.getStatus()) || "COMPLETED_WITH_ERRORS".equals(job.getStatus());
         int succeeded = finished ? job.getSucceededItems() : (int) items.stream().filter(i -> "SUCCESS".equals(i.getStatus())).count();
@@ -531,7 +536,7 @@ public class UncontrolledCopyService {
     public UncontrolledCopyResponse generate(UUID id, UncontrolledCopyActionRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         UncontrolledCopyRecord copy = requireCopy(id);
-        requirePermission(currentUser, P_DISTRIBUTE, "You do not have permission to generate uncontrolled copies.");
+        requirePermission(currentUser, P_DISTRIBUTE, "You do not have permission to distribute uncontrolled copies.");
         requireStatus(copy, "generated", STATUS_APPROVED);
         DocumentRevisionRecord revision = copy.getRevision();
         if (revision == null || revision.getStatus() == null || !"EFFECTIVE".equalsIgnoreCase(revision.getStatus().getCode())) {
@@ -1149,8 +1154,20 @@ public class UncontrolledCopyService {
                 && documentAuthorizationService.canViewAllUncontrolledCopies(user);
     }
 
+    /** The Audit Trail tab of the detail screen: whoever may open the copy may read its audit trail. */
+    @Transactional(readOnly = true)
+    public boolean canViewAudit(UserAccount user, UUID id) {
+        return uncontrolledCopyRepository.findById(id).map(copy -> canViewRecord(user, copy)).orElse(false);
+    }
+
     private boolean canViewRecord(UserAccount user, UncontrolledCopyRecord copy) {
-        return seesAllCopies(user) || isRecipient(user, copy);
+        return seesAllCopies(user) || isRecipient(user, copy)
+                || (STATUS_REQUESTED.equals(copy.getStatusCode()) && isApprover(user));
+    }
+
+    /** Holds the permission to approve or reject requests: such a person sees the requests that wait for a decision, and only those, without the view-everything permission. */
+    private boolean isApprover(UserAccount user) {
+        return permissionEvaluationService.hasAnyPermission(user, P_APPROVE, P_REJECT);
     }
 
     private boolean isOwnRequest(UserAccount user, UncontrolledCopyRecord copy) {

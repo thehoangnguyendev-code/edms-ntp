@@ -84,7 +84,6 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
           theme: config.appearance?.theme ?? 'light',
           showSidebarUserProfile: config.appearance?.showSidebarUserProfile ?? false,
           compactDesktopFilters: config.appearance?.compactDesktopFilters ?? false,
-          toastPosition: config.appearance?.toastPosition ?? 'top-right',
           systemSidebarCollapsedLogo: value,
         },
       });
@@ -106,7 +105,6 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
         theme: config.appearance?.theme ?? 'light',
         systemSidebarCollapsedLogo: config.appearance?.systemSidebarCollapsedLogo ?? config.systemSidebarCollapsedLogo,
         showSidebarUserProfile: config.appearance?.showSidebarUserProfile ?? false,        compactDesktopFilters: config.appearance?.compactDesktopFilters ?? false,
-        toastPosition: config.appearance?.toastPosition ?? 'top-right',
         [key]: value,
       },
     });
@@ -161,7 +159,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                   type="text"
                   value={config.systemName}
                   onChange={(e) => handleChange('systemName',e.target.value)}
-                  className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                   placeholder="EQMS Enterprise"
                 />
                 <p className="text-xs text-slate-500 mt-1">
@@ -176,7 +174,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                   type="text"
                   value={config.systemDisplayName}
                   onChange={(e) => handleChange('systemDisplayName',e.target.value)}
-                  className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                   placeholder="EQMS - Quality Management System"
                 />
                 <p className="text-xs text-slate-500 mt-1">
@@ -194,7 +192,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
               value={config.systemHeaderTitle ?? ''}
               onChange={(e) => handleChange('systemHeaderTitle', e.target.value.replace(/[\r\n\t]+/g, ' ').slice(0, 120))}
               maxLength={120}
-              className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+              className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder={DEFAULT_SYSTEM_HEADER_TITLE}
             />
             <p className="mt-1 text-xs text-slate-500">
@@ -212,7 +210,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                   value={config.systemFooterLeft ?? DEFAULT_FOOTER_LEFT}
                   onChange={(e) => handleChange('systemFooterLeft', e.target.value.replace(/[\r\n]+/g, ' ').slice(0, 500))}
                   maxLength={500}
-                  className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                   placeholder="© {year} Your Company. All rights reserved."
                 />
                 <p className="mt-1 text-xs text-slate-500">Shown at the left of the footer. Use <code>{'{year}'}</code> to insert the current year.</p>
@@ -225,7 +223,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                   value={config.systemFooterRight ?? ''}
                   onChange={(e) => handleChange('systemFooterRight', e.target.value.replace(/[\r\n]+/g, ' ').slice(0, 500))}
                   maxLength={500}
-                  className="w-full h-9 px-3.5 text-sm text-right border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full h-9 px-3 text-sm text-right border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                   placeholder="e.g. Version, hotline or support e-mail"
                 />
                 <p className="mt-1 text-xs text-slate-500">Always shown at the right of the footer. Leave empty to show nothing there.</p>
@@ -426,11 +424,11 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
               type="email"
               value={config.adminEmail}
               onChange={(e) => handleChange('adminEmail',e.target.value)}
-              className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+              className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="admin@example.com"
             />
             <p className="text-xs text-slate-500 mt-1">
-              Primary contact for system notifications
+              Receives the e-mail about maintenance windows and restore requests
             </p>
           </div>
         </div>
@@ -444,12 +442,12 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">Date & Time Format</p>
-                <p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-700">DD/MM/YYYY HH:mm:ss</p>
+                <p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">DD/MM/YYYY HH:mm:ss</p>
                 <p className="mt-1 text-xs text-slate-500">One format for the whole system: dates are dd/MM/yyyy and dates with a time are dd/MM/yyyy HH:mm:ss. It is not a setting.</p>
               </div>
               <div>
                 <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">Time Zone</p>
-                <p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-700">Asia/Ho_Chi_Minh (UTC+7)</p>
+                <p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">Asia/Ho_Chi_Minh (UTC+7)</p>
                 <p className="mt-1 text-xs text-slate-500">The zone of the site, for every screen, document and record. It is not a setting.</p>
               </div>
             </div>
@@ -457,21 +455,11 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Language & Numbers</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select
-                label="Language"
-                value={locale.language||'en'}
-                onChange={(val) => handleLocaleChange('language',val)}
-                options={[
-                  { label: 'English',value: 'en' },
-                  { label: 'Vietnamese (Tiếng Việt)',value: 'vi' },
-                  { label: 'Japanese (日本語)',value: 'ja' },
-                  { label: 'Korean (한국어)',value: 'ko' },
-                  { label: 'Chinese Simplified (简体中文)',value: 'zh-CN' },
-                  { label: 'French (Français)',value: 'fr' },
-                  { label: 'German (Deutsch)',value: 'de' },
-                  { label: 'Spanish (Español)',value: 'es' },
-                ]}
-              />
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">Language</p>
+                <p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">English</p>
+                <p className="mt-1 text-xs text-slate-500">The system is written in English only. It is not a setting.</p>
+              </div>
               <Select
                 label="Number Format"
                 value={locale.numberFormat||'en-US'}

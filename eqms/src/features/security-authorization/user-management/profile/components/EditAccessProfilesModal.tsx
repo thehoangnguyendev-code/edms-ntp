@@ -7,6 +7,7 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { cn } from "@/components/ui/utils";
 import { IconUserKey } from "@tabler/icons-react";
 import { useToast } from "@/components/ui/toast";
+import { useDebounce } from "@/hooks/useDebounce";
 import { settingsApi, type AccessProfileResponse } from "@/services/api/settings";
 import { useSecurityESign } from "../../../shared/useSecurityESign";
 import { useSodAccessProfileCheck } from "../../../shared/useSodAccessProfileCheck";
@@ -55,6 +56,8 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [availableSearch, setAvailableSearch] = useState("");
   const [selectedSearch, setSelectedSearch] = useState("");
+  const debouncedAvailableSearch = useDebounce(availableSearch, 300);
+  const debouncedSelectedSearch = useDebounce(selectedSearch, 300);
   const [pickedAvailableIds, setPickedAvailableIds] = useState<string[]>([]);
   const [pickedSelectedIds, setPickedSelectedIds] = useState<string[]>([]);
 
@@ -89,22 +92,22 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
   const isLocked = (p: AccessProfileResponse) => p.system || !p.active;
 
   const availableProfiles = useMemo(() => {
-    const q = availableSearch.trim().toLowerCase();
+    const q = debouncedAvailableSearch.trim().toLowerCase();
     return allProfiles.filter((p) => {
       if (selectedIds.includes(p.id)) return false;
       if (isLocked(p)) return false;
       if (!q) return true;
       return p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
     });
-  }, [allProfiles, selectedIds, availableSearch]);
+  }, [allProfiles, selectedIds, debouncedAvailableSearch]);
 
   const selectedProfiles = useMemo(() => {
-    const q = selectedSearch.trim().toLowerCase();
+    const q = debouncedSelectedSearch.trim().toLowerCase();
     return selectedIds
       .map((id) => profileById.get(id))
       .filter((p): p is AccessProfileResponse => Boolean(p))
       .filter((p) => !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q));
-  }, [selectedIds, profileById, selectedSearch]);
+  }, [selectedIds, profileById, debouncedSelectedSearch]);
 
   const moveToSelected = (ids: string[]) => {
     if (ids.length === 0) return;

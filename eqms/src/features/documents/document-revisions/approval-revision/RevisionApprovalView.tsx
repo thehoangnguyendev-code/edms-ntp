@@ -22,7 +22,6 @@ import {
     RevisionWorkspaceReviewersTab,
     RevisionWorkspaceApproversTab,
 } from "@/features/documents/document-revisions/workspace-tabs";
-import type { DocumentType, DocumentStatus } from "@/features/documents/types";
 import { documentApi } from "@/services/api/documents";
 import { auditTrailApi } from "@/services/api/auditTrail";
 import type { RevisionDetailResponse, RevisionReviewCommentItem } from "@/features/documents/document-revisions/detail-revision/types";
@@ -30,7 +29,6 @@ import { buildRevisionSignatureRecords, type SignatureTabRecord } from "@/featur
 import { hasWorkingNotesEditAccess } from "@/features/documents/document-revisions/shared/workingNotesPermissions";
 import { buildRevisionDetailSnapshotState, isRevisionDetailSnapshotPreload, refreshDetailAfterSnapshot, isSnapshotGenerating, pollSnapshotInBackground } from "@/features/documents/shared/detailSnapshotHelpers";
 import { buildRevisionDetailNavigationState } from "@/features/documents/shared/navigationContext";
-import { resolveTerminalProgressStep } from "@/features/documents/shared/statusMapping";
 import type { RevisionWorkspaceState } from "@/features/documents/shared/navigationContext";
 import { useRevisionActionCapabilities } from "@/hooks/useRevisionActionCapabilities";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
@@ -113,8 +111,6 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
             revision?.workingNotesEditable,
         ],
     );
-    const skippedSteps = revision?.requiresTraining ? [] : (["Pending Training"] as const);
-    const terminalProgressStep = resolveTerminalProgressStep(revision?.status, revision?.history ?? []);
     const loadRevisionPreview = React.useCallback(
         async (detail: RevisionDetailResponse | null | undefined) => {
             if (!detail) {
@@ -476,9 +472,6 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
     const snapshotStatus = revision?.snapshotStatus as string | null | undefined;
     const isSnapshotBlocking = snapshotStatus === "GENERATING" || snapshotStatus === "FAILED";
 
-    // Status workflow steps
-    const statusSteps: DocumentStatus[] = ["Draft", "Pending Review", "Pending Approval", "Pending Training", "Ready for Publishing", "Effective", "Obsoleted", "Closed - Cancelled"];
-
     // Breadcrumbs
     const breadcrumbs = revisionApproval(
         navigate,
@@ -506,10 +499,7 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
                 title="Approve Revision"
                 breadcrumbs={breadcrumbs}
                 onBack={handleBack}
-                statusSteps={statusSteps}
-                currentStatus={revision?.status || "Draft"}
-                skippedSteps={skippedSteps}
-                terminalProgressStep={terminalProgressStep}
+                workflow={revision?.workflow}
                 tabs={DEFAULT_WORKFLOW_TABS}
                 activeTab={activeTab}
                 onTabChange={(tab) => setActiveTab(tab as TabType)}
@@ -595,7 +585,8 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
                             titleLocalLanguage: revision?.titleLocalLanguage || "",
                             isTemplate: Boolean(revision?.isTemplate),
                             // No made-up default: showing "SOP" for a revision whose type is unknown would misstate the record.
-                            type: (revision?.type || "") as DocumentType,
+                            type: (revision?.type || ""),
+                            typeShortCode: revision?.typeShortCode,
                             effectiveDate: revision?.effectiveDate,
                             validUntil: revision?.validUntil,
                         }}

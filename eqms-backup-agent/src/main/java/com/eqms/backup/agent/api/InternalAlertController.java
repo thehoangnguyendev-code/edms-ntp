@@ -1,5 +1,6 @@
 package com.eqms.backup.agent.api;
 
+import com.eqms.backup.agent.alert.AlertRuleService;
 import com.eqms.backup.agent.alert.AlertService;
 import com.eqms.backup.agent.export.ExportException;
 import org.springframework.http.HttpStatus;
@@ -27,17 +28,65 @@ public class InternalAlertController {
     public record PersonRequest(String by, String username) {
     }
 
-    private final AlertService alerts;
+    public record RuleRequest(boolean inApp, boolean email, Integer threshold, String by, String reason) {
+    }
 
-    public InternalAlertController(AlertService alerts) {
+    public record DeliveredRequest(List<String> ids) {
+    }
+
+    private final AlertService alerts;
+    private final AlertRuleService rules;
+
+    public InternalAlertController(AlertService alerts, AlertRuleService rules) {
         this.alerts = alerts;
+        this.rules = rules;
+    }
+
+    @GetMapping("/alert-rules")
+    public List<Map<String, Object>> rules() {
+        return rules.rules();
+    }
+
+    @PostMapping("/alert-rules/{code}")
+    public Map<String, Object> changeRule(@PathVariable String code, @RequestBody RuleRequest r) {
+        return rules.update(code, r.inApp(), r.email(), r.threshold(), r.by(), r.reason());
+    }
+
+    /** The alerts the backend still has to tell people about, and who they are to be told to. */
+    @GetMapping("/alerts/pending-delivery")
+    public Map<String, Object> pendingDelivery(@RequestParam(defaultValue = "50") int limit) {
+        return rules.pendingDelivery(limit);
+    }
+
+    @PostMapping("/alerts/delivered")
+    public Map<String, Object> delivered(@RequestBody DeliveredRequest r) {
+        List<java.util.UUID> ids = new java.util.ArrayList<>();
+        for (String id : r.ids() == null ? List.<String>of() : r.ids()) {
+            try {
+                ids.add(java.util.UUID.fromString(id));
+            } catch (IllegalArgumentException e) {
+                throw ExportException.invalid("ALERT_ID", "Not an alert id: " + id);
+            }
+        }
+        return Map.of("marked", rules.markDelivered(ids));
     }
 
     @GetMapping("/alerts")
     public Map<String, Object> list(@RequestParam(required = false) String state, @RequestParam(required = false) String severity,
                                     @RequestParam(required = false) String search, @RequestParam(defaultValue = "1") int page,
-                                    @RequestParam(defaultValue = "10") int limit) {
-        return alerts.page(state, severity, search, page, limit);
+                                    @RequestParam(defaultValue = "10") int limit, @RequestParam(required = false) String from,
+                                    @RequestParam(required = false) String to, @RequestParam(defaultValue = "at") String sortBy,
+                                    @RequestParam(defaultValue = "desc") String sortDirection, @RequestParam(required = false) String people) {
+        return alerts.page(state, severity, search, instant(from, "from"), instant(to, "to"), sortBy, "asc".equalsIgnoreCase(sortDirection), page, limit, SearchClause.split(people));
+    }
+
+    private static java.time.Instant instant(String value, String name) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return java.time.Instant.parse(value.trim());
+        } catch (java.time.format.DateTimeParseException e) {
+            throw ExportException.invalid("ALERT_DATE", "The " + name + " date is not a valid instant");
+        }
     }
 
     @PostMapping("/alerts/{alertId}/acknowledge")

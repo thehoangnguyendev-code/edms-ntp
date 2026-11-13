@@ -144,7 +144,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
       >
         {passed && <ShieldCheck className="h-2.5 w-2.5" />}
       </div>
-      <span className={cn("text-[11px] sm:text-xs", passed ? "text-slate-900" : "text-slate-400")}>{label}</span>
+      <span className={cn(AUTH_UI.hintText, passed && "text-slate-900")}>{label}</span>
     </div>
   );
 
@@ -236,7 +236,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                       <button
                         type="button"
                         onClick={() => setShowPasswords((prev) => ({ ...prev, newPassword: !prev.newPassword }))}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
+                        className={AUTH_UI.eyeButtonAbsolute}
                       >
                         {showPasswords.newPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
                       </button>
@@ -292,7 +292,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                       <button
                         type="button"
                         onClick={() => setShowPasswords((prev) => ({ ...prev, confirmPassword: !prev.confirmPassword }))}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
+                        className={AUTH_UI.eyeButtonAbsolute}
                       >
                         {showPasswords.confirmPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
                       </button>

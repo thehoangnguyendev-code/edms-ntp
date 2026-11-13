@@ -24,6 +24,7 @@ const MEANING_CODE_BY_DISPLAY_NAME: Record<string, string> = {
   "Workflow Authorization Change": "WORKFLOW_AUTHORIZATION_CHANGE",
   "SoD Rule Change": "SOD_RULE_CHANGE",
   "Audit Trail Review": "AUDIT_TRAIL_REVIEW",
+  "Mandatory Notification Wording": "NOTIFICATION_MANDATORY_WORDING",
 };
 
 /**

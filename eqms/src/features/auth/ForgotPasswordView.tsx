@@ -198,7 +198,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                   Back to Sign In
                 </Button>
 
-                <p className="text-[11px] text-slate-500 sm:text-xs">Click "Back to Sign In" to return to the login screen.</p>
+                <p className="text-xs text-slate-500">Click "Back to Sign In" to return to the login screen.</p>
               </div>
             </div>
           ) : (
@@ -248,7 +248,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                   value={formData.reason}
                   onChange={(e) => handleInputChange("reason", e.target.value)}
                   className={cn(
-                    "w-full resize-none rounded-xl border bg-white px-4 py-3 text-sm text-slate-700 transition-all sm:px-4 sm:py-3 sm:text-sm",
+                    "w-full resize-none rounded-xl border bg-white px-3 py-3 text-sm text-slate-700 transition-all sm:px-4 sm:py-3 sm:text-sm",
                     AUTH_UI.inputFocus,
                     errors.reason ? AUTH_UI.inputError : AUTH_UI.inputDefault
                   )}

@@ -95,13 +95,34 @@ describe("Backup History", () => {
     api.list.mockResolvedValue(page([row("BK-1")], { total: 60, totalPages: 6 }));
     renderView();
     await screen.findByText("BK-1");
-    expect(screen.getByText(/60/)).toBeTruthy();
+    expect(screen.getByText(/\b60\b/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /next/i }));
     await waitFor(() => expect(last().page).toBe(2));
     const showing = (await screen.findByText("Show:")).parentElement as HTMLElement;
     fireEvent.click(showing.querySelector("button") as HTMLElement);
     fireEvent.click(await screen.findByRole("option", { name: "20" }));
     await waitFor(() => expect(last()).toMatchObject({ limit: 20, page: 1 }));
+  });
+
+  it("shows how it started, how long it took, what it holds, its schema, when it was last checked and why", async () => {
+    api.list.mockResolvedValue(page([row("BK-1", { components: [{ key: "DATABASE", status: "COMPLETED", sizeBytes: 1, sha256: "a" }, { key: "OBJECT_STORE", status: "COMPLETED", sizeBytes: 1, sha256: "b" }], verifiedAt: "2026-10-08T01:01:00Z", reason: "Before the upgrade" })]));
+    renderView();
+    await screen.findByText("BK-1");
+    for (const id of ["trigger", "duration", "contents", "schema", "checked", "reason"]) expect(header(id)).toBeTruthy();
+    expect(screen.getByText("Before the upgrade")).toBeTruthy();
+    expect(screen.getByText("Files")).toBeTruthy();
+    expect(screen.getAllByText("V560").length).toBeGreaterThan(0);
+  });
+
+  it("sorts the new columns on the server by keys it accepts, and sends no filter until one is chosen", async () => {
+    renderView();
+    await screen.findByText("BK-20261008-0200-0001");
+    expect(last().trigger).toBeUndefined();
+    expect(last().component).toBeUndefined();
+    for (const [column, sortBy] of Object.entries({ trigger: "trigger", duration: "duration", checked: "verifiedAt" })) {
+      fireEvent.click(header(column));
+      await waitFor(() => expect(last().sortBy).toBe(sortBy), { timeout: 1500 });
+    }
   });
 
   it("filters on the server by status, type and integrity from the filter drawer", async () => {
@@ -139,8 +160,41 @@ describe("Backup History", () => {
     fireEvent.change(screen.getByPlaceholderText("Why is this backup needed now?"), { target: { value: "before the upgrade" } });
     expect((screen.getByRole("button", { name: "Start Backup" }) as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Start Backup" }));
-    await waitFor(() => expect(api.create).toHaveBeenCalledWith({ type: "FULL", reason: "before the upgrade", changeControlRef: undefined }));
+    await waitFor(() => expect(api.create).toHaveBeenCalledWith({ type: "FULL", reason: "before the upgrade", changeControlRef: undefined, components: ["DATABASE", "OBJECT_STORE"] }));
     expect(await screen.findByText(/BK-20261008-0900-0001/)).toBeTruthy();
+  });
+
+  it("lets the person choose one or more parts, and will not start with none", async () => {
+    api.create.mockResolvedValue({ jobId: "j-2" });
+    renderView();
+    await screen.findByText("BK-20261008-0200-0001");
+    fireEvent.click(screen.getByRole("button", { name: /Create Backup/ }));
+    await screen.findByRole("button", { name: "Start Backup" });
+    fireEvent.change(screen.getByPlaceholderText("Why is this backup needed now?"), { target: { value: "database before a change" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Files" }));
+    expect((screen.getByRole("checkbox", { name: "Database" }) as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Start Backup" }));
+    await waitFor(() => expect(api.create).toHaveBeenCalledWith({ type: "FULL", reason: "database before a change", changeControlRef: undefined, components: ["DATABASE"] }));
+  });
+
+  it("no longer offers the settings as a separate part: they are inside the database", async () => {
+    renderView();
+    await screen.findByText("BK-20261008-0200-0001");
+    fireEvent.click(screen.getByRole("button", { name: /Create Backup/ }));
+    await screen.findByRole("button", { name: "Start Backup" });
+    expect(screen.queryByRole("checkbox", { name: "System settings" })).toBeNull();
+    expect(screen.getByRole("checkbox", { name: "Database" })).toBeTruthy();
+  });
+
+  it("does not allow a backup of nothing", async () => {
+    renderView();
+    await screen.findByText("BK-20261008-0200-0001");
+    fireEvent.click(screen.getByRole("button", { name: /Create Backup/ }));
+    await screen.findByRole("button", { name: "Start Backup" });
+    fireEvent.change(screen.getByPlaceholderText("Why is this backup needed now?"), { target: { value: "why" } });
+    for (const name of ["Database", "Files"]) fireEvent.click(screen.getByRole("checkbox", { name }));
+    expect((screen.getByRole("button", { name: "Start Backup" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("Choose at least one.")).toBeTruthy();
   });
 
   it("will not offer Create Backup to someone without the permission", async () => {

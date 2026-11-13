@@ -18,8 +18,10 @@ import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrail
 import { AssessmentPreviewModal } from "./AssessmentPreviewModal";
 import { QuestionImageField } from "./QuestionImageField";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
+import { useServerWorkflow } from "@/components/ui/workflow-stepper/useServerWorkflow";
 import {
   trainingAssessmentsApi,
+  trainingWorkflowApi,
   trainingCodeText,
   trainingError,
   type AssessmentItemKind,
@@ -191,13 +193,6 @@ export function distributePoints(
   return diff === 0 ? alloc.map((c) => String(c / 100)) : null;
 }
 
-const STEPS = ["Draft", "Pending Approval", "Effective", "Obsoleted"];
-const STEP_OF: Record<string, number> = {
-  DRAFT: 0,
-  PENDING_APPROVAL: 1,
-  EFFECTIVE: 2,
-  OBSOLETED: 3,
-};
 
 /** One Training Assessment of the library (APD.0009): a test of questions or a checklist. A draft is written here and sent for approval; another person signs it into Effective; a change is a new version. */
 export function TrainingAssessmentDetailPage({
@@ -210,6 +205,8 @@ export function TrainingAssessmentDetailPage({
   const goBack = useTrainingBack("/training-management/assessments");
   const { showToast } = useToast();
   const [detail, setDetail] = useState<TrainingAssessmentDetail>();
+  // A new assessment has no record yet, so the server gives the stepper of a new one; a saved one carries its own.
+  const newWorkflow = useServerWorkflow(isNew ? "training:ASSESSMENT" : null, () => trainingWorkflowApi.newRecord("ASSESSMENT"));
   const [error, setError] = useState("");
   const [tab, setTab] = useState("overview");
   const [head, setHead] = useState<{
@@ -743,9 +740,6 @@ export function TrainingAssessmentDetailPage({
     },
     ...(isNew ? [] : [{ id: "audit", label: "Audit Trail" }]),
   ];
-  const obsoleted = detail?.status === "OBSOLETED";
-  const steps = STEPS;
-  const stepIndex = detail ? (STEP_OF[detail.status] ?? 0) : 0;
   const previewButton = (
     <Button
       size="sm"
@@ -876,9 +870,7 @@ export function TrainingAssessmentDetailPage({
         title={title}
         breadcrumbItems={crumbs}
         onBack={goBack}
-        steps={steps}
-        currentStepIndex={stepIndex}
-        terminalProgressStep={obsoleted ? "Effective" : "Draft"}
+        workflow={detail ? detail.workflow : newWorkflow}
         tabs={tabs}
         activeTab={tab}
         onTab={setTab}

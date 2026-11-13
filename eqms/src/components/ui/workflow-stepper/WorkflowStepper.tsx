@@ -11,6 +11,8 @@ export interface WorkflowStepperProps {
   onStepClick?: (index: number) => void;
   icons?: React.ElementType[];
   skippedSteps?: readonly string[];
+  /** The current step ends the lifecycle (cancelled, obsoleted). Decided by the status of the record, never by the name of the step. */
+  isTerminal?: boolean;
 }
 
 export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
@@ -21,15 +23,9 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
   onStepClick,
   icons,
   skippedSteps,
+  isTerminal = false,
 }) => {
-  const currentStepLabel = String(steps[currentStepIndex] ?? "");
-  const normalizedCurrentStepLabel = currentStepLabel.toLowerCase();
-  const isTerminalStatus =
-    normalizedCurrentStepLabel === "obsoleted" ||
-    normalizedCurrentStepLabel === "obsolete" ||
-    normalizedCurrentStepLabel === "closed - cancelled" ||
-    normalizedCurrentStepLabel === "closed-cancelled" ||
-    normalizedCurrentStepLabel === "cancelled";
+  const isTerminalStatus = isTerminal;
 
   const terminalProgressIndex =
     isTerminalStatus

@@ -9,13 +9,13 @@ import axios, {
   AxiosRequestConfig,
   AxiosResponse,
 } from "axios";
+import { config } from "@/config";
 import { secureStorage, safeRandomUUID } from "@/utils/security";
 import { authTokenStore } from "@/services/authTokenStore";
 import { ROUTES } from "@/app/routes.constants";
 import { dispatchRouteRedirect } from "@/app/navigation/routeRedirect";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+const API_BASE_URL = config.api.baseURL;
 const SESSION_LOCKED_EVENT = "eqms:session-locked";
 const MAINTENANCE_MODE_EVENT = "eqms:maintenance-mode";
 export const RATE_LIMITED_EVENT = "eqms:rate-limited";

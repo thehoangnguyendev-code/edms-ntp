@@ -6,10 +6,13 @@ import org.springframework.stereotype.Service;
 
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Enqueue joins the dispatcher's DB transaction. SMTP delivery deliberately runs outside it. */
 @Service
 public class NotificationEmailOutbox {
+    private static final Logger log = LoggerFactory.getLogger(NotificationEmailOutbox.class);
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
     private final EmailNotificationService email;
@@ -22,16 +25,17 @@ public class NotificationEmailOutbox {
     }
 
     public void enqueue(String recipient,String subject,String body,String event,String domain,Map<String,String> payload) {
-        enqueue(recipient,subject,body,event,domain,payload,false);
+        enqueue(recipient,subject,body,event,domain,payload,null,null);
     }
 
-    public void enqueue(String recipient,String subject,String body,String event,String domain,Map<String,String> payload,boolean mandatory) {
+    /** The same, with a file that is sent with the message; it is sealed in the row with the wording and is never stored in the clear. */
+    public void enqueue(String recipient,String subject,String body,String event,String domain,Map<String,String> payload,String attachmentName,byte[] attachment) {
         UUID id=UUID.randomUUID();
-        String envelope=cipher.seal(id,recipient,event,domain,new NotificationEmailCipher.Content(subject,body,payload==null?Map.of():payload));
+        String envelope=cipher.seal(id,recipient,event,domain,new NotificationEmailCipher.Content(subject,body,payload==null?Map.of():payload,attachmentName,attachment));
         jdbc.update("""
                 insert into notification_email_outbox(id,recipient_email,subject,body,event_code,event_domain,payload,priority,encryption_version)
                 values(?,?,?,?,?,?,?::jsonb,?,?)
-                """,id,recipient,"[encrypted]","[encrypted]",event,domain,envelope,mandatory?100:0,NotificationEmailCipher.VERSION);
+                """,id,recipient,"[encrypted]","[encrypted]",event,domain,envelope,0,NotificationEmailCipher.VERSION);
     }
 
     public boolean deliverOne() {
@@ -50,11 +54,15 @@ public class NotificationEmailOutbox {
         boolean sent;
         try {
             var content=content(row);
-            sent=email.sendRenderedEmailWithTracking(row.get("recipient_email").toString(),content.subject(),
-                    content.body(),row.get("event_code").toString(),(String)row.get("event_domain"),content.payload());
+            sent=content.attachment()==null
+                    ? email.sendRenderedEmailWithTracking(row.get("recipient_email").toString(),content.subject(),
+                        content.body(),row.get("event_code").toString(),(String)row.get("event_domain"),content.payload())
+                    : email.sendRenderedEmailWithTracking(row.get("recipient_email").toString(),content.subject(),
+                        content.body(),row.get("event_code").toString(),(String)row.get("event_domain"),content.payload(),content.attachmentName(),content.attachment());
         } catch(Exception failure) {
             // The existing tracked sender handles known SMTP failures. Unexpected exceptions may
             // happen after an external send; retain uncertainty instead of blindly resending.
+            log.warn("The outcome of the e-mail {} ({}) is unknown: {}", row.get("id"), row.get("event_code"), failure.toString(), failure);
             if(jdbc.update("update notification_email_outbox set status='UNKNOWN',error_code='DELIVERY_OUTCOME_UNKNOWN',completed_at=now() where id=? and claim_id=? and status='SENDING'",row.get("id"),claim)==1) flagForReview(row);
             return true;
         }

@@ -14,6 +14,7 @@ const boundary = vi.hoisted(() => ({
 }));
 
 vi.mock("@/services/api/documents", () => ({ documentApi: {
+  getWorkflowSteps: vi.fn(async () => ({ revision: [], document: [], legacyImportSkippedSteps: [] })),
   getRevisionById: vi.fn(async () => boundary.current),
   getRevisionByIdSnapshot: boundary.snapshot,
   uploadRevisionFile: boundary.upload,

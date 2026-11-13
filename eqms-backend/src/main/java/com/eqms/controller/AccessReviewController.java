@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping({"/security/access-reviews", "/settings/access-reviews"})
+@RequestMapping("/security/access-reviews")
 public class AccessReviewController {
 
     private final AccessReviewService service;
@@ -38,6 +38,11 @@ public class AccessReviewController {
             @RequestParam(defaultValue = "desc") String sortDir) {
         return ResponseEntity.ok(service.listPaged(page, limit, search, status,
                 createdFrom, createdTo, updatedFrom, updatedTo, sortBy, sortDir));
+    }
+
+    @GetMapping("/reviewers")
+    public ResponseEntity<List<com.eqms.dto.user.AccessReviewDtos.ReviewerOption>> reviewers() {
+        return ResponseEntity.ok(service.reviewers());
     }
 
     @GetMapping("/list-options")

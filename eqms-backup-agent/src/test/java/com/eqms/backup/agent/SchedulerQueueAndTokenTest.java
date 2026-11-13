@@ -87,6 +87,70 @@ class SchedulerQueueAndTokenTest {
         assertThat(db.jdbc.queryForObject("select count(*) from backup_job", Integer.class)).isZero();
     }
 
+    private void filesOnTheirOwnSchedule(String scope) {
+        db.jdbc.update("update backup_policy set scope_json = ?::jsonb, schedule_json = "
+                + "'{\"database\":{\"enabled\":true,\"frequency\":\"DAILY\",\"time\":\"02:00\"},\"files\":{\"enabled\":true,\"frequency\":\"DAILY\",\"time\":\"03:00\"}}'::jsonb", scope);
+    }
+
+    private String next() {
+        var job = queue.claimNext(5, java.util.List.of("BACKUP_DB")).orElseThrow();
+        queue.finish(job.id(), true, "{}");
+        return job.payloadJson().replace(": ", ":");
+    }
+
+    @Test
+    void filesWithATimeOfTheirOwnAreBackedUpInTheirOwnRunAndTheDatabaseRunHoldsOnlyTheDatabase() {
+        filesOnTheirOwnSchedule("{\"components\":[\"DATABASE\",\"OBJECT_STORE\"]}");
+        assertThat(scheduler.filesHaveOwnSchedule()).isTrue();
+        assertThat(scheduler.lastDue(at("2026-10-08T10:00:00+07:00"), BackupScheduler.Part.FILES)).contains(at("2026-10-08T03:00:00+07:00"));
+        assertThat(scheduler.lastDue(at("2026-10-08T02:30:00+07:00"), BackupScheduler.Part.FILES)).contains(at("2026-10-07T03:00:00+07:00"));
+
+        scheduler.tick(at("2026-10-08T10:00:00+07:00"));
+        scheduler.tick(at("2026-10-08T10:00:30+07:00"));
+        assertThat(db.jdbc.queryForObject("select count(*) from backup_job", Integer.class)).as("one job at a time").isEqualTo(1);
+        assertThat(next()).contains("\"schedule\":\"DATABASE\"").contains("\"components\":[\"DATABASE\"]");
+
+        scheduler.tick(at("2026-10-08T10:01:00+07:00"));
+        assertThat(next()).contains("\"schedule\":\"FILES\"").contains("\"components\":[\"OBJECT_STORE\"]");
+
+        scheduler.tick(at("2026-10-08T10:02:00+07:00"));
+        assertThat(db.jdbc.queryForObject("select count(*) from backup_job", Integer.class)).as("each part once").isEqualTo(2);
+    }
+
+    @Test
+    void anEarlierScheduledRunThatHoldsAPartCountsForItWhenTheFilesGetATimeOfTheirOwn() {
+        filesOnTheirOwnSchedule("{\"components\":[\"DATABASE\",\"OBJECT_STORE\"]}");
+        // the 02:00 run held both parts: the database is covered for today, the files (due at 03:00) are not
+        db.jdbc.update("insert into backup_run(backup_number, environment, type, trigger_kind, status, started_at, requested_by) "
+                + "values ('BK-both', 'DEV', 'FULL', 'SCHEDULED', 'COMPLETED', ?, 'scheduler')", java.sql.Timestamp.from(at("2026-10-08T02:00:30+07:00")));
+        db.jdbc.update("insert into backup_component_result(run_id, component, status) select id, c, 'COMPLETED' from backup_run, unnest(array['DATABASE','OBJECT_STORE']) c where backup_number = 'BK-both'");
+        scheduler.tick(at("2026-10-08T10:00:00+07:00"));
+        assertThat(next()).contains("\"schedule\":\"FILES\"");
+        scheduler.tick(at("2026-10-08T10:01:00+07:00"));
+        assertThat(db.jdbc.queryForObject("select count(*) from backup_job", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void withoutATimeOfTheirOwnTheFilesFollowTheDatabaseRunAsBefore() {
+        db.jdbc.update("update backup_policy set scope_json = '{\"components\":[\"DATABASE\",\"OBJECT_STORE\"]}'::jsonb");
+        assertThat(scheduler.filesHaveOwnSchedule()).isFalse();
+        assertThat(scheduler.lastDue(at("2026-10-08T10:00:00+07:00"), BackupScheduler.Part.FILES)).isEmpty();
+        scheduler.tick(at("2026-10-08T10:00:00+07:00"));
+        assertThat(next()).doesNotContain("components");
+        scheduler.tick(at("2026-10-08T10:01:00+07:00"));
+        assertThat(db.jdbc.queryForObject("select count(*) from backup_job", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void aFilesScheduleIsIgnoredWhenTheFilesAreNotPartOfThePolicy() {
+        filesOnTheirOwnSchedule("{\"components\":[\"DATABASE\"]}");
+        assertThat(scheduler.filesHaveOwnSchedule()).isFalse();
+        scheduler.tick(at("2026-10-08T10:00:00+07:00"));
+        assertThat(next()).doesNotContain("OBJECT_STORE");
+        scheduler.tick(at("2026-10-08T10:01:00+07:00"));
+        assertThat(db.jdbc.queryForObject("select count(*) from backup_job", Integer.class)).isEqualTo(1);
+    }
+
     @Test
     void jobsAreClaimedOldestFirstAndOnlyOnce() {
         queue.enqueue("VERIFY", "{\"backupNumber\":\"a\"}", "u1");

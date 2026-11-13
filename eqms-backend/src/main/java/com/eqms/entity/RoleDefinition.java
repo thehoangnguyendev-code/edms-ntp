@@ -35,6 +35,10 @@ public class RoleDefinition {
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
+    /** Display flag: a DEV/UAT/test profile. Never changes what the profile grants. */
+    @Column(name = "test_data", nullable = false)
+    private boolean testData = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -153,4 +157,7 @@ public class RoleDefinition {
     public void setDepartmentScope(String departmentScope) {
         this.departmentScope = departmentScope;
     }
+
+    public boolean isTestData() { return testData; }
+    public void setTestData(boolean testData) { this.testData = testData; }
 }

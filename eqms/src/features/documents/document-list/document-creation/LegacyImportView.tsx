@@ -9,7 +9,7 @@ import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { useToast } from "@/components/ui/toast";
 import { ROUTES } from "@/app/routes.constants";
 import { documentApi } from "@/services/api/documents";
-import { REVISION_WORKFLOW_STEPS, DOCUMENT_WORKFLOW_STEPS } from "@/features/documents/shared/statusMapping";
+import { stepLabels, useWorkflowSteps } from "@/features/documents/shared/useWorkflowSteps";
 import type { ParentDocument, RelatedDocument } from "./new-tabs";
 import { TrainingTab, validateTrainingTab, type TrainingConfig } from "./new-tabs/TrainingTab";
 import { LegacyImportTabNavigation } from "./legacy-import-tabs/LegacyImportTabNavigation";
@@ -21,7 +21,7 @@ import { useLegacyDocumentNumber } from "./legacy-import/useLegacyDocumentNumber
 import { useLegacyImportLookups } from "./legacy-import/useLegacyImportLookups";
 import { useLegacyImportValidation } from "./legacy-import/useLegacyImportValidation";
 import { useRevisionSections } from "./legacy-import/useRevisionSections";
-import { EMPTY_DOCUMENT_FORM, SKIPPED_STEPS, errorMessage, type DocumentFormState, type FormTabId } from "./legacy-import/legacyImportModel";
+import { EMPTY_DOCUMENT_FORM, errorMessage, type DocumentFormState, type FormTabId } from "./legacy-import/legacyImportModel";
 
 // The model and the date rules live in legacy-import/legacyImportModel.ts; they stay importable from here.
 export { emptySection, getSectionDateErrors, parseDateTimePickerValue, type RevisionSection } from "./legacy-import/legacyImportModel";
@@ -41,6 +41,7 @@ export { emptySection, getSectionDateErrors, parseDateTimePickerValue, type Revi
 export const LegacyImportView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const lifecycle = useWorkflowSteps();
   const shouldReduceMotion = useReducedMotion();
   const collapseTransition = useMemo(
     () => (shouldReduceMotion ? { duration: 0 } : { type: "spring" as const, stiffness: 90, damping: 16 }),
@@ -187,10 +188,10 @@ export const LegacyImportView: React.FC = () => {
         }
       />
 
-      {activeTab === "document" && <WorkflowStepper steps={DOCUMENT_WORKFLOW_STEPS} currentStepIndex={0} />}
+      {activeTab === "document" && <WorkflowStepper steps={stepLabels(lifecycle.document)} currentStepIndex={0} />}
       {activeTab === "revisions" && (
         <div>
-          <WorkflowStepper steps={REVISION_WORKFLOW_STEPS} currentStepIndex={0} skippedSteps={SKIPPED_STEPS} />
+          <WorkflowStepper steps={stepLabels(lifecycle.revision)} currentStepIndex={0} skippedSteps={lifecycle.legacyImportSkippedSteps} />
         </div>
       )}
 

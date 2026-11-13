@@ -176,6 +176,7 @@ public class TrainingPersonnelReviewService {
         out.put("closerUserId", closer == null ? null : closer.get("assignee_user_id"));
         out.put("closerName", closer == null ? null : closer.get("full_name"));
         out.put("readyToClose", ready);
+        out.put("workflow", TrainingWorkflows.personnelReview((String) r.get("status")));
         out.put("capabilities", Map.of(
                 "editItems", open && manage,
                 "close", ready && manage && !actor.getId().equals(person) && (closer == null || actor.getId().equals(closer.get("assignee_user_id"))),

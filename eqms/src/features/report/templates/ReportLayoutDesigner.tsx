@@ -43,12 +43,12 @@ const tokens = [
   {
     code: "report.generatedAt",
     name: "Generation time",
-    example: "Server date and time (UTC)",
+    example: "Server date and time (dd/MM/yyyy HH:mm:ss, UTC+7)",
   },
   {
     code: "report.asOfAt",
     name: "Data snapshot time",
-    example: "Server date and time (UTC)",
+    example: "Server date and time (dd/MM/yyyy HH:mm:ss, UTC+7)",
   },
   {
     code: "page.number",
@@ -384,10 +384,6 @@ export function ReportLayoutDesigner({
                   options={fonts}
                   onChange={(fontFamily) => patch({ fontFamily: fontFamily as ReportLayout["fontFamily"] })}
                 />
-                <p className="mt-1 text-xs text-slate-500">
-                  The font of the cover, header, footer, table and charts of the PDF. Times New Roman is printed in Tinos, a font with the same letter widths. A cover, header or
-                  footer made from a Word file keeps the fonts of that file. Stamp and watermark have their own font.
-                </p>
               </div>
             </div>
           </FormSection>

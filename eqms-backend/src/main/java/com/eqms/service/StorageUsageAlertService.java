@@ -24,15 +24,15 @@ public class StorageUsageAlertService {
     private final StorageUsagePolicyService policies;
     private final UserAccountRepository users;
     private final PermissionEvaluationService permissions;
-    private final NotificationService notifications;
+    private final NotificationDispatcher dispatcher;
 
     public StorageUsageAlertService(JdbcTemplate jdbc, StorageUsagePolicyService policies, UserAccountRepository users,
-                                    PermissionEvaluationService permissions, NotificationService notifications) {
+                                    PermissionEvaluationService permissions, NotificationDispatcher dispatcher) {
         this.jdbc = jdbc;
         this.policies = policies;
         this.users = users;
         this.permissions = permissions;
-        this.notifications = notifications;
+        this.dispatcher = dispatcher;
     }
 
     /** Overflow-safe: usage / budget >= percent / 100, without dividing. */
@@ -62,8 +62,8 @@ public class StorageUsageAlertService {
             String message = "The object storage uses " + percent + "% of the budget set in Configuration (the warning is at " + policy.warningPercent()
                     + "%). Review the usage by module and file type, or raise the budget.";
             for (UserAccount administrator : administrators) {
-                notifications.recordNotification(administrator, null, "personal", "system", "STORAGE_USAGE_WARNING", title, message,
-                        "/settings/configuration", null, null, null, null, "high", null, true);
+                dispatcher.dispatchIndependently(OperationalNotificationEvents.STORAGE_USAGE_WARNING, List.of(administrator),
+                        NotificationDispatcher.noticeVariables(title, message, "/settings/configuration"));
             }
             jdbc.update("UPDATE storage_usage_scan_state SET warning_notified=true WHERE id=true");
             return administrators.size();
