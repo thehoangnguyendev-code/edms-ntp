@@ -64,7 +64,7 @@ export const CertAddModal: React.FC<CertAddModalProps> = ({ isOpen, onClose, onS
       onClose={onClose}
       onConfirm={handleSave}
       title={editing ? "Edit Certificate" : "Add Certificate"}
-      confirmText={editing ? "Save Changes" : "Add Certificate"}
+      confirmText={editing ? "Save" : "Add Certificate"}
       size="lg"
     >
       <div className="space-y-4">

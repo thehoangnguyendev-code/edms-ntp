@@ -78,7 +78,7 @@ describe("Controlled Copy per-card position reset", () => {
         expect(screen.getByRole("button", { name: resetName })).toBeTruthy();
         fireEvent.click(screen.getByRole("tab", { name: scenario.label }));
         expect(screen.queryByRole("button", { name: resetName })).toBeNull();
-        fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+        fireEvent.click(screen.getByRole("button", { name: "Save" }));
         await waitFor(() => expect(mocks.savePolicy).toHaveBeenCalledTimes(1));
         const [payload, signature] = mocks.savePolicy.mock.calls[0];
         const expected = kind === "stamp"

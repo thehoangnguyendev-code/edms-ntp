@@ -31,8 +31,3 @@ export function normalizeControlledCopyStatusLabel(
   // rather than implying the copy is still active.
   return "Closed - Cancelled";
 }
-
-export function isControlledCopyTerminalStatus(status?: string | null, statusInfo?: { id?: string | null; name?: string | null } | null): boolean {
-  const normalized = normalizeControlledCopyStatusLabel(status, statusInfo);
-  return normalized === "Obsoleted" || normalized === "Closed - Cancelled";
-}

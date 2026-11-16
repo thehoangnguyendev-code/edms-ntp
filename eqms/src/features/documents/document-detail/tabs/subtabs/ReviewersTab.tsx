@@ -9,6 +9,7 @@ import { metadataApi } from "@/services/api/metadata";
 
 import { Reviewer } from "./types";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 interface AppUser {
     id: string;
@@ -79,7 +80,7 @@ const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose
               .then((response) => setUsers(mapUsers(response)))
               .catch(() => setUsers([]))
               .finally(() => setIsLoading(false));
-        }, 300);
+        }, SEARCH_DEBOUNCE_MS);
         return () => clearTimeout(timer);
     }, [searchTerm, isOpen]);
 

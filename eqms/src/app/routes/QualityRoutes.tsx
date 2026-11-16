@@ -2,13 +2,19 @@ import React, { Suspense, lazy } from 'react';
 import { Route, Navigate } from 'react-router-dom';
 import { LoadingFallback } from './LoadingFallback';
 import { ProtectedRoute } from '@/middleware/ProtectedRoute';
+import { ReportRevisionToLibraryRedirect } from './ReportTemplateRedirects';
 
 // ==================== LAZY LOADED ====================
 const ReportTemplatesView = lazy(() => import('@/features/report').then(m => ({ default: m.ReportTemplatesView })));
-const ReportOverviewView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportOverviewView })));
-const ReportAnalyticsView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportAnalyticsView })));
 const ReportHistoryView = lazy(() => import('@/features/report').then(m => ({ default: m.ReportHistoryView })));
-const ReportTemplateRevisionPage = lazy(() => import('@/features/report/templates/ReportTemplateRevisionPage').then(m => ({ default: m.ReportTemplateRevisionPage })));
+const ReportConfigurationView = lazy(() => import('@/features/settings').then(m => ({ default: m.ReportConfigurationView })));
+const ReportDefinitionEditView = lazy(() => import('@/features/settings').then(m => ({ default: m.ReportDefinitionEditView })));
+const ReportRetentionView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportRetentionView })));
+const ReportDeliveryView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportDeliveryView })));
+const ReportTemplateRevisionsView = lazy(() => import('@/features/report/templates/ReportTemplateRevisionsView').then(m => ({ default: () => <m.ReportTemplateRevisionsView /> })));
+const ReportTemplateRevisionsPendingView = lazy(() => import('@/features/report/templates/ReportTemplateRevisionsView').then(m => ({ default: () => <m.ReportTemplateRevisionsView pendingApproval /> })));
+const ReportTemplateRevisionManagementPage = lazy(() => import('@/features/report/templates/ReportTemplateRevisionPage').then(m => ({ default: () => <m.ReportTemplateRevisionPage inAdministration /> })));
+const ReportTemplateDetailManagementPage = lazy(() => import('@/features/report/templates/ReportTemplateDetailPage').then(m => ({ default: () => <m.ReportTemplateDetailPage inAdministration /> })));
 const ReportTemplateDetailPage = lazy(() => import('@/features/report/templates/ReportTemplateDetailPage').then(m => ({ default: m.ReportTemplateDetailPage })));
 const ReportTemplateRunPage = lazy(() => import('@/features/report/templates/ReportTemplateRunPage').then(m => ({ default: m.ReportTemplateRunPage })));
 const ScheduleEditorPage = lazy(() => import('@/features/report/scheduled/ScheduleEditorPage').then(m => ({ default: m.ScheduleEditorPage })));
@@ -30,17 +36,35 @@ const protectedElement = (permission: string, element: React.ReactNode) => (
   </ProtectedRoute>
 );
 
+/** Making a report template is for the people who may see or manage definitions; running one needs only the module. */
+const TEMPLATE_MANAGEMENT_PERMISSIONS = ['reports.definition.view', 'settings.configuration.view'];
+const managementElement = (element: React.ReactNode) => (
+  <ProtectedRoute requiredPermissions={TEMPLATE_MANAGEMENT_PERMISSIONS}>
+    <Suspense fallback={<LoadingFallback />}>{element}</Suspense>
+  </ProtectedRoute>
+);
+
 // ==================== REPORTING & AUDIT ROUTES ====================
 export function qualityRoutes() {
   return (
     <>
-      <Route path="report" element={<Navigate to="/report/overview" replace />} />
-      <Route path="report/overview" element={protectedElement("report.module.view", <ReportOverviewView />)} />
-      <Route path="report/analytics" element={protectedElement("report.module.view", <ReportAnalyticsView />)} />
+      <Route path="report" element={<Navigate to="/report/templates" replace />} />
       <Route path="report/templates" element={protectedElement("report.module.view", <ReportTemplatesView />)} />
-      <Route path="report/templates/:code/revisions/:revision" element={protectedElement("report.module.view", <ReportTemplateRevisionPage />)} />
+      {/* A person who runs reports has no page of revisions; the revisions are with the template, under Report Templates. */}
+      <Route path="report/templates/:code/revisions/:revision" element={<ReportRevisionToLibraryRedirect />} />
       <Route path="report/templates/:code" element={protectedElement("report.module.view", <ReportTemplateDetailPage />)} />
       <Route path="report/templates/:code/run" element={protectedElement("report.module.view", <ReportTemplateRunPage />)} />
+      <Route path="report/template-management" element={managementElement(<ReportConfigurationView />)} />
+      <Route path="report/template-management/:code/revisions/:revision" element={managementElement(<ReportTemplateRevisionManagementPage />)} />
+      <Route path="report/template-management/:code/details" element={managementElement(<ReportTemplateDetailManagementPage />)} />
+      <Route path="report/template-management/:code" element={managementElement(<ReportDefinitionEditView />)} />
+      <Route path="report/template-revisions" element={managementElement(<ReportTemplateRevisionsView />)} />
+      <Route path="report/template-revisions/pending-approval" element={managementElement(<ReportTemplateRevisionsPendingView />)} />
+      {/* REPORT-MENU-2026-11-15: the two registers are tabs of Report Run History and Scheduled Reports, below the address of their menu entry. The old addresses lead to them. */}
+      <Route path="report/history/legal-holds" element={managementElement(<ReportRetentionView />)} />
+      <Route path="report/scheduled/delivery-log" element={managementElement(<ReportDeliveryView />)} />
+      <Route path="report/legal-holds" element={<Navigate to="/report/history/legal-holds" replace />} />
+      <Route path="report/delivery-log" element={<Navigate to="/report/scheduled/delivery-log" replace />} />
       <Route path="report/history" element={protectedElement("report.module.view", <ReportHistoryView />)} />
       <Route path="report/runs/:runId" element={protectedElement("report.module.view", <ReportRunDetailPage />)} />
       <Route path="report/scheduled" element={protectedElement("report.module.view", <ScheduledReportsView />)} />

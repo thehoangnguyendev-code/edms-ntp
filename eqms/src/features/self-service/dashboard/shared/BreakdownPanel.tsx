@@ -1,8 +1,8 @@
 import React, { memo, useCallback, useMemo, useState } from 'react';
 import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion, type Variants } from 'framer-motion';
-import { Cell, Pie, PieChart } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import type { ChartConfiguration } from 'chart.js';
+import { ChartCanvas, emphasize } from '@/components/ui/chart';
 import { TabNav, type TabItem } from '@/components/ui/tabs';
 import { ActivityBarChart } from './ActivityBarChart';
 import { LazyMount } from './LazyMount';
@@ -47,7 +47,6 @@ export const BREAKDOWN_PALETTE = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#
 const OTHER_COLOR = '#94a3b8';
 const MAX_SLICES = 8;
 /** Above the figure written in the middle of the ring, which is drawn after the chart and would otherwise lie over the tooltip. */
-const TOOLTIP_WRAPPER = { outline: 'none', zIndex: 50 } as const;
 const COLUMN_WIDTH = 64;
 const CHART_HEIGHT = 248;
 
@@ -115,39 +114,49 @@ const Donut = memo(function Donut({ rows, total, centerCaption, colorFor }: { ro
   const reduceMotion = useReducedMotion();
   const centerValue = (active === null ? total : rows[active].value).toLocaleString();
 
-  // One entry per slice; `fill` is what the tooltip uses for the colour chip, and the config names each slice.
+  // One entry per slice, with the colour the legend shares. The ring is a Chart.js doughnut; the slice under the pointer stays at full strength, the others soften.
   const slices = useMemo(() => rows.map((row, index) => ({ ...row, fill: colorFor(row, index) })), [rows, colorFor]);
-  const config = useMemo<ChartConfig>(
-    () => Object.fromEntries(slices.map((slice) => [slice.key, { label: slice.name, color: slice.fill }])),
-    [slices],
-  );
+  const config = useMemo<ChartConfiguration<'doughnut'>>(() => {
+    const full = slices.map((slice) => slice.fill);
+    let hovered: number | null = null;
+    return {
+      type: 'doughnut',
+      data: { labels: slices.map((slice) => slice.name), datasets: [{ data: slices.map((slice) => slice.value), backgroundColor: full, borderWidth: 0, spacing: slices.length > 1 ? 2 : 0 }] },
+      options: {
+        cutout: '64%',
+        animation: { duration: 900, easing: 'easeOutQuad', delay: 120 },
+        onHover: (_event, elements, chart) => {
+          const index = elements.length > 0 ? elements[0].index : null;
+          if (index === hovered) return;
+          hovered = index;
+          emphasize(chart, index, full, 0.4);
+          setActive(index);
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#ffffff',
+            titleColor: '#0f172a',
+            bodyColor: '#334155',
+            borderColor: '#e2e8f0',
+            borderWidth: 1,
+            padding: 10,
+            boxPadding: 4,
+            callbacks: {
+              title: () => '',
+              label: (item) => `${item.label}: ${Number(item.parsed).toLocaleString()}`,
+              labelColor: (item) => ({ borderColor: full[item.dataIndex], backgroundColor: full[item.dataIndex], borderRadius: 2 }),
+            },
+          },
+        },
+      },
+    };
+  }, [slices]);
 
   return (
     <div className="grid h-full grid-cols-1 items-center gap-4 p-4 sm:grid-cols-[200px_minmax(0,1fr)]">
       <LazyMount className="relative mx-auto h-[200px] w-[200px]" placeholder={<div className="mx-auto h-full w-full animate-pulse rounded-full bg-slate-50" aria-hidden />}>
-        <ChartContainer config={config} className="aspect-square h-full w-full">
-          <PieChart>
-            <ChartTooltip wrapperStyle={TOOLTIP_WRAPPER} content={<ChartTooltipContent hideLabel nameKey="key" className="min-w-[10rem] bg-white" />} />
-            <Pie
-              data={slices}
-              dataKey="value"
-              nameKey="name"
-              innerRadius="64%"
-              outerRadius="94%"
-              paddingAngle={slices.length > 1 ? 2 : 0}
-              stroke="none"
-              animationBegin={120}
-              animationDuration={900}
-              animationEasing="ease-out"
-              onMouseEnter={(_, index) => setActive(index)}
-              onMouseLeave={() => setActive(null)}
-            >
-              {slices.map((slice, index) => (
-                <Cell key={slice.key} fill={slice.fill} fillOpacity={active === null || active === index ? 1 : 0.4} style={{ transition: 'fill-opacity 200ms ease' }} />
-              ))}
-            </Pie>
-          </PieChart>
-        </ChartContainer>
+        <ChartCanvas config={config} ariaLabel={`Share of each group: ${slices.map((slice) => `${slice.name} ${slice.value}`).join(', ')}`} />
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
           <motion.span
             key={centerValue}

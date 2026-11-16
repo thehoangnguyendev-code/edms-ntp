@@ -9,7 +9,8 @@ export interface Revision {
     created: string;
     openedBy: string;
     revisionName: string;
-    status:
+    /** The colour of the badge. Never compared: the logic uses statusCode. */
+    statusBadge:
         | "draft"
         | "pendingReview"
         | "pendingApproval"
@@ -20,6 +21,8 @@ export interface Revision {
         | "obsolete"
         | "cancelled"
         | "rejected";
+    /** The machine code (PENDING_REVIEW, EFFECTIVE ...): what every decision is taken on. */
+    statusCode: string;
     statusLabel?: string;
     /** Server-calculated authoring entry capability for this exact revision. */
     canOpenAuthoringWorkspace?: boolean;

@@ -178,4 +178,37 @@ class AuditNotificationBridgeTest {
         new AuditNotificationBridge(dispatcher, null, null).onAuditedAction(new AuditNotificationBridge.AuditedAction(person("A"), "ACCESS_REVIEW", "Q3", UUID.randomUUID(), "ACCESS_REVIEW_CAMPAIGN_CREATED", null));
         verify(dispatcher).dispatchIndependently(eq("access_review.campaign_assigned"), any(), any());
     }
+
+    /** REPORT-TEMPLATE-REJECT-NOTICE-2026-11-15: the approver rejects a revision with a reason; the person who wrote it is told, in the application and by e-mail. */
+    @Test
+    void aRejectedReportTemplateIsToldToItsAuthorWithTheReasonAndNotToTheApprover() {
+        var events = AuditNotificationEvents.forAction("REPORT_DEFINITION", "REPORT_TEMPLATE_REJECTED");
+        assertThat(events).extracting(AuditNotificationEvents.Event::code).containsExactly("report.template_rejected");
+        assertThat(events.getFirst().rules()).extracting(AuditNotificationEvents.Rule::type).containsExactly("OWNER");
+        assertThat(events.getFirst().contextSql()).contains("audit_logs").contains("entity_id = ?").contains("REPORT_TEMPLATE_UPDATED").contains("REPORT_TEMPLATE_REVISION_UPDATED");
+        // in the application and by e-mail from the start
+        assertThat(NotificationDefaultChannels.of("report.template_rejected", "IN_APP,EMAIL")).isEqualTo("IN_APP,EMAIL");
+
+        var dispatcher = mock(NotificationDispatcher.class);
+        var jdbc = mock(org.springframework.jdbc.core.JdbcTemplate.class);
+        var users = mock(com.eqms.repository.UserAccountRepository.class);
+        UserAccount author = person("Author");
+        UserAccount approver = person("Approver");
+        UUID template = UUID.randomUUID();
+        UUID authorId = author.getId();
+        UUID approverId = approver.getId();
+        when(jdbc.queryForList(anyString(), eq(UUID.class), eq(template))).thenReturn(List.of(authorId, approverId));
+        when(users.findAllById(List.of(authorId))).thenReturn(List.of(author));
+
+        new AuditNotificationBridge(dispatcher, jdbc, users).onAuditedAction(new AuditNotificationBridge.AuditedAction(approver, "REPORT_DEFINITION", "RPT.0039", template,
+                "REPORT_TEMPLATE_REJECTED", "Add the department column before it is used for decisions [signature SIG-2026-0001]"));
+
+        ArgumentCaptor<Map<String, String>> variables = ArgumentCaptor.forClass(Map.class);
+        verify(dispatcher).dispatchIndependently(eq("report.template_rejected"), eq(List.of(author)), variables.capture());
+        assertThat(variables.getValue()).containsEntry("actionName", "Report template rejected").containsEntry("entityName", "RPT.0039").containsEntry("actorName", "Approver")
+                .containsEntry("actionComment", "Add the department column before it is used for decisions");
+        assertThat(variables.getValue().get("message")).doesNotContain("signature");
+        // nobody else is told by the event that tells the people who manage templates
+        verify(dispatcher, never()).dispatchIndependently(eq("report.template_decided"), any(), any());
+    }
 }

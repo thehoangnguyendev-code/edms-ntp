@@ -5,6 +5,7 @@ import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { useNavigate } from "react-router-dom";
 import { Check, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Select } from "@/components/ui/select/Select";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -18,6 +19,7 @@ import { ROUTES } from "@/app/routes.constants";
 import type { WorkflowActionPolicy } from "../types";
 
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 /**
  * Canonical lifecycle order per object type. Keys must match the raw
  * workflow_action_policies.object_type values (REVISION, CONTROLLED_COPY, …)
@@ -65,7 +67,7 @@ export const ActionStatusMatrix: React.FC = () => {
   const [loadVersion, setLoadVersion] = useState(0);
   const [objectType, setObjectType] = useState<string>("REVISION");
   const [actionSearch, setActionSearch] = useState("");
-  const debouncedActionSearch = useDebounce(actionSearch, 300);
+  const debouncedActionSearch = useDebounce(actionSearch, SEARCH_DEBOUNCE_MS);
   const [detail, setDetail] = useState<{ policies: MatrixPolicy[]; action: string; status: string } | null>(null);
 
   const canManage = hasPermissionAlias("security.workflow_authorization.manage");
@@ -341,9 +343,9 @@ export const ActionStatusMatrix: React.FC = () => {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge color={winner.active ? "emerald" : "slate"} size="sm">{winner.active ? "Active" : "Inactive"}</Badge>
+              <Badge color={flagColor(winner.active)} size="sm">{winner.active ? "Active" : "Inactive"}</Badge>
               <Badge color="slate" size="sm">Priority {winner.priority}</Badge>
-              {winner.system && <Badge color="purple" size="sm">System</Badge>}
+              {winner.system && <Badge color="blue" size="sm">System</Badge>}
               {detail.policies.length > 1 && (
                 <span className="text-xs text-slate-500">
                   +{detail.policies.length - 1} more policy(ies) for this cell (doc-type overrides / lower priority)

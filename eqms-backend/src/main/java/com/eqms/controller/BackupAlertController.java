@@ -106,8 +106,8 @@ public class BackupAlertController {
         BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/alerts/" + id + "/acknowledge",
                 Map.of("by", actor.getUsername(), "comment", comment));
         if (reply.ok()) {
-            audit.logAs(actor, "BACKUP_ALERT", id, BackupAuditIds.of("alert", id), "ALERT_ACKNOWLEDGED", "OPEN", "ACKNOWLEDGED",
-                    "Acknowledged backup alert " + id + (comment.isEmpty() ? "" : ". Note: " + comment));
+            audit.logAs(actor, "BACKUP_ALERT", "Backup alert", BackupAuditIds.of("alert", id), "ALERT_ACKNOWLEDGED", "OPEN", "ACKNOWLEDGED",
+                    "Acknowledged a backup alert" + (comment.isEmpty() ? "" : ". Note: " + comment));
         }
         return reply(reply);
     }

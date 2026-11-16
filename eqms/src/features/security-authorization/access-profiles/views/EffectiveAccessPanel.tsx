@@ -7,9 +7,11 @@ import { TabNav } from "@/components/ui/tabs/TabNav";
 import { cn } from "@/components/ui/utils";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { EmptyState } from "@/components/ui/page/EmptyState";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { securityApi, type EffectiveAccessResponse, type EffectiveAccessRow } from "@/services/api/security";
 import { EffectiveActionRow } from "./EffectiveActionRow";
 import { useDebounce } from "@/hooks";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 interface EffectiveAccessPanelProps {
   accessProfileId: string;
@@ -40,7 +42,7 @@ export const EffectiveAccessPanel: React.FC<EffectiveAccessPanelProps> = ({ acce
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>("ALL");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(["DOCUMENT_REVISION", "DOCUMENT"]));
   const shouldReduceMotion = useReducedMotion();
   const expandTransition = useMemo(
@@ -146,7 +148,7 @@ export const EffectiveAccessPanel: React.FC<EffectiveAccessPanelProps> = ({ acce
       </div>
 
       {groups.length === 0 && (
-        <EmptyState title="No matching actions" description="Try a different search term or result filter." />
+        <TableEmptyState title="No matching actions" description="Try a different search term or result filter." />
       )}
 
       {groups.map(([objectType, rows]) => {

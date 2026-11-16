@@ -14,6 +14,7 @@ import {
   type UncontrolledCopyRequestContext,
 } from "@/services/api/uncontrolledCopy";
 import { UncontrolledCopyMarkingPreview } from "./UncontrolledCopyMarkingPreview";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 /** The document part of the number of an Uncontrolled Copy, as the server writes it: cut at every dot, dash, underscore or space, an EXT part left out, joined with dots (SOP-0007 gives SOP.0007). */
 export const uncontrolledCopyBaseCode = (documentNumber?: string | null) => {
@@ -62,7 +63,7 @@ const SystemUserPicker: React.FC<{
         options.forEach((o) => labels.current.set(String(o.value), o.label));
         return options;
       }}
-      debounceMs={300}
+      debounceMs={SEARCH_DEBOUNCE_MS}
       minSearchLength={0}
       onChange={(next) => {
         const id = next == null ? "" : String(next);
@@ -154,9 +155,7 @@ export const RequestUncontrolledCopyModal: React.FC<{
     showToast({
       type: "success",
       title: "Requested",
-      message: context.approvalRequired
-        ? `${created.uncontrolledCopyNumber} was submitted for approval.`
-        : `${created.uncontrolledCopyNumber} was created and is ready to generate.`,
+      message: `${created.uncontrolledCopyNumber} was created and is ready for distribution.`,
     });
     onCreated?.(created);
     onClose();
@@ -215,8 +214,7 @@ export const RequestUncontrolledCopyModal: React.FC<{
                     {context.documentTypeName || "No document type"} · Revision {context.revisionNumber || "—"}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {context.approvalRequired ? "Approval is required before generation." : "No approval step (policy)."}{" "}
-                    {context.validityBasis === "DOCUMENT_VALID_UNTIL" ? (
+                                        {context.validityBasis === "DOCUMENT_VALID_UNTIL" ? (
                       context.computedValidUntil ? (
                         <>
                           Valid until <span className="font-bold text-emerald-600">{context.computedValidUntil}</span> (the document's Valid Until date{" "}

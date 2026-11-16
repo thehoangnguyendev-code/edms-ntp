@@ -1,0 +1,39 @@
+BEGIN
+SELECT 8247
+SELECT 11001
+SELECT 3153
+SELECT 2
+UPDATE 2
+INSERT 0 2
+SELECT 2524
+UPDATE 2524
+INSERT 0 2524
+INSERT 0 9
+UPDATE 9
+UPDATE 2260
+UPDATE 588
+UPDATE 378
+UPDATE 0
+UPDATE 0
+                  what                  | count 
+----------------------------------------+-------
+ revisions changed                      |  2526
+ documents changed                      |  2260
+ controlled copies changed (status)     |   588
+ controlled copies changed (label only) |   378
+(4 rows)
+
+                        check_name                         | count 
+-----------------------------------------------------------+-------
+ doc Closed-Cancelled with an effective/obsoleted revision |     0
+ doc Obsoleted with an open revision                       |     0
+ doc Active without an effective revision                  |     0
+ doc Active with 2+ effective revisions                    |     0
+ effective revision under a doc that is not Active         |     0
+ cancelled revision that was effective                     |     0
+ live controlled copy on a non-effective revision          |     0
+ controlled copy label differs from its code               |     0
+ obsoleted revision without obsoleted_at                   |     0
+(9 rows)
+
+COMMIT

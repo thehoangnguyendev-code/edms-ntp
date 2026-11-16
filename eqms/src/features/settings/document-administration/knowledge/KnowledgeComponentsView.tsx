@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { Select } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
@@ -25,6 +26,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { knowledgeApi, type KnowledgeComponent } from "@/services/api/knowledge";
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const COLUMNS = [
   { key: "name", label: "Name" },
@@ -63,7 +65,7 @@ export const KnowledgeComponentsView: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [status, setStatus] = useState("ALL");
   const [updatedFrom, setUpdatedFrom] = useState("");
   const [updatedTo, setUpdatedTo] = useState("");
@@ -133,7 +135,7 @@ export const KnowledgeComponentsView: React.FC = () => {
     </>) },
     { id: "sourceLabel", header: "Source", label: "Source", cell: (row) => row.sourceLabel },
     { id: "usedByHierarchies", header: "Used By", label: "Used By", cell: (row) => `${row.usedByHierarchies} ${row.usedByHierarchies === 1 ? "hierarchy" : "hierarchies"}` },
-    { id: "active", header: "Status", label: "Status", sort: { direction: sortKey === "active" ? sortDir : undefined, onSort: () => handleSort("active") }, cell: (row) => <Badge size="sm" color={row.active ? "emerald" : "slate"} pill>{row.active ? "Active" : "Inactive"}</Badge> },
+    { id: "active", header: "Status", label: "Status", sort: { direction: sortKey === "active" ? sortDir : undefined, onSort: () => handleSort("active") }, cell: (row) => <Badge size="sm" color={flagColor(row.active)} pill>{row.active ? "Active" : "Inactive"}</Badge> },
     { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cell: (row) => (row.updatedAt ? formatDateTime(row.updatedAt) : "-") },
     { id: "updatedByName", header: "Updated By", label: "Updated By", cell: (row) => row.updatedByName || "-" },
   ];

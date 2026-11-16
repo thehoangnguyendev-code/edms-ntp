@@ -18,6 +18,7 @@ public class TrainingActivityReportMetadataProvider implements ReportMetadataPro
     private static final String PRESENT = "p.state in ('ATTENDED','ONLINE','READ_CONFIRMED')";
     private static final Map<String, String> COLUMNS = new LinkedHashMap<>();
     private static final Map<String, String> LABELS = new LinkedHashMap<>();
+    private static final Map<String, String> GROUPS = new LinkedHashMap<>();
     static {
         column("trainingNumber", "Training Number", "a.training_number");
         column("topic", "Training Topic", "training_activity_topics(a.id)");
@@ -45,8 +46,36 @@ public class TrainingActivityReportMetadataProvider implements ReportMetadataPro
         column("createdBy", "Created By", "cb.full_name");
         column("createdAt", "Created At", ReportQueryKit.timestamp("a.created_at"));
         column("confirmedAt", "Confirmed At", ReportQueryKit.timestamp("a.confirmed_at"));
+        // REPORT-FIELD-CATALOG-2026-11-15: more of the metadata the source holds.
+        group("Plan", "trainingPeriodDays", "Training Period (Days)", "a.training_period_days");
+        group("Plan", "externalType", "External Training Type", "a.external_type");
+        group("Plan", "remarks", "Remarks", "a.remarks");
+        group("Plan", "cancelReason", "Cancel Reason", "a.cancel_reason");
+        group("Plan", "updatedAt", "Last Updated", ReportQueryKit.timestamp("a.updated_at"));
+        group("Training Unit", "trainingUnit", "Training Unit", "a.training_unit_name");
+        group("Training Unit", "vendorRef", "Vendor Reference", "a.vendor_ref");
+        group("Assessment", "examMinutes", "Exam Minutes", "a.exam_minutes");
+        group("Assessment", "assessmentName", "Assessment", "a.assessment_name");
+        group("Assessment", "assessmentKind", "Assessment Kind", "a.assessment_kind");
+        group("Assessment", "assessmentMaxScore", "Assessment Maximum Score", "a.assessment_max_score");
+        group("Assessment", "materialsExempt", "Materials Exempt", ReportQueryKit.yesNo("a.materials_exempt"));
+        group("Assessment", "materialsExemptReason", "Materials Exemption Reason", "a.materials_exempt_reason");
+        group("Assessment", "assessmentExempt", "Assessment Exempt", ReportQueryKit.yesNo("a.assessment_exempt"));
+        group("Assessment", "assessmentExemptReason", "Assessment Exemption Reason", "a.assessment_exempt_reason");
+        group("Paper Session", "paperTopic", "Paper Session Topic", "a.paper_topic");
+        group("Paper Session", "paperTrainer", "Paper Session Trainer", "a.paper_trainer");
+        group("Paper Session", "paperMethod", "Paper Session Method", "a.paper_method");
+        group("Stages", "impactAssessedAt", "Impact Assessed At", ReportQueryKit.timestamp("a.impact_assessed_at"));
+        group("Stages", "impactAssessedBy", "Impact Assessed By", ReportQueryKit.person("a.impact_assessed_by"));
+        group("Stages", "confirmedBy", "Confirmed By", ReportQueryKit.person("a.confirmed_by"));
+        group("Stages", "attendanceSentAt", "Attendance Sent At", ReportQueryKit.timestamp("a.attendance_sent_at"));
+        group("Stages", "attendanceSentBy", "Attendance Sent By", ReportQueryKit.person("a.attendance_sent_by"));
+        group("Stages", "resultsFinishedAt", "Results Finished At", ReportQueryKit.timestamp("a.results_finished_at"));
+        group("Stages", "resultsFinishedBy", "Results Finished By", ReportQueryKit.person("a.results_finished_by"));
     }
     private static void column(String code, String label, String sql) { COLUMNS.put(code, sql); LABELS.put(code, label); }
+    private static void group(String group, String code, String label, String sql) { column(code, label, sql); GROUPS.put(code, group); }
+    @Override public Map<String, String> fieldGroups() { return GROUPS; }
 
     private static final Set<String> FILTERS = Set.of("search", "status", "kind", "department", "dueFrom", "dueTo", "createdFrom", "createdTo", "completedFrom", "completedTo");
 
@@ -61,7 +90,7 @@ public class TrainingActivityReportMetadataProvider implements ReportMetadataPro
     public List<String> usePermissions() { return List.of("training.activity.view", "training.compliance.view"); }
     public List<String> allowedScopes() { return List.of("PERSONAL", "DEPARTMENT", "SYSTEM"); }
     public Map<String, String> columns() { return COLUMNS; }
-    @Override public Set<String> dateColumns() { return new LinkedHashSet<>(List.of("approvedOn", "dueDate", "completedOn", "createdAt", "confirmedAt")); }
+    @Override public Set<String> dateColumns() { return new LinkedHashSet<>(List.of("approvedOn", "dueDate", "completedOn", "createdAt", "confirmedAt", "updatedAt", "impactAssessedAt", "attendanceSentAt", "resultsFinishedAt")); }
     public Map<String, String> labels() { return LABELS; }
     public String identityColumn() { return "a.id"; }
     public String defaultSort() { return "trainingNumber"; }

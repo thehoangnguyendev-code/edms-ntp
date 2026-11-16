@@ -84,7 +84,7 @@ export const ROUTES = {
     // Uncontrolled Copies -- separate feature/table/API from Controlled Copies (never recalled/tracked after issue)
     UNCONTROLLED_COPIES: {
       ALL: '/documents/uncontrolled-copies/all',
-      PENDING_APPROVAL: '/documents/uncontrolled-copies/pending-approval',
+      READY: '/documents/uncontrolled-copies/ready',
       DISTRIBUTED: '/documents/uncontrolled-copies/distributed',
       DETAIL: (id: string) => `/documents/uncontrolled-copies/${id}`,
       /** The "download" link inside the distribution e-mail; login-required, never a public/token link. */
@@ -143,9 +143,15 @@ export const ROUTES = {
   // Report
   REPORT: {
     BASE: '/report',
-    OVERVIEW: '/report/overview',
-    ANALYTICS: '/report/analytics',
     TEMPLATES: '/report/templates',
+    /** Where a report template is made, changed, sent for approval and approved (not an administration setting). */
+    TEMPLATE_MANAGEMENT: '/report/template-management',
+    /** The revisions of every template, like the Document Revisions list; the second is what the person may approve now. */
+    TEMPLATE_REVISIONS: '/report/template-revisions',
+    TEMPLATE_REVISIONS_PENDING: '/report/template-revisions/pending-approval',
+    /** Second tab of Report Run History and of Scheduled Reports: the files under a legal hold, and the notices sent about scheduled reports. Below the address of the menu entry, so the sidebar finds it. */
+    LEGAL_HOLDS: '/report/history/legal-holds',
+    DELIVERY_LOG: '/report/scheduled/delivery-log',
     HISTORY: '/report/history',
     SCHEDULED: '/report/scheduled',
   },
@@ -192,15 +198,11 @@ export const ROUTES = {
     NOTIFICATIONS_EMAIL_DESIGN: '/settings/notifications/email-design',
     NOTIFICATIONS_IN_APP_DESIGN: '/settings/notifications/in-app-design',
     SYSTEM_INFO: '/settings/system-info',
-    REPORT_CONFIGURATION: '/settings/report-configuration',
     REPORT_ADMINISTRATION: {
-      DEFINITIONS: '/settings/report-configuration',
-      ACCESS: '/settings/administration/report/access',
-      RETENTION: '/settings/administration/report/retention',
-      DELIVERY: '/settings/administration/report/delivery',
       NAME_FORMATS: '/settings/report-name-formats',
       TYPES: '/settings/report-types',
       PROPERTIES: '/settings/report-properties',
+      APPEARANCE: '/settings/report-appearance',
     },
     BACKUP_ADMINISTRATION: {
       POLICY: '/settings/administration/backup/policy',

@@ -2,7 +2,7 @@ import React from "react";
 import { ChevronRight, MoreVertical } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { EmptyState } from "@/components/ui/page/EmptyState";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn, type DataTableColumnLayout } from "@/components/ui/table/DataTable";
 import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
@@ -261,7 +261,7 @@ const RevisionTableViewInner = <
   if (!revisions || paginatedRevisions.length === 0) {
     return (
       <div className="rounded-xl bg-white p-4 md:p-5 text-center">
-        <EmptyState title={emptyStateTitle} description={emptyStateMessage} />
+        <TableEmptyState title={emptyStateTitle} description={emptyStateMessage} />
       </div>
     );
   }

@@ -43,9 +43,13 @@ public class OnlyOfficeController {
     private final com.eqms.service.training.TrainingFileService trainingFiles;
     private final com.eqms.service.training.TrainingAssessmentEditService trainingEdits;
     private final com.eqms.service.training.TrainingFormTemplateService trainingTemplates;
+    private final com.eqms.service.ReportPlatformService reportPlatform;
+    private final com.eqms.service.report.ReportPreviewFileService reportPreviews;
 
     public OnlyOfficeController(RevisionService revisionService, OnlyOfficeDocumentEditService onlyOfficeDocumentEditService, com.eqms.service.training.TrainingFileService trainingFiles,
-                                com.eqms.service.training.TrainingAssessmentEditService trainingEdits, com.eqms.service.training.TrainingFormTemplateService trainingTemplates) {
+                                com.eqms.service.training.TrainingAssessmentEditService trainingEdits, com.eqms.service.training.TrainingFormTemplateService trainingTemplates, com.eqms.service.ReportPlatformService reportPlatform, com.eqms.service.report.ReportPreviewFileService reportPreviews) {
+        this.reportPlatform = reportPlatform;
+        this.reportPreviews = reportPreviews;
         this.trainingEdits = trainingEdits;
         this.trainingTemplates = trainingTemplates;
         this.revisionService = revisionService;
@@ -65,6 +69,20 @@ public class OnlyOfficeController {
     public ResponseEntity<byte[]> trainingEvidence(@PathVariable UUID id, @RequestParam String token) throws Exception {
         onlyOfficeDocumentEditService.verifyStoredFileToken("training-evidence", id, token);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).body(trainingFiles.evidenceBytesForViewer(id));
+    }
+
+    /** The document server's fetch of a CSV or XLSX report file to show in the read-only viewer. */
+    @GetMapping("/stored-file/report-artifact/{id}")
+    public ResponseEntity<byte[]> reportArtifact(@PathVariable UUID id, @RequestParam String token) throws Exception {
+        onlyOfficeDocumentEditService.verifyStoredFileToken("report-artifact", id, token);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).body(reportPlatform.artifactBytesForViewer(id));
+    }
+
+    /** The document server's fetch of the working copy (CSV or XLSX) shown at the Output step of Create Report. */
+    @GetMapping("/stored-file/report-preview/{id}")
+    public ResponseEntity<byte[]> reportPreview(@PathVariable UUID id, @RequestParam String token) throws Exception {
+        onlyOfficeDocumentEditService.verifyStoredFileToken("report-preview", id, token);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).body(reportPreviews.bytesForViewer(id));
     }
 
     /** The document server's fetch of a form template (a Word file) to show in the read-only viewer. */

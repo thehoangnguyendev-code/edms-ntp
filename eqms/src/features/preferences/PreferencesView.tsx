@@ -113,7 +113,7 @@ export const PreferencesView: React.FC = () => {
                             disabled={isSaving || !isDirty}
                             className="min-w-[120px]"
                         >
-                            Save Changes
+                            Save
                         </Button>
                     </>
                 }

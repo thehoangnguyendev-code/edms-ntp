@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
+import { MoreVertical } from "lucide-react";
+import { IconCheck } from "@tabler/icons-react";
+import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
+import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { Button } from "@/components/ui/button/Button";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import type { DataTableAction, DataTableColumn } from "@/components/ui/table";
@@ -23,6 +28,7 @@ import { getApiErrorMessage } from "@/utils/apiError";
 import { ServerListPanel } from "@/features/backup-restore/components/ServerListPanel";
 import { formatDateTime } from "@/features/backup-restore/format";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const ALL = "ALL";
 const STATE_OPTIONS = [
@@ -44,7 +50,7 @@ const TABS: TabItem[] = [
 const AlertsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
   const { showToast } = useToast();
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [state, setState] = useState<string>("OPEN");
   const [severity, setSeverity] = useState(ALL);
   const [raisedFrom, setRaisedFrom] = useState("");
@@ -136,14 +142,22 @@ const AlertsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
     { id: "ack", header: "Acknowledged", label: "Acknowledged", sort: sortFor("acknowledgedAt"), cell: (row) => (row.acknowledgedAt ? `${row.acknowledgedBy ?? ""} · ${formatDateTime(row.acknowledgedAt)}` : "—") },
   ];
 
+  const menu = usePortalDropdown();
+  const [menuRow, setMenuRow] = useState<BackupAlertRecord | null>(null);
   const action: DataTableAction<BackupAlertRecord> = {
-    header: "Actions",
+    header: "Action",
     headerClassName: TABLE_STYLES.headerCell35,
     cell: (row) =>
       canManage && !row.acknowledgedAt ? (
-        <Button variant="outline-emerald" size="sm" disabled={busy} onClick={() => setAcknowledging(row)}>
-          Acknowledge
-        </Button>
+        <button
+        type="button"
+        ref={menu.getRef(row.id)}
+        aria-label="More actions"
+        className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
+        onClick={(event) => { setMenuRow(row); menu.toggle(row.id, event); }}
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
       ) : null,
   };
 
@@ -154,6 +168,15 @@ const AlertsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
         title="How alerts work"
         description="The Backup Agent raises an alert when something needs attention. Every alert is recorded and listed here. Acknowledging one records who saw it and when; the alert stays in the history."
       />
+      <PortalDropdownMenu isOpen={!!menuRow && menu.openId === menuRow.id} onClose={menu.close} position={menu.position} minWidth={200}>
+        {menuRow && (
+          <div className="py-1">
+            <DropdownMenuItem icon={<IconCheck className="h-4 w-4" />} disabled={busy} onClick={() => { setAcknowledging(menuRow); menu.close(); }}>
+              Acknowledge
+            </DropdownMenuItem>
+          </div>
+        )}
+      </PortalDropdownMenu>
       <ServerListPanel
         tableKey="backup-restore.alerts.v1"
         framed={false}
@@ -359,7 +382,7 @@ const RulesTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
     }
   };
 
-  const yesNo = (on: boolean) => <Badge color={on ? "emerald" : "slate"}>{on ? "On" : "Off"}</Badge>;
+  const yesNo = (on: boolean) => <Badge color={flagColor(on)}>{on ? "On" : "Off"}</Badge>;
 
   return (
     <div className="space-y-4">

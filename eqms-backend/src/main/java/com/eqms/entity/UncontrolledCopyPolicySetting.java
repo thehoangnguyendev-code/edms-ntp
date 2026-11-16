@@ -28,8 +28,6 @@ public class UncontrolledCopyPolicySetting {
     @Id
     private UUID id = DEFAULT_ID;
 
-    @Column(name = "approval_required", nullable = false)
-    private boolean approvalRequired = true;
 
     @Column(name = "validity_hours", nullable = false)
     private int validityHours = 72;
@@ -67,8 +65,6 @@ public class UncontrolledCopyPolicySetting {
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
-    public boolean isApprovalRequired() { return approvalRequired; }
-    public void setApprovalRequired(boolean approvalRequired) { this.approvalRequired = approvalRequired; }
     public String getValidityBasis() { return validityBasis; }
     public void setValidityBasis(String validityBasis) { this.validityBasis = validityBasis; }
     public int getValidityHours() { return validityHours; }

@@ -45,6 +45,7 @@ class DocumentObsoleteConcurrencyTest {
     @Autowired private DocumentRecordRepository documentRepository;
     @Autowired private DocumentRevisionRepository revisionRepository;
     @Autowired private DocumentStatusDefinitionRepository documentStatusRepository;
+    @Autowired private ControlledCopyRepository controlledCopyRepository;
     @Autowired private RevisionStatusDefinitionRepository revisionStatusRepository;
     @Autowired private DocumentTypeRepository documentTypeRepository;
     @Autowired private BusinessUnitRepository businessUnitRepository;
@@ -130,23 +131,7 @@ class DocumentObsoleteConcurrencyTest {
      */
     @AfterEach
     void cleanupFixture() {
-        DocumentStatusDefinition closedCancelledDoc = documentStatusRepository.findById("CLOSED_CANCELLED").orElse(null);
-        RevisionStatusDefinition closedCancelledRev = revisionStatusRepository.findById("CLOSED_CANCELLED").orElse(null);
-        TransactionTemplate tx = new TransactionTemplate(transactionManager);
-        tx.executeWithoutResult(status -> {
-            if (closedCancelledRev != null) {
-                revisionRepository.findAllByDocument_IdOrderByCreatedAtDesc(documentId).forEach(r -> {
-                    r.setStatus(closedCancelledRev);
-                    revisionRepository.save(r);
-                });
-            }
-            if (closedCancelledDoc != null) {
-                documentRepository.findById(documentId).ifPresent(d -> {
-                    d.setStatus(closedCancelledDoc);
-                    documentRepository.save(d);
-                });
-            }
-        });
+        LifecycleFixtureCleanup.putAway(new TransactionTemplate(transactionManager), documentRepository, revisionRepository, documentStatusRepository, revisionStatusRepository, controlledCopyRepository, java.util.List.of(documentId));
     }
 
     private static final List<String> IN_PROGRESS = List.of(

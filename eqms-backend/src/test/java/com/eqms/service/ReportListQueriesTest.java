@@ -39,17 +39,6 @@ class ReportListQueriesTest {
     }
 
     @Test
-    void accessScopesArePagedAndTheLimitIsCapped() {
-        // Count: three search terms. Page: three search terms, limit and offset.
-        when(jdbc.queryForObject(anyString(), eq(Long.class), any(), any(), any())).thenReturn(25L);
-        when(jdbc.queryForList(anyString(), any(), any(), any(), any(), any())).thenReturn(List.of());
-
-        Map<?, ?> page = service.accessScopes(actor, "qa", null, "roleName", "asc", 2, 500);
-
-        assertThat(page.get("pagination")).isEqualTo(Map.of("page", 2, "limit", 100, "total", 25L, "totalPages", 1L));
-    }
-
-    @Test
     void legalHoldsArePaged() {
         when(jdbc.queryForObject(anyString(), eq(Long.class), any(), any())).thenReturn(0L);
         when(jdbc.queryForList(anyString(), any(), any(), any(), any())).thenReturn(List.of());
@@ -63,7 +52,6 @@ class ReportListQueriesTest {
     void aCallerWithoutPermissionIsRefused() {
         when(permissions.hasPermission(any(UserAccount.class), anyString())).thenReturn(false);
 
-        assertThatThrownBy(() -> service.accessScopes(actor, "", null, "templateName", "asc", 1, 10)).isInstanceOf(SecurityException.class);
         assertThatThrownBy(() -> service.legalHolds(actor, "", "heldAt", "desc", 1, 10)).isInstanceOf(SecurityException.class);
     }
 }

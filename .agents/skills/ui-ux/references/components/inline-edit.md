@@ -2,7 +2,7 @@
 
 Tên bản ghi ở đầu trang (dự án, tài liệu, bảng) đổi được ngay tại chỗ, không mở form.
 Ô sửa tại chỗ trong dòng bảng (hạn chót, vai trò) là chuyện khác, xem `../layouts/app.md`.
-Email và mật khẩu không sửa tại chỗ (`../layouts/app.md`, trang hồ sơ).
+Email và mật khẩu không sửa tại chỗ (`../layouts/app/profile.md`, trang hồ sơ).
 
 ## Hành vi
 
@@ -10,7 +10,7 @@ Email và mật khẩu không sửa tại chỗ (`../layouts/app.md`, trang hồ
   Esc hoặc nút ✕ thì huỷ, bấm ra ngoài thì lưu (như hầu hết app quản lý công việc).
   **Vùng chữ dài nhiều dòng (mô tả, ghi chú) thì bấm ra ngoài không lưu mà giữ ô mở**, chỉ ✓ / ✕ mới
   thoát: bấm nhầm ra ngoài giữa chừng thì lưu một đoạn viết dở hoặc mất nó (hệ thiết kế lớn khuyên
-  vậy cho vùng chữ dài; tra 27/09/2026). Tên một dòng thì bấm ra ngoài vẫn lưu.
+  vậy cho vùng chữ dài). Tên một dòng thì bấm ra ngoài vẫn lưu.
 - **Để trống thì không lưu**: viền đỏ, câu lỗi dưới ô ("Chưa nhập tên dự án", nói việc cần
   làm, `layouts/form.md`), ô vẫn mở. Gõ lại chữ thì lỗi mất, dòng lỗi giữ chỗ tới lúc thoát.
   Lưu tên đã bỏ khoảng trắng hai đầu; tên không đổi thì không gọi lưu.
@@ -35,17 +35,15 @@ Bấm vào tên thì chỉ khung hiện ra, chữ đứng yên từng pixel (`N1
 
 1. **Cùng khuôn chữ.** Nút tên và ô nhập cùng `px-2`, viền 1px (nút viền trong suốt), dòng
    `leading-7`, cao 44/40px (`min-h-11 py-1.75 md:min-h-10 md:py-1.25`), cỡ chữ đúng cỡ `<h1>`
-   của đầu trang (`text-xl font-semibold`, `../layouts/app.md`).
+   của đầu trang (`text-xl font-semibold`, `../layouts/app/shell.md`).
 2. **Chữ thẳng cột với phần còn lại của đầu trang, khung tràn ra trái.** Nền rê và viền ô nằm
    ngoài chữ, lùi ra trái đúng padding + viền (8 + 1 = 9px). Không lùi thì tên thụt 9px so với
-   link cấp cha, câu mô tả, hàng tab ngay trên dưới nó (đã dính 26/09/2026: tên thụt 9px so với
-   nhãn phía trên, ở cả ba bề rộng). Các app có tên sửa tại chỗ đều giữ chữ thẳng cột, khung
+   link cấp cha, câu mô tả, hàng tab ngay trên dưới nó. Các app có tên sửa tại chỗ đều giữ chữ thẳng cột, khung
    mới là thứ tràn ra. Đây là ngoại lệ của `N11` (vùng bấm nở ra ngoài chữ): không có cách không
    âm nào giữ được cả chữ thẳng cột lẫn khung bao quanh chữ.
 3. **Cùng bề rộng dòng chữ ở hai trạng thái.** Từ `sm` hai nút đứng cạnh ô, ăn mất 96px
    (104px ở `sm`, nút 44px). Lúc đứng yên tên cũng chừa đúng chỗ đó (`sm:pr-26 md:pr-24`), không
-   thì bấm vào là tên dài xuống dòng khác đi (đã dính 26/09/2026, 1280px: "hàng khu" rớt từ
-   dòng một xuống dòng hai lúc vào sửa). Dưới `sm` hai nút xuống hàng dưới, nằm phải, chung hàng
+   thì bấm vào là tên dài xuống dòng khác đi. Dưới `sm` hai nút xuống hàng dưới, nằm phải, chung hàng
    với câu lỗi: để bên phải thì ở 375px ô chỉ còn ~200px, tên ngắn cũng vỡ hai dòng.
 
 ```tsx
@@ -89,7 +87,7 @@ Bấm vào tên thì chỉ khung hiện ra, chữ đứng yên từng pixel (`N1
   onBlur={handleBlur}
   className={cn(
     // Số âm đặt trên khối lưới, không trên textarea: textarea không tự giãn theo margin âm,
-    // mép phải hụt 9px so với hàng nút ở màn hẹp (đo 26/09/2026).
+    // mép phải hụt 9px so với hàng nút ở màn hẹp.
     "-ml-2.25 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2",
   )}
 >
@@ -128,3 +126,11 @@ khoảng `gap-2`).
 
 *Phép thử:* đo `x` của chữ tên bằng `Range` và `x` của link cấp cha / câu mô tả: bằng nhau. Bấm
 vào một tên dài ở 1280px: số dòng và chữ đầu mỗi dòng không đổi.
+
+---
+
+## Kiểm trước khi giao
+
+Chạy cùng cổng 2 của `checklist.md` khi trang có đúng thứ này.
+
+- [ ] **Tên sửa tại chỗ**: chữ tên có thẳng cột với link cấp cha, câu mô tả không, hay thụt vào bằng padding của khung? Bấm vào một tên dài: chữ có đứng yên, số dòng có giữ nguyên không, hay rớt dòng vì hai nút ✓ ✕ ăn mất chỗ? Câu lỗi thẳng chữ trong ô? Bấm Huỷ bằng chuột có thành lưu không (`components/inline-edit.md`)?

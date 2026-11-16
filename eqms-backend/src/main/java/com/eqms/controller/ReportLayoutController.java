@@ -18,52 +18,28 @@ public class ReportLayoutController {
     public ReportLayoutController(ReportTemplateService templates,CurrentUserService users) {this.templates=templates;this.users=users;}
     @PostMapping("/preview")
     public ResponseEntity<byte[]> preview(@RequestBody Preview request) throws Exception {
-        var actor=users.requireCurrentUser();templates.require(actor,"reports.definition.manage","reports.properties.manage","settings.configuration.manage");
+        var actor=users.requireCurrentUser();templates.require(actor,"reports.definition.manage","reports.appearance.manage","settings.configuration.manage");
         if(request==null||request.layout()==null||request.title()==null||request.title().length()>255)throw new IllegalArgumentException("REPORT_LAYOUT_INVALID");
-        var now=Instant.now().toString();
-        var context=Map.of("report.title",request.title(),"report.code","LAYOUT_PREVIEW","template.version","draft",
-                "report.executor",Objects.toString(actor.getFullName(),Objects.toString(actor.getUsername(),actor.getId().toString())),"report.generatedAt",now,"report.asOfAt",now,"template.name",request.title(),"report.runId","LAYOUT_PREVIEW");
-        request.layout().validated();
-        var charts=request.layout().effectiveCharts().stream().map(c->new ReportCharts.Result(c.title()+" (demonstration)",c.type(),c.metric(),10,
-            List.of(new ReportCharts.Point("LINE".equals(c.type())?"2026-01":"Category A",5,"PERCENT".equals(c.metric())?50:5),
-                new ReportCharts.Point("LINE".equals(c.type())?"2026-02":"Category B",3,"PERCENT".equals(c.metric())?30:3),
-                new ReportCharts.Point("LINE".equals(c.type())?"2026-03":"Category C",2,"PERCENT".equals(c.metric())?20:2)))).toList();
-        var rows=List.of(List.of("Preview","Description"),List.of("Layout preview only","No business data or report run is created."));
-        byte[] pdf=words==null?ReportPresentationRenderer.render("PDF",rows,request.layout(),context,charts):words.render("PDF",rows,request.layout(),context,charts);
+        byte[] pdf=ReportLayoutPreview.render(actor,request.title(),request.layout(),words);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).cacheControl(CacheControl.noStore()).body(pdf);
     }
-    /**
-     * Read-only raster of a server-rendered draft page for the Konva editor, with where the server put the stamp (PDF points, from the bottom left of the page),
-     * as the preview of a Controlled Copy marking does: the editor draws its frame over the stamp the server drew, so the frame is always where the stamp is.
-     */
-    @PostMapping("/preview-page")
-    public PagePreview previewPage(@RequestBody PreviewPage request) throws Exception {
-        if(request==null||request.page()<1||request.page()>8)throw new IllegalArgumentException("REPORT_PREVIEW_PAGE_INVALID");
-        byte[] bytes=preview(new Preview(request.title(),request.layout())).getBody();
-        try(var document=org.apache.pdfbox.Loader.loadPDF(bytes);var output=new java.io.ByteArrayOutputStream()) {
-            if(request.page()>document.getNumberOfPages())throw new IllegalArgumentException("REPORT_PREVIEW_PAGE_INVALID");
-            var page=document.getPage(request.page()-1);
-            var image=new org.apache.pdfbox.rendering.PDFRenderer(document).renderImageWithDPI(request.page()-1,96);
-            javax.imageio.ImageIO.write(image,"png",output);
-            var layout=request.layout();var marks=new java.util.ArrayList<StampMark>();
-            if(layout.stampEnabled()&&(request.page()==1||"ALL".equals(layout.effectiveStamp().pages()))) {
-                var style=layout.effectiveStamp();
-                try(var input=ReportLayoutController.class.getResourceAsStream(ReportFonts.markResource(style.font()))) {
-                    var box=ReportStampBox.layout(org.apache.pdfbox.pdmodel.font.PDType0Font.load(document,input),layout.stamp().replaceAll("[\\p{Cc}]"," "),style,page.getMediaBox().getWidth(),page.getMediaBox().getHeight());
-                    marks.add(new StampMark("STAMP",box.x(),box.y(),box.width(),box.height()));
-                }
-            }
-            return new PagePreview(java.util.Base64.getEncoder().encodeToString(output.toByteArray()),page.getMediaBox().getWidth(),page.getMediaBox().getHeight(),marks);
-        }
-    }
-    public record StampMark(String kind,float x,float y,float width,float height) {}
-    public record PagePreview(String imageBase64,float pageWidthPt,float pageHeightPt,java.util.List<StampMark> marks) {}
     public record Preview(String title,ReportLayout layout) {}
+    /**
+     * A sample of one chart of a template, drawn by the chart renderer (Chart.js) from made-up groups, as a PNG: the editor of a template shows it as the author changes the type,
+     * the grouping, the metric and the number of groups. It is the same picture a report carries; the browser draws no chart (REPORT-CHARTJS-2026-11-15).
+     */
+    @PostMapping("/chart-preview")
+    public ResponseEntity<byte[]> chartPreview(@RequestBody ChartPreview request) throws Exception {
+        var actor=users.requireCurrentUser();templates.require(actor,"reports.definition.manage","reports.appearance.manage","settings.configuration.manage");
+        if(request==null||request.chart()==null||(request.fieldName()!=null&&request.fieldName().length()>255)||(request.font()!=null&&!ReportFonts.KEYS.contains(request.font())))throw new IllegalArgumentException("REPORT_CHART_INVALID");
+        byte[] png=ReportCharts.png(ReportChartSamples.of(request.chart(),request.fieldName()),request.font());
+        return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).cacheControl(CacheControl.noStore()).body(png);
+    }
+    public record ChartPreview(ReportLayout.Chart chart,String fieldName,String font) {}
     @PostMapping(value="/components/{type}",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     public ReportLayout.WordComponent upload(@PathVariable String type,@RequestParam("file") org.springframework.web.multipart.MultipartFile file) throws Exception {
-        var actor=users.requireCurrentUser();templates.require(actor,"reports.definition.manage","reports.properties.manage","settings.configuration.manage");
+        var actor=users.requireCurrentUser();templates.require(actor,"reports.definition.manage","reports.appearance.manage","settings.configuration.manage");
         if(file.getSize()>2097152)throw new IllegalArgumentException("REPORT_WORD_SIZE_LIMIT");
         return words.upload(actor,type,file.getOriginalFilename(),file.getBytes());
     }
-    public record PreviewPage(String title,ReportLayout layout,int page) {}
 }

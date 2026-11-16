@@ -5,6 +5,7 @@ import { ROUTES } from '../routes.constants';
 import { LoadingFallback } from './LoadingFallback';
 import { navigateBack } from '../navigation/backNavigation';
 import { ProtectedRoute } from '@/middleware/ProtectedRoute';
+import { LegacyReportTemplateRedirect } from './ReportTemplateRedirects';
 
 // ==================== LAZY LOADED ====================
 const ProfileView = lazy(() => import('@/features/settings').then(m => ({ default: m.ProfileView })));
@@ -29,13 +30,11 @@ const InAppDesignView = lazy(() => import('@/features/settings').then(m => ({ de
 const ConfigurationView = lazy(() => import('@/features/settings/configuration/ConfigurationView').then(m => ({ default: m.ConfigurationView })));
 const ElectronicSignatureSettingsView = lazy(() => import('@/features/settings').then(m => ({ default: m.ElectronicSignatureSettingsView })));
 const SystemInformationView = lazy(() => import('@/features/settings').then(m => ({ default: m.SystemInformationView })));
-const ReportConfigurationView = lazy(() => import('@/features/settings').then(m => ({ default: m.ReportConfigurationView })));
-const ReportDefinitionEditView = lazy(() => import('@/features/settings').then(m => ({ default: m.ReportDefinitionEditView })));
-const ReportTemplateRevisionAdminPage = lazy(() => import('@/features/report/templates/ReportTemplateRevisionPage').then(m => ({ default: () => <m.ReportTemplateRevisionPage inAdministration /> })));
-const ReportTemplateDetailAdminPage = lazy(() => import('@/features/report/templates/ReportTemplateDetailPage').then(m => ({ default: () => <m.ReportTemplateDetailPage inAdministration /> })));
 const ReportTypesView = lazy(() => import('@/features/report/types/ReportTypesView').then(m => ({ default: m.ReportTypesView })));
 const ReportTypeDetailView = lazy(() => import('@/features/report/types/ReportTypeDetailView').then(m => ({ default: m.ReportTypeDetailView })));
 const ReportNameFormatsView = lazy(() => import('@/features/report/name-formats/ReportNameFormatsView').then(m => ({ default: m.ReportNameFormatsView })));
+const ReportAppearanceListView = lazy(() => import('@/features/report/appearance/ReportAppearanceListView').then(m => ({ default: m.ReportAppearanceListView })));
+const ReportAppearanceView = lazy(() => import('@/features/report/appearance/ReportAppearanceView').then(m => ({ default: m.ReportAppearanceView })));
 const ReportPropertiesView = lazy(() => import('@/features/report/properties/ReportPropertiesView').then(m => ({ default: m.ReportPropertiesView })));
 const ReportNameFormatEditView = lazy(() => import('@/features/report/name-formats/ReportNameFormatEditView').then(m => ({ default: m.ReportNameFormatEditView })));
 const PreferencesView = lazy(() => import('@/features/preferences').then(m => ({ default: m.PreferencesView })));
@@ -60,9 +59,6 @@ const UncontrolledCopyPolicyView = lazy(() => import('@/features/settings').then
 
 // Training Administration -- coming soon placeholders, one per sub-screen
 // Backup & Restore Administration -- one screen per sub-menu (UI preview)
-const ReportAccessScopeView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportAccessScopeView })));
-const ReportRetentionView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportRetentionView })));
-const ReportDeliveryView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportDeliveryView })));
 const BackupPolicyView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupPolicyView })));
 const BackupPolicyDetailView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupPolicyDetailView })));
 const NewBackupPolicyView = lazy(() => import('@/features/settings').then(m => ({ default: m.NewBackupPolicyView })));
@@ -146,16 +142,20 @@ export function settingsRoutes(navigate: NavigateFunction) {
           </Route>
         </Route>
         <Route path="configuration" element={<ProtectedRoute requiredPermissions={["settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ConfigurationView /></Suspense></ProtectedRoute>} />
-        <Route path="report-configuration" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportConfigurationView /></Suspense></ProtectedRoute>} />
+        {/* Report templates are made and approved in Reports; the old addresses lead there. */}
+        <Route path="report-configuration" element={<LegacyReportTemplateRedirect page="list" />} />
         <Route path="report-name-formats" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "reports.name_format.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportNameFormatsView /></Suspense></ProtectedRoute>} />
         <Route path="report-types" element={<ProtectedRoute requiredPermissions={["reports.types.view", "reports.types.manage"]}><Suspense fallback={<LoadingFallback />}><ReportTypesView /></Suspense></ProtectedRoute>} />
         <Route path="report-types/:code" element={<ProtectedRoute requiredPermissions={["reports.types.view", "reports.types.manage"]}><Suspense fallback={<LoadingFallback />}><ReportTypeDetailView /></Suspense></ProtectedRoute>} />
+        <Route path="report-appearance" element={<ProtectedRoute requiredPermissions={["reports.appearance.view", "reports.appearance.manage"]}><Suspense fallback={<LoadingFallback />}><ReportAppearanceListView /></Suspense></ProtectedRoute>} />
+        <Route path="report-appearance/new" element={<ProtectedRoute requiredPermissions={["reports.appearance.manage"]}><Suspense fallback={<LoadingFallback />}><ReportAppearanceView /></Suspense></ProtectedRoute>} />
+        <Route path="report-appearance/:id" element={<ProtectedRoute requiredPermissions={["reports.appearance.view", "reports.appearance.manage"]}><Suspense fallback={<LoadingFallback />}><ReportAppearanceView /></Suspense></ProtectedRoute>} />
         <Route path="report-properties" element={<ProtectedRoute requiredPermissions={["reports.properties.view", "reports.properties.manage"]}><Suspense fallback={<LoadingFallback />}><ReportPropertiesView /></Suspense></ProtectedRoute>} />
         <Route path="report-name-formats/new" element={<ProtectedRoute requiredPermissions={["reports.name_format.manage"]}><Suspense fallback={<LoadingFallback />}><ReportNameFormatEditView /></Suspense></ProtectedRoute>} />
         <Route path="report-name-formats/:id" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "reports.name_format.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportNameFormatEditView /></Suspense></ProtectedRoute>} />
-        <Route path="report-configuration/:code/revisions/:revision" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportTemplateRevisionAdminPage /></Suspense></ProtectedRoute>} />
-        <Route path="report-configuration/:code/details" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportTemplateDetailAdminPage /></Suspense></ProtectedRoute>} />
-        <Route path="report-configuration/:code" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportDefinitionEditView /></Suspense></ProtectedRoute>} />
+        <Route path="report-configuration/:code/revisions/:revision" element={<LegacyReportTemplateRedirect page="revision" />} />
+        <Route path="report-configuration/:code/details" element={<LegacyReportTemplateRedirect page="details" />} />
+        <Route path="report-configuration/:code" element={<LegacyReportTemplateRedirect page="edit" />} />
         <Route path="electronic-signature" element={<ProtectedRoute requiredPermissions={["settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ElectronicSignatureSettingsView /></Suspense></ProtectedRoute>} />
         <Route path="notifications">
           <Route index element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage", "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><NotificationsView /></Suspense></ProtectedRoute>} />
@@ -208,9 +208,8 @@ export function settingsRoutes(navigate: NavigateFunction) {
 
       {/* ===== REPORT ADMINISTRATION (UI preview, one screen per sub-menu) ===== */}
       <Route path="settings/administration/report">
-        <Route path="access" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportAccessScopeView /></Suspense></ProtectedRoute>} />
-        <Route path="retention" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportRetentionView /></Suspense></ProtectedRoute>} />
-        <Route path="delivery" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportDeliveryView /></Suspense></ProtectedRoute>} />
+        <Route path="retention" element={<Navigate to="/report/history/legal-holds" replace />} />
+        <Route path="delivery" element={<Navigate to="/report/scheduled/delivery-log" replace />} />
       </Route>
 
       {/* ===== BACKUP & RESTORE ADMINISTRATION (UI preview, one screen per sub-menu) ===== */}

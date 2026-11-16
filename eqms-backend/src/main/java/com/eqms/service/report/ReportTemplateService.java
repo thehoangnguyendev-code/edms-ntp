@@ -64,6 +64,8 @@ public class ReportTemplateService {
     public int maxRows() { return properties == null ? ReportPropertiesService.DEFAULT_MAX_ROWS : properties.maxRows(); }
     /** The most rows of a report file run with the Full choice (Report Properties; 100,000 by default and at most). */
     public int maxRowsFull() { return properties == null ? ReportPropertiesService.DEFAULT_MAX_ROWS_FULL : properties.maxRowsFull(); }
+    /** The most days a run of a type that must name a date range may cover (Report Properties; 92 by default). */
+    public int maxRangeDays() { return properties == null ? ReportPropertiesService.DEFAULT_MAX_RANGE_DAYS : properties.maxRangeDays(); }
     /** The most people a scheduled report may be sent to (Report Properties). */
     public int maxScheduleRecipients() { return properties == null ? ReportPropertiesService.DEFAULT_MAX_SCHEDULE_RECIPIENTS : properties.maxScheduleRecipients(); }
     /** Minutes before a schedule is tried again after a temporary failure (Report Properties). */
@@ -93,6 +95,10 @@ public class ReportTemplateService {
         return filteredCatalog(actor,search,page,sortBy,direction,filters,false);
     }
 
+    private static String dateText(String value) {
+        try { return java.time.LocalDate.parse(value.trim()).toString(); } catch (java.time.format.DateTimeParseException invalid) { throw new IllegalArgumentException("REPORT_FILTER_NOT_ALLOWED"); }
+    }
+
     private Map<String,Object> filteredCatalog(UserAccount actor,String search,int page,String sortBy,String direction,Map<String,String> filters,boolean admin) {
         if(admin) require(actor,"reports.definition.view","settings.configuration.view");
         else require(actor,"reports.catalog.view","report.module.view");
@@ -100,7 +106,7 @@ public class ReportTemplateService {
             case "displayName"->"d.display_name"; case "code"->"d.code"; case "category"->"d.category";
             case "sourceCode"->"d.source_code"; case "definitionVersion"->"d.definition_version";
             case "revision"->"(select rv.revision from report_template_revisions rv where rv.definition_code=d.code and rv.status='EFFECTIVE')";
-            case "active"->"d.active"; case "updatedAt"->"d.updated_at"; case "createdAt"->"d.created_at";
+            case "active"->"d.active"; case "updatedAt"->"d.updated_at"; case "createdAt"->"d.created_at"; case "gmpUse"->"d.gmp_use";
             default->throw new IllegalArgumentException("REPORT_SORT_NOT_ALLOWED");
         };
         String term=search==null?"":search.trim();
@@ -132,6 +138,11 @@ public class ReportTemplateService {
                 case "sourceCode" -> {provider(val);where.append(" and d.source_code=?");args.add(val);}
                 case "format" -> {if(!Set.of("PDF","XLSX","CSV").contains(val))throw new IllegalArgumentException("REPORT_FILTER_NOT_ALLOWED");where.append(" and d.allowed_formats @> cast(? as jsonb)");args.add(write(List.of(val)));}
                 case "orientation" -> {if(!Set.of("PORTRAIT","LANDSCAPE").contains(val))throw new IllegalArgumentException("REPORT_FILTER_NOT_ALLOWED");where.append(" and coalesce(d.layout->>'orientation','LANDSCAPE')=?");args.add(val);}
+                // Whether the template is used for GMP decisions (REPORT-TEMPLATE-REVISIONS-LIST-2026-11-15).
+                case "gmp" -> {if(!Set.of("YES","NO").contains(val))throw new IllegalArgumentException("REPORT_FILTER_NOT_ALLOWED");where.append(" and d.gmp_use=?");args.add("YES".equals(val));}
+                // The "Last Updated" range of the list (yyyy-MM-dd, both days included); a value that is not a date is refused.
+                case "updatedFrom" -> {where.append(" and d.updated_at >= cast(? as date)");args.add(dateText(val));}
+                case "updatedTo" -> {where.append(" and d.updated_at < cast(? as date) + interval '1 day'");args.add(dateText(val));}
                 default -> throw new IllegalArgumentException("REPORT_FILTER_NOT_ALLOWED");
             }
         }
@@ -157,12 +168,38 @@ public class ReportTemplateService {
         return Map.of("data",data,"pagination",pagination(safePage,pageSize,total),"sources",sources);
     }
 
+    /** The group and the sensitive label of each field, from its Report Type, for the screens that choose columns (REPORT-FIELD-CATALOG-2026-11-15). */
+    private Map<String, Object> withFieldCatalog(Map<String, Object> definition) {
+        var result = definition instanceof LinkedHashMap ? definition : new LinkedHashMap<>(definition);
+        Object source = result.get("sourceCode");
+        if (source == null || !providers.containsKey(String.valueOf(source)) || result.get("fields") == null) return result;
+        var provider = providers.get(String.valueOf(source));
+        List<Map<String, Object>> fields = json.convertValue(result.get("fields"), json.getTypeFactory().constructCollectionType(List.class, Map.class));
+        List<Map<String, Object>> described = new ArrayList<>();
+        for (Map<String, Object> field : fields) {
+            Map<String, Object> item = new LinkedHashMap<>(field);
+            String column = String.valueOf(field.get("code"));
+            item.put("group", provider.fieldGroups().getOrDefault(column, "Core"));
+            item.put("sensitive", provider.sensitiveFields().contains(column));
+            described.add(item);
+        }
+        result.put("fields", described);
+        return result;
+    }
+
     private Map<String,Object> publicDefinition(String code) {
-        var result = definition(code);
+        var result = withFieldCatalog(definition(code));
         result.remove("roleScopes");
         var source=provider(String.valueOf(result.get("sourceCode")));
         var allowed=allowedCodes(result);
-        if (revisions != null) { Integer effective = revisions.effectiveNumber(code); result.put("revision", effective); result.put("effectiveRevision", effective); }
+        if (revisions != null) {
+            var inForce = revisions.effective(code);
+            Integer effective = inForce == null ? null : ((Number) inForce.get("revision")).intValue();
+            result.put("revision", effective); result.put("effectiveRevision", effective);
+            // On what basis the revision in force is in force, and since when (a person who runs the report is told one date, not who approved).
+            result.put("approvalBasis", inForce == null ? null : inForce.get("approval_basis"));
+            result.put("inUseSince", inForce == null ? null : inForce.get("effective_at"));
+        }
         result.put("filterFields", source.filters().stream().filter(field->!source.filterColumns().containsKey(field.get("code"))||allowed.contains(source.filterColumns().get(field.get("code")))).toList());
         return result;
     }
@@ -246,6 +283,30 @@ public class ReportTemplateService {
         return revisions.detail(actor, code, revision, definition(code));
     }
 
+    /** The revisions of every template, for the lists Report Template Revisions and Pending My Approval. */
+    public Map<String, Object> revisionListAll(UserAccount actor, String scope, String status, String gmp, String source, String search, String sortBy, String sortDirection, int page, int limit) {
+        return revisionListAll(actor, scope, status, gmp, source, search, null, null, sortBy, sortDirection, page, limit);
+    }
+
+    public Map<String, Object> revisionListAll(UserAccount actor, String scope, String status, String gmp, String source, String search, String updatedFrom, String updatedTo, String sortBy, String sortDirection, int page, int limit) {
+        if (revisions == null) throw new IllegalStateException("REPORT_REVISIONS_UNAVAILABLE");
+        require(actor, "reports.definition.view", "settings.configuration.view");
+        var result = revisions.listAll(actor, scope, status, gmp, source, search, updatedFrom, updatedTo, sortBy, sortDirection, page, limit);
+        // The row menu opens with its items decided, as in the list of templates: what this person may do with the template of each revision comes with the list
+        // (one read of the permissions for the page, one decision per template). The screen maps a revision's status and these answers to its menu entries.
+        Set<String> held = permissions.getEffectivePermissionCodes(actor);
+        Map<String, ResourceCapabilitiesResponse> perTemplate = new HashMap<>();
+        List<Map<String, Object>> data = new ArrayList<>();
+        for (Object row : (List<?>) result.get("data")) {
+            @SuppressWarnings("unchecked") Map<String, Object> item = new LinkedHashMap<>((Map<String, Object>) row);
+            item.put("capabilities", perTemplate.computeIfAbsent(String.valueOf(item.get("definitionCode")), code -> capabilitiesOf(actor, held, code)));
+            data.add(item);
+        }
+        Map<String, Object> out = new LinkedHashMap<>(result);
+        out.put("data", data);
+        return out;
+    }
+
     public Map<String, Object> revisionList(UserAccount actor, String code, String status, String search, String sortBy, String sortDirection, int page, int limit) {
         if (revisions == null) throw new IllegalStateException("REPORT_REVISIONS_UNAVAILABLE");
         return revisions.list(actor, code, status, search, sortBy, sortDirection, page, limit);
@@ -313,8 +374,36 @@ public class ReportTemplateService {
 
     public List<Map<String, Object>> sources(UserAccount actor) {
         require(actor, "reports.definition.manage", "settings.configuration.manage");
-        return providers.values().stream().filter(provider -> types == null || (types.isEnabled(provider.code()) && types.mayUse(actor, provider.code()))).map(provider -> Map.<String,Object>of("code", provider.code(), "name", provider.name(), "category", provider.category(), "description", provider.description(), "allowedScopes", provider.allowedScopes(), "fields", provider.labels(), "requiredFields", provider.requiredFields(),
-            "dateFields",List.copyOf(provider.dateColumns()))).toList();
+        return providers.values().stream().filter(provider -> types == null || (types.isEnabled(provider.code()) && types.mayUse(actor, provider.code()))).map(provider -> {
+            Map<String, Object> source = new LinkedHashMap<>();
+            source.put("code", provider.code()); source.put("name", provider.name()); source.put("category", provider.category()); source.put("description", provider.description());
+            source.put("allowedScopes", provider.allowedScopes()); source.put("fields", provider.labels()); source.put("requiredFields", provider.requiredFields());
+            source.put("dateFields", List.copyOf(provider.dateColumns()));
+            // REPORT-FIELD-CATALOG-2026-11-15: the group of each field, the fields that describe a person, and how many columns one report may carry.
+            source.put("fieldGroups", groupsOf(provider)); source.put("sensitiveFields", List.copyOf(provider.sensitiveFields())); source.put("maxColumns", ReportMetadataProvider.MAX_REPORT_COLUMNS);
+            return source;
+        }).toList();
+    }
+
+    /** The labels of the chosen columns that describe a person, in the order chosen; the run is written to the Audit Trail with them (REPORT-FIELD-CATALOG-2026-11-15). */
+    static List<String> sensitiveLabels(ReportMetadataProvider provider, List<String> selected) {
+        return selected.stream().filter(provider.sensitiveFields()::contains).map(code -> provider.labels().getOrDefault(code, code)).toList();
+    }
+
+    /** The same for the snapshot of a run: its source and the list of columns it selected. */
+    public List<String> sensitiveColumns(String sourceCode, JsonNode selected) {
+        ReportMetadataProvider provider = providers.get(sourceCode);
+        if (provider == null || selected == null || !selected.isArray()) return List.of();
+        List<String> codes = new ArrayList<>();
+        selected.forEach(node -> codes.add(node.asText()));
+        return sensitiveLabels(provider, codes);
+    }
+
+    /** The group of every column of a source; a column the source does not place is in Core. */
+    static Map<String, String> groupsOf(ReportMetadataProvider provider) {
+        Map<String, String> groups = new LinkedHashMap<>();
+        for (String column : provider.columns().keySet()) groups.put(column, provider.fieldGroups().getOrDefault(column, "Core"));
+        return groups;
     }
 
     /** A new template. Its number is issued by the system from the numbering rule; the caller cannot choose it (REPORT-TEMPLATE-NUMBER-2026-10-14). */
@@ -355,6 +444,8 @@ public class ReportTemplateService {
             if (field == null || field.code()==null || !provider.columns().containsKey(field.code()) || !seen.add(field.code()) || (field.required() && !field.allowed())) throw new IllegalArgumentException("REPORT_FIELD_NOT_ALLOWED");
         }
         if (!seen.containsAll(provider.requiredFields())) throw new IllegalArgumentException("REPORT_REQUIRED_FIELD_MISSING");
+        // REPORT-FIELD-CATALOG-2026-11-15: a template may allow every column of its source, but a report carries at most MAX_REPORT_COLUMNS of them.
+        if (request.fields().stream().filter(f -> f.allowed() && (f.defaultSelected() || f.required())).count() > ReportMetadataProvider.MAX_REPORT_COLUMNS) throw new IllegalArgumentException("REPORT_COLUMN_LIMIT_EXCEEDED");
         for (var field : request.fields()) if (provider.requiredFields().contains(field.code()) && (!field.required() || !field.allowed())) throw new IllegalArgumentException("REPORT_REQUIRED_FIELD_MISSING");
         if(request.layout()!=null)for(var chart:request.layout().effectiveCharts()) {
             if(request.fields().stream().noneMatch(f->f.allowed()&&f.code().equals(chart.field())))throw new IllegalArgumentException("REPORT_CHART_FIELD_NOT_ALLOWED");
@@ -703,11 +794,16 @@ public class ReportTemplateService {
 
     /** Which revision is effective and which is being written, for the screens. */
     private Map<String, Object> withRevisionInfo(Map<String, Object> definition) {
+        definition = withFieldCatalog(definition);
         if (revisions == null) return definition;
         var result = definition instanceof LinkedHashMap ? definition : new LinkedHashMap<>(definition);
         String code = String.valueOf(result.get("code"));
         Integer effective = revisions.effectiveNumber(code);
         var open = revisions.open(code);
+        // On what basis the revision in force is in force (a revision that was in force without approval before REPORT-ALL-TEMPLATES-APPROVED-2026-11-15 says so), and since when.
+        var inForce = revisions.effective(code);
+        result.put("approvalBasis", inForce == null ? null : inForce.get("approval_basis"));
+        result.put("inUseSince", inForce == null ? null : inForce.get("effective_at"));
         result.put("effectiveRevision", effective);
         result.put("openRevision", open == null ? null : open.get("revision"));
         result.put("openRevisionStatus", open == null ? null : open.get("status"));
@@ -957,6 +1053,47 @@ public class ReportTemplateService {
         return new MetadataRows(rows, ids, total, asOfAt);
     }
 
+    /**
+     * The filters of a run as a person reads them (REPORT-FILTER-LABELS-2026-11-15): the name of the filter and the label of each chosen value ("Author = Nguyen The Hoang; Status = Active"),
+     * never an identifier or a stored code. The label is read from the column of the record that holds it (the name of the person, the department, the status); when that cannot be read the value is "(not available)", never the identifier.
+     */
+    public String filterSummary(UserAccount actor, String code, JsonNode snapshot) {
+        var provider = provider(snapshot.path("definition").path("sourceCode").asText());
+        Map<String, String> names = new HashMap<>();
+        for (var filter : provider.filters()) names.put(filter.get("code"), filter.get("name"));
+        List<String> parts = new ArrayList<>();
+        snapshot.path("filters").fields().forEachRemaining(entry -> {
+            List<String> values = new ArrayList<>();
+            if (entry.getValue().isArray()) entry.getValue().forEach(item -> values.add(item.asText("")));
+            else if (entry.getValue().isContainerNode()) entry.getValue().forEach(item -> values.add(item.asText("")));
+            else values.add(entry.getValue().asText(""));
+            List<String> shown = new ArrayList<>();
+            for (String value : values) {
+                if (value.isBlank()) continue;
+                shown.add(provider.lookupColumns().containsKey(entry.getKey()) ? labelOf(provider, actor, code, entry.getKey(), value) : readable(value));
+            }
+            if (!shown.isEmpty()) parts.add(names.getOrDefault(entry.getKey(), entry.getKey()) + " = " + String.join(", ", shown));
+        });
+        return parts.isEmpty() ? "No filter" : String.join("; ", parts);
+    }
+
+    /** A value that was typed or picked as a date or a text: shown as it is, dates in the display format. A value that stands for a record is never shown by its identifier; see labelOf. */
+    private static String readable(String value) { return com.eqms.util.DateTimeFormatUtils.displayText(value); }
+    private static final String NOT_AVAILABLE = "(not available)";
+
+    private String labelOf(ReportMetadataProvider provider, UserAccount actor, String code, String filter, String value) {
+        try {
+            var query = provider.query(actor, scopes(actor, code), Map.of());
+            var args = new ArrayList<>(query.arguments());
+            args.add(value);
+            var labels = jdbc.queryForList("select " + provider.columns().get(filter) + " as label " + query.fromWhere() + " and cast(" + provider.lookupColumns().get(filter) + " as text)=? limit 1", args.toArray());
+            if (!labels.isEmpty() && labels.getFirst().get("label") != null && !String.valueOf(labels.getFirst().get("label")).isBlank()) return String.valueOf(labels.getFirst().get("label"));
+        } catch (RuntimeException unreadable) {
+            // Falls through to the safe display below.
+        }
+        return NOT_AVAILABLE;
+    }
+
     public void reauthorize(UserAccount actor, String code, JsonNode snapshot) {
         var definition = definition(code);
         if (!Boolean.TRUE.equals(definition.get("active"))) throw new SecurityException("REPORT_TEMPLATE_DISABLED");
@@ -984,6 +1121,7 @@ public class ReportTemplateService {
         List<String> selected = requested == null || requested.isEmpty()
                 ? fields.stream().filter(f -> Boolean.TRUE.equals(f.get("allowed")) && (Boolean.TRUE.equals(f.get("defaultSelected")) || Boolean.TRUE.equals(f.get("required")))).map(f -> String.valueOf(f.get("code"))).toList() : requested;
         if (selected.isEmpty() || selected.size() != new HashSet<>(selected).size() || !allowed.containsAll(selected)) throw new IllegalArgumentException("REPORT_FIELD_NOT_ALLOWED");
+        if (selected.size() > ReportMetadataProvider.MAX_REPORT_COLUMNS) throw new IllegalArgumentException("REPORT_COLUMN_LIMIT_EXCEEDED");
         var required = fields.stream().filter(f -> Boolean.TRUE.equals(f.get("required"))).map(f -> String.valueOf(f.get("code"))).toList();
         if (!selected.containsAll(required)) throw new IllegalArgumentException("REPORT_REQUIRED_FIELD_MISSING");
         return List.copyOf(selected);
@@ -1009,14 +1147,32 @@ public class ReportTemplateService {
     }
     @Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public byte[] previewPdf(UserAccount actor,String code,Criteria criteria,String title) throws Exception {
-        var snapshot=snapshot(actor,code,criteria);var metadata=render(actor,code,snapshot,1,maxRows(),true);
+        return previewBytes(actor,code,criteria,title,"PDF",false);
+    }
+    /** A file made as a report is made, to look at before the report is requested (REPORT-OUTPUT-PREVIEW-2026-11-16). */
+    public record PreviewFile(String fileName,byte[] bytes) {}
+    @Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public PreviewFile previewFile(UserAccount actor,String code,Criteria criteria,String title,String format,boolean full) throws Exception {
+        if(!Set.of("CSV","XLSX").contains(format))throw new IllegalArgumentException("REPORT_FORMAT_NOT_ALLOWED");
+        var allowed=read(jdbc.queryForObject("select allowed_formats::text from report_definitions where code=?",String.class,code));
+        boolean listed=false;for(var item:allowed)if(format.equals(item.asText()))listed=true;
+        if(!listed)throw new IllegalArgumentException("REPORT_FORMAT_NOT_ALLOWED");
+        var name=validatedTitle(title,String.valueOf(definition(code).get("displayName")));
+        return new PreviewFile(name+"."+format.toLowerCase(java.util.Locale.ROOT),previewBytes(actor,code,criteria,title,format,full));
+    }
+    private byte[] previewBytes(UserAccount actor,String code,Criteria criteria,String title,String format,boolean full) throws Exception {
+        var snapshot=snapshot(actor,code,criteria);
+        // A run with the Full choice has its own ceiling of rows (REPORT-FULL-RUN-2026-11-12); the working copy is made under the same one.
+        ((com.fasterxml.jackson.databind.node.ObjectNode)snapshot).put("full",full);
+        var metadata=render(actor,code,snapshot,1,maxRows(),true);
+        if("CSV".equals(format))return ReportPresentationRenderer.csvText(ReportPresentationRenderer.withRowNumbers(metadata.rows())).getBytes(java.nio.charset.StandardCharsets.UTF_8);
         var layout=json.treeToValue(snapshot.path("definition").path("layout"),ReportLayout.class);
         var name=validatedTitle(title,snapshot.path("definition").path("displayName").asText());
         var values=Map.of("report.title",name,"report.code",code,"template.version",snapshot.path("definition").hasNonNull("revision")?com.eqms.service.report.ReportTemplateRevisionService.effectiveLabel(snapshot.path("definition").path("revision").asInt()):snapshot.path("definition").path("definitionVersion").asText(),
             "report.executor",Objects.toString(actor.getFullName(),Objects.toString(actor.getUsername(),actor.getId().toString())),"report.generatedAt",com.eqms.util.DateTimeFormatUtils.formatDateTime(Instant.now()),"report.asOfAt",com.eqms.util.DateTimeFormatUtils.display(metadata.asOfAt()),
-            "template.name",snapshot.path("definition").path("displayName").asText(),"report.runId","PREVIEW","report.gmpNotice","Preview. Not confirmed for GMP decisions.");
+            "template.name",snapshot.path("definition").path("displayName").asText(),"report.runId","PREVIEW","report.gmpNotice","Preview. Not approved for GMP decisions. Not a controlled record.");
         var charts=ReportCharts.calculate(layout.effectiveCharts(),json.convertValue(snapshot.path("fields"),json.getTypeFactory().constructCollectionType(List.class,String.class)),metadata.rows());
-        return words==null?ReportPresentationRenderer.render("PDF",metadata.rows(),layout,values,charts):words.render("PDF",metadata.rows(),layout,values,charts);
+        return words==null?ReportPresentationRenderer.render(format,metadata.rows(),layout,values,charts):words.render(format,metadata.rows(),layout,values,charts);
     }
     public static String validatedTitle(Object value,String fallback) {
         String title=value==null?fallback:String.valueOf(value).trim();
@@ -1032,7 +1188,8 @@ public class ReportTemplateService {
         return configured.stream().filter(field->Boolean.TRUE.equals(field.get("allowed"))).map(field->String.valueOf(field.get("code"))).collect(java.util.stream.Collectors.toSet());
     }
     private void validateFilters(Map<String,Object> definition,ReportMetadataProvider provider,Map<String,Object> filters) {
-        provider.validateRun(filters);
+        // The most days a range may cover is a setting of Report Properties (REPORT-RANGE-DAYS-2026-11-16).
+        provider.validateRun(filters, maxRangeDays());
         var allowed=allowedCodes(definition);
         for(var entry:filters.entrySet()) {
             String column=provider.filterColumns().get(entry.getKey());
@@ -1075,14 +1232,16 @@ public class ReportTemplateService {
      * REPORT-GMP-NOTICE-2026-11-12: the statement every report file carries. A template marked for GMP decisions whose current version is approved says who approved
      * which revision and when; every other report says it is not confirmed for GMP decisions, so nobody mistakes it for a validated output.
      */
-    public static String gmpNotice(JsonNode definition, String approverName) {
+    public static String gmpNotice(JsonNode definition, String approverName, String runId, String asOfAt, String generatedAt) {
         boolean approved = "APPROVED".equals(definition.path("approvalStatus").asText())
                 && definition.hasNonNull("approvedVersion") && definition.path("approvedVersion").asInt() == definition.path("definitionVersion").asInt();
-        if (!definition.path("gmpUse").asBoolean(false) || !approved) return "Not confirmed for GMP decisions.";
+        // REPORT-GMP-NOTICE-2026-11-15 (owner chose option B): the statement names the run, the moment of the data and the moment of generation, so a file is traced to one run.
+        String run = " Report run " + runId + "; data as of " + asOfAt + (generatedAt == null || generatedAt.isBlank() ? "" : "; generated " + generatedAt) + ".";
+        if (!definition.path("gmpUse").asBoolean(false) || !approved) return "Not approved for GMP decisions. Not a controlled record." + run;
         String revision = definition.hasNonNull("revision") ? ReportTemplateRevisionService.effectiveLabel(definition.path("revision").asInt()) : definition.path("definitionVersion").asText();
         String on = definition.hasNonNull("approvedAt") ? com.eqms.util.DateTimeFormatUtils.displayText(definition.path("approvedAt").asText()) : "";
         return "For GMP decisions. Template revision " + revision + " approved"
-                + (approverName == null || approverName.isBlank() ? "" : " by " + approverName) + (on.isBlank() ? "" : " on " + on) + ".";
+                + (approverName == null || approverName.isBlank() ? "" : " by " + approverName) + (on.isBlank() ? "" : " on " + on) + "." + run;
     }
 
     /**

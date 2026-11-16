@@ -13,7 +13,7 @@ class ReportSignatureInFileTest {
     private static Map<String, String> values(boolean signed) {
         var values = new HashMap<String, String>(Map.of("report.title", "T", "report.code", "C", "template.version", "1.0.0", "report.executor", "Admin",
                 "report.generatedAt", "13/11/2026 00:04:19", "report.asOfAt", "13/11/2026 00:04:19", "template.name", "T", "report.runId", "r",
-                "report.gmpNotice", "Not confirmed for GMP decisions."));
+                "report.gmpNotice", "Not approved for GMP decisions."));
         if (signed) values.putAll(Map.of("report.signedBy", "Nguyen The Hoang", "report.signedAt", "13/11/2026 00:04:17",
                 "report.signatureReason", "Quarterly review of the activity of the report module", "report.signatureId", "ESIG-2026-009445"));
         return values;
@@ -33,7 +33,7 @@ class ReportSignatureInFileTest {
                 stripper.setEndPage(page);
                 String text = stripper.getText(pdf);
                 assertTrue(text.contains("Signed electronically by Nguyen The Hoang on 13/11/2026 00:04:17 (UTC+7), signature ESIG-2026-009445."), "page " + page);
-                assertTrue(text.contains("Not confirmed for GMP decisions."), "the statement of GMP status stays: page " + page);
+                assertTrue(text.contains("Not approved for GMP decisions."), "the statement of GMP status stays: page " + page);
             }
         }
     }
@@ -57,7 +57,7 @@ class ReportSignatureInFileTest {
             assertEquals("ESIG-2026-009445", shown.get("Signature"));
             assertEquals("Report Run Requested", shown.get("Signature meaning"));
             String footer = book.getSheet("Report").getFooter().getCenter();
-            assertTrue(footer.contains("Not confirmed for GMP decisions.") && footer.contains("Signed by Nguyen The Hoang, signature ESIG-2026-009445."), footer);
+            assertTrue(footer.contains("Not approved for GMP decisions.") && footer.contains("Signed by Nguyen The Hoang, signature ESIG-2026-009445."), footer);
         }
     }
 

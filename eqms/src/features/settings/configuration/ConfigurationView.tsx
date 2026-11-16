@@ -349,7 +349,7 @@ export const ConfigurationView: React.FC = () => {
                 Reset
               </Button>
               <Button variant="outline-emerald" onClick={handleSaveClick} disabled={!hasUnsavedChanges || !isGeneralValid || !isOnlyOfficeValid || isSaving} size="sm" className="gap-2" loading={isSaving}>
-                Save Changes
+                Save
               </Button>
             </>
           ) : undefined
@@ -373,7 +373,7 @@ export const ConfigurationView: React.FC = () => {
             </p>
         </div>
         }
-        confirmText="Save Changes"
+        confirmText="Save"
         cancelText="Cancel"
       />
 

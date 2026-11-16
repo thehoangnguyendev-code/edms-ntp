@@ -10,6 +10,7 @@ import { cn } from "@/components/ui/utils";
 import { useDebounce, useTableDragScroll } from "@/hooks";
 import { metadataApi } from "@/services/api/metadata";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 export interface SimulatorActor {
   id: string;
@@ -52,7 +53,7 @@ export const ActorPickerModal: React.FC<ActorPickerModalProps> = ({
   const [totalPages, setTotalPages] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const debouncedQuery = useDebounce(query, 300);
+  const debouncedQuery = useDebounce(query, SEARCH_DEBOUNCE_MS);
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
 
   useEffect(() => {

@@ -48,18 +48,11 @@ it("lists the report types the server returns and asks the server to search, fil
   expect(vi.mocked(reportTypesApi.list)).toHaveBeenCalledWith(expect.objectContaining({ status: "ALL", sortBy: "name", sortDirection: "asc", page: 1 }));
 });
 
-it("loads the columns of a type when its row is opened", async () => {
-  vi.mocked(reportTypesApi.detail).mockResolvedValue({
-    ...documents,
-    columns: [{ code: "documentNumber", label: "Document Number", required: true, type: "TEXT", sortable: true }],
-    filters: [{ code: "status", label: "Status", type: "LOOKUP" }],
-    usePermissions: [], requiredPermissions: [],
-  });
+it("has no row that opens under a type: its columns and filters are on its detail page", async () => {
   renderView();
   await screen.findByText("Document Register");
-  fireEvent.click(screen.getByRole("button", { name: "Expand" }));
-  expect(await screen.findByText("Columns (1)")).toBeInTheDocument();
-  expect(screen.getByText("documentNumber")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Expand" })).not.toBeInTheDocument();
+  expect(reportTypesApi.detail).not.toHaveBeenCalled();
 });
 
 it("disables a type only with a reason, and sends the version that was read", async () => {
@@ -83,4 +76,11 @@ it("offers no Enable or Disable to a person without the manage permission", asyn
   fireEvent.click(screen.getByRole("button", { name: "More actions" }));
   expect(await screen.findByText("View Detail")).toBeInTheDocument();
   expect(screen.queryByText("Disable")).not.toBeInTheDocument();
+});
+
+it("has a Modified Date Range filter, and the server is asked for the range", async () => {
+  renderView();
+  await screen.findByText("Document Register");
+  expect(screen.getAllByText("Modified Date Range").length).toBeGreaterThan(0);
+  expect(vi.mocked(reportTypesApi.list)).toHaveBeenCalledWith(expect.objectContaining({ modifiedFrom: undefined, modifiedTo: undefined }));
 });

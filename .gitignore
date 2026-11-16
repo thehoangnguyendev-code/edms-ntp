@@ -58,3 +58,5 @@
 # Environment files hold real secrets; only the *.example templates are versioned.
 /deploy/env/*.env
 !/deploy/env/*.env.example
+
+/node_modules/

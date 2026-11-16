@@ -151,8 +151,8 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
         return <span className="font-medium text-slate-900">{revision.revisionName}</span>;
       case "state":
         return (
-          <Badge color={getBadgeColor(revision.statusCode, revision.state)} size="sm">
-            {revision.state}
+          <Badge color={getBadgeColor(revision.statusCode, revision.status)} size="sm">
+            {revision.statusInfo?.name ?? revision.status}
           </Badge>
         );
       case "documentName":

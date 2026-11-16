@@ -17,6 +17,7 @@ public class ControlledCopyReportMetadataProvider implements ReportMetadataProvi
 
     private static final Map<String, String> COLUMNS = new LinkedHashMap<>();
     private static final Map<String, String> LABELS = new LinkedHashMap<>();
+    private static final Map<String, String> GROUPS = new LinkedHashMap<>();
     static {
         column("copyNumber", "Controlled Copy Number", "cc.controlled_copy_number");
         column("documentNumber", "Document Number", "cc.document_number");
@@ -39,9 +40,41 @@ public class ControlledCopyReportMetadataProvider implements ReportMetadataProvi
         column("downloadCount", "Downloads", "cc.download_count");
         column("printCount", "Prints", "cc.print_count");
         column("lastDownloadedAt", "Last Downloaded", ReportQueryKit.timestamp("cc.last_downloaded_at"));
-        column("createdAt", "Created", ReportQueryKit.timestamp("cc.created_at"));
+        column("createdAt", "Created At", ReportQueryKit.timestamp("cc.created_at"));
+        // REPORT-FIELD-CATALOG-2026-11-15: more of the metadata the source holds.
+        group("Identity", "copyIndex", "Copy Index", "cc.copy_number");
+        group("Identity", "totalCopies", "Total Copies", "cc.total_copies");
+        group("Identity", "requestReason", "Request Reason", "cc.request_reason");
+        group("Identity", "currentStage", "Current Stage", "cc.current_stage");
+        group("People", "approvedBy", "Approved By", ReportQueryKit.person("cc.approved_by_user_id"));
+        group("Dates", "approvedAt", "Approved At", ReportQueryKit.timestamp("cc.approved_at"));
+        group("People", "printedBy", "Printed By", ReportQueryKit.person("cc.printed_by_user_id"));
+        group("Dates", "printedAt", "Printed At", ReportQueryKit.timestamp("cc.printed_at"));
+        group("People", "distributedBy", "Distributed By", ReportQueryKit.person("cc.distributed_by_user_id"));
+        group("Distribution", "distributionScope", "Distribution Scope", "cc.distribution_scope");
+        group("Distribution", "distributionComment", "Distribution Comment", "cc.distribution_comment");
+        group("Distribution", "externalRecipients", "External Recipients", "cc.external_recipients");
+        group("Distribution", "recipientDate", "Recipient Date", "cc.recipient_date");
+        group("Distribution", "usageHasExpiry", "Has Expiry", ReportQueryKit.yesNo("cc.has_expiry_date"));
+        group("Lifecycle", "recalledBy", "Recalled By", ReportQueryKit.person("cc.recalled_by_user_id"));
+        group("Lifecycle", "recallReason", "Recall Reason", "cc.recall_reason");
+        group("Lifecycle", "destroyedAt", "Destroyed At", ReportQueryKit.timestamp("cc.destroyed_at"));
+        group("Lifecycle", "destroyedBy", "Destroyed By", ReportQueryKit.person("cc.destroyed_by_user_id"));
+        group("Lifecycle", "destroyReason", "Destroy Reason", "cc.destroy_reason");
+        group("Lifecycle", "destructionMethod", "Destruction Method", "cc.destruction_method");
+        group("Lifecycle", "destructionType", "Destruction Type", "cc.destruction_type");
+        group("Lifecycle", "witnessedBy", "Witnessed By", "cc.witnessed_by");
+        group("Lifecycle", "obsoletedAt", "Obsoleted At", ReportQueryKit.timestamp("cc.obsoleted_at"));
+        group("Lifecycle", "obsoleteReason", "Obsolete Reason", "cc.obsolete_reason");
+        group("Lifecycle", "cancelledAt", "Cancelled At", ReportQueryKit.timestamp("cc.cancelled_at"));
+        group("Lifecycle", "effectiveDate", "Effective Date", "cc.effective_date");
+        group("Marking", "markingApplied", "Marking Applied", ReportQueryKit.yesNo("cc.marking_applied"));
     }
     private static void column(String code, String label, String sql) { COLUMNS.put(code, sql); LABELS.put(code, label); }
+    private static void group(String group, String code, String label, String sql) { column(code, label, sql); GROUPS.put(code, group); }
+    // The columns the type had before the field catalogue are its Core group; only the fields added since are grouped.
+    @Override public Map<String, String> fieldGroups() { return GROUPS; }
+    @Override public Set<String> sensitiveFields() { return Set.of("externalRecipients", "witnessedBy"); }
 
     private static final Set<String> FILTERS = Set.of("search", "status", "purpose", "department", "businessUnit", "requestedFrom", "requestedTo",
             "distributedFrom", "distributedTo", "expiryFrom", "expiryTo");
@@ -50,7 +83,7 @@ public class ControlledCopyReportMetadataProvider implements ReportMetadataProvi
     public String name() { return "Controlled Copies"; }
     public String description() { return "Controlled copies with their document, purpose, status, recipient, expiry and recall dates."; }
     public Map<String, String> columns() { return COLUMNS; }
-    @Override public Set<String> dateColumns() { return new LinkedHashSet<>(List.of("requestedAt", "distributedAt", "validUntil", "expiryDate", "recalledAt", "lastDownloadedAt", "createdAt")); }
+    @Override public Set<String> dateColumns() { return new LinkedHashSet<>(List.of("requestedAt", "distributedAt", "validUntil", "expiryDate", "recalledAt", "lastDownloadedAt", "createdAt", "approvedAt", "printedAt", "recipientDate", "destroyedAt", "obsoletedAt", "cancelledAt", "effectiveDate")); }
     public Map<String, String> labels() { return LABELS; }
     public String identityColumn() { return "cc.id"; }
     public String defaultSort() { return "copyNumber"; }

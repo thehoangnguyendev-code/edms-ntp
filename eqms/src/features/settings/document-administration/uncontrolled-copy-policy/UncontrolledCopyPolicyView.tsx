@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch/Switch";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
@@ -39,6 +40,7 @@ import { MarkingPreviewPane } from "../controlled-copies-policy/MarkingPreviewPa
 import { UncontrolledCopyMarkingPreview } from "@/features/documents/uncontrolled-copies/UncontrolledCopyMarkingPreview";
 import { formatDateTime } from "@/utils/format";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type PolicyTabKey = "policy" | "markings";
 
@@ -94,7 +96,6 @@ const DEFAULT_MARKING: UncontrolledCopyPolicyMarking = {
 };
 
 const DEFAULT_POLICY: UncontrolledCopyPolicy = {
-  approvalRequired: true,
   validityHours: 72,
   validityBasis: "DISTRIBUTION",
   allowRedownload: true,
@@ -155,7 +156,6 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
       .then((data) => {
         if (!active) return;
         const next: UncontrolledCopyPolicy = {
-          approvalRequired: data.approvalRequired ?? DEFAULT_POLICY.approvalRequired,
           validityHours: data.validityHours ?? DEFAULT_POLICY.validityHours,
           validityBasis: data.validityBasis ?? DEFAULT_POLICY.validityBasis,
           allowRedownload: data.allowRedownload ?? DEFAULT_POLICY.allowRedownload,
@@ -184,7 +184,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
   const [rulesPage, setRulesPage] = useState(1);
   const [rulesLimit, setRulesLimit] = useState(20);
   const [rulesSearch, setRulesSearch] = useState("");
-  const debouncedRulesSearch = useDebounce(rulesSearch, 400);
+  const debouncedRulesSearch = useDebounce(rulesSearch, SEARCH_DEBOUNCE_MS);
   const [rulesStatus, setRulesStatus] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
   const [rulesSortBy, setRulesSortBy] = useState<"documentTypeName" | "allowed" | "active" | "updatedAt">("updatedAt");
   const [rulesSortDirection, setRulesSortDirection] = useState<"asc" | "desc">("desc");
@@ -348,7 +348,6 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
       if (!sig) return;
       const saved = await uncontrolledCopyPolicyApi.savePolicy(
         {
-          approvalRequired: policy.approvalRequired,
           validityHours: hours,
           validityBasis: policy.validityBasis,
           allowRedownload: policy.allowRedownload,
@@ -378,7 +377,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
     ...([
       { id: "documentTypeName", header: "Document Type", cell: (rule: UncontrolledCopyEligibilityRule) => <>{rule.documentTypeName ?? "Any"}{rule.system && <Badge color="blue" size="xs" className="ml-2 align-middle">System Default</Badge>}</> },
       { id: "allowed", header: "Allowed", cell: (rule: UncontrolledCopyEligibilityRule) => <Badge color={rule.allowed ? "emerald" : "red"} size="sm">{rule.allowed ? "Allowed" : "Blocked"}</Badge> },
-      { id: "active", header: "Status", cell: (rule: UncontrolledCopyEligibilityRule) => <Badge color={rule.active ? "emerald" : "slate"} size="sm">{rule.active ? "Active" : "Inactive"}</Badge> },
+      { id: "active", header: "Status", cell: (rule: UncontrolledCopyEligibilityRule) => <Badge color={flagColor(rule.active)} size="sm">{rule.active ? "Active" : "Inactive"}</Badge> },
       { id: "updatedAt", header: "Updated", cell: (rule: UncontrolledCopyEligibilityRule) => formatDateTime(rule.updatedAt) },
     ] as const).map((column) => ({
       ...column,
@@ -408,7 +407,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
         actions={
           canManagePolicy ? (
             <Button size="sm" variant="outline-emerald" onClick={handleSave} disabled={saving || !rulesLoaded || showRuleModal || !isDirty} className="gap-2 whitespace-nowrap">
-              {saving ? "Saving..." : "Save Changes"}
+              {saving ? "Saving..." : "Save"}
             </Button>
           ) : undefined
         }
@@ -426,15 +425,6 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
           {activeTab === "policy" && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
               <FormSection title="Eligibility" icon={<ShieldCheck className="h-4 w-4" />}>
-                <div className="divide-y divide-slate-100 -my-2">
-                  <SwitchRow
-                    label="Approval required"
-                    checked={policy.approvalRequired}
-                    onChange={(v) => setPolicy((prev) => ({ ...prev, approvalRequired: v }))}
-                    disabled={!canManagePolicy}
-                    note="When on, every request waits for an approver (e-signed) before the copy can be generated."
-                  />
-                </div>
                 <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-2xs sm:text-xs text-slate-500">
                   Configure allowed Document Types in Eligibility Rules below. Only the current Effective revision can ever be requested.
                 </p>
@@ -586,7 +576,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
             <div className="mt-5 flex flex-col gap-4 border-t border-slate-200 pt-5">
               <h2 className="text-sm font-semibold text-slate-900">Eligibility Rules</h2>
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                Changes are drafts until you click Save Changes. {ruleChanges.length > 0 && `${ruleChanges.length} rule change(s) pending.`}
+                Changes are drafts until you click Save. {ruleChanges.length > 0 && `${ruleChanges.length} rule change(s) pending.`}
               </p>
               {!rulesLoaded && !rulesLoading && (
                 <Button variant="outline" size="sm" onClick={() => void loadRules()}>Reload saved rules</Button>
@@ -701,11 +691,10 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                           closeRuleMenu();
                         }}
                       >
-                        Edit
+                        Edit Eligibility Rules
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         icon={<IconTrash className="h-4 w-4" />}
-                        variant="danger"
                         onClick={() => {
                           setDeleteRuleTarget(menuRule);
                           closeRuleMenu();
@@ -728,7 +717,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
         onConfirm={handleSaveRule}
         title={editingRule ? "Edit Eligibility Rule" : "Add Eligibility Rule"}
         confirmText="Apply to draft"
-        description="Changes take effect only after Save Changes on the policy page."
+        description="Changes take effect only after Save on the policy page."
         size="lg"
       >
         <div className="space-y-4">
@@ -758,7 +747,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
         title="Delete Eligibility Rule"
         description={
           deleteRuleTarget
-            ? `Remove the rule for "${deleteRuleTarget.documentTypeName ?? "Any"}" from the draft? Deletion takes effect only after Save Changes.`
+            ? `Remove the rule for "${deleteRuleTarget.documentTypeName ?? "Any"}" from the draft? Deletion takes effect only after Save.`
             : ""
         }
         confirmText="Delete"

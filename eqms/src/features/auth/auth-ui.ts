@@ -2,7 +2,7 @@ export const AUTH_PARTNER_BRANDS = [
   "Document Control",
   "Training Management",
   "Deviations & NCs",
-  "Reports & Analytics",
+  "Reports",
   "Audit Trail",
   "... and more",
 ] as const;

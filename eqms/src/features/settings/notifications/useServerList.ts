@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useDebounce } from '@/hooks';
 import { getApiErrorMessage } from '@/utils/apiError';
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type Direction = 'asc' | 'desc';
 
@@ -16,7 +17,7 @@ export function useServerList<R, K extends string>(
   failure: string,
 ) {
   const [search, setSearch] = useState('');
-  const debounced = useDebounce(search, 400);
+  const debounced = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [filters, setFilters] = useState<Record<string, string>>(initial.filters);
   const [sort, setSort] = useState<{ key: K; direction: Direction }>({ key: initial.sort, direction: initial.direction ?? 'asc' });
   const [page, setPage] = useState(1);

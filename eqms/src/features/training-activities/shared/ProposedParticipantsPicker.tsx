@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/select/Select";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { trainingProposalApi, type TrainingGroup, type TrainingPerson } from "@/services/api/trainingActivities";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const ALL = "";
 /** One grid for the header and every row, so the columns line up: tick, name, employee ID, position. */
@@ -58,7 +59,7 @@ export function ProposedParticipantsPicker({ initialIds, initialPeople = [], onC
       } finally {
         if (alive) setLoading(false);
       }
-    }, 250);
+    }, SEARCH_DEBOUNCE_MS);
     return () => { alive = false; clearTimeout(timer); };
   }, [unit, department, search, page]);
 

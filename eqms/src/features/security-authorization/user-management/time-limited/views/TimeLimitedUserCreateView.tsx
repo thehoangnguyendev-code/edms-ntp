@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/select/MultiSelect";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { useToast } from "@/components/ui/toast";
@@ -195,7 +196,7 @@ export const TimeLimitedUserCreateView: React.FC = () => {
           </div>
           <div>
             <p className={labelClass}>Notify on Expiry</p>
-            <Badge size="sm" color={notifyEmailOnExpiry ? "emerald" : "slate"}>{notifyEmailOnExpiry ? "Yes" : "No"}</Badge>
+            <Badge size="sm" color={flagColor(notifyEmailOnExpiry)}>{notifyEmailOnExpiry ? "Yes" : "No"}</Badge>
           </div>
           <div>
             <p className={labelClass}>Records to be created</p>

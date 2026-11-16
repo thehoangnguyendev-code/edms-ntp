@@ -1179,7 +1179,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       {currentRevision && (
         <ReplaceAssigneeBanner
           revisionId={currentRevision.id}
-          status={currentRevision.status}
+          status={resolveStatusCode(currentRevision.status, currentRevision.statusInfo)}
           documentNumber={currentRevision.documentNumber}
           documentName={currentRevision.documentName}
           revisionNumber={currentRevision.revisionNumber}

@@ -1,5 +1,4 @@
 import apiClient from "./client";
-import type { ReportLayout } from "./reportTemplates";
 
 /** The settings of the Reports module (REPORT-PROPERTIES-2026-10-15). The server checks every limit again and records what changed in the Audit Trail. */
 export interface ReportProperties {
@@ -14,15 +13,16 @@ export interface ReportProperties {
   maxRowsFullLimit: number;
   maxScheduleRecipients: number;
   scheduleRetryMinutes: number;
-  /** The one look every report has: cover, header, footer, page numbers, font, stamp, watermark, logo, paper layout and Word page templates. */
-  appearance: ReportLayout;
+  /** Most days a run of a report type that must name a date range may cover (Audit Trail, Authentication Events, ...). */
+  maxRangeDays: number;
+  maxRangeDaysLimit: number;
   version: number;
   updatedAt?: string;
 }
 
 export type ReportPropertiesWrite = Pick<
   ReportProperties,
-  "version" | "templateNumberPrefix" | "templateNumberDigits" | "maxRows" | "maxRowsFull" | "maxScheduleRecipients" | "scheduleRetryMinutes" | "appearance"
+  "version" | "templateNumberPrefix" | "templateNumberDigits" | "maxRows" | "maxRowsFull" | "maxScheduleRecipients" | "scheduleRetryMinutes" | "maxRangeDays"
 >;
 
 export const reportPropertiesApi = {

@@ -52,6 +52,7 @@ import {
 } from "./announcementFilters";
 import type { Announcement, AnnouncementState } from "./types";
 import { displayDateTime } from "@/utils/format";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const STATE_BADGE: Record<
   AnnouncementState,
@@ -93,7 +94,7 @@ export const AnnouncementsView: React.FC = () => {
   const [reloadKey, setReloadKey] = useState(0);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearch = useDebounce(searchQuery, 400);
+  const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const [stateFilter, setStateFilter] = useState<StateFilter>("ALL");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("ALL");
   const [startsFrom, setStartsFrom] = useState("");

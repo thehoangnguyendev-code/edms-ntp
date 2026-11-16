@@ -135,15 +135,14 @@ public class WorkflowProgressService {
     }
 
     /**
-     * Stepper for an Uncontrolled Copy. Its granular statuses fall into three phases drawn on the Controlled Copy
-     * lifecycle: still being prepared (requested, approved, generated), distributed (an expired copy was distributed
-     * all the same), and closed without distribution (rejected, cancelled).
+     * Stepper for an Uncontrolled Copy. It has the three statuses of the system (Ready for Distribution, Distributed, Closed - Cancelled), drawn on the Controlled Copy
+     * lifecycle; how far a copy that is Ready for Distribution has got is not a status and is not drawn (UCC-STATUS-2026-11-14).
      */
     @Transactional(readOnly = true)
     public WorkflowProgressResponse forUncontrolledCopy(String statusCode) {
         String phase = switch (statusCode == null ? "" : statusCode.toUpperCase(Locale.ROOT)) {
-            case "DISTRIBUTED", "EXPIRED" -> "DISTRIBUTED";
-            case "REJECTED", "CANCELLED" -> "CLOSED_CANCELLED";
+            case "DISTRIBUTED" -> "DISTRIBUTED";
+            case "CLOSED_CANCELLED" -> "CLOSED_CANCELLED";
             default -> "READY_FOR_DISTRIBUTION";
         };
         List<WorkflowStepResponse> steps = controlledCopySteps().stream()
@@ -182,7 +181,7 @@ public class WorkflowProgressService {
         boolean ended = current >= 0 && steps.get(current).terminal();
         int currentIndex = Math.max(current, 0);
 
-        int endedAt = ended ? terminalProgress(steps, indexByCode, aliases, history) : -1;
+        int endedAt = ended ? terminalProgress(steps, indexByCode, aliases, history, current) : -1;
         String terminalProgressStep = endedAt >= 0 ? steps.get(endedAt).label() : "";
 
         Set<Integer> skipped = new LinkedHashSet<>();
@@ -222,16 +221,25 @@ public class WorkflowProgressService {
             List<WorkflowStepResponse> steps,
             Map<String, Integer> indexByCode,
             Map<String, String> aliases,
-            List<Transition> history
+            List<Transition> history,
+            int current
     ) {
         if (history == null) return -1;
         for (int i = history.size() - 1; i >= 0; i--) {
             Transition t = history.get(i);
             String action = t.actionType() == null ? "" : t.actionType().replaceAll("[_\\s-]+", "").toUpperCase(Locale.ROOT);
             int to = resolve(steps, indexByCode, aliases, t.toStatus());
+            // Only the move into the status the record is in now says where it got to. A move into another ending status (Effective > Obsoleted, when the record
+            // is now Closed - Cancelled) is not evidence of the present ending: nothing the product does leads from one to the other, so the path is not
+            // drawn from it; the stepper then shows only the known origin and stripes the rest.
+            if (current >= 0 && to >= 0 && to != current) continue;
             boolean intoEnd = action.contains("CANCEL") || action.contains("OBSOLETE") || (to >= 0 && steps.get(to).terminal());
             if (!intoEnd) continue;
             int from = resolve(steps, indexByCode, aliases, t.fromStatus());
+            // A row that stays where it was (an opened screen, an update) is not a move, and nothing moves out of an ending status:
+            // without this, the "opened document detail" row logged after a cancel made the record look as if it had reached its own ending.
+            if (from >= 0 && from == to) continue;
+            if (from >= 0 && steps.get(from).terminal()) continue;
             if (t.fromStatus() != null && !t.fromStatus().isBlank()) {
                 return from;
             }

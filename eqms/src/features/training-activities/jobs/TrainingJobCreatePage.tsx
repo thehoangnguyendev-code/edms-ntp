@@ -28,6 +28,7 @@ import {
 } from "@/services/api/trainingActivities";
 import { trainingBreadcrumbs } from "../shared/trainingLabels";
 import { useTrainingBack } from "../shared/useTrainingBack";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const STEPS = [
   "Employee and Work Positions",
@@ -123,7 +124,7 @@ export function TrainingJobCreatePage() {
     return role ? positionTitle(role) : id;
   };
   const [positionQuery, setPositionQuery] = useState("");
-  const debouncedPositionQuery = useDebounce(positionQuery, 300);
+  const debouncedPositionQuery = useDebounce(positionQuery, SEARCH_DEBOUNCE_MS);
   const selectedPositions = useMemo(
     () =>
       positionIds

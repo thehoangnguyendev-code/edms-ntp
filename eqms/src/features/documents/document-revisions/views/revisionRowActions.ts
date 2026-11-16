@@ -1,7 +1,12 @@
+import { resolveStatusCode } from "@/features/documents/shared/statusMapping";
 export type RevisionRowAction = "edit" | "view" | "review" | "approve" | "training" | "controlledCopy" | "publish";
 
 export interface RevisionRowActionFlags {
-  state?: string;
+  /** The words for the status, for people. Never compared: the menu decides on statusCode. */
+  status?: string;
+  /** The status as a code (PENDING_REVIEW, EFFECTIVE ...): what the menu decides on. */
+  statusCode?: string | null;
+  statusInfo?: { id?: string | null; code?: string | null } | null;
   canEditRevision?: boolean;
   canSubmitForReview?: boolean;
   canReviewRevision?: boolean;
@@ -30,19 +35,21 @@ export function revisionRowActions(
   options: RevisionRowActionOptions = {},
 ): RevisionRowAction[] {
   const actions: RevisionRowAction[] = ["view"];
+  // A status is told by its code, never by the words shown for it: a change of wording must not change what a person may do.
+  const status = resolveStatusCode(revision.statusCode, revision.statusInfo ?? undefined);
   if (Boolean(revision.canEditRevision) || Boolean(revision.canSubmitForReview)) {
     actions.push("edit");
   }
-  if (revision.state === "Pending Review" && Boolean(revision.canReviewRevision)) {
+  if (status === "PENDING_REVIEW" && Boolean(revision.canReviewRevision)) {
     actions.push("review");
   }
-  if (revision.state === "Pending Approval" && Boolean(revision.canApproveRevision)) {
+  if (status === "PENDING_APPROVAL" && Boolean(revision.canApproveRevision)) {
     actions.push("approve");
   }
-  if (revision.state === "Pending Training" && Boolean(revision.canCompleteTraining)) {
+  if (status === "PENDING_TRAINING" && Boolean(revision.canCompleteTraining)) {
     actions.push("training");
   }
-  if (revision.state === "Effective" && Boolean(revision.canRequestControlledCopy)) {
+  if (status === "EFFECTIVE" && Boolean(revision.canRequestControlledCopy)) {
     actions.push("controlledCopy");
   }
   if ((options.publish ?? true) && Boolean(revision.canPublishRevision)) {

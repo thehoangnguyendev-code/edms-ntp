@@ -5,6 +5,7 @@ import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { FilterSearchInput } from "@/components/ui/filter/FilterSearchInput";
 import { useDebounce } from "@/hooks";
 import { trainingActivitiesApi, trainingError, type TrainingParticipant } from "@/services/api/trainingActivities";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 /** The columns the person can sort by; the server turns the key into its own ORDER BY. */
 const SORTABLE = new Set(["code", "name", "department", "state", "result", "read", "sign", "participation"]);
@@ -18,7 +19,7 @@ export function TrainingParticipantTable({ activityId, sessionId, group, title, 
   const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{ key?: string; direction: "asc" | "desc" }>({ direction: "asc" });
-  const query = useDebounce(search, 300);
+  const query = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [rows, setRows] = useState<TrainingParticipant[]>([]);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);

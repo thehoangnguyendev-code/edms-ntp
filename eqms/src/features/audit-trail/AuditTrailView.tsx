@@ -1,3 +1,4 @@
+import { downloadTableExcel } from '@/services/api/tableExport';
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/loading/Loading";
 import { cn } from "@/components/ui/utils";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { formatDateTime } from "@/utils/format";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { IconFilter2, IconInfoCircle } from "@tabler/icons-react";
@@ -39,10 +41,10 @@ import { AuditExportModal } from "./components/AuditExportModal";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import {
   getAuditActionBadgeClass,
-  formatAuditActionLabel,
   formatAuditModuleLabel,
 } from "./utils/actionBadge";
 import { getDefaultAuditTrailDateRange } from "./utils/dateRange";
+import { AUDIT_ACTION_VERBS } from "./utils/auditActionVerbs";
 import { formatWorkflowStatusLabel } from "./utils/statusLabel";
 import {
   FilterAccordionItem,
@@ -51,6 +53,7 @@ import {
 import { FilterOptionButton } from "@/components/ui/filter/FilterOptionButton";
 import type { AuditTrailRecord } from "./types";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const formatSignatureId = (id?: string | null): string => {
   if (!id || !id.trim()) return "";
@@ -62,55 +65,7 @@ const formatSignatureId = (id?: string | null): string => {
 
 const ACTION_OPTIONS = [
   { label: "All", value: "All" },
-  { label: "Create", value: "Create" },
-  { label: "Update", value: "Update" },
-  { label: "Delete", value: "Delete" },
-  { label: "Replace", value: "Replace" },
-  { label: "Approve", value: "Approve" },
-  { label: "Reject", value: "Reject" },
-  { label: "Review", value: "Review" },
-  { label: "Publish", value: "Publish" },
-  { label: "Archive", value: "Archive" },
-  { label: "Restore", value: "Restore" },
-  { label: "Login", value: "Login" },
-  { label: "Logout", value: "Logout" },
-  { label: "Failed Login", value: "Failed Login" },
-  { label: "Export", value: "Export" },
-  { label: "Download", value: "Download" },
-  { label: "View", value: "View" },
-  { label: "Open", value: "Open" },
-  { label: "Preview", value: "Preview" },
-  { label: "Open Preview", value: "Open Preview" },
-  { label: "Open Edit Online", value: "Open Edit Online" },
-  { label: "View Page", value: "View Page" },
-  { label: "Close Preview", value: "Close Preview" },
-  { label: "Upload", value: "Upload" },
-  { label: "Download Evidence", value: "Download Evidence" },
-  { label: "Add Working Note", value: "Add Working Note" },
-  { label: "Delete Working Note", value: "Delete Working Note" },
-  { label: "Upload to Office Online", value: "Upload to Office Online" },
-  {
-    label: "Edit Online Synced Back to MinIO",
-    value: "Edit Online Synced Back to MinIO",
-  },
-  { label: "Edit Online Session Closed", value: "Edit Online Session Closed" },
-  { label: "Generate", value: "Generate" },
-  { label: "Assign", value: "Assign" },
-  { label: "Unassign", value: "Unassign" },
-  { label: "Enable", value: "Enable" },
-  { label: "Disable", value: "Disable" },
-  { label: "Cancel", value: "Cancel" },
-  { label: "Obsoleted", value: "Obsoleted" },
-  { label: "E-Signature Success", value: "E-Signature Success" },
-  { label: "E-Signature Failed", value: "E-Signature Failed" },
-  { label: "Change Permission", value: "Change Permission" },
-  {
-    label: "Change System Configuration",
-    value: "Change System Configuration",
-  },
-  { label: "Submit", value: "Submit" },
-  { label: "Replace File", value: "Replace File" },
-  { label: "Update Metadata", value: "Update Metadata" },
+  ...AUDIT_ACTION_VERBS.map((verb) => ({ label: verb, value: verb })),
 ];
 
 const hasESignature = (record: AuditTrailRecord) =>
@@ -127,6 +82,7 @@ const REPORT_MODULE_LABEL: Record<string, string> = {
   REPORT_DEFINITION: "Report Template",
   REPORT_NAME_FORMAT: "Report Name Format",
   REPORT_PROPERTIES: "Report Properties",
+  REPORT_APPEARANCE: "Report Appearance",
   REPORT_TEMPLATE_NUMBER_RULE: "Report Properties",
   REPORT_RUN: "Report Run",
   REPORT_ARTIFACT: "Report File",
@@ -145,17 +101,6 @@ const mapModuleLabel = (module: string) => {
     default:
       return REPORT_MODULE_LABEL[module] ?? formatAuditModuleLabel(module);
   }
-};
-
-const buildObjectCode = (record: AuditTrailRecord) => {
-  const docNum =
-    record.metadata?.documentNumber || record.metadata?.document_number;
-  const revNum =
-    record.metadata?.revisionNumber || record.metadata?.revision_number;
-  if (docNum) {
-    return revNum ? `${docNum} Rev.${revNum}` : docNum;
-  }
-  return record.entityName || "-";
 };
 
 // A real transition: both sides present and actually different. Anything else -- a View,
@@ -300,7 +245,7 @@ export const AuditTrailView: React.FC = () => {
   >([{ label: "All", value: "" }]);
   const [isUserOptionsLoading, setIsUserOptionsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearchQuery = useDebounce(searchQuery, 350);
+  const debouncedSearchQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const [actionFilter, setActionFilter] = useState<string>("All");
   const [userFilter, setUserFilter] = useState("");
   const [eSignatureFilter, setESignatureFilter] = useState<
@@ -502,18 +447,8 @@ export const AuditTrailView: React.FC = () => {
     sortConfig,
   ]);
 
-  const actionOptions = useMemo(() => {
-    const dynamicActions = Array.from(
-      new Set(records.map((record) => record.action).filter(Boolean)),
-    ).sort((a, b) => a.localeCompare(b));
-    const combined = [...ACTION_OPTIONS];
-    dynamicActions.forEach((action) => {
-      if (!combined.some((option) => option.value === action)) {
-        combined.push({ label: formatAuditActionLabel(action), value: action });
-      }
-    });
-    return combined;
-  }, [records]);
+  // The Action filter lists the small vocabulary of verbs of the Action column, not the hundreds of action codes.
+  const actionOptions = ACTION_OPTIONS;
 
   const isTableLoading = isLoading && records.length > 0;
   const isInitialLoading = isLoading && records.length === 0;
@@ -773,7 +708,6 @@ export const AuditTrailView: React.FC = () => {
                           { label: "Timestamp", key: "timestamp" },
                           { label: "User", key: "user" },
                           { label: "Employee ID" },
-                          { label: "Access Profile" },
                           { label: "Module", key: "module" },
                           { label: "Object Type" },
                           { label: "Object Code", key: "entityId" },
@@ -835,20 +769,23 @@ export const AuditTrailView: React.FC = () => {
                           user?.fullName || record.fullName || "-";
                         const employeeId = user?.employeeCode || "-";
                         const profileId = user?.id || "";
-                        const accessProfileNames = user?.accessProfileNames ?? [];
-                        const action = record.action || "-";
+                        const action =
+                          (record.metadata?.actionLabel as string | undefined) ||
+                          record.action ||
+                          "-";
                         const signature = hasESignature(record) ? "Yes" : "No";
                         const device = record.device || "-";
 
                         const moduleLabel =
                           (record.metadata?.menuModule as string | undefined) ||
                           mapModuleLabel(record.module);
+                        // Object Type, Object Code and Action as the server words them (AuditObjectCatalog, AuditActionVerb); the detail screen has the full record.
                         const objectType =
-                          record.metadata?.entityType ||
-                          record.metadata?.objectType ||
+                          (record.metadata?.objectTypeLabel as string | undefined) ||
                           mapModuleLabel(record.module) ||
                           "-";
-                        const objectCode = buildObjectCode(record);
+                        const objectCode =
+                          (record.metadata?.objectCodeLabel as string | null | undefined) || "-";
                         const statusChange = buildStatusChange(record);
 
                         return (
@@ -885,22 +822,6 @@ export const AuditTrailView: React.FC = () => {
                               )}
                             </TableMarkup.Cell>
                             <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
-                              {accessProfileNames.length === 0 ? (
-                                <Badge size="sm" color="amber" title="No Access Profile was assigned at the time of this event.">
-                                  Unassigned
-                                </Badge>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5">
-                                  <Badge size="sm" color="slate">
-                                    {accessProfileNames[0]}
-                                  </Badge>
-                                  {accessProfileNames.length > 1 && (
-                                    <span className="text-2xs text-slate-500 font-medium">+{accessProfileNames.length - 1}</span>
-                                  )}
-                                </span>
-                              )}
-                            </TableMarkup.Cell>
-                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                               {moduleLabel}
                             </TableMarkup.Cell>
                             <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
@@ -921,7 +842,7 @@ export const AuditTrailView: React.FC = () => {
                                   getAuditActionBadgeClass(action),
                                 )}
                               >
-                                {formatAuditActionLabel(action)}
+                                {action}
                               </span>
                             </TableMarkup.Cell>
                             <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
@@ -930,9 +851,7 @@ export const AuditTrailView: React.FC = () => {
                             <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                               <div className="flex flex-col gap-1 items-start">
                                 <Badge
-                                  color={
-                                    signature === "Yes" ? "emerald" : "slate"
-                                  }
+                                  color={flagColor(signature === "Yes")}
                                   size="sm"
                                 >
                                   {signature}
@@ -1053,8 +972,8 @@ export const AuditTrailView: React.FC = () => {
         isOpen={isBulkExportESignOpen}
         onClose={() => setIsBulkExportESignOpen(false)}
         onConfirm={async (data: { reason: string; signatureToken?: string }) => {
-          const blob = await auditTrailApi.exportAuditTrail({
-            searchQuery: debouncedSearchQuery,
+          await downloadTableExcel('audit-trail', {
+            search: debouncedSearchQuery,
             action: actionFilter as any,
             user: userFilter,
             eSignatureOnly:
@@ -1068,12 +987,7 @@ export const AuditTrailView: React.FC = () => {
             reason: data.reason,
             signatureToken: data.signatureToken,
           });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `audit-trail-${new Date().toISOString().slice(0, 10)}.csv`;
-          a.click();
-          URL.revokeObjectURL(url);
+
           setIsBulkExportESignOpen(false);
         }}
         actionTitle="Export Audit Trail Records"

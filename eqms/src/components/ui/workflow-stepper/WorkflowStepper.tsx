@@ -13,6 +13,8 @@ export interface WorkflowStepperProps {
   skippedSteps?: readonly string[];
   /** The current step ends the lifecycle (cancelled, obsoleted). Decided by the status of the record, never by the name of the step. */
   isTerminal?: boolean;
+  /** Number every step instead of ticking the finished ones: for a process the person may go back through (Create Report). */
+  numbered?: boolean;
 }
 
 export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
@@ -24,6 +26,7 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
   icons,
   skippedSteps,
   isTerminal = false,
+  numbered = false,
 }) => {
   const isTerminalStatus = isTerminal;
 
@@ -111,7 +114,7 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
                         }}
                       />
                     )}
-                    {(isCompleted || isTerminalProgressStep) && !hasStripe ? (
+                    {(isCompleted || isTerminalProgressStep) && !hasStripe && !numbered ? (
                       <Check className="h-3.5 w-3.5" />
                     ) : icons?.[index] ? (
                       React.createElement(icons[index], { className: "h-3.5 w-3.5" })
@@ -199,7 +202,7 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
                   }}
                 />
                 <div className="relative z-10 flex items-center justify-center gap-1.5 px-4 w-full max-w-full">
-                  {(isCompleted || isTerminalProgressStep) && !hasStripe ? (
+                  {(isCompleted || isTerminalProgressStep) && !hasStripe && !numbered ? (
                     <Check className="h-4 w-4 text-emerald-600 shrink-0" />
                   ) : icons?.[index] ? (
                     React.createElement(icons[index], {
@@ -221,7 +224,7 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
                             : "text-slate-400",
                     )}
                   >
-                    {step}
+                    {numbered ? `${index + 1}. ${step}` : step}
                   </span>
                 </div>
               </div>

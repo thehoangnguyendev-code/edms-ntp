@@ -47,9 +47,13 @@ class ReportAnalyticsTest {
         assertEquals(30,ReportImage.decode(logo()).getWidth());
         for(String invalid:List.of("https://evil/logo.png","data:image/svg+xml;base64,PHN2Zz4=","data:image/png;base64,YmFk","x".repeat(1400001)))assertThrows(IllegalArgumentException.class,()->ReportImage.decode(invalid));
         assertThrows(IllegalArgumentException.class,()->new ReportLayout.Mark("#059669",90,12,0,Double.NaN,5,20,"ALL","NOTO_SANS","ABOVE").validated());
-        assertThrows(IllegalArgumentException.class,()->new ReportLayout.Logo(true,logo(),90,5,20,"ALL").validated());
+        // The logo has a place, not a position (REPORT-APPEARANCE-2026-11-14): what is not a size or a place on the page is still refused.
+        assertThrows(IllegalArgumentException.class,()->new ReportLayout.Logo(true,logo(),90,5,Double.NaN,"ALL").validated());
+        assertThrows(IllegalArgumentException.class,()->new ReportLayout.Logo(true,logo(),90,5,200,"ALL").validated());
+        assertThrows(IllegalArgumentException.class,()->new ReportLayout.Logo(true,logo(),90,5,20,"ALL","TOP").validated());
     }
     @Test void pdfAndSpreadsheetContainServerCalculatedAnalysis() throws Exception {
+        StubChartRenderer.install();
         var rows=List.of(List.of("Status"),List.of("Active"),List.of("Draft"),List.of("Active"));var charts=List.of(chart("BAR","status","COUNT"),chart("PIE","status","PERCENT"));
         var layout=new ReportLayout(true,"{{report.title}}","TEST",true,true,"{{report.title}}","TEST",true,true,"TEST ONLY",true,"TEST STAMP",null,null,new ReportLayout.Logo(true,logo(),5,8,10,"FIRST"),charts).validated();
         var calculated=ReportCharts.calculate(charts,List.of("status"),rows);var context=Map.of("report.title","TEST Analytics","report.executor","TEST Admin","report.generatedAt","2026-10-03");

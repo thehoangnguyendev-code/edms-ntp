@@ -57,8 +57,6 @@ public class UncontrolledCopyController {
             @RequestParam(required = false) String createdTo,
             @RequestParam(required = false) String validFrom,
             @RequestParam(required = false) String validTo,
-            @RequestParam(required = false) String approvedFrom,
-            @RequestParam(required = false) String approvedTo,
             @RequestParam(required = false) String distributedFrom,
             @RequestParam(required = false) String distributedTo,
             @RequestParam(required = false, defaultValue = "created") String sortBy,
@@ -66,7 +64,7 @@ public class UncontrolledCopyController {
     ) {
         return ResponseEntity.ok(uncontrolledCopyService.list(
                 page, limit, search, status, documentId, createdFrom, createdTo, validFrom, validTo,
-                approvedFrom, approvedTo, distributedFrom, distributedTo, sortBy, sortDirection));
+                distributedFrom, distributedTo, sortBy, sortDirection));
     }
 
     @GetMapping("/request-context")
@@ -97,30 +95,6 @@ public class UncontrolledCopyController {
     @PostMapping
     public ResponseEntity<UncontrolledCopyResponse> create(@RequestBody UncontrolledCopyCreateRequest request) {
         return ResponseEntity.ok(uncontrolledCopyService.requestUncontrolledCopy(request));
-    }
-
-    @PostMapping("/{id}/approve")
-    public ResponseEntity<UncontrolledCopyResponse> approve(
-            @PathVariable UUID id,
-            @RequestBody(required = false) UncontrolledCopyActionRequest request
-    ) {
-        return ResponseEntity.ok(uncontrolledCopyService.approveRequest(id, request));
-    }
-
-    @PostMapping("/{id}/reject")
-    public ResponseEntity<UncontrolledCopyResponse> reject(
-            @PathVariable UUID id,
-            @RequestBody(required = false) UncontrolledCopyActionRequest request
-    ) {
-        return ResponseEntity.ok(uncontrolledCopyService.rejectRequest(id, request));
-    }
-
-    @PostMapping("/{id}/generate")
-    public ResponseEntity<UncontrolledCopyResponse> generate(
-            @PathVariable UUID id,
-            @RequestBody(required = false) UncontrolledCopyActionRequest request
-    ) {
-        return ResponseEntity.ok(uncontrolledCopyService.generate(id, request));
     }
 
     @PostMapping("/{id}/distribute")

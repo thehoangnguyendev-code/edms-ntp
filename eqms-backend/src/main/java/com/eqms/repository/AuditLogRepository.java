@@ -10,6 +10,13 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AuditLogRepository extends JpaRepository<AuditLog, UUID>, JpaSpecificationExecutor<AuditLog> {
+    /** The kinds of record and the action codes in use: what the labels of a search or of an Action filter are matched against (REPORT-AUDIT-DISPLAY-2026-11-17). */
+    @Query("select distinct a.entityType from AuditLog a where a.entityType is not null")
+    List<String> findDistinctEntityTypes();
+
+    @Query("select distinct a.actionType from AuditLog a where a.actionType is not null")
+    List<String> findDistinctActionTypes();
+
     // Separator/case-insensitive on entity_type (which has no single historical spelling --
     // DOCUMENT/documents/DocumentRecord, "Controlled Copy"/CONTROLLED_COPY/ControlledCopyRecord).
     // entityId equality keeps the match unambiguous.

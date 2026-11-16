@@ -113,6 +113,10 @@ public class UncontrolledCopyRecord {
     @Column(name = "cancel_reason", columnDefinition = "TEXT")
     private String cancelReason;
 
+    /** Why a Closed - Cancelled copy was closed: REJECTED, CANCELLED or EXPIRED. It is a reason, not a status (UCC-STATUS-2026-11-14). */
+    @Column(name = "close_reason_code", length = 40)
+    private String closeReasonCode;
+
     /** Recipient details captured when the copy was distributed; never re-read from the user's profile afterwards. */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "recipient_snapshot", columnDefinition = "jsonb")
@@ -227,6 +231,8 @@ public class UncontrolledCopyRecord {
     public void setCancelledBy(UserAccount cancelledBy) { this.cancelledBy = cancelledBy; }
     public Instant getCancelledAt() { return cancelledAt; }
     public void setCancelledAt(Instant cancelledAt) { this.cancelledAt = cancelledAt; }
+    public String getCloseReasonCode() { return closeReasonCode; }
+    public void setCloseReasonCode(String closeReasonCode) { this.closeReasonCode = closeReasonCode; }
     public String getCancelReason() { return cancelReason; }
     public void setCancelReason(String cancelReason) { this.cancelReason = cancelReason; }
     public JsonNode getRecipientSnapshot() { return recipientSnapshot; }

@@ -514,7 +514,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
     showToast({
       type: "success",
       title: editingLimit ? "Rule updated" : "Rule added",
-      message: 'Not saved yet -- click "Save Changes" to persist it.',
+      message: 'Not saved yet -- click "Save" to persist it.',
     });
     setIsLimitModalOpen(false);
   };
@@ -522,7 +522,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
   const handleDeleteLimit = (limit: ControlledCopyExpiryLimit) => {
     if (
       !window.confirm(
-        `Remove the link expiry rule "${(limit.documentTypeName || "Any document type") + " / " + (limit.departmentName || "Any department")}" from this draft? It is only actually deleted once you click "Save Changes".`,
+        `Remove the link expiry rule "${(limit.documentTypeName || "Any document type") + " / " + (limit.departmentName || "Any department")}" from this draft? It is only actually deleted once you click "Save".`,
       )
     ) {
       return;
@@ -918,7 +918,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
               disabled={saving || !isDirty}
               className="gap-2 whitespace-nowrap"
             >
-              {saving ? "Saving..." : "Save Changes"}
+              {saving ? "Saving..." : "Save"}
             </Button>
           ) : undefined
         }

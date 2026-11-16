@@ -65,12 +65,16 @@ class ReportTypeServiceTest {
         assertThat(rows(service.list(user, "ALL", "", "register", "name", "asc", 1, 10))).extracting(r -> r.get("code")).containsExactly("DOCUMENT_STATUS");
         assertThat(rows(service.list(user, "ALL", "", "", "code", "desc", 1, 1))).extracting(r -> r.get("code")).containsExactly("DOCUMENT_STATUS");
         assertThat(rows(service.list(user, "DISABLED", "", "", "name", "asc", 1, 10))).isEmpty();
+        // a type whose state was never saved has no modified date: it is outside any range, and inside none
+        assertThat(rows(service.list(user, "ALL", "", "", "2020-01-01T00:00:00Z", "2099-01-01T00:00:00Z", "name", "asc", 1, 10))).isEmpty();
+        assertThat(rows(service.list(user, "ALL", "", "", "", "", "updatedAt", "desc", 1, 10))).hasSize(2);
     }
 
     @Test
     void aBadFilterSortOrPageIsRefusedAndAPersonWithoutThePermissionSeesNothing() {
         UserAccount user = actor("reports.types.view");
         assertThatThrownBy(() -> service.list(user, "MAYBE", "", "", "name", "asc", 1, 10)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.list(user, "ALL", "", "", "yesterday", "", "name", "asc", 1, 10)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.list(user, "ALL", "", "", "password", "asc", 1, 10)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.list(user, "ALL", "", "", "name", "asc", 1, 1000)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.list(actor("reports.run.create"), "ALL", "", "", "name", "asc", 1, 10)).isInstanceOf(SecurityException.class);

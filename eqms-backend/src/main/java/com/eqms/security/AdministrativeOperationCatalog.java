@@ -26,6 +26,7 @@ public final class AdministrativeOperationCatalog {
     );
 
     private static final Map<String, Set<String>> METHODS = Map.ofEntries(
+            Map.entry("com.eqms.controller.TableExcelExportController", Set.of("exportAdministration")),
             Map.entry("com.eqms.controller.SettingsUserController", Set.of(
                     "createUser", "updateUser", "deleteUser", "suspendUser", "terminateUser",
                     "reinstateUser", "resetPassword", "unlockUser", "forceLogout",

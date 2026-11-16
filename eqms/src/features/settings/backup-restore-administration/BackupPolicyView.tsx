@@ -23,6 +23,7 @@ import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
 import { COMPONENT_LABEL, filesText, MEDIUM_LABEL, POLICY_STATUS_COLOR } from "./policyLabels";
 import { IconSettingsAutomation } from "@tabler/icons-react";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type SortKey = "version" | "status" | "proposedBy" | "approvedBy" | "createdAt" | "activatedAt";
 
@@ -57,7 +58,7 @@ export const BackupPolicyView: React.FC = () => {
   const [activeError, setActiveError] = useState("");
 
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [status, setStatus] = useState(ALL);
   const [part, setPart] = useState(ALL);
   const [target, setTarget] = useState(ALL);

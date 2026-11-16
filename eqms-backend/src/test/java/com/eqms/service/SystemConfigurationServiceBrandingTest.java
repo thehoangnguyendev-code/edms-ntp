@@ -62,6 +62,28 @@ class SystemConfigurationServiceBrandingTest {
                 .getPublicBranding().compactDesktopFilters());
     }
 
+    /** REPORT/AUDIT-TAB-TIMELINE-2026-11-15: the Audit Trail tab of a record is a table until the administrator chooses a timeline; the module itself is not affected. */
+    @Test
+    void theAuditTabIsATableUnlessTheAdministratorChoosesATimelineAndOnlyKnownValuesAreSaved() throws Exception {
+        assertEquals("TABLE", serviceWithGeneral("{}").getPublicBranding().auditTabView());
+        assertEquals("COMPACT", serviceWithGeneral("{}").getPublicBranding().auditTabTimelineStyle());
+        var chosen = serviceWithGeneral("{\"appearance\":{\"auditTabView\":\"TIMELINE\",\"auditTabTimelineStyle\":\"SCROLL_LIT\"}}").getPublicBranding();
+        assertEquals("TIMELINE", chosen.auditTabView());
+        assertEquals("SCROLL_LIT", chosen.auditTabTimelineStyle());
+        assertEquals("TABLE", serviceWithGeneral("{\"appearance\":{\"auditTabView\":\"list\"}}").getPublicBranding().auditTabView());
+        assertEquals("COMPACT", serviceWithGeneral("{\"appearance\":{\"auditTabTimelineStyle\":\"zigzag\"}}").getPublicBranding().auditTabTimelineStyle());
+        for (String style : new String[] {"RAIL", "CENTER", "COMPACT", "SCROLL_LIT"}) {
+            var general = mapper.readTree("{\"appearance\":{\"auditTabView\":\"TIMELINE\",\"auditTabTimelineStyle\":\"" + style + "\"}}");
+            assertDoesNotThrow(() -> SystemConfigurationService.validateAuditTabView(general), style);
+        }
+        for (String bad : new String[] {"\"list\"", "\"timeline\"", "1", "true"}) {
+            var general = mapper.readTree("{\"appearance\":{\"auditTabView\":" + bad + "}}");
+            assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validateAuditTabView(general), bad);
+            var other = mapper.readTree("{\"appearance\":{\"auditTabTimelineStyle\":" + bad + "}}");
+            assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validateAuditTabView(other), bad);
+        }
+    }
+
     @Test
     void trainingMaterialsLayoutIsATableUnlessTheAdministratorChoosesTilesAndOnlyKnownValuesAreSaved() throws Exception {
         assertEquals("TABLE", serviceWithGeneral("{}").getPublicBranding().trainingMaterialsLayout());

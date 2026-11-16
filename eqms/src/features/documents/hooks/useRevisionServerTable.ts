@@ -1,3 +1,4 @@
+import { downloadTableExcel } from '@/services/api/tableExport';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useSearchParams } from "react-router-dom";
@@ -9,6 +10,7 @@ import type { User } from "@/types";
 import type { DocumentStatus } from "@/types/document";
 import type { DocumentFiltersLookup } from "@/features/documents/document-list/types";
 import type { Revision } from "@/features/documents/document-revisions/views/types";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type SortDirection = "asc" | "desc";
 
@@ -99,7 +101,7 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
   });
   const [refreshTick, setRefreshTick] = useState(0);
 
-  const debouncedSearch = useDebounce(searchQuery, 300);
+  const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const effectiveSearch = searchQuery.trim() === "" ? "" : debouncedSearch.trim();
 
   // Browser Back/Forward changes the router query without remounting this
@@ -444,7 +446,7 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
   const exportRevisions = async () => {
     setIsExporting(true);
     try {
-      const blob = await documentApi.exportRevisions({
+      await downloadTableExcel('revisions', {
         search: effectiveSearch || undefined,
         status: statusFilter === "All" ? undefined : statusFilter,
         documentType: typeFilter === "All" ? undefined : typeFilter,
@@ -470,14 +472,6 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
         sortDirection: sortConfig.direction,
       });
 
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "revisions-export.csv";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
     } catch (exportError) {
       if (import.meta.env.DEV) {
         console.error("Failed to export revisions", exportError);

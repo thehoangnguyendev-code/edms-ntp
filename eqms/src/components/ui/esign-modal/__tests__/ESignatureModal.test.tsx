@@ -14,7 +14,7 @@ beforeEach(() => {
 const fill = (username = "admin", password = "secret") => {
   fireEvent.change(screen.getByLabelText(/^Username/), { target: { value: username } });
   fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: password } });
-  fireEvent.change(screen.getByLabelText(/Reason for Electronic Signature/), { target: { value: "Reviewed" } });
+  fireEvent.change(screen.getByLabelText(/^Reason/), { target: { value: "Reviewed" } });
 };
 
 describe("Electronic signature credentials", () => {

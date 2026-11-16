@@ -338,7 +338,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                             disabled={!hasChanges}
                             className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Save Changes
+                            Save
                         </Button>
                     </div>
                 }
@@ -403,7 +403,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                     disabled={!hasChanges}
                     className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Save Changes
+                    Save
                 </Button>
             </div>
             {isNavigating && <FullPageLoading text="Loading..." />}

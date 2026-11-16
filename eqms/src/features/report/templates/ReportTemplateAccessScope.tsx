@@ -7,6 +7,7 @@ import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { useDebounce } from "@/hooks";
 import { ReportListToolbar } from "../shared/ReportListToolbar";
 import { reportError, reportTemplatesApi, type MetadataScope, type ReportRolePage, type ReportRoleRow, type RoleGrant } from "@/services/api/reportTemplates";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const SCOPES: { value: MetadataScope; label: string }[] = [
   { value: "PERSONAL", label: "Personal" },
@@ -33,7 +34,7 @@ export function ReportTemplateAccessScope({ assignments, editable, onChange, all
   const [result, setResult] = useState<ReportRolePage>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
 
   const assignmentsKey = JSON.stringify(assignments.map((grant) => [grant.roleId, grant.scope]));
   useEffect(() => {

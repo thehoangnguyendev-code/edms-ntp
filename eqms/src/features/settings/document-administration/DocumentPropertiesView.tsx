@@ -236,7 +236,7 @@ export const DocumentPropertiesView: React.FC = () => {
         actions={
           canManage && documents ? (
             <Button size="sm" variant="outline-emerald" disabled={!isDirty || saving} onClick={() => setShowSaveModal(true)}>
-              Save Changes
+              Save
             </Button>
           ) : undefined
         }
@@ -687,7 +687,7 @@ export const DocumentPropertiesView: React.FC = () => {
             You are about to save changes to Document Properties. This action will be recorded in the Audit Trail.
           </p>
         }
-        confirmText="Save Changes"
+        confirmText="Save"
         cancelText="Cancel"
         isLoading={saving}
       />

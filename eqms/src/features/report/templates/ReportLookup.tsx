@@ -10,12 +10,14 @@ export function ReportLookup({
   code,
   field,
   label,
+  required = false,
   value,
   onChange,
 }: {
   code: string;
   field: string;
   label: string;
+  required?: boolean;
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -71,7 +73,7 @@ export function ReportLookup({
     <div className="space-y-2">
       <Select
         key={`${code}:${field}`}
-        label={label}
+        label={required ? <>{label} <span className="text-red-600">*</span></> : label}
         value={value}
         isLoading={loading}
         options={options}

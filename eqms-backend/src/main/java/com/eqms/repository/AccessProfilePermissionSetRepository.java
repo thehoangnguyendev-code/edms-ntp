@@ -36,4 +36,7 @@ public interface AccessProfilePermissionSetRepository extends JpaRepository<Acce
             + "WHERE aps.accessProfileId = :profileId AND psi.permission.code = :permissionCode")
     List<com.eqms.entity.PermissionSet> findPermissionSetsInProfileGrantingPermission(
             @Param("profileId") UUID profileId, @Param("permissionCode") String permissionCode);
+    /** Capability usage counts for only the returned list page. */
+    @Query("SELECT a.permissionSetId, COUNT(a) FROM AccessProfilePermissionSet a WHERE a.permissionSetId IN :ids GROUP BY a.permissionSetId")
+    List<Object[]> countUsageForPage(@Param("ids") java.util.Collection<UUID> ids);
 }

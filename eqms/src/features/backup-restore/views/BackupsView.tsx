@@ -16,6 +16,7 @@ import { dateToInstant } from "@/features/settings/announcements/announcementFil
 import { backupRestoreApi } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupRestorePage } from "../components/BackupRestorePage";
+import { BackupExportButton } from "../components/BackupExportButton";
 import { CreateBackupModal, type CreateBackupInput } from "../components/CreateBackupModal";
 import { ServerListPanel } from "../components/ServerListPanel";
 import { useBackupJobs } from "../components/useBackupJobs";
@@ -23,6 +24,7 @@ import { VerifyIntegrityModal } from "../components/VerifyIntegrityModal";
 import { BACKUP_STATUS_COLOR, CONTENT_COLOR, VERIFICATION_COLOR, statusLabel, type BackupRecord } from "../types";
 import { formatBytes, formatDateTime, formatDuration } from "../format";
 import { displayDate } from "@/utils/format";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type SortKey = "startedAt" | "backupNumber" | "status" | "type" | "trigger" | "duration" | "sizeBytes" | "createdBy" | "verification" | "verifiedAt";
 
@@ -47,7 +49,7 @@ export const BackupsView: React.FC = () => {
   const menu = usePortalDropdown();
 
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [status, setStatus] = useState(ALL);
   const [type, setType] = useState(ALL);
   const [integrity, setIntegrity] = useState(ALL);
@@ -231,10 +233,29 @@ export const BackupsView: React.FC = () => {
       group="Backup"
       preview={false}
       actions={
-        <Button size="sm" className="gap-2 whitespace-nowrap" onClick={() => setCreating(true)} disabled={!canRun}>
-          <Plus className="h-4 w-4" />
-          Create Backup
-        </Button>
+        <>
+          <BackupExportButton
+            dataset="backups"
+            params={{
+              search: debouncedSearch.trim() || undefined,
+              status: status === ALL ? undefined : status,
+              type: type === ALL ? undefined : type,
+              verification: integrity === ALL ? undefined : integrity,
+              trigger: trigger === ALL ? undefined : trigger,
+              component: component === ALL ? undefined : component,
+              checkedFrom: dateToInstant(checkedFrom, "start"),
+              checkedTo: dateToInstant(checkedTo, "end"),
+              startedFrom: dateToInstant(startedFrom, "start"),
+              startedTo: dateToInstant(startedTo, "end"),
+              sortBy: sort.key,
+              sortDirection: sort.direction,
+            }}
+          />
+          <Button size="sm" className="gap-2 whitespace-nowrap" onClick={() => setCreating(true)} disabled={!canRun}>
+            <Plus className="h-4 w-4" />
+            Create Backup
+          </Button>
+        </>
       }
     >
       {working > 0 && <WarningBanner variant="info" description="The agent is working on a request. This list refreshes when it finishes." />}

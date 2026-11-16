@@ -11,6 +11,8 @@ public record UncontrolledCopyResponse(
         String reason,
         String status,
         String statusCode,
+        /** Why a Closed - Cancelled copy was closed: REJECTED, CANCELLED or EXPIRED; null while it is not closed. */
+        String closeReason,
         String requestedById,
         String requestedByName,
         String requestedAt,
@@ -44,9 +46,6 @@ public record UncontrolledCopyResponse(
 ) {
     /** What the CURRENT user may do on this record right now (server-evaluated; the UI only mirrors it). */
     public record Capabilities(
-            boolean canApprove,
-            boolean canReject,
-            boolean canGenerate,
             boolean canDistribute,
             boolean canCancel,
             boolean canPreview,

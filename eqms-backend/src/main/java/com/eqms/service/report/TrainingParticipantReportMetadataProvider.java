@@ -15,6 +15,7 @@ import java.util.*;
 public class TrainingParticipantReportMetadataProvider implements ReportMetadataProvider {
     private static final Map<String, String> COLUMNS = new LinkedHashMap<>();
     private static final Map<String, String> LABELS = new LinkedHashMap<>();
+    private static final Map<String, String> GROUPS = new LinkedHashMap<>();
     static {
         column("trainingNumber", "Training Number", "a.training_number");
         column("topic", "Training Topic", "training_activity_topics(a.id)");
@@ -22,7 +23,7 @@ public class TrainingParticipantReportMetadataProvider implements ReportMetadata
         column("revisionNumber", "Revision", "a.revision_number");
         column("employeeCode", "Employee Code", "p.employee_code");
         column("fullName", "Participant", "coalesce(p.full_name, p.external_name)");
-        column("organisation", "Organisation (External)", "p.external_org");
+        column("organisation", "Organization (External)", "p.external_org");
         column("department", "Department", "p.department");
         column("position", "Position", "p.position");
         column("participationRole", "Participation", ReportQueryKit.labelCase("p.participation_role", "TRAINEE", "Trainee", "ATTENDEE", "Attends, no assessment",
@@ -39,8 +40,20 @@ public class TrainingParticipantReportMetadataProvider implements ReportMetadata
         column("notifiedAt", "Notified At", ReportQueryKit.timestamp("p.notified_at"));
         column("readConfirmedAt", "Read Confirmed At", ReportQueryKit.timestamp("p.read_confirmed_at"));
         column("addedAt", "Added At", ReportQueryKit.timestamp("p.created_at"));
+        // REPORT-FIELD-CATALOG-2026-11-15: more of the metadata the source holds.
+        group("Attendance", "absenceReason", "Absence Reason", "p.absence_reason");
+        group("Attendance", "plannedAbsence", "Planned Absence", "p.planned_absence");
+        group("Attendance", "addedReason", "Reason Added", "p.added_reason");
+        group("Attendance", "signMode", "Sign Mode", "p.sign_mode");
+        group("Participation", "participationReason", "Participation Reason", "p.participation_reason");
+        group("Participation", "participationSetBy", "Participation Set By", ReportQueryKit.person("p.participation_set_by"));
+        group("Participation", "participationSetAt", "Participation Set At", ReportQueryKit.timestamp("p.participation_set_at"));
+        group("Reminders", "lastReadReminderAt", "Last Read Reminder", ReportQueryKit.timestamp("p.last_read_reminder_at"));
     }
     private static void column(String code, String label, String sql) { COLUMNS.put(code, sql); LABELS.put(code, label); }
+    private static void group(String group, String code, String label, String sql) { column(code, label, sql); GROUPS.put(code, group); }
+    @Override public Map<String, String> fieldGroups() { return GROUPS; }
+    @Override public Set<String> sensitiveFields() { return Set.of("absenceReason", "plannedAbsence", "addedReason", "participationReason"); }
 
     private static final Set<String> FILTERS = Set.of("search", "state", "result", "activityStatus", "department", "dueFrom", "dueTo", "addedFrom", "addedTo");
 
@@ -55,7 +68,7 @@ public class TrainingParticipantReportMetadataProvider implements ReportMetadata
     public List<String> usePermissions() { return List.of("training.activity.view", "training.compliance.view"); }
     public List<String> allowedScopes() { return List.of("PERSONAL", "DEPARTMENT", "SYSTEM"); }
     public Map<String, String> columns() { return COLUMNS; }
-    @Override public Set<String> dateColumns() { return new LinkedHashSet<>(List.of("dueDate", "notifiedAt", "readConfirmedAt", "addedAt")); }
+    @Override public Set<String> dateColumns() { return new LinkedHashSet<>(List.of("dueDate", "notifiedAt", "readConfirmedAt", "addedAt", "participationSetAt", "lastReadReminderAt")); }
     public Map<String, String> labels() { return LABELS; }
     public String identityColumn() { return "p.id"; }
     public String defaultSort() { return "trainingNumber"; }

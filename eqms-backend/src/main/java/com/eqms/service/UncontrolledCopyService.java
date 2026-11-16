@@ -86,19 +86,22 @@ public class UncontrolledCopyService {
     /** Default watermark title line; editable on the Uncontrolled Copies Policy screen. */
     public static final String MANDATORY_WATERMARK_TEXT = "UNCONTROLLED COPY — NOT VALID FOR PRODUCTION USE";
 
-    public static final String STATUS_REQUESTED = "REQUESTED";
-    public static final String STATUS_APPROVED = "APPROVED";
-    public static final String STATUS_REJECTED = "REJECTED";
-    public static final String STATUS_GENERATED = "GENERATED";
+    /**
+     * UCC-STATUS-2026-11-14 / UCC-SIMPLE-2026-11-14 (owner decisions): an Uncontrolled Copy has the three statuses of the system and no other, and two actions only:
+     * Distribute (one signature: the person who holds the permission to distribute makes the watermarked file and hands the copy over) and Cancel Request (the person who holds
+     * the permission to cancel; a reason is required). There is no approval step and no rejection. Why a copy is Closed - Cancelled (cancelled, expired) is a reason kept apart
+     * from the status.
+     */
+    public static final String STATUS_READY = "READY_FOR_DISTRIBUTION";
     public static final String STATUS_DISTRIBUTED = "DISTRIBUTED";
-    public static final String STATUS_CANCELLED = "CANCELLED";
-    public static final String STATUS_EXPIRED = "EXPIRED";
-    private static final List<String> ALL_STATUSES = List.of(
-            STATUS_REQUESTED, STATUS_APPROVED, STATUS_REJECTED, STATUS_GENERATED, STATUS_DISTRIBUTED, STATUS_CANCELLED, STATUS_EXPIRED);
+    public static final String STATUS_CLOSED_CANCELLED = "CLOSED_CANCELLED";
+    public static final String REASON_REJECTED = "REJECTED";
+    public static final String REASON_CANCELLED = "CANCELLED";
+    public static final String REASON_EXPIRED = "EXPIRED";
+    private static final List<String> ALL_STATUSES = List.of(STATUS_READY, STATUS_DISTRIBUTED, STATUS_CLOSED_CANCELLED);
+
 
     public static final String P_REQUEST = "documents.uncontrolled_copy.request";
-    public static final String P_APPROVE = "documents.uncontrolled_copy.approve_request";
-    public static final String P_REJECT = "documents.uncontrolled_copy.reject_request";
     public static final String P_CANCEL = "documents.uncontrolled_copy.cancel_request";
     public static final String P_DISTRIBUTE = "documents.uncontrolled_copy.distribute";
     public static final String P_VIEW = "documents.uncontrolled_copy.view";
@@ -204,8 +207,6 @@ public class UncontrolledCopyService {
             String createdTo,
             String validFrom,
             String validTo,
-            String approvedFrom,
-            String approvedTo,
             String distributedFrom,
             String distributedTo,
             String sortBy,
@@ -215,17 +216,21 @@ public class UncontrolledCopyService {
         if (!permissionEvaluationService.hasAnyPermission(currentUser, P_VIEW, P_REQUEST)) {
             throw new AccessDeniedException("Uncontrolled copy access denied");
         }
+        // Refused before the query is built: a status that the system does not have is a bad request, not a server error and not an empty list.
+        if (StringUtils.hasText(status) && !"all".equalsIgnoreCase(status.trim()) && !ALL_STATUSES.contains(status.trim().toUpperCase(Locale.ROOT))) {
+            throw new IllegalArgumentException("UNCONTROLLED_COPY_STATUS_INVALID");
+        }
         int safePage = page == null || page < 1 ? 1 : page;
         int safeLimit = limit == null || limit < 1 ? 20 : Math.min(limit, MAX_LIST_PAGE_SIZE);
         boolean seesAll = seesAllCopies(currentUser);
-        boolean approver = isApprover(currentUser);
+        boolean distributor = permissionEvaluationService.hasPermission(currentUser, P_DISTRIBUTE);
         Specification<UncontrolledCopyRecord> specification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (!seesAll) {
                 // Everyone else sees only the copies they hold as the named recipient (account id); an approver also sees the requests that wait for a decision.
                 Predicate visible = cb.equal(root.get("recipientUserId"), currentUser.getId());
-                if (approver) {
-                    visible = cb.or(visible, cb.equal(root.get("statusCode"), STATUS_REQUESTED));
+                if (distributor) {
+                    visible = cb.or(visible, cb.equal(root.get("statusCode"), STATUS_READY));
                 }
                 predicates.add(visible);
             }
@@ -260,14 +265,6 @@ public class UncontrolledCopyService {
             LocalDate validToDate = parseDate(validTo);
             if (validToDate != null) {
                 predicates.add(cb.lessThan(root.<Instant>get("validUntil"), validToDate.plusDays(1).atStartOfDay(SYSTEM_ZONE).toInstant()));
-            }
-            LocalDate approvedFromDate = parseDate(approvedFrom);
-            if (approvedFromDate != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.<Instant>get("approvedAt"), approvedFromDate.atStartOfDay(SYSTEM_ZONE).toInstant()));
-            }
-            LocalDate approvedToDate = parseDate(approvedTo);
-            if (approvedToDate != null) {
-                predicates.add(cb.lessThan(root.<Instant>get("approvedAt"), approvedToDate.plusDays(1).atStartOfDay(SYSTEM_ZONE).toInstant()));
             }
             LocalDate distributedFromDate = parseDate(distributedFrom);
             if (distributedFromDate != null) {
@@ -360,7 +357,6 @@ public class UncontrolledCopyService {
                 canRequest,
                 hasPermission && permissionEvaluationService.hasPermission(currentUser, P_REQUEST_FOR_OTHERS),
                 message,
-                policy.isApprovalRequired(),
                 policy.getValidityHours(),
                 policy.isAllowRedownload(),
                 policyService.markingFor(policy),
@@ -465,7 +461,7 @@ public class UncontrolledCopyService {
         copy.setRequestedAt(now);
         copy.setRecipientSnapshot(recipient);
         copy.setRecipientUserId(parseUuidOrNull(textField(recipient, "userId")));
-        setStatus(copy, policy.isApprovalRequired() ? STATUS_REQUESTED : STATUS_APPROVED);
+        setStatus(copy, STATUS_READY);
         uncontrolledCopyRepository.saveAndFlush(copy);
 
         ElectronicSignature signature = electronicSignatureService.createEntitySignature(
@@ -473,57 +469,6 @@ public class UncontrolledCopyService {
                 request == null ? null : request.signatureToken(), "UNCONTROLLED_COPY_REQUESTED", reason, null, null, copy.getStatus());
         auditTrailService.logAs(currentUser, ENTITY_TYPE, copy.getUncontrolledCopyNumber(), copy.getId(), "REQUEST",
                 null, copy.getStatus(), "Reason: " + reason + "; Recipient: " + recipientLabel(recipient), List.of(), signatureId(signature));
-        if (!policy.isApprovalRequired()) {
-            auditTrailService.logAs(currentUser, ENTITY_TYPE, copy.getUncontrolledCopyNumber(), copy.getId(), "AUTO_APPROVE",
-                    statusLabel(STATUS_REQUESTED), copy.getStatus(),
-                    "Approval step not required by the Uncontrolled Copies Policy.", List.of(), null);
-        }
-        return toResponse(copy, currentUser);
-    }
-
-    @Transactional
-    public UncontrolledCopyResponse approveRequest(UUID id, UncontrolledCopyActionRequest request) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        UncontrolledCopyRecord copy = requireCopy(id);
-        requirePermission(currentUser, P_APPROVE, "You do not have permission to approve uncontrolled copy requests.");
-        requireNotOwnRequest(currentUser, copy, "You cannot approve your own uncontrolled copy request.");
-        requireStatus(copy, "approved", STATUS_REQUESTED);
-        String reason = firstNonBlank(normalize(request == null ? null : request.reason()), "Approved uncontrolled copy request");
-        String from = copy.getStatus();
-        copy.setApprovedBy(currentUser);
-        copy.setApprovedAt(Instant.now());
-        setStatus(copy, STATUS_APPROVED);
-        uncontrolledCopyRepository.saveAndFlush(copy);
-        ElectronicSignature signature = electronicSignatureService.createEntitySignature(
-                SIGNATURE_ENTITY_TYPE, copy.getId(), copy.getUncontrolledCopyNumber(), currentUser,
-                request == null ? null : request.signatureToken(), "UNCONTROLLED_COPY_APPROVED", reason, null, from, copy.getStatus());
-        auditTrailService.logAs(currentUser, ENTITY_TYPE, copy.getUncontrolledCopyNumber(), copy.getId(), "APPROVE",
-                from, copy.getStatus(), reason, List.of(), signatureId(signature));
-        return toResponse(copy, currentUser);
-    }
-
-    @Transactional
-    public UncontrolledCopyResponse rejectRequest(UUID id, UncontrolledCopyActionRequest request) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        UncontrolledCopyRecord copy = requireCopy(id);
-        requirePermission(currentUser, P_REJECT, "You do not have permission to reject uncontrolled copy requests.");
-        requireNotOwnRequest(currentUser, copy, "You cannot reject your own uncontrolled copy request. Cancel it instead.");
-        requireStatus(copy, "rejected", STATUS_REQUESTED);
-        String reason = normalize(request == null ? null : request.reason());
-        if (!StringUtils.hasText(reason)) {
-            throw new IllegalArgumentException("A rejection reason is required.");
-        }
-        String from = copy.getStatus();
-        copy.setRejectedBy(currentUser);
-        copy.setRejectedAt(Instant.now());
-        copy.setRejectionReason(reason);
-        setStatus(copy, STATUS_REJECTED);
-        uncontrolledCopyRepository.saveAndFlush(copy);
-        ElectronicSignature signature = electronicSignatureService.createEntitySignature(
-                SIGNATURE_ENTITY_TYPE, copy.getId(), copy.getUncontrolledCopyNumber(), currentUser,
-                request == null ? null : request.signatureToken(), "UNCONTROLLED_COPY_REJECTED", reason, null, from, copy.getStatus());
-        auditTrailService.logAs(currentUser, ENTITY_TYPE, copy.getUncontrolledCopyNumber(), copy.getId(), "REJECT",
-                from, copy.getStatus(), reason, List.of(), signatureId(signature));
         return toResponse(copy, currentUser);
     }
 
@@ -532,15 +477,10 @@ public class UncontrolledCopyService {
      * The watermark title {@link #MANDATORY_WATERMARK_TEXT} is always drawn (watermark forced on, all pages)
      * regardless of the policy's watermark toggle; the policy only styles it.
      */
-    @Transactional
-    public UncontrolledCopyResponse generate(UUID id, UncontrolledCopyActionRequest request) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        UncontrolledCopyRecord copy = requireCopy(id);
-        requirePermission(currentUser, P_DISTRIBUTE, "You do not have permission to distribute uncontrolled copies.");
-        requireStatus(copy, "generated", STATUS_APPROVED);
+    private void generateFile(UncontrolledCopyRecord copy, UserAccount currentUser) {
         DocumentRevisionRecord revision = copy.getRevision();
         if (revision == null || revision.getStatus() == null || !"EFFECTIVE".equalsIgnoreCase(revision.getStatus().getCode())) {
-            throw new IllegalStateException("The source revision is no longer Effective; the uncontrolled copy cannot be generated.");
+            throw new IllegalStateException("The source revision is no longer Effective; the uncontrolled copy cannot be distributed.");
         }
         byte[] published = requirePublishedPdfBytes(revision);
         Instant generatedAt = Instant.now();
@@ -556,18 +496,12 @@ public class UncontrolledCopyService {
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to store the uncontrolled copy PDF.", ex);
         }
-        String from = copy.getStatus();
         copy.setMarkingApplied(true);
         copy.setMarkingLayout(pdfMarkingService.toJson(marked.placements()));
         copy.setGeneratedBy(currentUser);
         copy.setGeneratedAt(generatedAt);
-        setStatus(copy, STATUS_GENERATED);
-        uncontrolledCopyRepository.saveAndFlush(copy);
-        String comment = firstNonBlank(normalize(request == null ? null : request.reason()), "Generated watermarked uncontrolled copy")
-                + "; Checksum: " + firstNonBlank(copy.getUncontrolledCopyChecksum(), "n/a");
         auditTrailService.logAs(currentUser, ENTITY_TYPE, copy.getUncontrolledCopyNumber(), copy.getId(), "GENERATE",
-                from, copy.getStatus(), comment, List.of(), null);
-        return toResponse(copy, currentUser);
+                copy.getStatus(), copy.getStatus(), "Generated watermarked uncontrolled copy; Checksum: " + firstNonBlank(copy.getUncontrolledCopyChecksum(), "n/a"), List.of(), null);
     }
 
     @Transactional
@@ -596,7 +530,7 @@ public class UncontrolledCopyService {
             throw new IllegalArgumentException("One or more uncontrolled copies were not found.");
         }
         for (UncontrolledCopyRecord copy : copies) {
-            requireStatus(copy, "distributed", STATUS_GENERATED);
+            requireStatus(copy, "distributed", STATUS_READY);
         }
         String reason = firstNonBlank(normalize(request.reason()), "Distributed uncontrolled copies (batch)");
         List<UncontrolledCopyDistributedEvent> events = new ArrayList<>();
@@ -609,9 +543,10 @@ public class UncontrolledCopyService {
     }
 
     private UncontrolledCopyDistributionJob distributeOne(UncontrolledCopyRecord copy, UserAccount currentUser, String signatureToken, String reason) {
-        requireStatus(copy, "distributed", STATUS_GENERATED);
+        requireStatus(copy, "distributed", STATUS_READY);
+        // One signature: the watermarked file is made here, in the same transaction, from the revision that is Effective now.
         if (!StringUtils.hasText(copy.getUncontrolledCopyFilePath())) {
-            throw new IllegalStateException("The uncontrolled copy file has not been generated.");
+            generateFile(copy, currentUser);
         }
         UncontrolledCopyPolicySetting policy = policyService.loadOrDefault();
         Instant distributedAt = Instant.now();
@@ -662,10 +597,7 @@ public class UncontrolledCopyService {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         UncontrolledCopyRecord copy = requireCopy(id);
         requirePermission(currentUser, P_CANCEL, "You do not have permission to cancel uncontrolled copy requests.");
-        if (!isOwnRequest(currentUser, copy) && !permissionEvaluationService.hasAnyPermission(currentUser, P_APPROVE, P_DISTRIBUTE)) {
-            throw new AccessDeniedException("Only the requester or Document Control can cancel this uncontrolled copy request.");
-        }
-        requireStatus(copy, "cancelled", STATUS_REQUESTED, STATUS_APPROVED, STATUS_GENERATED);
+        requireStatus(copy, "cancelled", STATUS_READY);
         String reason = normalize(request == null ? null : request.reason());
         if (!StringUtils.hasText(reason)) {
             throw new IllegalArgumentException("A cancellation reason is required.");
@@ -674,7 +606,8 @@ public class UncontrolledCopyService {
         copy.setCancelledBy(currentUser);
         copy.setCancelledAt(Instant.now());
         copy.setCancelReason(reason);
-        setStatus(copy, STATUS_CANCELLED);
+        setStatus(copy, STATUS_CLOSED_CANCELLED);
+        copy.setCloseReasonCode(REASON_CANCELLED);
         uncontrolledCopyRepository.saveAndFlush(copy);
         ElectronicSignature signature = electronicSignatureService.createEntitySignature(
                 SIGNATURE_ENTITY_TYPE, copy.getId(), copy.getUncontrolledCopyNumber(), currentUser,
@@ -1134,7 +1067,8 @@ public class UncontrolledCopyService {
             return false;
         }
         String from = copy.getStatus();
-        setStatus(copy, STATUS_EXPIRED);
+        setStatus(copy, STATUS_CLOSED_CANCELLED);
+        copy.setCloseReasonCode(REASON_EXPIRED);
         uncontrolledCopyRepository.saveAndFlush(copy);
         auditTrailService.logAs(systemActorProvider.get(), ENTITY_TYPE, copy.getUncontrolledCopyNumber(), copy.getId(), "EXPIRE",
                 from, copy.getStatus(), "Validity window ended at " + DateTimeFormatUtils.formatDateTime(copy.getValidUntil()), List.of(), null);
@@ -1142,7 +1076,7 @@ public class UncontrolledCopyService {
     }
 
     private boolean isExpired(UncontrolledCopyRecord copy) {
-        return STATUS_EXPIRED.equals(copy.getStatusCode())
+        return (STATUS_CLOSED_CANCELLED.equals(copy.getStatusCode()) && REASON_EXPIRED.equals(copy.getCloseReasonCode()))
                 || (STATUS_DISTRIBUTED.equals(copy.getStatusCode()) && copy.getValidUntil() != null && !Instant.now().isBefore(copy.getValidUntil()));
     }
 
@@ -1162,12 +1096,7 @@ public class UncontrolledCopyService {
 
     private boolean canViewRecord(UserAccount user, UncontrolledCopyRecord copy) {
         return seesAllCopies(user) || isRecipient(user, copy)
-                || (STATUS_REQUESTED.equals(copy.getStatusCode()) && isApprover(user));
-    }
-
-    /** Holds the permission to approve or reject requests: such a person sees the requests that wait for a decision, and only those, without the view-everything permission. */
-    private boolean isApprover(UserAccount user) {
-        return permissionEvaluationService.hasAnyPermission(user, P_APPROVE, P_REJECT);
+                || (STATUS_READY.equals(copy.getStatusCode()) && permissionEvaluationService.hasPermission(user, P_DISTRIBUTE));
     }
 
     private boolean isOwnRequest(UserAccount user, UncontrolledCopyRecord copy) {
@@ -1192,10 +1121,7 @@ public class UncontrolledCopyService {
                 || !permissionEvaluationService.hasAnyPermission(user, P_PREVIEW_FILE, P_VIEW_FILE)) {
             return false;
         }
-        boolean documentControl = permissionEvaluationService.hasAnyPermission(user, P_DISTRIBUTE, P_APPROVE);
-        if (STATUS_GENERATED.equals(copy.getStatusCode())) {
-            return documentControl;
-        }
+        boolean documentControl = permissionEvaluationService.hasPermission(user, P_DISTRIBUTE);
         if (STATUS_DISTRIBUTED.equals(copy.getStatusCode()) && !isExpired(copy)) {
             return documentControl || isOwnRequest(user, copy) || isRecipient(user, copy);
         }
@@ -1271,24 +1197,6 @@ public class UncontrolledCopyService {
                 + " and cannot be " + action + ".");
     }
 
-    /**
-     * Segregation of Duties at action time: the approval decision (approve or reject) must come from someone other
-     * than the requester -- WHILE the system SoD constraint "Request vs Approve Uncontrolled Copy"
-     * ({@link #P_REQUEST} / {@link #P_APPROVE}, seeded by V502) is active. One rule governs both approve and reject.
-     * An administrator can deactivate it on the Segregation of Duties screen (e-signed, audited), which then allows
-     * self-decision. Same exception type as RevisionService's author-cannot-approve rule (403). The requester can
-     * always withdraw via Cancel.
-     */
-    private void requireNotOwnRequest(UserAccount user, UncontrolledCopyRecord copy, String message) {
-        if (isSelfDecisionBlocked(user, copy)) {
-            throw new AccessDeniedException(message);
-        }
-    }
-
-    /** True when {@code user} is the requester AND the self-decision SoD constraint is currently active. */
-    private boolean isSelfDecisionBlocked(UserAccount user, UncontrolledCopyRecord copy) {
-        return isOwnRequest(user, copy) && sodConstraintService.isActiveConstraint(P_REQUEST, P_APPROVE);
-    }
 
     private void requirePermission(UserAccount user, String permission, String message) {
         if (!permissionEvaluationService.hasPermission(user, permission)) {
@@ -1335,13 +1243,9 @@ public class UncontrolledCopyService {
             return null;
         }
         return switch (statusCode) {
-            case STATUS_REQUESTED -> "Requested";
-            case STATUS_APPROVED -> "Approved";
-            case STATUS_REJECTED -> "Rejected";
-            case STATUS_GENERATED -> "Generated";
+            case STATUS_READY -> "Ready for Distribution";
             case STATUS_DISTRIBUTED -> "Distributed";
-            case STATUS_CANCELLED -> "Cancelled";
-            case STATUS_EXPIRED -> "Expired";
+            case STATUS_CLOSED_CANCELLED -> "Closed - Cancelled";
             default -> statusCode;
         };
     }
@@ -1354,7 +1258,6 @@ public class UncontrolledCopyService {
             case "status" -> "statusCode";
             case "validuntil" -> "validUntil";
             case "requested" -> "requestedAt";
-            case "approved" -> "approvedAt";
             case "distributed" -> "distributedAt";
             default -> "createdAt";
         };
@@ -1366,17 +1269,10 @@ public class UncontrolledCopyService {
         String code = copy.getStatusCode();
         boolean expired = isExpired(copy);
         boolean own = isOwnRequest(currentUser, copy);
-        boolean canCancel = permissionEvaluationService.hasPermission(currentUser, P_CANCEL)
-                && (own || permissionEvaluationService.hasAnyPermission(currentUser, P_APPROVE, P_DISTRIBUTE))
-                && (STATUS_REQUESTED.equals(code) || STATUS_APPROVED.equals(code) || STATUS_GENERATED.equals(code));
-        // Only consult the SoD constraint when it can matter (own request still awaiting a decision).
-        boolean selfDecisionBlocked = own && STATUS_REQUESTED.equals(code) && isSelfDecisionBlocked(currentUser, copy);
+        boolean ready = STATUS_READY.equals(code);
         UncontrolledCopyResponse.Capabilities capabilities = new UncontrolledCopyResponse.Capabilities(
-                STATUS_REQUESTED.equals(code) && !selfDecisionBlocked && permissionEvaluationService.hasPermission(currentUser, P_APPROVE),
-                STATUS_REQUESTED.equals(code) && !selfDecisionBlocked && permissionEvaluationService.hasPermission(currentUser, P_REJECT),
-                STATUS_APPROVED.equals(code) && permissionEvaluationService.hasPermission(currentUser, P_DISTRIBUTE),
-                STATUS_GENERATED.equals(code) && permissionEvaluationService.hasPermission(currentUser, P_DISTRIBUTE),
-                canCancel,
+                ready && permissionEvaluationService.hasPermission(currentUser, P_DISTRIBUTE),
+                ready && permissionEvaluationService.hasPermission(currentUser, P_CANCEL),
                 canPreview(currentUser, copy),
                 canDownloadIgnoringLimit(currentUser, copy)
                         && (policyService.loadOrDefault().isAllowRedownload() || copy.getDownloadCount() == 0
@@ -1391,8 +1287,9 @@ public class UncontrolledCopyService {
                 copy.getRevision() == null ? null : idString(copy.getRevision().getId()),
                 copy.getRevisionNumber(),
                 copy.getReason(),
-                expired && !STATUS_EXPIRED.equals(code) ? statusLabel(STATUS_EXPIRED) : copy.getStatus(),
-                expired && !STATUS_EXPIRED.equals(code) ? STATUS_EXPIRED : code,
+                expired ? statusLabel(STATUS_CLOSED_CANCELLED) : copy.getStatus(),
+                expired ? STATUS_CLOSED_CANCELLED : code,
+                expired ? REASON_EXPIRED : copy.getCloseReasonCode(),
                 copy.getRequestedBy() == null ? null : idString(copy.getRequestedBy().getId()),
                 userName(copy.getRequestedBy()),
                 formatInstant(copy.getRequestedAt()),

@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { MoreVertical } from "lucide-react";
+import { IconDownload, IconEye, IconLock, IconShieldCheck, IconStackCheck } from "@tabler/icons-react";
+import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
+import { usePortalDropdown } from "@/hooks/usePortalDropdown";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
@@ -10,10 +14,13 @@ import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import {
   DataTable,
+  type DataTableAction,
   type DataTableColumn,
 } from "@/components/ui/table/DataTable";
 import { SectionLoading } from "@/components/ui/loading/Loading";
-import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
+import { ReportArtifactPreview } from "./ReportArtifactPreview";
+import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
+import { TrainingFileDropzone } from "@/features/training-activities/shared/TrainingFileDropzone";
 import { useToast } from "@/components/ui/toast/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
@@ -25,11 +32,12 @@ import {
 } from "../shared/reportLabels";
 import {
   reportsApi,
+  type ReportFileVerification,
   type ReportArtifactSummary,
   type ReportRunDetail,
 } from "@/services/api/reports";
 import { reportError } from "@/services/api/reportTemplates";
-import { displayDateTime } from "@/utils/format";
+import { displayDateTime, formatFileSize } from "@/utils/format";
 
 const APPROVAL_LABEL: Record<string, string> = {
   APPROVED: "Approved",
@@ -38,25 +46,10 @@ const APPROVAL_LABEL: Record<string, string> = {
 };
 
 const when = (value?: string | null) => (value ? displayDateTime(value) : "—");
-/**
- * JSON for a person to read: a date or a moment inside it is written in the display format of the system (dd/MM/yyyy, dd/MM/yyyy HH:mm:ss, UTC+7), never as ISO.
- * (REPORT-TIME-FORMAT-2026-11-12)
- */
-const readableJson = (value: unknown, indent?: number) =>
-  JSON.stringify(
-    value,
-    (_key, item) => {
-      if (typeof item !== "string") return item;
-      const day = item.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (day) return `${day[3]}/${day[2]}/${day[1]}`;
-      return /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(item) ? displayDateTime(item) : item;
-    },
-    indent,
-  );
-
 /** The full view of one report run (REPORT-RUN-DETAIL-2026-10-14): replaces the side drawer. Every field the server returns is shown. */
 export function ReportRunDetailPage() {
   const { runId = "" } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
@@ -64,8 +57,7 @@ export function ReportRunDetailPage() {
   const [run, setRun] = useState<ReportRunDetail>();
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [previewBusy, setPreviewBusy] = useState(false);
+  const [previewing, setPreviewing] = useState<ReportArtifactSummary | null>(null);
   const [hold, setHold] = useState<{
     artifactId: string;
     legalHold: boolean;
@@ -74,6 +66,36 @@ export function ReportRunDetailPage() {
   }>();
   const [busy, setBusy] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
+  /** The check of a file a person holds against the stored one (REPORT-FILE-VERIFY-2026-11-16). */
+  const [verifying, setVerifying] = useState<ReportArtifactSummary | null>(null);
+  const [verifyFile, setVerifyFile] = useState<File | null>(null);
+  const [verifyResult, setVerifyResult] = useState<ReportFileVerification | null>(null);
+  const [verifyError, setVerifyError] = useState("");
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const [verifyPercent, setVerifyPercent] = useState(0);
+  const closeVerify = () => {
+    setVerifying(null);
+    setVerifyFile(null);
+    setVerifyResult(null);
+    setVerifyError("");
+    setVerifyPercent(0);
+  };
+  const checkFile = async () => {
+    if (!verifying || !verifyFile) return;
+    setVerifyBusy(true);
+    setVerifyError("");
+    setVerifyResult(null);
+    setVerifyPercent(0);
+    try {
+      setVerifyResult(await reportsApi.verifyArtifactFile(runId, verifying.id, verifyFile, setVerifyPercent));
+    } catch (e) {
+      // A file that expired or was removed answers 409 in the server; the general text of reportError for 409 is about templates.
+      const status = (e as { response?: { status?: number } })?.response?.status;
+      setVerifyError(status === 409 ? "The stored file was removed after it expired, so it can no longer be checked." : reportError(e));
+    } finally {
+      setVerifyBusy(false);
+    }
+  };
 
   useEffect(() => {
     let alive = true;
@@ -86,13 +108,6 @@ export function ReportRunDetailPage() {
       alive = false;
     };
   }, [runId, refresh]);
-
-  useEffect(
-    () => () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    },
-    [previewUrl],
-  );
 
   const download = async (artifact: ReportArtifactSummary) => {
     try {
@@ -108,21 +123,18 @@ export function ReportRunDetailPage() {
     }
   };
 
-  const preview = async (artifact: ReportArtifactSummary) => {
-    setPreviewBusy(true);
-    setError("");
-    try {
-      const blob = await reportsApi.downloadArtifact(runId, artifact.id);
-      setPreviewUrl((old) => {
-        if (old) URL.revokeObjectURL(old);
-        return URL.createObjectURL(blob);
-      });
-    } catch (e) {
-      setError(reportError(e));
-    } finally {
-      setPreviewBusy(false);
-    }
-  };
+  // The link of the "report ready" notice (?download=1) downloads the file at once, after sign-in; the person is not asked to find the button (REPORT-READY-FILE-2026-11-16).
+  // It runs once, and only when the report is complete; the address is cleaned so that a reload does not download it again.
+  useEffect(() => {
+    if (searchParams.get("download") !== "1" || !run) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("download");
+    setSearchParams(next, { replace: true });
+    const file = run.status === "COMPLETED" ? run.artifacts.find((artifact) => !artifact.purgedAt) : undefined;
+    if (file) void download(file);
+    else showToast({ type: "error", title: "The file cannot be downloaded", message: run.status === "COMPLETED" ? "The file was removed after it expired." : "The report is not complete yet: " + runStatusLabel(run.status) + ". Download it from this page when it is ready." });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run, searchParams]);
 
   /** Places or releases the hold chosen in the dialog. A release carries the e-signature token from the signing step. */
   const saveHold = async (signatureToken?: string) => {
@@ -163,7 +175,7 @@ export function ReportRunDetailPage() {
   const sortSpec = Array.isArray(run?.sortSpec) ? run.sortSpec : [];
   const template = run?.templateAtRun;
   const artifactColumns: DataTableColumn<ReportArtifactSummary>[] = [
-    { id: "format", header: "Format", cell: (row) => row.format },
+    { id: "format", header: "Output Format", cell: (row) => row.format },
     {
       id: "name",
       header: "File name",
@@ -173,8 +185,8 @@ export function ReportRunDetailPage() {
     },
     {
       id: "size",
-      header: "Size",
-      cell: (row) => `${row.byteSize.toLocaleString()} bytes`,
+      header: "File Size",
+      cell: (row) => formatFileSize(row.byteSize),
     },
     {
       id: "sha",
@@ -194,72 +206,28 @@ export function ReportRunDetailPage() {
             ? "Legal hold: kept until released"
             : "Kept permanently",
     },
-    {
-      id: "actions",
-      header: "",
-      cell: (row) => (
-        <div className="flex flex-wrap gap-2">
-          {run?.status === "COMPLETED" && !row.purgedAt && (
-            <Button
-              size="sm"
-              variant="outline-emerald"
-              onClick={() => void download(row)}
-            >
-              Download
-            </Button>
-          )}
-          {run?.status === "COMPLETED" &&
-            !row.purgedAt &&
-            row.format === "PDF" && (
-              <Button
-                size="sm"
-                variant="outline-emerald"
-                loading={previewBusy}
-                onClick={() => void preview(row)}
-              >
-                Preview
-              </Button>
-            )}
-          {canHold && !row.purgedAt && (
-            <Button
-              size="sm"
-              variant="outline-emerald"
-              onClick={() =>
-                setHold({
-                  artifactId: row.id,
-                  legalHold: !row.legalHold,
-                  reason: "",
-                  step: "form",
-                })
-              }
-            >
-              {row.legalHold ? "Release legal hold" : "Place legal hold"}
-            </Button>
-          )}
-        </div>
-      ),
-    },
   ];
-  const eventColumns: DataTableColumn<ReportRunDetail["events"][number]>[] = [
-    { id: "at", header: "When", cell: (row) => when(row.createdAt) },
-    { id: "event", header: "Event", cell: (row) => codeLabel(row.eventType) },
-    {
-      id: "reason",
-      header: "Reason",
-      cell: (row) => codeLabel(row.reasonCode),
+  // The last column is the fixed Action column of the table (it stays in view while the others scroll); its items are in the menu of the three dots, as in every table.
+  const fileMenu = usePortalDropdown();
+  const menuFile = run?.artifacts.find((artifact) => artifact.id === fileMenu.openId);
+  const artifactAction: DataTableAction<ReportArtifactSummary> = {
+    header: "Action",
+    cell: (row) => {
+      const ready = run?.status === "COMPLETED" && !row.purgedAt;
+      if (!ready && !(canHold && !row.purgedAt)) return null;
+      return (
+        <button
+          type="button"
+          ref={fileMenu.getRef(row.id)}
+          aria-label="More actions"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
+          onClick={(event) => fileMenu.toggle(row.id, event)}
+        >
+          <MoreVertical className="h-4 w-4" />
+        </button>
+      );
     },
-    {
-      id: "detail",
-      header: "Details",
-      cell: (row) => (
-        <pre className="whitespace-pre-wrap break-all text-xs">
-          {Object.keys(row.detail ?? {}).length
-            ? readableJson(row.detail)
-            : "—"}
-        </pre>
-      ),
-    },
-  ];
+  };
   const deliveryColumns: DataTableColumn<
     NonNullable<ReportRunDetail["deliveries"]>[number]
   >[] = [
@@ -287,7 +255,7 @@ export function ReportRunDetailPage() {
     () => [
       { id: "general", label: "General Information" },
       { id: "files", label: "Report Files", count: run?.artifacts.length },
-      { id: "timeline", label: "Timeline", count: run?.events.length },
+      { id: "audit", label: "Audit Trail" },
       { id: "notices", label: "Notices Sent", count: run?.deliveries?.length },
     ],
     [run],
@@ -364,22 +332,23 @@ export function ReportRunDetailPage() {
             <div className="space-y-4 p-4 md:p-5">
               {shownTab === "general" && (
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-                  <ReadonlyField label="Queued" value={when(run.queuedAt)} />
-                  <ReadonlyField label="Started" value={when(run.startedAt)} />
+                  <ReadonlyField label="Run Number" value={run.runLabel || "—"} />
+                  <ReadonlyField label="Queued At" value={when(run.queuedAt)} />
+                  <ReadonlyField label="Started At" value={when(run.startedAt)} />
                   <ReadonlyField
-                    label="Completed"
+                    label="Completed At"
                     value={when(run.completedAt)}
                   />
                   <ReadonlyField label="Data As Of" value={when(run.asOfAt)} />
                   <ReadonlyField
-                    label="Report Name"
+                    label="Generated Report Name"
                     value={run.reportTitle ?? run.definitionCode}
                   />
                   <ReadonlyField
-                    label="Status"
+                    label="Run Status"
                     value={runStatusLabel(run.status)}
                   />
-                  <ReadonlyField label="Progress" value={`${run.progress}%`} />
+                  <ReadonlyField label="Run Progress" value={`${run.progress}%`} />
                   <ReadonlyField
                     label="Attempts"
                     value={String(run.attemptCount)}
@@ -401,7 +370,7 @@ export function ReportRunDetailPage() {
                     value={run.requesterName ?? "—"}
                   />
                   <ReadonlyField
-                    label="Format Requested"
+                    label="Requested Output Format"
                     value={run.requestedFormat}
                   />
                   <ReadonlyField
@@ -428,15 +397,15 @@ export function ReportRunDetailPage() {
                     />
                   </div>
                   <ReadonlyField
-                    label="Template"
+                    label="Report Template Name"
                     value={template?.displayName ?? run.definitionCode}
                   />
                   <ReadonlyField
-                    label="Template Number"
+                    label="Report Template Number"
                     value={run.definitionCode}
                   />
                   <ReadonlyField
-                    label="Template Revision"
+                    label="Report Template Revision"
                     value={reportRevisionLabel(run.revision)}
                   />
                   <ReadonlyField
@@ -513,39 +482,68 @@ export function ReportRunDetailPage() {
                     </label>
                     <textarea
                       id="report-run-filters"
-                      value={readableJson(run.parameters ?? {}, 2)}
-                      rows={5}
+                      value={run.filterSummary || "—"}
+                      rows={3}
                       readOnly
-                      className={`${CONTROL_STATE_CLASSES.readonlyTextarea} font-mono text-xs`}
+                      className={CONTROL_STATE_CLASSES.readonlyTextarea}
                     />
                   </div>
                 </div>
               )}
               {shownTab === "files" && (
                 <>
+                  {run.artifacts.some((file) => file.format !== "PDF") && (
+                    <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 md:text-sm">
+                      A CSV or XLSX file is a data copy for analysis. It can be edited after it is downloaded, so it is not the controlled report: the controlled report is the file stored here.
+                      To check that a file you hold is the one EQMS produced, use Verify File in the Action menu.
+                    </p>
+                  )}
                   <DataTable
                     rows={run.artifacts}
                     getRowKey={(row) => row.id}
                     columns={artifactColumns}
+                    action={artifactAction}
                   />
-                  {previewUrl && (
-                    <div className="mt-4">
-                      <DocumentPdfViewer
-                        fileUrl={previewUrl}
-                        height="550px"
-                        minHeight="360px"
-                        forceHideDownloadAndPrint
-                      />
-                    </div>
+                  <PortalDropdownMenu isOpen={!!menuFile} onClose={fileMenu.close} position={fileMenu.position} minWidth={220}>
+                    {menuFile && (
+                      <div className="py-1">
+                        {run?.status === "COMPLETED" && !menuFile.purgedAt && (
+                          <DropdownMenuItem icon={<IconDownload className="h-4 w-4" />} onClick={() => { void download(menuFile); fileMenu.close(); }}>
+                            Download
+                          </DropdownMenuItem>
+                        )}
+                        {run?.status === "COMPLETED" && !menuFile.purgedAt && (
+                          <DropdownMenuItem icon={<IconEye className="h-4 w-4" />} onClick={() => { setPreviewing(menuFile); fileMenu.close(); }}>
+                            Preview
+                          </DropdownMenuItem>
+                        )}
+                        {run?.status === "COMPLETED" && !menuFile.purgedAt && (
+                          <DropdownMenuItem icon={<IconStackCheck  className="h-4 w-4" />} onClick={() => { setVerifying(menuFile); fileMenu.close(); }}>
+                            Verify File
+                          </DropdownMenuItem>
+                        )}
+                        {canHold && !menuFile.purgedAt && (
+                          <DropdownMenuItem
+                            icon={<IconLock className="h-4 w-4" />}
+                            onClick={() => {
+                              setHold({ artifactId: menuFile.id, legalHold: !menuFile.legalHold, reason: "", step: "form" });
+                              fileMenu.close();
+                            }}
+                          >
+                            {menuFile.legalHold ? "Release Legal Hold" : "Place Legal Hold"}
+                          </DropdownMenuItem>
+                        )}
+                      </div>
+                    )}
+                  </PortalDropdownMenu>
+                  {previewing && (
+                    <ReportArtifactPreview runId={runId} artifactId={previewing.id} format={previewing.format} title={previewing.generatedFilename} onClose={() => setPreviewing(null)} />
                   )}
                 </>
               )}
-              {shownTab === "timeline" && (
-                <DataTable
-                  rows={run.events}
-                  getRowKey={(row, index) => `${row.createdAt}-${index}`}
-                  columns={eventColumns}
-                />
+              {shownTab === "audit" && (
+                // The same Audit Trail tab as every other detail screen: the entries of this run and of its files (download, preview, verification, legal hold), and what the system did to the run.
+                <AuditTrailTab entityId={runId} entityType="REPORT_RUN" includeChildren documentNumber={run.runLabel} />
               )}
               {shownTab === "notices" &&
                 (run.deliveries == null ? (
@@ -603,6 +601,46 @@ export function ReportRunDetailPage() {
         </>
       )}
 
+      <FormModal
+        isOpen={!!verifying}
+        onClose={closeVerify}
+        title="Verify File"
+        description={`Choose the copy of ${verifying?.generatedFilename ?? "the file"} that you hold. It is read here to calculate its SHA-256 and is not kept. The result is recorded in the Audit Trail.`}
+        confirmText="Check File"
+        confirmDisabled={!verifyFile}
+        isLoading={verifyBusy}
+        onConfirm={() => void checkFile()}
+      >
+        <TrainingFileDropzone
+          label="File to check"
+          accept=".csv,.xlsx,.pdf"
+          hint="CSV, XLSX or PDF file (max 50 MB)"
+          maxMb={50}
+          required
+          file={verifyFile}
+          uploading={verifyBusy ? { percent: verifyPercent } : undefined}
+          onChange={(file) => {
+            setVerifyFile(file);
+            setVerifyResult(null);
+            setVerifyError("");
+          }}
+        />
+        {verifyError && <p role="alert" className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{verifyError}</p>}
+        {verifyResult && (
+          <div role="status" className={`mt-3 rounded-lg px-3 py-2 text-sm ${verifyResult.match ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+            <p className="font-medium">
+              {verifyResult.match
+                ? "This file is exactly the file EQMS stored for this run."
+                : "This file is NOT the file EQMS stored for this run. It has been changed, or it is a different file."}
+            </p>
+            <dl className="mt-2 space-y-1 break-all text-xs">
+              <div><dt className="inline font-medium">Stored SHA-256: </dt><dd className="inline">{verifyResult.storedSha256}</dd></div>
+              <div><dt className="inline font-medium">Your file SHA-256: </dt><dd className="inline">{verifyResult.uploadedSha256}</dd></div>
+              <div><dt className="inline font-medium">Size: </dt><dd className="inline">stored {formatFileSize(verifyResult.storedSize)}, your file {formatFileSize(verifyResult.uploadedSize)}</dd></div>
+            </dl>
+          </div>
+        )}
+      </FormModal>
       <FormModal
         isOpen={hold?.step === "form"}
         onClose={() => setHold(undefined)}

@@ -22,6 +22,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { metadataApi } from "@/services/api/metadata";
 import { knowledgeSharesApi, type KnowledgeShareRow } from "@/services/api/knowledgeShares";
 import { formatDateTime } from "@/utils/format";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const EFFECT_OPTIONS: SelectOption[] = [
   { value: "ALL", label: "All" },
@@ -51,7 +52,7 @@ export const KnowledgeSharesPanel: React.FC = () => {
   const [loadError, setLoadError] = useState(false);
 
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [departmentId, setDepartmentId] = useState("");
   const [effect, setEffect] = useState("ALL");
   const [sortKey, setSortKey] = useState("createdAt");

@@ -66,10 +66,8 @@ describe('EffectiveByTypePanel', () => {
     expect(within(sop).getByText('12')).toBeInTheDocument();
     expect(within(sop).getByText('67%')).toBeInTheDocument(); // 12 of 18
     expect(within(panel).getByText('Effective')).toBeInTheDocument();
-    // The ring has a tooltip, and it sits above the figure written in the middle of the ring (which is drawn after the chart).
-    const tooltip = panel.querySelector<HTMLElement>('.recharts-tooltip-wrapper');
-    expect(tooltip).not.toBeNull();
-    expect(Number(tooltip?.style.zIndex)).toBeGreaterThanOrEqual(50);
+    // The ring is a Chart.js doughnut on a canvas (its tooltip is drawn by Chart.js on that canvas, above the figure written in the middle).
+    expect(panel.querySelector('canvas')).not.toBeNull();
   });
 
   it('moves between the views in both directions and shows only one of them at a time', async () => {

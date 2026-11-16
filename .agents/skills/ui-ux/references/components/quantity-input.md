@@ -59,8 +59,7 @@ cân nặng) thì dùng ô nhập thường (`input.md`), không dùng khuôn n�
 - **Nền rê của nút − + là ô vuông `size-8 rounded-lg` thụt vào giữa ô**, cùng khuôn nút
   xoá trong ô tìm (`input.md`, `N5`). **Không** cho nền rê phủ kín cả khúc cao từ viền tới
   viền: nền đó cắt ngang lưng chừng khung, không vạch chia nào đỡ mép trong, một bên vuông
-  thành một bên theo góc bo, trông như ô bị khuyết một mảng (đã dính 26/09/2026 ở
-  `/components`). Vùng **bấm** vẫn là cả khúc cao, `w-11` màn hẹp, `md:w-10` (`N9`); chỉ
+  thành một bên theo góc bo, trông như ô bị khuyết một mảng. Vùng **bấm** vẫn là cả khúc cao, `w-11` màn hẹp, `md:w-10` (`N9`); chỉ
   phần **nhìn thấy** là thụt vào.
 - Icon `Minus` / `Plus` `size-4`, `text-muted`, rê vào đậm lên `text-foreground`.
 - Tới đầu nào thì nút phía đó `disabled`: mờ `opacity-50`, con trỏ cấm, rê không đổi nền.
@@ -80,8 +79,7 @@ cân nặng) thì dùng ô nhập thường (`input.md`), không dùng khuôn n�
 - **`maxLength` bằng số chữ số của `max` cộng một**, không bằng đúng số chữ số. Bằng đúng
   thì trình duyệt cắt bớt chữ số thừa trước khi ô kịp kéo về: kho còn 8 mà gõ 20 ra 2, ô
   tới 99 mà dán 150 ra 15, một số sai lặng lẽ thay vì số tối đa. Thêm một chữ số thì số
-  bị cắt vẫn luôn lớn hơn `max`, và kéo về đúng `max` (đã dính 26/09/2026 ở `/components`:
-  mẫu cũ ghi `String(max).length`, ngược với câu "gõ 20 thì về 8" ngay bên dưới).
+  bị cắt vẫn luôn lớn hơn `max`, và kéo về đúng `max`.
 - Phím trong ô theo mẫu spinbutton: mũi tên lên xuống đổi 1, PageUp/PageDown đổi 10,
   Home/End về `min`/`max`.
 - Hai nút `tabIndex={-1}`: ô số đã đổi được bằng phím, Tab qua ba điểm dừng cho một ô là
@@ -93,11 +91,18 @@ cân nặng) thì dùng ô nhập thường (`input.md`), không dùng khuôn n�
 - **Giới hạn biết trước là `max`, không phải lỗi.** Kho còn 8 thì `max={8}`: nút + mờ ở 8,
   gõ 20 thì về 8, dòng gợi ý dưới ô nói con số thật: *"Còn 8 sản phẩm."* Không để
   `max={99}` rồi báo lỗi khi người dùng vượt 8: để người ta bấm một nút rồi mới mắng là
-  nút đó không nên bấm được (đã dính 26/09/2026: ví dụ "Kho chỉ còn 8 sản phẩm" mà
-  nút + vẫn bấm được tới 99).
+  nút đó không nên bấm được.
 - **Trạng thái lỗi dành cho điều ô không biết trước**: kho giảm sau khi hàng đã nằm trong
   giỏ, server từ chối lúc đặt. Khi đó `max` đã là 8 mà số đang là 12: viền đỏ, nút + mờ,
   câu lỗi thay dòng gợi ý và nói cách sửa (*"Kho vừa giảm còn 8, giảm xuống 8 hoặc ít
   hơn."*). Bấm − một lần thì về thẳng 8.
 - Dòng gợi ý nói giới hạn thật của thứ đang mua, không phải khoảng kỹ thuật chung chung
   ("Từ 1 đến 99"). Không có giới hạn đáng nói thì không có dòng gợi ý.
+
+---
+
+## Kiểm trước khi giao
+
+Chạy cùng cổng 2 của `checklist.md` khi trang có đúng thứ này.
+
+- [ ] **Ô số lượng − +**: rê vào nút thì nền là ô vuông bo thụt vào, hay một mảng phủ kín từ viền tới viền cắt ngang lưng chừng khung? Giới hạn biết trước (tồn kho) đã là `max` để nút + mờ ở đó chưa, hay vẫn bấm được rồi mới báo lỗi? Dòng gợi ý nói giới hạn thật ("Còn 8 sản phẩm"), không phải "Từ 1 đến 99" (`components/quantity-input.md`).

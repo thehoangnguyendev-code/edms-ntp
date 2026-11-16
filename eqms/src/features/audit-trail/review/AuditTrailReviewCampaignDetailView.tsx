@@ -45,6 +45,7 @@ import { formatDateTime, formatDateUS } from "@/utils/format";
 import { auditTrailReviewCampaignDetail as breadcrumb } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { formatAuditActionLabel, formatAuditModuleLabel } from "../utils/actionBadge";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const DECISION_OPTIONS = [
   { label: "All", value: "ALL" },
@@ -168,7 +169,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
   const [initialLoading, setInitialLoading] = useState(true);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const searchQuery = useDebounce(search, 350);
+  const searchQuery = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [decision, setDecision] = useState("ALL");
   const [sortBy, setSortBy] = useState<SortKey>("timestamp");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");

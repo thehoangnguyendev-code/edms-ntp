@@ -119,6 +119,6 @@ class UncontrolledCopyValidityIntegrationTest {
         UncontrolledCopyRequestContextResponse context = service.getRequestContext(document.getId().toString(), null);
 
         assertThat(context.canRequest()).isFalse();
-        assertThat(context.message()).contains("already passed");
+        assertThat(context.message()).contains("has passed");
     }
 }

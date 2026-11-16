@@ -11,6 +11,12 @@ package com.eqms.util;
  */
 public final class CsvSafety {
 
+    /**
+     * Byte order mark written at the very start of every CSV file that is exported. It is the three bytes EF BB BF of UTF-8; Excel and the other
+     * spreadsheet programs read it as "this file is UTF-8", so Vietnamese text opens correctly and the program does not ask for the encoding.
+     */
+    public static final String BOM = "﻿";
+
     private CsvSafety() {
     }
 

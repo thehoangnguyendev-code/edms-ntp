@@ -22,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -208,7 +209,8 @@ public class OnlyOfficeDocumentEditService {
 
         ObjectNode documentNode = objectMapper.createObjectNode();
         documentNode.put("fileType", fileExtension(fileName));
-        documentNode.put("key", (purpose + "-" + fileId + "-" + (sha256 == null ? "0" : sha256.substring(0, Math.min(12, sha256.length())))).replace("_", "-"));
+        // The extension is part of the key: the document server remembers a failed conversion by key, and a file opened with the wrong viewer once must not stay failed.
+        documentNode.put("key", (purpose + "-" + fileId + "-" + (sha256 == null ? "0" : sha256.substring(0, Math.min(12, sha256.length()))) + ("docx".equals(fileExtension(fileName)) ? "" : "-" + fileExtension(fileName))).replace("_", "-"));
         documentNode.put("title", fileName);
         documentNode.put("url", config.callbackBaseUrl() + "/onlyoffice/stored-file/" + purpose + "/" + fileId + "?token=" + accessToken);
         ObjectNode permissions = objectMapper.createObjectNode();
@@ -239,7 +241,8 @@ public class OnlyOfficeDocumentEditService {
         editorConfigNode.set("customization", customization);
 
         ObjectNode rootConfig = objectMapper.createObjectNode();
-        rootConfig.put("documentType", "word");
+        // A spreadsheet or a CSV is shown by the spreadsheet viewer; the Word files of training stay "word" (REPORT-ARTIFACT-PREVIEW-2026-11-14).
+        rootConfig.put("documentType", Set.of("xlsx", "csv").contains(fileExtension(fileName)) ? "cell" : "word");
         rootConfig.set("document", documentNode);
         rootConfig.set("editorConfig", editorConfigNode);
         rootConfig.put("token", signConfig(rootConfig, config.jwtSecret()));

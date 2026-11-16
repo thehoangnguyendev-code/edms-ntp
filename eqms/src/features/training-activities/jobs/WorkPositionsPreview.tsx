@@ -5,6 +5,7 @@ import { FilterSearchInput } from "@/components/ui/filter/FilterSearchInput";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useDebounce } from "@/hooks/useDebounce";
 import { trainingJobsApi, trainingMatrixApi } from "@/services/api/trainingActivities";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type Position = { id: string; name: string; carried: boolean; department?: string };
 
@@ -21,7 +22,7 @@ export function WorkPositionsPreview({ assignmentId, personId, personName, posit
   const [retry, setRetry] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   useEffect(() => {
     if (!open || search !== debouncedSearch) return;
     let cancelled = false;

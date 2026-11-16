@@ -135,11 +135,12 @@ class ReportDocumentSourcesTest {
                 scope -> List.of("PERSONAL", "DEPARTMENT", "BUSINESS_UNIT", "SYSTEM").indexOf(scope))).toList());
     }
 
-    /** What must never be offered as a column of a document report: a secret, a file, a free text of a person. */
+    /** What must never be offered as a column of a document report: a secret, a file, a long free text. */
     @ParameterizedTest @MethodSource("providers")
     void noSecretFileOrFreeTextIsAColumn(ReportMetadataProvider provider) {
         var forbidden = List.of("access_token", "preview_password", "recipient_signature", "checksum", "file_path", "storage_", "source_storage", "password", "token",
-                "scan_token", "description", "rejection_reason", "cancel_reason", "recall_reason", "destroy_reason", "distribution_list", "custom_placeholder");
+                "scan_token", "description", "distribution_list", "custom_placeholder", "preview_password_hash", "recipient_snapshot", "marking_layout");
+        // REPORT-FIELD-CATALOG-2026-11-15: the reasons of a lifecycle step (rejection, recall, destruction, cancellation) are metadata a report may carry.
         for (var sql : provider.columns().values()) {
             for (var word : forbidden) assertFalse(sql.toLowerCase().contains(word), provider.code() + " must not report " + word + " (" + sql + ")");
         }

@@ -1,3 +1,4 @@
+import { downloadTableExcel } from '@/services/api/tableExport';
 ﻿import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -56,6 +57,7 @@ import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/Filter
 import { FilterOptionButton } from "@/components/ui/filter/FilterOptionButton";
 import { IconFilter2 } from "@tabler/icons-react";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 // Helper functions
 const getTypeIcon = (type: NotificationType) => {
@@ -588,7 +590,7 @@ export const NotificationsView: React.FC = () => {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadNotifications(false);
-    }, 250);
+    }, SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
   }, [loadNotifications, currentPage, itemsPerPage]);
 
@@ -731,7 +733,7 @@ export const NotificationsView: React.FC = () => {
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const result = await notificationApi.getNotifications({
+      await downloadTableExcel('notifications', {
         scope: activeScope,
         search: search || undefined,
         module: module === "all" ? undefined : module,
@@ -741,35 +743,7 @@ export const NotificationsView: React.FC = () => {
         dateTo: dateTo || undefined,
         sortBy: resolveSortBy(sortConfig.key),
         sortDirection: sortConfig.direction,
-        page: 1,
-        limit: 500,
       });
-
-      const rows = result.data.map(mapNotificationToViewModel);
-      const headers = ["No.", "Title", "Description", "Module", "Priority", "Status", "Type", "Sender", "Related Item", "Time"];
-      const csvRows = [
-        headers.join(","),
-        ...rows.map((n, i) => [
-          i + 1,
-          `"${(n.title || "").replace(/"/g, '""')}"`,
-          `"${(n.description || "").replace(/"/g, '""')}"`,
-          `"${(n.module || "").replace(/"/g, '""')}"`,
-          n.priority,
-          n.status,
-          n.type,
-          `"${(n.sender?.fullName || "").replace(/"/g, '""')}"`,
-          `"${(n.relatedItem?.documentNumber || "").replace(/"/g, '""')}"`,
-          `"${n.createdAt}"`,
-        ].join(",")),
-      ];
-
-      const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `notifications_${new Date().toISOString().slice(0, 10)}.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Failed to export notifications", error);
       showToast({ type: "error", title: "Failed to export notifications", message: "Please try again." });

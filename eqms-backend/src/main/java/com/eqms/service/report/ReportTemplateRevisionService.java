@@ -156,6 +156,9 @@ public class ReportTemplateRevisionService {
         return revision + ".0.0";
     }
 
+    /** Whether the template was used for GMP decisions in this revision: the content of the revision when it keeps one, else the live rows (a first revision still being written). */
+    static final String GMP_SQL = "coalesce((r.snapshot->>'gmpUse')::boolean, d.gmp_use)";
+
     /** SQL form of the label above for the columns r.revision and r.status. */
     static final String LABEL_SQL = "(case when r.status in ('DRAFT','PENDING_APPROVAL','DISCARDED') then (r.revision - 1) || '.0.1' else r.revision || '.0.0' end)";
 
@@ -191,6 +194,72 @@ public class ReportTemplateRevisionService {
         return Map.of("data", rows, "pagination", Map.of("page", safePage, "limit", safeLimit, "total", total, "totalPages", (total + safeLimit - 1) / safeLimit));
     }
 
+    /**
+     * The revisions of every template, as a list of its own (REPORT-TEMPLATE-REVISIONS-LIST-2026-11-15), like the Document Revisions list: filtered by status, by GMP use and by
+     * data source, searched by template number, name, revision or person, sorted and paged on the server. scope "pending-approval" is what the person may decide now: a revision
+     * waiting for approval, which they hold the permission to approve (GMP approval for a GMP template) and did not write or submit themselves.
+     */
+    public Map<String, Object> listAll(UserAccount actor, String scope, String status, String gmp, String source, String search, String sortBy, String sortDirection, int page, int limit) {
+        return listAll(actor, scope, status, gmp, source, search, null, null, sortBy, sortDirection, page, limit);
+    }
+
+    /** The same list with a "Last Updated" range (yyyy-MM-dd, both days included) on the moment the revision was last changed. */
+    public Map<String, Object> listAll(UserAccount actor, String scope, String status, String gmp, String source, String search, String updatedFrom, String updatedTo, String sortBy, String sortDirection, int page, int limit) {
+        requireView(actor);
+        if (status != null && !status.isBlank() && !"ALL".equals(status) && !STATUSES.contains(status)) throw new IllegalArgumentException("REPORT_FILTER_NOT_ALLOWED");
+        if (gmp != null && !gmp.isBlank() && !Set.of("YES", "NO").contains(gmp)) throw new IllegalArgumentException("REPORT_FILTER_NOT_ALLOWED");
+        if (scope != null && !scope.isBlank() && !Set.of("all", "pending-approval").contains(scope)) throw new IllegalArgumentException("REPORT_FILTER_NOT_ALLOWED");
+        if (source != null && source.length() > 100) throw new IllegalArgumentException("REPORT_FILTER_NOT_ALLOWED");
+        String term = search == null ? "" : search.trim();
+        if (term.length() > 200) throw new IllegalArgumentException("REPORT_FILTER_NOT_ALLOWED");
+        String pattern = "%" + term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+        String order = switch (sortBy == null ? "lastChangedAt" : sortBy) {
+            case "templateNumber" -> "d.code";
+            case "templateName" -> "coalesce(r.snapshot->>'displayName', d.display_name)";
+            case "revision" -> "r.revision";
+            case "status" -> "r.status";
+            case "gmpUse" -> GMP_SQL;
+            case "lastChangedAt" -> "r.last_changed_at";
+            case "effectiveAt" -> "r.effective_at";
+            default -> throw new IllegalArgumentException("REPORT_SORT_NOT_ALLOWED");
+        };
+        String direction = "asc".equalsIgnoreCase(sortDirection) ? "asc" : "desc";
+        int safeLimit = Math.max(1, Math.min(limit, MAX_PAGE));
+        int safePage = Math.max(1, page);
+        StringBuilder where = new StringBuilder(" from report_template_revisions r join report_definitions d on d.code=r.definition_code"
+                + " left join app_users c on c.id=r.created_by_user_id left join app_users l on l.id=r.last_changed_by_user_id left join app_users a on a.id=r.approved_by_user_id"
+                + " where d.deleted_at is null and (d.code ilike ? or coalesce(r.snapshot->>'displayName', d.display_name) ilike ? or " + LABEL_SQL + " ilike ?"
+                + " or coalesce(c.full_name,'') ilike ? or coalesce(l.full_name,'') ilike ? or coalesce(r.change_reason,'') ilike ?)");
+        List<Object> args = new ArrayList<>(List.of(pattern, pattern, pattern, pattern, pattern, pattern));
+        if (status != null && !status.isBlank() && !"ALL".equals(status)) { where.append(" and r.status=?"); args.add(status); }
+        if ("YES".equals(gmp)) where.append(" and ").append(GMP_SQL);
+        if ("NO".equals(gmp)) where.append(" and not ").append(GMP_SQL);
+        if (source != null && !source.isBlank()) { where.append(" and d.source_code=?"); args.add(source); }
+        if (updatedFrom != null && !updatedFrom.isBlank()) { where.append(" and r.last_changed_at >= cast(? as date)"); args.add(java.time.LocalDate.parse(updatedFrom.trim()).toString()); }
+        if (updatedTo != null && !updatedTo.isBlank()) { where.append(" and r.last_changed_at < cast(? as date) + interval '1 day'"); args.add(java.time.LocalDate.parse(updatedTo.trim()).toString()); }
+        if ("pending-approval".equals(scope)) {
+            Set<String> held = permissions.getEffectivePermissionCodes(actor);
+            String me = actor.getId().toString();
+            // Waiting for approval, and the person may decide it: GMP approval for a GMP template, the ordinary approval for the others.
+            where.append(" and r.status='PENDING_APPROVAL' and (((").append(GMP_SQL).append(") and ?) or (not (").append(GMP_SQL).append(") and ?))");
+            args.add(held.contains("reports.definition.approve_gmp"));
+            args.add(held.contains("reports.definition.approve"));
+            // The author and the submitter of a revision do not decide it.
+            where.append(" and coalesce(cast(r.last_changed_by_user_id as text),'') <> ? and coalesce(cast(r.submitted_by_user_id as text),'') <> ?");
+            args.add(me);
+            args.add(me);
+        }
+        long total = Objects.requireNonNullElse(jdbc.queryForObject("select count(*)" + where, Long.class, args.toArray()), 0L);
+        args.add(safeLimit);
+        args.add((safePage - 1L) * safeLimit);
+        var rows = jdbc.queryForList("select d.code as \"definitionCode\", coalesce(r.snapshot->>'displayName', d.display_name) as \"displayName\", d.source_code as \"sourceCode\","
+                + " r.revision, r.status, " + GMP_SQL + " as \"gmpUse\", r.approval_basis as \"approvalBasis\", r.change_reason as \"changeReason\", r.created_at as \"createdAt\","
+                + " c.full_name as \"createdByName\", r.last_changed_at as \"lastChangedAt\", l.full_name as \"lastChangedByName\", r.submitted_at as \"submittedAt\","
+                + " r.approved_at as \"approvedAt\", a.full_name as \"approvedByName\", r.effective_at as \"effectiveAt\""
+                + where + " order by " + order + " " + direction + " nulls last, d.code asc, r.revision desc limit ? offset ?", args.toArray());
+        return Map.of("data", rows, "pagination", Map.of("page", safePage, "limit", safeLimit, "total", total, "totalPages", (total + safeLimit - 1) / safeLimit));
+    }
+
     /** One revision with all its content. The content of the open revision of a never-approved template is read from the live rows by the caller. */
     public Map<String, Object> detail(UserAccount actor, String code, int revision, Map<String, Object> liveContent) {
         requireView(actor);
@@ -216,6 +285,8 @@ public class ReportTemplateRevisionService {
         result.put("submittedByName", row.get("submitted_by_name"));
         result.put("approvedAt", row.get("approved_at"));
         result.put("approvedByName", row.get("approved_by_name"));
+        // APPROVED: a person approved it. NOT_REQUIRED: only on a revision that came into force when it was saved, under the rule that ended on 2026-11-15 (REPORT-ALL-TEMPLATES-APPROVED).
+        result.put("approvalBasis", row.get("approval_basis"));
         result.put("approvalComment", row.get("approval_comment"));
         result.put("effectiveAt", row.get("effective_at"));
         result.put("discardedAt", row.get("discarded_at"));

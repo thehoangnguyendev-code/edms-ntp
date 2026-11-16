@@ -97,25 +97,7 @@ class DocumentObsoleteCascadeAndPreconditionTest {
     @AfterEach
     void cleanup() {
         org.springframework.security.core.context.SecurityContextHolder.clearContext();
-        DocumentStatusDefinition closedCancelledDoc = documentStatusRepository.findById("CLOSED_CANCELLED").orElse(null);
-        RevisionStatusDefinition closedCancelledRev = revisionStatusRepository.findById("CLOSED_CANCELLED").orElse(null);
-        TransactionTemplate tx = new TransactionTemplate(transactionManager);
-        tx.executeWithoutResult(status -> {
-            for (UUID documentId : createdDocumentIds) {
-                if (closedCancelledRev != null) {
-                    revisionRepository.findAllByDocument_IdOrderByCreatedAtDesc(documentId).forEach(r -> {
-                        r.setStatus(closedCancelledRev);
-                        revisionRepository.save(r);
-                    });
-                }
-                if (closedCancelledDoc != null) {
-                    documentRepository.findById(documentId).ifPresent(d -> {
-                        d.setStatus(closedCancelledDoc);
-                        documentRepository.save(d);
-                    });
-                }
-            }
-        });
+        LifecycleFixtureCleanup.putAway(new TransactionTemplate(transactionManager), documentRepository, revisionRepository, documentStatusRepository, revisionStatusRepository, controlledCopyRepository, createdDocumentIds);
     }
 
     private DocumentRecord newActiveDocument(String prefix) {

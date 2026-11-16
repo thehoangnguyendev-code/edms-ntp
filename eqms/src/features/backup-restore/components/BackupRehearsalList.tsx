@@ -7,7 +7,9 @@ import { backupRestoreApi, type RestoreRehearsal } from "@/services/api/backupRe
 import { getApiErrorMessage } from "@/utils/apiError";
 import { formatDateTime } from "../format";
 import { statusLabel } from "../types";
+import { BackupExportButton } from "./BackupExportButton";
 import { ServerListPanel } from "./ServerListPanel";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type SortKey = "status" | "requestedBy" | "requestedAt";
 
@@ -22,7 +24,7 @@ const STATUS_OPTIONS = [
 /** The test restores of one backup: searched, filtered, sorted and paged by the server, like every other list of this module. */
 export function BackupRehearsalList({ backupNumber, reloadKey }: { backupNumber: string; reloadKey: number }) {
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -112,6 +114,12 @@ export function BackupRehearsalList({ backupNumber, reloadKey }: { backupNumber:
       pageSize={pageSize}
       onPageChange={setPage}
       onPageSizeChange={setPageSize}
+      toolbarActions={
+        <BackupExportButton
+          dataset="backup-rehearsals"
+          params={{ backupNumber, search: debouncedSearch.trim() || undefined, status: status || undefined, sortBy: sort.key, sortDirection: sort.direction }}
+        />
+      }
     />
   );
 }

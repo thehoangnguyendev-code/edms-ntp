@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { usePermissions } from "@/hooks/usePermissions";
 import { settingsApi } from "@/services/api/settings";
@@ -194,7 +195,7 @@ export const TimeLimitedUserDetailView: React.FC = () => {
             <DetailField label="Notify on Expiry">
               <Badge
                 size="sm"
-                color={grant.notifyEmailOnExpiry ? "emerald" : "slate"}
+                color={flagColor(grant.notifyEmailOnExpiry)}
               >
                 {grant.notifyEmailOnExpiry ? "Yes" : "No"}
               </Badge>

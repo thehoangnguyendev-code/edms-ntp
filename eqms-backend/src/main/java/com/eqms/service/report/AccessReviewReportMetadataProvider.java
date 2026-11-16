@@ -13,6 +13,7 @@ import java.util.*;
 public class AccessReviewReportMetadataProvider implements ReportMetadataProvider {
     private static final Map<String, String> COLUMNS = new LinkedHashMap<>();
     private static final Map<String, String> LABELS = new LinkedHashMap<>();
+    private static final Map<String, String> GROUPS = new LinkedHashMap<>();
     static {
         column("campaign", "Campaign", "c.name");
         column("periodStart", "Review Period Start", "c.review_period_start");
@@ -28,8 +29,15 @@ public class AccessReviewReportMetadataProvider implements ReportMetadataProvide
         column("decision", "Decision", "initcap(replace(i.decision, '_', ' '))");
         column("decidedBy", "Decided By", "db.full_name");
         column("decidedAt", "Decided At", ReportQueryKit.timestamp("i.decided_at"));
+        // REPORT-FIELD-CATALOG-2026-11-15: more of the metadata the source holds.
+        group("Decision", "decisionNote", "Decision Note", "i.decision_note");
+        group("Campaign", "reviewer", "Campaign Reviewer", ReportQueryKit.person("c.reviewer_id"));
+        group("Campaign", "campaignSignedAt", "Campaign Signed At", ReportQueryKit.timestamp("c.signed_at"));
+        group("Campaign", "campaignCreatedAt", "Campaign Created At", ReportQueryKit.timestamp("c.created_at"));
     }
     private static void column(String code, String label, String sql) { COLUMNS.put(code, sql); LABELS.put(code, label); }
+    private static void group(String group, String code, String label, String sql) { column(code, label, sql); GROUPS.put(code, group); }
+    @Override public Map<String, String> fieldGroups() { return GROUPS; }
 
     private static final Set<String> FILTERS = Set.of("search", "campaign", "decision", "campaignStatus", "decidedFrom", "decidedTo");
 
@@ -40,7 +48,7 @@ public class AccessReviewReportMetadataProvider implements ReportMetadataProvide
     public List<String> usePermissions() { return List.of("security.access_review.view"); }
     public List<String> allowedScopes() { return List.of("SYSTEM"); }
     public Map<String, String> columns() { return COLUMNS; }
-    @Override public Set<String> dateColumns() { return new LinkedHashSet<>(List.of("periodStart", "periodEnd", "decidedAt")); }
+    @Override public Set<String> dateColumns() { return new LinkedHashSet<>(List.of("periodStart", "periodEnd", "decidedAt", "campaignSignedAt", "campaignCreatedAt")); }
     public Map<String, String> labels() { return LABELS; }
     public String identityColumn() { return "i.id"; }
     public String defaultSort() { return "campaign"; }

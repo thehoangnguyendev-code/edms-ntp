@@ -1,3 +1,4 @@
+import { downloadTableExcel } from '@/services/api/tableExport';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useToast } from "@/components/ui/toast";
@@ -6,6 +7,7 @@ import { dictionaryApi } from "@/services/api";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 import type { User, UserRoleLabel, UserStatus, TableColumn } from "../../types";
 import { useDebounce } from "@/hooks";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type LookupOption = { label: string; value: string };
 
@@ -174,7 +176,7 @@ export function useUserList() {
   const [lookupPositions, setLookupPositions] = useState<LookupOption[]>([]);
   const [allDepartments, setAllDepartments] = useState<{ name: string; businessUnit: string }[]>([]);
 
-  const debouncedSearch = useDebounce(searchQuery, 300);
+  const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
 
   // Query state can change without unmounting when the user presses Back or
   // Forward. Rehydrate controls from it before the fetch effect is evaluated.
@@ -502,7 +504,7 @@ export function useUserList() {
 
   const exportToExcel = async (_columns: TableColumn[]) => {
     try {
-      const blob = await settingsApi.exportUsers({
+      await downloadTableExcel('users', {
         search: debouncedSearch.trim() || undefined,
         role: roleFilter === "All" ? undefined : roleFilter,
         position: positionFilter || undefined,
@@ -518,17 +520,10 @@ export function useUserList() {
         suspendTo: suspendTo || undefined,
         terminateFrom: terminateFrom || undefined,
         terminateTo: terminateTo || undefined,
+        sortBy: sortConfig.key,
+        sortDirection: sortConfig.direction,
         includeTerminated: showTerminated || statusFilter === "Terminated",
       });
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `users_export_${new Date().toISOString().split("T")[0]}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
 
       showToast({
         type: "success",

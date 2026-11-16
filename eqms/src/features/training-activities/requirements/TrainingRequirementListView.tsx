@@ -15,6 +15,7 @@ import {
   IconPlus,
   IconPrinter,
   IconStar,
+  IconTag,
 } from "@tabler/icons-react";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { usePortalDropdown } from "@/hooks/usePortalDropdown";
@@ -347,7 +348,7 @@ export function TrainingRequirementListView() {
               },
               {
                 show: actionRow.actions?.track,
-                icon: <IconStar className="h-4 w-4" />,
+                icon: <IconTag className="h-4 w-4" />,
                 label: "Follow Training Requirement",
                 run: () =>
                   navigate(

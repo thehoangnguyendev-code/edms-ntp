@@ -165,8 +165,13 @@ class ReportTemplateRevisionActionsTest {
     }
 
     private void effectiveWithoutOpenRevision() {
+        effectiveWithoutOpenRevision(false);
+    }
+
+    /** gmp: the template is used for GMP decisions, so a change to it goes through approval (REPORT-NON-GMP-NO-APPROVAL-2026-11-15). */
+    private void effectiveWithoutOpenRevision(boolean gmp) {
         var row = new HashMap<String, Object>();
-        row.put("active", true); row.put("deleted_at", null); row.put("gmp_use", false); row.put("approval_status", "APPROVED");
+        row.put("active", true); row.put("deleted_at", null); row.put("gmp_use", gmp); row.put("approval_status", "APPROVED");
         when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(row));
         when(revisions.effective(CODE)).thenReturn(Map.of("revision", 2));
         when(revisions.open(CODE)).thenReturn(null);
@@ -174,7 +179,7 @@ class ReportTemplateRevisionActionsTest {
 
     @Test
     void theActionsOfATemplateFollowThePermissionsOfTheUserNotTheirAccount() {
-        effectiveWithoutOpenRevision();
+        effectiveWithoutOpenRevision(true);
         var author = service.capabilities(userWith("reports.catalog.view", "reports.definition.manage", "reports.definition.upgrade"), CODE).actions();
         assertThat(author.get("upgrade").allowed()).isTrue();
         assertThat(author.get("edit").allowed()).isFalse();
@@ -192,7 +197,7 @@ class ReportTemplateRevisionActionsTest {
 
     @Test
     void anOpenRevisionAllowsEditAndDiscardAndTheStateStopsUpgrade() {
-        effectiveWithoutOpenRevision();
+        effectiveWithoutOpenRevision(true);
         when(revisions.open(CODE)).thenReturn(open("DRAFT", true));
         var actions = service.capabilities(userWith("reports.catalog.view", "reports.definition.manage", "reports.definition.upgrade", "reports.definition.discard_revision"), CODE).actions();
         assertThat(actions.get("edit").allowed()).isTrue();
@@ -200,6 +205,19 @@ class ReportTemplateRevisionActionsTest {
         assertThat(actions.get("submitForApproval").allowed()).isTrue();
         assertThat(actions.get("upgrade").allowed()).isFalse();
         assertThat(actions.get("upgrade").reasonCode()).isEqualTo("REPORT_REVISION_ALREADY_OPEN");
+    }
+
+    /** REPORT-ALL-TEMPLATES-APPROVED-2026-11-15: whatever its use, a template in force is changed through Upgrade, and its revision is submitted and approved. */
+    @Test
+    void everyTemplateInForceNeedsUpgradeBeforeAnEditWhateverItsUse() {
+        for (boolean gmp : new boolean[]{false, true}) {
+            effectiveWithoutOpenRevision(gmp);
+            var actions = service.capabilities(userWith("reports.catalog.view", "reports.definition.manage", "reports.definition.upgrade"), CODE).actions();
+            assertThat(actions.get("edit").allowed()).as("gmp=" + gmp).isFalse();
+            assertThat(actions.get("edit").reasonCode()).isEqualTo("REPORT_UPGRADE_REQUIRED");
+            assertThat(actions.get("upgrade").allowed()).isTrue();
+            assertThat(actions.get("submitForApproval").allowed()).as("nothing to submit before an edit").isFalse();
+        }
     }
 
     @Test

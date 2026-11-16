@@ -10,6 +10,7 @@ public record DocumentRelationResponse(
         @JsonProperty("revisionNumber")
         String version,
         String status,
+        String statusCode,
         String type,
         String businessUnit,
         String department,

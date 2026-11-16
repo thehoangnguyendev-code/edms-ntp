@@ -12,6 +12,7 @@ import { StatusBadge, type StatusType } from "@/components/ui/badge/Badge";
 import { documentApi } from "@/services/api/documents";
 import type { DocumentListItem } from "@/features/documents/document-list/types";
 import { ParentDocument, RelatedDocument } from "../types";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const mapDocumentListItemToRelation = (item: DocumentListItem): RelatedDocument => ({
   id: item.id,
@@ -150,7 +151,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
       } finally {
         setIsRelatedLoading(false);
       }
-    }, 300);
+    }, SEARCH_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
   }, [isRelatedModalOpen, searchQuery, tempCorrelatedDocuments, tempRelatedDocuments, currentDocumentId]);
@@ -184,7 +185,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
         console.error("Failed to search related selected documents", error);
         setRelatedSelectedRemoteDocs([]);
       }
-    }, 300);
+    }, SEARCH_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
   }, [isRelatedModalOpen, selectedSearchQuery, tempRelatedDocuments]);
@@ -221,7 +222,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
       } finally {
         setIsCorrelatedLoading(false);
       }
-    }, 300);
+    }, SEARCH_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
   }, [isParentModalOpen, correlatedSearchQuery, tempCorrelatedDocuments, tempRelatedDocuments, currentDocumentId]);
@@ -256,7 +257,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
         console.error("Failed to search correlated selected documents", error);
         setCorrelatedSelectedRemoteDocs([]);
       }
-    }, 300);
+    }, SEARCH_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
   }, [isParentModalOpen, selectedCorrelatedSearchQuery, tempCorrelatedDocuments]);

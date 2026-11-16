@@ -13,6 +13,7 @@ import java.util.*;
 public class AuthEventReportMetadataProvider implements ReportMetadataProvider {
     private static final Map<String, String> COLUMNS = new LinkedHashMap<>();
     private static final Map<String, String> LABELS = new LinkedHashMap<>();
+    private static final Map<String, String> GROUPS = new LinkedHashMap<>();
     static {
         column("timestamp", "Timestamp", ReportQueryKit.timestamp("al.created_at"));
         column("event", "Event", "initcap(replace(al.event_type, '_', ' '))");
@@ -21,8 +22,12 @@ public class AuthEventReportMetadataProvider implements ReportMetadataProvider {
         column("employeeCode", "Employee Code", "au.employee_code");
         column("department", "Department", "au.department");
         column("ipAddress", "IP Address", "al.ip_address");
+        // REPORT-FIELD-CATALOG-2026-11-15: more of the metadata the source holds.
+        group("Event", "entityType", "Entity Type", ReportQueryKit.words("al.entity_type"));
     }
     private static void column(String code, String label, String sql) { COLUMNS.put(code, sql); LABELS.put(code, label); }
+    private static void group(String group, String code, String label, String sql) { column(code, label, sql); GROUPS.put(code, group); }
+    @Override public Map<String, String> fieldGroups() { return GROUPS; }
 
     private static final Set<String> FILTERS = Set.of("search", "event", "createdFrom", "createdTo");
 
@@ -43,14 +48,17 @@ public class AuthEventReportMetadataProvider implements ReportMetadataProvider {
         return List.of(
                 Map.of("code", "search", "name", "Search authentication events", "type", "TEXT"),
                 Map.of("code", "event", "name", "Event", "type", "LOOKUP"),
-                Map.of("code", "createdFrom", "name", "From date (required)", "type", "DATE"),
-                Map.of("code", "createdTo", "name", "To date (required)", "type", "DATE"));
+                Map.of("code", "createdFrom", "name", "From Date", "type", "DATE", "required", "true"),
+                Map.of("code", "createdTo", "name", "To Date", "type", "DATE", "required", "true"));
     }
     public Map<String, String> lookupColumns() { return Map.of("event", "al.event_type"); }
     public Map<String, String> filterColumns() { return Map.of("event", "event", "createdFrom", "timestamp", "createdTo", "timestamp"); }
 
     @Override
-    public void validateRun(Map<String, Object> filters) { ReportQueryKit.requireRange(filters, "created", AuditTrailReportMetadataProvider.MAX_DAYS); }
+    public void validateRun(Map<String, Object> filters) { validateRun(filters, AuditTrailReportMetadataProvider.MAX_DAYS); }
+
+    @Override
+    public void validateRun(Map<String, Object> filters, int maxRangeDays) { ReportQueryKit.requireRange(filters, "created", maxRangeDays); }
 
     public Query query(UserAccount actor, List<String> scopes, Map<String, Object> filters) {
         ReportQueryKit.checkFilters(filters, FILTERS);

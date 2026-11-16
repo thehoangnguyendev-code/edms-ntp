@@ -29,7 +29,7 @@ beforeEach(() => {
 afterEach(cleanup);
 const mount = () => render(<MemoryRouter initialEntries={['/?tab=security']}><ConfigurationView /></MemoryRouter>);
 const save = () => {
-  fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+  fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0]);
   fireEvent.click(screen.getByRole('button', { name: 'Confirm Save' }));
 };
 
@@ -39,7 +39,7 @@ describe('Configuration shared network save', () => {
     await screen.findByLabelText(/Allowed networks/);
     fireEvent.change(screen.getByLabelText('Minimum Password Length'), { target: { value: '14' } });
     save();
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled());
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Save' })[0]).toBeDisabled());
     expect(mocks.update).toHaveBeenCalledWith({ security: { passwordMinLength: 14 } });
     expect(mocks.policyPut).not.toHaveBeenCalled();
   });
@@ -49,7 +49,7 @@ describe('Configuration shared network save', () => {
     fireEvent.change(await screen.findByLabelText(/Trusted proxies/), { target: { value: '172.18.0.0/16\n\n 127.0.0.1/32 ' } });
     save();
     await waitFor(() => expect(mocks.policyPut).toHaveBeenCalledWith('/settings/network-access', { ...policy, trustedProxies: ['172.18.0.0/16', '127.0.0.1/32'] }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled());
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Save' })[0]).toBeDisabled());
     expect(mocks.update).not.toHaveBeenCalled();
   });
 
@@ -75,12 +75,12 @@ describe('Configuration shared network save', () => {
     save();
     await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', message: expect.stringContaining('System configuration was saved, but the network policy was not saved') })));
     expect(screen.getByLabelText(/Allowed networks/)).toHaveValue('invalid');
-    expect(screen.getByRole('button', { name: 'Save Changes' })).toBeEnabled();
+    expect(screen.getAllByRole('button', { name: 'Save' })[0]).toBeEnabled();
     expect(mocks.update).toHaveBeenCalledTimes(1);
     fireEvent.change(screen.getByLabelText(/Allowed networks/), { target: { value: '192.168.1.0/24' } });
     save();
     await waitFor(() => expect(mocks.policyPut).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled());
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Save' })[0]).toBeDisabled());
     expect(mocks.update).toHaveBeenCalledTimes(1);
   });
 

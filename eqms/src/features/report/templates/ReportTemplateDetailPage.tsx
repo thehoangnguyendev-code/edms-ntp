@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { ROUTES } from "@/app/routes.constants";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
@@ -14,7 +15,9 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
+import { comingFrom } from "../shared/reportRevisionParent";
 import { ReportTemplateRevisions } from "./ReportTemplateRevisions";
+import { ReportRevisionStepper } from "../shared/ReportRevisionStepper";
 import { ReportTemplateUpgradeModal } from "./ReportTemplateUpgradeModal";
 import { ReportTemplateReasonModal } from "./ReportTemplateReasonModal";
 import { useReportTemplateCapabilities } from "./useReportTemplateCapabilities";
@@ -52,7 +55,7 @@ const SCOPE_LABEL: Record<string, string> = {
 const when = (value?: string | null) => (value ? displayDateTime(value) : "—");
 
 /**
- * One report template on a page of its own, for the library and for Report Definitions. It replaces the Template Details drawer.
+ * One report template on a page of its own, for the library and for Report Templates. It replaces the Template Details drawer.
  * It shows every field the server returns for the template; the role scopes and the approval state are shown where the viewer may see them.
  */
 export function ReportTemplateDetailPage({
@@ -62,18 +65,30 @@ export function ReportTemplateDetailPage({
 }) {
   const { code = "" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [template, setTemplate] = useState<ReportTemplate>();
   const [error, setError] = useState("");
   const [upgrading, setUpgrading] = useState(false);
   const [action, setAction] = useState<"disable" | "enable" | "discard">();
   const [activeTab, setActiveTab] = useState("general");
   // What may be done to this template is decided by the server from the viewer's permissions and the state of the template.
-  const { can } = useReportTemplateCapabilities(
+  const { can, loaded } = useReportTemplateCapabilities(
     code,
     template
       ? `${template.definitionVersion}|${template.active}|${template.effectiveRevision}|${template.openRevision}|${template.openRevisionStatus}`
       : "",
   );
+  // The row menu of All Revisions opens the page with ?action=upgrade: the dialog of Upgrade opens at once, when the server lets this person upgrade, and the address is cleaned.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const upgradeRequested = searchParams.get("action") === "upgrade";
+  useEffect(() => {
+    if (!upgradeRequested || !template || !inAdministration || !loaded) return;
+    if (can("upgrade")) setUpgrading(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("action");
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [upgradeRequested, template, inAdministration, loaded]);
 
   useEffect(() => {
     let alive = true;
@@ -101,11 +116,12 @@ export function ReportTemplateDetailPage({
 
   const parent = inAdministration
     ? {
-        label: "Report Definitions",
-        onClick: () => navigate("/settings/report-configuration"),
+        label: "Report Templates",
+        onClick: () => navigate(ROUTES.REPORT.TEMPLATE_MANAGEMENT),
       }
     : { label: "Report Library", onClick: () => navigate("/report/templates") };
-  const title = "Report Template Details";
+  // The library page is for someone who runs the report; the page of the template is for someone who makes it.
+  const title = inAdministration ? "Report Template Details" : "Report Details";
 
   const fieldColumns: DataTableColumn<FieldRow>[] = [
     {
@@ -181,12 +197,7 @@ export function ReportTemplateDetailPage({
     <div className="space-y-4 md:space-y-6">
       <PageHeader
         title={title}
-        breadcrumbItems={reportBreadcrumbs(
-          navigate,
-          title,
-          inAdministration,
-          parent,
-        )}
+        breadcrumbItems={reportBreadcrumbs(navigate, title, false, parent)}
         actions={
           <>
             <Button
@@ -233,14 +244,15 @@ export function ReportTemplateDetailPage({
                 Upgrade Report Template
               </Button>
             )}
-            {template && can("edit") && (
+            {template && inAdministration && can("edit") && (
               <Button
                 size="sm"
                 variant="outline-emerald"
                 className="whitespace-nowrap touch-manipulation"
                 onClick={() =>
                   navigate(
-                    `/settings/report-configuration/${encodeURIComponent(template.code)}`,
+                    `${ROUTES.REPORT.TEMPLATE_MANAGEMENT}/${encodeURIComponent(template.code)}`,
+                    comingFrom(location.pathname),
                   )
                 }
               >
@@ -278,6 +290,8 @@ export function ReportTemplateDetailPage({
         )
       ) : (
         <>
+          {/* Where the revision that matters stands, as for a document. */}
+          {inAdministration && <ReportRevisionStepper workflow={template.workflow} />}
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <TabNav
               tabs={tabs}
@@ -297,15 +311,15 @@ export function ReportTemplateDetailPage({
                     value={when(template.updatedAt)}
                   />
                   <ReadonlyField
-                    label="Template Name"
+                    label="Report Template Name"
                     value={template.displayName}
                   />
                   <ReadonlyField
-                    label="Template Number"
+                    label="Report Template Number"
                     value={template.code}
                   />
                   <ReadonlyField
-                    label="Data Source"
+                    label="Report Type"
                     value={humanize(template.sourceCode)}
                   />
                   <ReadonlyField
@@ -323,20 +337,28 @@ export function ReportTemplateDetailPage({
                         : "None yet"
                     }
                   />
-                  <ReadonlyField
-                    label="Revision In Progress"
-                    value={
-                      template.openRevision != null
-                        ? `${reportRevisionLabel(template.openRevision, template.openRevisionStatus ?? "DRAFT")} · ${template.openRevisionStatus === "PENDING_APPROVAL" ? "Pending Approval" : "Draft"}`
-                        : "—"
-                    }
-                  />
+                  {/* A revision still being written is for the people who make the template; someone who runs the report sees only what is in force. */}
+                  {inAdministration ? (
+                    <ReadonlyField
+                      label="Revision In Progress"
+                      value={
+                        template.openRevision != null
+                          ? `${reportRevisionLabel(template.openRevision, template.openRevisionStatus ?? "DRAFT")} · ${template.openRevisionStatus === "PENDING_APPROVAL" ? "Pending Approval" : "Draft"}`
+                          : "—"
+                      }
+                    />
+                  ) : (
+                    <ReadonlyField
+                      label={template.approvalBasis === "NOT_REQUIRED" ? "In Use Since" : "Approved On"}
+                      value={when(template.approvalBasis === "NOT_REQUIRED" ? template.inUseSince : template.approvedAt)}
+                    />
+                  )}
                   <ReadonlyField
                     label="Classification"
                     value={humanize(template.classification)}
                   />
                   <ReadonlyField
-                    label="Category"
+                    label="Template Category"
                     value={humanize(template.category)}
                   />
                   <ReadonlyField
@@ -344,7 +366,7 @@ export function ReportTemplateDetailPage({
                     value={template.allowedFormats.join(" · ")}
                   />
                   <ReadonlyField
-                    label="Orientation"
+                    label="Page Orientation"
                     value={
                       template.layout?.orientation === "PORTRAIT"
                         ? "Portrait"
@@ -364,9 +386,10 @@ export function ReportTemplateDetailPage({
                   </div>
                   {inAdministration && (
                     <>
+                      {/* What happened to the revision in force: a person approved it, or it came into force when saved. */}
                       <ReadonlyField
                         label="Approval State"
-                        value={codeLabel(template.approvalStatus)}
+                        value={template.approvalBasis === "NOT_REQUIRED" ? "Not required (in force when saved, under the earlier rule)" : codeLabel(template.approvalStatus)}
                       />
                       <ReadonlyField
                         label="Approved Version"
@@ -483,7 +506,7 @@ export function ReportTemplateDetailPage({
               </Button>
             )}
           </div>
-          {shownTab === "general" && can("viewRevisions") && (
+          {inAdministration && shownTab === "general" && can("viewRevisions") && (
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <TabNav
                 tabs={[{ id: "revisions", label: "Revisions" }]}
@@ -549,7 +572,8 @@ export function ReportTemplateDetailPage({
             onClose={() => setUpgrading(false)}
             onUpgraded={() =>
               navigate(
-                `/settings/report-configuration/${encodeURIComponent(template.code)}`,
+                `${ROUTES.REPORT.TEMPLATE_MANAGEMENT}/${encodeURIComponent(template.code)}`,
+                comingFrom(location.pathname),
               )
             }
           />

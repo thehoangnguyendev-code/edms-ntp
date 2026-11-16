@@ -13,6 +13,7 @@ import java.util.*;
 public class ElectronicSignatureReportMetadataProvider implements ReportMetadataProvider {
     private static final Map<String, String> COLUMNS = new LinkedHashMap<>();
     private static final Map<String, String> LABELS = new LinkedHashMap<>();
+    private static final Map<String, String> GROUPS = new LinkedHashMap<>();
     static {
         column("signedAt", "Signed At", ReportQueryKit.timestamp("es.signed_at"));
         column("signatureNumber", "Signature Number", "es.signature_id");
@@ -26,8 +27,18 @@ public class ElectronicSignatureReportMetadataProvider implements ReportMetadata
         column("revisionNumber", "Revision", "r.revision_number");
         column("method", "Authentication", "initcap(replace(es.authentication_method, '_', ' '))");
         column("status", "Status", "initcap(replace(es.status, '_', ' '))");
+        // REPORT-FIELD-CATALOG-2026-11-15: more of the metadata the source holds.
+        group("Signature", "reason", "Reason", "es.reason");
+        group("Signature", "comment", "Comment", "es.comment");
+        group("Signature", "timezone", "Time Zone", "es.timezone");
+        group("Signer", "email", "Signer Email", "es.email");
+        group("Signer", "ipAddress", "IP Address", "es.ip_address");
+        group("Signature", "createdAt", "Recorded At", ReportQueryKit.timestamp("es.created_at"));
     }
     private static void column(String code, String label, String sql) { COLUMNS.put(code, sql); LABELS.put(code, label); }
+    private static void group(String group, String code, String label, String sql) { column(code, label, sql); GROUPS.put(code, group); }
+    @Override public Map<String, String> fieldGroups() { return GROUPS; }
+    @Override public Set<String> sensitiveFields() { return Set.of("email", "ipAddress"); }
 
     private static final Set<String> FILTERS = Set.of("search", "meaning", "signedFrom", "signedTo");
 
@@ -39,7 +50,7 @@ public class ElectronicSignatureReportMetadataProvider implements ReportMetadata
     public List<String> allowedScopes() { return List.of("SYSTEM"); }
     @Override public boolean runNeedsSignature() { return true; }
     public Map<String, String> columns() { return COLUMNS; }
-    @Override public Set<String> dateColumns() { return new LinkedHashSet<>(List.of("signedAt")); }
+    @Override public Set<String> dateColumns() { return new LinkedHashSet<>(List.of("signedAt", "createdAt")); }
     public Map<String, String> labels() { return LABELS; }
     public String identityColumn() { return "es.id"; }
     public String defaultSort() { return "signedAt"; }
@@ -48,14 +59,17 @@ public class ElectronicSignatureReportMetadataProvider implements ReportMetadata
         return List.of(
                 Map.of("code", "search", "name", "Search electronic signatures", "type", "TEXT"),
                 Map.of("code", "meaning", "name", "Meaning", "type", "LOOKUP"),
-                Map.of("code", "signedFrom", "name", "From date (required)", "type", "DATE"),
-                Map.of("code", "signedTo", "name", "To date (required)", "type", "DATE"));
+                Map.of("code", "signedFrom", "name", "From Date", "type", "DATE", "required", "true"),
+                Map.of("code", "signedTo", "name", "To Date", "type", "DATE", "required", "true"));
     }
     public Map<String, String> lookupColumns() { return Map.of("meaning", "es.meaning"); }
     public Map<String, String> filterColumns() { return Map.of("meaning", "meaning", "signedFrom", "signedAt", "signedTo", "signedAt"); }
 
     @Override
-    public void validateRun(Map<String, Object> filters) { ReportQueryKit.requireRange(filters, "signed", AuditTrailReportMetadataProvider.MAX_DAYS); }
+    public void validateRun(Map<String, Object> filters) { validateRun(filters, AuditTrailReportMetadataProvider.MAX_DAYS); }
+
+    @Override
+    public void validateRun(Map<String, Object> filters, int maxRangeDays) { ReportQueryKit.requireRange(filters, "signed", maxRangeDays); }
 
     public Query query(UserAccount actor, List<String> scopes, Map<String, Object> filters) {
         ReportQueryKit.checkFilters(filters, FILTERS);

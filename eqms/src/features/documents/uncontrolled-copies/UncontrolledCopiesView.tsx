@@ -11,12 +11,9 @@ import { MoreVertical, Search, X } from "lucide-react";
 import {
   IconDownload,
   IconEye,
-  IconFileCheck,
   IconFilter2,
   IconInfoCircle,
   IconShare3,
-  IconThumbDown,
-  IconThumbUp,
   IconX,
 } from "@tabler/icons-react";
 import { ROUTES } from "@/app/routes.constants";
@@ -53,21 +50,23 @@ import { extractApiMessage } from "@/features/settings/dictionaries/utils";
 import {
   uncontrolledCopyApi,
   type UncontrolledCopy,
+  closeReasonLabel,
 } from "@/services/api/uncontrolledCopy";
 import { useUncontrolledCopyActions } from "./useUncontrolledCopyActions";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
-export type UncontrolledCopiesViewType = "all" | "pending" | "distributed";
+export type UncontrolledCopiesViewType = "all" | "ready" | "distributed";
 
 const VIEW_TITLES: Record<UncontrolledCopiesViewType, string> = {
   all: "All Uncontrolled Copies",
-  pending: "Pending Approval",
+  ready: "Ready for Distribution",
   distributed: "Distributed Uncontrolled Copies",
 };
 
 /** Machine status code each fixed tab filters on (the "all" tab uses the user's status filter). */
 const VIEW_STATUS: Record<UncontrolledCopiesViewType, string | undefined> = {
   all: undefined,
-  pending: "REQUESTED",
+  ready: "READY_FOR_DISTRIBUTION",
   distributed: "DISTRIBUTED",
 };
 
@@ -78,7 +77,6 @@ type UncontrolledCopySortKey =
   | "status"
   | "validUntil"
   | "requested"
-  | "approved"
   | "distributed";
 
 /** DateRangePicker yields dd/MM/yyyy[ HH:mm:ss]; the API filter takes yyyy-MM-dd. */
@@ -109,7 +107,7 @@ export const UncontrolledCopiesView: React.FC<{
   const [searchQuery, setSearchQuery] = useState(
     () => searchParams.get("search") ?? "",
   );
-  const debouncedSearch = useDebounce(searchQuery, 400);
+  const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const [statusFilter, setStatusFilter] = useState(
     () => searchParams.get("status") ?? "ALL",
   );
@@ -127,12 +125,6 @@ export const UncontrolledCopiesView: React.FC<{
   );
   const [validTo, setValidTo] = useState(
     () => searchParams.get("validTo") ?? "",
-  );
-  const [approvedFrom, setApprovedFrom] = useState(
-    () => searchParams.get("approvedFrom") ?? "",
-  );
-  const [approvedTo, setApprovedTo] = useState(
-    () => searchParams.get("approvedTo") ?? "",
   );
   const [distributedFrom, setDistributedFrom] = useState(
     () => searchParams.get("distributedFrom") ?? "",
@@ -175,8 +167,6 @@ export const UncontrolledCopiesView: React.FC<{
     setCreatedTo(searchParams.get("createdTo") ?? "");
     setValidFrom(searchParams.get("validFrom") ?? "");
     setValidTo(searchParams.get("validTo") ?? "");
-    setApprovedFrom(searchParams.get("approvedFrom") ?? "");
-    setApprovedTo(searchParams.get("approvedTo") ?? "");
     setDistributedFrom(searchParams.get("distributedFrom") ?? "");
     setDistributedTo(searchParams.get("distributedTo") ?? "");
     setCurrentPage(Math.max(1, Number(searchParams.get("page")) || 1));
@@ -200,8 +190,6 @@ export const UncontrolledCopiesView: React.FC<{
     if (createdTo) params.set("createdTo", createdTo);
     if (validFrom) params.set("validFrom", validFrom);
     if (validTo) params.set("validTo", validTo);
-    if (approvedFrom) params.set("approvedFrom", approvedFrom);
-    if (approvedTo) params.set("approvedTo", approvedTo);
     if (distributedFrom) params.set("distributedFrom", distributedFrom);
     if (distributedTo) params.set("distributedTo", distributedTo);
     if (sortConfig.key !== "created") params.set("sortBy", sortConfig.key);
@@ -220,8 +208,6 @@ export const UncontrolledCopiesView: React.FC<{
     createdTo,
     validFrom,
     validTo,
-    approvedFrom,
-    approvedTo,
     distributedFrom,
     distributedTo,
     sortConfig,
@@ -282,8 +268,6 @@ export const UncontrolledCopiesView: React.FC<{
         createdTo: toIsoDate(createdTo),
         validFrom: toIsoDate(validFrom),
         validTo: toIsoDate(validTo),
-        approvedFrom: toIsoDate(approvedFrom),
-        approvedTo: toIsoDate(approvedTo),
         distributedFrom: toIsoDate(distributedFrom),
         distributedTo: toIsoDate(distributedTo),
         sortBy: sortConfig.key,
@@ -314,8 +298,6 @@ export const UncontrolledCopiesView: React.FC<{
     createdTo,
     validFrom,
     validTo,
-    approvedFrom,
-    approvedTo,
     distributedFrom,
     distributedTo,
     currentPage,
@@ -350,8 +332,6 @@ export const UncontrolledCopiesView: React.FC<{
     setCreatedTo("");
     setValidFrom("");
     setValidTo("");
-    setApprovedFrom("");
-    setApprovedTo("");
     setDistributedFrom("");
     setDistributedTo("");
     setCurrentPage(1);
@@ -445,17 +425,6 @@ export const UncontrolledCopiesView: React.FC<{
       cell: (copy) => formatOptional(copy.requestedAt),
     },
     {
-      id: "approvedBy",
-      header: "Approved By",
-      cell: (copy) => copy.approvedByName || "-",
-    },
-    {
-      id: "approvedAt",
-      header: "Approved Date",
-      sort: sort("approved"),
-      cell: (copy) => formatOptional(copy.approvedAt),
-    },
-    {
       id: "distributedBy",
       header: "Distributed By",
       cell: (copy) => copy.distributedByName || "-",
@@ -482,6 +451,11 @@ export const UncontrolledCopiesView: React.FC<{
           {copy.status}
         </Badge>
       ),
+    },
+    {
+      id: "closeReason",
+      header: "Closed Because",
+      cell: (copy) => closeReasonLabel(copy.closeReason) || "-",
     },
     {
       id: "validUntil",
@@ -577,14 +551,12 @@ export const UncontrolledCopiesView: React.FC<{
             dates={[
               { id: 'created', label: 'Requested Date Range', from: createdFrom, to: createdTo },
               { id: 'valid', label: 'Valid Until Date Range', from: validFrom, to: validTo },
-              { id: 'approved', label: 'Approved Date Range', from: approvedFrom, to: approvedTo },
               { id: 'distributed', label: 'Distributed Date Range', from: distributedFrom, to: distributedTo },
             ]}
             onApply={draft => {
               if (viewType === 'all') setStatusFilter(draft.status);
               setCreatedFrom(draft.createdFrom); setCreatedTo(draft.createdTo);
               setValidFrom(draft.validFrom); setValidTo(draft.validTo);
-              setApprovedFrom(draft.approvedFrom); setApprovedTo(draft.approvedTo);
               setDistributedFrom(draft.distributedFrom); setDistributedTo(draft.distributedTo);
               setCurrentPage(1);
             }} />}
@@ -670,22 +642,6 @@ export const UncontrolledCopiesView: React.FC<{
             </div>
             <div>
               <DateRangePicker
-                label="Approved Date Range"
-                startDate={approvedFrom}
-                endDate={approvedTo}
-                onStartDateChange={(val) => {
-                  setApprovedFrom(val);
-                  setCurrentPage(1);
-                }}
-                onEndDateChange={(val) => {
-                  setApprovedTo(val);
-                  setCurrentPage(1);
-                }}
-                placeholder="Select date range"
-              />
-            </div>
-            <div>
-              <DateRangePicker
                 label="Distributed Date Range"
                 startDate={distributedFrom}
                 endDate={distributedTo}
@@ -759,27 +715,6 @@ export const UncontrolledCopiesView: React.FC<{
                   }}
                   onEndDateChange={(val) => {
                     setCreatedTo(val);
-                    setCurrentPage(1);
-                  }}
-                  placeholder="Select date range"
-                />
-              </div>
-            </FilterAccordionItem>
-            <FilterAccordionItem
-              label="Approved Date Range"
-              isExpanded={expandedSections.has("approvedDates")}
-              onToggle={() => toggleSection("approvedDates")}
-            >
-              <div className="pt-1 pb-4">
-                <DateRangePicker
-                  startDate={approvedFrom}
-                  endDate={approvedTo}
-                  onStartDateChange={(val) => {
-                    setApprovedFrom(val);
-                    setCurrentPage(1);
-                  }}
-                  onEndDateChange={(val) => {
-                    setApprovedTo(val);
                     setCurrentPage(1);
                   }}
                   placeholder="Select date range"
@@ -906,39 +841,6 @@ export const UncontrolledCopiesView: React.FC<{
             >
               View Details
             </DropdownMenuItem>
-            {openCopy.capabilities.canApprove && (
-              <DropdownMenuItem
-                icon={<IconThumbUp className="h-4 w-4" />}
-                onClick={() => {
-                  void runAction(openCopy, "approve");
-                  close();
-                }}
-              >
-                Approve
-              </DropdownMenuItem>
-            )}
-            {openCopy.capabilities.canReject && (
-              <DropdownMenuItem
-                icon={<IconThumbDown className="h-4 w-4" />}
-                onClick={() => {
-                  void runAction(openCopy, "reject");
-                  close();
-                }}
-              >
-                Reject
-              </DropdownMenuItem>
-            )}
-            {openCopy.capabilities.canGenerate && (
-              <DropdownMenuItem
-                icon={<IconFileCheck className="h-4 w-4" />}
-                onClick={() => {
-                  void runAction(openCopy, "generate");
-                  close();
-                }}
-              >
-                Generate Copy
-              </DropdownMenuItem>
-            )}
             {openCopy.capabilities.canDistribute && (
               <DropdownMenuItem
                 icon={<IconShare3 className="h-4 w-4" />}

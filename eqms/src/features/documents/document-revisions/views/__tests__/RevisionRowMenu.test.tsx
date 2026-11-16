@@ -5,7 +5,7 @@ import { RevisionRowMenu } from "../RevisionRowMenu";
 import type { Revision } from "../types";
 
 const position = { top: 0, left: 0 };
-const revision = (overrides: Partial<Revision>) => ({ id: "rev-1", state: "Pending Review", ...overrides }) as Revision;
+const revision = (overrides: Partial<Revision>) => ({ id: "rev-1", status: "Pending Review", statusCode: "PENDING_REVIEW", ...overrides }) as Revision;
 
 beforeEach(() => {
   window.matchMedia = ((query: string) => ({
@@ -37,16 +37,16 @@ describe("RevisionRowMenu", () => {
   });
 
   it("gives a Draft the person can edit Edit Revision as well as View Details", () => {
-    open(revision({ state: "Draft", canEditRevision: true }));
+    open(revision({ status: "Draft", statusCode: "DRAFT", canEditRevision: true }));
     expect(screen.getByText("Edit Revision")).toBeTruthy();
     expect(screen.getByText("View Details")).toBeTruthy();
   });
 
   it("leaves Publish out when the screen cannot publish", () => {
-    open(revision({ state: "Ready for Publishing", canPublishRevision: true }), { publish: false });
+    open(revision({ status: "Ready for Publishing", statusCode: "READY_FOR_PUBLISHING", canPublishRevision: true }), { publish: false });
     expect(screen.queryByText("Publish Revision")).toBeNull();
     cleanup();
-    open(revision({ state: "Ready for Publishing", canPublishRevision: true }));
+    open(revision({ status: "Ready for Publishing", statusCode: "READY_FOR_PUBLISHING", canPublishRevision: true }));
     expect(screen.getByText("Publish Revision")).toBeTruthy();
   });
 

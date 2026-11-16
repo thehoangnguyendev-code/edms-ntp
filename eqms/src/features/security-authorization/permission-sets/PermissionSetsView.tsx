@@ -1,3 +1,4 @@
+import { downloadTableExcel } from '@/services/api/tableExport';
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Copy, Download, Import, Plus, Search, Trash2, X, Check, MoreVertical, ChevronUp, ChevronDown } from "lucide-react";
@@ -9,6 +10,7 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
@@ -23,7 +25,7 @@ import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { cn } from "@/components/ui/utils";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { settingsApi } from "@/services/api";
-import type { PermissionSetCapabilitiesResponse, PermissionSetPayload, PermissionSetResponse } from "@/services/api/settings";
+import type { PermissionSetPayload, PermissionSetResponse } from "@/services/api/settings";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PermissionSetCloneModal } from "./PermissionSetCloneModal";
 import { PermissionCatalogTab } from "./PermissionCatalogTab";
@@ -31,16 +33,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { permissionSets as permissionSetsBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
-
-const downloadJson = (filename: string, data: unknown) => {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-};
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const STATUS_OPTIONS: SelectOption[] = [
   { label: "All", value: "ALL" },
@@ -77,7 +70,7 @@ export const PermissionSetsView: React.FC = () => {
 
   // Server-side query state — every change triggers a refetch.
   const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") ?? "ALL");
   const [typeFilter, setTypeFilter] = useState(() => searchParams.get("type") ?? "ALL");
   const [moduleFilter, setModuleFilter] = useState(() => searchParams.get("module") ?? "ALL");
@@ -131,7 +124,6 @@ export const PermissionSetsView: React.FC = () => {
 
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["status"]));
-  const [capabilityBySetId, setCapabilityBySetId] = useState<Record<string, PermissionSetCapabilitiesResponse>>({});
   const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleSort = (key: string) => {
@@ -249,8 +241,6 @@ export const PermissionSetsView: React.FC = () => {
         active: !ps.active,
         permissionCodes: ps.permissionCodes,
       }, sig);
-      const caps = await settingsApi.getPermissionSetCapabilities(ps.id);
-      setCapabilityBySetId((prev) => ({ ...prev, [ps.id]: caps }));
       showToast({ type: "success", message: `Permission set ${ps.active ? "deactivated" : "activated"}` });
       void load();
     } catch {
@@ -260,8 +250,14 @@ export const PermissionSetsView: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      const all = await settingsApi.listPermissionSets();
-      downloadJson(`permission-sets-${new Date().toISOString().split("T")[0]}.json`, all);
+      await downloadTableExcel('permission-sets', {
+        search: debouncedSearch || undefined, status: statusFilter === 'ALL' ? undefined : statusFilter,
+        type: typeFilter === 'ALL' ? undefined : typeFilter, module: moduleFilter === 'ALL' ? undefined : moduleFilter,
+        category: categoryFilter === 'ALL' ? undefined : categoryFilter,
+        createdFrom: createdFrom || undefined, createdTo: createdTo || undefined,
+        updatedFrom: updatedFrom || undefined, updatedTo: updatedTo || undefined,
+        sortBy: sortKey, sortDir,
+      });
     } catch {
       showToast({ type: "error", message: "Export failed" });
     }
@@ -269,21 +265,7 @@ export const PermissionSetsView: React.FC = () => {
 
   const handleImportClick = () => importInputRef.current?.click();
 
-  const loadPermissionSetCapabilities = async (id: string) => {
-    if (capabilityBySetId[id]) return;
-    try {
-      const caps = await settingsApi.getPermissionSetCapabilities(id);
-      setCapabilityBySetId((prev) => ({ ...prev, [id]: caps }));
-    } catch {
-      setCapabilityBySetId((prev) => ({
-        ...prev,
-        [id]: { permissionSetId: id, actions: {} },
-      }));
-    }
-  };
-
   const handleActionMenuToggle = (id: string, event: React.MouseEvent<HTMLButtonElement>) => {
-    void loadPermissionSetCapabilities(id);
     toggle(id, event);
   };
 
@@ -345,7 +327,7 @@ export const PermissionSetsView: React.FC = () => {
     { id: "moduleCount", header: "Modules", label: "Modules", sort: { direction: sortKey === "moduleCount" ? sortDir : undefined, onSort: () => handleSort("moduleCount") }, cell: (ps) => ps.modules?.length ?? 0 },
     { id: "permissionCount", header: "Permissions", label: "Permissions", sort: { direction: sortKey === "permissionCount" ? sortDir : undefined, onSort: () => handleSort("permissionCount") }, cell: (ps) => ps.permissionCount },
     { id: "category", header: "Category", label: "Category", cell: (ps) => ps.category ?? "—" },
-    { id: "status", header: "Status", label: "Status", sort: { direction: sortKey === "status" ? sortDir : undefined, onSort: () => handleSort("status") }, cell: (ps) => <Badge color={ps.active ? "emerald" : "slate"} size="sm">{ps.active ? "Active" : "Inactive"}</Badge> },
+    { id: "status", header: "Status", label: "Status", sort: { direction: sortKey === "status" ? sortDir : undefined, onSort: () => handleSort("status") }, cell: (ps) => <Badge color={flagColor(ps.active)} size="sm">{ps.active ? "Active" : "Inactive"}</Badge> },
     { id: "type", header: "Type", label: "Type", sort: { direction: sortKey === "type" ? sortDir : undefined, onSort: () => handleSort("type") }, cell: (ps) => <Badge color={ps.system ? "blue" : "slate"} size="sm">{ps.system ? "System" : "Custom"}</Badge> },
     { id: "createdAt", header: "Created Date", label: "Created Date", sort: { direction: sortKey === "createdAt" ? sortDir : undefined, onSort: () => handleSort("createdAt") }, cell: (ps) => formatDateTime(ps.createdAt) },
     { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cell: (ps) => formatDateTime(ps.updatedAt) },
@@ -353,7 +335,7 @@ export const PermissionSetsView: React.FC = () => {
   const setAction: DataTableAction<SetRow> = {
     header: "Action",
     cell: (ps) => {
-      const capabilities = capabilityBySetId[ps.id];
+      const capabilities = ps.capabilities;
       const can = (action: string) => Boolean(capabilities?.actions?.[action]?.allowed);
       const reason = (action: string) => capabilities?.actions?.[action]?.reason || "Action is not currently allowed";
       const loaded = Boolean(capabilities);
@@ -389,7 +371,7 @@ export const PermissionSetsView: React.FC = () => {
                 Clone
               </DropdownMenuItem>
               <DropdownMenuItem
-                icon={ps.active ? <IconToggleRight className="h-4 w-4" /> : <IconToggleLeft className="h-4 w-4" />}
+                icon={ps.active ? <IconToggleLeft className="h-4 w-4" /> : <IconToggleRight className="h-4 w-4" />}
                 disabled={!loaded || !can("toggleStatus")}
                 title={loaded && !can("toggleStatus") ? reason("toggleStatus") : undefined}
                 onClick={() => { void handleDeactivate(ps); close(); }}

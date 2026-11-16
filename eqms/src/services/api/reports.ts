@@ -9,6 +9,9 @@ export interface ReportField {
   defaultSelected: boolean;
   required: boolean;
   order: number;
+  /** The group of the field in its Report Type, and whether it describes a person (REPORT-FIELD-CATALOG-2026-11-15). */
+  group?: string;
+  sensitive?: boolean;
 }
 export interface ReportDefinition {
   code: string;
@@ -52,7 +55,12 @@ export interface ReportRunSummary {
   errorMessage?: string;
   queuedAt: string;
   completedAt?: string;
+  requestedFormat?: string;
   artifactId?: string;
+  /** The file of the run: its format (PDF, CSV or XLSX), name and size in bytes. */
+  artifactFormat?: ReportFormat;
+  artifactFilename?: string;
+  artifactSize?: number;
 }
 export interface ReportRunPage {
   data: ReportRunSummary[];
@@ -76,6 +84,9 @@ export interface ReportArtifactSummary {
   createdAt: string;
 }
 export interface ReportRunDetail extends ReportRunSummary {
+  /** The number a person quotes for the run (RUN-000123) and its filters in words; the identifier of the run is never shown. */
+  runLabel?: string;
+  filterSummary?: string;
   requesterName?: string | null;
   scheduleId?: string | null;
   scheduleName?: string | null;
@@ -131,6 +142,8 @@ export interface ReportSchedule {
   /** REPORT-SCHEDULE-OWNER-2026-10-14: the named owner, who is told when the schedule stops. */
   ownerUserId?: string;
   ownerName?: string | null;
+  /** The names of the recipients, in order, for the list (the people themselves are in the detail of the schedule). */
+  recipientNames?: string[];
 }
 export interface ReportSchedulePage {
   data: ReportSchedule[];
@@ -194,69 +207,31 @@ export interface ReportRecipientCandidate {
   businessUnit?: string;
 }
 
-/** What needs the attention of the person, as the server counted it (REPORT-OVERVIEW-2026-11-12). */
-export interface ReportAttentionItem {
-  code: string;
-  tone: "red" | "amber" | "emerald" | "blue";
-  count: number;
-  title: string;
-  detail: string;
-  path: string;
-}
-export interface ReportOverview {
-  attention: ReportAttentionItem[];
-  generatedAt: string;
-}
-export interface ReportPin {
-  code: string;
-  name: string;
-  active: boolean;
-  sourceCode?: string | null;
-  pinnedAt: string;
-}
-export interface AnalyticsDocumentControl {
-  effectiveDocuments: number;
-  revisedLast90Days: number;
-  revisionsInProgress: number;
-  revisionsWaitingOver14Days: number;
-  reviewsDue: number;
-  reviewsOverdue: number;
-  controlledCopiesOut: number;
-  controlledCopiesExpired: number;
-  revisionsByStage: Array<{ label: string; value: number }>;
-  byType: Array<{ type: string; effective: number; inRevision: number; reviewDue: number }>;
-}
-/** Training figures; {@code note} is set instead of the figures when the person has no department to count. */
-export interface AnalyticsTraining {
-  note?: "NO_DEPARTMENT";
-  overdueActivities?: number;
-  dueSoonActivities?: number;
-  openActivities?: number;
-  absentInOpenActivities?: number;
-  activitiesByStatus?: Array<{ label: string; value: number }>;
-  requirements?: number;
-  trained?: number;
-  notTrained?: number;
-  annualDue?: number;
-  percentTrained?: number | null;
-}
-export interface AnalyticsUsage {
-  runsPerWeek: Array<{ weekStart: string; value: number }>;
-  runsLast30Days: number;
-  failedLast30Days: number;
-  fullRunsLast30Days: number;
-  allUsers: boolean;
+/** API boundary for server-owned catalog, validation and asynchronous report runs. */
+/** When the application last copied the summary of the backup and restore runs (REPORT-BACKUP-RUNS-2026-11-15). */
+export interface BackupCopyStatus {
+  enabled: boolean;
+  lastAttemptAt: string | null;
+  lastSuccessAt: string | null;
+  lastRows: number | null;
+  lastError: string | null;
+  stale: boolean;
+  staleAfterMinutes: number;
 }
 
-/** API boundary for server-owned catalog, validation and asynchronous report runs. */
+/** The answer of the check of a file against the stored report file (REPORT-FILE-VERIFY-2026-11-16). */
+export interface ReportFileVerification {
+  match: boolean;
+  storedSha256: string;
+  uploadedSha256: string;
+  storedSize: number;
+  uploadedSize: number;
+  storedFilename: string;
+  uploadedFilename: string;
+}
+
 export const reportsApi = {
-  overview: async () => (await apiClient.get<ReportOverview>("/reports/overview")).data,
-  listPins: async () => (await apiClient.get<ReportPin[]>("/reports/pins")).data,
-  pinReport: async (code: string) => apiClient.put(`/reports/pins/${encodeURIComponent(code)}`),
-  unpinReport: async (code: string) => apiClient.delete(`/reports/pins/${encodeURIComponent(code)}`),
-  analyticsDocuments: async () => (await apiClient.get<AnalyticsDocumentControl>("/reports/analytics/documents")).data,
-  analyticsTraining: async () => (await apiClient.get<AnalyticsTraining>("/reports/analytics/training")).data,
-  analyticsUsage: async () => (await apiClient.get<AnalyticsUsage>("/reports/analytics/usage")).data,
+  backupCopyStatus: async () => (await apiClient.get<BackupCopyStatus>("/reports/backup-copy-status")).data,
   catalog: async () =>
     (await apiClient.get<ReportDefinition[]>("/reports/catalog")).data,
   createRun: async (request: ReportRunRequest, idempotencyKey: string) =>
@@ -289,6 +264,9 @@ export const reportsApi = {
     definitionCode?: string;
     queuedFrom?: string;
     queuedTo?: string;
+    format?: string;
+    completedFrom?: string;
+    completedTo?: string;
     page?: number;
     limit?: number;
     sortBy?: "queuedAt" | "completedAt" | "definitionCode" | "status";
@@ -315,6 +293,25 @@ export const reportsApi = {
         { responseType: "blob" },
       )
     ).data as Blob,
+  /** A report file to look at (a PDF, in the EmbedPDF viewer): the same permission and checksum check as a download, recorded as a preview. */
+  previewArtifact: async (runId: string, artifactId: string) =>
+    (await apiClient.post(`/reports/runs/${runId}/artifacts/${artifactId}/preview`, undefined, { responseType: "blob" })).data as Blob,
+  /** The read-only OnlyOffice view of a CSV or XLSX report file. */
+  artifactViewConfig: async (runId: string, artifactId: string) =>
+    (await apiClient.get<Record<string, unknown>>(`/reports/runs/${runId}/artifacts/${artifactId}/view-config`)).data,
+  /** Compares a file the person holds with the file EQMS stored; the upload is read for its SHA-256 and is not kept. */
+  verifyArtifactFile: async (runId: string, artifactId: string, file: File, onProgress?: (percent: number) => void) => {
+    const form = new FormData();
+    form.append("file", file);
+    return (
+      await apiClient.post<ReportFileVerification>(`/reports/runs/${runId}/artifacts/${artifactId}/verify`, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (event) => {
+          if (onProgress && event.total) onProgress(Math.min(100, Math.round((event.loaded * 100) / event.total)));
+        },
+      })
+    ).data;
+  },
   listSchedules: async () =>
     (await apiClient.get<ReportSchedule[]>("/reports/schedules")).data,
   searchSchedules: async (params: {
@@ -339,9 +336,6 @@ export const reportsApi = {
     reason: string,
   ) => apiClient.put(`/reports/schedules/${id}`, { version, value, reason }),
   /** Delivery log of scheduled-report notices, newest first (REPORT-NOTIFICATION-CHANNEL-2026-10-14). */
-  /** Role scopes of the templates; search, scope filter, sort and paging on the server. */
-  listAccessScopes: async (params: { search?: string; scope?: string; sortBy?: string; sortDirection?: "asc" | "desc"; page?: number; limit?: number }) =>
-    (await apiClient.get<{ data: ReportAccessScopeRow[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>("/reports/access-scopes", { params })).data,
   /** Legal holds in force; search, sort and paging on the server. */
   listLegalHolds: async (params: { search?: string; sortBy?: string; sortDirection?: "asc" | "desc"; page?: number; limit?: number }) =>
     (await apiClient.get<{ data: ReportLegalHoldRow[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>("/reports/legal-holds", { params })).data,
@@ -425,13 +419,5 @@ export interface ReportLegalHoldRow {
   heldAt?: string | null;
   heldBy?: string | null;
   reason?: string | null;
-}
-
-export interface ReportAccessScopeRow {
-  templateCode: string;
-  templateName: string;
-  active: boolean;
-  roleName: string;
-  scope: "PERSONAL" | "DEPARTMENT" | "BUSINESS_UNIT" | "SYSTEM";
 }
 

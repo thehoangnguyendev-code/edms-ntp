@@ -303,7 +303,10 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
       created: mapped.created,
       openedBy: mapped.openedBy,
       revisionName: mapped.revisionName,
+      // As the server gave it: the label, with its code. (This used to be the badge key, which the next screen then read back as if it were a status.)
       status: mapped.status,
+      statusCode: mapped.statusCode,
+      statusInfo: revision.statusInfo,
     };
   };
 

@@ -7,7 +7,7 @@ const MODULE_LABEL: Record<string, string> = {
   DOCUMENT_CONTROL: 'Document Control',
   CONTROLLED_COPIES: 'Controlled Copies',
   TRAINING: 'Training Management',
-  REPORTS: 'Reports & Analytics',
+  REPORTS: 'Reports',
   AUDIT_TRAIL: 'Audit Trail',
   BACKUP_RESTORE: 'Backup & Restore',
   SECURITY: 'Security',

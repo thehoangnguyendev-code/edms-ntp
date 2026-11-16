@@ -17,6 +17,7 @@ public class RevisionReportMetadataProvider implements ReportMetadataProvider {
 
     private static final Map<String, String> COLUMNS = new LinkedHashMap<>();
     private static final Map<String, String> LABELS = new LinkedHashMap<>();
+    private static final Map<String, String> GROUPS = new LinkedHashMap<>();
     static {
         column("documentNumber", "Document Number", "r.document_number");
         column("documentName", "Document Name", "r.document_name");
@@ -37,10 +38,42 @@ public class RevisionReportMetadataProvider implements ReportMetadataProvider {
         column("publishedAt", "Published At", ReportQueryKit.timestamp("r.published_at"));
         column("effectiveDate", "Effective Date", "r.effective_date");
         column("validUntil", "Valid Until", "r.valid_until");
-        column("createdAt", "Created", ReportQueryKit.timestamp("r.created_at"));
+        column("createdAt", "Created At", ReportQueryKit.timestamp("r.created_at"));
         column("updatedAt", "Last Updated", ReportQueryKit.timestamp("r.updated_at"));
+        // REPORT-FIELD-CATALOG-2026-11-15: more of the metadata the source holds.
+        group("People", "rejectedBy", "Rejected By", ReportQueryKit.person("r.rejected_by_user_id"));
+        group("Lifecycle", "rejectedAt", "Rejected At", ReportQueryKit.timestamp("r.rejected_at"));
+        group("Lifecycle", "obsoletedAt", "Obsoleted At", ReportQueryKit.timestamp("r.obsoleted_at"));
+        group("People", "obsoletedBy", "Obsoleted By", ReportQueryKit.person("r.obsoleted_by_user_id"));
+        group("Lifecycle", "obsoleteReason", "Obsolete Reason", "r.obsolete_reason");
+        group("Lifecycle", "cancelledAt", "Cancelled At", ReportQueryKit.timestamp("r.cancelled_at"));
+        group("People", "cancelledBy", "Cancelled By", ReportQueryKit.person("r.cancelled_by_user_id"));
+        group("Lifecycle", "completedAt", "Completed At", ReportQueryKit.timestamp("r.completed_at"));
+        group("People", "completedBy", "Completed By", ReportQueryKit.person("r.completed_by_user_id"));
+        group("People", "publishedBy", "Published By", ReportQueryKit.person("r.published_by_user_id"));
+        group("Lifecycle", "reviewRound", "Review Round", "r.review_round");
+        group("Lifecycle", "reviewRequirement", "Review Requirement", "r.review_requirement");
+        group("Lifecycle", "reviewFlowMode", "Review Flow", "r.review_flow_mode");
+        group("Training", "trainingPlannedDate", "Training Planned Date", "r.training_planned_date");
+        group("Training", "trainingPeriodEnd", "Training Period End", "r.training_period_end_date");
+        group("Training", "trainingPeriodDays", "Training Period (Days)", "r.training_period_days");
+        group("Training", "skipTrainingReason", "Reason for Skipping Training", "r.reason_for_skipping_training");
+        group("Training", "trainingMode", "Training Mode", "r.training_mode");
+        group("Identity", "titleLocal", "Local-Language Title", "r.title_local_language");
+        group("Identity", "language", "Language", "r.language");
+        group("Identity", "subType", "Sub Type", "r.sub_type");
+        group("Identity", "isTemplate", "Template Document", ReportQueryKit.yesNo("r.is_template"));
+        group("File", "fileType", "File Type", "r.file_type");
+        group("File", "fileSize", "File Size (Bytes)", "r.file_size");
+        group("File", "snapshotStatus", "Snapshot Status", "r.snapshot_status");
+        group("Legacy Import", "legacyReviewers", "Historical Reviewers", "r.legacy_historical_reviewers");
+        group("Legacy Import", "legacyApprover", "Historical Approver", "r.legacy_historical_approver");
+        group("Legacy Import", "legacyApprovalDate", "Historical Approval Date", ReportQueryKit.timestamp("r.legacy_historical_approval_date"));
     }
     private static void column(String code, String label, String sql) { COLUMNS.put(code, sql); LABELS.put(code, label); }
+    private static void group(String group, String code, String label, String sql) { column(code, label, sql); GROUPS.put(code, group); }
+    // The columns the type had before the field catalogue are its Core group; only the fields added since are grouped.
+    @Override public Map<String, String> fieldGroups() { return GROUPS; }
 
     private static final Set<String> FILTERS = Set.of("search", "status", "department", "businessUnit", "documentType", "createdFrom", "createdTo",
             "submittedFrom", "submittedTo", "publishedFrom", "publishedTo", "effectiveFrom", "effectiveTo");
@@ -49,7 +82,7 @@ public class RevisionReportMetadataProvider implements ReportMetadataProvider {
     public String name() { return "Document Revisions"; }
     public String description() { return "Revisions of controlled documents with their status, time in status, people, training and validity dates."; }
     public Map<String, String> columns() { return COLUMNS; }
-    @Override public Set<String> dateColumns() { return new LinkedHashSet<>(List.of("submittedOn", "trainingCompletionDate", "publishedAt", "effectiveDate", "validUntil", "createdAt", "updatedAt")); }
+    @Override public Set<String> dateColumns() { return new LinkedHashSet<>(List.of("submittedOn", "trainingCompletionDate", "publishedAt", "effectiveDate", "validUntil", "createdAt", "updatedAt", "rejectedAt", "obsoletedAt", "cancelledAt", "completedAt", "trainingPlannedDate", "trainingPeriodEnd", "legacyApprovalDate")); }
     public Map<String, String> labels() { return LABELS; }
     public String identityColumn() { return "r.id"; }
     public String defaultSort() { return "documentNumber"; }

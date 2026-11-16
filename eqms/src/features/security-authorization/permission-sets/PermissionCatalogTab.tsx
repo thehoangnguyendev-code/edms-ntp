@@ -12,6 +12,7 @@ import { useTableDragScroll, useDebounce, usePortalDropdown } from "@/hooks";
 import { cn } from "@/components/ui/utils";
 import { settingsApi, type PermissionCatalogFlatItem, type PermissionLifecycleUsage } from "@/services/api/settings";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type SortKey = "code" | "name" | "module" | "groupName";
 
@@ -54,7 +55,7 @@ export const PermissionCatalogTab: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [moduleFilter, setModuleFilter] = useState("ALL");
   const [moduleOptions, setModuleOptions] = useState<SelectOption[]>([{ label: "All", value: "ALL" }]);
 
@@ -157,7 +158,7 @@ export const PermissionCatalogTab: React.FC = () => {
         require a migration and code review; there is no "create permission" action here.
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end pb-4 md:pb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
         <div className="w-full">
           <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">Search</label>
           <div className="relative">

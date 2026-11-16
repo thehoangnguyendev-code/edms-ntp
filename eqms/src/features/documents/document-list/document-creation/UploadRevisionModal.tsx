@@ -7,6 +7,7 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { documentApi } from "@/services/api/documents";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { OnlyOfficeDocumentViewer } from "@/features/documents/shared/components/OnlyOfficeDocumentViewer";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 interface UploadRevisionModalProps {
   isOpen: boolean;
@@ -262,7 +263,7 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
                   placeholder="Select a published template..."
                   enableSearch={true}
                   onSearch={templateSearch}
-                  debounceMs={300}
+                  debounceMs={SEARCH_DEBOUNCE_MS}
                   minSearchLength={0}
                 />
                 <p className="text-xs text-slate-500">

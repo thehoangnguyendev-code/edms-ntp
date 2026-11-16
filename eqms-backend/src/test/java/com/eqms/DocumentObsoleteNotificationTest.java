@@ -8,6 +8,9 @@ import com.eqms.dto.user.PageResponse;
 import com.eqms.entity.*;
 import com.eqms.repository.*;
 import com.eqms.service.*;
+import com.eqms.event.DocumentObsoletedEvent;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +44,7 @@ import static org.mockito.Mockito.*;
  * (EmailService), and the Notification-settings-screen authorization check.
  */
 @SpringBootTest
+@RecordApplicationEvents
 class DocumentObsoleteNotificationTest {
 
     @Autowired private DocumentService documentService;
@@ -63,6 +67,7 @@ class DocumentObsoleteNotificationTest {
     @Autowired private NotificationTemplateVersionRepository notificationTemplateVersionRepository;
     @Autowired private EmailTemplateRepository emailTemplateRepository;
     @Autowired private NotificationController notificationController;
+    @Autowired private ApplicationEvents applicationEvents;
 
     @MockBean private DocumentAuthorizationService documentAuthorizationService;
     @MockBean private AuthorizationService authorizationService;
@@ -78,6 +83,7 @@ class DocumentObsoleteNotificationTest {
     private List<UserAccount> pool;
 
     private final List<UUID> createdDocumentIds = new java.util.ArrayList<>();
+    private final java.util.Set<String> createdDocumentNumbers = new java.util.HashSet<>();
     private String originalEnabledChannels;
     private UUID addedTemplateVersionId;
     private UUID addedEmailTemplateId;
@@ -102,24 +108,9 @@ class DocumentObsoleteNotificationTest {
 
     @AfterEach
     void cleanup() {
-        DocumentStatusDefinition closedCancelledDoc = documentStatusRepository.findById("CLOSED_CANCELLED").orElse(null);
-        RevisionStatusDefinition closedCancelledRev = revisionStatusRepository.findById("CLOSED_CANCELLED").orElse(null);
+        LifecycleFixtureCleanup.putAway(new TransactionTemplate(transactionManager), documentRepository, revisionRepository, documentStatusRepository, revisionStatusRepository, controlledCopyRepository, createdDocumentIds);
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         tx.executeWithoutResult(status -> {
-            for (UUID documentId : createdDocumentIds) {
-                if (closedCancelledRev != null) {
-                    revisionRepository.findAllByDocument_IdOrderByCreatedAtDesc(documentId).forEach(r -> {
-                        r.setStatus(closedCancelledRev);
-                        revisionRepository.save(r);
-                    });
-                }
-                if (closedCancelledDoc != null) {
-                    documentRepository.findById(documentId).ifPresent(d -> {
-                        d.setStatus(closedCancelledDoc);
-                        documentRepository.save(d);
-                    });
-                }
-            }
             if (addedTemplateVersionId != null) {
                 notificationTemplateVersionRepository.deleteById(addedTemplateVersionId);
             }
@@ -154,6 +145,7 @@ class DocumentObsoleteNotificationTest {
         document.setRequiresTraining(false);
         documentRepository.save(document);
         createdDocumentIds.add(document.getId());
+        createdDocumentNumbers.add(document.getDocumentNumber());
         return document;
     }
 
@@ -257,12 +249,14 @@ class DocumentObsoleteNotificationTest {
     /**
      * The same pool user is deliberately reused as Author across several tests in this class
      * (all sharing one Spring context / one Postgres instance), so each test's own
-     * document.obsoleted UserNotification rows must be isolated from other tests' by timestamp --
-     * otherwise an earlier test's notification to the same person is mistaken for this test's.
+     * document.obsoleted rows must also match this test's documents: a previous test's async
+     * listener can finish after this test starts, so a timestamp alone does not isolate them.
      */
     private List<UserNotification> notificationsFor(UUID userId, Instant since) {
         return userNotificationRepository.findAllByRecipientUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(userId).stream()
                 .filter(n -> DocumentObsoleteNotificationService.EVENT_CODE.equals(n.getType()))
+                .filter(n -> createdDocumentNumbers.contains(n.getRelatedEntityNumber())
+                        || n.getMetadata() != null && createdDocumentNumbers.contains(n.getMetadata().path("documentNumber").asText()))
                 .filter(n -> n.getCreatedAt() != null && !n.getCreatedAt().isBefore(since))
                 .toList();
     }
@@ -574,11 +568,59 @@ class DocumentObsoleteNotificationTest {
         // those must not be mistaken for output of THIS (rolled-back) attempt.
         Instant attemptStartedAt = Instant.now();
 
-        assertThrows(RuntimeException.class, () -> runAsActor(author,
+        RuntimeException failure = assertThrows(RuntimeException.class, () -> runAsActor(author,
                 () -> documentService.obsoleteDocument(document.getId(), obsoleteRequest(author))));
+        assertTrue(failure.getMessage().contains("TC-DOC-072 injected failure"), "The intended audit failure must cause the rollback");
+        assertEquals(0, applicationEvents.stream(DocumentObsoletedEvent.class)
+                .filter(event -> document.getId().equals(event.documentId())).count(), "This failure happens before the event is published");
+
+        assertRolledBackWithoutNotification(document, revision, copy, attemptStartedAt);
+    }
+
+    @Test
+    void rollbackAfterTheObsoleteEventWasPublished_doesNotDispatchOrPersistNotificationWork() {
+        UserAccount author = pool.get(0);
+        DocumentRecord document = newActiveDocument("TCDOC072AFTEREVENT", author);
+        DocumentRevisionRecord revision = newEffectiveRevision(document, author);
+        ControlledCopyRecord copy = newControlledCopy(document, revision, "DISTRIBUTED", 1, author, true);
+        Instant attemptStartedAt = Instant.now();
+
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.executeWithoutResult(status -> {
+            runAsActor(author, () -> documentService.obsoleteDocument(document.getId(), obsoleteRequest(author)));
+            assertEquals(1, applicationEvents.stream(DocumentObsoletedEvent.class)
+                    .filter(event -> document.getId().equals(event.documentId())).count(), "The real producer must have published its event inside the transaction");
+            status.setRollbackOnly();
+        });
+
+        // Simulate a previous test's late notice to the same author, inside our observation window.
+        UserNotification unrelated = new UserNotification();
+        unrelated.setRecipientUser(author);
+        unrelated.setType(DocumentObsoleteNotificationService.EVENT_CODE);
+        unrelated.setModule("DOCUMENT_CONTROL");
+        unrelated.setTitle("Unrelated test document");
+        unrelated.setRelatedEntityNumber("OTHER-TEST-" + UUID.randomUUID());
+        userNotificationRepository.saveAndFlush(unrelated);
+        try {
+            assertTrue(userNotificationRepository.findAllByRecipientUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(author.getId()).stream()
+                    .anyMatch(notice -> unrelated.getId().equals(notice.getId())), "The unrelated notice must exist, not merely be mocked away");
+            assertRolledBackWithoutNotification(document, revision, copy, attemptStartedAt);
+        } finally {
+            userNotificationRepository.deleteById(unrelated.getId());
+        }
+    }
+
+    private void assertRolledBackWithoutNotification(DocumentRecord document, DocumentRevisionRecord revision,
+                                                     ControlledCopyRecord copy, Instant attemptStartedAt) {
+        UserAccount author = document.getAuthor();
 
         DocumentRecord documentAfter = documentRepository.findById(document.getId()).orElseThrow();
         assertEquals("ACTIVE", documentAfter.getStatus().getCode(), "The Obsolete attempt must have rolled back");
+        assertEquals("EFFECTIVE", revisionRepository.findById(revision.getId()).orElseThrow().getStatus().getCode());
+        assertEquals("DISTRIBUTED", controlledCopyRepository.findById(copy.getId()).orElseThrow().getStatusCode());
+        assertTrue(electronicSignatureRepository.findByDocument_IdOrderBySignedAtAsc(document.getId()).isEmpty(), "No signature of the rolled-back action may remain");
+        assertEquals(0, auditLogRepository.count((root, query, builder) -> root.get("entityId").in(
+                document.getId(), revision.getId(), copy.getId())), "No business audit row of the rolled-back changes may remain");
 
         // Observe for a bounded window: the AFTER_COMMIT listener must never fire for a
         // transaction that never committed, so no notification work of any kind may appear.
@@ -587,8 +629,10 @@ class DocumentObsoleteNotificationTest {
                 () -> deliveryFailureRepository.findAll().stream()
                         .noneMatch(f -> author.getEmail().equalsIgnoreCase(f.getRecipient())
                                 && DocumentObsoleteNotificationService.EVENT_CODE.equals(f.getNotificationType())
+                                && f.getPayloadJson() != null && f.getPayloadJson().contains(document.getDocumentNumber())
                                 && f.getCreatedAt() != null && f.getCreatedAt().isAfter(attemptStartedAt)),
                 Duration.ofSeconds(3));
-        verify(notificationDispatcher, never()).dispatch(eq(DocumentObsoleteNotificationService.EVENT_CODE), any(), any());
+        verify(notificationDispatcher, never()).dispatch(eq(DocumentObsoleteNotificationService.EVENT_CODE), any(),
+                argThat(variables -> variables != null && document.getDocumentNumber().equals(variables.get("documentNumber"))));
     }
 }

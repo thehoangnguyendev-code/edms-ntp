@@ -131,6 +131,12 @@ public class NotificationDispatcher {
         return dispatch(eventCode, recipients, variables, null, file);
     }
 
+    /** The same, limited to some of the channels, with a file for the e-mail (the channels of one notice may then say different things: the in-app one is a notice only). */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Outcome dispatchIndependently(String eventCode, List<UserAccount> recipients, Map<String, String> variables, Set<String> onlyChannels, MailFile file) {
+        return dispatch(eventCode, recipients, variables, onlyChannels, file);
+    }
+
     /**
      * What a dispatch did, for a caller that keeps its own log of the notices it sent: why nothing was sent ({@code blocked}: NOT_REGISTERED, POLICY_OFF or
      * NO_RECIPIENT), which channels the policy has on, and whether a notification was recorded or an e-mail queued for at least one recipient.

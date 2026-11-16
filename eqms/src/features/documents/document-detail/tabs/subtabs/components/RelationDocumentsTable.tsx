@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { Search } from "lucide-react";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { StatusBadge } from "@/components/ui";
@@ -8,6 +9,7 @@ import { useServerPagedList } from "@/features/documents/shared/useServerPagedLi
 import type { DocumentRelationBase } from "@/features/documents/shared/documentRelation.types";
 import { SortableTh, nextSort, type SortDirection } from "./SortableTh";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 interface RelationDocumentsTableProps {
     /** The documents currently selected (possibly unsaved); the server resolves, filters, sorts and pages them. */
@@ -24,7 +26,7 @@ export const RelationDocumentsTable: React.FC<RelationDocumentsTableProps> = ({ 
     const [sort, setSort] = useState<{ key: string; direction: SortDirection }>({ key: "documentNumber", direction: "asc" });
 
     useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 250);
+        const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), SEARCH_DEBOUNCE_MS);
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
@@ -110,14 +112,7 @@ export const RelationDocumentsTable: React.FC<RelationDocumentsTableProps> = ({ 
                             ) : showEmpty ? (
                                 <TableMarkup.Row>
                                     <TableMarkup.Cell colSpan={11} className="py-12 text-center">
-                                        <div className="flex flex-col items-center justify-center gap-2.5">
-                                            <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center">
-                                                <Search className="h-5 w-5 text-slate-300" />
-                                            </div>
-                                            <p className="text-sm font-medium text-slate-500">
-                                                {debouncedSearch ? "No records matching your search" : "No records to display"}
-                                            </p>
-                                        </div>
+                                        <TableEmptyState title={debouncedSearch ? "No records matching your search" : "No records to display"} />
                                     </TableMarkup.Cell>
                                 </TableMarkup.Row>
                             ) : (

@@ -6,6 +6,7 @@ import { settingsApi } from "@/services/api/settings";
 import { mapCatalogGroup } from "../usePermissionCatalog";
 import { PermissionResourceGroup } from "./PermissionResourceGroup";
 import type { Permission, PermissionGroup } from "../../access-profiles/types";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 interface PermissionSplitExplorerProps {
   groups: PermissionGroup[];
@@ -44,7 +45,7 @@ export const PermissionSplitExplorer: React.FC<
   const [activeModule, setActiveModule] = useState<string | null>(null);
   const [catalogGroups, setCatalogGroups] = useState<PermissionGroup[]>(groups);
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
 
   useEffect(() => {
     setCatalogGroups(groups);

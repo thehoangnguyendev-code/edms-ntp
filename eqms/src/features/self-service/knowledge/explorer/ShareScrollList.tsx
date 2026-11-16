@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/form/SearchInput";
 import { cn } from "@/components/ui/utils";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 export interface ScrollListPage<T> {
   items: T[];
@@ -32,7 +33,7 @@ interface ShareScrollListProps<T> {
   header?: React.ReactNode;
 }
 
-const SEARCH_DELAY_MS = 250;
+const SEARCH_DELAY_MS = SEARCH_DEBOUNCE_MS;
 
 /**
  * A list of at most {@code visibleRows} rows that scrolls, with a search bar. It reads the server one page at a time as the person scrolls: the

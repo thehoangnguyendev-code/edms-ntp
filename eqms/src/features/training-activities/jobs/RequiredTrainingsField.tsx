@@ -3,6 +3,7 @@ import { StatusBadge, type StatusType } from "@/components/ui/badge/Badge";
 import { useDebounce } from "@/hooks/useDebounce";
 import { documentApi } from "@/services/api/documents";
 import { TransferPicker } from "../shared/TransferPicker";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 /** A training that is required: a Training Topic as it was written (kind TOPIC, the text is the title) or a SOP of Document Control (kind DOCUMENT, with its id). */
 export interface PickedTraining { kind: "TOPIC" | "DOCUMENT"; id: string; code: string; title: string; status?: string | null }
@@ -29,7 +30,7 @@ export function RequiredTrainingsField({ value, onChange, disabled }: { value: P
   const [query, setQuery] = useState("");
   const [documents, setDocuments] = useState<PickedTraining[]>([]);
   const [loading, setLoading] = useState(false);
-  const debounced = useDebounce(query, 300);
+  const debounced = useDebounce(query, SEARCH_DEBOUNCE_MS);
 
   useEffect(() => {
     if (disabled) return;

@@ -1,3 +1,4 @@
+import { downloadTableExcel } from '@/services/api/tableExport';
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -8,6 +9,7 @@ import { IconPencilMinus, IconToggleLeft, IconToggleRight, IconFilter2, IconInfo
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { DOCUMENT_CONTROL_VISIBILITY_COLOR, DOCUMENT_CONTROL_VISIBILITY_LABEL } from "../shared/documentControlVisibility";
 import { Select } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
@@ -30,6 +32,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { accessProfiles as accessProfilesBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 // ── Action Dropdown ────────────────────────────────────────────────────────────
 
@@ -84,7 +87,7 @@ const ActionDropdown: React.FC<DropdownProps> = ({
           Duplicate
         </DropdownMenuItem>
         <DropdownMenuItem
-          icon={profile.active ? <IconToggleRight className="h-4 w-4" /> : <IconToggleLeft className="h-4 w-4" />}
+          icon={profile.active ? <IconToggleLeft className="h-4 w-4" /> : <IconToggleRight className="h-4 w-4" />}
           disabled={!loaded || !can("toggleStatus")}
           title={loaded && !can("toggleStatus") ? reason("toggleStatus") : undefined}
           onClick={run(onToggle)}
@@ -188,7 +191,7 @@ export const AccessProfileListView: React.FC = () => {
   const [createdToDate, setCreatedToDate] = useState(() => searchParams.get("createdTo") ?? "");
   const [updatedFromDate, setUpdatedFromDate] = useState(() => searchParams.get("updatedFrom") ?? "");
   const [updatedToDate, setUpdatedToDate] = useState(() => searchParams.get("updatedTo") ?? "");
-  const debouncedSearch = useDebounce(searchQuery, 300);
+  const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["type", "status"]));
 
@@ -237,7 +240,6 @@ export const AccessProfileListView: React.FC = () => {
   }, [searchQuery, debouncedSearch, typeFilter, statusFilter, createdFromDate, createdToDate, updatedFromDate, updatedToDate, sortConfig, currentPage, itemsPerPage, searchParams, setSearchParams]);
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; profile: AccessProfileResponse | null }>({ open: false, profile: null });
   const [duplicateModal, setDuplicateModal] = useState<{ open: boolean; profile: AccessProfileResponse | null }>({ open: false, profile: null });
-  const [capabilityByProfileId, setCapabilityByProfileId] = useState<Record<string, AccessProfileCapabilitiesResponse>>({});
   const [migrationHealth, setMigrationHealth] = useState<AccessProfileMigrationReport | null>(null);
   const [workflowRoleLabels, setWorkflowRoleLabels] = useState<Record<string, string>>({});
 
@@ -331,8 +333,6 @@ export const AccessProfileListView: React.FC = () => {
     if (!sig) return;
     try {
       await settingsApi.toggleAccessProfileStatus(profile.id, sig);
-      const caps = await settingsApi.getAccessProfileCapabilities(profile.id);
-      setCapabilityByProfileId((prev) => ({ ...prev, [profile.id]: caps }));
       showToast({ type: "success", message: `Access profile ${profile.active ? "disabled" : "enabled"}` });
       void fetchProfiles();
     } catch {
@@ -340,24 +340,7 @@ export const AccessProfileListView: React.FC = () => {
     }
   };
 
-  const loadProfileCapabilities = async (profileId: string) => {
-    if (capabilityByProfileId[profileId]) return;
-    try {
-      const caps = await settingsApi.getAccessProfileCapabilities(profileId);
-      setCapabilityByProfileId((prev) => ({ ...prev, [profileId]: caps }));
-    } catch {
-      setCapabilityByProfileId((prev) => ({
-        ...prev,
-        [profileId]: {
-          accessProfileId: profileId,
-          actions: {},
-        },
-      }));
-    }
-  };
-
   const handleActionMenuToggle = (profileId: string, event: React.MouseEvent<HTMLButtonElement>) => {
-    void loadProfileCapabilities(profileId);
     toggle(profileId, event);
   };
 
@@ -391,7 +374,7 @@ export const AccessProfileListView: React.FC = () => {
       label: "Type",
       sort: { direction: sortConfig.key === "type" ? sortConfig.direction : undefined, onSort: () => handleSort("type") },
       cell: (profile) => (
-        <Badge color={profile.type === "SYSTEM" ? "purple" : "slate"} size="sm">
+        <Badge color={profile.type === "SYSTEM" ? "blue" : "teal"} size="sm">
           {profile.type === "SYSTEM" ? "System" : "Custom"}
         </Badge>
       ),
@@ -401,7 +384,7 @@ export const AccessProfileListView: React.FC = () => {
       header: "Status",
       label: "Status",
       cell: (profile) => (
-        <Badge color={profile.active ? "emerald" : "slate"} size="sm" showDot>
+        <Badge color={flagColor(profile.active)} size="sm" showDot>
           {profile.active ? "Active" : "Inactive"}
         </Badge>
       ),
@@ -487,7 +470,7 @@ export const AccessProfileListView: React.FC = () => {
           onClose={close}
           position={position}
           profile={profile}
-          capabilities={capabilityByProfileId[profile.id]}
+          capabilities={profile.capabilities}
           onView={() => navigateTo(`${ROUTES.SECURITY.ACCESS_PROFILES}/${profile.id}`)}
           onEdit={() => navigateTo(`${ROUTES.SECURITY.ACCESS_PROFILES}/${profile.id}/edit`)}
           onDuplicate={() => setDuplicateModal({ open: true, profile })}
@@ -499,6 +482,22 @@ export const AccessProfileListView: React.FC = () => {
   };
   const { layout: profileLayout, control: profileControl } = useCustomColumnLayout("access-profiles.list", profileColumns, profileAction);
 
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      await downloadTableExcel('access-profiles', {
+        search: debouncedSearch || undefined, type: typeFilter !== 'ALL' ? typeFilter : undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        createdFrom: createdFromDate || undefined, createdTo: createdToDate || undefined,
+        updatedFrom: updatedFromDate || undefined, updatedTo: updatedToDate || undefined,
+        sortBy: sortConfig.key, sortDir: sortConfig.direction,
+      });
+    } catch { showToast({ type: 'error', message: 'Export failed' }); }
+    finally { setIsExporting(false); }
+  };
+
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {(isNavigating || isInitialLoading) && <FullPageLoading text="Loading…" />}
@@ -508,7 +507,7 @@ export const AccessProfileListView: React.FC = () => {
         breadcrumbItems={accessProfilesBreadcrumb()}
         actions={
           <>
-            <Button variant="outline" size="sm" className="whitespace-nowrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => void handleExport()} loading={isExporting} className="whitespace-nowrap gap-2">
               <Download className="h-4 w-4" />
               Export
             </Button>

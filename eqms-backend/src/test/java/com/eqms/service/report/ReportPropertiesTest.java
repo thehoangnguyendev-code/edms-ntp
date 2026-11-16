@@ -48,6 +48,7 @@ class ReportPropertiesTest {
         row.put("max_rows_full", 100000);
         row.put("max_schedule_recipients", 200);
         row.put("schedule_retry_minutes", 5);
+        row.put("max_range_days", 92);
         row.put("version", version);
         row.put("updated_at", "now");
         return row;
@@ -63,32 +64,26 @@ class ReportPropertiesTest {
     }
 
     @Test
+    void theMostDaysAReportMayCoverIsSettableWithinItsLimitsAndAudited() {
+        var manager = actor("reports.properties.manage", "reports.properties.view");
+        var request = new ReportPropertiesService.PropertiesWrite(3, null, null, null, null, null, null, 366);
+        service.update(manager, request);
+        verify(jdbc).update(anyString(), eq("RPT"), eq(4), eq(10000), eq(100000), eq(200), eq(5), eq(366), any());
+        verify(audit).logAs(any(), eq("REPORT_PROPERTIES"), anyString(), any(), eq("REPORT_PROPERTIES_UPDATED"), any(), any(),
+                eq("Most days a report of a log-like type may cover: 92 -> 366"));
+        for (int invalid : new int[] {0, -1, ReportPropertiesService.MAX_MAX_RANGE_DAYS + 1}) {
+            assertThat(org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                    () -> service.update(manager, new ReportPropertiesService.PropertiesWrite(3, null, null, null, null, null, null, invalid))).getMessage())
+                    .isEqualTo("REPORT_MAX_RANGE_DAYS_INVALID");
+        }
+    }
+
+    @Test
     void aChangeIsSavedAndTheAuditTrailNamesWhatChanged() {
         service.update(actor("reports.properties.manage", "reports.properties.view"), write(3, "QA", 5, 20000, null, null));
-        verify(jdbc).update(anyString(), eq("QA"), eq(5), eq(20000), eq(100000), eq(200), eq(5), any(), any());
+        verify(jdbc).update(anyString(), eq("QA"), eq(5), eq(20000), eq(100000), eq(200), eq(5), eq(92), any());
         verify(audit).logAs(any(), eq("REPORT_PROPERTIES"), anyString(), any(), eq("REPORT_PROPERTIES_UPDATED"), any(), any(),
                 eq("Template number prefix: RPT -> QA; Digits of the serial number: 4 -> 5; Most rows in a report file: 10000 -> 20000"));
-    }
-
-    @Test
-    void theCompanyAppearanceIsSavedWithTheSettingsAndTheAuditTrailNamesWhatChanged() {
-        var look = ReportLayout.defaults();
-        var changed = new ReportLayout(look.cover(), look.coverTitle(), look.subtitle(), look.showExecutor(), look.showGeneratedAt(), look.header(), look.footer(), look.pageNumbers(),
-            false, look.watermark(), true, "CONTROLLED", null, null, null, List.of(), "PORTRAIT", null, "TIMES_NEW_ROMAN");
-        var request = new ReportPropertiesService.PropertiesWrite(3, null, null, null, null, null, changed);
-        service.update(actor("reports.properties.manage"), request);
-        verify(audit).logAs(any(), eq("REPORT_PROPERTIES"), anyString(), any(), eq("REPORT_PROPERTIES_UPDATED"), any(), any(),
-                eq("Report appearance: font, paper layout, stamp changed"));
-    }
-
-    @Test
-    void anInvalidAppearanceIsRefusedBeforeAnythingIsWritten() {
-        var look = ReportLayout.defaults();
-        var bad = new ReportLayout(look.cover(), look.coverTitle(), look.subtitle(), look.showExecutor(), look.showGeneratedAt(), look.header(), look.footer(), look.pageNumbers(),
-            false, look.watermark(), false, look.stamp(), null, null, null, List.of(), "PORTRAIT", null, "COMIC");
-        assertThatThrownBy(() -> service.update(actor("reports.properties.manage"), new ReportPropertiesService.PropertiesWrite(3, null, null, null, null, null, bad)))
-            .isInstanceOf(IllegalArgumentException.class).hasMessage("REPORT_FONT_INVALID");
-        verify(jdbc, never()).update(anyString(), any(Object[].class));
     }
 
     @Test
@@ -118,16 +113,16 @@ class ReportPropertiesTest {
     @Test
     void theFullLimitIsSavedWithinItsRangeAndAuditedAndRefusedOutsideIt() {
         UserAccount admin = actor("reports.properties.manage");
-        service.update(admin, new ReportPropertiesService.PropertiesWrite(3, null, null, null, null, null, null, 50000));
-        verify(jdbc).update(anyString(), eq("RPT"), eq(4), eq(10000), eq(50000), eq(200), eq(5), any(), any());
+        service.update(admin, new ReportPropertiesService.PropertiesWrite(3, null, null, null, null, null, 50000));
+        verify(jdbc).update(anyString(), eq("RPT"), eq(4), eq(10000), eq(50000), eq(200), eq(5), eq(92), any());
         verify(audit).logAs(any(), eq("REPORT_PROPERTIES"), anyString(), any(), eq("REPORT_PROPERTIES_UPDATED"), any(), any(),
                 eq("Most rows in a report file run with Full: 100000 -> 50000"));
         // below its minimum, above what the report worker can hold, and lower than the ordinary limit are all refused
         for (int bad : new int[] {9999, 100001, 1_000_000}) {
-            assertThatThrownBy(() -> service.update(admin, new ReportPropertiesService.PropertiesWrite(3, null, null, null, null, null, null, bad)))
+            assertThatThrownBy(() -> service.update(admin, new ReportPropertiesService.PropertiesWrite(3, null, null, null, null, null, bad)))
                     .isInstanceOf(IllegalArgumentException.class).hasMessage("REPORT_MAX_ROWS_FULL_INVALID");
         }
-        assertThatThrownBy(() -> service.update(admin, new ReportPropertiesService.PropertiesWrite(3, null, null, 50000, null, null, null, 20000)))
+        assertThatThrownBy(() -> service.update(admin, new ReportPropertiesService.PropertiesWrite(3, null, null, 50000, null, null, 20000)))
                 .isInstanceOf(IllegalArgumentException.class).hasMessage("REPORT_MAX_ROWS_FULL_INVALID");
     }
 
@@ -143,6 +138,13 @@ class ReportPropertiesTest {
         assertThatThrownBy(() -> service.get(actor("reports.definition.view"))).isInstanceOf(SecurityException.class);
         assertThat(service.get(actor("reports.properties.view")).get("nextTemplateNumber")).isEqualTo("RPT.0003");
         assertThatThrownBy(() -> service.update(actor("reports.properties.view"), write(3, "QA", null, null, null, null))).isInstanceOf(SecurityException.class);
+    }
+
+    @Test
+    void thePropertiesDoNotCarryTheAppearanceAndTheAppearancePermissionsDoNotOpenThem() {
+        assertThat(service.get(actor("reports.properties.view"))).doesNotContainKey("appearance");
+        assertThatThrownBy(() -> service.get(actor("reports.appearance.view", "reports.appearance.manage"))).isInstanceOf(SecurityException.class);
+        assertThatThrownBy(() -> service.update(actor("reports.appearance.manage"), write(3, "QA", null, null, null, null))).isInstanceOf(SecurityException.class);
     }
 
     @Test

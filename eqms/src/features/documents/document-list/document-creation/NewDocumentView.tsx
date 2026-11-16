@@ -254,8 +254,8 @@ const isRestorableNewDocumentDraft = (snapshot?: NewDocumentDraftSnapshot | null
     return false;
   }
 
-  const status = mapDocumentStatusToLocal(snapshot.status);
-  return status === "Draft" || status === "Active";
+  const status = resolveStatusCode(snapshot.status);
+  return status === "DRAFT" || status === "ACTIVE";
 };
 
 const defaultFormData = {
@@ -389,7 +389,8 @@ const mapRevisionSummaryToLocal = (revision: DocumentDetailResponse["revisions"]
     created: mapped.created,
     openedBy: mapped.openedBy,
     revisionName: mapped.revisionName,
-    status: mapped.status as Revision["status"],
+    statusBadge: mapped.statusBadge as Revision["statusBadge"],
+    statusCode: mapped.statusCode,
     statusLabel: mapped.statusLabel,
     canOpenAuthoringWorkspace: Boolean(revision.canOpenAuthoringWorkspace),
   };
@@ -401,7 +402,6 @@ const mapWorkspaceRevisionSummaryToLocal = (revision: {
   created: string;
   openedBy: string;
   revisionName: string;
-  state?: string;
   status?: string;
   statusCode?: string;
   statusInfo?: { id?: string; name?: string };
@@ -414,7 +414,8 @@ const mapWorkspaceRevisionSummaryToLocal = (revision: {
     created: mapped.created,
     openedBy: mapped.openedBy,
     revisionName: mapped.revisionName,
-    status: mapped.status as Revision["status"],
+    statusBadge: mapped.statusBadge as Revision["statusBadge"],
+    statusCode: mapped.statusCode,
     statusLabel: mapped.statusLabel,
     canOpenAuthoringWorkspace: Boolean(revision.canOpenAuthoringWorkspace),
   };

@@ -14,6 +14,7 @@ import {
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
@@ -40,6 +41,7 @@ import type {
   WorkflowActionPolicyOptions,
 } from "../types";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const VIEW_PERM = "security.workflow_authorization.view";
 const MANAGE_PERM = "security.workflow_authorization.manage";
@@ -72,7 +74,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
   const [totalPages, setTotalPages] = useState(1);
 
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [workflowFilter, setWorkflowFilter] = useState("ALL");
   const [actionFilter, setActionFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -364,7 +366,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
       header: "Active",
       label: "Active",
       sort: { direction: sortKey === "active" ? sortDir : undefined, onSort: () => handleSort("active") },
-      cell: (policy) => <Badge color={policy.active ? "emerald" : "slate"} size="sm">{policy.active ? "Active" : "Inactive"}</Badge>,
+      cell: (policy) => <Badge color={flagColor(policy.active)} size="sm">{policy.active ? "Active" : "Inactive"}</Badge>,
     },
     {
       id: "system",
@@ -446,7 +448,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
                   </DropdownMenuItem>
                   {!policy.active ? (
                     <DropdownMenuItem
-                      icon={<IconToggleLeft className="h-4 w-4 text-slate-400" />}
+                      icon={<IconToggleRight className="h-4 w-4 text-slate-400" />}
                       onClick={() => { setActivateTarget(policy); close(); }}
                     >
                       Activate
@@ -454,7 +456,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
                   ) : (
                     policy.deactivatable !== false && (
                       <DropdownMenuItem
-                        icon={<IconToggleRight className="h-4 w-4 text-slate-400" />}
+                        icon={<IconToggleLeft className="h-4 w-4 text-slate-400" />}
                         onClick={() => { setDeactivateTarget(policy); close(); }}
                       >
                         Deactivate

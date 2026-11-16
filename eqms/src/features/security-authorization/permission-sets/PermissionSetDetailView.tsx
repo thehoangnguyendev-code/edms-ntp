@@ -4,6 +4,7 @@ import { Grid3X3, KeyRound, ShieldCheck, Users, Info } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { useToast } from "@/components/ui/toast";
@@ -199,7 +200,7 @@ export const PermissionSetDetailView: React.FC = () => {
                 {permissionSet.system ? "System" : "Custom"}
               </Badge>
               {permissionSet.testData ? <Badge color="amber" size="xs">Test</Badge> : null}
-              <Badge color={permissionSet.active ? "emerald" : "slate"} size="xs" >
+              <Badge color={flagColor(permissionSet.active)} size="xs" >
                 {permissionSet.active ? "Active" : "Inactive"}
               </Badge>
               <Badge color="slate" size="xs">{permissionSet.code}</Badge>
@@ -260,7 +261,7 @@ export const PermissionSetDetailView: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Status</p>
-                    <Badge color={permissionSet.active ? "emerald" : "slate"} size="sm" >
+                    <Badge color={flagColor(permissionSet.active)} size="sm" >
                       {permissionSet.active ? "Active" : "Inactive"}
                     </Badge>
                   </div>
@@ -393,7 +394,7 @@ export const PermissionSetDetailView: React.FC = () => {
                         <TableMarkup.Cell className="px-4 py-3 text-slate-700">{profile.departmentScope || "—"}</TableMarkup.Cell>
                         <TableMarkup.Cell className="px-4 py-3 text-slate-700">{profile.userCount}</TableMarkup.Cell>
                         <TableMarkup.Cell className="px-4 py-3">
-                          <Badge color={profile.active ? "emerald" : "slate"} size="xs" >
+                          <Badge color={flagColor(profile.active)} size="xs" >
                             {profile.active ? "Active" : "Inactive"}
                           </Badge>
                         </TableMarkup.Cell>

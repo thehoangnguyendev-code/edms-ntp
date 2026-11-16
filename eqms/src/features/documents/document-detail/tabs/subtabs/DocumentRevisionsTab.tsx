@@ -16,6 +16,7 @@ import {
     type WorkspaceNavigationMode,
 } from "@/features/documents/shared/navigationContext";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 interface DocumentRevisionsTabProps {
     revisions?: Revision[];
@@ -60,12 +61,12 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
   const [sort, setSort] = useState<{ key: string; direction: SortDirection }>({ key: "revisionNumber", direction: "desc" });
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 250);
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
   // The parent reloads `revisions` after actions (upgrade, publish...); a change there must refresh this page too.
-  const revisionsSignature = revisions.map((revision) => `${revision.id}:${revision.status}`).join(",");
+  const revisionsSignature = revisions.map((revision) => `${revision.id}:${revision.statusCode}`).join(",");
 
   const { items: serverRevisions, total, totalPages, loading, error, hasLoadedOnce } = useServerPagedList<Revision>(
     async () => {
@@ -86,7 +87,8 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
             created: mapped.created,
             openedBy: mapped.openedBy,
             revisionName: mapped.revisionName,
-            status: mapped.status as any,
+            statusBadge: mapped.statusBadge as any,
+            statusCode: mapped.statusCode,
             statusLabel: mapped.statusLabel,
             canOpenAuthoringWorkspace: Boolean(revision.canOpenAuthoringWorkspace),
           } as Revision;
@@ -135,7 +137,7 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
             documentStatus: documentStatus,
             documentCreated: documentCreated,
             fromDocumentDetail: true,
-            revisionState: revision.status?.toLowerCase?.().replace(/ /g, ""),
+            revisionState: revision.statusBadge,
         };
 
         if (canOpenAuthoringWorkspace) {
@@ -230,7 +232,7 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
                                             {revision.revisionName}
                                         </TableMarkup.Cell>
                                         <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
-                                            <StatusBadge status={revision.status as any} label={revision.statusLabel} />
+                                            <StatusBadge status={revision.statusBadge as any} label={revision.statusLabel} />
                                         </TableMarkup.Cell>
                                     </TableMarkup.Row>
                                 ))

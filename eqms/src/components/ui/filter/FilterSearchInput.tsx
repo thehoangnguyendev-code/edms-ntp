@@ -1,5 +1,6 @@
 import React from "react";
 import { Search, X } from "lucide-react";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 interface FilterSearchInputProps {
   value: string;
@@ -22,7 +23,7 @@ export const FilterSearchInput: React.FC<FilterSearchInputProps> = ({
   value,
   onChange,
   placeholder,
-  debounceMs = 150,
+  debounceMs = SEARCH_DEBOUNCE_MS,
   disabled = false,
   fullWidth = true,
   ...rest

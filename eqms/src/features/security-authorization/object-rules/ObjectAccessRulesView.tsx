@@ -27,6 +27,7 @@ import { useSecurityESign } from "@/features/security-authorization/shared/useSe
 import { ROUTES } from "@/app/routes.constants";
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const EFFECT_OPTIONS: SelectOption[] = [
   { label: "All", value: "ALL" },
@@ -58,7 +59,7 @@ export const ObjectAccessRulesView: React.FC = () => {
 
   // Server-side query state.
   const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [resourceTypeFilter, setResourceTypeFilter] = useState(() => searchParams.get("resourceType") ?? "ALL");
   const [effectFilter, setEffectFilter] = useState(() => searchParams.get("effect") ?? "ALL");
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") ?? "ALL");

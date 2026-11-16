@@ -133,7 +133,7 @@ export const RevisionsOwnedByMeView: React.FC = () => {
         documentNumber: revision.documentNumber,
         documentName: revision.documentName,
         documentAuthor: revision.author,
-        documentStatus: revision.state,
+        documentStatus: revision.status,
         workspaceState: buildRevisionWorkspaceSourceState({
           id: revision.id,
           documentNumber: revision.documentNumber,
@@ -191,8 +191,8 @@ export const RevisionsOwnedByMeView: React.FC = () => {
         return <span className="font-medium text-slate-900">{revision.revisionName}</span>;
       case "state":
         return (
-          <Badge color={getBadgeColor(revision.statusCode, revision.state)} size="sm">
-            {revision.state}
+          <Badge color={getBadgeColor(revision.statusCode, revision.status)} size="sm">
+            {revision.statusInfo?.name ?? revision.status}
           </Badge>
         );
       case "documentName":

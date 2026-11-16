@@ -52,6 +52,10 @@ public record PublicBrandingResponse(
         /** Colour of the text of the items of every dropdown (action) menu, "#RRGGBB"; null when the administrator set nothing (the built-in colour is used). */
         String menuTextColor,
         /** Colour of the icons of the items of every dropdown (action) menu, "#RRGGBB"; null when the administrator set nothing. */
-        String menuIconColor
+        String menuIconColor,
+        /** How the Audit Trail tab of a record (document, revision, copy, training ...) is drawn: TABLE or TIMELINE (TABLE when the administrator set nothing). The Audit Trail module itself is always a table. */
+        String auditTabView,
+        /** The look of the timeline when auditTabView is TIMELINE: RAIL, CENTER, COMPACT or SCROLL_LIT (COMPACT when the administrator set nothing). */
+        String auditTabTimelineStyle
 ) {
 }

@@ -1,25 +1,48 @@
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { IconColumns3, IconFilter, IconId, IconInfoCircle, IconLock } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { FormSection } from "@/components/ui/form/FormSection";
+import { FormField } from "@/components/ui/form/ResponsiveForm";
+import { ReadOnlyField } from "@/components/ui/form/ReadOnlyField";
+import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { reportError } from "@/services/api/reportTemplates";
 import { reportTypesApi, type ReportTypeDetail } from "@/services/api/reportTypes";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
-import { ReportTypeColumnsPanel } from "./ReportTypeColumnsPanel";
 
-const Item: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-  <div className="min-w-0">
-    <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
-    <div className="text-sm text-slate-800 break-words">{children}</div>
-  </div>
+type Column = ReportTypeDetail["columns"][number];
+type Filter = ReportTypeDetail["filters"][number];
+
+const TYPE_TEXT: Record<string, string> = { TEXT: "Text", DATE: "Date", LOOKUP: "List" };
+const code = (value: string) => (
+  <span translate="no" className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-700">
+    {value}
+  </span>
 );
 
-/** One Report Type: what it reports on, who may use it, its columns and filters. Read only; Enable and Disable are in the list. */
+const columnColumns: DataTableColumn<Column>[] = [
+  { id: "no", header: "No.", label: "No.", locked: true, cell: (_column, index) => index + 1 },
+  { id: "label", header: "Column", label: "Column", cell: (column) => <span className="font-medium text-slate-900">{column.label}</span> },
+  { id: "code", header: "Code", label: "Code", cell: (column) => code(column.code) },
+  { id: "type", header: "Type", label: "Type", cell: (column) => TYPE_TEXT[column.type] ?? column.type },
+  { id: "required", header: "In every report", label: "In every report", cell: (column) => (column.required ? <Badge color="emerald">Yes</Badge> : <Badge color="slate">No</Badge>) },
+];
+const filterColumns: DataTableColumn<Filter>[] = [
+  { id: "label", header: "Filter", label: "Filter", cell: (filter) => <span className="font-medium text-slate-900">{filter.label}</span> },
+  { id: "code", header: "Code", label: "Code", cell: (filter) => code(filter.code) },
+  { id: "type", header: "Type", label: "Type", cell: (filter) => TYPE_TEXT[filter.type] ?? filter.type },
+];
+
+/**
+ * One Report Type, read only: the data a report can be made from (its name, code and category), who may use it, and the columns and filters that a report template built on it
+ * can choose from. Enable and Disable are in the list of Report Types.
+ */
 export const ReportTypeDetailView: React.FC = () => {
   const navigate = useNavigate();
-  const { code = "" } = useParams();
+  const { code: typeCode = "" } = useParams();
   const [detail, setDetail] = React.useState<ReportTypeDetail | null>(null);
   const [error, setError] = React.useState("");
   const [loading, setLoading] = React.useState(true);
@@ -28,21 +51,22 @@ export const ReportTypeDetailView: React.FC = () => {
     setLoading(true);
     setError("");
     reportTypesApi
-      .detail(code)
+      .detail(typeCode)
       .then(setDetail)
       .catch((e) => setError(reportError(e)))
       .finally(() => setLoading(false));
-  }, [code]);
+  }, [typeCode]);
   React.useEffect(load, [load]);
 
-  const title = detail?.name ?? "Report Type";
+  const title = "Report Type Details";
+  const noOwnPermission = !!detail && detail.usePermissions.length === 0 && detail.requiredPermissions.length === 0;
   return (
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
         title={title}
         breadcrumbItems={reportBreadcrumbs(navigate, title, true, { label: "Report Types", onClick: () => navigate("/settings/report-types") })}
         actions={
-          <Button size="sm" variant="outline" onClick={() => navigate("/settings/report-types")}>
+          <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => navigate("/settings/report-types")}>
             Back
           </Button>
         }
@@ -59,31 +83,63 @@ export const ReportTypeDetailView: React.FC = () => {
         </div>
       )}
       {!loading && !error && detail && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 md:p-5 space-y-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Item label="Name">{detail.name}</Item>
-            <Item label="Code"><code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{detail.code}</code></Item>
-            <Item label="Category">{detail.category}</Item>
-            <Item label="Status">{detail.enabled ? <Badge color="emerald" size="sm">Enabled</Badge> : <Badge color="slate" size="sm">Disabled</Badge>}</Item>
-            <div className="sm:col-span-2 lg:col-span-4">
-              <Item label="Description">{detail.description || "-"}</Item>
+        <>
+          <FormSection
+            title="General Information"
+            icon={<IconInfoCircle className="h-4 w-4" />}
+            headerRight={detail.enabled ? <Badge color="emerald">Enabled</Badge> : <Badge color="slate">Disabled</Badge>}
+          >
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <FormField label="Report Type Name">
+                <ReadOnlyField value={detail.name} />
+              </FormField>
+              <FormField label="Report Type Code">
+                <ReadOnlyField value={detail.code} className="font-mono text-xs" />
+              </FormField>
+              <FormField label="Report Type Category">
+                <ReadOnlyField value={detail.category} />
+              </FormField>
+              <FormField label="Report Templates">
+                <ReadOnlyField value={detail.templateCount} />
+              </FormField>
+              <div className="md:col-span-2 lg:col-span-4">
+                <FormField label="Description">
+                  <p className="min-h-9 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700">{detail.description || "—"}</p>
+                </FormField>
+              </div>
             </div>
-            <Item label="Report templates">{detail.templateCount}</Item>
-            <Item label="Needs the permission">
-              {detail.usePermissions.length === 0 && detail.requiredPermissions.length === 0 ? (
-                "None of its own: the scope of each template decides what is shown."
-              ) : (
-                <>
-                  {detail.requiredPermissions.length > 0 && <span className="mr-1">All of:</span>}
-                  {detail.requiredPermissions.map((p) => <code key={p} className="mr-1 bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{p}</code>)}
-                  {detail.usePermissions.length > 0 && <span className="mr-1">One of:</span>}
-                  {detail.usePermissions.map((p) => <code key={p} className="mr-1 bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{p}</code>)}
-                </>
-              )}
-            </Item>
+          </FormSection>
+
+          <FormSection title="Access" icon={<IconLock className="h-4 w-4" />}>
+            {noOwnPermission ? (
+              <p className="text-sm text-slate-600">This type needs no permission of its own: the data scope of each report template decides what a person sees.</p>
+            ) : (
+              <div className="space-y-3">
+                {detail.requiredPermissions.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-medium text-slate-500 sm:text-sm">Needs all of</span>
+                    {detail.requiredPermissions.map((permission) => code(permission))}
+                  </div>
+                )}
+                {detail.usePermissions.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-medium text-slate-500 sm:text-sm">Needs one of</span>
+                    {detail.usePermissions.map((permission) => code(permission))}
+                  </div>
+                )}
+              </div>
+            )}
+          </FormSection>
+
+          <div className="space-y-4 md:space-y-6">
+            <FormSection title="Columns" icon={<IconColumns3 className="h-4 w-4" />} description={`${detail.columns.length} columns a report can show`}>
+              <DataTable rows={detail.columns} getRowKey={(column) => column.code} columns={columnColumns} />
+            </FormSection>
+            <FormSection title="Filters" icon={<IconFilter className="h-4 w-4" />} description={`${detail.filters.length} filters a report can use`}>
+              <DataTable rows={detail.filters} getRowKey={(filter) => filter.code} columns={filterColumns} />
+            </FormSection>
           </div>
-          <ReportTypeColumnsPanel detail={detail} />
-        </div>
+        </>
       )}
     </div>
   );

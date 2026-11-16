@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import {
-  Trash2, MoreVertical, GraduationCap, Power, PowerOff, Search, AlertTriangle,
+  Trash2, MoreVertical, GraduationCap, Search, AlertTriangle,
   ChevronUp, ChevronDown, Check, X, Plus,
 } from "lucide-react";
 import { Select } from "@/components/ui/select/Select";
@@ -24,7 +24,7 @@ import type { EducationDegreeLevelItem } from "./types";
 import { usePortalDropdown } from "@/hooks";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
-import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
+import { IconFilter2, IconPencilMinus, IconToggleLeft, IconToggleRight } from "@tabler/icons-react";
 import { educationApi } from "@/services/api";
 import { useToast } from "@/components/ui/toast";
 import { extractApiMessage } from "../shared/utils";
@@ -305,7 +305,7 @@ export const EducationDegreeLevelsView: React.FC = () => {
           </button>
           <button onClick={(e) => { e.stopPropagation(); const item = items.find((i) => i.id === openDropdownId)!; handleRequestToggleStatus(item); }}
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors">
-            {items.find((i) => i.id === openDropdownId)?.isActive ? (<><PowerOff className="h-3.5 w-3.5" /><span>Disable</span></>) : (<><Power className="h-3.5 w-3.5" /><span>Enable</span></>)}
+            {items.find((i) => i.id === openDropdownId)?.isActive ? (<><IconToggleLeft className="h-3.5 w-3.5" /><span>Disable</span></>) : (<><IconToggleRight className="h-3.5 w-3.5" /><span>Enable</span></>)}
           </button>
           <button onClick={(e) => { e.stopPropagation(); const item = items.find((i) => i.id === openDropdownId)!; handleDelete(item); }}
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors">

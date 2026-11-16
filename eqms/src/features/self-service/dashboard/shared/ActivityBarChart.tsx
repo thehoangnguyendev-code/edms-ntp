@@ -1,6 +1,6 @@
-import React, { memo, useMemo, useState } from 'react';
-import { Bar, BarChart, Cell, LabelList, XAxis, YAxis } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import React, { memo, useMemo } from 'react';
+import type { ChartConfiguration } from 'chart.js';
+import { ChartCanvas, barValueLabels, emphasize } from '@/components/ui/chart';
 import type { DashboardActivityPoint } from '@/services/api/dashboard';
 import { LazyMount } from './LazyMount';
 
@@ -22,58 +22,71 @@ interface ActivityBarChartProps {
   colors?: string[];
 }
 
-const MARGIN = { top: 8, right: 8, bottom: 0, left: 0 } as const;
-const TICK = { fontSize: 12 } as const;
-const TOOLTIP_WRAPPER = { outline: 'none', zIndex: 50 } as const;
-const BAR_RADIUS: [number, number, number, number] = [3, 3, 0, 0];
-
 /**
- * Columns drawn with the shared chart primitives: a bar under the pointer stays at full strength while the others soften, and a
- * tooltip names the bar. The chart is built when it comes near the window and plays its entrance then.
+ * Columns drawn with Chart.js: a bar under the pointer stays at full strength while the others soften, and a tooltip names the bar. The chart is built when it comes near
+ * the window and plays its entrance then.
  */
 const ActivityBarChartBase: React.FC<ActivityBarChartProps> = ({ data, color, valueLabel, titleFor, shortLabel, height = 232, tickEvery = 1, showValues = false, colors }) => {
-  const [active, setActive] = useState<number | null>(null);
-
-  const config = useMemo<ChartConfig>(() => ({ value: { label: valueLabel, color } }), [valueLabel, color]);
-  // `fill` is what the tooltip uses for the colour chip of the bar it describes.
-  const points = useMemo(() => data.map((point, index) => ({ ...point, fill: colors?.[index] ?? color })), [data, colors, color]);
+  const config = useMemo<ChartConfiguration<'bar'>>(() => {
+    const full = data.map((_, index) => colors?.[index] ?? color);
+    let hovered: number | null = null;
+    return {
+      type: 'bar',
+      data: {
+        labels: data.map((point) => point.label),
+        datasets: [{ label: valueLabel, data: data.map((point) => point.value), backgroundColor: full, borderRadius: { topLeft: 3, topRight: 3 }, maxBarThickness: 16, categoryPercentage: 0.82, barPercentage: 0.9 }],
+      },
+      options: {
+        animation: { duration: 900, easing: 'easeOutQuad', delay: 120 },
+        layout: { padding: { top: showValues ? 18 : 8, right: 8 } },
+        interaction: { mode: 'index', intersect: false },
+        onHover: (_event, elements, chart) => {
+          const index = elements.length > 0 ? elements[0].index : null;
+          if (index === hovered) return;
+          hovered = index;
+          emphasize(chart, index, full, 0.55);
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            border: { display: false },
+            ticks: {
+              autoSkip: false,
+              font: { size: 12 },
+              callback(value, index) {
+                const label = String(this.getLabelForValue(Number(value)));
+                return index % tickEvery === 0 ? (shortLabel ? shortLabel(label) : label) : '';
+              },
+            },
+          },
+          y: { beginAtZero: true, border: { display: false }, grid: { color: '#f1f5f9' }, ticks: { precision: 0, font: { size: 12 } } },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#ffffff',
+            titleColor: '#0f172a',
+            bodyColor: '#334155',
+            borderColor: '#e2e8f0',
+            borderWidth: 1,
+            padding: 10,
+            displayColors: true,
+            boxPadding: 4,
+            callbacks: {
+              title: (items) => { const label = String(items[0]?.label ?? ''); return titleFor ? titleFor(label) : label; },
+              label: (item) => `${valueLabel}: ${Number(item.parsed.y).toLocaleString()}`,
+              labelColor: (item) => ({ borderColor: full[item.dataIndex], backgroundColor: full[item.dataIndex], borderRadius: 2 }),
+            },
+          },
+        },
+      },
+      plugins: showValues ? [barValueLabels as never] : [],
+    };
+  }, [data, color, colors, valueLabel, titleFor, shortLabel, tickEvery, showValues]);
 
   return (
     <LazyMount style={{ height }} className="px-2 pb-3 pt-2" placeholder={<div className="h-full animate-pulse rounded-lg bg-slate-50" aria-hidden />}>
-      <ChartContainer config={config} className="aspect-auto h-full w-full">
-        <BarChart
-          data={points}
-          margin={MARGIN}
-          barCategoryGap="22%"
-          onMouseMove={(state) => {
-            const index = Number(state?.activeTooltipIndex);
-            setActive(Number.isInteger(index) ? index : null);
-          }}
-          onMouseLeave={() => setActive(null)}
-        >
-          <XAxis
-            dataKey="label"
-            tickLine={false}
-            axisLine={false}
-            tick={TICK}
-            interval={0}
-            tickFormatter={(label: string, index: number) => (index % tickEvery === 0 ? (shortLabel ? shortLabel(label) : label) : '')}
-            tickMargin={8}
-          />
-          <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={44} tick={TICK} />
-          <ChartTooltip
-            cursor={false}
-            wrapperStyle={TOOLTIP_WRAPPER}
-            content={<ChartTooltipContent className="min-w-[10rem] bg-white" labelFormatter={(label) => (titleFor ? titleFor(String(label)) : String(label))} />}
-          />
-          <Bar dataKey="value" fill="var(--color-value)" radius={BAR_RADIUS} maxBarSize={16} animationBegin={120} animationDuration={900} animationEasing="ease-out">
-            {points.map((point, index) => (
-              <Cell key={`${point.label}-${index}`} fill={point.fill} fillOpacity={active === null || active === index ? 1 : 0.55} style={{ transition: 'fill-opacity 200ms ease' }} />
-            ))}
-            {showValues && <LabelList dataKey="value" position="top" fill="#475569" fontSize={12} />}
-          </Bar>
-        </BarChart>
-      </ChartContainer>
+      <ChartCanvas config={config} ariaLabel={`${valueLabel} by ${data.length} groups`} />
     </LazyMount>
   );
 };

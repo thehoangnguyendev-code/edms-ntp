@@ -26,8 +26,7 @@ public class DocumentControlMenuAccess {
     static final String P_CONTROLLED_COPY_VIEW = "documents.controlled_copy.view";
     static final String P_UNCONTROLLED_COPY_VIEW = "documents.uncontrolled_copy.view";
     static final String P_UNCONTROLLED_COPY_REQUEST = "documents.uncontrolled_copy.request";
-    static final String P_UNCONTROLLED_COPY_APPROVE = "documents.uncontrolled_copy.approve_request";
-    static final String P_UNCONTROLLED_COPY_REJECT = "documents.uncontrolled_copy.reject_request";
+    static final String P_UNCONTROLLED_COPY_DISTRIBUTE = "documents.uncontrolled_copy.distribute";
 
     /** Which groups to list. */
     public record Sections(boolean documents, boolean controlledCopies, boolean uncontrolledCopies) {
@@ -96,9 +95,9 @@ public class DocumentControlMenuAccess {
         if (!mayOpen) {
             return false;
         }
-        // an approver sees the requests that wait for approval, even without the view-everything permission
-        boolean approver = permissions.hasAnyPermission(user, P_UNCONTROLLED_COPY_APPROVE, P_UNCONTROLLED_COPY_REJECT);
-        return approver
+        // a person who may distribute sees the requests that wait for distribution, even without the view-everything permission
+        boolean distributor = permissions.hasPermission(user, P_UNCONTROLLED_COPY_DISTRIBUTE);
+        return distributor
                 || (permissions.hasPermission(user, P_UNCONTROLLED_COPY_VIEW) && documentAuthorization.canViewAllUncontrolledCopies(user))
                 || uncontrolledCopies.existsByRecipientUserId(user.getId());
     }

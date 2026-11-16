@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { persistedKey, readPersisted, writePersisted } from "@/hooks/usePersistedState";
 import { useEntityChanged, type ChangedEntityType } from "@/features/realtime/useEntityChanged";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 export type DictionaryServerPageResponse<T> = {
   data: T[];
@@ -46,7 +47,7 @@ export function useDictionaryServerTable<T>({
   defaultSortBy,
   defaultSortDirection = "asc",
   extraParams = {},
-  searchDelayMs = 150,
+  searchDelayMs = SEARCH_DEBOUNCE_MS,
   initialItemsPerPage = 10,
   persistKey,
   liveTypes,

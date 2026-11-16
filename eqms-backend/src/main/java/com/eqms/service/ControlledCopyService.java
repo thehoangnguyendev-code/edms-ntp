@@ -410,6 +410,7 @@ public class ControlledCopyService {
         ).and(buildAuthorizationSpecification(currentUser));
 
         Writer writer = new BufferedWriter(new java.io.OutputStreamWriter(output, StandardCharsets.UTF_8));
+        writer.write(com.eqms.util.CsvSafety.BOM);
         writer.write("Document Number,Controlled Copy Number,Created,Opened By,Name,Status,Valid Until,Document,Distribution List,Version,Location,Business Unit,Department,Recipient,Distribution Comment,Purpose\n");
 
         final int exportPageSize = 500;
@@ -1170,6 +1171,8 @@ public class ControlledCopyService {
             String search, String status, String documentId, String createdFrom, String createdTo,
             String validFrom, String validTo, String expiryFrom, String expiryTo,
             String recallFrom, String recallTo, String usagePurpose) {
+        // Refused here, before the query is built: inside the query it would come out as a server error, not as a bad request.
+        if (StringUtils.hasText(status) && !"all".equalsIgnoreCase(status.trim())) requireControlledCopyStatusCode(status);
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             addUsagePurposePredicate(predicates, cb, root.get("usagePurpose"), usagePurpose);
@@ -1189,11 +1192,7 @@ public class ControlledCopyService {
                 ));
             }
             if (StringUtils.hasText(status) && !"all".equalsIgnoreCase(status.trim())) {
-                String normalized = normalizeControlledCopyStatusCode(status);
-                predicates.add(cb.or(
-                        cb.equal(cb.lower(root.get("statusCode")), normalized.toLowerCase(Locale.ROOT)),
-                        cb.equal(cb.lower(root.get("status")), status.trim().toLowerCase(Locale.ROOT))
-                ));
+                predicates.add(cb.equal(root.get("statusCode"), requireControlledCopyStatusCode(status)));
             }
             if (StringUtils.hasText(documentId) && !"all".equalsIgnoreCase(documentId.trim())) {
                 String value = documentId.trim();
@@ -2246,7 +2245,9 @@ public class ControlledCopyService {
         // (e.g. its Revision/Document being Obsoleted concurrently) -- overwriting that reason with
         // "Recalled" would corrupt the audit trail about why the copy actually became invalid.
         String currentStatus = normalizeControlledCopyStatusCode(copy.getStatusCode());
-        if (STATUS_CLOSED_CANCELLED.equalsIgnoreCase(currentStatus)) {
+        // A recall reaches a copy that was handed over: one that is still Ready for Distribution was never distributed, so it is cancelled, never recalled
+        // (STATUS-CONSISTENCY-2026-11-14).
+        if (STATUS_CLOSED_CANCELLED.equalsIgnoreCase(currentStatus) || STATUS_READY_FOR_DISTRIBUTION.equalsIgnoreCase(currentStatus)) {
             return ControlledCopyFinalizationOutcome.SKIPPED_TERMINAL;
         }
         if (STATUS_OBSOLETED.equalsIgnoreCase(currentStatus) && !OBSOLETE_REASON_RECALLED.equalsIgnoreCase(copy.getObsoleteReason())) {
@@ -2641,17 +2642,6 @@ public class ControlledCopyService {
                 || contains(batch.getDistributedBy() == null ? null : batch.getDistributedBy().getFullName(), pattern);
     }
 
-    private boolean matchesBatchStatus(ControlledCopyDistributionBatch batch, String status) {
-        if (!StringUtils.hasText(status) || "All".equalsIgnoreCase(status) || batch == null) {
-            return true;
-        }
-        String normalized = normalizeControlledCopyStatusCode(status);
-        return normalized.equalsIgnoreCase(batch.getStatusCode())
-                || normalized.equalsIgnoreCase(normalizeControlledCopyStatusCode(batch.getStatus()))
-                || status.trim().equalsIgnoreCase(batch.getStatus())
-                || status.trim().equalsIgnoreCase(batch.getStatusCode());
-    }
-
     private boolean matchesBatchDocument(ControlledCopyDistributionBatch batch, String documentId) {
         if (!StringUtils.hasText(documentId) || "All".equalsIgnoreCase(documentId) || batch == null) {
             return true;
@@ -2918,6 +2908,8 @@ public class ControlledCopyService {
             String recallTo,
             String usagePurpose
     ) {
+        // Refused here, before the query is built: inside the query it would come out as a server error, not as a bad request.
+        if (StringUtils.hasText(status) && !"all".equalsIgnoreCase(status.trim())) requireControlledCopyStatusCode(status);
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             addUsagePurposePredicate(predicates, cb, root.get("usagePurpose"), usagePurpose);
@@ -2950,12 +2942,7 @@ public class ControlledCopyService {
             }
 
             if (StringUtils.hasText(status) && !"All".equalsIgnoreCase(status)) {
-                String normalizedStatus = normalizeStatusFilter(status);
-                predicates.add(cb.or(
-                        cb.equal(cb.lower(root.get("statusCode")), normalizedStatus),
-                        cb.equal(cb.lower(root.get("status")), status.trim().toLowerCase(Locale.ROOT)),
-                        cb.equal(cb.lower(root.get("status")), status.trim().replace("_", " ").replace("-", " ").toLowerCase(Locale.ROOT))
-                ));
+                predicates.add(cb.equal(root.get("statusCode"), requireControlledCopyStatusCode(status)));
             }
             if (StringUtils.hasText(department) && !"All".equalsIgnoreCase(department)) {
                 predicates.add(cb.equal(cb.lower(root.get("departmentName")), department.trim().toLowerCase(Locale.ROOT)));
@@ -3031,10 +3018,21 @@ public class ControlledCopyService {
                 .orElseGet(() -> controlledCopyStatusLabel(normalizedCode)));
     }
 
-    private String normalizeStatusFilter(String status) {
-        return normalizeControlledCopyStatusCode(status).toLowerCase(Locale.ROOT);
+    /**
+     * STATUS-CONTRACT-2026-11-14: a status that a client asks for is a code (READY_FOR_DISTRIBUTION, DISTRIBUTED, OBSOLETED, CLOSED_CANCELLED), as the filters of this
+     * module give it; the words for people are not a way to ask for a status. Anything else is refused, not guessed.
+     */
+    static String requireControlledCopyStatusCode(String status) {
+        String code = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
+        if (!java.util.Set.of(STATUS_READY_FOR_DISTRIBUTION, STATUS_DISTRIBUTED, STATUS_OBSOLETED, STATUS_CLOSED_CANCELLED).contains(code)) {
+            throw new IllegalArgumentException("CONTROLLED_COPY_STATUS_INVALID");
+        }
+        return code;
     }
-
+    /**
+     * The status code of a value the module already holds (a stored status, a stage), whatever way it was written once: a code, the words for people, and the old outcomes
+     * (recalled, lost, damaged, destroyed) that all became Obsoleted. It is not for what a client sends: that goes through {@link #requireControlledCopyStatusCode}.
+     */
     private String normalizeControlledCopyStatusCode(String status) {
         if (!StringUtils.hasText(status)) {
             return STATUS_READY_FOR_DISTRIBUTION;

@@ -47,6 +47,7 @@ import { pageBackgroundCss } from "@/config/page-background";
 import { useMediaQuery } from "./useMediaQuery";
 import { APP_SIDEBAR_COLLAPSED_WIDTH, MOBILE_SIDEBAR_WIDTH } from "@/components/layout/sidebar/sidebarWidths";
 import { useSidebarWidth } from "@/components/layout/sidebar/useSidebarWidth";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const VIEW_STORAGE_KEY = "eqms.knowledgeExplorer.view";
 const WIDGETS_STORAGE_KEY = "eqms.knowledgeExplorer.widgets";
@@ -216,7 +217,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
     const timer = window.setTimeout(() => {
       const trimmed = searchInput.trim();
       setSearchTerm(trimmed.length >= MIN_SEARCH_LENGTH ? trimmed : "");
-    }, 300);
+    }, SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
   }, [searchInput]);
 

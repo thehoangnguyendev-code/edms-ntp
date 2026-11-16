@@ -52,7 +52,11 @@ class DateFormatGuardTest {
         List<String> found = new ArrayList<>();
         for (Path p : sources()) {
             Matcher m = literal.matcher(read(p));
-            while (m.find()) if (!ALLOWED_PATTERNS.contains(m.group(1))) found.add(p.getFileName() + ": ofPattern(\"" + m.group(1) + "\")");
+            while (m.find()) {
+                // Owner-requested filesystem name, not a displayed date (TABLE-EXPORT-XLSX-2026-11-14).
+                boolean exportFilename = p.getFileName().toString().equals("TableExcelExportService.java") && m.group(1).equals("ddMMyyyy_HHmm");
+                if (!ALLOWED_PATTERNS.contains(m.group(1)) && !exportFilename) found.add(p.getFileName() + ": ofPattern(\"" + m.group(1) + "\")");
+            }
         }
         assertThat(found).as("Use DateTimeFormatUtils: dates are dd/MM/yyyy, moments dd/MM/yyyy HH:mm:ss").isEmpty();
     }

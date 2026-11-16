@@ -11,6 +11,7 @@ import { settingsApi } from '@/services/api/settings';
 import { DEFAULT_FOOTER_LEFT, DEFAULT_SYSTEM_HEADER_TITLE } from '@/services/api/branding';
 import { Switch } from '@/components/ui/switch';
 import { AppShortcutSection } from './AppShortcutSection';
+import { AuditTabViewSection } from './AuditTabViewSection';
 import { ColorPickerInput } from '@/components/ui/color-picker/ColorPickerInput';
 import { DEFAULT_ALTERNATING_RECORD_COLOR } from '@/config/record-stripes';
 import { PageBackgroundEditor } from './PageBackgroundEditor';
@@ -304,7 +305,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
             <Checkbox id="compactDesktopFilters" label="Use compact desktop filters"
               checked={config.appearance?.compactDesktopFilters??false}
               onChange={(checked) => handleAppearanceChange('compactDesktopFilters',checked)} />
-            <p className="ml-7 mt-1 text-xs text-slate-500">Show Search and a Filter button. Select a field on the left, edit values on the right, then click Apply. Mobile filters are unchanged. Applies after Save Changes.</p>
+            <p className="ml-7 mt-1 text-xs text-slate-500">Show Search and a Filter button. Select a field on the left, edit values on the right, then click Apply. Mobile filters are unchanged. Applies after Save.</p>
           </div>
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Record Lists</p>
@@ -320,12 +321,12 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
               <Checkbox id="tableColumnDividers" label="Show vertical column dividers"
                 checked={config.appearance?.tableColumnDividers ?? false}
                 onChange={(checked) => handleAppearanceChange('tableColumnDividers', checked)} />
-              <p className="ml-7 mt-1 text-xs text-slate-500">Draw a vertical line between the columns of every table, besides the horizontal line between records. Applies after Save Changes.</p>
+              <p className="ml-7 mt-1 text-xs text-slate-500">Draw a vertical line between the columns of every table, besides the horizontal line between records. Applies after Save.</p>
             </div>
           </div>
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Dropdown Menus</p>
-            <p className="mb-3 text-xs text-slate-500">Colours of the text and of the icons in the items of every dropdown (action) menu, for every user. A red item (such as Terminate or Delete) keeps its own colour. Applies after Save Changes.</p>
+            <p className="mb-3 text-xs text-slate-500">Colours of the text and of the icons in the items of every dropdown (action) menu, for every user. A red item (such as Terminate or Delete) keeps its own colour. Applies after Save.</p>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {(['menuTextColor', 'menuIconColor'] as const).map((field) => (
                 <div key={field} className="flex items-end gap-2">
@@ -412,6 +413,8 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
           </div>
         </div>
       </FormSection>
+
+      <AuditTabViewSection config={config} onChange={(key, value) => handleAppearanceChange(key, value)} />
 
       {/* System Information */}
       <FormSection title="Contact Information" icon={<IconAddressBook className="h-4 w-4" />}>

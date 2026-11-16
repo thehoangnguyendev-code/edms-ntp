@@ -116,7 +116,7 @@ export const EducationAddModal: React.FC<EducationAddModalProps> = ({ isOpen, on
       onClose={onClose}
       onConfirm={handleSave}
       title={editing ? "Edit Education" : "Add Education"}
-      confirmText={editing ? "Save Changes" : "Add Education"}
+      confirmText={editing ? "Save" : "Add Education"}
       size="lg"
     >
       <div className="space-y-4">

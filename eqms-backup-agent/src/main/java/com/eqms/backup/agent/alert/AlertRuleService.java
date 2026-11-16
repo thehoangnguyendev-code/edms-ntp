@@ -36,7 +36,7 @@ public class AlertRuleService {
         if (alertCode == null) return null;
         return switch (alertCode) {
             case "BACKUP_MISSED", "BACKUP_VERIFY_FAILED", "BACKUP_COPY_FAILED", "TARGET_UNREACHABLE", "CAPACITY_HIGH", "MANUAL_COPY_OVERDUE",
-                    "STORE_SCRUB_MISMATCH", "BACKUP_V2_OVERDUE", "OBJECT_MISSING_IN_SOURCE", "LEDGER_CHAIN_BROKEN", "DR_KIT_OVERDUE", "AGENT_RESTARTED", "LOCAL_STORAGE_NOT_BACKED_UP" -> alertCode;
+                    "STORE_SCRUB_MISMATCH", "BACKUP_V2_OVERDUE", "OBJECT_MISSING_IN_SOURCE", "LEDGER_CHAIN_BROKEN", "DR_KIT_OVERDUE", "AGENT_RESTARTED", "LOCAL_STORAGE_NOT_BACKED_UP", "REPORT_COPY_STALE" -> alertCode;
             case "BACKUP_V2_MISSED" -> "BACKUP_V2_OVERDUE";
             case "BACKUP_REFERENCE_MISSING" -> "STORE_SCRUB_MISMATCH";
             default -> alertCode.startsWith("RESTORE_") || alertCode.startsWith("REHEARSAL_") ? "RESTORE_PROBLEM"

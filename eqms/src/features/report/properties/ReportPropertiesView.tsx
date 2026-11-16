@@ -1,7 +1,7 @@
 import React from "react";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { useNavigate } from "react-router-dom";
-import { Archive, CalendarClock, FileDigit, Palette } from "lucide-react";
+import { Archive, CalendarClock, FileDigit } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -13,7 +13,6 @@ import { ROUTES } from "@/app/routes.constants";
 import { reportError } from "@/services/api/reportTemplates";
 import { reportPropertiesApi, type ReportProperties } from "@/services/api/reportProperties";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
-import { ReportLayoutDesigner } from "../templates/ReportLayoutDesigner";
 
 /** Limits as the server applies them (ReportPropertiesService); the server checks them again. */
 const LIMITS = {
@@ -22,6 +21,7 @@ const LIMITS = {
   maxRowsFull: { min: 10000, max: 100000, fallback: 100000 },
   recipients: { min: 1, max: 500, fallback: 200 },
   retry: { min: 1, max: 60, fallback: 5 },
+  rangeDays: { min: 1, max: 3660, fallback: 92 },
 } as const;
 
 const Group: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -115,7 +115,7 @@ export const ReportPropertiesView: React.FC = () => {
         maxRowsFull: properties.maxRowsFull,
         maxScheduleRecipients: properties.maxScheduleRecipients,
         scheduleRetryMinutes: properties.scheduleRetryMinutes,
-        appearance: properties.appearance,
+        maxRangeDays: properties.maxRangeDays,
       });
       setProperties(saved);
       setOriginal(JSON.parse(JSON.stringify(saved)));
@@ -138,7 +138,7 @@ export const ReportPropertiesView: React.FC = () => {
         actions={
           canManage && properties ? (
             <Button size="sm" variant="outline-emerald" disabled={!isDirty || !prefixValid || saving} onClick={() => setShowSaveModal(true)}>
-              Save Changes
+              Save
             </Button>
           ) : undefined
         }
@@ -216,20 +216,6 @@ export const ReportPropertiesView: React.FC = () => {
             </div>
           </FormSection>
 
-          {/* 2. The one appearance of every report */}
-          <FormSection title="Report Appearance" icon={<Palette className="h-4 w-4" />}>
-            <p className="mb-4 text-xs text-slate-500">
-              Every report uses this one company appearance: its stamp, watermark, logo, font, paper layout and the header, footer and cover. A report template chooses only
-              what the report contains and its charts. A change applies to reports made after saving; a report already made keeps the look it was made with.
-            </p>
-            <ReportLayoutDesigner
-              value={properties.appearance}
-              title="Report preview"
-              disabled={!canManage}
-              onChange={(appearance) => patch({ appearance })}
-            />
-          </FormSection>
-
           {/* 3. Size of a report and how long files are kept */}
           <FormSection title="Report Size & Retention" icon={<Archive className="h-4 w-4" />}>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -254,14 +240,24 @@ export const ReportPropertiesView: React.FC = () => {
                   disabled={!canManage}
                   onChange={(v) => patch({ maxRowsFull: v })}
                 />
+                <NumberField
+                  label="Most days a report may cover"
+                  hint="For the report types that must name a period (Audit Trail, Authentication Events, Backup Activity, Electronic Signatures, Notification Delivery): a report that covers more days is refused when it is requested. A longer period also needs a higher row limit above, or the report is refused for its size."
+                  value={properties.maxRangeDays}
+                  min={LIMITS.rangeDays.min}
+                  max={LIMITS.rangeDays.max}
+                  fallback={LIMITS.rangeDays.fallback}
+                  disabled={!canManage}
+                  onChange={(v) => patch({ maxRangeDays: v })}
+                />
               </Group>
 
               <Group title="Retention">
                 <p className="text-sm text-slate-700">Report files are kept permanently. No file expires by age.</p>
                 <p className="text-xs text-slate-500">
                   A legal hold still blocks any removal. Holds are placed and released on each run's page; the files held now are listed under{" "}
-                  <button type="button" onClick={() => navigate(ROUTES.SETTINGS.REPORT_ADMINISTRATION.RETENTION)} className="font-medium text-emerald-700 underline underline-offset-2">
-                    Report Retention &amp; Legal Hold
+                  <button type="button" onClick={() => navigate(ROUTES.REPORT.LEGAL_HOLDS)} className="font-medium text-emerald-700 underline underline-offset-2">
+                    Legal Hold Register
                   </button>
                   .
                 </p>
@@ -317,7 +313,7 @@ export const ReportPropertiesView: React.FC = () => {
         type="confirm"
         title="Save Report Properties?"
         description={<p className="text-sm text-slate-600">You are about to save changes to Report Properties. This action will be recorded in the Audit Trail.</p>}
-        confirmText="Save Changes"
+        confirmText="Save"
         cancelText="Cancel"
         isLoading={saving}
       />

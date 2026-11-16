@@ -1,3 +1,4 @@
+import { downloadTableExcel } from '@/services/api/tableExport';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useSearchParams } from "react-router-dom";
@@ -11,6 +12,7 @@ import type {
   DocumentListItem,
   DocumentViewType,
 } from "@/features/documents/document-list/types";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type SortDirection = "asc" | "desc";
 
@@ -146,7 +148,7 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
   });
   const [refreshTick, setRefreshTick] = useState(0);
 
-  const debouncedSearch = useDebounce(searchQuery, 400);
+  const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   // Requests always use the committed URL value. Typing changes only the draft;
   // the debounce below commits it to the URL, which then triggers the request.
   const effectiveSearch = urlSearch;
@@ -367,7 +369,7 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
   const exportDocuments = async () => {
     setIsExporting(true);
     try {
-      const blob = await documentApi.exportDocumentsPage({
+      await downloadTableExcel('documents', {
         scope: viewType,
         search: effectiveSearch || undefined,
         status: statusFilter === "All" ? undefined : statusFilter,
@@ -390,16 +392,6 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
         sortBy: sortConfig.key,
         sortDirection: sortConfig.direction,
       });
-
-      const fileName = `documents-${viewType}-${new Date().toISOString().slice(0, 10)}.csv`;
-      const url = window.URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = fileName;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.URL.revokeObjectURL(url);
 
       showToast({
         type: "success",

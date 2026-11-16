@@ -1,7 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { FileWarning, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
+import {
+  DocumentStateMessage,
+  documentStateFromError,
+  type DocumentStateVariant,
+} from "@/components/ui/document-state/DocumentStateMessage";
 import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
 import { knowledgeApi } from "@/services/api/knowledge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +39,7 @@ export const KnowledgeDocumentPreviewPage: React.FC = () => {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [errorState, setErrorState] = useState<DocumentStateVariant>("no-document");
   const [openedAt] = useState(() => new Date());
 
   const watermarkUrl = useMemo(() => {
@@ -61,8 +67,10 @@ export const KnowledgeDocumentPreviewPage: React.FC = () => {
         if (!active) return;
         setBlobUrl(URL.createObjectURL(blob));
       })
-      .catch(() => {
-        if (active) setLoadError(true);
+      .catch((error) => {
+        if (!active) return;
+        setErrorState(documentStateFromError(error));
+        setLoadError(true);
       })
       .finally(() => {
         if (active) setIsLoading(false);
@@ -124,9 +132,20 @@ export const KnowledgeDocumentPreviewPage: React.FC = () => {
 
       <div className="relative flex-1 min-h-0">
         {loadError || (!isLoading && !blobUrl) ? (
-          <div className="h-full flex flex-col items-center justify-center gap-3">
-            <FileWarning className="h-10 w-10 text-red-300" />
-            <p className="text-sm font-medium text-red-500">Unable to load this document's preview</p>
+          <div className="h-full overflow-y-auto flex items-center justify-center">
+            {errorState === "no-access" ? (
+              <DocumentStateMessage
+                variant="no-access"
+                title="You can no longer open this document"
+                description="Access to it was withdrawn or it is no longer available to you. Contact Document Control if you need it."
+              />
+            ) : (
+              <DocumentStateMessage
+                variant="no-document"
+                title="Unable to load this document's preview"
+                description="The document could not be found or opened. Please try again later."
+              />
+            )}
           </div>
         ) : isLoading || !blobUrl ? (
           <FullPageLoading text="Loading preview..." />

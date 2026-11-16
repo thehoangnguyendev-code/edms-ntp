@@ -291,14 +291,14 @@ export const destroyControlledCopy = (
 
 const UNCONTROLLED_COPY_TAB_LABELS: Record<string, string> = {
   all: "All Uncontrolled Copies",
-  pending: "Pending Approval",
+  ready: "Ready for Distribution",
   distributed: "Distributed Uncontrolled Copies",
 };
 
 const UNCONTROLLED_COPY_PARENT_MAP = [
   {
-    key: ROUTES.DOCUMENTS.UNCONTROLLED_COPIES.PENDING_APPROVAL,
-    label: "Pending Approval",
+    key: ROUTES.DOCUMENTS.UNCONTROLLED_COPIES.READY,
+    label: "Ready for Distribution",
   },
   {
     key: ROUTES.DOCUMENTS.UNCONTROLLED_COPIES.DISTRIBUTED,

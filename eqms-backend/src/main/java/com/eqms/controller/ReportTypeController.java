@@ -17,10 +17,11 @@ public class ReportTypeController {
 
     @GetMapping
     public ResponseEntity<?> list(@RequestParam(defaultValue = "ALL") String status, @RequestParam(defaultValue = "") String category,
-                                  @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sortBy,
+                                  @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "") String modifiedFrom,
+                                  @RequestParam(defaultValue = "") String modifiedTo, @RequestParam(defaultValue = "name") String sortBy,
                                   @RequestParam(defaultValue = "asc") String sortDirection, @RequestParam(defaultValue = "1") int page,
                                   @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(types.list(users.requireCurrentUser(), status, category, search, sortBy, sortDirection, page, limit));
+        return ResponseEntity.ok(types.list(users.requireCurrentUser(), status, category, search, modifiedFrom, modifiedTo, sortBy, sortDirection, page, limit));
     }
 
     @GetMapping("/{code}")

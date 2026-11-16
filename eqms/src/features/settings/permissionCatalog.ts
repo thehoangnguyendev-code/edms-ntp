@@ -658,11 +658,11 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     group: "backup_admin",
   },
 
-  // ─── Reports & Analytics ─────────────────────────────────────────────────────
+  // ─── Reports ─────────────────────────────────────────────────────
   {
     code: "report.module.view",
-    label: "View Reports & Analytics",
-    description: "Access reports, dashboards, and analytics workspaces.",
+    label: "View Reports",
+    description: "Access reports and the reporting workspaces.",
     module: "reports",
     group: "reports_access",
     legacyCodes: ["VIEW_REPORTS"],

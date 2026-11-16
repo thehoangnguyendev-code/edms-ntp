@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Check, ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { IconFilter2 } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { Button } from "@/components/ui/button/Button";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
@@ -17,6 +18,7 @@ import { cn } from "@/components/ui/utils";
 import { securityApi, type AuthorizationRelationDefinition } from "@/services/api/security";
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const RESOURCE_TYPE_OPTIONS: SelectOption[] = [
   { label: "All", value: "ALL" },
@@ -68,7 +70,7 @@ export const RelationDefinitionsTab: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [resourceTypeFilter, setResourceTypeFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [updatedFrom, setUpdatedFrom] = useState("");
@@ -202,7 +204,7 @@ export const RelationDefinitionsTab: React.FC = () => {
       label: "Status",
       headerClassName: "w-[7%]",
       sort: { direction: sortConfig.key === "active" ? sortConfig.direction : undefined, onSort: () => handleSort("active") },
-      cell: (d) => <Badge color={d.active ? "emerald" : "slate"} size="sm">{d.active ? "Active" : "Inactive"}</Badge>,
+      cell: (d) => <Badge color={flagColor(d.active)} size="sm">{d.active ? "Active" : "Inactive"}</Badge>,
     },
     {
       id: "updatedAt",

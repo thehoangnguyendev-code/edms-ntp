@@ -19,21 +19,32 @@ const RUN_STATUS: Record<string, string> = {
   DEAD_LETTERED: "Dead-lettered",
 };
 
+/** Colour of a run badge: Completed green, Failed and Dead-lettered red, Processing blue, Queued and Retry scheduled amber. */
+export const runStatusColor = (status?: string | null): "emerald" | "red" | "blue" | "amber" | "slate" =>
+  status === "COMPLETED" ? "emerald" : status === "FAILED" || status === "DEAD_LETTERED" ? "red" : status === "PROCESSING" ? "blue" : status === "QUEUED" || status === "RETRY_SCHEDULED" ? "amber" : "slate";
+
 /** Status of a report run. */
 export const runStatusLabel = (status?: string | null): string => (status ? (RUN_STATUS[status] ?? humanize(status)) : "—");
 
-const SCHEDULE_STATUS: Record<string, string> = {
-  ACTIVE: "Active",
-  PAUSED: "Paused",
-  SUSPENDED_AUTHORIZATION_CHANGED: "Suspended: authorization changed",
-  SUSPENDED_INVALID_SCHEDULE: "Suspended: invalid schedule",
-  SUSPENDED_TEMPLATE_NOT_APPROVED: "Suspended: template not approved",
-  SUSPENDED_TEMPLATE_DISABLED: "Suspended: template disabled",
-  SUSPENDED_SIGNATURE_REQUIRED: "Suspended: signature required",
+const SCHEDULE_REASON: Record<string, string> = {
+  SUSPENDED_AUTHORIZATION_CHANGED: "Authorization changed",
+  SUSPENDED_INVALID_SCHEDULE: "Invalid schedule",
+  SUSPENDED_TEMPLATE_NOT_APPROVED: "Template not approved",
+  SUSPENDED_TEMPLATE_DISABLED: "Template disabled",
+  SUSPENDED_SIGNATURE_REQUIRED: "Signature required",
 };
 
-/** Status of a report schedule. */
-export const scheduleStatusLabel = (status?: string | null): string => (status ? (SCHEDULE_STATUS[status] ?? humanize(status)) : "—");
+/** Status of a report schedule: Active, Paused or Suspended. Why a schedule is suspended is `scheduleReasonLabel`, a column of its own. */
+export const scheduleStatusLabel = (status?: string | null): string =>
+  !status ? "—" : status === "ACTIVE" ? "Active" : status === "PAUSED" ? "Paused" : status.startsWith("SUSPENDED_") ? "Suspended" : humanize(status);
+
+/** Colour of the status badge: Active green, Paused amber, Suspended red. */
+export const scheduleStatusColor = (status?: string | null): "emerald" | "amber" | "red" | "slate" =>
+  status === "ACTIVE" ? "emerald" : status === "PAUSED" ? "amber" : status?.startsWith("SUSPENDED_") ? "red" : "slate";
+
+/** Why a schedule is suspended ("Template not approved"); "—" when it is not suspended. */
+export const scheduleReasonLabel = (status?: string | null): string =>
+  status && status.startsWith("SUSPENDED_") ? (SCHEDULE_REASON[status] ?? humanize(status.replace(/^SUSPENDED_/, ""))) : "—";
 
 /** A reason code or an event name as ordinary text; "—" when there is none. */
 export const codeLabel = (code?: string | null): string => (code ? humanize(code) : "—");

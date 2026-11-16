@@ -36,7 +36,7 @@ export interface Revision {
     created: string;
     openedBy: string;
   revisionName: string;
-  state: DocumentStatus;
+  status: DocumentStatus;
   author: string;
   effectiveDate: string;
   validUntil: string;

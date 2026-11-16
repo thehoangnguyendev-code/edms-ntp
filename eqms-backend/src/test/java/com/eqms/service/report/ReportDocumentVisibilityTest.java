@@ -2,6 +2,7 @@ package com.eqms.service.report;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -97,9 +98,9 @@ class ReportDocumentVisibilityTest {
         var actor = actor();
         var plain = visibility.uncontrolledCopies(actor, "uc");
         assertEquals("(uc.recipient_user_id=?)", plain.sql());
-        when(permissions.hasAnyPermission(any(), anyString(), anyString())).thenReturn(true);
+        when(permissions.hasPermission(any(), eq(UncontrolledCopyService.P_DISTRIBUTE))).thenReturn(true);
         var approver = visibility.uncontrolledCopies(actor, "uc");
-        assertTrue(approver.sql().contains("uc.status_code='" + UncontrolledCopyService.STATUS_REQUESTED + "'"));
+        assertTrue(approver.sql().contains("uc.status_code='" + UncontrolledCopyService.STATUS_READY + "'"));
         assertEquals(List.of(actor.getId()), approver.args());
     }
 

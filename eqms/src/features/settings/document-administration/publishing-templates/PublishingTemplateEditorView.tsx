@@ -30,6 +30,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { FullPageLoading } from "@/components/ui/loading";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
@@ -70,6 +71,7 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput";
 import { DEFAULT_BLACK_HEX } from "@/styles/tokens";
 import { displayDateTime } from "@/utils/format";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type LayoutType = "PORTRAIT" | "LANDSCAPE";
 type ComponentType = "cover" | "header" | "footer";
@@ -329,7 +331,7 @@ export const PublishingTemplateEditorView: React.FC = () => {
   const [placeholderCatalogLoading, setPlaceholderCatalogLoading] = useState(false);
   const [placeholderCatalogExpanded, setPlaceholderCatalogExpanded] = useState(false);
   const [placeholderSearch, setPlaceholderSearch] = useState("");
-  const debouncedPlaceholderSearch = useDebounce(placeholderSearch, 400);
+  const debouncedPlaceholderSearch = useDebounce(placeholderSearch, SEARCH_DEBOUNCE_MS);
   const [openAccordionGroups, setOpenAccordionGroups] = useState<Set<number>>(new Set([0]));
   const [placeholderStyles, setPlaceholderStyles] = useState<PublishingPlaceholderStyleResponse[]>([]);
   const [selectedStylePlaceholder, setSelectedStylePlaceholder] = useState<string>("");
@@ -1778,7 +1780,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
               disabled={isSaving}
               className="gap-2"
             >
-              Save Changes
+              Save
             </Button>
             {isEditMode && (
               <>
@@ -1956,7 +1958,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                   <p className={TYPOGRAPHY.cardSectionTitle}>
                                     {layoutLabel(layout)} Layout
                                   </p>
-                                  <Badge color={hasFile ? "emerald" : "slate"}>
+                                  <Badge color={flagColor(hasFile)}>
                                     {hasFile ? "Configured" : "Missing"}
                                   </Badge>
                                 </div>

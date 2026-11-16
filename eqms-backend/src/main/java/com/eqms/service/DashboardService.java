@@ -168,8 +168,8 @@ public class DashboardService {
                 a.getAction(),
                 a.getActionType(),
                 a.getUserFullName(),
-                a.getFromStatus(),
-                a.getToStatus(),
+                AuditStatusWords.display(a.getEntityType(), a.getFromStatus()),
+                AuditStatusWords.display(a.getEntityType(), a.getToStatus()),
                 a.getEventTime()
         );
     }

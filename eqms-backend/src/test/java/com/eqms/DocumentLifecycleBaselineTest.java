@@ -50,6 +50,7 @@ class DocumentLifecycleBaselineTest {
     @Autowired private DocumentRecordRepository documentRepository;
     @Autowired private DocumentRevisionRepository revisionRepository;
     @Autowired private DocumentStatusDefinitionRepository documentStatusRepository;
+    @Autowired private ControlledCopyRepository controlledCopyRepository;
     @Autowired private RevisionStatusDefinitionRepository revisionStatusRepository;
     @Autowired private DocumentTypeRepository documentTypeRepository;
     @Autowired private BusinessUnitRepository businessUnitRepository;
@@ -150,24 +151,9 @@ class DocumentLifecycleBaselineTest {
     @AfterEach
     void cleanup() {
         org.springframework.security.core.context.SecurityContextHolder.clearContext();
-        DocumentStatusDefinition closedCancelled = documentStatusRepository.findById("CLOSED_CANCELLED").orElse(null);
-        RevisionStatusDefinition closedCancelledRev = revisionStatusRepository.findById("CLOSED_CANCELLED").orElse(null);
+        LifecycleFixtureCleanup.putAway(new TransactionTemplate(transactionManager), documentRepository, revisionRepository, documentStatusRepository, revisionStatusRepository, controlledCopyRepository, createdDocumentIds);
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         tx.executeWithoutResult(status -> {
-            for (UUID documentId : createdDocumentIds) {
-                if (closedCancelledRev != null) {
-                    revisionRepository.findAllByDocument_IdOrderByCreatedAtDesc(documentId).forEach(r -> {
-                        r.setStatus(closedCancelledRev);
-                        revisionRepository.save(r);
-                    });
-                }
-                if (closedCancelled != null) {
-                    documentRepository.findById(documentId).ifPresent(d -> {
-                        d.setStatus(closedCancelled);
-                        documentRepository.save(d);
-                    });
-                }
-            }
             // Cannot be deleted once it has acted (audit_logs.acted_by_user_id is immutable per
             // GMP) -- deactivate instead so status-filtered queries elsewhere never select it.
             if (unauthorizedActor != null) {

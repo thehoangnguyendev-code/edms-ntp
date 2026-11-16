@@ -16,8 +16,8 @@ public class ReportTemplateController {
     public ResponseEntity<?> list(@RequestParam(defaultValue="") String search, @RequestParam(defaultValue="1") int page,
                                  @RequestParam(defaultValue="displayName") String sortBy, @RequestParam(defaultValue="asc") String direction,
                                  @RequestParam(defaultValue="") String status,@RequestParam(defaultValue="") String sourceCode,
-                                 @RequestParam(defaultValue="") String format,@RequestParam(defaultValue="") String orientation,@RequestParam(defaultValue="10") String limit) {
-        return ResponseEntity.ok(templates.catalog(users.requireCurrentUser(), search, page, sortBy, direction,java.util.Map.of("status",status,"sourceCode",sourceCode,"format",format,"orientation",orientation,"limit",limit)));
+                                 @RequestParam(defaultValue="") String format,@RequestParam(defaultValue="") String orientation,@RequestParam(defaultValue="") String gmp,@RequestParam(defaultValue="") String updatedFrom,@RequestParam(defaultValue="") String updatedTo,@RequestParam(defaultValue="10") String limit) {
+        return ResponseEntity.ok(templates.catalog(users.requireCurrentUser(), search, page, sortBy, direction,java.util.Map.of("status",status,"sourceCode",sourceCode,"format",format,"orientation",orientation,"gmp",gmp,"updatedFrom",updatedFrom,"updatedTo",updatedTo,"limit",limit)));
     }
     /** The lifecycle stepper of a template that is being created and has no record yet: a draft. */
     @GetMapping("/workflow/new") public ResponseEntity<?> newWorkflow() {
@@ -28,8 +28,8 @@ public class ReportTemplateController {
     @GetMapping("/configuration") public ResponseEntity<?> configuration(@RequestParam(defaultValue="") String search, @RequestParam(defaultValue="1") int page,
             @RequestParam(defaultValue="displayName") String sortBy, @RequestParam(defaultValue="asc") String direction,
             @RequestParam(defaultValue="") String status,@RequestParam(defaultValue="") String sourceCode,
-            @RequestParam(defaultValue="") String format,@RequestParam(defaultValue="") String orientation,@RequestParam(defaultValue="10") String limit) {
-        return ResponseEntity.ok(templates.adminCatalog(users.requireCurrentUser(), search, page, sortBy, direction,java.util.Map.of("status",status,"sourceCode",sourceCode,"format",format,"orientation",orientation,"limit",limit)));
+            @RequestParam(defaultValue="") String format,@RequestParam(defaultValue="") String orientation,@RequestParam(defaultValue="") String gmp,@RequestParam(defaultValue="") String updatedFrom,@RequestParam(defaultValue="") String updatedTo,@RequestParam(defaultValue="10") String limit) {
+        return ResponseEntity.ok(templates.adminCatalog(users.requireCurrentUser(), search, page, sortBy, direction,java.util.Map.of("status",status,"sourceCode",sourceCode,"format",format,"orientation",orientation,"gmp",gmp,"updatedFrom",updatedFrom,"updatedTo",updatedTo,"limit",limit)));
     }
     @GetMapping("/{code}/options/{field}") public ResponseEntity<?> options(@PathVariable String code, @PathVariable String field, @RequestParam(defaultValue="") String search) {
         return ResponseEntity.ok(templates.options(users.requireCurrentUser(),code,field,search));
@@ -51,6 +51,14 @@ public class ReportTemplateController {
     }
     @PostMapping("/{code}/upgrade") public ResponseEntity<?> upgrade(@PathVariable String code, @RequestBody UpgradeRequest request) {
         return ResponseEntity.ok(templates.upgrade(users.requireCurrentUser(), code, request.version(), request.reason()));
+    }
+    /** The revisions of every template (REPORT-TEMPLATE-REVISIONS-LIST-2026-11-15); a literal path, so it is not read as a template code. */
+    @GetMapping("/revisions") public ResponseEntity<?> allRevisions(@RequestParam(defaultValue="all") String scope, @RequestParam(defaultValue="ALL") String status, @RequestParam(defaultValue="") String gmp,
+                                                                  @RequestParam(defaultValue="") String sourceCode, @RequestParam(defaultValue="") String search,
+                                                                  @RequestParam(defaultValue="") String updatedFrom, @RequestParam(defaultValue="") String updatedTo,
+                                                                  @RequestParam(defaultValue="lastChangedAt") String sortBy, @RequestParam(defaultValue="desc") String sortDirection,
+                                                                  @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="10") int limit) {
+        return ResponseEntity.ok(templates.revisionListAll(users.requireCurrentUser(), scope, status, gmp, sourceCode, search, updatedFrom, updatedTo, sortBy, sortDirection, page, limit));
     }
     @GetMapping("/{code}/revisions") public ResponseEntity<?> revisions(@PathVariable String code, @RequestParam(defaultValue="ALL") String status, @RequestParam(defaultValue="") String search,
                                                                     @RequestParam(defaultValue="revision") String sortBy, @RequestParam(defaultValue="desc") String sortDirection,

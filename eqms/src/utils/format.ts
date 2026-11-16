@@ -274,9 +274,14 @@ export function formatCurrency(amount: number, currency: string = 'USD'): string
  * Get initials from name
  */
 export function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
+  // The first letters of the first two words of the name. A part in brackets ("System (Automated)", "Do Thi Lan (UAT)") is not a word of the name,
+  // and a word that does not start with a letter or a digit gives no initial.
+  const words = name
+    .replace(/\([^)]*\)/g, ' ')
+    .split(/\s+/)
+    .filter((word) => /^[\p{L}\p{N}]/u.test(word));
+  return words
+    .map((word) => word[0])
     .join('')
     .toUpperCase()
     .slice(0, 2);

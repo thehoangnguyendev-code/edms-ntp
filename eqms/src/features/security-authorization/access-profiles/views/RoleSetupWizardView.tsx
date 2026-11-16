@@ -29,6 +29,7 @@ import { api } from "@/services/api/client";
 import type { PermissionSetResponse } from "@/services/api/settings";
 import type { User } from "@/types";
 import { IconArrowsShuffle, IconCircles } from "@tabler/icons-react";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 const inputClass =
@@ -120,9 +121,9 @@ export const RoleSetupWizardView: React.FC = () => {
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
   const [selectedUserDetails, setSelectedUserDetails] = useState<Map<string, User>>(new Map());
 
-  const debouncedSetSearch = useDebounce(setSearch, 300);
-  const debouncedRoleSearch = useDebounce(roleSearch, 300);
-  const debouncedUserSearch = useDebounce(userSearch, 300);
+  const debouncedSetSearch = useDebounce(setSearch, SEARCH_DEBOUNCE_MS);
+  const debouncedRoleSearch = useDebounce(roleSearch, SEARCH_DEBOUNCE_MS);
+  const debouncedUserSearch = useDebounce(userSearch, SEARCH_DEBOUNCE_MS);
 
   useEffect(() => {
     settingsApi
@@ -451,7 +452,7 @@ export const RoleSetupWizardView: React.FC = () => {
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-2">
                           <span className="text-xs sm:text-sm font-medium text-slate-800">{ps.name}</span>
-                          <Badge color={ps.system ? "blue" : "slate"} size="xs">{ps.system ? "System" : "Custom"}</Badge>
+                          <Badge color={ps.system ? "blue" : "teal"} size="xs">{ps.system ? "System" : "Custom"}</Badge>
                           <span className="text-2xs text-slate-400">{ps.permissionCount} permissions</span>
                         </span>
                         {ps.description && (

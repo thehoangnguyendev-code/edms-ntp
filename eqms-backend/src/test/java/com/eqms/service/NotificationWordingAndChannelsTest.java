@@ -106,7 +106,9 @@ class NotificationWordingAndChannelsTest {
         for (String bad : new String[] {"skull", "lock", "fontawesome:Skull", "lucide:", "lucide:Bell Ring", "lucide:../Bell", "tabler:<script>"}) {
             assertThatThrownBy(() -> service.updateAppearance(event.getCode(), bad, "red")).hasMessageContaining("Lucide or the Tabler");
         }
-        assertThatThrownBy(() -> service.updateAppearance(event.getCode(), "lucide:Bell", "pink")).hasMessageContaining("colour must be one of");
+        assertThatThrownBy(() -> service.updateAppearance(event.getCode(), "lucide:Bell", "pink"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("#RRGGBB");
         verify(policies, never()).save(any());
     }
 

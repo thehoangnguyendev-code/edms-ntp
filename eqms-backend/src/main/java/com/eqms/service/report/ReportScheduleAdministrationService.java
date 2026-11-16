@@ -28,7 +28,9 @@ public class ReportScheduleAdministrationService {
         var args=new ArrayList<Object>(List.of("%"+search.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"%",status,status));if(!all)args.add(actor.getId());
         long total=Objects.requireNonNullElse(jdbc.queryForObject("select count(*)"+where,Long.class,args.toArray()),0L);
         int safePage=Math.max(1,page);args.add((safePage-1L)*10);
-        var rows=jdbc.queryForList("select s.id,s.name,s.definition_code as \"definitionCode\",s.cron_expression as \"cronExpression\",s.requested_format as format,s.status,s.active,s.version,s.next_run_at as \"nextRunAt\",s.last_run_at as \"lastRunAt\""+where+" order by "+order+" "+direction+" nulls last,s.id limit 10 offset ?",args.toArray());
+        var rows=jdbc.queryForList("select s.id,s.name,s.definition_code as \"definitionCode\",s.cron_expression as \"cronExpression\",s.requested_format as format,s.status,s.active,s.version,s.next_run_at as \"nextRunAt\",s.last_run_at as \"lastRunAt\",s.owner_user_id as \"ownerUserId\",(select u.full_name from app_users u where u.id=s.owner_user_id) as \"ownerName\",(select coalesce(json_agg(u.full_name order by u.full_name),'[]'::json)::text from report_schedule_recipients r join app_users u on u.id=r.user_id where r.schedule_id=s.id) as \"recipientNames\""+where+" order by "+order+" "+direction+" nulls last,s.id limit 10 offset ?",args.toArray());
+        // The names of the recipients come as one JSON text per schedule; the list shows them (the count, and the names when they are few).
+        rows.forEach(row->{try{row.put("recipientNames",json.readTree(String.valueOf(row.get("recipientNames"))));}catch(Exception e){row.put("recipientNames",List.of());}});
         return Map.of("data",rows,"pagination",Map.of("page",safePage,"limit",10,"total",total,"totalPages",(total+9)/10));
     }
     private Map<String,Object> scoped(UserAccount actor,UUID id,boolean edit) {

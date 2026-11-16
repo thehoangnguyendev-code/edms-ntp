@@ -11,7 +11,6 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ReportHistoryView } from "../../history/ReportHistoryView";
 import { ToastProvider } from "@/components/ui/toast/Toast";
 import { ScheduledReportsView } from "../../scheduled/ScheduledReportsView";
-import { ReportLayoutDesigner } from "../ReportLayoutDesigner";
 import { defaultReportLayout } from "@/services/api/reportTemplates";
 import { reportsApi } from "@/services/api/reports";
 import { reportBreadcrumbs } from "../../shared/reportBreadcrumbs";
@@ -33,9 +32,6 @@ vi.mock("@/components/ui/page/PageHeader", () => ({
       {actions}
     </header>
   ),
-}));
-vi.mock("../ReportMarkCanvas", () => ({
-  ReportMarkCanvas: () => <div>Server-rendered position canvas</div>,
 }));
 vi.mock("@/features/documents/shared/components/DocumentPdfViewer", () => ({
   DocumentPdfViewer: () => null,
@@ -104,7 +100,7 @@ it("history delegates search and sorting to server, and disables unavailable dow
   expect(
     screen.getByRole("button", { name: "Test report" }),
   ).toBeInTheDocument();
-  fireEvent.click(screen.getByText("Queued"));
+  fireEvent.click(screen.getByText("Queued At"));
   // The server receives the ascending sort. (The shared URL sync may re-issue the list; that is a known point to verify in the browser.)
   await waitFor(() =>
     expect(reportsApi.listRuns).toHaveBeenCalledWith(
@@ -128,8 +124,8 @@ it("scheduled reports use shared filters (maximum three columns), server criteri
     </ToastProvider>,
   );
   await screen.findByRole("button", { name: "Test schedule" });
-  expect(screen.getByRole("combobox", { name: "Status" })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("combobox", { name: "Status" }));
+  expect(screen.getByRole("combobox", { name: "Schedule Status" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("combobox", { name: "Schedule Status" }));
   fireEvent.click(screen.getByRole("option", { name: "Paused" }));
   await waitFor(() =>
     expect(reportsApi.searchSchedules).toHaveBeenLastCalledWith(
@@ -173,23 +169,6 @@ it("compact schedule filters do not send draft selections to server until Apply"
   expect(vi.mocked(reportsApi.searchSchedules).mock.calls.every(([params]) => params.status === "")).toBe(true);
   fireEvent.click(screen.getByRole("button", {name: /^Apply$/}));
   await waitFor(() => expect(reportsApi.searchSchedules).toHaveBeenLastCalledWith(expect.objectContaining({status: "PAUSED", page: 1})));
-});
-it("layout opens the position canvas directly, without PDF Preview or Position Editor tabs", async () => {
-  render(
-    <ReportLayoutDesigner
-      value={defaultReportLayout()}
-      onChange={vi.fn()}
-      title="TEST"
-      disabled={false}
-    />,
-  );
-  await screen.findByText("Server-rendered position canvas");
-  expect(
-    screen.queryByRole("tab", { name: "PDF Preview" }),
-  ).not.toBeInTheDocument();
-  expect(
-    screen.queryByRole("tab", { name: "Position Editor" }),
-  ).not.toBeInTheDocument();
 });
 it("report breadcrumbs always finish with the page title and configuration has its navigation parent", () => {
   for (const title of [

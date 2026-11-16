@@ -29,6 +29,9 @@ export interface PublicBranding {
   toastShadow?: number;
   /** How the materials of a training are drawn: TABLE (default) or TILES. Chosen by the administrator. */
   trainingMaterialsLayout?: 'TABLE' | 'TILES';
+  /** How the Audit Trail tab of a record is drawn (the Audit Trail module itself is always a table), and the look of the timeline. */
+  auditTabView?: 'TABLE' | 'TIMELINE';
+  auditTabTimelineStyle?: 'RAIL' | 'CENTER' | 'COMPACT' | 'SCROLL_LIT';
   /** How the folders of the Knowledge Base are named: FULL (the name, default) or ABBREVIATION. Chosen by the administrator. */
   knowledgeFolderNames?: 'FULL' | 'ABBREVIATION';
   /** How the folders are named in the sidebar of the Knowledge Base (follows knowledgeFolderNames until the administrator chooses). */

@@ -20,7 +20,7 @@ import java.util.*;
  */
 @Service
 public class ReportTypeService {
-    private static final Set<String> SORTS = Set.of("name", "code", "category", "columns", "templates", "status");
+    private static final Set<String> SORTS = Set.of("name", "code", "category", "columns", "templates", "status", "updatedAt");
 
     private final JdbcTemplate jdbc;
     private final EffectivePermissionService permissions;
@@ -60,7 +60,13 @@ public class ReportTypeService {
     }
 
     public Map<String, Object> list(UserAccount actor, String status, String category, String search, String sortBy, String sortDirection, int page, int limit) {
+        return list(actor, status, category, search, "", "", sortBy, sortDirection, page, limit);
+    }
+
+    /** The Report Types, narrowed by status, category, search and the date they were last modified (ISO-8601 instants, either end may be empty), sorted and paged on the server. */
+    public Map<String, Object> list(UserAccount actor, String status, String category, String search, String modifiedFrom, String modifiedTo, String sortBy, String sortDirection, int page, int limit) {
         require(actor, "reports.types.view", "reports.types.manage");
+        java.time.Instant changedFrom = instant(modifiedFrom), changedTo = instant(modifiedTo);
         if (!Set.of("ALL", "ENABLED", "DISABLED").contains(status)) throw new IllegalArgumentException("REPORT_FILTER_NOT_ALLOWED");
         if (!SORTS.contains(sortBy) || !Set.of("asc", "desc").contains(sortDirection)) throw new IllegalArgumentException("REPORT_SORT_NOT_ALLOWED");
         if (page < 1 || limit < 1 || limit > 100 || search == null || search.length() > 200) throw new IllegalArgumentException("REPORT_PAGE_INVALID");
@@ -71,6 +77,11 @@ public class ReportTypeService {
             if ("ENABLED".equals(status) && !(boolean) row.get("enabled")) continue;
             if ("DISABLED".equals(status) && (boolean) row.get("enabled")) continue;
             if (!category.isBlank() && !category.equals(row.get("category"))) continue;
+            if (changedFrom != null || changedTo != null) {
+                // A type whose state was never saved has no modified date and is outside any range.
+                java.time.Instant changed = instant(row.get("updatedAt"));
+                if (changed == null || (changedFrom != null && changed.isBefore(changedFrom)) || (changedTo != null && changed.isAfter(changedTo))) continue;
+            }
             if (!term.isEmpty() && !(String.valueOf(row.get("name")) + " " + row.get("code") + " " + row.get("description")).toLowerCase(Locale.ROOT).contains(term)) continue;
             rows.add(row);
         }
@@ -80,6 +91,7 @@ public class ReportTypeService {
             case "columns" -> Comparator.comparingInt(r -> ((Number) r.get("columnCount")).intValue());
             case "templates" -> Comparator.comparingLong(r -> ((Number) r.get("templateCount")).longValue());
             case "status" -> Comparator.comparing(r -> (boolean) r.get("enabled"));
+            case "updatedAt" -> Comparator.comparing(r -> Optional.ofNullable(instant(r.get("updatedAt"))).orElse(java.time.Instant.EPOCH));
             default -> Comparator.comparing(r -> String.valueOf(r.get("name")).toLowerCase(Locale.ROOT));
         };
         order = order.thenComparing(r -> String.valueOf(r.get("code")));
@@ -94,6 +106,21 @@ public class ReportTypeService {
         return Map.of("data", rows.subList(from, Math.min(total, from + limit)), "pagination", pagination, "categories", categories());
     }
 
+    /** An instant from what the database or the screen gave: a timestamp, an instant or its ISO-8601 text; none when empty. A text that is not an instant is refused. */
+    private static java.time.Instant instant(Object value) {
+        if (value == null) return null;
+        if (value instanceof java.time.Instant instant) return instant;
+        if (value instanceof java.sql.Timestamp timestamp) return timestamp.toInstant();
+        if (value instanceof java.time.OffsetDateTime offset) return offset.toInstant();
+        String text = String.valueOf(value).trim();
+        if (text.isEmpty()) return null;
+        try {
+            return java.time.Instant.parse(text);
+        } catch (java.time.format.DateTimeParseException invalid) {
+            throw new IllegalArgumentException("REPORT_FILTER_NOT_ALLOWED");
+        }
+    }
+
     public Map<String, Object> detail(UserAccount actor, String code) {
         require(actor, "reports.types.view", "reports.types.manage");
         ReportMetadataProvider provider = providers.get(code);
@@ -103,7 +130,8 @@ public class ReportTypeService {
         List<Map<String, Object>> columns = new ArrayList<>();
         for (String column : provider.columns().keySet().stream().sorted().toList()) {
             columns.add(Map.of("code", column, "label", provider.labels().getOrDefault(column, column), "required", provider.requiredFields().contains(column),
-                    "type", dates.contains(column) ? "DATE" : "TEXT", "sortable", true));
+                    "type", dates.contains(column) ? "DATE" : "TEXT", "sortable", true,
+                    "group", provider.fieldGroups().getOrDefault(column, "Core"), "sensitive", provider.sensitiveFields().contains(column)));
         }
         result.put("columns", columns);
         result.put("filters", provider.filters().stream().map(f -> Map.of("code", f.get("code"), "label", f.getOrDefault("name", f.get("code")), "type", f.getOrDefault("type", "TEXT"))).toList());

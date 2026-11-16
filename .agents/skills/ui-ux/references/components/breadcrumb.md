@@ -1,7 +1,7 @@
 # Đường dẫn (breadcrumb)
 
 Dòng các cấp cha của trang đang xem, mỗi cấp là link. Nằm ở một trong hai chỗ: thanh header
-`h-16` của khung app, hoặc trên tên trang trong đầu trang (`../layouts/app.md`, "Đầu trang trong
+`h-16` của khung app, hoặc trên tên trang trong đầu trang (`../layouts/app/shell.md`, "Đầu trang trong
 vùng nội dung"). Không bao giờ cả hai.
 
 ## Khi nào có
@@ -57,7 +57,7 @@ Tài liệu  ›  …  ›  Hợp đồng 2026  ›  Quý 3                <- 5 
 - **Nút "…" trông như một mục chữ, không phải icon button.** Hộp ôm sát icon (`h-5 w-4 p-0`,
   icon `MoreHorizontal size-4`), không nền, `text-muted` rê vào `text-foreground`, đang mở giữ
   `text-foreground`. Vùng bấm nới bằng `before:` (`before:absolute before:-inset-x-1.5
-  before:-inset-y-1.5`, 28×32px, cùng cách tay cầm ở `range-slider.md`). Đã dính 26/09/2026: nút `ghost size-8` có padding 8px mỗi bên, nét "…"
+  before:-inset-y-1.5`, 28×32px, cùng cách tay cầm ở `range-slider.md`). Đừng dùng nút `ghost size-8`: padding 8px mỗi bên, nét "…"
   cách dấu › 22px trong khi chữ cách dấu 12px, và rê vào hiện một ô nền xám giữa hàng chữ
   chỉ đổi màu.
 
@@ -199,3 +199,11 @@ export default function BreadcrumbCrumb({ item, hasSeparator }: BreadcrumbCrumbP
 - Ở 375px: chỉ còn "‹ Cấp cha", cao 40px, không có mục nào bị cắt còn vài chữ. Tab tới: chữ gạch chân.
 - Rê vào mục và vào "…": chỉ đổi màu, không hiện ô nền. Tab tới: chỉ gạch chân, không vòng.
 - Trình đọc màn hình: `nav` có tên "Đường dẫn", mục trong `ol`, dấu › không bị đọc.
+
+---
+
+## Kiểm trước khi giao
+
+Chạy cùng cổng 2 của `checklist.md` khi trang có đúng thứ này.
+
+- [ ] **Đường dẫn** (`components/breadcrumb.md`): chỉ cấp cha, không trùng chữ `<h1>` ngay dưới? Chữ mỗi mục đúng tên trang đích? Một hàng, không xuống dòng; từ 4 cấp cha có nút "…" mở menu, và nút đó trông như một mục chữ (không ô nền, nét cách dấu › bằng chữ cách dấu)? Tab tới một mục: chữ gạch chân, không vòng (`I13`)? Ở 375px chỉ còn "‹ Cấp cha" cao 40px? Đặt đúng một chỗ, header hoặc đầu trang?

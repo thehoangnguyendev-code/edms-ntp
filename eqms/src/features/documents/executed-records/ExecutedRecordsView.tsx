@@ -23,6 +23,7 @@ import { formatDateTime } from "@/utils/format";
 import { extractApiMessage } from "@/features/settings/dictionaries/utils";
 import { executedRecordApi, type ExecutedRecord } from "@/services/api/executedRecords";
 import { RecordScanPreview } from "./RecordScanPreview";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 
 
@@ -53,7 +54,7 @@ export const ExecutedRecordsView: React.FC = () => {
   const [reloadKey, setReloadKey] = useState(0);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearch = useDebounce(searchQuery, 400);
+  const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const [receivedFrom, setReceivedFrom] = useState("");
   const [receivedTo, setReceivedTo] = useState("");
   const [recordedFrom, setRecordedFrom] = useState("");

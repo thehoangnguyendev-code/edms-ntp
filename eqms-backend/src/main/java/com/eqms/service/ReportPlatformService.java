@@ -70,6 +70,9 @@ public class ReportPlatformService {
     }
 
     private com.eqms.service.report.ReportDeliveryService delivery;
+    private com.eqms.service.report.ReportPreviewFileService previewFiles;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void configurePreviewFiles(com.eqms.service.report.ReportPreviewFileService previewFiles) { this.previewFiles = previewFiles; }
     /** Notices for completed scheduled runs and suspended schedules (REPORT-NOTIFICATION-CHANNEL-2026-10-14). */
     @org.springframework.beans.factory.annotation.Autowired
     public void configureDelivery(com.eqms.service.report.ReportDeliveryService delivery) { this.delivery = delivery; }
@@ -147,29 +150,6 @@ public class ReportPlatformService {
     }
 
     /** Delivery log for Report Administration (REPORT-NOTIFICATION-CHANNEL-2026-10-14): every notice attempt, newest first, paged on the server. */
-    /** Role scopes of the report templates (Report Access & Data Scope): search, scope filter, sort and paging on the server. */
-    public Map<String,Object> accessScopes(UserAccount actor, String search, String scope, String sortBy, String sortDirection, int page, int limit) {
-        require(actor, "reports.definition.view", "settings.configuration.view");
-        int safeLimit = Math.min(Math.max(limit, 1), 100); int safePage = Math.max(page, 1);
-        String term = "%" + (search == null ? "" : search.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")) + "%";
-        String from = " from report_template_role_scopes s join report_definitions d on d.code = s.definition_code and d.deleted_at is null join roles r on r.id = s.role_id";
-        String where = " where (d.display_name ilike ? or d.code ilike ? or r.name ilike ?)";
-        List<Object> args = new ArrayList<>(List.of(term, term, term));
-        if (scope != null && !scope.isBlank()) { where += " and s.scope_code = ?"; args.add(scope.trim()); }
-        String orderColumn = switch (sortBy == null ? "templateName" : sortBy) {
-            case "roleName" -> "r.name";
-            case "scope" -> "s.scope_code";
-            case "active" -> "d.active";
-            default -> "d.display_name";
-        };
-        String direction = "desc".equalsIgnoreCase(sortDirection) ? "desc" : "asc";
-        long total = jdbc.queryForObject("select count(*)" + from + where, Long.class, args.toArray());
-        List<Object> dataArgs = new ArrayList<>(args); dataArgs.add(safeLimit); dataArgs.add((safePage - 1) * safeLimit);
-        List<Map<String,Object>> rows = jdbc.queryForList("select d.code as \"templateCode\", d.display_name as \"templateName\", d.active as \"active\", r.name as \"roleName\", s.scope_code as \"scope\"" + from + where
-                + " order by " + orderColumn + " " + direction + ", d.code, r.name limit ? offset ?", dataArgs.toArray());
-        return Map.of("data", rows, "pagination", Map.of("page", safePage, "limit", safeLimit, "total", total, "totalPages", (total + safeLimit - 1) / safeLimit));
-    }
-
     /** Legal holds in force (REPORT-LIST-STANDARD-2026-10-14): search, sort and paging on the server. Shown to people who manage retention. */
     public Map<String,Object> legalHolds(UserAccount actor, String search, String sortBy, String sortDirection, int page, int limit) {
         require(actor, "reports.retention.manage", "report.module.export");
@@ -292,16 +272,20 @@ public class ReportPlatformService {
         return id;
     }
 
+    /** The name of a schedule as a person knows it; the audit trail names the schedule by it and keeps the identifier in its own column. */
+    private String scheduleName(UUID id) {
+        return jdbc.query("select name from report_schedules where id=?", rs -> rs.next() ? rs.getString(1) : "Scheduled report", id);
+    }
     public void pauseSchedule(UserAccount actor, UUID id) { updateScheduleStatus(actor, id, false, "PAUSED"); }
     public void resumeSchedule(UserAccount actor, UUID id) {
         require(actor, "reports.schedule.manage", "report.module.export"); requireScheduleManagement(actor, id);
         Map<String,Object> row = jdbc.queryForMap("select cron_expression from report_schedules where id=?", id);
         Instant next = nextOccurrence(parseCron(String.valueOf(row.get("cron_expression")))); if (next == null) throw new IllegalArgumentException("Cron expression has no future occurrence");
         jdbc.update("update report_schedules set active=true,status='ACTIVE',next_run_at=?,updated_at=now() where id=?", java.sql.Timestamp.from(next), id);
-        auditTrail.logAs(actor, "REPORT_SCHEDULE", id.toString(), id, "REPORT_SCHEDULE_RESUMED", null, "ACTIVE", "Scheduled report resumed");
+        auditTrail.logAs(actor, "REPORT_SCHEDULE", scheduleName(id), id, "REPORT_SCHEDULE_RESUMED", null, "ACTIVE", "Scheduled report resumed");
     }
-    public void deleteSchedule(UserAccount actor, UUID id) { require(actor, "reports.schedule.manage", "report.module.export"); requireScheduleManagement(actor,id); jdbc.update("delete from report_schedules where id=?",id); auditTrail.logAs(actor, "REPORT_SCHEDULE", id.toString(), id, "REPORT_SCHEDULE_DELETED", null, null, "Scheduled report deleted"); }
-    private void updateScheduleStatus(UserAccount actor, UUID id, boolean active, String status) { require(actor, "reports.schedule.manage", "report.module.export"); requireScheduleManagement(actor,id); jdbc.update("update report_schedules set active=?,status=?,updated_at=now() where id=?",active,status,id); auditTrail.logAs(actor, "REPORT_SCHEDULE", id.toString(), id, "REPORT_SCHEDULE_" + status, null, status, "Scheduled report status changed"); }
+    public void deleteSchedule(UserAccount actor, UUID id) { require(actor, "reports.schedule.manage", "report.module.export"); requireScheduleManagement(actor,id); String deletedName=scheduleName(id); jdbc.update("delete from report_schedules where id=?",id); auditTrail.logAs(actor, "REPORT_SCHEDULE", deletedName, id, "REPORT_SCHEDULE_DELETED", null, null, "Scheduled report deleted"); }
+    private void updateScheduleStatus(UserAccount actor, UUID id, boolean active, String status) { require(actor, "reports.schedule.manage", "report.module.export"); requireScheduleManagement(actor,id); jdbc.update("update report_schedules set active=?,status=?,updated_at=now() where id=?",active,status,id); auditTrail.logAs(actor, "REPORT_SCHEDULE", scheduleName(id), id, "REPORT_SCHEDULE_" + status, null, status, "Scheduled report status changed"); }
     // Mirrors the ownership scoping already enforced in runDetail()/download(): the "manage" require()
     // above accepts the broad legacy report.module.export permission too, so without this check any
     // holder of that permission could pause/resume/delete another user's schedule despite the list
@@ -320,6 +304,11 @@ public class ReportPlatformService {
     }
     private CronExpression parseCron(String value) { try { return CronExpression.parse(value == null ? "" : value.trim()); } catch (Exception invalid) { throw new IllegalArgumentException("Invalid cron expression"); } }
     private Instant nextOccurrence(CronExpression cron) { var next=cron.next(java.time.ZonedDateTime.now(DateTimeFormatUtils.ZONE)); return next==null?null:next.toInstant(); }
+
+    /** The part of the Audit Trail text that names the sensitive columns a run exports; empty when it exports none (REPORT-FIELD-CATALOG-2026-11-15). */
+    public static String sensitiveNote(List<String> labels) {
+        return labels.isEmpty() ? "" : "; exports sensitive columns: " + String.join(", ", labels);
+    }
 
     @org.springframework.transaction.annotation.Transactional
     public UUID queueRun(UserAccount actor, RunRequest request, String idempotencyKey) {
@@ -384,21 +373,24 @@ public class ReportPlatformService {
         jdbc.update("update report_runs set report_title=? where id=?",reportTitle,resolved);
         com.eqms.entity.ElectronicSignature runSignature = signedRun
                 ? signatures.record(actor, request.signatureToken(), MEANING_RUN_REQUEST, "REPORT_RUN", resolved, reportTitle, runReason, null, "QUEUED") : null;
+        com.eqms.service.EntityChangeBroadcaster.changed("REPORT_RUN", resolved, null);
         jdbc.update("insert into report_run_events(run_id,event_type,detail) values(?, 'QUEUED', cast(? as jsonb))", resolved,
                 objectMapper.valueToTree(runSignature == null ? Map.of("definition", request.definitionCode(), "format", request.format(), "full", full)
                         : Map.of("definition", request.definitionCode(), "format", request.format(), "full", full, "signatureRef", runSignature.getSignatureId())).toString());
         auditTrail.logAs(actor, "REPORT_RUN", request.definitionCode(), resolved, "REPORT_RUN_QUEUED", null, "QUEUED", "Report run requested; definition version " + definition.get("definition_version")
                 + (runSignature == null ? "" : "; signed (" + runReason + ") [signature " + runSignature.getSignatureId() + "]")
-                + (full ? "; Full run (no filter required), " + totalRows + " rows" : "; " + totalRows + " rows"));
+                + (full ? "; Full run (no filter required), " + totalRows + " rows" : "; " + totalRows + " rows")
+                + sensitiveNote(templates.sensitiveColumns(templateSnapshot.path("definition").path("sourceCode").asText(), fields)));
         return resolved;
     }
 
     public Map<String, Object> runs(UserAccount actor, String search, int page, int limit, String sortBy, String sortDirection) {
-        return runs(actor, search, null, null, null, null, page, limit, sortBy, sortDirection);
+        return runs(actor, search, null, null, null, null, null, null, null, page, limit, sortBy, sortDirection);
     }
 
-    /** Run history with the list filters of REPORT-LIST-STANDARD-2026-10-14: status, template, and the queued date range (yyyy-MM-dd, inclusive). */
+    /** Run history with the list filters of REPORT-LIST-STANDARD-2026-10-14: status, template, output format, and the queued and completed date ranges (yyyy-MM-dd, inclusive). */
     public Map<String, Object> runs(UserAccount actor, String search, String status, String definitionCode, String queuedFrom, String queuedTo,
+                                    String format, String completedFrom, String completedTo,
                                     int page, int limit, String sortBy, String sortDirection) {
         require(actor, "reports.run.view_own", "report.module.view");
         boolean all = permissions.hasPermission(actor, "reports.run.view_all");
@@ -409,6 +401,10 @@ public class ReportPlatformService {
         if (definitionCode != null && !definitionCode.isBlank()) { where += " and r.definition_code = ?"; filterArgs.add(definitionCode.trim()); }
         if (queuedFrom != null && !queuedFrom.isBlank()) { where += " and r.queued_at >= cast(? as date)"; filterArgs.add(queuedFrom.trim()); }
         if (queuedTo != null && !queuedTo.isBlank()) { where += " and r.queued_at < cast(? as date) + interval '1 day'"; filterArgs.add(queuedTo.trim()); }
+        // The output format the person asked for (always stored with the run) and the completed date range (yyyy-MM-dd, inclusive).
+        if (format != null && !format.isBlank()) { where += " and r.requested_format = ?"; filterArgs.add(format.trim().toUpperCase(Locale.ROOT)); }
+        if (completedFrom != null && !completedFrom.isBlank()) { where += " and r.completed_at >= cast(? as date)"; filterArgs.add(completedFrom.trim()); }
+        if (completedTo != null && !completedTo.isBlank()) { where += " and r.completed_at < cast(? as date) + interval '1 day'"; filterArgs.add(completedTo.trim()); }
         String term = "%" + (search == null ? "" : search.trim()) + "%";
         String orderColumn = switch (sortBy == null ? "queuedAt" : sortBy) {
             case "definitionCode" -> "r.definition_code";
@@ -421,7 +417,7 @@ public class ReportPlatformService {
         if (!all) dataArgs.add(actor.getId());
         dataArgs.addAll(filterArgs);
         dataArgs.add(safeLimit); dataArgs.add(offset);
-        List<Map<String, Object>> data = jdbc.queryForList("select r.report_title as \"reportTitle\", r.full_run as \"fullRun\", r.id, r.definition_code as \"definitionCode\", r.definition_version as \"definitionVersion\", (select rv.revision from report_template_revisions rv where rv.definition_code=r.definition_code and rv.definition_version=r.definition_version) as \"revision\", r.status, r.progress, r.reason_code as \"reasonCode\", r.error_message as \"errorMessage\", r.queued_at as \"queuedAt\", r.completed_at as \"completedAt\", a.id as \"artifactId\" from report_runs r left join report_artifacts a on a.run_id=r.id where (r.definition_code ilike ? or cast(r.id as text) ilike ? or r.report_title ilike ?) " + where + " order by " + orderColumn + " " + direction + " nulls last, r.id desc limit ? offset ?", dataArgs.toArray());
+        List<Map<String, Object>> data = jdbc.queryForList("select r.report_title as \"reportTitle\", r.full_run as \"fullRun\", r.id, r.definition_code as \"definitionCode\", r.definition_version as \"definitionVersion\", (select rv.revision from report_template_revisions rv where rv.definition_code=r.definition_code and rv.definition_version=r.definition_version) as \"revision\", r.status, r.progress, r.reason_code as \"reasonCode\", r.error_message as \"errorMessage\", r.queued_at as \"queuedAt\", r.completed_at as \"completedAt\", r.requested_format as \"requestedFormat\", a.id as \"artifactId\", a.format as \"artifactFormat\", a.generated_filename as \"artifactFilename\", a.byte_size as \"artifactSize\" from report_runs r left join report_artifacts a on a.run_id=r.id where (r.definition_code ilike ? or cast(r.id as text) ilike ? or r.report_title ilike ?) " + where + " order by " + orderColumn + " " + direction + " nulls last, r.id desc limit ? offset ?", dataArgs.toArray());
         List<Object> countArgs = new ArrayList<>(List.of(term, term, term)); if (!all) countArgs.add(actor.getId());
         countArgs.addAll(filterArgs);
         Long total = jdbc.queryForObject("select count(*) from report_runs r where (r.definition_code ilike ? or cast(r.id as text) ilike ? or r.report_title ilike ?) " + where, Long.class, countArgs.toArray());
@@ -433,7 +429,7 @@ public class ReportPlatformService {
     public Map<String,Object> runDetail(UserAccount actor, UUID runId) {
         templates.require(actor, "reports.run.view_own", "report.module.view");
         require(actor, "reports.run.view_own", "report.module.view");
-        Map<String,Object> run = new LinkedHashMap<>(jdbc.queryForMap("select id, report_title as \"reportTitle\", full_run as \"fullRun\", definition_code as \"definitionCode\", definition_version as \"definitionVersion\", (select rv.revision from report_template_revisions rv where rv.definition_code=report_runs.definition_code and rv.definition_version=report_runs.definition_version) as \"revision\", requester_user_id as \"requesterUserId\", (select u.full_name from app_users u where u.id = requester_user_id) as \"requesterName\", request_type as \"requestType\", schedule_id as \"scheduleId\", (select s.name from report_schedules s where s.id = schedule_id) as \"scheduleName\", requested_format as \"requestedFormat\", parameters, selected_fields as \"selectedFields\", sort_spec as \"sortSpec\", authorization_snapshot as \"authorizationSnapshot\", status, progress, attempt_count as \"attemptCount\", reason_code as \"reasonCode\", error_message as \"errorMessage\", queued_at as \"queuedAt\", started_at as \"startedAt\", as_of_at as \"asOfAt\", completed_at as \"completedAt\" from report_runs where id=?", runId));
+        Map<String,Object> run = new LinkedHashMap<>(jdbc.queryForMap("select id, run_number as \"runNumber\", report_title as \"reportTitle\", full_run as \"fullRun\", definition_code as \"definitionCode\", definition_version as \"definitionVersion\", (select rv.revision from report_template_revisions rv where rv.definition_code=report_runs.definition_code and rv.definition_version=report_runs.definition_version) as \"revision\", requester_user_id as \"requesterUserId\", (select u.full_name from app_users u where u.id = requester_user_id) as \"requesterName\", request_type as \"requestType\", schedule_id as \"scheduleId\", (select s.name from report_schedules s where s.id = schedule_id) as \"scheduleName\", requested_format as \"requestedFormat\", parameters, selected_fields as \"selectedFields\", sort_spec as \"sortSpec\", authorization_snapshot as \"authorizationSnapshot\", status, progress, attempt_count as \"attemptCount\", reason_code as \"reasonCode\", error_message as \"errorMessage\", queued_at as \"queuedAt\", started_at as \"startedAt\", as_of_at as \"asOfAt\", completed_at as \"completedAt\" from report_runs where id=?", runId));
         boolean all = permissions.hasPermission(actor, "reports.run.view_all");
         if (!all && !actor.getId().toString().equals(String.valueOf(run.get("requesterUserId")))) throw new SecurityException("REPORT_SCOPE_DENIED");
         // Internal snapshots contain source identities, aggregate data and embedded assets.
@@ -442,6 +438,12 @@ public class ReportPlatformService {
         JsonNode snapshot = readSnapshot(run.remove("authorizationSnapshot"));
         // jsonb columns come out of the driver as database objects; the API returns them as JSON (arrays stay arrays).
         run.put("parameters", readSnapshot(run.get("parameters")));
+        // The number a person quotes for this run, and its filters as a person reads them (name and label of each value, never an identifier).
+        run.put("runLabel", runLabel(run.get("runNumber")));
+        String filterText;
+        try { filterText = templates.filterSummary(actor, String.valueOf(run.get("definitionCode")), snapshot); }
+        catch (RuntimeException unreadable) { filterText = ""; }
+        run.put("filterSummary", filterText);
         run.put("selectedFields", readJsonArray(run.get("selectedFields")));
         run.put("sortSpec", readJsonArray(run.get("sortSpec")));
         JsonNode definition = snapshot.path("definition");
@@ -459,7 +461,7 @@ public class ReportPlatformService {
         run.put("signature", signatures.isEmpty() ? null : signatures.getFirst());
         run.put("artifacts", jdbc.queryForList("select id, format, generated_filename as \"generatedFilename\", mime_type as \"mimeType\", byte_size as \"byteSize\", sha256, expires_at as \"expiresAt\", legal_hold as \"legalHold\", purged_at as \"purgedAt\", created_at as \"createdAt\" from report_artifacts where run_id=? order by created_at", runId));
         List<Map<String,Object>> events = jdbc.queryForList("select event_type as \"eventType\", reason_code as \"reasonCode\", detail::text as \"detail\", created_at as \"createdAt\" from report_run_events where run_id=? order by created_at", runId);
-        for (Map<String,Object> event : events) event.put("detail", readSnapshot(event.get("detail")));
+        for (Map<String,Object> event : events) event.put("detail", displayDetail(readSnapshot(event.get("detail"))));
         run.put("events", events);
         // Who was told about this run is shown to people who manage schedules (names of recipients are personal data).
         run.put("deliveries", permissions.hasPermission(actor, "reports.schedule.manage") ? jdbc.queryForList("select a.channel, a.event_code as \"eventCode\", a.status, a.reason_code as \"reasonCode\", a.created_at as \"createdAt\", u.full_name as \"recipientName\" from report_delivery_attempts a left join app_users u on u.id = a.recipient_user_id where a.run_id=? order by a.created_at", runId) : null);
@@ -484,13 +486,18 @@ public class ReportPlatformService {
 
     public record PreparedArtifact(String filename,String mimeType,VerifiedDownloadService.Prepared file) { }
 
-    public PreparedArtifact prepareDownload(UserAccount actor,UUID runId,UUID artifactId) {
+    public PreparedArtifact prepareDownload(UserAccount actor,UUID runId,UUID artifactId) { return prepareArtifact(actor,runId,artifactId,"REPORT_ARTIFACT_DOWNLOADED","Artifact download authorized and checksum verified"); }
+
+    /** A file to look at in the browser (a PDF, in the EmbedPDF viewer): the same authorisation and checksum check as a download, recorded as a preview. */
+    public PreparedArtifact preparePreview(UserAccount actor,UUID runId,UUID artifactId) { return prepareArtifact(actor,runId,artifactId,"REPORT_ARTIFACT_PREVIEWED","Artifact preview authorized and checksum verified"); }
+
+    private PreparedArtifact prepareArtifact(UserAccount actor,UUID runId,UUID artifactId,String event,String description) {
         Map<String,Object> artifact=authorizedDownloadArtifact(actor,runId,artifactId);
         VerifiedDownloadService.Prepared file=null;
         try {
             file=verifiedDownloads.prepare(String.valueOf(artifact.get("object_key")),String.valueOf(artifact.get("sha256")));
             auditTrail.logAs(actor,"REPORT_ARTIFACT",String.valueOf(artifact.get("generated_filename")),artifactId,
-                    "REPORT_ARTIFACT_DOWNLOADED",null,null,"Artifact download authorized and checksum verified");
+                    event,null,null,description);
             return new PreparedArtifact(String.valueOf(artifact.get("generated_filename")),String.valueOf(artifact.get("mime_type")),file);
         } catch(VerifiedDownloadService.Busy busy) {throw busy;}
         catch(Exception missing) {
@@ -499,11 +506,89 @@ public class ReportPlatformService {
         }
     }
 
+    private com.eqms.service.OnlyOfficeDocumentEditService onlyOffice;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void configureOnlyOffice(com.eqms.service.OnlyOfficeDocumentEditService onlyOffice) { this.onlyOffice = onlyOffice; }
+    /** The formats the OnlyOffice viewer shows; a PDF is shown by the EmbedPDF viewer from the preview download. */
+    public static final Set<String> VIEWER_FORMATS = Set.of("CSV","XLSX");
+
+    /**
+     * The read-only OnlyOffice view of a CSV or XLSX report file (REPORT-ARTIFACT-PREVIEW-2026-11-14). It takes the permission of a download, because it shows the same data;
+     * editing, download and print are switched off in the viewer, and the preview is recorded in the Audit Trail.
+     */
+    public Map<String,Object> artifactViewConfig(UserAccount actor,UUID runId,UUID artifactId) {
+        Map<String,Object> artifact=authorizedDownloadArtifact(actor,runId,artifactId);
+        if(!VIEWER_FORMATS.contains(String.valueOf(artifact.get("format")))) throw new IllegalArgumentException("REPORT_ARTIFACT_PREVIEW_NOT_SUPPORTED");
+        Map<String,Object> config=objectMapper.convertValue(onlyOffice.buildStoredFileViewConfig("report-artifact",artifactId,String.valueOf(artifact.get("sha256")),String.valueOf(artifact.get("generated_filename")),actor),Map.class);
+        auditTrail.logAs(actor,"REPORT_ARTIFACT",String.valueOf(artifact.get("generated_filename")),artifactId,"REPORT_ARTIFACT_PREVIEWED",null,null,"Artifact preview authorized");
+        return config;
+    }
+
+    /** The bytes the document server fetches for the viewer: authenticated by its signed token, not by a session; the checksum is checked and an expired or purged file is refused. */
+    public byte[] artifactBytesForViewer(UUID artifactId) {
+        Map<String,Object> artifact=jdbc.queryForMap("select object_key, sha256, format from report_artifacts where id=? and purged_at is null and (expires_at is null or expires_at > now())",artifactId);
+        if(!VIEWER_FORMATS.contains(String.valueOf(artifact.get("format")))) throw new IllegalArgumentException("REPORT_ARTIFACT_PREVIEW_NOT_SUPPORTED");
+        try(var file=verifiedDownloads.prepare(String.valueOf(artifact.get("object_key")),String.valueOf(artifact.get("sha256")));var out=new java.io.ByteArrayOutputStream()) {
+            file.transferTo(out);
+            return out.toByteArray();
+        } catch(VerifiedDownloadService.Busy busy) { throw busy; }
+        catch(Exception missing) { throw new IllegalStateException("REPORT_ARTIFACT_EXPIRED"); }
+    }
+
+    /** Whether the person may open this run, and so read its Audit Trail tab: the permission and the object scope that the run's own read applies (REPORT-RUN-AUDIT-2026-11-16). */
+    public boolean canViewRunAudit(UserAccount actor, UUID runId) {
+        try {
+            templates.require(actor, "reports.run.view_own", "report.module.view");
+            require(actor, "reports.run.view_own", "report.module.view");
+        } catch (RuntimeException denied) { return false; }
+        var rows = jdbc.queryForList("select requester_user_id from report_runs where id=?", runId);
+        if (rows.isEmpty()) return false;
+        return permissions.hasPermission(actor, "reports.run.view_all") || actor.getId().toString().equals(String.valueOf(rows.get(0).get("requester_user_id")));
+    }
+
+    /** The files of a run, including one that was removed after it expired: its entries stay part of the history of the run. */
+    public List<UUID> artifactIdsOfRun(UUID runId) { return jdbc.queryForList("select id from report_artifacts where run_id=?", UUID.class, runId); }
+
+    /** The result of comparing a file a person holds with the file EQMS stored for a run (REPORT-FILE-VERIFY-2026-11-16). */
+    public record FileVerification(boolean match,String storedSha256,String uploadedSha256,long storedSize,long uploadedSize,String storedFilename,String uploadedFilename) { }
+
+    /**
+     * A CSV or XLSX file that was downloaded or e-mailed can be edited outside EQMS. This reads the file a person holds, never stores it, and says whether it is byte for byte the file EQMS stored.
+     * It takes the permission of a download (the answer discloses nothing the person cannot download) and each check is recorded in the Audit Trail, a mismatch under its own event.
+     */
+    public FileVerification verifyArtifactFile(UserAccount actor,UUID runId,UUID artifactId,java.io.InputStream upload,String uploadedName) {
+        Map<String,Object> artifact;
+        long storedSize;
+        try {
+            artifact=authorizedDownloadArtifact(actor,runId,artifactId);
+            storedSize=jdbc.queryForObject("select byte_size from report_artifacts where id=?",Long.class,artifactId);
+        } catch(org.springframework.dao.EmptyResultDataAccessException gone) { throw new IllegalStateException("REPORT_ARTIFACT_EXPIRED"); }
+        String uploadedSha; long uploadedSize=0;
+        try {
+            var digest=MessageDigest.getInstance("SHA-256");
+            byte[] buffer=new byte[8192]; int read;
+            while((read=upload.read(buffer))>0) { digest.update(buffer,0,read); uploadedSize+=read; }
+            uploadedSha=HexFormat.of().formatHex(digest.digest());
+        } catch(java.io.IOException|java.security.NoSuchAlgorithmException unreadable) { throw new IllegalArgumentException("REPORT_VERIFY_FILE_UNREADABLE"); }
+        if(uploadedSize==0) throw new IllegalArgumentException("REPORT_VERIFY_FILE_EMPTY");
+        String stored=String.valueOf(artifact.get("sha256"));
+        boolean match=stored.equalsIgnoreCase(uploadedSha);
+        String name=uploadedName==null?"":uploadedName.replaceAll("\\p{Cc}"," ");
+        if(name.length()>200) name=name.substring(0,200);
+        String filename=String.valueOf(artifact.get("generated_filename"));
+        auditTrail.logAs(actor,"REPORT_ARTIFACT",filename,artifactId,match?"REPORT_ARTIFACT_VERIFIED":"REPORT_ARTIFACT_VERIFY_MISMATCH",null,null,
+                (match?"The file held by the user is the stored file. ":"The file held by the user is NOT the stored file. ")+"Checked file: "+name+" ("+uploadedSize+" bytes, SHA-256 "+uploadedSha+"); stored SHA-256 "+stored+".");
+        jdbc.update("insert into report_run_events(run_id,event_type,reason_code,detail) values(?,?,?,jsonb_build_object('artifactId',cast(? as text),'uploadedSha256',cast(? as text)))",
+                runId,match?"FILE_VERIFIED":"FILE_VERIFY_MISMATCH",match?null:"REPORT_FILE_MODIFIED",artifactId.toString(),uploadedSha);
+        com.eqms.service.EntityChangeBroadcaster.changed("REPORT_RUN",runId,null);
+        return new FileVerification(match,stored,uploadedSha,storedSize,uploadedSize,filename,name);
+    }
+
     private Map<String,Object> authorizedDownloadArtifact(UserAccount actor,UUID runId,UUID artifactId) {
         templates.require(actor,"reports.artifact.download","report.module.export");
         require(actor, "reports.artifact.download", "report.module.export");
         Map<String,Object> artifact=jdbc.queryForMap("""
-                select a.generated_filename, a.mime_type, a.object_key, a.provider, a.sha256, r.requester_user_id, r.definition_code, r.authorization_snapshot
+                select a.generated_filename, a.format, a.mime_type, a.object_key, a.provider, a.sha256, r.requester_user_id, r.definition_code, r.authorization_snapshot
                 from report_artifacts a join report_runs r on r.id=a.run_id
                 where a.id=? and a.run_id=? and a.purged_at is null and (a.expires_at is null or a.expires_at > now())
                 """,artifactId, runId);
@@ -526,6 +611,7 @@ public class ReportPlatformService {
         if ("METADATA_V1".equals(queuedWith.path("protocol").asText())) templates.requireRunRevisionEffective(String.valueOf(run.get("definition_code")), queuedWith);
         jdbc.update("update report_runs set status='QUEUED',reason_code=null,error_message=null,next_attempt_at=now(),lease_until=null where id=?", runId);
         jdbc.update("insert into report_run_events(run_id,event_type,detail) values(?,'RETRY_REQUESTED',cast(? as jsonb))",runId,objectMapper.valueToTree(Map.of("requestedBy",actor.getId().toString())).toString());
+        com.eqms.service.EntityChangeBroadcaster.changed("REPORT_RUN", runId, null);
         auditTrail.logAs(actor, "REPORT_RUN", runId.toString(), runId, "REPORT_RUN_RETRY_REQUESTED", String.valueOf(run.get("status")), "QUEUED", "Retry requested");
     }
 
@@ -585,6 +671,19 @@ public class ReportPlatformService {
         }
     }
 
+    /** What of the detail of an event of a run a person is told: the facts, by name. The identifiers the event keeps for the server (artifactId ...) are not returned. */
+    private static final Set<String> EVENT_DETAIL_SHOWN = Set.of("full", "format", "definition", "sha256", "attempt", "delaySeconds", "reason", "rows");
+    static JsonNode displayDetail(JsonNode detail) {
+        var shown = new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode();
+        detail.fields().forEachRemaining(entry -> { if (EVENT_DETAIL_SHOWN.contains(entry.getKey())) shown.set(entry.getKey(), entry.getValue()); });
+        return shown;
+    }
+
+    /** The number of a run as a person reads and quotes it (RUN-000123); the identifier of the run is an internal key and is never printed in a file. */
+    public static String runLabel(Object runNumber) {
+        return runNumber instanceof Number number ? String.format("RUN-%06d", number.longValue()) : "";
+    }
+
     /** Called by the scheduled worker. Claiming is deliberately lease-based and does not execute in an HTTP thread. */
     public boolean processOneQueuedRun() {
         List<Map<String,Object>> candidates=jdbc.queryForList("""
@@ -593,10 +692,11 @@ public class ReportPlatformService {
                 update report_runs r set status='PROCESSING', started_at=now(), progress=10,
                   attempt_count=attempt_count+1, lease_until=now()+interval '10 minutes'
                 from candidate where r.id=candidate.id
-                returning r.id, r.definition_code, r.requester_user_id, r.requested_format, r.selected_fields, r.parameters, r.authorization_snapshot, r.attempt_count
+                returning r.id, r.run_number, r.definition_code, r.requester_user_id, r.requested_format, r.selected_fields, r.parameters, r.authorization_snapshot, r.attempt_count
                 """);
         if (candidates.isEmpty()) return false;
         Map<String,Object> run=candidates.getFirst(); UUID runId=UUID.fromString(run.get("id").toString());
+        com.eqms.service.EntityChangeBroadcaster.changed("REPORT_RUN", runId, null);
         // Keep the short DB claim separate from rendering and renew without holding a transaction.
         try (var runLease = Objects.requireNonNull(runLeases, "Report run lease service is required")
                 .maintain(runId, ((Number)run.get("attempt_count")).intValue())) {
@@ -624,8 +724,11 @@ public class ReportPlatformService {
                         "report.code",run.get("definition_code").toString(),"template.version",snapshot.path("definition").hasNonNull("revision")?com.eqms.service.report.ReportTemplateRevisionService.effectiveLabel(snapshot.path("definition").path("revision").asInt()):snapshot.path("definition").path("definitionVersion").asText(),
                         "report.executor",Objects.toString(requester.getFullName(),Objects.toString(requester.getUsername(),requester.getId().toString())),"report.generatedAt",com.eqms.util.DateTimeFormatUtils.formatDateTime(Instant.now()),
                         "report.asOfAt",com.eqms.util.DateTimeFormatUtils.display(snapshot.path("asOfAt").asText()),
-                        "template.name",snapshot.path("definition").path("displayName").asText(),"report.runId",run.get("id").toString(),"report.gmpNotice",gmpNoticeOf(snapshot.path("definition"))));
+                        "template.name",snapshot.path("definition").path("displayName").asText(),"report.runId",runLabel(run.get("run_number")),"report.gmpNotice",""));
+                // The statement of GMP status names the run and the moments of the data and of the generation (REPORT-GMP-NOTICE-2026-11-15).
+                presentation.put("report.gmpNotice",gmpNoticeOf(snapshot.path("definition"),presentation.get("report.runId"),presentation.get("report.asOfAt"),presentation.get("report.generatedAt")));
                 presentation.putAll(signatureValuesOf(runId));
+                presentation.putAll(frameValuesOf(requester,snapshot,report.rows().size()-1));
                 ((com.fasterxml.jackson.databind.node.ObjectNode)snapshot).set("presentation",objectMapper.valueToTree(presentation));
                 var charts=com.eqms.service.report.ReportCharts.calculate(layout.effectiveCharts(),selected,report.rows());
                 ((com.fasterxml.jackson.databind.node.ObjectNode)snapshot).set("charts",objectMapper.valueToTree(charts));
@@ -638,6 +741,8 @@ public class ReportPlatformService {
             String hash=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
             UUID artifactId=UUID.randomUUID(); String code=run.get("definition_code").toString().toLowerCase(Locale.ROOT);
             String extension=format.toLowerCase(Locale.ROOT); String artifactKey=StoragePathBuilder.reportArtifact(code,java.time.Year.now().getValue(),java.time.LocalDate.now().getMonthValue(),runId,artifactId,extension);
+            // The name of the file carries the template number as it is written (RPT.0008); only the storage path is lower case (REPORT-FILE-NAME-2026-11-16).
+            String fileBase=run.get("definition_code").toString()+"-"+runLabel(run.get("run_number"))+"."+extension;
             int attempt = ((Number)run.get("attempt_count")).intValue();
             jdbc.update("insert into report_artifact_publication_journal(artifact_id,run_id,attempt_number,object_key,sha256) values(?,?,?,?,?)",artifactId,runId,attempt,artifactKey,hash);
             FileStorageService.StorageWriteResult stored = fileStorage.storeReportArtifact(artifactKey, new java.io.ByteArrayInputStream(bytes), mimeFor(format));
@@ -649,8 +754,10 @@ public class ReportPlatformService {
             Instant expiresAt = resolveRetentionExpiry(String.valueOf(run.get("definition_code")));
             ((com.fasterxml.jackson.databind.node.ObjectNode)snapshot).set("sourceDocumentIds",objectMapper.valueToTree(report.sourceDocumentIds()));
             runLease.requireOwned();
-            publisher.publish(runId,attempt,artifactId,run.get("definition_code").toString(),snapshot,format,code+"-"+runId+"."+extension,stored,mimeFor(format),bytes.length,hash,expiresAt);
-            if (delivery != null) delivery.notifyRecipientsOfCompletedRun(runId);
+            publisher.publish(runId,attempt,artifactId,run.get("definition_code").toString(),snapshot,format,fileBase,stored,mimeFor(format),bytes.length,hash,expiresAt);
+            // The report is complete: the working copies of it that were shown at the Output step are no longer needed (REPORT-OUTPUT-PREVIEW-2026-11-16).
+            if (previewFiles != null) previewFiles.removeAfterRun(requester.getId(), run.get("definition_code").toString());
+            if (delivery != null) delivery.notifyRecipientsOfCompletedRun(runId, fileBase, bytes);
         } catch (OutOfMemoryError tooBig) {
             // An Error is not an Exception: without this the run would stay PROCESSING until its lease expired and then be tried again, and again.
             publisher.fail(runId,((Number)run.get("attempt_count")).intValue(),new IllegalArgumentException("REPORT_TOO_LARGE"));
@@ -678,14 +785,35 @@ public class ReportPlatformService {
         return values;
     }
 
+    /**
+     * The values that the frame of a page can show about the run (REPORT-APPEARANCE-2026-11-14): the filters it was run with (the names of the fields as the template
+     * has them), the number of rows, who approved the template and when, and the department and position of the person who ran it. A value that is not known is empty.
+     */
+    private Map<String,String> frameValuesOf(UserAccount requester,JsonNode snapshot,int rows) {
+        var values=new HashMap<String,String>();
+        values.put("report.filters",templates.filterSummary(requester,snapshot.path("definition").path("code").asText(),snapshot));
+        values.put("report.rowCount",String.valueOf(Math.max(0,rows)));
+        values.put("report.executorDepartment",Objects.toString(requester.getDepartment(),""));
+        values.put("report.executorPosition",Objects.toString(requester.getPosition(),""));
+        JsonNode definition=snapshot.path("definition");
+        String approver="";
+        if(definition.hasNonNull("approvedByUserId")) {
+            try { approver=users.findById(UUID.fromString(definition.path("approvedByUserId").asText())).map(UserAccount::getFullName).orElse(""); }
+            catch (IllegalArgumentException malformed) { approver=""; }
+        }
+        values.put("template.approvedBy",Objects.toString(approver,""));
+        values.put("template.approvedAt",definition.hasNonNull("approvedAt")?com.eqms.util.DateTimeFormatUtils.displayText(definition.path("approvedAt").asText()):"");
+        return values;
+    }
+
     /** The statement of GMP status the file carries (REPORT-GMP-NOTICE-2026-11-12); the approver is named by the user table, never by an identifier. */
-    private String gmpNoticeOf(JsonNode definition) {
+    private String gmpNoticeOf(JsonNode definition, String runId, String asOfAt, String generatedAt) {
         String approver = null;
         if (definition.hasNonNull("approvedByUserId")) {
             try { approver = users.findById(UUID.fromString(definition.path("approvedByUserId").asText())).map(UserAccount::getFullName).orElse(null); }
             catch (IllegalArgumentException malformed) { approver = null; }
         }
-        return com.eqms.service.report.ReportTemplateService.gmpNotice(definition, approver);
+        return com.eqms.service.report.ReportTemplateService.gmpNotice(definition, approver, runId, asOfAt, generatedAt);
     }
 
     /** Recovers a run whose worker died or lost its lease without issuing a duplicate artifact. */
@@ -783,8 +911,13 @@ public class ReportPlatformService {
             String reportTitle=com.eqms.service.report.ReportTemplateService.validatedTitle(requestedTitle,String.valueOf(definition.get("display_name")));
             ((com.fasterxml.jackson.databind.node.ObjectNode)snapshot).put("reportTitle",reportTitle);
             jdbc.update("insert into report_runs(id,definition_code,definition_version,requester_user_id,request_type,requested_format,parameters,selected_fields,authorization_snapshot,status,idempotency_key) values(?,?,?,?,?,?,cast(? as jsonb),cast(? as jsonb),cast(? as jsonb),'QUEUED',?)", runId, schedule.get("definition_code"), definition.get("definition_version"), creator.getId(), "SCHEDULED", format, String.valueOf(schedule.get("parameters")), snapshot.path("fields").toString(), snapshot.toString(), "schedule:"+scheduleId+":"+Instant.now().toEpochMilli());
+            com.eqms.service.EntityChangeBroadcaster.changed("REPORT_RUN", runId, null);
             jdbc.update("insert into report_run_events(run_id,event_type,detail) values(?,'SCHEDULED',cast(? as jsonb))", runId, objectMapper.valueToTree(Map.of("scheduleId",scheduleId.toString())).toString());
             jdbc.update("update report_runs set report_title=?,schedule_id=? where id=?",reportTitle,scheduleId,runId);
+            // REPORT-FIELD-CATALOG-2026-11-15: a scheduled run that exports columns describing a person is written to the Audit Trail with those columns, as an on-demand run is.
+            List<String> sensitive = templates.sensitiveColumns(String.valueOf(definition.get("source_code")), snapshot.path("fields"));
+            if (!sensitive.isEmpty()) auditTrail.logAs(creator, "REPORT_RUN", String.valueOf(schedule.get("definition_code")), runId, "REPORT_RUN_QUEUED", null, "QUEUED",
+                    "Scheduled report run" + sensitiveNote(sensitive));
             jdbc.update("update report_schedules set last_run_at=now(),next_run_at=?,updated_at=now() where id=?", java.sql.Timestamp.from(next), scheduleId);
         } catch (SecurityException | IllegalArgumentException configurationFailure) {
             // REPORT-TEMPLATE-APPROVAL-2026-10-14: a template that is not approved for its current version is a reason of its own.
@@ -842,13 +975,12 @@ public class ReportPlatformService {
         return new RenderedReport(rows, sourceIds);
     }
     private String documentField(DocumentRecord document, String field) { return switch(field) { case "documentNumber" -> value(document.getDocumentNumber()); case "documentName" -> value(document.getDocumentName()); case "status" -> value(document.getStatus().getLabel()); case "department" -> value(document.getDepartment().getName()); case "businessUnit" -> value(document.getBusinessUnit().getName()); case "effectiveDate" -> value(document.getEffectiveDate()); default -> throw new IllegalArgumentException("REPORT_FIELD_NOT_ALLOWED"); }; }
-    private byte[] render(String format, List<List<String>> rows) throws Exception { return switch(format) { case "CSV" -> renderCsv(rows).getBytes(StandardCharsets.UTF_8); case "XLSX" -> renderXlsx(rows); case "PDF" -> renderPdf(rows); default -> throw new IllegalArgumentException("REPORT_FORMAT_NOT_ALLOWED"); }; }
-    private String renderCsv(List<List<String>> rows) { StringBuilder out=new StringBuilder(); rows.forEach(row -> out.append(row.stream().map(this::csv).collect(java.util.stream.Collectors.joining(","))).append('\n')); return out.toString(); }
+    private byte[] render(String format, List<List<String>> rows) throws Exception { rows = com.eqms.service.report.ReportPresentationRenderer.withRowNumbers(rows); return switch(format) { case "CSV" -> renderCsv(rows).getBytes(StandardCharsets.UTF_8); case "XLSX" -> renderXlsx(rows); case "PDF" -> renderPdf(rows); default -> throw new IllegalArgumentException("REPORT_FORMAT_NOT_ALLOWED"); }; }
+    private String renderCsv(List<List<String>> rows) { return com.eqms.service.report.ReportPresentationRenderer.csvText(rows); }
     private byte[] renderXlsx(List<List<String>> rows) throws Exception { try (XSSFWorkbook book=new XSSFWorkbook(); ByteArrayOutputStream out=new ByteArrayOutputStream()) { var sheet=book.createSheet("Report"); for(int r=0;r<rows.size();r++){var excelRow=sheet.createRow(r); for(int c=0;c<rows.get(r).size();c++) excelRow.createCell(c).setCellValue(rows.get(r).get(c));} for(int c=0;c<rows.getFirst().size();c++) sheet.autoSizeColumn(c); book.write(out); return out.toByteArray(); } }
     private byte[] renderPdf(List<List<String>> rows) throws Exception { return com.eqms.service.report.ReportPdfRenderer.render(rows); }
     private String mimeFor(String format) { return switch(format) { case "PDF" -> "application/pdf"; case "XLSX" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; default -> "text/csv; charset=utf-8"; }; }
     private String value(Object value) { return value==null?"":String.valueOf(value); }
-    private String csv(String value) { String v=value==null?"":value.replace("\"","\"\""); String probe=v.stripLeading(); if (probe.startsWith("=")||probe.startsWith("+")||probe.startsWith("-")||probe.startsWith("@")||v.startsWith("\t")||v.startsWith("\r")||v.startsWith("\n")) v="'"+v; return "\""+v+"\""; }
     private String safeFailureMessage(Exception exception) { return exception.getClass().getSimpleName()+": report generation failed"; }
 
     /** {@code full}: the choice to run without a filter (REPORT-FULL-RUN-2026-11-12). Missing means false. */

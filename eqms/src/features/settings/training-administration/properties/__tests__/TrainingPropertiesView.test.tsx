@@ -30,8 +30,8 @@ describe("TrainingPropertiesView", () => {
     fireEvent.click(screen.getByRole("option", { name: "Manual" }));
     expect(numbering).toHaveTextContent("Manual");
     expect(screen.getByText("The person creating the document types the number.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
-    const confirmations = await screen.findAllByRole("button", { name: "Save Changes" });
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
+    const confirmations = await screen.findAllByRole("button", { name: "Save" });
     fireEvent.click(confirmations[confirmations.length - 1]);
     await vi.waitFor(() => expect(updateSettings).toHaveBeenCalledWith(expect.objectContaining({ trainingNumberEntryMode: "MANUAL" })));
   });
@@ -58,7 +58,7 @@ describe("TrainingPropertiesView", () => {
     fireEvent.change(pass, { target: { value: "80" } });
 
     fireEvent.click(screen.getByRole("tab", { name: "Records Retention" }));
-    expect((screen.getByRole("button", { name: "Save Changes" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getAllByRole("button", { name: "Save" })[0] as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByRole("tab", { name: "Assessment" }));
     expect(screen.getByDisplayValue("80")).toBeTruthy();
   });
@@ -67,10 +67,10 @@ describe("TrainingPropertiesView", () => {
     updateSettings.mockResolvedValue({ ...settings, passPercent: 80, version: 2 });
     render(<MemoryRouter><TrainingPropertiesView /></MemoryRouter>);
     fireEvent.change(await screen.findByDisplayValue("70"), { target: { value: "80" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     expect(await screen.findByText("Save Training Properties?")).toBeTruthy();
     expect(screen.queryByLabelText(/Reason for the change/i)).toBeNull();
-    const buttons = screen.getAllByRole("button", { name: "Save Changes" });
+    const buttons = screen.getAllByRole("button", { name: "Save" });
     fireEvent.click(buttons[buttons.length - 1]);
     await vi.waitFor(() => expect(updateSettings).toHaveBeenCalledWith(expect.objectContaining({ passPercent: 80, version: 1 })));
     expect(updateSettings.mock.calls.at(-1)?.[0]).not.toHaveProperty("reason");
@@ -97,12 +97,12 @@ describe("TrainingPropertiesView", () => {
 
     fireEvent.change(input, { target: { value: "{EMPLOYEE_NAME}" } });
     expect(screen.getByRole("alert").textContent).toMatch(/not a variable of this form/);
-    expect((screen.getByRole("button", { name: "Save Changes" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getAllByRole("button", { name: "Save" })[0] as HTMLButtonElement).disabled).toBe(true);
 
     fireEvent.change(input, { target: { value: "{TRAINING_NUMBER}__{FILE_CODE}" } });
     expect(screen.getByTestId("file-name-example-APD.0117").textContent).toBe("TRN-QC-26-045__APD.0117.02.pdf");
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
-    const buttons = await screen.findAllByRole("button", { name: "Save Changes" });
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
+    const buttons = await screen.findAllByRole("button", { name: "Save" });
     fireEvent.click(buttons[buttons.length - 1]);
     await vi.waitFor(() => expect(updateSettings).toHaveBeenCalledWith(expect.objectContaining({ downloadFileNames: { "APD.0117": "{TRAINING_NUMBER}__{FILE_CODE}" } })));
   });
@@ -115,6 +115,6 @@ describe("TrainingPropertiesView", () => {
     fireEvent.change(input, { target: { value: "{TRAINING_NUMBER}" } });
     fireEvent.click(screen.getByRole("button", { name: /Default/ }));
     expect(input.value).toBe("{FILE_CODE}_{TRAINING_NUMBER}");
-    expect((screen.getByRole("button", { name: "Save Changes" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getAllByRole("button", { name: "Save" })[0] as HTMLButtonElement).disabled).toBe(true);
   });
 });

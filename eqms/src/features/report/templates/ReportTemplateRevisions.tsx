@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { MoreVertical } from "lucide-react";
+import { IconInfoCircle } from "@tabler/icons-react";
+import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
+import { usePortalDropdown } from "@/hooks/usePortalDropdown";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ROUTES } from "@/app/routes.constants";
 import { Badge } from "@/components/ui/badge/Badge";
 import { FilterSearchInput } from "@/components/ui/filter/FilterSearchInput";
 import {
@@ -18,6 +23,7 @@ import {
 } from "@/services/api/reportTemplates";
 import { displayDateTime } from "@/utils/format";
 import { reportRevisionLabel } from "../shared/reportLabels";
+import { comingFrom } from "../shared/reportRevisionParent";
 
 export const REVISION_STATUS: Record<
   ReportRevisionStatus,
@@ -41,6 +47,7 @@ export function ReportTemplateRevisions({
   inAdministration: boolean;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -71,7 +78,8 @@ export function ReportTemplateRevisions({
 
   const open = (row: ReportRevisionRow) =>
     navigate(
-      `${inAdministration ? "/settings/report-configuration" : "/report/templates"}/${encodeURIComponent(code)}/revisions/${row.revision}`,
+      `${inAdministration ? ROUTES.REPORT.TEMPLATE_MANAGEMENT : "/report/templates"}/${encodeURIComponent(code)}/revisions/${row.revision}`,
+      comingFrom(location.pathname),
     );
   const sortOf = (field: string) => ({
     direction: sort.field === field ? sort.direction : undefined,
@@ -149,14 +157,18 @@ export function ReportTemplateRevisions({
           : "—",
     },
   ];
+  const menu = usePortalDropdown();
+  const menuRow = (result?.data ?? []).find((row) => String(row.revision) === menu.openId);
   const action: DataTableAction<ReportRevisionRow> = {
     cell: (row) => (
       <button
         type="button"
-        className="text-sm font-medium text-emerald-600 hover:underline"
-        onClick={() => open(row)}
+        ref={menu.getRef(String(row.revision))}
+        aria-label="More actions"
+        className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
+        onClick={(event) => { ; menu.toggle(String(row.revision), event); }}
       >
-        View
+        <MoreVertical className="h-4 w-4" />
       </button>
     ),
   };
@@ -181,6 +193,15 @@ export function ReportTemplateRevisions({
           {error}
         </p>
       )}
+      <PortalDropdownMenu isOpen={!!menuRow} onClose={menu.close} position={menu.position} minWidth={200}>
+        {menuRow && (
+          <div className="py-1">
+            <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { open(menuRow); menu.close(); }}>
+              View Detail
+            </DropdownMenuItem>
+          </div>
+        )}
+      </PortalDropdownMenu>
       <DataTable
         rows={result?.data ?? []}
         getRowKey={(row) => String(row.revision)}

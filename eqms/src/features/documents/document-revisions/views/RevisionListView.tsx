@@ -156,7 +156,7 @@ export const RevisionListView: React.FC = () => {
         documentNumber: revision.documentNumber,
         documentName: revision.documentName,
         documentAuthor: revision.author,
-        documentStatus: revision.state,
+        documentStatus: revision.status,
         workspaceState: buildRevisionWorkspaceSourceState({
           id: parentDocumentId,
           documentNumber: revision.documentNumber,
@@ -298,8 +298,8 @@ export const RevisionListView: React.FC = () => {
         return <span className="font-medium text-slate-900">{revision.revisionName}</span>;
       case "state":
         return (
-          <Badge color={getBadgeColor(revision.statusCode, revision.state)} size="sm">
-            {revision.state}
+          <Badge color={getBadgeColor(revision.statusCode, revision.status)} size="sm">
+            {revision.statusInfo?.name ?? revision.status}
           </Badge>
         );
       case "documentName":

@@ -23,7 +23,7 @@ public final class OperationalNotificationEvents {
     public static final String MAINTENANCE_SCHEDULED = "system.maintenance_scheduled";
 
     private static final List<Event> ALL = List.of(
-            new Event(REPORT_READY, "Scheduled Report Ready", "A scheduled report has run and is ready to view. The file itself is not sent.", "REPORTS", "MEDIUM", "IN_APP,EMAIL"),
+            new Event(REPORT_READY, "Report Ready", "A report is ready. The e-mail of a report you asked for yourself carries the file when it is small enough, and every notice has a link that downloads it after sign-in; the e-mail of a scheduled report is a link only.", "REPORTS", "MEDIUM", "IN_APP,EMAIL"),
             new Event(REPORT_SCHEDULE_SUSPENDED, "Scheduled Report Suspended", "A report schedule stopped running and will not run until it is resumed.", "REPORTS", "HIGH", "IN_APP,EMAIL"),
             new Event(BACKUP_ALERT, "Backup Alert", "The backup system raised an alert for the people named in its alert rules.", "BACKUP_RESTORE", "HIGH", "IN_APP,EMAIL"),
             new Event(BACKUP_MAINTENANCE_DRAINED, "Maintenance Window Started", "The maintenance window drained and users were signed out. The e-mail to the administrator address is sent directly, because the outbox does not run during maintenance.", "BACKUP_RESTORE", "HIGH", "IN_APP"),

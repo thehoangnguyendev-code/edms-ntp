@@ -1,7 +1,7 @@
 import React from "react";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { formatDateTime } from "@/utils/format";
-import type { UncontrolledCopy } from "@/services/api/uncontrolledCopy";
+import { closeReasonLabel, type UncontrolledCopy } from "@/services/api/uncontrolledCopy";
 
 const ReadOnlyField: React.FC<{
   label: string;
@@ -29,6 +29,7 @@ export const UncontrolledCopyInformationTab: React.FC<{
         value={copy.uncontrolledCopyNumber}
       />
       <ReadOnlyField label="Status" value={copy.status} />
+      {copy.closeReason && <ReadOnlyField label="Closed Because" value={closeReasonLabel(copy.closeReason)} />}
       <ReadOnlyField
         label="Document"
         value={`${copy.documentNumber}${copy.documentTitle ? ` - ${copy.documentTitle}` : ""}`}

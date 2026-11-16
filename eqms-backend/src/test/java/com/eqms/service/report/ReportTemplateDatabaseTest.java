@@ -45,8 +45,32 @@ class ReportTemplateDatabaseTest {
             jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration",migration)));
         }
         jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V536__report_template_soft_delete.sql")));
+        jdbc.execute("create table system_configurations(id uuid primary key default gen_random_uuid(),features_config jsonb not null default '[]',updated_at timestamptz)");
+        // The run file shows the signature of a signed run (REPORT-SIGNATURE-IN-FILE-2026-11-13); no run of these tests is signed.
+        jdbc.execute("create table electronic_signatures(id uuid primary key default gen_random_uuid(),meaning text,entity_type text,entity_id uuid,full_name text,signed_at timestamptz,reason text,signature_id text)");
+        jdbc.execute("create table electronic_signature_meanings(id uuid primary key,code text unique,display_name text)");
+        // The later migrations of the template tables (revisions, name formats, number, GMP use ...): applied as they are, in order, so the test runs on the schema the application has.
+        for(String version:List.of("V578","V581","V582","V583","V584","V585","V586","V587","V580","V588","V590","V757","V787","V788")) {
+            try(var found=Files.list(Path.of("src/main/resources/db/migration"))) {
+                for(Path migration:found.filter(f->f.getFileName().toString().startsWith(version+"__")).toList()) jdbc.execute(Files.readString(migration));
+            }
+        }
+        // These tests cover scopes, runs and artifacts, not the approval of a template (REPORT-TEMPLATE-APPROVAL-2026-10-14, tested in ReportRevisionWorkflowTest and on DEV): in this schema every saved version counts as approved.
+        jdbc.execute("create function approve_saved_template() returns trigger language plpgsql as $$ begin new.approval_status='APPROVED'; new.approved_version=new.definition_version; return new; end $$");
+        jdbc.execute("create trigger approve_saved_template before insert or update on report_definitions for each row execute function approve_saved_template()");
+        // ... and its revision is the effective one, which is what puts a template in the catalog.
+        jdbc.execute("create function effective_saved_template() returns trigger language plpgsql as $$ begin "
+                + "if not exists(select 1 from report_template_revisions where definition_code=new.code and status='EFFECTIVE') then "
+                + "insert into report_template_revisions(definition_code,revision,status,definition_version,effective_at,approved_at) values(new.code,1,'EFFECTIVE',new.definition_version,now(),now()); end if; return null; end $$");
+        jdbc.execute("create trigger effective_saved_template after insert or update on report_definitions for each row execute function effective_saved_template()");
         jdbc.execute("create table user_access_profiles(user_id uuid,access_profile_id uuid)");
         jdbc.execute("create table documents(id uuid primary key,document_number text,document_name text,status_code text,document_type_id uuid,business_unit_id uuid,department_id uuid,author_user_id uuid,effective_date date,created_at timestamptz)");
+        // The columns the Document Register type reads besides the ones above (added after them, so the positional inserts of the tests stay valid).
+        jdbc.execute("alter table documents add column owner_user_id uuid,add column sub_type text,add column version text,add column valid_until date,add column review_date date,add column periodic_review_cycle integer,"
+                + "add column requires_training boolean default false,add column language text,add column updated_at timestamptz,add column is_template boolean default false,add column title_local_language text,add column opened_by_user_id uuid,"
+                + "add column last_modified_by_user_id uuid,add column obsoleted_at timestamp,add column obsoleted_by_user_id uuid,add column cancelled_at timestamp,add column cancelled_by_user_id uuid,add column training_period_days integer,"
+                + "add column reason_for_skipping_training text,add column review_requirement text,add column is_legacy_import boolean default false,add column legacy_imported_at timestamptz,add column original_effective_date timestamptz");
+        jdbc.execute("alter table app_users add column full_name text");
         jdbc.execute("create table document_statuses(code text,label text);create table departments(id uuid,name text);create table business_units(id uuid,name text);create table document_types(id uuid,name text)");
         jdbc.execute("create table document_workflow_participants(document_id uuid,user_id uuid);create table document_revisions(id uuid,document_id uuid);create table revision_workflow_participants(revision_id uuid,user_id uuid)");
         actor=new UserAccount();actor.setId(UUID.randomUUID());actor.setStatus(UserStatus.Active);actor.setDepartment("QA");actor.setBusinessUnit("NTP");
@@ -58,6 +82,8 @@ class ReportTemplateDatabaseTest {
         var permissions=mock(EffectivePermissionService.class);when(permissions.getEffectivePermissionCodes(actor)).thenReturn(Set.of("reports.run.create","reports.catalog.view","reports.definition.manage","reports.definition.view","reports.artifact.download","reports.run.view_own","reports.schedule.manage","reports.schedule.view"));
         audit=mock(AuditTrailService.class);
         var target=new ReportTemplateService(jdbc,json,permissions,audit,List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
+        // A change of what a report contains is signed (REPORT-DEFINITION-SIGNATURE-2026-10-14): the service gets a signature service that records nothing, as when e-signature is not required.
+        target.configureSignatures(mock(com.eqms.service.SecurityChangeSignatureService.class));
         ProxyFactory factory=new ProxyFactory(target);factory.setProxyTargetClass(true);
         factory.addAdvice(new TransactionInterceptor(new DataSourceTransactionManager(ds),new AnnotationTransactionAttributeSource()));
         service=(ReportTemplateService)factory.getProxy();
@@ -72,7 +98,8 @@ class ReportTemplateDatabaseTest {
                 List.of(new ReportTemplateService.FieldWrite("documentNumber",true,true,true),new ReportTemplateService.FieldWrite("documentName",true,true,true),new ReportTemplateService.FieldWrite("status",true,true,false),new ReportTemplateService.FieldWrite("department",true,false,false),new ReportTemplateService.FieldWrite("businessUnit",true,false,false)),
                 List.of(new ReportTemplateService.RoleScope(role,scope)),"Test configuration");
     }
-    ReportTemplateService.Criteria criteria() {return new ReportTemplateService.Criteria(1,List.of("documentNumber","documentName"),Map.of(),"documentNumber","desc");}
+    // A run needs at least one filter (REPORT-FULL-RUN-2026-11-12); every document of the test is named FORM-nnn, so this search keeps them all.
+    ReportTemplateService.Criteria criteria() {return new ReportTemplateService.Criteria(1,List.of("documentNumber","documentName"),Map.of("search","FORM"),"documentNumber","desc");}
     @Test void softDeletePreservesHistoryAndArtifactScopeButBlocksFutureUse() {
         var snapshot=service.snapshot(actor,"QA_REGISTER",criteria());
         ((com.fasterxml.jackson.databind.node.ObjectNode)snapshot).putArray("sourceDocumentIds").add(jdbc.queryForObject("select id::text from documents where document_number='FORM-001'",String.class));
@@ -91,6 +118,18 @@ class ReportTemplateDatabaseTest {
         assertDoesNotThrow(()->service.reauthorize(actor,"QA_REGISTER",snapshot));
         jdbc.update("delete from user_access_profiles");
         assertThrows(SecurityException.class,()->service.reauthorize(actor,"QA_REGISTER",snapshot));
+    }
+    @Test void theFiltersOfARunAreShownByNameAndLabelNeverByIdentifierOrCode() throws Exception {
+        String qa=jdbc.queryForObject("select cast(id as text) from departments where name='QA'",String.class);
+        var snapshot=json.readTree("{\"definition\":{\"sourceCode\":\"DOCUMENT_STATUS\"},\"filters\":{\"department\":\""+qa+"\",\"status\":\"ACTIVE\"}}");
+        String text=service.filterSummary(actor,"QA_REGISTER",snapshot);
+        assertTrue(text.contains("= QA"),text);
+        assertTrue(text.contains("= Active"),text);
+        assertFalse(text.contains(qa),text);
+        assertFalse(text.contains("ACTIVE"),text);
+        var unknown=json.readTree("{\"definition\":{\"sourceCode\":\"DOCUMENT_STATUS\"},\"filters\":{\"department\":\""+UUID.randomUUID()+"\"}}");
+        assertEquals("Department = (not available)",service.filterSummary(actor,"QA_REGISTER",unknown));
+        assertEquals("No filter",service.filterSummary(actor,"QA_REGISTER",json.readTree("{\"definition\":{\"sourceCode\":\"DOCUMENT_STATUS\"},\"filters\":{}}")));
     }
     @Test void deleteAuditFailureRollsBackAndInactiveActorIsDenied() {
         actor.setStatus(UserStatus.Inactive);
@@ -113,7 +152,7 @@ class ReportTemplateDatabaseTest {
     }
     @Test void sourceAdvertisesOnlyServerDeclaredDateFields() {
         var source=service.sources(actor).get(0);
-        assertEquals(List.of("createdAt","effectiveDate"),source.get("dateFields"));
+        assertEquals(new java.util.HashSet<>(new DocumentReportMetadataProvider(ReportTestVisibility.everything()).dateColumns()),new java.util.HashSet<>((List<?>)source.get("dateFields")));
     }
     @Test void wordUploadIsImmutableAndAuditFailureRollsBack() throws Exception {
         var target=new ReportWordService(jdbc,json,audit,mock(com.eqms.service.PublishingOpenXmlTemplateRenderService.class),mock(com.eqms.service.OnlyOfficeDocumentEditService.class));
@@ -175,18 +214,18 @@ class ReportTemplateDatabaseTest {
     com.eqms.service.ReportPlatformService platform() {
         var permission=mock(com.eqms.service.PermissionEvaluationService.class);when(permission.hasPermission(eq(actor),anyString())).thenReturn(true);
         var target=new com.eqms.service.ReportPlatformService(jdbc,json,permission,mock(com.eqms.repository.DocumentRecordRepository.class),mock(com.eqms.repository.UserAccountRepository.class),mock(com.eqms.service.DocumentAuthorizationService.class),mock(com.eqms.service.FileStorageService.class),audit);
-        target.configureTemplates(service);
+        target.configureTemplates(service);target.configureRunLeases(new ReportRunLeaseService(jdbc,new org.springframework.scheduling.concurrent.ConcurrentTaskScheduler()));
         ProxyFactory factory=new ProxyFactory(target);factory.setProxyTargetClass(true);
         factory.addAdvice(new TransactionInterceptor(new DataSourceTransactionManager(jdbc.getDataSource()),new AnnotationTransactionAttributeSource()));
         return (com.eqms.service.ReportPlatformService)factory.getProxy();
     }
     @Test void queueDefaultFieldsIdempotentReplayAndConflict() {
-        var platform=platform();var request=new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","CSV",null,null,null);
+        var platform=platform();var request=new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","CSV",Map.of("search","FORM"),null,null);
         UUID id=platform.queueRun(actor,request,"same-key");assertEquals(id,platform.queueRun(actor,request,"same-key"));
         assertEquals(1,jdbc.queryForObject("select count(*) from report_runs",Integer.class));
         assertEquals(1,jdbc.queryForObject("select count(*) from report_run_events",Integer.class));
         assertTrue(jdbc.queryForObject("select selected_fields::text from report_runs",String.class).startsWith("["));
-        assertThrows(org.springframework.web.server.ResponseStatusException.class,()->platform.queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","PDF",null,null,null),"same-key"));
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,()->platform.queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","PDF",Map.of("search","FORM"),null,null),"same-key"));
     }
     record WorkerFixture(com.eqms.service.ReportPlatformService platform,com.eqms.service.FileStorageService storage,Map<String,byte[]> files,ReportArtifactPublisher publisher) {}
     WorkerFixture workerFixture() throws Exception {
@@ -203,7 +242,7 @@ class ReportTemplateDatabaseTest {
         pf.addAdvice(new TransactionInterceptor(new DataSourceTransactionManager(jdbc.getDataSource()),new AnnotationTransactionAttributeSource()));
         var publisher=(ReportArtifactPublisher)pf.getProxy();
         var target=new com.eqms.service.ReportPlatformService(jdbc,json,permission,mock(com.eqms.repository.DocumentRecordRepository.class),users,mock(com.eqms.service.DocumentAuthorizationService.class),storage,audit);
-        target.configureTemplates(service);target.configurePublisher(publisher);
+        target.configureTemplates(service);target.configureRunLeases(new ReportRunLeaseService(jdbc,new org.springframework.scheduling.concurrent.ConcurrentTaskScheduler()));target.configurePublisher(publisher);
         ProxyFactory factory=new ProxyFactory(target);factory.setProxyTargetClass(true);
         factory.addAdvice(new TransactionInterceptor(new DataSourceTransactionManager(jdbc.getDataSource()),new AnnotationTransactionAttributeSource()));
         return new WorkerFixture((com.eqms.service.ReportPlatformService)factory.getProxy(),storage,files,publisher);
@@ -211,7 +250,7 @@ class ReportTemplateDatabaseTest {
     @Test void workerPublishesAllFormatsAndDownloadRechecksScopeAndChecksum() throws Exception {
         var fixture=workerFixture();
         for(String format:List.of("CSV","PDF","XLSX")) {
-            UUID run=fixture.platform().queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER",format,null,null,null),"worker-"+format);
+            UUID run=fixture.platform().queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER",format,Map.of("search","FORM"),null,null),"worker-"+format);
             assertTrue(fixture.platform().processOneQueuedRun());
             assertEquals("COMPLETED",jdbc.queryForObject("select status from report_runs where id=?",String.class,run));
             UUID artifact=jdbc.queryForObject("select id from report_artifacts where run_id=?",UUID.class,run);
@@ -227,14 +266,14 @@ class ReportTemplateDatabaseTest {
         assertFalse(fixture.platform().processOneQueuedRun());
     }
     @Test void revokedQueuedRunFailsPermanentlyWithoutCreatingFile() throws Exception {
-        var fixture=workerFixture();UUID run=fixture.platform().queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","CSV",null,null,null),"revoke");
+        var fixture=workerFixture();UUID run=fixture.platform().queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","CSV",Map.of("search","FORM"),null,null),"revoke");
         jdbc.update("delete from user_access_profiles");assertTrue(fixture.platform().processOneQueuedRun());
         assertEquals("FAILED",jdbc.queryForObject("select status from report_runs where id=?",String.class,run));
         assertEquals("REPORT_AUTHORIZATION_CHANGED",jdbc.queryForObject("select reason_code from report_runs where id=?",String.class,run));
         assertTrue(fixture.files().isEmpty());assertEquals(0,jdbc.queryForObject("select count(*) from report_artifacts",Integer.class));
     }
     @Test void transientStorageFailureRetriesAndStaleFailureCannotOverwriteCompletion() throws Exception {
-        var fixture=workerFixture();UUID run=fixture.platform().queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","CSV",null,null,null),"storage-failure");
+        var fixture=workerFixture();UUID run=fixture.platform().queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","CSV",Map.of("search","FORM"),null,null),"storage-failure");
         doThrow(new IllegalStateException("private storage detail")).when(fixture.storage()).storeReportArtifact(anyString(),any(java.io.InputStream.class),anyString());
         assertTrue(fixture.platform().processOneQueuedRun());assertEquals("RETRY_SCHEDULED",jdbc.queryForObject("select status from report_runs where id=?",String.class,run));
         assertFalse(jdbc.queryForObject("select error_message from report_runs where id=?",String.class,run).contains("private"));
@@ -245,12 +284,12 @@ class ReportTemplateDatabaseTest {
     }
     @Test void csvNeutralizesSpreadsheetFormulaInjection() throws Exception {
         jdbc.update("update documents set document_name='   =HYPERLINK(\"https://invalid.example\")' where document_number='FORM-001'");
-        var fixture=workerFixture();UUID run=fixture.platform().queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","CSV",null,null,null),"csv-formula");
+        var fixture=workerFixture();UUID run=fixture.platform().queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","CSV",Map.of("search","FORM"),null,null),"csv-formula");
         fixture.platform().processOneQueuedRun();UUID artifact=jdbc.queryForObject("select id from report_artifacts where run_id=?",UUID.class,run);
         String csv=new String(fixture.platform().download(actor,run,artifact).bytes(),java.nio.charset.StandardCharsets.UTF_8);assertTrue(csv.contains("\"'   =HYPERLINK"));
     }
     @Test void retryAuditFailureRollsBackStatusAndEvent() {
-        var platform=platform();UUID run=platform.queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","CSV",null,null,null),"retry-audit");
+        var platform=platform();UUID run=platform.queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","CSV",Map.of("search","FORM"),null,null),"retry-audit");
         jdbc.update("update report_runs set status='FAILED' where id=?",run);
         doThrow(new IllegalStateException("audit unavailable")).when(audit).logAs(eq(actor),anyString(),anyString(),any(),eq("REPORT_RUN_RETRY_REQUESTED"),any(),any(),anyString());
         assertThrows(IllegalStateException.class,()->platform.retryRun(actor,run));
@@ -258,19 +297,22 @@ class ReportTemplateDatabaseTest {
         assertEquals(0,jdbc.queryForObject("select count(*) from report_run_events where event_type='RETRY_REQUESTED'",Integer.class));
     }
     @Test void removedOutputFormatFailsBeforeWritingAnArtifact() throws Exception {
-        var fixture=workerFixture();UUID run=fixture.platform().queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","CSV",null,null,null),"format-policy");
+        var fixture=workerFixture();UUID run=fixture.platform().queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","CSV",Map.of("search","FORM"),null,null),"format-policy");
         jdbc.update("update report_definitions set allowed_formats='[\"PDF\"]'::jsonb where code='QA_REGISTER'");
         fixture.platform().processOneQueuedRun();assertEquals("FAILED",jdbc.queryForObject("select status from report_runs where id=?",String.class,run));
         assertEquals("REPORT_INVALID_CRITERIA",jdbc.queryForObject("select reason_code from report_runs where id=?",String.class,run));assertTrue(fixture.files().isEmpty());
     }
     @Test void layoutIsPinnedAndRejectedLayoutCannotPartiallySave() {
+        // A template keeps only its charts (the cover and the frames belong to Report Properties); a chart is pinned in the snapshot of a run and a rejected chart saves nothing.
         var snapshot=service.snapshot(actor,"QA_REGISTER",criteria());
         var before=request(1,"SYSTEM");
-        var changed=new ReportLayout(true,"NEW COVER","",true,true,"Header","Footer",true,true,"TEST",true,"DRAFT");
+        var changed=new ReportLayout(true,"NEW COVER","",true,true,"Header","Footer",true,true,"TEST",true,"DRAFT",null,null,null,List.of(new ReportLayout.Chart("Status","BAR","status","COUNT")));
         service.save(actor,"QA_REGISTER",new ReportTemplateService.TemplateWrite(before.version(),before.sourceCode(),before.displayName(),before.description(),before.active(),before.formats(),before.fields(),before.roleScopes(),before.reason(),changed),false);
-        assertEquals("{{report.title}}",snapshot.path("definition").path("layout").path("coverTitle").asText());
-        assertEquals("NEW COVER",json.valueToTree(service.definition("QA_REGISTER")).path("layout").path("coverTitle").asText());
-        var invalid=new ReportLayout(true,"{{user.password}}","",true,true,"","",true,false,"",false,"");
+        assertEquals(0,snapshot.path("definition").path("layout").path("charts").size());
+        var stored=json.valueToTree(service.definition("QA_REGISTER")).path("layout");
+        assertEquals("status",stored.path("charts").get(0).path("field").asText());
+        assertEquals("{{report.title}}",stored.path("coverTitle").asText());
+        var invalid=new ReportLayout(true,"{{report.title}}","",true,true,"","",true,false,"",false,"",null,null,null,List.of(new ReportLayout.Chart("Hidden","BAR","documentType","COUNT")));
         assertThrows(IllegalArgumentException.class,()->service.save(actor,"QA_REGISTER",new ReportTemplateService.TemplateWrite(2,before.sourceCode(),"Must not save",before.description(),true,before.formats(),before.fields(),before.roleScopes(),before.reason(),invalid),false));
         assertEquals(2,service.definition("QA_REGISTER").get("definitionVersion"));assertEquals("QA Register",service.definition("QA_REGISTER").get("displayName"));
     }
@@ -287,7 +329,7 @@ class ReportTemplateDatabaseTest {
         var layout=new ReportLayout(true,"{{report.title}}","TEST",true,true,defaults.header(),defaults.footer(),true,false,"",false,"",null,null,null,List.of(new ReportLayout.Chart("Status","BAR","status","COUNT")));
         service.save(actor,"QA_REGISTER",new ReportTemplateService.TemplateWrite(1,write.sourceCode(),write.displayName(),write.description(),true,write.formats(),write.fields(),write.roleScopes(),write.reason(),layout),false);
         var criteria=new ReportTemplateService.Criteria(2,List.of("documentNumber","documentName","status"),Map.of(),"documentNumber","asc");
-        try(var pdf=org.apache.pdfbox.Loader.loadPDF(service.previewPdf(actor,"QA_REGISTER",criteria,"My live report"))){assertTrue(pdf.getNumberOfPages()>=3);assertTrue(new org.apache.pdfbox.text.PDFTextStripper().getText(pdf).contains("FORM-013"));}
+        try(var pdf=org.apache.pdfbox.Loader.loadPDF(service.previewPdf(actor,"QA_REGISTER",criteria,"My live report"))){assertTrue(pdf.getNumberOfPages()>=2);assertTrue(new org.apache.pdfbox.text.PDFTextStripper().getText(pdf).contains("FORM-013"));}
         assertEquals(0,jdbc.queryForObject("select count(*) from report_runs",Integer.class));assertEquals(0,jdbc.queryForObject("select count(*) from report_artifacts",Integer.class));
         jdbc.update("update report_template_role_scopes set scope_code='PERSONAL'");
         try(var pdf=org.apache.pdfbox.Loader.loadPDF(service.previewPdf(actor,"QA_REGISTER",criteria,"Personal report"))){String text=new org.apache.pdfbox.text.PDFTextStripper().getText(pdf);assertTrue(text.contains("FORM-001"));assertFalse(text.contains("FORM-013"));}
@@ -296,15 +338,15 @@ class ReportTemplateDatabaseTest {
     @Test void workerPinsTitleAndChartsAndHistoryDoesNotLeakInternalSnapshot() throws Exception {
         var write=request(1,"SYSTEM");var layout=new ReportLayout(true,"{{report.title}}","TEST",true,true,"{{report.title}}","TEST",true,false,"",false,"",null,null,null,List.of(new ReportLayout.Chart("Status","PIE","status","COUNT")));
         service.save(actor,"QA_REGISTER",new ReportTemplateService.TemplateWrite(1,write.sourceCode(),write.displayName(),write.description(),true,write.formats(),write.fields(),write.roleScopes(),write.reason(),layout),false);
-        var fixture=workerFixture();UUID run=fixture.platform().queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","PDF",Map.of("reportTitle","Pinned TEST title"),null,null),"analytics-pinned");
-        service.save(actor,"QA_REGISTER",request(2,"SYSTEM"),false);
+        var fixture=workerFixture();UUID run=fixture.platform().queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","PDF",Map.of("reportTitle","Pinned TEST title","search","FORM"),null,null),"analytics-pinned");
+        // The title and the chart are pinned when the run is queued. (A template changed after that makes the run obsolete: REPORT-OBSOLETE-REVISION-2026-11-12, tested in ReportRunRevisionAndSignatureTest.)
         fixture.platform().processOneQueuedRun();var snapshot=json.readTree(jdbc.queryForObject("select authorization_snapshot::text from report_runs where id=?",String.class,run));
         assertEquals("Pinned TEST title",snapshot.path("reportTitle").asText());assertEquals(13,snapshot.path("charts").get(0).path("total").asInt());assertEquals(13,snapshot.path("charts").get(0).path("points").get(0).path("count").asInt());
         assertFalse(fixture.platform().runDetail(actor,run).containsKey("authorizationSnapshot"));
         assertEquals(1L,((Map<?,?>)fixture.platform().runs(actor,"Pinned TEST",1,10,"queuedAt","desc").get("pagination")).get("total"));
     }
     @Test void scheduleSearchVersionConflictAndAuditRollbackAreServerOwned() throws Exception {
-        var platform=platform();UUID id=platform.createSchedule(actor,new com.eqms.service.ReportPlatformService.ScheduleRequest("TEST Schedule","QA_REGISTER","0 0 8 * * *","PDF",Map.of(),null,List.of()));
+        var platform=platform();UUID id=platform.createSchedule(actor,new com.eqms.service.ReportPlatformService.ScheduleRequest("TEST Schedule","QA_REGISTER","0 0 8 * * *","PDF",Map.of("search","FORM"),null,List.of()));
         var users=mock(com.eqms.repository.UserAccountRepository.class);when(users.findById(actor.getId())).thenReturn(Optional.of(actor));
         var permissions=mock(com.eqms.service.PermissionEvaluationService.class);when(permissions.hasPermission(eq(actor),anyString())).thenReturn(true);
         var target=new ReportScheduleAdministrationService(jdbc,service,permissions,users,audit,json);var factory=new ProxyFactory(target);factory.setProxyTargetClass(true);factory.addAdvice(new TransactionInterceptor(new DataSourceTransactionManager(jdbc.getDataSource()),new AnnotationTransactionAttributeSource()));
@@ -312,7 +354,7 @@ class ReportTemplateDatabaseTest {
         assertEquals(1L,((Map<?,?>)schedules.list(actor,"TEST","ACTIVE",1,"name","asc").get("pagination")).get("total"));
         assertEquals(0L,((Map<?,?>)schedules.list(actor,"No match","",1,"name","asc").get("pagination")).get("total"));
         assertThrows(IllegalArgumentException.class,()->schedules.list(actor,"","",1,"name;drop table documents","asc"));
-        var value=new com.eqms.service.ReportPlatformService.ScheduleRequest("TEST Updated","QA_REGISTER","0 0 9 * * *","PDF",Map.of(),null,List.of());
+        var value=new com.eqms.service.ReportPlatformService.ScheduleRequest("TEST Updated","QA_REGISTER","0 0 9 * * *","PDF",Map.of("search","FORM"),null,List.of());
         schedules.update(actor,id,new ReportScheduleAdministrationService.Update(1,value,"Approved test edit"));assertEquals(2,schedules.detail(actor,id).get("version"));
         assertThrows(org.springframework.web.server.ResponseStatusException.class,()->schedules.update(actor,id,new ReportScheduleAdministrationService.Update(1,value,"Stale edit")));
         doThrow(new IllegalStateException("Audit unavailable")).when(audit).logAs(eq(actor),anyString(),anyString(),any(),eq("REPORT_SCHEDULE_UPDATED"),any(),any(),anyString());
@@ -320,7 +362,7 @@ class ReportTemplateDatabaseTest {
         assertEquals(13,jdbc.queryForObject("select count(*) from documents",Integer.class));
     }
     @Test void publicationIsFencedAndRollsBackAfterEventFailure() {
-        var platform=platform();UUID run=platform.queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","CSV",null,null,null),"publish");
+        var platform=platform();UUID run=platform.queueRun(actor,new com.eqms.service.ReportPlatformService.RunRequest("QA_REGISTER","CSV",Map.of("search","FORM"),null,null),"publish");
         jdbc.update("update report_runs set status='PROCESSING',attempt_count=2,lease_until=now()+interval '10 minutes' where id=?",run);
         var users=mock(com.eqms.repository.UserAccountRepository.class);when(users.findById(actor.getId())).thenReturn(Optional.of(actor));
         var target=new ReportArtifactPublisher(jdbc,service,users);ProxyFactory factory=new ProxyFactory(target);factory.setProxyTargetClass(true);
@@ -335,5 +377,143 @@ class ReportTemplateDatabaseTest {
         assertThrows(Exception.class,()->publisher.publish(run,2,artifact,"QA_REGISTER",snapshot,"CSV","test.csv",stored,"text/csv",10,hash,null));
         assertEquals(0,jdbc.queryForObject("select count(*) from report_artifacts",Integer.class));
         assertEquals("PROCESSING",jdbc.queryForObject("select status from report_runs where id=?",String.class,run));
+    }
+    ReportTemplateRevisionService revisionService;
+
+    /** Called at the start of each of these tests: the real revision tables and service in place of the triggers that stand in for approval. */
+    void realRevisions() {
+        // The parent test stands in for the approval with triggers; here the real revision service does the work.
+        jdbc.execute("drop trigger approve_saved_template on report_definitions");
+        jdbc.execute("drop trigger effective_saved_template on report_definitions");
+        jdbc.execute("delete from report_template_revisions");
+        var revisionPermissions = mock(EffectivePermissionService.class);
+        when(revisionPermissions.getEffectivePermissionCodes(any(UserAccount.class))).thenReturn(Set.of("reports.definition.view", "reports.definition.approve_gmp"));
+        revisionService = new ReportTemplateRevisionService(jdbc, json, revisionPermissions);
+        service.configureRevisions(revisionService);
+        revisionService.startFirst("QA_REGISTER", actor.getId(), "First revision");
+        jdbc.update("update report_definitions set approval_status='DRAFT',approved_version=null,approved_by_user_id=null,approved_at=null where code='QA_REGISTER'");
+    }
+
+    private ReportTemplateService.TemplateWrite noApprovalWrite(Integer version, boolean gmp) {
+        var base = request(version, "SYSTEM");
+        return new ReportTemplateService.TemplateWrite(base.version(), base.sourceCode(), base.displayName(), base.description(), base.active(), base.formats(), base.fields(),
+                base.roleScopes(), "Change " + System.nanoTime(), null, null, gmp);
+    }
+
+    private int liveVersionOfQaRegister() {
+        return jdbc.queryForObject("select definition_version from report_definitions where code='QA_REGISTER'", Integer.class);
+    }
+
+    /** The template is brought into force the way the approval does it: submitted, then released by the revision service. */
+    private void bringIntoForce() {
+        int version = liveVersionOfQaRegister();
+        service.submitForApproval(actor, "QA_REGISTER", version, "for approval");
+        jdbc.update("update report_definitions set approval_status='APPROVED', approved_version=? where code='QA_REGISTER'", version);
+        revisionService.release("QA_REGISTER", version, null, null, service.definition("QA_REGISTER"));
+    }
+
+    /** REPORT-ALL-TEMPLATES-APPROVED-2026-11-15: whatever its use, a saved template waits for approval; nothing is in force until it is approved. */
+    @Test void everyTemplateWaitsForApprovalWhateverItsUse() {
+        realRevisions();
+        for (boolean gmp : new boolean[]{false, true}) {
+            service.save(actor, "QA_REGISTER", noApprovalWrite(liveVersionOfQaRegister(), gmp), false);
+            assertNull(revisionService.effective("QA_REGISTER"), "nothing is in force: gmp=" + gmp);
+            var open = revisionService.open("QA_REGISTER");
+            assertNotNull(open);
+            assertEquals("DRAFT", open.get("status"));
+            assertEquals("DRAFT", service.definition("QA_REGISTER").get("approvalStatus"));
+        }
+    }
+
+    @Test void aTemplateInForceIsChangedOnlyThroughUpgradeAndApprovalWhateverItsUse() {
+        realRevisions();
+        service.save(actor, "QA_REGISTER", noApprovalWrite(liveVersionOfQaRegister(), false), false);
+        bringIntoForce();
+        var inForce = revisionService.effective("QA_REGISTER");
+        assertEquals("APPROVED", inForce.get("approval_basis"), "approved by a person");
+        for (boolean gmp : new boolean[]{false, true}) {
+            var e = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> service.save(actor, "QA_REGISTER", noApprovalWrite(liveVersionOfQaRegister(), gmp), false));
+            assertEquals("REPORT_UPGRADE_REQUIRED", e.getReason(), "a change to a template in force is made through Upgrade: gmp=" + gmp);
+        }
+        assertNull(revisionService.open("QA_REGISTER"), "nothing was started");
+    }
+
+    @Test void theListOfAllRevisionsShowsGmpUseAndPendingMyApprovalLeavesOutTheAuthor() {
+        realRevisions();
+        service.save(actor, "QA_REGISTER", noApprovalWrite(liveVersionOfQaRegister(), false), false);
+        bringIntoForce();
+        // The next revision, started as Upgrade starts it, makes the template GMP and is submitted by the author.
+        var live = service.definition("QA_REGISTER");
+        var payload = new java.util.LinkedHashMap<String, Object>();
+        for (String key : List.of("displayName", "description", "sourceCode", "allowedFormats", "nameValues", "layout", "fields", "roleScopes")) payload.put(key, live.get(key));
+        payload.put("gmpUse", true);
+        payload.put("nameFormatId", null);
+        revisionService.startRevision("QA_REGISTER", actor.getId(), liveVersionOfQaRegister(), payload, "Make it GMP");
+        service.submitForApproval(actor, "QA_REGISTER", ReportTemplateRevisionService.versionOf(revisionService.open("QA_REGISTER")), "Please approve");
+
+        var all = revisionService.listAll(actor, "all", "ALL", "", "", "", "revision", "asc", 1, 50);
+        var rows = (List<Map<String, Object>>) all.get("data");
+        assertEquals(2, rows.size());
+        // The row menu opens with its items decided (REPORT-REVISION-ROW-MENU-2026-11-15): every row carries what this person may do to its template.
+        for (var row : (List<Map<String, Object>>) service.revisionListAll(actor, "all", "ALL", "", "", "", "revision", "asc", 1, 50).get("data")) {
+            var caps = (com.eqms.dto.security.ResourceCapabilitiesResponse) row.get("capabilities");
+            assertNotNull(caps, "a row carries the capabilities of its template");
+            assertTrue(caps.actions().keySet().containsAll(List.of("edit", "submitForApproval", "approve", "reject", "upgrade")), "the actions the menu is built from");
+            assertEquals("REPORT_TEMPLATE", caps.resourceType());
+        }
+        assertEquals(Boolean.FALSE, rows.get(0).get("gmpUse"), "revision 1 was not for GMP");
+        assertEquals("APPROVED", rows.get(0).get("approvalBasis"));
+        assertEquals(Boolean.TRUE, rows.get(1).get("gmpUse"), "revision 2 is for GMP");
+        assertEquals("PENDING_APPROVAL", rows.get(1).get("status"));
+        assertEquals("QA_REGISTER", rows.get(1).get("definitionCode"));
+
+        assertEquals(1, ((List<?>) revisionService.listAll(actor, "all", "ALL", "YES", "", "", "revision", "asc", 1, 50).get("data")).size());
+        assertEquals(1, ((List<?>) revisionService.listAll(actor, "all", "ALL", "NO", "", "", "revision", "asc", 1, 50).get("data")).size());
+        assertEquals(1, ((List<?>) revisionService.listAll(actor, "all", "EFFECTIVE", "", "", "", "revision", "asc", 1, 50).get("data")).size());
+        assertEquals(2, ((List<?>) revisionService.listAll(actor, "all", "ALL", "", "DOCUMENT_STATUS", "QA Register", "revision", "asc", 1, 50).get("data")).size());
+        assertEquals(0, ((List<?>) revisionService.listAll(actor, "all", "ALL", "", "AUDIT_TRAIL", "", "revision", "asc", 1, 50).get("data")).size());
+
+        // Pending My Approval: another approver sees it; the person who wrote and submitted it does not.
+        var approver = new UserAccount();
+        approver.setId(UUID.randomUUID());
+        approver.setStatus(UserStatus.Active);
+        assertEquals(1, ((List<?>) revisionService.listAll(approver, "pending-approval", "ALL", "", "", "", "revision", "asc", 1, 50).get("data")).size());
+        assertEquals(0, ((List<?>) revisionService.listAll(actor, "pending-approval", "ALL", "", "", "", "revision", "asc", 1, 50).get("data")).size());
+        assertThrows(IllegalArgumentException.class, () -> revisionService.listAll(actor, "all", "ALL", "MAYBE", "", "", "revision", "asc", 1, 50));
+        assertThrows(IllegalArgumentException.class, () -> revisionService.listAll(actor, "all", "ALL", "", "", "", "id; drop table x", "asc", 1, 50));
+    }
+
+    /**
+     * Two people save the same template, from the same version, at the same moment. The row of the template is locked by the first save, so the second finds that the version
+     * moved and is refused: one change is kept, never two, and no revision number is used twice.
+     */
+    @Test void twoSavesAtTheSameMomentKeepOneChangeAndRefuseTheOther() throws Exception {
+        realRevisions();
+        for (int round = 0; round < 6; round++) {
+            int version = liveVersionOfQaRegister();
+            var start = new java.util.concurrent.CountDownLatch(1);
+            var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+            List<java.util.concurrent.Future<String>> results = new ArrayList<>();
+            for (int i = 0; i < 2; i++) {
+                results.add(pool.submit(() -> {
+                    start.await();
+                    try {
+                        service.save(actor, "QA_REGISTER", noApprovalWrite(version, false), false);
+                        return "SAVED";
+                    } catch (org.springframework.web.server.ResponseStatusException refused) {
+                        return refused.getReason();
+                    }
+                }));
+            }
+            start.countDown();
+            List<String> outcomes = new ArrayList<>();
+            for (var result : results) outcomes.add(result.get(30, java.util.concurrent.TimeUnit.SECONDS));
+            pool.shutdown();
+            assertEquals(1, outcomes.stream().filter("SAVED"::equals).count(), "exactly one save wins: " + outcomes);
+            assertEquals(List.of("REPORT_TEMPLATE_VERSION_CHANGED"), outcomes.stream().filter(o -> !"SAVED".equals(o)).toList(), "the other is told the version moved");
+            assertEquals(version + 1, liveVersionOfQaRegister(), "one change was kept");
+            assertEquals(1, jdbc.queryForObject("select count(*) from report_template_revisions where definition_code='QA_REGISTER'", Integer.class), "one revision, still a Draft");
+            assertNull(revisionService.effective("QA_REGISTER"));
+        }
     }
 }

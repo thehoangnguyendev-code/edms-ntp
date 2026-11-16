@@ -80,10 +80,12 @@ public class SettingsUserController {
             @RequestParam(required = false) String terminateTo,
             @RequestParam(defaultValue = "employeeCode") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDirection,
+            @RequestParam(required = false) String lastUpdatedFrom,
+            @RequestParam(required = false) String lastUpdatedTo,
             @RequestParam(defaultValue = "false") boolean includeTerminated
     ) {
         requireUserView();
-        return ResponseEntity.ok(service.getUsers(page, limit, search, role, status, online, businessUnit, department, position, dateFrom, dateTo, suspendFrom, suspendTo, terminateFrom, terminateTo, sortBy, sortDirection, includeTerminated));
+        return ResponseEntity.ok(service.getUsers(page, limit, search, role, status, online, businessUnit, department, position, dateFrom, dateTo, suspendFrom, suspendTo, terminateFrom, terminateTo, sortBy, sortDirection, includeTerminated, lastUpdatedFrom, lastUpdatedTo));
     }
 
     @GetMapping("/users/manager-options")
@@ -291,15 +293,7 @@ public class SettingsUserController {
             @RequestParam(defaultValue = "false") boolean includeTerminated
     ) {
         requireUserView();
-        StreamingResponseBody body = outputStream -> service.writeUsersExport(
-                search, role, status, online, businessUnit, department, position,
-                dateFrom, dateTo, suspendFrom, suspendTo, terminateFrom, terminateTo,
-                includeTerminated, outputStream
-        );
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=users_export.csv")
-                .contentType(MediaType.parseMediaType("text/csv"))
-                .body(body);
+        return TableExportRedirect.to("users");
     }
 
     @GetMapping("/permissions/catalog")

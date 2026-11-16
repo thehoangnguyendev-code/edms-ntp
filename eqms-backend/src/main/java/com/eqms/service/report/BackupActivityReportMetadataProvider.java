@@ -53,14 +53,17 @@ public class BackupActivityReportMetadataProvider implements ReportMetadataProvi
                 Map.of("code", "search", "name", "Search backup records", "type", "TEXT"),
                 Map.of("code", "area", "name", "Area", "type", "LOOKUP"),
                 Map.of("code", "action", "name", "Action", "type", "LOOKUP"),
-                Map.of("code", "createdFrom", "name", "From date (required)", "type", "DATE"),
-                Map.of("code", "createdTo", "name", "To date (required)", "type", "DATE"));
+                Map.of("code", "createdFrom", "name", "From Date", "type", "DATE", "required", "true"),
+                Map.of("code", "createdTo", "name", "To Date", "type", "DATE", "required", "true"));
     }
     public Map<String, String> lookupColumns() { return Map.of("area", "al.entity_type", "action", "al.action_type"); }
     public Map<String, String> filterColumns() { return Map.of("area", "area", "action", "action", "createdFrom", "timestamp", "createdTo", "timestamp"); }
 
     @Override
-    public void validateRun(Map<String, Object> filters) { ReportQueryKit.requireRange(filters, "created", AuditTrailReportMetadataProvider.MAX_DAYS); }
+    public void validateRun(Map<String, Object> filters) { validateRun(filters, AuditTrailReportMetadataProvider.MAX_DAYS); }
+
+    @Override
+    public void validateRun(Map<String, Object> filters, int maxRangeDays) { ReportQueryKit.requireRange(filters, "created", maxRangeDays); }
 
     public Query query(UserAccount actor, List<String> scopes, Map<String, Object> filters) {
         ReportQueryKit.checkFilters(filters, FILTERS);

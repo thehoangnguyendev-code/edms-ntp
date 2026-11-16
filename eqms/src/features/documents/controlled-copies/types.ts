@@ -1,3 +1,4 @@
+import type { ControlledCopyActionCapabilities } from "./controlledCopyCapabilities";
 import type { ControlledCopyUsagePurpose } from "./usagePurpose";
 
 export type ControlledCopyStatus =
@@ -21,6 +22,7 @@ export interface TableColumn {
 }
 
 export interface ControlledCopy {
+  capabilities?: ControlledCopyActionCapabilities | null;
   id: string;
   controlledCopyNumber: string;
   createdDate: string;
@@ -113,6 +115,7 @@ export interface ControlledCopyEvidenceFile {
 }
 
 export interface ControlledCopyDistributionBatch {
+  capabilities?: ControlledCopyActionCapabilities | null;
   id: string;
   batchNumber: string;
   controlledCopyNumber?: string;

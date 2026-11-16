@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { SearchInput } from "@/components/ui/form/SearchInput";
 import { useDebounce } from "@/hooks/useDebounce";
 import { DataTable, TABLE_STYLES, TableEmptyState, TablePagination, type DataTableColumn } from "@/components/ui/table";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 export interface LocalColumn<T> {
   id: string;
@@ -31,7 +32,7 @@ export function LocalListTable<T>({
   emptyDescription: string;
 }) {
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<{ id: string; direction: "asc" | "desc" }>();
 

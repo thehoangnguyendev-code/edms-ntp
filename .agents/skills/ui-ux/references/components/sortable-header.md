@@ -1,7 +1,7 @@
 # Tiêu đề cột sắp xếp
 
 Ô tiêu đề cột bảng bấm được để sắp xếp dòng. Bảng quanh nó (tab, lọc, chọn nhiều dòng,
-phân trang) xem "Bảng dữ liệu" trong `../layouts/app.md`. Dự án có `@tanstack/react-table`
+phân trang) xem "Bảng dữ liệu" trong `../layouts/app/data-table.md`. Dự án có `@tanstack/react-table`
 thì để nó giữ trạng thái sắp, skill chỉ lo hình ô (`N10`).
 
 ## Ba trạng thái
@@ -39,11 +39,11 @@ Thứ tự vòng bấm là logic, component chỉ gọi `onSort` (`N10`). Khi đ
   chữ tiêu đề thẳng cột với dữ liệu mà không kéo lề bằng số âm (`N11`). `h-11`, `text-xs
   font-medium`, `whitespace-nowrap`, `cursor-pointer`.
 - **Không nền hover. Rê vào thì chữ và mũi tên đậm lên** (`hover:text-foreground`). Ngoại lệ
-  của `I10`, cùng lý do với accordion (`accordion.md`). Đã dính 26/09/2026: nút phủ ô tô
-  `--surface-hover` lúc rê thành một mảng `#f8f8fa` rộng 505px cho một nhãn 12px, và ô cột đầu,
-  cột cuối chạm mép card, sát màu nền trang `#f4f4f6`, card như bị khoét một góc. Quy ước chia đôi
-  (tra 27/09/2026): có hệ thiết kế doanh nghiệp tô nền cả ô, có hệ chỉ hiện mũi tên và đậm chữ; skill
-  chọn không nền vì ca đã dính ở trên.
+  của `I10`, cùng lý do với accordion (`accordion.md`). Đừng tô `--surface-hover` lúc rê:
+  nút phủ ô thành một mảng `#f8f8fa` rộng 505px cho một nhãn 12px, và ô cột đầu,
+  cột cuối chạm mép card, sát màu nền trang `#f4f4f6`, card như bị khoét một góc. Quy ước chia đôi:
+  có hệ thiết kế doanh nghiệp tô nền cả ô, có hệ chỉ hiện mũi tên và đậm chữ; skill
+  chọn không nền vì ca ở trên.
 
 ```tsx
 <th scope="col" aria-sort={direction ?? undefined} className="p-0">
@@ -73,9 +73,9 @@ Thứ tự vòng bấm là logic, component chỉ gọi `onSort` (`N10`). Khi đ
   nói bằng chữ**: "Tên A → Z", "Tên Z → A", "Mới nhất", "Cũ nhất", "Doanh thu cao nhất", "Doanh
   thu thấp nhất", cộng "Mặc định" cho chưa sắp; mục đang chọn có dấu check (khuôn Select ở
   `choice-controls.md`). Chữ thay mũi tên vì không còn tên cột đứng cạnh để mũi tên bám vào.
-- **Bảng vẫn giữ dạng bảng ở màn hẹp thì mọi cột sắp được phải thấy mà không cuộn.** Đã dính
-  26/09/2026: bảng ba cột `min-w-[28rem]` cuộn ngang trong khung 341px, cột Doanh thu nằm hẳn
-  ngoài khung ở cả năm ví dụ, ví dụ "Doanh thu tăng dần" ở 375px không thấy cột doanh thu nào.
+- **Bảng vẫn giữ dạng bảng ở màn hẹp thì mọi cột sắp được phải thấy mà không cuộn.** Bảng
+  ba cột `min-w-[28rem]` cuộn ngang trong khung 341px thì cột Doanh thu nằm hẳn ngoài khung:
+  sắp "Doanh thu tăng dần" ở 375px mà không thấy cột doanh thu nào.
   Không vừa thì theo gạch trên, đừng để tiêu đề sắp xếp trôi khỏi màn.
 
 ## Kiểm
@@ -84,3 +84,11 @@ Thứ tự vòng bấm là logic, component chỉ gọi `onSort` (`N10`). Khi đ
 - Mép trái chữ tiêu đề bằng mép trái chữ dữ liệu cột đó; cột số: mép phải chữ tiêu đề bằng mép
   phải con số (đo bằng `Range`).
 - Ở 375px: còn thấy tiêu đề (hoặc nút "Sắp xếp:") cho từng cột sắp được không?
+
+---
+
+## Kiểm trước khi giao
+
+Chạy cùng cổng 2 của `checklist.md` khi trang có đúng thứ này.
+
+- [ ] **Tiêu đề cột sắp xếp**: rê lên tiêu đề cột đầu và cột cuối, có mảng nền nào chạm mép card không (chỉ chữ đậm lên)? Cột số có mũi tên trước chữ, chữ thẳng mép phải với số? Ở 375px còn thấy cách sắp theo từng cột (tiêu đề hoặc nút "Sắp xếp:"), hay cột đó trôi ra ngoài khung (`components/sortable-header.md`)?

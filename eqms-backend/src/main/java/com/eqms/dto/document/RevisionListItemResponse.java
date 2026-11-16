@@ -10,7 +10,6 @@ public record RevisionListItemResponse(
         String created,
         String openedBy,
         String revisionName,
-        String state,
         String status,
         String statusCode,
         StatusResponse statusInfo,

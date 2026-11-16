@@ -215,28 +215,122 @@ class ReportDeliveryServiceTest {
         when(users.findById(creatorId)).thenReturn(Optional.of(requester));
         when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(Map.of(
                 "requester_user_id", creatorId.toString(), "title", "Ad hoc")));
+        bothChannelsWork();
 
         service.notifyRecipientsOfCompletedRun(runId);
 
+        // the in-app notice only tells: no link; the e-mail has the link that downloads the file
         verify(dispatcher).dispatchIndependently(eq("report.ready"), eq(List.of(requester)),
-                org.mockito.ArgumentMatchers.argThat(v -> "Report ready: Ad hoc".equals(v.get("title")) && v.get("message").contains("The report you asked for")
-                        && ("/report/runs/" + runId).equals(v.get("actionUrl"))));
+                org.mockito.ArgumentMatchers.argThat(v -> "Report ready: Ad hoc".equals(v.get("title")) && v.get("message").contains("Action menu") && "".equals(v.get("actionUrl"))
+                        && !v.get("message").contains("?download")), channels("IN_APP"));
+        verify(dispatcher).dispatchIndependently(eq("report.ready"), eq(List.of(requester)),
+                org.mockito.ArgumentMatchers.argThat(v -> v.get("message").contains("The report you asked for") && ("/report/runs/" + runId + "?download=1").equals(v.get("actionUrl"))), channels("EMAIL"));
         assertThat(attempts()).extracting(row -> row.get(2)).containsOnly("SENT");
     }
 
     @Test
-    void aRunThatFailedForGoodIsToldToThePersonWhoAskedAndARunThatWillBeTriedAgainIsNot() {
+    void aRunThatFailedForGoodIsToldToThePersonWhoAskedWithTheCauseAndARunThatWillBeTriedAgainIsNot() {
         var requester = user(creatorId, "creator@example.test");
         when(users.findById(creatorId)).thenReturn(Optional.of(requester));
-        when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(Map.of(
-                "requester_user_id", creatorId.toString(), "title", "Ad hoc", "status", "RETRY_SCHEDULED")));
-        service.notifyRequesterOfFailedRun(runId);
-        verify(dispatcher, never()).dispatchIndependently(any(), any(), any());
+        var failed = new java.util.HashMap<String, Object>();
+        failed.put("schedule_id", null);
+        failed.put("requester_user_id", creatorId.toString());
+        failed.put("status", "FAILED");
+        failed.put("title", "Ad hoc");
+        failed.put("reason_code", "REPORT_ROW_LIMIT_EXCEEDED");
+        failed.put("error_message", "The result has more rows than a report file may hold. Add a filter to narrow it and start a new request.");
+        when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(failed));
+        bothChannelsWork();
 
-        when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(Map.of(
-                "requester_user_id", creatorId.toString(), "title", "Ad hoc", "status", "FAILED")));
         service.notifyRequesterOfFailedRun(runId);
+
+        // the cause is in the text of both notices; the in-app one has no link, the e-mail has the run's link
         verify(dispatcher).dispatchIndependently(eq("report.run_failed"), eq(List.of(requester)),
-                org.mockito.ArgumentMatchers.argThat(v -> "Report failed: Ad hoc".equals(v.get("title")) && ("/report/runs/" + runId).equals(v.get("actionUrl"))));
+                org.mockito.ArgumentMatchers.argThat(v -> "Report failed: Ad hoc".equals(v.get("title")) && v.get("message").contains("more rows than a report file may hold") && "".equals(v.get("actionUrl"))), channels("IN_APP"));
+        verify(dispatcher).dispatchIndependently(eq("report.run_failed"), eq(List.of(requester)),
+                org.mockito.ArgumentMatchers.argThat(v -> v.get("message").contains("Cause:") && ("/report/runs/" + runId).equals(v.get("actionUrl"))), channels("EMAIL"));
+
+        // a run that will be tried again is not reported
+        failed.put("status", "RETRY_SCHEDULED");
+        org.mockito.Mockito.clearInvocations(dispatcher);
+        service.notifyRequesterOfFailedRun(runId);
+        verify(dispatcher, never()).dispatchIndependently(anyString(), any(), any(), org.mockito.ArgumentMatchers.<java.util.Set<String>>any());
+    }
+
+
+    private static java.util.Set<String> channels(String... names) { return org.mockito.ArgumentMatchers.argThat(set -> set != null && set.equals(java.util.Set.of(names))); }
+    private void bothChannelsWork() {
+        when(dispatcher.dispatchIndependently(anyString(), any(), any(), org.mockito.ArgumentMatchers.<java.util.Set<String>>any())).thenReturn(new NotificationDispatcher.Outcome(null, true, true, true, true));
+        when(dispatcher.dispatchIndependently(anyString(), any(), any(), org.mockito.ArgumentMatchers.<java.util.Set<String>>any(), any(NotificationDispatcher.MailFile.class))).thenReturn(new NotificationDispatcher.Outcome(null, true, true, true, true));
+    }
+
+    // ---- REPORT-READY-FILE-2026-11-16: the e-mail of a report a person asked for themselves carries the file
+    private UserAccount ownRun() {
+        var requester = user(recipientId, "requester@example.test");
+        when(users.findById(recipientId)).thenReturn(Optional.of(requester));
+        var row = new java.util.HashMap<String, Object>();
+        row.put("schedule_id", null);
+        row.put("requester_user_id", recipientId.toString());
+        row.put("title", "Audit report");
+        when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(row));
+        when(permissions.hasPermission(any(UserAccount.class), anyString())).thenReturn(false);
+        when(permissions.hasPermission(requester, "report.module.view")).thenReturn(true);
+        when(permissions.hasPermission(requester, "reports.run.view_own")).thenReturn(true);
+        when(dispatcher.dispatchIndependently(anyString(), any(), any(), any(NotificationDispatcher.MailFile.class))).thenReturn(new NotificationDispatcher.Outcome(null, true, true, true, true));
+        return requester;
+    }
+
+    @Test
+    void theEmailOfAReportAPersonAskedForCarriesTheFileAndALinkThatDownloadsIt() {
+        var requester = ownRun();
+        bothChannelsWork();
+        byte[] file = new byte[1024];
+
+        service.notifyRecipientsOfCompletedRun(runId, "rpt-0001.xlsx", file);
+
+        verify(dispatcher).dispatchIndependently(eq("report.ready"), eq(List.of(requester)),
+                org.mockito.ArgumentMatchers.argThat(v -> ("/report/runs/" + runId + "?download=1").equals(v.get("actionUrl")) && v.get("message").contains("attached")),
+                channels("EMAIL"),
+                org.mockito.ArgumentMatchers.argThat((NotificationDispatcher.MailFile f) -> f != null && "rpt-0001.xlsx".equals(f.name()) && f.content() == file));
+        // the in-app notice has neither the file nor a link
+        verify(dispatcher).dispatchIndependently(eq("report.ready"), eq(List.of(requester)),
+                org.mockito.ArgumentMatchers.argThat(v -> "".equals(v.get("actionUrl")) && !v.get("message").contains("attached")), channels("IN_APP"));
+        assertThat(attempts()).containsExactly(List.of("IN_APP", "REPORT_READY", "SENT", "-"), List.of("EMAIL", "REPORT_READY", "SENT", "-"));
+    }
+
+    @Test
+    void aFileLargerThanTheLimitIsNotAttachedAndTheEmailSaysSo() {
+        var requester = ownRun();
+        bothChannelsWork();
+
+        service.notifyRecipientsOfCompletedRun(runId, "big.csv", new byte[ReportDeliveryService.MAX_ATTACHMENT_BYTES + 1]);
+
+        verify(dispatcher, never()).dispatchIndependently(anyString(), any(), any(), org.mockito.ArgumentMatchers.<java.util.Set<String>>any(), any(NotificationDispatcher.MailFile.class));
+        verify(dispatcher).dispatchIndependently(eq("report.ready"), eq(List.of(requester)),
+                org.mockito.ArgumentMatchers.argThat(v -> v.get("message").contains("larger than 10 MB") && ("/report/runs/" + runId + "?download=1").equals(v.get("actionUrl"))), channels("EMAIL"));
+        verify(dispatcher).dispatchIndependently(eq("report.ready"), eq(List.of(requester)),
+                org.mockito.ArgumentMatchers.argThat(v -> "".equals(v.get("actionUrl"))), channels("IN_APP"));
+    }
+
+    @Test
+    void aRequesterWhoMayNoLongerOpenRunsGetsNoFileByEmail() {
+        var requester = ownRun();
+        when(permissions.hasPermission(requester, "reports.run.view_own")).thenReturn(false);
+        bothChannelsWork();
+
+        service.notifyRecipientsOfCompletedRun(runId, "rpt.csv", new byte[10]);
+
+        // the e-mail is the plain one (a link, which still asks for sign-in and the permission); the file is not attached
+        verify(dispatcher, never()).dispatchIndependently(anyString(), any(), any(), org.mockito.ArgumentMatchers.<java.util.Set<String>>any(), any(NotificationDispatcher.MailFile.class));
+        verify(dispatcher).dispatchIndependently(eq("report.ready"), eq(List.of(requester)), any(), channels("EMAIL"));
+    }
+
+    @Test
+    void theRecipientsOfAScheduleStillGetALinkOnlyEmailEvenWhenTheFileIsGiven() {
+        recipientMayOpen(true, false);
+
+        service.notifyRecipientsOfCompletedRun(runId, "rpt.xlsx", new byte[10]);
+
+        verify(dispatcher, never()).dispatchIndependently(anyString(), any(), any(), any(NotificationDispatcher.MailFile.class));
     }
 }

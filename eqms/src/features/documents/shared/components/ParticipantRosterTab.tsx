@@ -9,6 +9,7 @@ import { settingsApi } from "@/services/api/settings";
 import { filterOutExcludedWorkflowParticipants } from "@/features/documents/shared/workflowParticipantFilters";
 import type { User as AppUser } from "@/types";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 export interface Participant extends Pick<AppUser, "id" | "fullName" | "username" | "position" | "email" | "department"> {
     order?: number;
@@ -80,7 +81,7 @@ const UserSelectionModal: React.FC<{
 
     useEffect(() => {
         if (!isOpen) return;
-        const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm.trim()), 300);
+        const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm.trim()), SEARCH_DEBOUNCE_MS);
         return () => clearTimeout(timer);
     }, [searchTerm, isOpen]);
 

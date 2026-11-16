@@ -4,7 +4,6 @@ import { useBackNavigation } from "@/app/navigation/backNavigation";
 import {
   AlertTriangle,
   ArrowRight,
-  ClipboardCheck,
   FileText,
   RefreshCw,
 } from "lucide-react";
@@ -12,6 +11,7 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { EmptyState } from "@/components/ui/page/EmptyState";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { DataTable, type DataTableColumn } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -244,9 +244,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
               }
             />
           ) : rows.length === 0 ? (
-            <EmptyState
-              icon={ClipboardCheck}
-              variant="dashed"
+            <TableEmptyState
               title="No status mismatches to review"
               description="All active batches currently match the status of their member copies."
             />

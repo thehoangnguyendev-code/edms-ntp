@@ -11,6 +11,7 @@ import { mapRevisionSummaryFromApi } from "@/features/documents/shared/statusMap
 import { ROUTES } from "@/app/routes.constants";
 import { type WorkspaceNavigationMode } from "@/features/documents/shared/navigationContext";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 interface DocumentRevisionsTabProps {
     revisions?: Revision[];
@@ -47,7 +48,7 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
     const [displayRevisions, setDisplayRevisions] = useState<Revision[]>(revisions);
     const [isSearching, setIsSearching] = useState(false);
-    const debouncedSearch = useDebounce(searchQuery, 300);
+    const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
 
     const revisionIds = useMemo(
         () => revisions.map((revision) => revision.id).filter(Boolean).join(","),
@@ -94,7 +95,8 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
                         created: mappedItem.created,
                         openedBy: mappedItem.openedBy || "",
                         revisionName: mappedItem.revisionName,
-                        status: mappedItem.status as Revision["status"],
+                        statusBadge: mappedItem.statusBadge as Revision["statusBadge"],
+                        statusCode: mappedItem.statusCode,
                         statusLabel: item.statusInfo?.name || item.status || mappedItem.statusLabel,
                         canOpenAuthoringWorkspace: Boolean(item.canOpenAuthoringWorkspace),
                     };
@@ -197,7 +199,7 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
             revisionId: revision.id,
             revisionCreated: revision.created,
             revisionOpenedBy: revision.openedBy,
-            revisionState: revision.status.toLowerCase().replace(/ /g, ""),
+            revisionState: revision.statusBadge,
             documentAuthor: formData?.author || documentAuthor,
             documentStatus,
             documentCreated,
@@ -301,7 +303,7 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
                                             {revision.revisionName || revision.revisionNumber}
                                         </TableMarkup.Cell>
                                         <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
-                                            <StatusBadge status={revision.status as any} label={revision.statusLabel} />
+                                            <StatusBadge status={revision.statusBadge as any} label={revision.statusLabel} />
                                         </TableMarkup.Cell>
                                     </TableMarkup.Row>
                                 ))

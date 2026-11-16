@@ -16,7 +16,6 @@ public record UncontrolledCopyRequestContextResponse(
         boolean canRequest,
         boolean canRequestForOthers,
         String message,
-        boolean approvalRequired,
         int validityHours,
         boolean allowRedownload,
         /** Watermark/stamp config the generated copy will carry (the mandatory title is always added on top). */

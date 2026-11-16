@@ -1,5 +1,5 @@
 /**
- * Reports & Analytics API Service
+ * Reports API Service
  * Cross-module reporting and KPI analytics for EQMS
  *
  * Endpoint base: /api/reports

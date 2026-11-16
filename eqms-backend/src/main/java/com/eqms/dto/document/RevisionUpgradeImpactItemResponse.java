@@ -8,6 +8,7 @@ public record RevisionUpgradeImpactItemResponse(
         String version,
         String status,
         StatusResponse statusInfo,
+        String statusCode,
         String type,
         String businessUnit,
         String department,

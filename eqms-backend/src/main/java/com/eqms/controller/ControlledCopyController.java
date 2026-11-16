@@ -115,7 +115,7 @@ public class ControlledCopyController {
             @RequestParam(required = false, defaultValue = "created") String sortBy,
             @RequestParam(required = false, defaultValue = "desc") String sortDirection
     ) {
-        return ResponseEntity.ok(controlledCopyService.list(
+        return ResponseEntity.ok(com.eqms.service.ControlledCopyMenuCapabilities.copies(controlledCopyService.list(
                 page,
                 limit,
                 search,
@@ -133,7 +133,7 @@ public class ControlledCopyController {
                 usagePurpose,
                 sortBy,
                 sortDirection
-        ));
+        ), controlledCopyAuthorizationService));
     }
 
     @GetMapping("/batches")
@@ -155,7 +155,7 @@ public class ControlledCopyController {
             @RequestParam(required = false, defaultValue = "created") String sortBy,
             @RequestParam(required = false, defaultValue = "desc") String sortDirection
     ) {
-        return ResponseEntity.ok(controlledCopyService.listDistributionBatches(
+        return ResponseEntity.ok(com.eqms.service.ControlledCopyMenuCapabilities.batches(controlledCopyService.listDistributionBatches(
                 page,
                 limit,
                 search,
@@ -172,7 +172,7 @@ public class ControlledCopyController {
                 usagePurpose,
                 sortBy,
                 sortDirection
-        ));
+        ), controlledCopyAuthorizationService));
     }
 
     @GetMapping("/batches/{batchId}")
@@ -193,7 +193,7 @@ public class ControlledCopyController {
             @RequestParam(required = false, defaultValue = "detectedAt") String sortBy,
             @RequestParam(required = false, defaultValue = "desc") String sortDirection
     ) {
-        return ResponseEntity.ok(controlledCopyService.listDistributionBatchCopies(batchId, page, limit));
+        return ResponseEntity.ok(com.eqms.service.ControlledCopyMenuCapabilities.copies(controlledCopyService.listDistributionBatchCopies(batchId, page, limit), controlledCopyAuthorizationService));
     }
 
     /**
@@ -229,15 +229,7 @@ public class ControlledCopyController {
             @RequestParam(required = false, defaultValue = "created") String sortBy,
             @RequestParam(required = false, defaultValue = "desc") String sortDirection
     ) {
-        StreamingResponseBody csv = outputStream -> controlledCopyService.writeExport(
-                search, status, department, documentId, createdFrom, createdTo,
-                validFrom, validTo, expiryFrom, expiryTo, recallFrom, recallTo, usagePurpose,
-                sortBy, sortDirection, outputStream
-        );
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=controlled-copies-export.csv")
-                .contentType(MediaType.parseMediaType("text/csv"))
-                .body(csv);
+        return TableExportRedirect.to("controlled-copies");
     }
 
     @GetMapping("/{id}")

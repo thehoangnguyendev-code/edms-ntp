@@ -87,9 +87,6 @@ export const SignatureMeaningsTable: React.FC<Props> = ({ meanings, canEdit, onR
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-slate-600 sm:text-sm">
-        Every action that needs an electronic signature. The <strong>Action</strong> and its <strong>Code</strong> are fixed by the application; <strong>Meaning</strong> is the only editable field and is the label shown to the signer and written on the signed record. Changes are saved with <strong>Save Changes</strong>.
-      </p>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar
         searchPlaceholder="Search by action, code or meaning…"

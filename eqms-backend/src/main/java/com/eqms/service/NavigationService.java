@@ -115,7 +115,7 @@ public class NavigationService {
                 if (showUncontrolledCopies && hasAnyPermission(normalizedPermissions, "documents.uncontrolled_copy.view", "documents.uncontrolled_copy.request")) {
                     List<NavigationItemResponse> uncontrolledChildren = new ArrayList<>();
                     uncontrolledChildren.add(new NavigationItemResponse("uc-all", "All Uncontrolled Copies", null, "/documents/uncontrolled-copies/all", false, null));
-                    uncontrolledChildren.add(new NavigationItemResponse("uc-pending-approval", "Pending Approval", null, "/documents/uncontrolled-copies/pending-approval", false, null));
+                    uncontrolledChildren.add(new NavigationItemResponse("uc-ready", "Ready for Distribution", null, "/documents/uncontrolled-copies/ready", false, null));
                     uncontrolledChildren.add(new NavigationItemResponse("uc-distributed", "Distributed Copies", null, "/documents/uncontrolled-copies/distributed", false, null));
                     docChildren.add(new NavigationItemResponse("uncontrolled-copies", "Uncontrolled Copies", null, null, false, uncontrolledChildren));
                 }
@@ -197,13 +197,23 @@ public class NavigationService {
         if (hasPermission(normalizedPermissions, "report.module.view")
                 && systemConfigurationService.isFeatureEnabled("feat-system-reports")) {
             List<NavigationItemResponse> reportChildren = new ArrayList<>();
-            // REPORT-COMPLETION-2026-11-12: Overview and Analytics read real data now, so the sample-data switch is gone.
-            reportChildren.add(new NavigationItemResponse("report-overview", "Reports Overview", null, "/report/overview", false, null));
-            reportChildren.add(new NavigationItemResponse("report-analytics", "Quality Analytics", null, "/report/analytics", false, null));
+            // REPORT-MODULE-FLAT-2026-11-16: Report Library and Report Run History are entries of their own (level 2); no Overview, no Dashboards group, no Reports group.
+            // Run History / Legal Hold Register and Scheduled Reports / Delivery Log share one entry each; the second of each pair is a tab on the same page, shown to the people who may see it.
             reportChildren.add(new NavigationItemResponse("report-templates", "Report Library", null, "/report/templates", false, null));
             reportChildren.add(new NavigationItemResponse("report-history", "Report Run History", null, "/report/history", false, null));
             reportChildren.add(new NavigationItemResponse("report-scheduled", "Scheduled Reports", null, "/report/scheduled", false, null));
-            menu.add(new NavigationItemResponse("report", "Reports & Analytics", "IconChartBar", null, false, reportChildren));
+            // Making a report template and approving it are the work of the module, not an administration setting. Like Document Revisions in
+            // Document Control: the templates, every revision, and the ones waiting for the approval this person may give.
+            if (hasAnyPermission(normalizedPermissions, "reports.definition.view", "settings.configuration.view")) {
+                List<NavigationItemResponse> templateChildren = new ArrayList<>();
+                templateChildren.add(new NavigationItemResponse("report-template-management", "Report Templates", null, "/report/template-management", false, null));
+                templateChildren.add(new NavigationItemResponse("report-template-revisions-all", "All Revisions", null, "/report/template-revisions", false, null));
+                if (hasAnyPermission(normalizedPermissions, "reports.definition.approve", "reports.definition.approve_gmp")) {
+                    templateChildren.add(new NavigationItemResponse("report-template-revisions-pending", "Pending My Approval", null, "/report/template-revisions/pending-approval", false, null));
+                }
+                reportChildren.add(new NavigationItemResponse("report-template-group", "Template Management", null, null, false, templateChildren));
+            }
+            menu.add(new NavigationItemResponse("report", "Reports", "IconChartBar", null, false, reportChildren));
         }
 
         if (hasPermission(normalizedPermissions, "audittrail.module.view")
@@ -420,19 +430,14 @@ public class NavigationService {
             if (hasAnyPermission(normalizedPermissions, "reports.properties.view", "reports.properties.manage")) {
                 reportAdminChildren.add(new NavigationItemResponse("report-admin-properties", "Report Properties", null, "/settings/report-properties", false, null));
             }
+            if (hasAnyPermission(normalizedPermissions, "reports.appearance.view", "reports.appearance.manage")) {
+                reportAdminChildren.add(new NavigationItemResponse("report-admin-appearance", "Report Appearance", null, "/settings/report-appearance", false, null));
+            }
             if (hasAnyPermission(normalizedPermissions, "reports.types.view", "reports.types.manage")) {
                 reportAdminChildren.add(new NavigationItemResponse("report-admin-types", "Report Types", null, "/settings/report-types", false, null));
             }
             if (hasAnyPermission(normalizedPermissions, "reports.definition.view", "settings.configuration.view")) {
-                reportAdminChildren.add(new NavigationItemResponse("report-admin-definitions", "Report Definitions", null, "/settings/report-configuration", false, null));
                 reportAdminChildren.add(new NavigationItemResponse("report-admin-name-formats", "Report Name Formats", null, "/settings/report-name-formats", false, null));
-                reportAdminChildren.add(new NavigationItemResponse("report-admin-access", "Report Access & Data Scope", null, "/settings/administration/report/access", false, null));
-            }
-            if (hasAnyPermission(normalizedPermissions, "reports.definition.view", "settings.configuration.view")) {
-                reportAdminChildren.add(new NavigationItemResponse("report-admin-retention", "Report Retention & Legal Hold", null, "/settings/administration/report/retention", false, null));
-            }
-            if (hasAnyPermission(normalizedPermissions, "reports.definition.view", "settings.configuration.view")) {
-                reportAdminChildren.add(new NavigationItemResponse("report-admin-delivery", "Scheduled Report Delivery", null, "/settings/administration/report/delivery", false, null));
             }
             if (hasAnyPermission(normalizedPermissions, "reports.definition.view", "settings.configuration.view")) {
             }

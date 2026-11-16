@@ -1,6 +1,8 @@
 import {
     IconDatabaseCog,
   IconInfoCircle,
+  IconShieldFlame,
+  IconUsersCog,
   IconUserShield,
 } from "@tabler/icons-react";
 /**
@@ -237,9 +239,9 @@ const FOUNDATION_MODULES: NavItem[] = [
             path: ROUTES.DOCUMENTS.UNCONTROLLED_COPIES.ALL,
           },
           {
-            id: "uc-pending-approval",
-            label: "Pending Approval",
-            path: ROUTES.DOCUMENTS.UNCONTROLLED_COPIES.PENDING_APPROVAL,
+            id: "uc-ready",
+            label: "Ready for Distribution",
+            path: ROUTES.DOCUMENTS.UNCONTROLLED_COPIES.READY,
           },
           {
             id: "uc-distributed",
@@ -415,34 +417,31 @@ const FOUNDATION_MODULES: NavItem[] = [
 const SYSTEM_MODULES: NavItem[] = [
   {
     id: "report",
-    label: "Reports & Analytics",
+    label: "Reports",
     icon: IconChartBar,
     allowedPermissions: ["report.module.view"],
     children: [
+      // REPORT-MODULE-FLAT-2026-11-16: Report Library and Report Run History are entries of their own; there is no Overview, no Dashboards group and no Reports group.
+      // Run History / Legal Hold Register and Scheduled Reports / Delivery Log share one entry each; the second of each pair is a tab on the same page (ReportTabsFrame).
+      { id: "report-templates", label: "Report Library", path: ROUTES.REPORT.TEMPLATES },
+      { id: "report-history", label: "Report Run History", path: ROUTES.REPORT.HISTORY },
+      { id: "report-scheduled", label: "Scheduled Reports", path: ROUTES.REPORT.SCHEDULED },
+      // Making a report template and approving it belong to the work of the module, not to the administration settings.
+      // Like Document Revisions in Document Control: the templates, every revision, and the ones waiting for the approval this person may give.
       {
-        id: "report-overview",
-        label: "Reports Overview",
-        path: ROUTES.REPORT.OVERVIEW,
-      },
-      {
-        id: "report-analytics",
-        label: "Quality Analytics",
-        path: ROUTES.REPORT.ANALYTICS,
-      },
-      {
-        id: "report-templates",
-        label: "Report Library",
-        path: ROUTES.REPORT.TEMPLATES,
-      },
-      {
-        id: "report-history",
-        label: "Report Run History",
-        path: ROUTES.REPORT.HISTORY,
-      },
-      {
-        id: "report-scheduled",
-        label: "Scheduled Reports",
-        path: ROUTES.REPORT.SCHEDULED,
+        id: "report-template-group",
+        label: "Template Management",
+        allowedPermissions: ["reports.definition.view", "settings.configuration.view"],
+        children: [
+          { id: "report-template-management", label: "Report Templates", path: ROUTES.REPORT.TEMPLATE_MANAGEMENT },
+          { id: "report-template-revisions-all", label: "All Revisions", path: ROUTES.REPORT.TEMPLATE_REVISIONS },
+          {
+            id: "report-template-revisions-pending",
+            label: "Pending My Approval",
+            path: ROUTES.REPORT.TEMPLATE_REVISIONS_PENDING,
+            allowedPermissions: ["reports.definition.approve", "reports.definition.approve_gmp"],
+          },
+        ],
       },
     ],
   },
@@ -512,7 +511,7 @@ const SYSTEM_MODULES: NavItem[] = [
   {
     id: "security-authorization",
     label: "Security & Authorization",
-    icon: IconUserShield,
+    icon: IconShieldFlame,
     allowedPermissions: [
       "settings.user.view",
       "security.access_profiles.view",
@@ -529,7 +528,7 @@ const SYSTEM_MODULES: NavItem[] = [
         // that response has loaded.
         id: "sec-user-administration",
         label: "User Administration",
-        icon: IconUsers,
+        icon: IconUsersCog,
         allowedPermissions: ["settings.user.view"],
         children: [
           {
@@ -980,21 +979,21 @@ const SYSTEM_MODULES: NavItem[] = [
         ],
         children: [
           {
-            id: "report-admin-definitions",
-            label: "Report Definitions",
-            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.DEFINITIONS,
-            allowedPermissions: [
-              "reports.definition.view",
-              "settings.configuration.view",
-            ],
-          },
-          {
             id: "report-admin-properties",
             label: "Report Properties",
             path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.PROPERTIES,
             allowedPermissions: [
               "reports.properties.view",
               "reports.properties.manage",
+            ],
+          },
+          {
+            id: "report-admin-appearance",
+            label: "Report Appearance",
+            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.APPEARANCE,
+            allowedPermissions: [
+              "reports.appearance.view",
+              "reports.appearance.manage",
             ],
           },
           {
@@ -1010,33 +1009,6 @@ const SYSTEM_MODULES: NavItem[] = [
             allowedPermissions: [
               "reports.definition.view",
               "reports.name_format.manage",
-              "settings.configuration.view",
-            ],
-          },
-          {
-            id: "report-admin-access",
-            label: "Report Access & Data Scope",
-            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.ACCESS,
-            allowedPermissions: [
-              "reports.definition.view",
-              "settings.configuration.view",
-            ],
-          },
-          {
-            id: "report-admin-retention",
-            label: "Report Retention & Legal Hold",
-            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.RETENTION,
-            allowedPermissions: [
-              "reports.definition.view",
-              "settings.configuration.view",
-            ],
-          },
-          {
-            id: "report-admin-delivery",
-            label: "Scheduled Report Delivery",
-            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.DELIVERY,
-            allowedPermissions: [
-              "reports.definition.view",
               "settings.configuration.view",
             ],
           },

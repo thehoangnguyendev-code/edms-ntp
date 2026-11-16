@@ -21,6 +21,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -121,10 +122,10 @@ class BackupAlertControllerTest {
     }
 
     @Test
-    void anAcknowledgedAlertIsAuditedWithItsIdentifier() throws Exception {
+    void anAcknowledgedAlertIsAuditedByNameAndKeepsItsIdentifierInItsOwnColumn() throws Exception {
         when(agent.exchange(eq(HttpMethod.POST), eq("/internal/alerts/" + ALERT + "/acknowledge"), any())).thenReturn(reply(200, "{\"id\":\"" + ALERT + "\"}"));
         assertThat(controller.acknowledge(ALERT, new BackupAlertController.AcknowledgeBody("seen")).getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(audit).logAs(eq(actor), eq("BACKUP_ALERT"), eq(ALERT), notNull(), eq("ALERT_ACKNOWLEDGED"), eq("OPEN"), eq("ACKNOWLEDGED"), anyString());
+        verify(audit).logAs(eq(actor), eq("BACKUP_ALERT"), eq("Backup alert"), notNull(), eq("ALERT_ACKNOWLEDGED"), eq("OPEN"), eq("ACKNOWLEDGED"), argThat(text -> !text.contains(ALERT)));
     }
 
     @Test

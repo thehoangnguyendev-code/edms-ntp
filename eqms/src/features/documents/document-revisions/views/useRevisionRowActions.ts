@@ -52,7 +52,7 @@ export function useRevisionRowActions({ from, navigateTo, navigateToPrepared, on
           documentId: parentDocumentId,
           revisionName: revision.revisionName,
           revisionNumber: revision.revisionNumber,
-          status: revision.state,
+          status: revision.status,
           isParent: true,
         },
       ]

@@ -218,6 +218,10 @@ public class AuditTrailService {
     @org.springframework.beans.factory.annotation.Autowired
     private ObjectProvider<UncontrolledCopyService> uncontrolledCopyService;
 
+    /** Resolved lazily: the report service writes audit records itself. */
+    @org.springframework.beans.factory.annotation.Autowired
+    private ObjectProvider<ReportPlatformService> reportPlatformService;
+
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager entityManager;
 
@@ -368,6 +372,19 @@ public class AuditTrailService {
                 searchPredicates.add(builder.like(builder.lower(root.get("comment")), likePattern));
                 searchPredicates.add(builder.like(builder.lower(root.get("fromStatus")), likePattern));
                 searchPredicates.add(builder.like(builder.lower(root.get("toStatus")), likePattern));
+                // The number of the object, and the words of the columns as they are shown: the type ("Report File"), the module ("Document Control") and the action ("Approve").
+                searchPredicates.add(builder.like(builder.lower(root.get("entityCode")), likePattern));
+                searchPredicates.add(builder.like(builder.lower(root.get("documentNumber")), likePattern));
+                String shownTerm = search.toLowerCase(Locale.ROOT).trim();
+                List<String> typesShown = distinctEntityTypes().stream()
+                        .filter(type -> com.eqms.util.AuditObjectCatalog.typeLabel(type).toLowerCase(Locale.ROOT).contains(shownTerm)
+                                || com.eqms.util.AuditMenuModule.forEntityType(type).toLowerCase(Locale.ROOT).contains(shownTerm))
+                        .toList();
+                if (!typesShown.isEmpty()) searchPredicates.add(root.get("entityType").in(typesShown));
+                List<String> actionsShown = distinctActionTypes().stream()
+                        .filter(code -> com.eqms.util.AuditActionVerb.of(code).toLowerCase(Locale.ROOT).contains(shownTerm))
+                        .toList();
+                if (!actionsShown.isEmpty()) searchPredicates.add(root.get("actionType").in(actionsShown));
                 
                 Join<AuditLog, UserAccount> actedByJoin = root.join("actedBy", JoinType.LEFT);
                 searchPredicates.add(builder.like(builder.lower(actedByJoin.get("fullName")), likePattern));
@@ -387,7 +404,12 @@ public class AuditTrailService {
             if (StringUtils.hasText(action) && !"All".equalsIgnoreCase(action)) {
                 String normalizedAction = action.trim().toUpperCase(Locale.ROOT);
                 Expression<String> actionTypeUpper = builder.upper(root.get("actionType"));
-                switch (normalizedAction) {
+                String verbFilter = com.eqms.util.AuditActionVerb.verbs().stream().filter(verb -> verb.equalsIgnoreCase(action.trim())).findFirst().orElse(null);
+                if (verbFilter != null) {
+                    // The Action column and its filter use one small vocabulary of verbs; a verb selects every action code it names.
+                    List<String> codesOfVerb = com.eqms.util.AuditActionVerb.codesOf(verbFilter, distinctActionTypes()).stream().map(code -> code.toUpperCase(Locale.ROOT)).toList();
+                    predicates.add(codesOfVerb.isEmpty() ? builder.disjunction() : actionTypeUpper.in(codesOfVerb));
+                } else switch (normalizedAction) {
                     case "CREATE":
                         predicates.add(builder.equal(actionTypeUpper, "CREATE"));
                         break;
@@ -664,6 +686,13 @@ public class AuditTrailService {
         requireEntityAuditView(module, entityId);
         String normalized = module.trim().toUpperCase(Locale.ROOT).replace('_', ' ');
         java.util.Set<UUID> childIds = new java.util.HashSet<>();
+        String childType = "CONTROLLEDCOPY";
+        if (includeChildren && "REPORT RUN".equals(normalized)) {
+            // The files of a run have their own entries (download, preview, verification, legal hold); they are part of the history of the run.
+            childType = "REPORTARTIFACT";
+            childIds.addAll(reportPlatformService.getObject().artifactIdsOfRun(entityId));
+        }
+        final String childEntityType = childType;
         if (includeChildren && "CONTROLLED COPY DISTRIBUTION BATCH".equals(normalized)) {
             UserAccount actor = currentUserService.requireCurrentUser();
             controlledCopyRepository.findAllByDistributionBatch_IdOrderByCopyNumberAsc(entityId).stream()
@@ -675,7 +704,7 @@ public class AuditTrailService {
                     cb.upper(root.get("entityType")), cb.literal(" "), cb.literal("")), cb.literal("_"), cb.literal(""));
             var own = cb.and(cb.equal(canonicalType, stripEntityTypeKey(module)), cb.equal(root.get("entityId"), entityId));
             if (childIds.isEmpty()) return own;
-            return cb.or(own, cb.and(cb.equal(canonicalType, "CONTROLLEDCOPY"), root.get("entityId").in(childIds)));
+            return cb.or(own, cb.and(cb.equal(canonicalType, childEntityType), root.get("entityId").in(childIds)));
         };
         return listQuery(search, null, action, user, null, null, null, null, null,
                 eSignatureOnly, dateFrom, dateTo, sortBy, sortDirection, page, limit, scope);
@@ -727,6 +756,13 @@ public class AuditTrailService {
             }
             case "PERMISSION SET" -> {
                 requireScreenPermission(actor, "Permission set", "security.permission_sets.view", "security.permission_sets.update");
+                return;
+            }
+            case "REPORT RUN" -> {
+                // The Audit Trail tab is part of Report Run Details: whoever may open the run may read it (the check is the one the run's own read applies).
+                if (!reportPlatformService.getObject().canViewRunAudit(actor, entityId)) {
+                    throw new AccessDeniedException("Report run audit access denied");
+                }
                 return;
             }
             case "BACKUP RESTORE" -> {
@@ -873,7 +909,7 @@ public class AuditTrailService {
             String sortDirection,
             String reason,
             String signatureToken,
-            OutputStream output
+            com.eqms.service.export.TableExcelWriter writer
     ) throws IOException {
         UserAccount actor = requireAuditExport();
         if (!StringUtils.hasText(signatureToken)) {
@@ -884,8 +920,7 @@ public class AuditTrailService {
         if (!parsedSignature.principal().userId().equals(actor.getId())) {
             throw new org.springframework.security.access.AccessDeniedException("Electronic signature must belong to the current user");
         }
-        Writer writer = new BufferedWriter(new OutputStreamWriter(output, java.nio.charset.StandardCharsets.UTF_8));
-        writer.write("id,timestamp,user,module,action,entityId,entityName,description,severity\n");
+        writer.headers("ID","Timestamp","User","Module","Action","Entity ID","Entity Name","Description","Severity","Entity Label","Object Code","Change Summary","Changes","Reason","IP Address","Device","User Agent","Signature ID","Electronic Signature Applied","Duration (Seconds)");
 
         final int exportPageSize = 500;
         int pageNumber = 1;
@@ -895,21 +930,32 @@ public class AuditTrailService {
             result = listQuery(search, module, action, user, severity, documentNumber, entityId, status, ipAddress,
                     eSignatureOnly, dateFrom, dateTo, sortBy, sortDirection, pageNumber, exportPageSize);
             for (AuditTrailRecordResponse row : result.data()) {
-                writer.write(String.join(",",
-                        csv(row.id()),
-                        csv(row.timestamp()),
-                        csv(row.user() == null ? "" : row.user().fullName()),
-                        csv(row.module()),
-                        csv(row.action()),
-                        csv(row.entityId()),
-                        csv(row.entityName()),
-                        csv(row.description()),
-                        csv(row.severity())
-                ));
-                writer.write('\n');
+                writer.row(
+                        row.id(),
+                        row.timestamp(),
+                        row.user() == null ? "" : row.user().fullName(),
+                        row.module(),
+                        row.action(),
+                        row.entityId(),
+                        row.entityName(),
+                        row.description(),
+                        row.severity(),
+                        row.entityLabel(),
+                        row.objectCode(),
+                        row.changeSummary(),
+                        row.changes() == null ? "" : row.changes().stream()
+                                .map(change -> change.field() + ": " + Objects.toString(change.oldValue(), "") + " -> " + Objects.toString(change.newValue(), ""))
+                                .collect(java.util.stream.Collectors.joining("\n")),
+                        row.reason(),
+                        row.ipAddress(),
+                        row.device(),
+                        row.userAgent(),
+                        row.signatureId(),
+                        Boolean.toString(row.electronicSignatureApplied()),
+                        Objects.toString(row.progressDurationSeconds(), "")
+                );
                 exportedCount++;
             }
-            writer.flush();
             pageNumber++;
         } while (result.pagination().page() < result.pagination().totalPages());
 
@@ -926,7 +972,6 @@ public class AuditTrailService {
                 null,
                 exportSummary
         );
-        writer.flush();
     }
 
     @Transactional
@@ -1014,6 +1059,20 @@ public class AuditTrailService {
             String toStatus,
             String comment
     ) {
+        persistWithoutAccount(externalIdentifier, "External recipient", entityType, entityName, entityId, actionType, fromStatus, toStatus, comment);
+    }
+
+    /**
+     * Records something the system did by itself (a background worker finished or failed a job), in the same transaction as the change it records.
+     * The actor is the system and no user account is involved (REPORT-RUN-AUDIT-2026-11-16).
+     */
+    @Transactional
+    public void logSystem(String entityType, String entityName, UUID entityId, String actionType, String fromStatus, String toStatus, String comment) {
+        persistWithoutAccount("System", "System", entityType, entityName, entityId, actionType, fromStatus, toStatus, comment);
+    }
+
+    private void persistWithoutAccount(String externalIdentifier, String roleName, String entityType, String entityName, UUID entityId,
+            String actionType, String fromStatus, String toStatus, String comment) {
         comment = DateTimeFormatUtils.normalizeText(comment);
         RequestSnapshot requestSnapshot = resolveRequestSnapshot();
         AuditEntitySnapshot entitySnapshot = buildEntitySnapshot(entityType, entityId, entityName);
@@ -1042,7 +1101,7 @@ public class AuditTrailService {
         log.setProcessingDurationSeconds(resolveRequestDurationSeconds());
         log.setUsername(clampColumn(actor, 120));
         log.setUserFullName(clampColumn(actor, 255));
-        log.setRoleName("External recipient");
+        log.setRoleName(roleName);
         log.setEntityCode(clampColumn(entitySnapshot.entityCode(), 255));
         log.setDocumentNumber(clampColumn(entitySnapshot.documentNumber(), 80));
         log.setRevisionNumber(clampColumn(entitySnapshot.revisionNumber(), 40));
@@ -1353,8 +1412,8 @@ public class AuditTrailService {
         metadata.put("revisionNumber", entitySnapshot.revisionNumber());
         metadata.put("entityStatus", entitySnapshot.entityStatus());
         metadata.put("actionType", log.getActionType());
-        metadata.put("fromStatus", log.getFromStatus());
-        metadata.put("toStatus", log.getToStatus());
+        metadata.put("fromStatus", AuditStatusWords.display(log.getEntityType(), log.getFromStatus()));
+        metadata.put("toStatus", AuditStatusWords.display(log.getEntityType(), log.getToStatus()));
         metadata.put("reason", resolvedReason);
         metadata.put("comment", com.eqms.util.AuditDisplayText.hideIds(log.getComment()));
         metadata.put("oldValue", com.eqms.util.AuditDisplayText.hideIds(log.getOldValue()));
@@ -1367,6 +1426,7 @@ public class AuditTrailService {
         metadata.put("eventTime", formatInstant(log.getEventTime()));
         metadata.put("progressDurationSeconds", log.getProcessingDurationSeconds());
         metadata.put("menuModule", com.eqms.util.AuditMenuModule.forEntityType(log.getEntityType()));
+        putShownColumns(metadata, log, entitySnapshot);
         metadata.put("userReason", com.eqms.util.AuditDisplayText.hideIds(log.getUserReason()));
 
         return new AuditTrailRecordResponse(
@@ -1437,8 +1497,8 @@ public class AuditTrailService {
                 // Distribution"). A null fromStatus with a real toStatus means "did not exist yet",
                 // not "unknown, assume unchanged" -- the raw stored value is passed through as-is
                 // and the frontend renders the null side as "None" for a creation.
-                log.getFromStatus(),
-                log.getToStatus(),
+                AuditStatusWords.display(log.getEntityType(), log.getFromStatus()),
+                AuditStatusWords.display(log.getEntityType(), log.getToStatus()),
                 com.eqms.util.AuditDisplayText.hideIds(log.getOldValue()),
                 com.eqms.util.AuditDisplayText.hideIds(log.getNewValue()),
                 log.getIpAddress(),
@@ -1480,8 +1540,8 @@ public class AuditTrailService {
         metadata.put("revisionNumber", entitySnapshot.revisionNumber());
         metadata.put("entityStatus", entitySnapshot.entityStatus());
         metadata.put("actionType", log.getActionType());
-        metadata.put("fromStatus", log.getFromStatus());
-        metadata.put("toStatus", log.getToStatus());
+        metadata.put("fromStatus", AuditStatusWords.display(log.getEntityType(), log.getFromStatus()));
+        metadata.put("toStatus", AuditStatusWords.display(log.getEntityType(), log.getToStatus()));
         metadata.put("reason", resolvedReason);
         metadata.put("comment", com.eqms.util.AuditDisplayText.hideIds(log.getComment()));
         metadata.put("changeSummary", changeSummary);
@@ -1492,12 +1552,38 @@ public class AuditTrailService {
         metadata.put("timestamp", formatInstant(log.getEventTime() == null ? log.getCreatedAt() : log.getEventTime()));
         metadata.put("module", module);
         metadata.put("menuModule", com.eqms.util.AuditMenuModule.forEntityType(log.getEntityType()));
+        putShownColumns(metadata, log, entitySnapshot);
         metadata.put("userReason", com.eqms.util.AuditDisplayText.hideIds(log.getUserReason()));
         // The e-mail address of the actor's account as it is now (the log keeps no snapshot of it); empty when the account is gone.
         metadata.put("userEmail", actorEmail(log));
         metadata.put("action", action);
         return metadata;
     }
+
+    /**
+     * The three columns of the Audit Trail table in words a reviewer can read and search (REPORT-AUDIT-DISPLAY-2026-11-17): what kind of object, which one, and what was done
+     * in one word. The stored codes stay in the record and on the detail screen; the full action is the "action" of the detail.
+     */
+    private void putShownColumns(Map<String, Object> metadata, AuditLog log, AuditEntitySnapshot snapshot) {
+        metadata.put("objectTypeLabel", com.eqms.util.AuditObjectCatalog.typeLabel(log.getEntityType()));
+        metadata.put("objectCodeLabel", com.eqms.util.AuditObjectCatalog.objectCode(log.getEntityType(), snapshot.documentNumber(), snapshot.revisionNumber(),
+                snapshot.entityCode(), snapshot.entityName(), log.getComment()));
+        metadata.put("actionLabel", com.eqms.util.AuditActionVerb.of(log.getActionType()));
+    }
+
+    private volatile long distinctLoadedAt;
+    private volatile List<String> distinctEntityTypes = List.of();
+    private volatile List<String> distinctActionTypes = List.of();
+
+    /** The kinds of record and the action codes in use, read at most once a minute (they are few and change only when a feature writes a new one). */
+    private synchronized void loadDistinct() {
+        if (System.currentTimeMillis() - distinctLoadedAt < 60_000L && !distinctActionTypes.isEmpty()) return;
+        distinctEntityTypes = List.copyOf(auditLogRepository.findDistinctEntityTypes());
+        distinctActionTypes = List.copyOf(auditLogRepository.findDistinctActionTypes());
+        distinctLoadedAt = System.currentTimeMillis();
+    }
+    private List<String> distinctEntityTypes() { loadDistinct(); return distinctEntityTypes; }
+    private List<String> distinctActionTypes() { loadDistinct(); return distinctActionTypes; }
 
     private String buildDescription(AuditLog log, String action, String entityLabel, String changeSummary) {
         StringBuilder builder = new StringBuilder();
@@ -1799,8 +1885,8 @@ public class AuditTrailService {
                     .map(change -> humanizeField(change.field()) + ": " + defaultValue(change.oldValue()) + " -> " + defaultValue(change.newValue()))
                     .collect(Collectors.joining("; "));
         }
-        if (isRealStatusTransition(log.getFromStatus(), log.getToStatus())) {
-            return "Status: " + log.getFromStatus() + " -> " + log.getToStatus();
+        if (isRealStatusTransition(AuditStatusWords.display(log.getEntityType(), log.getFromStatus()), AuditStatusWords.display(log.getEntityType(), log.getToStatus()))) {
+            return "Status: " + AuditStatusWords.display(log.getEntityType(), log.getFromStatus()) + " -> " + AuditStatusWords.display(log.getEntityType(), log.getToStatus());
         }
         if (StringUtils.hasText(log.getComment())) {
             return abbreviate(log.getComment(), 180);
@@ -1866,8 +1952,8 @@ public class AuditTrailService {
 
     private List<AuditTrailChangeResponse> buildLegacyStatusChanges(AuditLog log) {
         List<AuditTrailChangeResponse> changes = new ArrayList<>();
-        if (log != null && isRealStatusTransition(log.getFromStatus(), log.getToStatus())) {
-            changes.add(new AuditTrailChangeResponse("status", log.getFromStatus(), log.getToStatus()));
+        if (log != null && isRealStatusTransition(AuditStatusWords.display(log.getEntityType(), log.getFromStatus()), AuditStatusWords.display(log.getEntityType(), log.getToStatus()))) {
+            changes.add(new AuditTrailChangeResponse("status", AuditStatusWords.display(log.getEntityType(), log.getFromStatus()), AuditStatusWords.display(log.getEntityType(), log.getToStatus())));
         }
         return changes;
     }

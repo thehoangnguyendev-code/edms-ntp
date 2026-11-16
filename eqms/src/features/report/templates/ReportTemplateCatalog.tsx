@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ROUTES } from "@/app/routes.constants";
 import {
   Eye,
   Pencil,
@@ -8,15 +9,13 @@ import {
   Settings2,
   FilePlus2,
   MoreVertical,
-  Pin,
-  PinOff,
 } from "lucide-react";
-import { IconFileSettings, IconFilter2, IconInfoCircle, IconPencilMinus } from "@tabler/icons-react";
+import { IconFilter2, IconInfoCircle, IconPencilMinus } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { type SelectOption } from "@/components/ui/select/Select";
-import { ReportListToolbar } from "../shared/ReportListToolbar";
+import { ReportListToolbar, pickerDateToIso } from "../shared/ReportListToolbar";
 import { humanize, reportRevisionLabel } from "../shared/reportLabels";
 import { Textarea } from "@/components/ui/form/ResponsiveForm";
 import { FormModal } from "@/components/ui/modal/FormModal";
@@ -37,11 +36,11 @@ import {
 } from "@/services/api/reportTemplates";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
 import { displayDateTime } from "@/utils/format";
-import { useToast } from "@/components/ui/toast/Toast";
 import { reportsApi } from "@/services/api/reports";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const LIFECYCLE_TEXT: Record<string, string> = { ACTIVE: "Active", INACTIVE: "Disabled", DRAFT: "Draft", PENDING_APPROVAL: "Pending Approval" };
-const defaults = { status: "", sourceCode: "", format: "", orientation: "" };
+const defaults = { status: "", sourceCode: "", format: "", orientation: "", gmp: "" };
 type Filters = typeof defaults;
 const date = (value?: string) =>
   value ? displayDateTime(value) : "—";
@@ -54,13 +53,13 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
     "reports.definition.manage",
     "settings.configuration.manage",
   ]);
-  const { showToast } = useToast();
-  /** The reports the person pinned to the Reports Overview (codes). A pin is a personal convenience and grants nothing. */
-  const [pinned, setPinned] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [filters, setFilters] = useState<Filters>(defaults);
+  // The menu item "Templates Pending Approval" opens this list already filtered (?status=PENDING_APPROVAL).
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState<Filters>(() => ({ ...defaults, status: inAdministration ? (searchParams.get("status") ?? "") : "" }));
+  const [updated, setUpdated] = useState({ from: "", to: "" });
   const [mobileDraft, setMobileDraft] = useState<Filters>(defaults);
   const [filterOpen, setFilterOpen] = useState(false);
   const [sort, setSort] = useState({
@@ -85,34 +84,6 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
   // The actions of the row menu come from the server's decision, sent with the list: the menu opens complete, with no request after the click.
   const rowCaps: ReportTemplateCapabilities | undefined = openTemplate?.capabilities;
   const rowCan = (action: string) => rowCaps?.actions?.[action]?.allowed === true;
-  useEffect(() => {
-    if (inAdministration) return;
-    let alive = true;
-    reportsApi
-      .listPins()
-      .then((list) => alive && setPinned(new Set(list.map((pin) => pin.code))))
-      .catch(() => alive && setPinned(new Set()));
-    return () => {
-      alive = false;
-    };
-  }, [inAdministration]);
-  const togglePin = async (code: string) => {
-    const wasPinned = pinned.has(code);
-    try {
-      if (wasPinned) await reportsApi.unpinReport(code);
-      else await reportsApi.pinReport(code);
-      setPinned((current) => {
-        const next = new Set(current);
-        if (wasPinned) next.delete(code);
-        else next.add(code);
-        return next;
-      });
-      showToast({ type: "success", message: wasPinned ? "Unpinned from the Reports Overview." : "Pinned to the Reports Overview." });
-    } catch (e) {
-      const status = (e as { response?: { status?: number; data?: { error?: { message?: string } } } })?.response;
-      showToast({ type: "error", message: status?.data?.error?.message === "REPORT_PIN_LIMIT" ? "You can pin at most 20 reports." : "The pin could not be changed." });
-    }
-  };
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     () => new Set(["status", "sourceCode", "format", "orientation"]),
   );
@@ -141,6 +112,9 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
             sourceCode: filters.sourceCode || undefined,
             format: filters.format || undefined,
             orientation: filters.orientation || undefined,
+            gmp: filters.gmp || undefined,
+            updatedFrom: pickerDateToIso(updated.from) || undefined,
+            updatedTo: pickerDateToIso(updated.to) || undefined,
           },
           inAdministration,
         )
@@ -156,12 +130,12 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
         .finally(() => {
           if (alive) setLoading(false);
         });
-    }, 250);
+    }, SEARCH_DEBOUNCE_MS);
     return () => {
       alive = false;
       window.clearTimeout(timer);
     };
-  }, [search, page, pageSize, sort.field, sort.direction, filters, inAdministration, refresh]);
+  }, [search, page, pageSize, sort.field, sort.direction, filters, updated, inAdministration, refresh]);
   const apply = (next: Filters) => {
     setPage(1);
     setFilters(next);
@@ -199,7 +173,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
     },
     {
       id: "sourceCode",
-      label: "Data Source",
+      label: "Report Type",
       options: [{ value: "", label: "All" }, ...(result?.sources ?? [])],
     },
     {
@@ -208,6 +182,15 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
       options: [
         { value: "", label: "All" },
         ...["PDF", "XLSX", "CSV"].map((value) => ({ value, label: value })),
+      ],
+    },
+    {
+      id: "gmp",
+      label: "Used for GMP Decisions",
+      options: [
+        { value: "", label: "All" },
+        { value: "YES", label: "Yes" },
+        { value: "NO", label: "No" },
       ],
     },
     {
@@ -220,11 +203,11 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
       ],
     },
   ];
-  /** A template opens on a page of its own: the library page, or the details page of Report Definitions. */
+  /** A template opens on a page of its own: the library page, or the details page of Report Templates. */
   const detailPath = (row: ReportTemplate) =>
-    inAdministration ? `/settings/report-configuration/${encodeURIComponent(row.code)}/details` : `/report/templates/${encodeURIComponent(row.code)}`;
+    inAdministration ? `${ROUTES.REPORT.TEMPLATE_MANAGEMENT}/${encodeURIComponent(row.code)}/details` : `/report/templates/${encodeURIComponent(row.code)}`;
   const edit = (row: ReportTemplate) =>
-    navigate(`/settings/report-configuration/${encodeURIComponent(row.code)}`);
+    navigate(`${ROUTES.REPORT.TEMPLATE_MANAGEMENT}/${encodeURIComponent(row.code)}`);
   const columns: DataTableColumn<ReportTemplate>[] = [
     {
       id: "no",
@@ -233,7 +216,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
     },
     {
       id: "code",
-      header: "Template Number",
+      header: "Report Template Number",
       sort: sortable("code"),
       cell: (row) => (
         <button
@@ -247,13 +230,21 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
     },
     {
       id: "name",
-      header: "Template Name",
+      header: "Report Template Name",
       sort: sortable("displayName"),
       cell: (row) => <div className="min-w-48 whitespace-normal">{row.displayName}</div>,
     },
     {
+      id: "gmp",
+      header: "Used for GMP Decisions",
+      sort: sortable("gmpUse"),
+      cell: (row) => (
+        <Badge semantic={row.gmpUse ? "success" : "neutral"}>{row.gmpUse ? "GMP" : "Not GMP"}</Badge>
+      ),
+    },
+    {
       id: "source",
-      header: "Data Source",
+      header: "Report Type",
       sort: sortable("sourceCode"),
       cell: (row) =>
         result?.sources?.find((source) => source.value === row.sourceCode)
@@ -261,13 +252,13 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
     },
     {
       id: "category",
-      header: "Category",
+      header: "Template Category",
       sort: sortable("category"),
       cell: (row) => humanize(row.category),
     },
     {
       id: "revision",
-      header: "Revision",
+      header: inAdministration ? "Effective Revision" : "Report Template Revision",
       sort: sortable("revision"),
       cell: (row) => (row.effectiveRevision != null ? reportRevisionLabel(row.effectiveRevision) : "—"),
     },
@@ -276,8 +267,8 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
       ? [
         {
           id: "inProgress",
-          header: "Revision in progress",
-          cell: (row) =>
+          header: "Revision In Progress",
+          cell: (row: ReportTemplate) =>
             row.openRevision != null ? (
               <span className="whitespace-nowrap">
                 {reportRevisionLabel(row.openRevision, row.openRevisionStatus ?? "DRAFT")} · {row.openRevisionStatus === "PENDING_APPROVAL" ? "Pending Approval" : "Draft"}
@@ -295,7 +286,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
     },
     {
       id: "orientation",
-      header: "Orientation",
+      header: "Page Orientation",
       cell: (row) =>
         row.layout?.orientation === "PORTRAIT" ? "Portrait" : "Landscape",
     },
@@ -353,29 +344,20 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
                 ),
   };
   const { layout, control } = useCustomColumnLayout("reportDefinitions", columns, rowAction);
-  const title = inAdministration ? "Report Definitions" : "Report Library";
+  const title = inAdministration ? "Report Templates" : "Report Library";
   return (
     <div className="flex min-w-0 flex-col h-full gap-4 md:gap-6 w-full flex-1">
       <PageHeader
         title={title}
-        breadcrumbItems={reportBreadcrumbs(navigate, title, inAdministration)}
+        breadcrumbItems={reportBreadcrumbs(navigate, title)}
         actions={
           inAdministration && canManage ? (
             <Button
               size="sm"
-              onClick={() => navigate("/settings/report-configuration/new")}
+              onClick={() => navigate(`${ROUTES.REPORT.TEMPLATE_MANAGEMENT}/new`)}
             >
               <Plus className="mr-2 h-4 w-4" />
               New Report Template
-            </Button>
-          ) : !inAdministration && canManage ? (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => navigate("/settings/report-configuration")}
-            >
-              <IconFileSettings className="mr-2 h-4 w-4" />
-              Configure Templates
             </Button>
           ) : undefined
         }
@@ -409,9 +391,22 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
               options: group.options.map((option) => ({ label: option.label, value: String(option.value) })),
               onChange: (value) => apply({ ...filters, [group.id]: value }),
             }))}
-            hasActiveFilters={Boolean(search || Object.values(filters).some(Boolean))}
+            dates={[
+              {
+                id: "updated",
+                label: "Last Updated Range",
+                from: updated.from,
+                to: updated.to,
+                onChange: (from, to) => {
+                  setPage(1);
+                  setUpdated({ from, to });
+                },
+              },
+            ]}
+            hasActiveFilters={Boolean(search || updated.from || updated.to || Object.values(filters).some(Boolean))}
             onClear={() => {
               setSearch("");
+              setUpdated({ from: "", to: "" });
               apply(defaults);
             }}
             customControl={control}
@@ -491,18 +486,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
                 Create Report
               </DropdownMenuItem>
             )}
-            {!inAdministration && rowCan("createReport") && (
-              <DropdownMenuItem
-                icon={pinned.has(openTemplate.code) ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
-                onClick={() => {
-                  void togglePin(openTemplate.code);
-                  close();
-                }}
-              >
-                {pinned.has(openTemplate.code) ? "Unpin from Overview" : "Pin to Overview"}
-              </DropdownMenuItem>
-            )}
-            {/* Changing a template belongs to Report Definitions; an effective revision is changed by Upgrade, on its details page. */}
+            {/* Changing a template belongs to Report Templates; an effective revision is changed by Upgrade, on its details page. */}
             {inAdministration && (rowCan("edit") || rowCan("delete")) && (
               <>
                 {rowCan("edit") && (

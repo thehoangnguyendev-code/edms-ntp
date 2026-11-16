@@ -13,6 +13,7 @@ import { EffectiveByTypePanel } from '../shared/EffectiveByTypePanel';
 import { PendingWorkPanel } from '../shared/PendingWorkPanel';
 import { useDashboardResource } from '../shared/useDashboardResource';
 import { DashboardWidgets } from '../shared/DashboardWidgets';
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const dash = '—';
 
@@ -21,7 +22,7 @@ export function AdminDashboardView() {
   const monitoringWidgets = useSystemMonitoringWidgets();
   const summary = useDashboardResource(() => dashboardApi.getSummary(), []);
   const [taskQuery, setTaskQuery] = useState('');
-  const taskSearch = useDebounce(taskQuery, 300);
+  const taskSearch = useDebounce(taskQuery, SEARCH_DEBOUNCE_MS);
   const tasks = useDashboardResource(() => dashboardApi.getPendingWorkflowActions(taskSearch), [taskSearch]);
   const stats = useDashboardResource(() => dashboardApi.getAdminStats(), []);
 

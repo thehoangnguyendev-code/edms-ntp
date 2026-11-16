@@ -20,8 +20,9 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * REPORT-NOTIFICATION-CHANNEL-2026-10-14 (in-app and e-mail, link only) and REPORT-SCHEDULE-OWNER-2026-10-14 (owner and creator told when a
- * schedule stops). A notice never carries the file. Each recipient is checked again at send time; each attempt, including a refusal or a
+ * REPORT-NOTIFICATION-CHANNEL-2026-10-14 (in-app and e-mail) and REPORT-SCHEDULE-OWNER-2026-10-14 (owner and creator told when a
+ * schedule stops). The notice of a report a person asked for themselves carries the file in its e-mail when it is small enough and a link that downloads it
+ * after sign-in (REPORT-READY-FILE-2026-11-16, owner decision); every other notice stays a link only. Each recipient is checked again at send time; each attempt, including a refusal or a
  * failure, is written to report_delivery_attempts. A failed notice never fails the report run that caused it.
  */
 @Service
@@ -32,6 +33,8 @@ public class ReportDeliveryService {
     static final String EVENT_RUN_FAILED = "REPORT_RUN_FAILED";
     static final String CHANNEL_IN_APP = "IN_APP";
     static final String CHANNEL_EMAIL = "EMAIL";
+    /** The most bytes of a report file that an e-mail carries; a larger file is not attached and the e-mail says so (the link still downloads it). */
+    public static final int MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
     private final JdbcTemplate jdbc;
     private final UserAccountRepository users;
@@ -48,6 +51,14 @@ public class ReportDeliveryService {
 
     /** Tells the recipients of a scheduled run that its report is ready to view. Never throws. */
     public void notifyRecipientsOfCompletedRun(UUID runId) {
+        notifyRecipientsOfCompletedRun(runId, null, null);
+    }
+
+    /**
+     * The same, with the file that was made: for a report a person asked for themselves it goes with their e-mail when it is not larger than {@link #MAX_ATTACHMENT_BYTES}.
+     * The recipients of a schedule get the link only. Never throws.
+     */
+    public void notifyRecipientsOfCompletedRun(UUID runId, String fileName, byte[] file) {
         try {
             List<Map<String, Object>> rows = jdbc.queryForList(
                     "select schedule_id, requester_user_id, coalesce(report_title, definition_code) as title from report_runs where id=?", runId);
@@ -57,12 +68,18 @@ public class ReportDeliveryService {
             String title = String.valueOf(run.get("title"));
             if (run.get("schedule_id") == null) {
                 // a report a person asked for themselves: they are told it is ready (the file is not sent, as for a schedule)
-                Notice own = new Notice(EVENT_REPORT_READY, "Report ready: " + title,
-                        "The report you asked for is ready to view. The file itself is not sent; open the link and sign in to see it.",
-                        "/report/runs/" + runId, "REPORT_RUN", runId, runId, null);
+                boolean attach = file != null && fileName != null && file.length > 0 && file.length <= MAX_ATTACHMENT_BYTES;
+                boolean tooLarge = file != null && file.length > MAX_ATTACHMENT_BYTES;
+                String how = attach ? "The file is attached to this e-mail. You can also use the link below: sign in, and the file downloads at once."
+                        : "Use the link below: sign in, and the file downloads at once." + (tooLarge ? " The file is larger than " + (MAX_ATTACHMENT_BYTES / (1024 * 1024)) + " MB, so it is not attached to this e-mail." : "");
+                // The in-app notice only tells: no link and no file. The file is downloaded from the Action menu of the report in Report Run History, or from the e-mail.
+                String inApp = "The report you asked for is ready. To download it, use the Action menu of the report in Report Run History, or the e-mail sent to you.";
+                Notice own = new Notice(EVENT_REPORT_READY, "Report ready: " + title, "The report you asked for is ready. " + how,
+                        "/report/runs/" + runId + "?download=1", "REPORT_RUN", runId, runId, null);
                 UserAccount owner = users.findById(requester).orElse(null);
                 if (owner == null) { recordMissing(requester, own); return; }
-                deliver(owner, own, owner.getStatus() == UserStatus.Active);
+                // The file leaves the system only for a person who may open the run now (checked again at send time, as for every notice): otherwise the e-mail has the link only.
+                deliverSplit(owner, own, inApp, owner.getStatus() == UserStatus.Active, attach && canOpenRun(owner, requester) ? new NotificationDispatcher.MailFile(fileName, file) : null);
                 return;
             }
             UUID scheduleId = UUID.fromString(run.get("schedule_id").toString());
@@ -89,11 +106,13 @@ public class ReportDeliveryService {
             Map<String, Object> run = rows.getFirst();
             UUID requester = UUID.fromString(run.get("requester_user_id").toString());
             UUID scheduleId = run.get("schedule_id") == null ? null : UUID.fromString(run.get("schedule_id").toString());
+            String cause = failureCause(runId);
             Notice notice = new Notice(EVENT_RUN_FAILED, "Report failed: " + run.get("title"),
-                    "The report could not be produced. Open the run to see the reason, or ask for it again.", "/report/runs/" + runId, "REPORT_RUN", runId, runId, scheduleId);
+                    "The report could not be produced. " + cause + " Ask for it again after the cause is corrected.", "/report/runs/" + runId, "REPORT_RUN", runId, runId, scheduleId);
             UserAccount owner = users.findById(requester).orElse(null);
             if (owner == null) { recordMissing(requester, notice); return; }
-            deliver(owner, notice, owner.getStatus() == UserStatus.Active);
+            if (scheduleId == null) deliverSplit(owner, notice, notice.message(), owner.getStatus() == UserStatus.Active, null);
+            else deliver(owner, notice, owner.getStatus() == UserStatus.Active);
         } catch (Exception failure) {
             log.error("The failed-run notice could not be processed for run {}: {}", runId, failure.getMessage(), failure);
         }
@@ -155,24 +174,82 @@ public class ReportDeliveryService {
         return active && moduleAndOwnRuns && (recipient.getId().equals(requester) || permissions.hasPermission(recipient, "reports.run.view_all"));
     }
 
+    /** What the run says went wrong, in words for a person: the text the worker wrote when it stopped the run, or the one of its reason code. */
+    private String failureCause(UUID runId) {
+        try {
+            List<Map<String, Object>> rows = jdbc.queryForList("select reason_code, error_message from report_runs where id=?", runId);
+            if (!rows.isEmpty()) {
+                Object message = rows.getFirst().get("error_message");
+                if (message != null && StringUtils.hasText(message.toString())) return "Cause: " + message.toString().trim();
+                Object reason = rows.getFirst().get("reason_code");
+                if (reason != null) return "Cause: " + reason + ".";
+            }
+        } catch (Exception unreadable) {
+            log.warn("The cause of run {} could not be read: {}", runId, unreadable.getMessage());
+        }
+        return "The cause is on the run: open it in Report Run History.";
+    }
+
     private void deliver(UserAccount recipient, Notice notice, boolean authorized) {
+        deliver(recipient, notice, authorized, null);
+    }
+
+    /**
+     * A notice whose in-app and e-mail say different things (REPORT-READY-FILE-2026-11-16): the in-app notice only tells, with no link and no file; the e-mail has the text of the
+     * notice, its link and, when given, the file. Each channel is dispatched on its own and written to the delivery log on its own.
+     */
+    private void deliverSplit(UserAccount recipient, Notice notice, String inAppMessage, boolean authorized, NotificationDispatcher.MailFile file) {
         if (!authorized) {
             record(recipient.getId(), CHANNEL_IN_APP, notice, "SKIPPED_NOT_AUTHORIZED", null);
             record(recipient.getId(), CHANNEL_EMAIL, notice, "SKIPPED_NOT_AUTHORIZED", null);
             return;
         }
-        sendThroughRegistry(recipient, notice);
+        String code = OperationalNotificationEvents.reportRegistryCode(notice.event());
+        NotificationDispatcher.Outcome inApp;
+        try {
+            inApp = dispatcher.dispatchIndependently(code, List.of(recipient), NotificationDispatcher.noticeVariables(notice.title(), inAppMessage, ""), java.util.Set.of("IN_APP"));
+        } catch (Exception failure) {
+            record(recipient.getId(), CHANNEL_IN_APP, notice, "FAILED", failure.getClass().getSimpleName());
+            inApp = null;
+        }
+        if (inApp != null) {
+            String reason = inApp.inAppReason();
+            record(recipient.getId(), CHANNEL_IN_APP, notice, reason == null ? "SENT" : "SKIPPED", reason);
+        }
+        NotificationDispatcher.Outcome mail;
+        try {
+            var variables = NotificationDispatcher.noticeVariables(notice.title(), notice.message(), notice.path());
+            mail = file == null ? dispatcher.dispatchIndependently(code, List.of(recipient), variables, java.util.Set.of("EMAIL"))
+                    : dispatcher.dispatchIndependently(code, List.of(recipient), variables, java.util.Set.of("EMAIL"), file);
+        } catch (Exception failure) {
+            record(recipient.getId(), CHANNEL_EMAIL, notice, "FAILED", failure.getClass().getSimpleName());
+            return;
+        }
+        if (mail == null) mail = new NotificationDispatcher.Outcome("NOT_REGISTERED", false, false, false, false);
+        String reason = mail.emailReason(StringUtils.hasText(recipient.getEmail()));
+        record(recipient.getId(), CHANNEL_EMAIL, notice, reason == null ? "SENT" : "NO_EMAIL_ADDRESS".equals(reason) || "NOT_SENT".equals(reason) ? "FAILED" : "SKIPPED", reason);
+    }
+
+    private void deliver(UserAccount recipient, Notice notice, boolean authorized, NotificationDispatcher.MailFile file) {
+        if (!authorized) {
+            record(recipient.getId(), CHANNEL_IN_APP, notice, "SKIPPED_NOT_AUTHORIZED", null);
+            record(recipient.getId(), CHANNEL_EMAIL, notice, "SKIPPED_NOT_AUTHORIZED", null);
+            return;
+        }
+        sendThroughRegistry(recipient, notice, file);
     }
 
     /**
      * Both notices go through the registry event of the report notice, so its policy applies (on or off, channels, wording, icon, e-mail design). What
      * the dispatch did is written to the delivery log channel by channel; a policy that is off or a channel that is off is a SKIPPED attempt, not a failure.
      */
-    private void sendThroughRegistry(UserAccount recipient, Notice notice) {
+    private void sendThroughRegistry(UserAccount recipient, Notice notice, NotificationDispatcher.MailFile file) {
         NotificationDispatcher.Outcome outcome;
         try {
-            outcome = dispatcher.dispatchIndependently(OperationalNotificationEvents.reportRegistryCode(notice.event()), List.of(recipient),
-                    NotificationDispatcher.noticeVariables(notice.title(), notice.message(), notice.path()));
+            var variables = NotificationDispatcher.noticeVariables(notice.title(), notice.message(), notice.path());
+            outcome = file == null
+                    ? dispatcher.dispatchIndependently(OperationalNotificationEvents.reportRegistryCode(notice.event()), List.of(recipient), variables)
+                    : dispatcher.dispatchIndependently(OperationalNotificationEvents.reportRegistryCode(notice.event()), List.of(recipient), variables, file);
         } catch (Exception failure) {
             record(recipient.getId(), CHANNEL_IN_APP, notice, "FAILED", failure.getClass().getSimpleName());
             record(recipient.getId(), CHANNEL_EMAIL, notice, "FAILED", failure.getClass().getSimpleName());

@@ -51,7 +51,7 @@ export function TrainingFileDropzone({ label, description, accept, hint, maxMb, 
         {badge}
       </div>
       {description && <p className="text-xs text-slate-500">{description}</p>}
-      <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
+      <input ref={inputRef} type="file" accept={accept} aria-label={label} className="hidden" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
       {existing ? (
         <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 md:p-5">
           <div className="flex items-start gap-3">

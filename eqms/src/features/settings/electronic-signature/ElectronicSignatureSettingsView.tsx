@@ -140,41 +140,11 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
               disabled={saving || !isDirty}
               className="gap-2 whitespace-nowrap"
             >
-              {saving ? "Saving..." : "Save Changes"}
+              {saving ? "Saving..." : "Save"}
             </Button>
           ) : undefined
         }
       />
-
-      <FormSection
-        title="How to use"
-        icon={<MousePointerClick className="h-4 w-4" />}
-      >
-        <div className="space-y-2 text-sm text-slate-700">
-          <div className="flex gap-2">
-            <span className="shrink-0 font-semibold text-emerald-600">1</span>
-            <span>
-              Each row is an action that needs an electronic signature. Change
-              the <strong>Meaning</strong> to set the label the signer sees and
-              that is written on the signed record.
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <span className="shrink-0 font-semibold text-emerald-600">2</span>
-            <span>
-              The action, its code, the password and the reason are fixed by the
-              system and cannot be configured (21 CFR Part 11 / GMP).
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <span className="shrink-0 font-semibold text-emerald-600">3</span>
-            <span>
-              Click <strong>Save Changes</strong>. Saving needs your electronic
-              signature and is recorded in the Audit Trail.
-            </span>
-          </div>
-        </div>
-      </FormSection>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="p-4 md:p-5">

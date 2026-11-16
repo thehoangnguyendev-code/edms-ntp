@@ -109,20 +109,25 @@ public class PermissionSetService {
         boolean canView = canView(user);
         boolean canManage = canManage(user);
         long usageCount = accessProfilePermissionSetRepository.countByPermissionSetId(id);
+        return buildCapabilities(id, ps.isSystem(), ps.isActive(), usageCount, canView, canManage);
+    }
+
+    private PermissionSetCapabilitiesResponse buildCapabilities(UUID id, boolean system, boolean active,
+            long usageCount, boolean canView, boolean canManage) {
         Map<String, PermissionSetCapabilitiesResponse.ActionCapability> actions = new java.util.LinkedHashMap<>();
         actions.put("view", capability(canView, VIEW_PERMISSION, "Permission set view permission required"));
         actions.put("edit", capability(canManage, MANAGE_PERMISSION, "Permission set management permission required"));
         actions.put("clone", capability(canManage, MANAGE_PERMISSION, "Permission set management permission required"));
         actions.put("toggleStatus", capability(
-                canManage && !(ps.isSystem() && ps.isActive()),
+                canManage && !(system && active),
                 MANAGE_PERMISSION,
                 !canManage ? "Permission set management permission required"
                         : "System permission sets cannot be deactivated"));
         actions.put("delete", capability(
-                canManage && !ps.isSystem() && usageCount == 0,
+                canManage && !system && usageCount == 0,
                 MANAGE_PERMISSION,
                 !canManage ? "Permission set management permission required"
-                        : ps.isSystem() ? "System permission sets cannot be deleted"
+                        : system ? "System permission sets cannot be deleted"
                         : usageCount > 0 ? "Permission set is assigned to access profiles and cannot be deleted"
                         : null));
         return new PermissionSetCapabilitiesResponse(id, actions);
@@ -532,8 +537,19 @@ public class PermissionSetService {
         int totalPages = Math.max(1, (int) Math.ceil((double) total / safeLimit));
         int from = Math.min((safePage - 1) * safeLimit, total);
         int to = Math.min(from + safeLimit, total);
+        var pageRows = filtered.subList(from, to);
+        Map<UUID, Long> usage = new java.util.HashMap<>();
+        if (!pageRows.isEmpty()) {
+            for (Object[] count : accessProfilePermissionSetRepository.countUsageForPage(pageRows.stream().map(PermissionSetResponse::id).toList())) {
+                usage.put((UUID) count[0], ((Number) count[1]).longValue());
+            }
+        }
+        UserAccount actor = currentUserService.requireCurrentUser();
+        boolean view = canView(actor), manage = canManage(actor);
+        var rowsWithCapabilities = pageRows.stream().map(row -> row.withCapabilities(buildCapabilities(
+                row.id(), row.system(), row.active(), usage.getOrDefault(row.id(), 0L), view, manage))).toList();
         return new com.eqms.dto.user.PageResponse<>(
-                filtered.subList(from, to),
+                rowsWithCapabilities,
                 new com.eqms.dto.user.PaginationResponse(safePage, safeLimit, total, totalPages));
     }
 

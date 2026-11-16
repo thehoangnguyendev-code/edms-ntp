@@ -94,8 +94,7 @@ class RecallByScanMigrationIntegrationTest {
                     join permission_set_items i on i.permission_set_id = ps.id
                     join permissions p on p.id = i.permission_id
                     where ps.code = ?
-                      and p.code in ('documents.uncontrolled_copy.approve_request', 'documents.uncontrolled_copy.reject_request',
-                                     'documents.uncontrolled_copy.distribute')
+                      and p.code = 'documents.uncontrolled_copy.distribute'
                     """, Integer.class, code);
             assertThat(decides).as("set %s holds uncontrolled_copy.view_all", code).isPositive();
         }

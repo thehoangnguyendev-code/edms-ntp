@@ -5,6 +5,7 @@ import { IconDownload, IconEye, IconFileTypeDocx, IconFileTypePdf, IconPlus, Ico
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { trainingAnnexDetail } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { Button } from "@/components/ui/button/Button";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
@@ -211,7 +212,7 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
                 {selected && (
                   <>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge color={selected.status === "ENABLED" ? "emerald" : "slate"}>{STATUS_LABEL[selected.status]}</Badge>
+                      <Badge color={flagColor(selected.status === "ENABLED")}>{STATUS_LABEL[selected.status]}</Badge>
                       <TokenCheckBadge template={selected} />
                     </div>
                     <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -267,7 +268,7 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
                   <li key={t.id}>
                     <button type="button" onClick={() => setSelectedId(t.id)} aria-current={t.id === selectedId} className={`flex w-full items-center justify-between gap-2 py-2 text-left text-sm hover:bg-slate-50 ${t.id === selectedId ? "font-medium text-emerald-800" : "text-slate-800"}`}>
                       <span className="min-w-0 truncate">{t.versionLabel}<span className="ml-2 text-xs font-normal text-slate-500">{when(t.uploadedAt)}</span></span>
-                      <span className="flex shrink-0 items-center gap-1.5"><Badge color={t.status === "ENABLED" ? "emerald" : "slate"}>{STATUS_LABEL[t.status]}</Badge><TokenCheckBadge template={t} /></span>
+                      <span className="flex shrink-0 items-center gap-1.5"><Badge color={flagColor(t.status === "ENABLED")}>{STATUS_LABEL[t.status]}</Badge><TokenCheckBadge template={t} /></span>
                     </button>
                   </li>
                 ))}

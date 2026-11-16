@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 
-export type ChangedEntityType = "REVISION" | "DOCUMENT" | "CONTROLLED_COPY" | "CONTROLLED_COPY_BATCH" | "UNCONTROLLED_COPY" | "EXECUTED_RECORD" | "TRAINING";
+export type ChangedEntityType = "REVISION" | "DOCUMENT" | "CONTROLLED_COPY" | "CONTROLLED_COPY_BATCH" | "UNCONTROLLED_COPY" | "EXECUTED_RECORD" | "TRAINING" | "REPORT_RUN" | "REPORT_APPEARANCE";
 
 export interface EntityChangedEvent {
   entityType: ChangedEntityType;

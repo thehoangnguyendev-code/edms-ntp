@@ -3,7 +3,6 @@ package com.eqms.dto.uncontrolledcopypolicy;
 import com.eqms.dto.controlledcopypolicy.ControlledCopyStatusMarking;
 
 public record UncontrolledCopyPolicyRequest(
-        Boolean approvalRequired,
         Integer validityHours,
         /** DISTRIBUTION or DOCUMENT_VALID_UNTIL; null leaves the stored basis untouched. */
         String validityBasis,

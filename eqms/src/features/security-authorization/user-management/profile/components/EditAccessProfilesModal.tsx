@@ -12,6 +12,7 @@ import { settingsApi, type AccessProfileResponse } from "@/services/api/settings
 import { useSecurityESign } from "../../../shared/useSecurityESign";
 import { useSodAccessProfileCheck } from "../../../shared/useSodAccessProfileCheck";
 import { SodViolationPanel } from "../../../shared/SodViolationPanel";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 interface Props {
   isOpen: boolean;
@@ -56,8 +57,8 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [availableSearch, setAvailableSearch] = useState("");
   const [selectedSearch, setSelectedSearch] = useState("");
-  const debouncedAvailableSearch = useDebounce(availableSearch, 300);
-  const debouncedSelectedSearch = useDebounce(selectedSearch, 300);
+  const debouncedAvailableSearch = useDebounce(availableSearch, SEARCH_DEBOUNCE_MS);
+  const debouncedSelectedSearch = useDebounce(selectedSearch, SEARCH_DEBOUNCE_MS);
   const [pickedAvailableIds, setPickedAvailableIds] = useState<string[]>([]);
   const [pickedSelectedIds, setPickedSelectedIds] = useState<string[]>([]);
 
@@ -352,7 +353,7 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
                             </div>
                             <span className="font-medium text-slate-900 truncate min-w-0 flex-1">{p.name}</span>
                             {!p.active && <Badge color="slate" size="sm">Inactive</Badge>}
-                            {p.system && <Badge color="amber" size="sm">System</Badge>}
+                            {p.system && <Badge color="blue" size="sm">System</Badge>}
                           </div>
                         );
                       })}

@@ -7,6 +7,7 @@ import { ServerListPanel } from "@/features/backup-restore/components/ServerList
 import { formatDateTime } from "@/features/backup-restore/format";
 import { backupRestoreApi, type DrDeclarationRecord, type DrScenarioRecord } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const ALL = "ALL";
 type Direction = "asc" | "desc";
@@ -25,7 +26,7 @@ function useServerList<R, K extends string>(
   failure: string,
 ) {
   const [search, setSearch] = useState("");
-  const debounced = useDebounce(search, 400);
+  const debounced = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [filters, setFilters] = useState<Record<string, string>>(initial.filters);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");

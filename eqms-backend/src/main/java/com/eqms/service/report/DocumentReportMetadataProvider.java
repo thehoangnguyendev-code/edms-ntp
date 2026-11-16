@@ -17,6 +17,7 @@ public class DocumentReportMetadataProvider implements ReportMetadataProvider {
 
     private static final Map<String, String> COLUMNS = new LinkedHashMap<>();
     private static final Map<String, String> LABELS = new LinkedHashMap<>();
+    private static final Map<String, String> GROUPS = new LinkedHashMap<>();
     static {
         column("documentNumber", "Document Number", "d.document_number");
         column("documentName", "Document Name", "d.document_name");
@@ -24,7 +25,7 @@ public class DocumentReportMetadataProvider implements ReportMetadataProvider {
         column("department", "Department", "dep.name");
         column("businessUnit", "Business Unit", "bu.name");
         column("effectiveDate", "Effective Date", "d.effective_date");
-        column("createdAt", "Created", ReportQueryKit.timestamp("d.created_at"));
+        column("createdAt", "Created At", ReportQueryKit.timestamp("d.created_at"));
         column("documentType", "Document Type", "dt.name");
         column("subType", "Sub Type", "d.sub_type");
         column("revision", "Current Revision", "d.version");
@@ -39,17 +40,35 @@ public class DocumentReportMetadataProvider implements ReportMetadataProvider {
         column("requiresTraining", "Training Required", "case when d.requires_training then 'Yes' else 'No' end");
         column("language", "Language", "d.language");
         column("updatedAt", "Last Updated", ReportQueryKit.timestamp("d.updated_at"));
+        // REPORT-FIELD-CATALOG-2026-11-15: the other metadata of a document that the register holds.
+        group("Identity", "titleLocal", "Local-Language Title", "d.title_local_language");
+        group("Identity", "isTemplate", "Template Document", ReportQueryKit.yesNo("d.is_template"));
+        group("Identity", "reviewRequirement", "Review Requirement", "d.review_requirement");
+        group("People", "openedBy", "Opened By", ReportQueryKit.person("d.opened_by_user_id"));
+        group("People", "lastModifiedBy", "Last Modified By", ReportQueryKit.person("d.last_modified_by_user_id"));
+        group("Lifecycle", "obsoletedAt", "Obsoleted", ReportQueryKit.timestamp("d.obsoleted_at"));
+        group("Lifecycle", "obsoletedBy", "Obsoleted By", ReportQueryKit.person("d.obsoleted_by_user_id"));
+        group("Lifecycle", "cancelledAt", "Cancelled", ReportQueryKit.timestamp("d.cancelled_at"));
+        group("Lifecycle", "cancelledBy", "Cancelled By", ReportQueryKit.person("d.cancelled_by_user_id"));
+        group("Training", "trainingPeriodDays", "Training Period (Days)", "d.training_period_days");
+        group("Training", "skipTrainingReason", "Reason for Skipping Training", "d.reason_for_skipping_training");
+        group("Legacy Import", "legacyImport", "Legacy Import", ReportQueryKit.yesNo("d.is_legacy_import"));
+        group("Legacy Import", "legacyImportedAt", "Legacy Imported", ReportQueryKit.timestamp("d.legacy_imported_at"));
+        group("Legacy Import", "originalEffectiveDate", "Original Effective Date", ReportQueryKit.timestamp("d.original_effective_date"));
     }
     private static void column(String code, String label, String sql) { COLUMNS.put(code, sql); LABELS.put(code, label); }
+    private static void group(String group, String code, String label, String sql) { column(code, label, sql); GROUPS.put(code, group); }
+    // The columns the type had before the field catalogue are its Core group; only the fields added since are grouped.
+    @Override public Map<String, String> fieldGroups() { return GROUPS; }
 
     private static final Set<String> FILTERS = Set.of("search", "status", "department", "businessUnit", "documentType", "createdFrom", "createdTo",
-            "effectiveFrom", "effectiveTo", "reviewFrom", "reviewTo", "reviewWithinDays", "validUntilFrom", "validUntilTo");
+            "effectiveFrom", "effectiveTo", "reviewFrom", "reviewTo", "reviewWithinDays", "validUntilFrom", "validUntilTo", "author");
 
     public String code() { return "DOCUMENT_STATUS"; }
     public String name() { return "Document Register"; }
     public String description() { return "Controlled documents with their number, name, status, type, department, business unit, people, validity and periodic review dates."; }
     public Map<String, String> columns() { return COLUMNS; }
-    @Override public Set<String> dateColumns() { return new LinkedHashSet<>(List.of("effectiveDate", "createdAt", "validUntil", "reviewDate", "updatedAt")); }
+    @Override public Set<String> dateColumns() { return new LinkedHashSet<>(List.of("effectiveDate", "createdAt", "validUntil", "reviewDate", "updatedAt", "obsoletedAt", "cancelledAt", "legacyImportedAt", "originalEffectiveDate")); }
     public Map<String, String> labels() { return LABELS; }
     public String identityColumn() { return "d.id"; }
     public String defaultSort() { return "documentNumber"; }
@@ -60,6 +79,8 @@ public class DocumentReportMetadataProvider implements ReportMetadataProvider {
             Map.of("code", "department", "name", "Department", "type", "LOOKUP"),
             Map.of("code", "businessUnit", "name", "Business Unit", "type", "LOOKUP"),
             Map.of("code", "documentType", "name", "Document Type", "type", "LOOKUP"),
+            // REPORT-FIELD-CATALOG-2026-11-15: "which documents did this person author" (the author is chosen from the people who wrote a document).
+            Map.of("code", "author", "name", "Author", "type", "LOOKUP"),
             Map.of("code", "createdFrom", "name", "Created from", "type", "DATE"),
             Map.of("code", "createdTo", "name", "Created to", "type", "DATE"),
             Map.of("code", "effectiveFrom", "name", "Effective from", "type", "DATE"),
@@ -69,9 +90,9 @@ public class DocumentReportMetadataProvider implements ReportMetadataProvider {
             Map.of("code", "reviewWithinDays", "name", "Review due within (days)", "type", "NUMBER"),
             Map.of("code", "validUntilFrom", "name", "Valid until from", "type", "DATE"),
             Map.of("code", "validUntilTo", "name", "Valid until to", "type", "DATE")); }
-    public Map<String,String> lookupColumns() { return Map.of("status", "d.status_code", "department", "dep.id", "businessUnit", "bu.id", "documentType", "dt.id"); }
+    public Map<String,String> lookupColumns() { return Map.of("status", "d.status_code", "department", "dep.id", "businessUnit", "bu.id", "documentType", "dt.id", "author", "au.id"); }
     public Map<String,String> filterColumns() {
-        Map<String, String> columns = new HashMap<>(Map.of("status", "status", "department", "department", "businessUnit", "businessUnit", "documentType", "documentType",
+        Map<String, String> columns = new HashMap<>(Map.of("status", "status", "department", "department", "businessUnit", "businessUnit", "documentType", "documentType", "author", "author",
                 "createdFrom", "createdAt", "createdTo", "createdAt", "effectiveFrom", "effectiveDate", "effectiveTo", "effectiveDate"));
         columns.putAll(Map.of("reviewFrom", "reviewDate", "reviewTo", "reviewDate", "reviewWithinDays", "reviewDate", "validUntilFrom", "validUntil", "validUntilTo", "validUntil"));
         return columns;
@@ -99,7 +120,7 @@ public class DocumentReportMetadataProvider implements ReportMetadataProvider {
             args.add(term); args.add(term);
         }
         Map<String, String> equals = new LinkedHashMap<>();
-        equals.put("status", "d.status_code"); equals.put("department", "dep.id"); equals.put("businessUnit", "bu.id"); equals.put("documentType", "dt.id");
+        equals.put("status", "d.status_code"); equals.put("department", "dep.id"); equals.put("businessUnit", "bu.id"); equals.put("documentType", "dt.id"); equals.put("author", "au.id");
         ReportQueryKit.equalsFilters(sql, args, filters, equals);
         ReportQueryKit.dates(sql, args, filters, "created", "d.created_at::date");
         ReportQueryKit.dates(sql, args, filters, "effective", "d.effective_date");

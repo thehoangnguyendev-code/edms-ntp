@@ -6,10 +6,11 @@ import { cn } from "@/components/ui/utils";
 import { useDebounce } from "@/hooks";
 import { knowledgeApi, type DocumentSuggestion } from "@/services/api/knowledge";
 import { typeBadgeColor } from "./explorerModel";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 /** Characters before the server is asked for suggestions, and the pause after the last key press. */
 export const MIN_SUGGEST_LENGTH = 2;
-export const SUGGEST_DEBOUNCE_MS = 250;
+export const SUGGEST_DEBOUNCE_MS = SEARCH_DEBOUNCE_MS;
 
 interface ExplorerSearchBoxProps {
   value: string;

@@ -2,10 +2,11 @@ import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getApiErrorMessage } from '@/utils/apiError';
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronUp, Copy, MoreVertical, Plus, Search, ToggleLeft, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Copy, MoreVertical, Plus, Search, Trash2, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge, type BadgeColor } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { FullPageLoading, SectionLoading } from "@/components/ui/loading";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
@@ -22,13 +23,14 @@ import { ROUTES } from "@/app/routes.constants";
 import { formatDateTimeLong } from "@/utils/format";
 import type { PublishingTemplateResponse } from "@/features/documents/publishing/types";
 import { extractApiMessage } from "@/features/settings/dictionaries/utils";
-import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
+import { IconFilter2, IconPencilMinus, IconToggleLeft, IconToggleRight } from "@tabler/icons-react";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { DesktopSelectFilters } from '@/components/ui/filter/DesktopSelectFilters';
 import { useBranding } from '@/components/branding/BrandLogo';
 import { publishingTemplates as publishingTemplatesBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type SortConfig = {
   key: string;
@@ -62,8 +64,7 @@ const tableColumns = [
 
 const getStatusColor = (status?: string | null): BadgeColor => {
   const normalized = String(status || "").trim().toUpperCase();
-  if (normalized === "ACTIVE" || normalized === "PUBLISHED") return "emerald";
-  return "slate";
+  return flagColor(normalized === "ACTIVE" || normalized === "PUBLISHED");
 };
 
 const formatPublishingMode = (value?: string | null) => {
@@ -117,7 +118,7 @@ export const PublishingTemplatesView: React.FC = () => {
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["status", "publishingMode", "createdBy"]));
 
-  const debouncedSearch = useDebounce(searchQuery, 300);
+  const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
 
   useEffect(() => {
     return () => {
@@ -283,7 +284,7 @@ export const PublishingTemplatesView: React.FC = () => {
     <div className="py-1">
       <DropdownMenuItem icon={<IconPencilMinus className="h-4 w-4" />} onClick={() => { navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(item.id || "")); close(); }}>Edit Template</DropdownMenuItem>
       <DropdownMenuItem icon={<Copy className="h-4 w-4" />} onClick={() => { void handleDuplicate(item.id || ""); close(); }}>Duplicate</DropdownMenuItem>
-      <DropdownMenuItem icon={<ToggleLeft className="h-4 w-4" />} onClick={() => { void handleToggle(item.id || ""); close(); }}>{String(item.status || "").toUpperCase() === "ACTIVE" ? "Deactivate" : "Activate"}</DropdownMenuItem>
+      <DropdownMenuItem icon={String(item.status || "").toUpperCase() === "ACTIVE" ? <IconToggleLeft className="h-4 w-4" /> : <IconToggleRight className="h-4 w-4" />} onClick={() => { void handleToggle(item.id || ""); close(); }}>{String(item.status || "").toUpperCase() === "ACTIVE" ? "Deactivate" : "Activate"}</DropdownMenuItem>
       <DropdownMenuItem icon={<Trash2 className="h-4 w-4" />} onClick={() => { setDeleteTarget(item); close(); }}>Delete</DropdownMenuItem>
     </div>
   </PortalDropdownMenu>
@@ -429,7 +430,7 @@ export const PublishingTemplatesView: React.FC = () => {
                     const users = await metadataApi.getUsersLookup({ search: query });
                     return users.map((u): SelectOption => ({ label: u.fullName, value: u.fullName }));
                   }}
-                  debounceMs={300}
+                  debounceMs={SEARCH_DEBOUNCE_MS}
                   minSearchLength={0}
                 />
               </div>

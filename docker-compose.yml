@@ -265,6 +265,33 @@ services:
       retries: 12
       start_period: 60s
 
+  # Draws the charts of the reports with Chart.js on the server (REPORT-CHARTJS-2026-11-15): the backend sends the groups of a chart and gets a PNG back, which goes into the
+  # PDF and into the Analysis sheet of the XLSX. Reached only by the backend, on the internal network; it publishes no port. Its fonts are the report fonts the backend bundles.
+  chart-renderer:
+    <<: *default-resources
+    build:
+      context: ./deploy/chart-renderer
+      dockerfile: Dockerfile
+      additional_contexts:
+        fonts: ./eqms-backend/src/main/resources/fonts
+      args:
+        NODE_IMAGE: ${CHART_RENDERER_BASE_IMAGE:-mirror.gcr.io/library/node:22-bookworm-slim}
+    image: ${EQMS_CHART_RENDERER_IMAGE:-eqms-chart-renderer:local}
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-chart-renderer
+    restart: unless-stopped
+    logging: *default-logging
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      # When set, a request must carry it (X-Chart-Token); the backend sends the same value. Empty = no token (the service is on the internal network only).
+      CHART_RENDERER_TOKEN: ${CHART_RENDERER_TOKEN:-}
+
   backend:
     <<: *default-resources
     build:
@@ -289,8 +316,13 @@ services:
         condition: service_started
       onlyoffice-documentserver:
         condition: service_healthy
+      chart-renderer:
+        condition: service_healthy
     environment:
       TZ: Asia/Ho_Chi_Minh
+      # The chart renderer (Chart.js) that draws the charts of the reports; a run that needs a chart and cannot reach it is tried again, then fails.
+      APP_REPORT_CHART_RENDERER_URL: http://chart-renderer:3100
+      APP_REPORT_CHART_RENDERER_TOKEN: ${CHART_RENDERER_TOKEN:-}
       # DEV | TEST | PROD. Checked at startup and before every storage write (EnvironmentConfigurationValidator).
       APP_ENVIRONMENT: ${EQMS_ENVIRONMENT:-DEV}
       # Origins the browser may call the API from (comma separated). A public tunnel of a DEV machine is added in .env, never here.
@@ -299,6 +331,8 @@ services:
       APP_NOTIFICATIONS_OUTBOX_ENCRYPTION_KEY: ${NOTIFICATION_OUTBOX_ENCRYPTION_KEY:?NOTIFICATION_OUTBOX_ENCRYPTION_KEY is required}
       APP_BACKUP_AGENT_URL: http://backup-agent:5600
       APP_BACKUP_AGENT_TOKEN: ${BACKUP_AGENT_API_TOKEN:?BACKUP_AGENT_API_TOKEN is required}
+      # read-only login of the Backup and Restore Runs report copy (scripts/backup/report-reader-role.sh); empty = the copy is off
+      BACKUP_REPORT_DB_PASSWORD: ${BACKUP_REPORT_DB_PASSWORD:-}
       # maintenance window (SDS 11.5): the lock file is read only here; the pass secret signs the Super Administrator's pass
       APP_MAINTENANCE_LOCK_FILE: /maintenance/maintenance.lock
       APP_MAINTENANCE_PASS_SECRET: ${MAINTENANCE_PASS_SECRET:-}

@@ -5,20 +5,17 @@ import type { UncontrolledCopyPolicyMarking } from './uncontrolledCopyPolicy';
 const UNCONTROLLED_COPIES_ENDPOINT = '/uncontrolled-copies';
 
 /** Machine status codes returned by the server -- never compare against the translated/display label. */
-export type UncontrolledCopyStatusCode =
-  | 'REQUESTED'
-  | 'APPROVED'
-  | 'REJECTED'
-  | 'GENERATED'
-  | 'DISTRIBUTED'
-  | 'CANCELLED'
-  | 'EXPIRED';
+export type UncontrolledCopyStatusCode = 'READY_FOR_DISTRIBUTION' | 'DISTRIBUTED' | 'CLOSED_CANCELLED';
+
+/** Why a Closed - Cancelled copy was closed. It is a reason, not a status (UCC-STATUS-2026-11-14). */
+export type UncontrolledCopyCloseReason = 'REJECTED' | 'CANCELLED' | 'EXPIRED';
+
+/** The words for a reason of closing; the code is what the server sends. */
+export const closeReasonLabel = (reason?: UncontrolledCopyCloseReason | null): string =>
+  reason === 'REJECTED' ? 'Rejected' : reason === 'CANCELLED' ? 'Cancelled' : reason === 'EXPIRED' ? 'Expired' : '';
 
 /** What the current user may do on a record right now -- evaluated by the server, only mirrored by the UI. */
 export interface UncontrolledCopyCapabilities {
-  canApprove: boolean;
-  canReject: boolean;
-  canGenerate: boolean;
   canDistribute: boolean;
   canCancel: boolean;
   canPreview: boolean;
@@ -36,6 +33,7 @@ export interface UncontrolledCopy {
   reason?: string | null;
   status: string;
   statusCode: UncontrolledCopyStatusCode;
+  closeReason?: UncontrolledCopyCloseReason | null;
   requestedById?: string | null;
   requestedByName?: string | null;
   requestedAt?: string | null;
@@ -86,7 +84,6 @@ export interface UncontrolledCopyRequestContext {
   canRequest: boolean;
   canRequestForOthers: boolean;
   message?: string | null;
-  approvalRequired: boolean;
   validityHours: number;
   /** What {@code validityHours} is counted from. */
   validityBasis?: 'DISTRIBUTION' | 'DOCUMENT_VALID_UNTIL';
@@ -111,11 +108,9 @@ export interface UncontrolledCopyListParams {
   createdTo?: string;
   validFrom?: string;
   validTo?: string;
-  approvedFrom?: string;
-  approvedTo?: string;
   distributedFrom?: string;
   distributedTo?: string;
-  sortBy?: 'created' | 'number' | 'document' | 'status' | 'validUntil' | 'requested' | 'approved' | 'distributed';
+  sortBy?: 'created' | 'number' | 'document' | 'status' | 'validUntil' | 'requested' | 'distributed';
   sortDirection?: 'asc' | 'desc';
 }
 
@@ -197,24 +192,6 @@ export const uncontrolledCopyApi = {
   /** POST /uncontrolled-copies (e-signature required) */
   requestUncontrolledCopy: async (payload: UncontrolledCopyCreateInput): Promise<UncontrolledCopy> => {
     const response = await api.post<UncontrolledCopy>(UNCONTROLLED_COPIES_ENDPOINT, payload);
-    return response.data;
-  },
-
-  /** POST /uncontrolled-copies/:id/approve (e-signature required) */
-  approveUncontrolledCopyRequest: async (id: string, payload: UncontrolledCopyActionInput): Promise<UncontrolledCopy> => {
-    const response = await api.post<UncontrolledCopy>(`${UNCONTROLLED_COPIES_ENDPOINT}/${id}/approve`, payload);
-    return response.data;
-  },
-
-  /** POST /uncontrolled-copies/:id/reject (e-signature + reason required) */
-  rejectUncontrolledCopyRequest: async (id: string, payload: UncontrolledCopyActionInput): Promise<UncontrolledCopy> => {
-    const response = await api.post<UncontrolledCopy>(`${UNCONTROLLED_COPIES_ENDPOINT}/${id}/reject`, payload);
-    return response.data;
-  },
-
-  /** POST /uncontrolled-copies/:id/generate - renders + stores the watermarked PDF. */
-  generateUncontrolledCopy: async (id: string, payload: UncontrolledCopyActionInput = {}): Promise<UncontrolledCopy> => {
-    const response = await api.post<UncontrolledCopy>(`${UNCONTROLLED_COPIES_ENDPOINT}/${id}/generate`, payload);
     return response.data;
   },
 

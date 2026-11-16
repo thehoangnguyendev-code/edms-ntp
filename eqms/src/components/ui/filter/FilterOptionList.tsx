@@ -2,6 +2,7 @@ import React from 'react';
 import { Check } from 'lucide-react';
 import type { SelectOption } from '@/components/ui/select/Select';
 import { FilterSearchInput } from './FilterSearchInput';
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 /** Single-value filter list. Values and server search remain identical to the existing Select contract. */
 export function FilterOptionList({ label, value, options, onChange, onSearch, disabled = false, active = true }: {
@@ -33,7 +34,7 @@ export function FilterOptionList({ label, value, options, onChange, onSearch, di
       } catch {
         if (!cancelled) { setResults([]); setFailed(true); }
       } finally { if (!cancelled) setLoading(false); }
-    }, 300);
+    }, SEARCH_DEBOUNCE_MS);
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [active, disabled, hasSearch, query, retry]);
 

@@ -5,25 +5,12 @@ import { PdfPreviewModal } from "@/features/documents/shared/components/PdfPrevi
 import { extractApiMessage } from "@/features/settings/dictionaries/utils";
 import { uncontrolledCopyApi, type UncontrolledCopy } from "@/services/api/uncontrolledCopy";
 
-export type UncontrolledCopyAction = "approve" | "reject" | "generate" | "distribute" | "cancel";
-type SignedAction = Exclude<UncontrolledCopyAction, "generate">;
+/** Two actions only (UCC-SIMPLE-2026-11-14): Distribute makes the file and hands the copy over in one signature; Cancel Request needs a reason. */
+export type UncontrolledCopyAction = "distribute" | "cancel";
+type SignedAction = UncontrolledCopyAction;
 
 /** Meaning codes match the backend's createEntitySignature meanings (UNCONTROLLED_COPY_*). */
 const SIGNED_ACTIONS: Record<SignedAction, { title: string; meaningDisplayName: string; meaningCode: string; toStatus: string; done: string }> = {
-  approve: {
-    title: "Approve Uncontrolled Copy Request",
-    meaningDisplayName: "Uncontrolled Copy Approved",
-    meaningCode: "UNCONTROLLED_COPY_APPROVED",
-    toStatus: "Approved",
-    done: "Request approved.",
-  },
-  reject: {
-    title: "Reject Uncontrolled Copy Request",
-    meaningDisplayName: "Uncontrolled Copy Rejected",
-    meaningCode: "UNCONTROLLED_COPY_REJECTED",
-    toStatus: "Rejected",
-    done: "Request rejected.",
-  },
   distribute: {
     title: "Distribute Uncontrolled Copy",
     meaningDisplayName: "Uncontrolled Copy Distributed",
@@ -35,7 +22,7 @@ const SIGNED_ACTIONS: Record<SignedAction, { title: string; meaningDisplayName: 
     title: "Cancel Uncontrolled Copy Request",
     meaningDisplayName: "Uncontrolled Copy Cancelled",
     meaningCode: "UNCONTROLLED_COPY_CANCELLED",
-    toStatus: "Cancelled",
+    toStatus: "Closed - Cancelled",
     done: "Request cancelled.",
   },
 };
@@ -57,8 +44,7 @@ export const saveBlob = (blob: Blob, fileName: string) => {
 };
 
 /**
- * Runs the Uncontrolled Copy lifecycle actions for list + detail views. Every state-changing action except
- * Generate goes through the e-signature modal (its mandatory reason is sent as the action reason); the server
+ * Runs the Uncontrolled Copy lifecycle actions for list + detail views. Every state-changing action goes through the e-signature modal (its mandatory reason is sent as the action reason); the server
  * re-checks permission and status, the UI only mirrors `copy.capabilities`.
  */
 export function useUncontrolledCopyActions(onChanged: () => void) {
@@ -68,23 +54,10 @@ export function useUncontrolledCopyActions(onChanged: () => void) {
   const [preview, setPreview] = useState<{ title: string; url: string } | null>(null);
 
   const runAction = useCallback(
-    async (copy: UncontrolledCopy, action: UncontrolledCopyAction) => {
-      if (action !== "generate") {
-        setPending({ action, copies: [copy] });
-        return;
-      }
-      setBusyId(copy.id);
-      try {
-        await uncontrolledCopyApi.generateUncontrolledCopy(copy.id);
-        showToast({ type: "success", title: "Generated", message: "The watermarked copy was generated." });
-        onChanged();
-      } catch (error) {
-        showToast({ type: "error", title: "Error", message: extractApiMessage(error, "Unable to generate the uncontrolled copy.") });
-      } finally {
-        setBusyId(null);
-      }
+    (copy: UncontrolledCopy, action: UncontrolledCopyAction) => {
+      setPending({ action, copies: [copy] });
     },
-    [onChanged, showToast],
+    [],
   );
 
   const distributeBatch = useCallback((copies: UncontrolledCopy[]) => {
@@ -127,9 +100,7 @@ export function useUncontrolledCopyActions(onChanged: () => void) {
       await uncontrolledCopyApi.distributeUncontrolledCopyBatch(copies.map((c) => c.id), payload);
     } else {
       const id = copies[0].id;
-      if (action === "approve") await uncontrolledCopyApi.approveUncontrolledCopyRequest(id, payload);
-      else if (action === "reject") await uncontrolledCopyApi.rejectUncontrolledCopyRequest(id, payload);
-      else if (action === "distribute") await uncontrolledCopyApi.distributeUncontrolledCopy(id, payload);
+      if (action === "distribute") await uncontrolledCopyApi.distributeUncontrolledCopy(id, payload);
       else await uncontrolledCopyApi.cancelUncontrolledCopy(id, payload);
     }
     showToast({ type: "success", title: "Success", message: SIGNED_ACTIONS[action].done });

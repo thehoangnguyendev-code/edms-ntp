@@ -13,6 +13,8 @@ export interface TemplateFilter {
   code: string;
   name: string;
   type: "TEXT" | "LOOKUP" | "DATE" | "NUMBER";
+  /** "true" when the report cannot be made without this filter (the server sends strings). */
+  required?: string;
 }
 export interface ReportMark {
   color: string;
@@ -26,6 +28,11 @@ export interface ReportMark {
   font: ReportFontFamily;
   layer: "ABOVE" | "BEHIND";
 }
+export type ReportPlace = "LEFT" | "CENTER" | "RIGHT";
+/**
+ * The logo has a place in the header, not a position on the page: it takes its own room and the table starts below it. width is its size as a percentage of the
+ * page. x and y are only what the logo had before it had a place (the server puts such a logo in the place its centre was nearest to).
+ */
 export interface ReportLogo {
   enabled: boolean;
   data: string;
@@ -33,10 +40,85 @@ export interface ReportLogo {
   y: number;
   width: number;
   pages: "ALL" | "FIRST";
+  slot?: ReportPlace;
 }
+/** The text of one place of the header or footer: up to five lines with automatic fields; size in points (6 to 16, not set: 9 in the header, 7 in the footer). */
+/** How a text of the report is set: every value is optional, and a text with none is set as the report always was. */
+export interface ReportTextStyle {
+  font?: ReportFontFamily | null;
+  size?: number | null;
+  color?: string | null;
+  bold?: boolean | null;
+  italic?: boolean | null;
+  underline?: boolean | null;
+  align?: "LEFT" | "CENTER" | "RIGHT" | null;
+  /** Printed in upper case, lower case or with a capital letter on each word; as written when none. */
+  transform?: "UPPERCASE" | "LOWERCASE" | "CAPITALIZE" | null;
+}
+export interface ReportSlot {
+  text: string;
+  size?: number | null;
+  style?: ReportTextStyle | null;
+  /** A place of the header or the footer can be switched off; its text is kept. Not set: on when it has text. */
+  enabled?: boolean | null;
+}
+export interface ReportApprovalColumn {
+  label: string;
+  enabled?: boolean | null;
+  /** Where the name of the column sits in its cell. */
+  align?: "LEFT" | "CENTER" | "RIGHT" | null;
+}
+export const defaultApprovalColumns = (): ReportApprovalColumn[] => ["Name", "Designation", "Sign", "Date"].map((label) => ({ label }));
+export interface ReportInfoItem {
+  label: string;
+  value: string;
+}
+/**
+ * The frame of a page: header and footer in three places, the information above the table, the approval block and the notes after it.
+ * Without a frame the layout is as it was: the header text, the footer text and the page number.
+ */
+export interface ReportFrame {
+  companyName: string;
+  headerLeft: ReportSlot;
+  headerCenter: ReportSlot;
+  headerRight: ReportSlot;
+  footerLeft: ReportSlot;
+  footerCenter: ReportSlot;
+  footerRight: ReportSlot;
+  info: ReportInfoItem[];
+  infoColumns: 1 | 2;
+  approval: boolean;
+  approvalRoles?: string[] | null;
+  /** The columns of the approval table after the roles: named, and switched on or off. Not set: Name, Designation, Sign, Date. */
+  approvalColumns?: ReportApprovalColumn[] | null;
+  notes: boolean;
+  notesHeight: number;
+  infoLabelStyle?: ReportTextStyle | null;
+  infoValueStyle?: ReportTextStyle | null;
+  approvalStyle?: ReportTextStyle | null;
+  notesStyle?: ReportTextStyle | null;
+}
+/**
+ * The kinds of chart a template can have, all drawn on the server with Chart.js (REPORT-CHARTJS-2026-11-15). LINE and AREA are trends by month and need a date field;
+ * the others group the records by the value of a field.
+ */
+export const REPORT_CHART_TYPES = [
+  { value: "BAR", label: "Column" },
+  { value: "HORIZONTAL_BAR", label: "Horizontal bar" },
+  { value: "PIE", label: "Pie" },
+  { value: "DOUGHNUT", label: "Doughnut" },
+  { value: "POLAR_AREA", label: "Polar area" },
+  { value: "RADAR", label: "Radar" },
+  { value: "LINE", label: "Monthly trend (line)" },
+  { value: "AREA", label: "Monthly trend (area)" },
+] as const;
+export type ReportChartType = (typeof REPORT_CHART_TYPES)[number]["value"];
+/** A chart of the trend by month: its groups are the months of a date field. */
+export const isTrendChart = (type: ReportChartType) => type === "LINE" || type === "AREA";
+
 export interface ReportChart {
   title: string;
-  type: "BAR" | "PIE" | "LINE";
+  type: ReportChartType;
   field: string;
   metric: "COUNT" | "PERCENT";
   /** The most groups a column or pie chart shows (5 to 20); the others are added together as "Other". */
@@ -57,6 +139,8 @@ export interface ReportLayout {
   cover: boolean;
   coverTitle: string;
   subtitle: string;
+  coverTitleStyle?: ReportTextStyle | null;
+  coverSubtitleStyle?: ReportTextStyle | null;
   showExecutor: boolean;
   showGeneratedAt: boolean;
   header: string;
@@ -70,7 +154,29 @@ export interface ReportLayout {
   stampStyle?: ReportStamp;
   logo?: ReportLogo;
   charts?: ReportChart[];
+  frame?: ReportFrame | null;
 }
+/** The frame that the header text, the footer text and the page number of a layout without a frame make (as the server does): the logo on the left sends the header text to the right. */
+export const effectiveReportFrame = (layout: ReportLayout): ReportFrame => {
+  if (layout.frame) return layout.frame;
+  const none: ReportSlot = { text: "" };
+  const header: ReportSlot = { text: layout.header ?? "" };
+  const textToRight = !!layout.logo?.enabled && (layout.logo.slot ?? (layout.logo.x + layout.logo.width / 2 < 100 / 3 ? "LEFT" : "")) === "LEFT";
+  return {
+    companyName: "",
+    headerLeft: textToRight ? none : header,
+    headerCenter: none,
+    headerRight: textToRight ? header : none,
+    footerLeft: { text: layout.footer ?? "" },
+    footerCenter: none,
+    footerRight: none,
+    info: [],
+    infoColumns: 2,
+    approval: false,
+    notes: false,
+    notesHeight: 120,
+  };
+};
 export const defaultReportMark = (): ReportMark => ({
   color: "#64748b",
   opacity: 12,
@@ -97,13 +203,6 @@ export interface ReportStamp {
   font: ReportFontFamily;
 }
 export const defaultReportStamp = (): ReportStamp => ({ color: "#059669", opacity: 90, pages: "ALL", font: "NOTO_SANS" });
-/** A server-drawn page of the layout, and where the server put the stamp on it (PDF points from the bottom left of the page). */
-export interface ReportPagePreview {
-  imageBase64: string;
-  pageWidthPt: number;
-  pageHeightPt: number;
-  marks: { kind: "STAMP"; x: number; y: number; width: number; height: number }[];
-}
 export const defaultReportLayout = (): ReportLayout => ({
   cover: false,
   coverTitle: "{{report.title}}",
@@ -150,6 +249,10 @@ export interface ReportTemplate extends ReportDefinition {
   effectiveRevision?: number | null;
   openRevision?: number | null;
   openRevisionStatus?: "DRAFT" | "PENDING_APPROVAL" | null;
+  /** APPROVED: a person approved the revision in force. NOT_REQUIRED: only a revision that came into force when it was saved, under the rule that ended on 2026-11-15. */
+  approvalBasis?: "APPROVED" | "NOT_REQUIRED" | null;
+  /** When the revision in force came into force. */
+  inUseSince?: string | null;
   /** The lifecycle stepper of the revision that matters on the screens (the one being written, else the effective one), worked out on the server. */
   workflow?: WorkflowProgress;
   roleScopes?: RoleScope[];
@@ -181,11 +284,39 @@ export interface ReportRevisionRow {
   lastChangedAt?: string;
   approvedAt?: string | null;
   approvedByName?: string | null;
+  /** NOT_REQUIRED: the template is not used for GMP decisions, so no one approved this revision; it came into force when it was saved. */
+  approvalBasis?: "APPROVED" | "NOT_REQUIRED" | null;
   effectiveAt?: string | null;
   obsoletedAt?: string | null;
   obsoletedByRevision?: number | null;
   discardedAt?: string | null;
   discardReason?: string | null;
+}
+/** A row of the list of the revisions of every template (REPORT-TEMPLATE-REVISIONS-LIST-2026-11-15). */
+export interface ReportRevisionListRow {
+  definitionCode: string;
+  displayName: string;
+  sourceCode: string;
+  revision: number;
+  status: ReportRevisionStatus;
+  /** Whether the template was used for GMP decisions in this revision. */
+  gmpUse: boolean;
+  approvalBasis?: "APPROVED" | "NOT_REQUIRED" | null;
+  changeReason?: string | null;
+  createdAt?: string;
+  createdByName?: string | null;
+  lastChangedAt?: string;
+  lastChangedByName?: string | null;
+  submittedAt?: string | null;
+  approvedAt?: string | null;
+  approvedByName?: string | null;
+  effectiveAt?: string | null;
+  /** What this person may do to the template of the revision, decided by the server; the row menu is built from it and the status of the revision. */
+  capabilities?: ReportTemplateCapabilities;
+}
+export interface ReportRevisionListPage {
+  data: ReportRevisionListRow[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
 }
 export interface ReportRevisionPage {
   data: ReportRevisionRow[];
@@ -230,6 +361,10 @@ export interface ReportSource {
   fields: Record<string, string>;
   requiredFields: string[];
   dateFields?: string[];
+  /** The group of each field, the fields that describe a person, and the most columns one report may carry (REPORT-FIELD-CATALOG-2026-11-15). */
+  fieldGroups?: Record<string, string>;
+  sensitiveFields?: string[];
+  maxColumns?: number;
   category?: string;
   description?: string;
   /** The data scopes a template of this type may give to an Access Profile. */
@@ -324,19 +459,6 @@ export const reportTemplatesApi = {
       await uploadFile(`/reports/templates/layout/components/${type}`, file)
     ).data as NonNullable<ReportLayout["wordComponents"]>[typeof type];
   },
-  previewPage: async (
-    title: string,
-    layout: ReportLayout,
-    page: number,
-    signal?: AbortSignal,
-  ) =>
-    (
-      await apiClient.post<ReportPagePreview>(
-        "/reports/templates/layout/preview-page",
-        { title, layout, page },
-        { signal },
-      )
-    ).data,
   previewLayout: async (
     title: string,
     layout: ReportLayout,
@@ -346,6 +468,15 @@ export const reportTemplatesApi = {
       await apiClient.post<Blob>(
         "/reports/templates/layout/preview",
         { title, layout },
+        { responseType: "blob", signal },
+      )
+    ).data,
+  /** A sample of one chart of a template, drawn by the server (Chart.js) from made-up groups, as a PNG. */
+  chartPreview: async (chart: ReportChart, fieldName: string, font?: string | null, signal?: AbortSignal) =>
+    (
+      await apiClient.post<Blob>(
+        "/reports/templates/layout/chart-preview",
+        { chart, fieldName, font: font ?? null },
         { responseType: "blob", signal },
       )
     ).data,
@@ -362,6 +493,16 @@ export const reportTemplatesApi = {
         { responseType: "blob", signal },
       )
     ).data,
+  /** Makes the CSV or XLSX file as the report will be made, to look at in the viewer before the report is requested (a working copy, removed when the report is complete). */
+  previewFile: async (code: string, criteria: TemplateCriteria, title: string, format: "CSV" | "XLSX", full = false) =>
+    (
+      await apiClient.post<{ id: string; fileName: string; byteSize: number; keepHours: number }>(
+        `/reports/templates/${encodeURIComponent(code)}/preview-file`,
+        { criteria, title, format, full },
+      )
+    ).data,
+  previewFileViewConfig: async (id: string) =>
+    (await apiClient.get<Record<string, unknown>>(`/reports/templates/preview-files/${id}/view-config`)).data,
   list: async (
     params: {
       search: string;
@@ -372,6 +513,11 @@ export const reportTemplatesApi = {
       sourceCode?: string;
       format?: string;
       orientation?: string;
+      /** YES: used for GMP decisions. NO: not. */
+      gmp?: string;
+      /** "Last Updated" range, yyyy-MM-dd, both days included. */
+      updatedFrom?: string;
+      updatedTo?: string;
       /** Records per page, chosen by the user (10, 20, 50 or 100); the server applies it. */
       limit?: number;
     },
@@ -422,6 +568,9 @@ export const reportTemplatesApi = {
   /** Revisions of a template, searched, filtered, sorted and paged on the server. */
   revisions: async (code: string, params: { status?: string; search?: string; sortBy?: string; sortDirection?: "asc" | "desc"; page?: number; limit?: number } = {}) =>
     (await apiClient.get<ReportRevisionPage>(`/reports/templates/${encodeURIComponent(code)}/revisions`, { params })).data,
+  /** The revisions of every template, searched, filtered, sorted and paged on the server. scope "pending-approval": the ones this person may decide now. */
+  allRevisions: async (params: { scope?: "all" | "pending-approval"; status?: string; gmp?: string; sourceCode?: string; search?: string; updatedFrom?: string; updatedTo?: string; sortBy?: string; sortDirection?: "asc" | "desc"; page?: number; limit?: number } = {}) =>
+    (await apiClient.get<ReportRevisionListPage>("/reports/templates/revisions", { params })).data,
   /** What the current user may do to a template now; decided by the server from permissions, state and actor. */
   capabilities: async (code: string) =>
     (await apiClient.get<ReportTemplateCapabilities>(`/authorization/resources/REPORT_TEMPLATE/${encodeURIComponent(code)}/capabilities`)).data,
@@ -501,11 +650,11 @@ export function reportError(error: unknown): string {
     const known: Record<string, string> = {
       REPORT_IMAGE_INVALID: "The logo image was refused. Use a PNG or JPEG up to 1 MB and up to 4 megapixels (for example 2000 x 2000); a larger image is reduced when it is uploaded.",
       REPORT_LOGO_REQUIRED: "The logo is switched on but has no image. Upload a PNG or JPEG, or switch the logo off.",
-      REPORT_LOGO_INVALID: "The logo position or width is outside the page. Keep it inside the page and at least 5% wide.",
+      REPORT_LOGO_INVALID: "The logo size or place is not allowed. Choose Left, Centre or Right, and a size of at least 5% of the page.",
       REPORT_LAYOUT_INVALID: "The layout has a value that is not allowed. Check the texts, marks and page settings.",
       REPORT_CHART_INVALID: "A chart in the layout is incomplete. Give it a title, a type, a field and a metric.",
       REPORT_AUDIT_RANGE_REQUIRED: "Choose the dates the report covers: both From date and To date are required for this report type.",
-      REPORT_AUDIT_RANGE_TOO_WIDE: "A report of this type may cover at most 92 days. Choose a shorter range.",
+      REPORT_AUDIT_RANGE_TOO_WIDE: "A report of this type may cover only a limited number of days (set in Report Properties). Choose a shorter range.",
       REPORT_SCOPE_NOT_ALLOWED_FOR_TYPE: "This report type cannot be given that data scope. Choose a scope the type allows.",
       REPORT_TYPE_DISABLED: "This report type is disabled. Ask the person who manages Report Types to enable it.",
       REPORT_TYPE_UNCHANGED: "The report type already has that status.",
@@ -515,6 +664,14 @@ export function reportError(error: unknown): string {
       REPORT_CHART_DATE_REQUIRED: "A monthly trend needs a date field, and every record must have a valid date in it.",
       REPORT_CHART_FIELD_NOT_SELECTED: "A chart uses a field that is not in the report. Select the field or change the chart.",
       REPORT_FONT_INVALID: "The report font is not one of the fonts offered.",
+      REPORT_TEXT_STYLE_INVALID: "A font, size, colour, alignment or text transform is not one of the values offered.",
+      REPORT_APPEARANCE_NAME_INVALID: "Give the appearance a name of 1 to 120 characters on one line.",
+      REPORT_APPEARANCE_NAME_TAKEN: "Another appearance already has that name. Choose a different name.",
+      REPORT_APPEARANCE_NOT_FOUND: "This appearance no longer exists. Reload the list.",
+      REPORT_APPEARANCE_ALREADY_ACTIVE: "This appearance is already the Active one.",
+      REPORT_APPEARANCE_ACTIVE_CANNOT_BE_DELETED: "The Active appearance cannot be deleted. Activate another one first.",
+      REPORT_PROPERTIES_VERSION_CHANGED: "Someone else changed this. Reload and try again.",
+      REPORT_PROPERTIES_UNCHANGED: "Nothing was changed.",
       REPORT_PREVIEW_PAGE_INVALID: "That page does not exist in the preview.",
       REPORT_DESCRIPTION_REQUIRED: "The description is required.",
       REPORT_FILTER_REQUIRED: "Choose at least one filter, or choose Full to run the report without one.",
@@ -524,6 +681,12 @@ export function reportError(error: unknown): string {
       REPORT_RUN_REASON_REQUIRED: "Give the reason for this report: it is signed with the request.",
       REPORT_REVISION_OBSOLETE: "The template revision this report was requested with is no longer effective. Start a new report request.",
       REPORT_SIGNED_TYPE_NOT_SCHEDULABLE: "A report of this type is signed each time it is run, so it cannot be scheduled.",
+      REPORT_FORMAT_NOT_ALLOWED: "This output format is not allowed for this report template.",
+      REPORT_ARTIFACT_LIMIT_EXCEEDED: "The file would be larger than 50 MB. Add a filter or choose a shorter period.",
+      REPORT_VERIFY_FILE_EMPTY: "The file you chose is empty. Choose the report file you want to check.",
+      REPORT_VERIFY_FILE_UNREADABLE: "The file could not be read. Choose it again.",
+      REPORT_PREVIEW_FILE_GONE: "The preview file is no longer kept. Make it again.",
+      REPORT_MAX_RANGE_DAYS_INVALID: "The most days a report may cover must be between 1 and 3,660.",
       REPORT_MAX_ROWS_FULL_INVALID: "The Full limit must be between 10,000 and 100,000 rows and not lower than the ordinary limit.",
     };
     if (wordMessage in known) return known[wordMessage];

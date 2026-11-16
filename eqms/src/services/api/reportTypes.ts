@@ -43,7 +43,7 @@ export interface ReportTypePage {
 }
 
 export const reportTypesApi = {
-  list: async (params: { status?: "ALL" | "ENABLED" | "DISABLED"; category?: string; search?: string; sortBy?: string; sortDirection?: "asc" | "desc"; page?: number; limit?: number } = {}) =>
+  list: async (params: { status?: "ALL" | "ENABLED" | "DISABLED"; category?: string; search?: string; modifiedFrom?: string; modifiedTo?: string; sortBy?: string; sortDirection?: "asc" | "desc"; page?: number; limit?: number } = {}) =>
     (await apiClient.get<ReportTypePage>("/reports/types", { params })).data,
   detail: async (code: string) => (await apiClient.get<ReportTypeDetail>(`/reports/types/${encodeURIComponent(code)}`)).data,
   setEnabled: async (code: string, version: number, enabled: boolean, reason: string) =>

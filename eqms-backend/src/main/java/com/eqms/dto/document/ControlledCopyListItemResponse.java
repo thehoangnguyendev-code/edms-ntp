@@ -67,6 +67,82 @@ public record ControlledCopyListItemResponse(
         String replacementControlledCopyNumber,
         String lastUpdatedAt,
         /** READ_AND_COMPLY, RECORD_KEEPING, or null for a copy issued before the purpose existed. */
-        String usagePurpose
+        String usagePurpose,
+        com.eqms.dto.security.ControlledCopyActionCapabilitiesResponse capabilities
 ) {
+    /** Compatibility constructor for existing detail/mutation responses. */
+    public ControlledCopyListItemResponse(
+            String id,
+            String controlledCopyNumber,
+            String createdDate,
+            String createdTime,
+            String openedBy,
+            String name,
+            String status,
+            String statusCode,
+            StatusResponse statusInfo,
+            String validUntil,
+            String expiryDate,
+            Boolean hasExpiryDate,
+            String expiryReminderSentAt,
+            String documentNumber,
+            String documentDisplayLabel,
+            String distributionList,
+            String distributionMode,
+            String distributionRecipients,
+            String revisionNumber,
+            String location,
+            String locationCode,
+            String businessUnit,
+            String department,
+            String reason,
+            String distributedDate,
+            String distributedBy,
+            String recipientName,
+            String recipientEmployeeCode,
+            String recipientDepartment,
+            String recipientEmail,
+            String recipientSignature,
+            String recipientDate,
+            String recallDate,
+            String recalledBy,
+            String recallReason,
+            String controlNumber,
+            String documentId,
+            String sourceRevisionId,
+            String documentName,
+            Integer copyNumber,
+            Integer totalCopies,
+            String requestDate,
+            String requestedBy,
+            String currentStage,
+            String effectiveDate,
+            String printedDate,
+            String printedBy,
+            String destroyedDate,
+            String destroyedBy,
+            String destroyReason,
+            String destructionMethod,
+            String destructionType,
+            String witnessedBy,
+            String distributionComment,
+            String externalRecipients,
+            List<ControlledCopyEvidenceResponse> evidenceFiles,
+            String revisionName,
+            String obsoleteReason,
+            String distributionBatchId,
+            String distributionBatchNumber,
+            String replacedControlledCopyId,
+            String replacedControlledCopyNumber,
+            String replacementControlledCopyId,
+            String replacementControlledCopyNumber,
+            String lastUpdatedAt,
+            String usagePurpose) {
+        this(id, controlledCopyNumber, createdDate, createdTime, openedBy, name, status, statusCode, statusInfo, validUntil, expiryDate, hasExpiryDate, expiryReminderSentAt, documentNumber, documentDisplayLabel, distributionList, distributionMode, distributionRecipients, revisionNumber, location, locationCode, businessUnit, department, reason, distributedDate, distributedBy, recipientName, recipientEmployeeCode, recipientDepartment, recipientEmail, recipientSignature, recipientDate, recallDate, recalledBy, recallReason, controlNumber, documentId, sourceRevisionId, documentName, copyNumber, totalCopies, requestDate, requestedBy, currentStage, effectiveDate, printedDate, printedBy, destroyedDate, destroyedBy, destroyReason, destructionMethod, destructionType, witnessedBy, distributionComment, externalRecipients, evidenceFiles, revisionName, obsoleteReason, distributionBatchId, distributionBatchNumber, replacedControlledCopyId, replacedControlledCopyNumber, replacementControlledCopyId, replacementControlledCopyNumber, lastUpdatedAt, usagePurpose, null);
+    }
+
+    public ControlledCopyListItemResponse withCapabilities(com.eqms.dto.security.ControlledCopyActionCapabilitiesResponse capabilities) {
+        return new ControlledCopyListItemResponse(id, controlledCopyNumber, createdDate, createdTime, openedBy, name, status, statusCode, statusInfo, validUntil, expiryDate, hasExpiryDate, expiryReminderSentAt, documentNumber, documentDisplayLabel, distributionList, distributionMode, distributionRecipients, revisionNumber, location, locationCode, businessUnit, department, reason, distributedDate, distributedBy, recipientName, recipientEmployeeCode, recipientDepartment, recipientEmail, recipientSignature, recipientDate, recallDate, recalledBy, recallReason, controlNumber, documentId, sourceRevisionId, documentName, copyNumber, totalCopies, requestDate, requestedBy, currentStage, effectiveDate, printedDate, printedBy, destroyedDate, destroyedBy, destroyReason, destructionMethod, destructionType, witnessedBy, distributionComment, externalRecipients, evidenceFiles, revisionName, obsoleteReason, distributionBatchId, distributionBatchNumber, replacedControlledCopyId, replacedControlledCopyNumber, replacementControlledCopyId, replacementControlledCopyNumber, lastUpdatedAt, usagePurpose, capabilities);
+    }
+
 }

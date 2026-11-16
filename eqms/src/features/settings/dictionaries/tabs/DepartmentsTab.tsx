@@ -2,7 +2,7 @@ import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useState, useMemo } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
-import { Trash2, MoreVertical, Power, PowerOff, Search, AlertTriangle, ChevronUp, ChevronDown, Check, X } from "lucide-react";
+import { Trash2, MoreVertical, Search, AlertTriangle, ChevronUp, ChevronDown, Check, X } from "lucide-react";
 import { Select } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { cn } from "@/components/ui/utils";
@@ -20,7 +20,7 @@ import {
   FilterDrawer,
   FilterAccordionItem,
 } from "@/components/ui/filter/FilterDrawer";
-import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
+import { IconFilter2, IconPencilMinus, IconToggleLeft, IconToggleRight } from "@tabler/icons-react";
 import { dictionaryApi } from "@/services/api";
 import { settingsApi } from "@/services/api/settings";
 import type { SelectOption } from "@/components/ui/select/Select";
@@ -527,12 +527,12 @@ export const DepartmentsTab = React.forwardRef<
           >
             {items.find((i) => i.id === openDropdownId)?.isActive ? (
               <>
-                <PowerOff className="h-3.5 w-3.5" />
+                <IconToggleLeft className="h-3.5 w-3.5" />
                 <span>Disable</span>
               </>
             ) : (
               <>
-                <Power className="h-3.5 w-3.5" />
+                <IconToggleRight className="h-3.5 w-3.5" />
                 <span>Enable</span>
               </>
             )}

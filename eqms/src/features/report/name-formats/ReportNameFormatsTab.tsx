@@ -3,7 +3,7 @@ import { ConfiguredDesktopFilters } from "@/components/ui/filter/ConfiguredDeskt
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
-import { AlertTriangle, Check, ChevronRight, MoreVertical, Power, PowerOff, Search, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronRight, MoreVertical, Search, X } from "lucide-react";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { Badge } from "@/components/ui/badge/Badge";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
@@ -14,7 +14,7 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { cn } from "@/components/ui/utils";
-import { IconFilter2, IconInfoCircle, IconPencilMinus } from "@tabler/icons-react";
+import { IconFilter2, IconInfoCircle, IconPencilMinus, IconToggleLeft, IconToggleRight } from "@tabler/icons-react";
 import { usePortalDropdown } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
 import { useDictionaryServerTable, type DictionaryServerQuery } from "@/features/settings/dictionaries/hooks/useDictionaryServerTable";
@@ -269,8 +269,8 @@ export const ReportNameFormatsTab: React.FC = () => {
             },
           ]}
         >
-          <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-end">
-            <div className="sm:col-span-1 lg:col-span-4">
+          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+            <div className="w-full">
               <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -283,7 +283,7 @@ export const ReportNameFormatsTab: React.FC = () => {
                 />
               </div>
             </div>
-            <div className="sm:col-span-1 lg:col-span-4">
+            <div className="w-full">
               <Select
                 label="Status"
                 value={statusFilter}
@@ -292,7 +292,7 @@ export const ReportNameFormatsTab: React.FC = () => {
                 placeholder="All"
               />
             </div>
-            <div className="sm:col-span-1 lg:col-span-4">
+            <div className="w-full">
               <DateRangePicker
                 label="Modified Date Range"
                 startDate={modifiedFromDate}
@@ -302,11 +302,10 @@ export const ReportNameFormatsTab: React.FC = () => {
                 placeholder="Select range"
               />
             </div>
-          </div>
-
-          <div className="hidden md:flex justify-start mt-3 gap-2">
-            <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} disabled={!hasActiveFilters} />
-            {nameFormatsControl}
+            <div className="filter-actions flex items-end gap-2">
+              <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} disabled={!hasActiveFilters} />
+              {nameFormatsControl}
+            </div>
           </div>
         </ConfiguredDesktopFilters>
       </div>
@@ -380,7 +379,7 @@ export const ReportNameFormatsTab: React.FC = () => {
                 }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
               >
-                {openItem?.active ? (<><PowerOff className="h-3.5 w-3.5" /><span>Disable</span></>) : (<><Power className="h-3.5 w-3.5" /><span>Enable</span></>)}
+                {openItem?.active ? (<><IconToggleLeft className="h-3.5 w-3.5" /><span>Disable</span></>) : (<><IconToggleRight className="h-3.5 w-3.5" /><span>Enable</span></>)}
               </button>
             </>
           )}

@@ -13,7 +13,6 @@ export type UncontrolledCopyPolicyMarking = ControlledCopyStatusMarking;
 export type UncontrolledCopyValidityBasis = 'DISTRIBUTION' | 'DOCUMENT_VALID_UNTIL';
 
 export interface UncontrolledCopyPolicy {
-  approvalRequired: boolean;
   validityHours: number;
   validityBasis: UncontrolledCopyValidityBasis;
   allowRedownload: boolean;

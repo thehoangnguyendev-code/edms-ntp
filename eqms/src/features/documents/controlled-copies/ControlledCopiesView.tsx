@@ -1,3 +1,4 @@
+import { downloadTableExcel } from '@/services/api/tableExport';
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useState, createRef, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
@@ -73,11 +74,10 @@ import { normalizeControlledCopyStatusLabel } from "./status";
 import { DestructionTypeSelectionModal } from "./components/DestructionTypeSelectionModal";
 import { RecallControlledCopyModal } from "./components/RecallControlledCopyModal";
 import {
-  useControlledCopyActionCapabilities,
-  useControlledCopyBatchActionCapabilities,
 } from "@/hooks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 // Default Columns Configuration
 
@@ -312,7 +312,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
   const [selectedCopyForReportLostDamaged, setSelectedCopyForReportLostDamaged] = useState<ControlledCopyRow | null>(null);
   const [isReissueModalOpen, setIsReissueModalOpen] = useState(false);
   const [selectedCopyForReissue, setSelectedCopyForReissue] = useState<ControlledCopyRow | null>(null);
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const debouncedSearchQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
 
   useLayoutEffect(() => {
     setSearchQuery(searchParams.get("search") ?? "");
@@ -903,24 +903,9 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     [controlledCopiesData, openId],
   );
   const selectedIsBatch = Boolean(selectedCopy && isControlledCopyBatchRow(selectedCopy));
-  // A singleton distribution is represented by a batch row in the list, but its
-  // actions belong to the child controlled-copy record.  Always resolve the
-  // capability target rather than querying the batch id for that row.
-  const selectedCopyCapabilityId = selectedCopy && !selectedIsBatch
-    ? getControlledCopyActionTargetId(selectedCopy)
-    : null;
-  const {
-    capabilities: selectedCopyCapabilities,
-    loading: isSelectedCopyCapabilityLoading,
-    refresh: refreshSelectedCopyCapabilities,
-  } = useControlledCopyActionCapabilities(selectedCopyCapabilityId);
-  const {
-    capabilities: selectedBatchCapabilities,
-    loading: isSelectedBatchCapabilityLoading,
-    refresh: refreshSelectedBatchCapabilities,
-  } = useControlledCopyBatchActionCapabilities(selectedCopy && selectedIsBatch ? (selectedCopy.batchId || selectedCopy.distributionBatchId || selectedCopy.id) : null);
-  const selectedCapabilities = selectedIsBatch ? selectedBatchCapabilities : selectedCopyCapabilities;
-  const isCapabilityLoading = selectedIsBatch ? isSelectedBatchCapabilityLoading : isSelectedCopyCapabilityLoading;
+  // The authorized list response includes the complete menu decisions for this exact row/target.
+  const selectedCapabilities = selectedCopy?.capabilities ?? null;
+  const isCapabilityLoading = false;
   const selectedCancelDecision = getControlledCopyActionDecision(
     selectedCapabilities,
     selectedIsBatch ? "cancelBatch" : "cancelRequest",
@@ -1014,17 +999,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
   };
 
   const refreshSelectedCapabilities = async () => {
-    const refreshers: Array<() => Promise<any>> = [];
-    if (refreshSelectedCopyCapabilities) {
-      refreshers.push(refreshSelectedCopyCapabilities);
-    }
-    if (refreshSelectedBatchCapabilities) {
-      refreshers.push(refreshSelectedBatchCapabilities);
-    }
-    if (refreshers.length === 0) {
-      return;
-    }
-    await Promise.all(refreshers.map((refresh) => refresh()));
+    // Refresh the page after actions/events, not when the row menu opens.
+    setRefreshToken((token) => token + 1);
   };
 
   const getHttpStatus = (error: unknown) => {
@@ -1432,56 +1408,29 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     }
   };
 
-  const handleExport = () => {
-    const csvEscape = (value: string | number | null | undefined) => `"${String(value ?? "").replace(/"/g, '""')}"`;
-    const headers = [
-      "Document Number",
-      "Requested At",
-      "Requested By",
-      "Quantity",
-      "Status",
-      "Document",
-      "Revision",
-      "Distribution List",
-      "Recall Date",
-      "Reason for Recall",
-      "Valid Until",
-      "Expiry Date",
-      "Location",
-      "Location Code",
-      "Distributed By",
-      "Distributed At",
-      "Last Updated",
-    ];
-    const rows = controlledCopiesData.map((batch) => [
-      batch.batchNumber || batch.controlledCopyNumber,
-      formatDateTimeParts(batch.createdDate, batch.createdTime),
-      batch.requestedBy || batch.openedBy || "",
-      batch.batchQuantity ?? batch.totalCopies ?? 0,
-      batch.batchStatus || batch.status || "",
-      formatDocumentLabel(batch),
-      formatDocumentRevisionLabel(batch),
-      getControlledCopyDistributionListText(batch),
-      batch.recallDate || "",
-      batch.recallReason || "",
-      batch.validUntil || "",
-      batch.expiryDate || "",
-      batch.location || "",
-      batch.locationCode || "",
-      batch.distributedBy || "",
-      batch.distributedDate || "",
-      batch.lastUpdatedAt || "",
-    ].map(csvEscape).join(","));
-    const csv = [headers.map(csvEscape).join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const anchor = window.document.createElement("a");
-    anchor.href = url;
-    anchor.download = `controlled-copies-${viewType}.csv`;
-    window.document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    const convertDate = (value: string) => value.replace(/^(\d{2})\/(\d{2})\/(\d{4})$/, '$3-$2-$1');
+    try {
+      await downloadTableExcel('controlled-copies', {
+        search: debouncedSearchQuery || undefined,
+        status: viewType === 'all' ? (statusFilter !== 'All' ? statusFilter : undefined)
+          : viewType === 'ready' ? 'READY_FOR_DISTRIBUTION' : 'DISTRIBUTED',
+        createdFrom: createdFromDate ? convertDate(createdFromDate) : undefined,
+        createdTo: createdToDate ? convertDate(createdToDate) : undefined,
+        validFrom: validFromDate ? convertDate(validFromDate) : undefined,
+        validTo: validToDate ? convertDate(validToDate) : undefined,
+        expiryFrom: expiryFromDate ? convertDate(expiryFromDate) : undefined,
+        expiryTo: expiryToDate ? convertDate(expiryToDate) : undefined,
+        recallFrom: recallFromDate ? convertDate(recallFromDate) : undefined,
+        recallTo: recallToDate ? convertDate(recallToDate) : undefined,
+        usagePurpose: usagePurposeFilter !== USAGE_PURPOSE_ALL ? usagePurposeFilter : undefined,
+        sortBy: sortConfig.key, sortDirection: sortConfig.direction,
+      });
+    } catch { showToast({ type: 'error', title: 'Export failed', message: 'Unable to export controlled copies.' }); }
+    finally { setIsExporting(false); }
   };
 
   // While a Distribute is in flight, batchDistributeProgress drives its own progress-bar modal
@@ -1646,7 +1595,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
               </Button>
             )}
             <Button
-              onClick={handleExport}
+              onClick={() => void handleExport()}
+              loading={isExporting}
               variant="outline"
               size="sm"
               className="whitespace-nowrap gap-2"

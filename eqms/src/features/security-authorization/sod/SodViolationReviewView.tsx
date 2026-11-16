@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, MoreVertical, RefreshCw } from "lucide-react";
+import { IconInfoCircle } from "@tabler/icons-react";
+import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
+import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -189,13 +192,21 @@ export const SodViolationReviewView: React.FC = () => {
         ),
     },
   ];
+  const menu = usePortalDropdown();
+  const menuRun = history.find((run) => run.id === menu.openId);
   const historyAction: DataTableAction<HistoryRow> = {
     header: "Action",
     cellClassName: "text-center",
     cell: (run) => (
-      <Button variant="outline" size="sm" onClick={() => viewRun(run.id)}>
-        {selectedRunId === run.id ? "Hide" : "View"}
-      </Button>
+      <button
+        type="button"
+        ref={menu.getRef(run.id)}
+        aria-label="More actions"
+        className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
+        onClick={(event) => { ; menu.toggle(run.id, event); }}
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
     ),
   };
   const { layout: historyLayout, control: historyControl } = useCustomColumnLayout("sod.scan-history", historyColumns, historyAction);
@@ -240,6 +251,15 @@ export const SodViolationReviewView: React.FC = () => {
               <TableEmptyState title="No scans yet" description="Run a scan to start building review history." />
             ) : (
               <div className="flex flex-col flex-1">
+                <PortalDropdownMenu isOpen={!!menuRun} onClose={menu.close} position={menu.position} minWidth={200}>
+                  {menuRun && (
+                    <div className="py-1">
+                      <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { viewRun(menuRun.id); menu.close(); }}>
+                        {selectedRunId === menuRun.id ? "Hide Violations" : "View Violations"}
+                      </DropdownMenuItem>
+                    </div>
+                  )}
+                </PortalDropdownMenu>
                 <DataTable
                   rows={history}
                   getRowKey={(run) => run.id}

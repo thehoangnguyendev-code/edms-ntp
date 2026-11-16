@@ -2,7 +2,7 @@ import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useEffect, useMemo, useState } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
-import { AlertTriangle, Check, ChevronDown, ChevronUp, MoreVertical, Plus, Power, PowerOff, Search, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, ChevronUp, MoreVertical, Plus, Search, X } from "lucide-react";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { Badge } from "@/components/ui/badge/Badge";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
@@ -18,7 +18,7 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { cn } from "@/components/ui/utils";
-import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
+import { IconFilter2, IconPencilMinus, IconToggleLeft, IconToggleRight } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { documentSubTypesAdmin } from "@/components/ui/breadcrumb/breadcrumbs.config";
@@ -556,12 +556,12 @@ export const DocumentSubTypesView: React.FC = () => {
               {items.find((current) => current.id === openDropdownId)
                 ?.isActive ? (
                 <>
-                  <PowerOff className="h-3.5 w-3.5" />
+                  <IconToggleLeft className="h-3.5 w-3.5" />
                   <span>Disable</span>
                 </>
               ) : (
                 <>
-                  <Power className="h-3.5 w-3.5" />
+                  <IconToggleRight className="h-3.5 w-3.5" />
                   <span>Enable</span>
                 </>
               )}

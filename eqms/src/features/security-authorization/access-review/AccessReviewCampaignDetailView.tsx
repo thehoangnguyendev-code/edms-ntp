@@ -39,6 +39,7 @@ import {
   IconPencilMinus,
 } from "@tabler/icons-react";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const DECISIONS: {
   value: AccessReviewItem["decision"];
@@ -164,7 +165,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
   const [itemPage, setItemPage] = useState(1);
   const [itemPageSize, setItemPageSize] = useState(10);
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [userStatusFilter, setUserStatusFilter] = useState("ALL");
   const [decisionFilter, setDecisionFilter] = useState("ALL");
   const [sortKey, setSortKey] = useState("username");
@@ -636,7 +637,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
             </Button>
           </div>
 
-          {/* Desktop / tablet filters: three equal fields on one row, Clear Filters on its own line */}
+          {/* Desktop / tablet filters: three equal fields on one row, Clear Filters in the last cell */}
           <div className="hidden md:block pb-4 md:pb-5">
           <div className="grid grid-cols-3 gap-4 items-end">
             <div className="w-full min-w-0">
@@ -672,10 +673,10 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
               onChange={(v) => { setDecisionFilter(String(v)); setItemPage(1); }}
               options={toOptions("decisions", "All")}
             />
-          </div>
-          <div className="mt-4">
-            <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
-          {itemControl}
+            <div className="filter-actions flex items-end gap-2">
+              <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
+              {itemControl}
+            </div>
           </div>
           </div>
 

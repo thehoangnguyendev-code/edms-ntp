@@ -18,6 +18,7 @@ import {
   type ProductionRestoreStatus,
   type BackupPart,
 } from "@/services/api/backupRestore";
+import { BackupExportButton } from "../components/BackupExportButton";
 import { BackupRestorePage } from "../components/BackupRestorePage";
 import { ServerListPanel } from "../components/ServerListPanel";
 import { ProductionRestoreDialog } from "../components/ProductionRestoreDialog";
@@ -25,6 +26,7 @@ import { formatDateTime } from "../format";
 import { statusLabel } from "../types";
 import { leaveRestoreNotice } from "../restoreSessionNotice";
 import { useProductionRestoreRun } from "../components/useProductionRestoreRun";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const ALL = "ALL";
 const STATUS_OPTIONS = [
@@ -69,7 +71,7 @@ const MEANING: Record<Signing["kind"], { code: string; name: string; verb: strin
 export const ProductionRestoresView: React.FC = () => {
   const { showToast } = useToast();
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [status, setStatus] = useState(ALL);
   const [part, setPart] = useState(ALL);
   const [restoredFrom, setRestoredFrom] = useState("");
@@ -230,11 +232,27 @@ export const ProductionRestoresView: React.FC = () => {
       group="Restore"
       preview={false}
       actions={
-        capabilities?.restore ? (
-          <Button size="sm" variant="default" disabled={working > 0} onClick={() => setChoosing(true)}>
-            Restore a Backup
-          </Button>
-        ) : undefined
+        <>
+          <BackupExportButton
+            dataset="production-restores"
+            params={{
+              search: debouncedSearch.trim() || undefined,
+              status: status === ALL ? undefined : status,
+              part: part === ALL ? undefined : part,
+              restoredFrom: dateToInstant(restoredFrom, "start"),
+              restoredTo: dateToInstant(restoredTo, "end"),
+              closedFrom: dateToInstant(closedFrom, "start"),
+              closedTo: dateToInstant(closedTo, "end"),
+              sortBy: sort.key,
+              sortDirection: sort.direction,
+            }}
+          />
+          {capabilities?.restore && (
+            <Button size="sm" variant="default" disabled={working > 0} onClick={() => setChoosing(true)}>
+              Restore a Backup
+            </Button>
+          )}
+        </>
       }
     >
       <WarningBanner

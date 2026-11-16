@@ -15,6 +15,7 @@ public class KnowledgeShareReportMetadataProvider implements ReportMetadataProvi
     private static final String STATE_CODE = "case when l.revoked_at is not null then 'REVOKED' when l.expires_at is not null and l.expires_at < now() then 'EXPIRED' else 'ACTIVE' end";
     private static final Map<String, String> COLUMNS = new LinkedHashMap<>();
     private static final Map<String, String> LABELS = new LinkedHashMap<>();
+    private static final Map<String, String> GROUPS = new LinkedHashMap<>();
     static {
         column("label", "Link", "l.label");
         column("state", "State", STATE);
@@ -28,8 +29,12 @@ public class KnowledgeShareReportMetadataProvider implements ReportMetadataProvi
         column("expiresAt", "Expires At", ReportQueryKit.timestamp("l.expires_at"));
         column("revokedAt", "Revoked At", ReportQueryKit.timestamp("l.revoked_at"));
         column("revokedBy", "Revoked By", "rb.full_name");
+        // REPORT-FIELD-CATALOG-2026-11-15: more of the metadata the source holds.
+        group("Link", "createdAuthority", "Created Under", "initcap(replace(lower(l.created_authority), '_', ' '))");
     }
     private static void column(String code, String label, String sql) { COLUMNS.put(code, sql); LABELS.put(code, label); }
+    private static void group(String group, String code, String label, String sql) { column(code, label, sql); GROUPS.put(code, group); }
+    @Override public Map<String, String> fieldGroups() { return GROUPS; }
 
     private static final Set<String> FILTERS = Set.of("search", "state", "createdFrom", "createdTo", "expiresFrom", "expiresTo");
 

@@ -4,6 +4,7 @@ import { IconEye, IconPencilMinus, IconPlus, IconToggleLeft, IconToggleRight } f
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { trainingAdministrationBase } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { Button } from "@/components/ui/button/Button";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
@@ -101,7 +102,7 @@ export function TrainingJobRolesView() {
     { id: "title", header: "Job Title", sort: sorted("title"), cell: (r) => r.titlePositionName ?? "—" },
     { id: "holders", header: "People Holding It", cell: (r) => r.holders },
     { id: "topics", header: "Training Topics in the Effective Matrix", cell: (r) => r.effectiveTopics },
-    { id: "status", header: "Status", sort: sorted("active"), cell: (r) => <Badge color={r.active ? "emerald" : "slate"}>{r.active ? "Active" : "Inactive"}</Badge> },
+    { id: "status", header: "Status", sort: sorted("active"), cell: (r) => <Badge color={flagColor(r.active)}>{r.active ? "Active" : "Inactive"}</Badge> },
   ];
   const { layout, control } = useCustomColumnLayout("training.job.roles", columns, rowMenu.action);
   const filters: ReportSelectFilter[] = [
@@ -149,7 +150,7 @@ export function TrainingJobRolesView() {
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{viewing.code}</p>
                 <h3 className="text-lg font-semibold text-slate-900">{viewing.name}</h3>
               </div>
-              <Badge color={viewing.active ? "emerald" : "slate"}>{viewing.active ? "Active" : "Inactive"}</Badge>
+              <Badge color={flagColor(viewing.active)}>{viewing.active ? "Active" : "Inactive"}</Badge>
             </div>
 
             <dl className="grid grid-cols-2 gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 md:grid-cols-4">

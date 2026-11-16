@@ -150,6 +150,8 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
 
     /** The e-mail of an event: its own wording, or for a Training notice the title and text the module composes. */
     private static String[] emailContent(EventSeed seed) {
+        if (REPORT_TEMPLATE_REJECTED.equals(seed.code())) return new String[]{"[EQMS] Report Template Rejected: {{entityName}}",
+                "<p>The report template <b>{{entityName}}</b> was rejected by {{actorName}}.</p><p><b>Reason:</b> {{actionComment}}</p><p>Change the template and submit it again: {{actionUrl}}</p>"};
         if (EMAIL_CONTENT.containsKey(seed.code())) return EMAIL_CONTENT.get(seed.code());
         if (AUDIT_VARS.equals(seed.variables())) return new String[]{"[EQMS] " + seed.name(), "<p>" + AUDIT_SUMMARY + "</p>"};
         return seed.variables().startsWith(PASS_THROUGH_VARS) ? new String[]{"[EQMS] {{title}}", "<p>{{message}}</p>"} : null;
@@ -271,6 +273,9 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
     private static final String PASS_THROUGH_VARS = "recipientName,title,message,actionUrl,systemName";
     /** What the Audit Trail raises says, in its own words: what was done, to which record, by whom, with which comment (the wording an administrator edits). */
     static final String AUDIT_SUMMARY = "{{actionName}}: {{entityName}} by {{actorName}}. {{actionComment}}";
+    /** REPORT-TEMPLATE-REJECT-NOTICE-2026-11-15: the author is told which template was rejected, by whom, and the reason in so many words (migration V790 does the same for a database that has the event). */
+    static final String REPORT_TEMPLATE_REJECTED = "report.template_rejected";
+    static final String REPORT_TEMPLATE_REJECTED_SUMMARY = "{{entityName}} was rejected by {{actorName}}. Reason: {{actionComment}}";
     private static final String AUDIT_VARS = PASS_THROUGH_VARS + ",actorName,entityName,actionComment,actionName";
 
     /** The registry events of the modules and the notices of Training Management. */
@@ -299,7 +304,7 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
             }
             // the channel an event is sent on by default is in-app; an administrator turns the e-mail on
             all.add(new EventSeed(event.code(), event.name(), event.description(), event.module(), event.priority(), "NOTIFY", event.module(), "IN_APP",
-                    AUDIT_VARS, new String[]{}, event.name(), AUDIT_SUMMARY, rules, event.defaultStatus()));
+                    AUDIT_VARS, new String[]{}, event.name(), REPORT_TEMPLATE_REJECTED.equals(event.code()) ? REPORT_TEMPLATE_REJECTED_SUMMARY : AUDIT_SUMMARY, rules, event.defaultStatus()));
         }
         return all;
     }

@@ -1,5 +1,6 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { Switch } from "@/components/ui/switch/Switch";
 import { cn } from "@/components/ui/utils";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
@@ -62,7 +63,7 @@ export const GeneralTab: React.FC<{
 
       <Field label="Type">
         <div className="flex h-9 items-center">
-          <Badge color={profile.type === "SYSTEM" ? "purple" : "slate"} size="sm">
+          <Badge color={profile.type === "SYSTEM" ? "blue" : "teal"} size="sm">
             {profile.type === "SYSTEM" ? "System" : "Custom"}
           </Badge>
         </div>
@@ -75,7 +76,7 @@ export const GeneralTab: React.FC<{
             disabled={!isEditing}
             size="sm"
           />
-          <Badge size="sm" color={active ? "emerald" : "slate"}>{active ? "Active" : "Inactive"}</Badge>
+          <Badge size="sm" color={flagColor(active)}>{active ? "Active" : "Inactive"}</Badge>
         </div>
       </Field>
 

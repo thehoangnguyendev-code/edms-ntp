@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
-import { PageHeader } from "@/components/ui/page/PageHeader";
+import { Popover } from "@/components/ui/popover";
 import { Select } from "@/components/ui/select";
 import { SearchInput } from "@/components/ui/form/SearchInput";
 import { FormField, Input, Textarea } from "@/components/ui/form/ResponsiveForm";
@@ -17,9 +17,10 @@ import { MoreVertical, Pencil, Pause, Play, UserCog, Plus } from "lucide-react";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { ReportListToolbar } from "../shared/ReportListToolbar";
-import { scheduleStatusLabel } from "../shared/reportLabels";
+import { scheduleReasonLabel, scheduleStatusColor, scheduleStatusLabel } from "../shared/reportLabels";
 import { type DataTableAction, type DataTableColumn, useCustomColumnLayout } from "@/components/ui/table/DataTable";
-import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
+import { ReportTabsFrame } from "../shared/ReportTabsFrame";
+import { describeFrequency, fromCron } from "./scheduleFrequency";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -39,6 +40,24 @@ import { ReportLookup } from "../templates/ReportLookup";
 import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
 import { IconPencilMinus, IconReplaceUser } from "@tabler/icons-react";
 import { displayDateTime } from "@/utils/format";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+
+/** A few recipients are named in the cell; when there are more, the count opens a popover with all the names. */
+const INLINE_RECIPIENTS = 2;
+function RecipientNames({ names }: { names: string[] }) {
+  if (names.length === 0) return <span className="text-slate-400">—</span>;
+  if (names.length <= INLINE_RECIPIENTS) return <span className="whitespace-normal">{names.join(", ")}</span>;
+  return (
+    <Popover
+      title={`Recipients (${names.length})`}
+      triggerAriaLabel={`Show ${names.length} recipients`}
+      triggerClassName="px-0 font-medium text-emerald-600 hover:underline"
+      trigger={`${names.length} recipients`}
+      contentClassName="max-w-xs"
+      content={<ul className="max-h-60 space-y-1 overflow-y-auto">{names.map((n, i) => <li key={`${n}-${i}`}>{n}</li>)}</ul>}
+    />
+  );
+}
 
 export function ScheduledReportsView() {
   const navigate = useNavigate();
@@ -112,7 +131,7 @@ export function ScheduledReportsView() {
     const timer = setTimeout(() => {
       setSearch(input);
       setPage(1);
-    }, 300);
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [input]);
   useEffect(() => {
@@ -166,35 +185,45 @@ export function ScheduledReportsView() {
                 },
                 {
                   id: "owner",
-                  header: "Owner",
+                  header: "Schedule Owner",
                   cell: (r) => r.ownerName ?? "—",
                 },
                 {
+                  id: "recipients",
+                  header: "Recipients",
+                  cell: (r) => <RecipientNames names={r.recipientNames ?? []} />,
+                },
+                {
                   id: "template",
-                  header: "Template",
+                  header: "Report Template Number",
                   cell: (r) => r.definitionCode,
                 },
                 {
                   id: "cron",
-                  header: "Schedule",
-                  cell: (r) => r.cronExpression,
+                  header: "Frequency",
+                  cell: (r) => describeFrequency(fromCron(r.cronExpression)),
                 },
                 {
                   id: "status",
-                  header: "Status",
+                  header: "Schedule Status",
                   sort: {
                     direction: sort === "status" ? direction : undefined,
                     onSort: () => sortBy("status"),
                   },
                   cell: (r) => (
-                    <Badge color={r.active ? "emerald" : "slate"}>
+                    <Badge color={scheduleStatusColor(r.status)}>
                       {scheduleStatusLabel(r.status)}
                     </Badge>
                   ),
                 },
                 {
+                  id: "reason",
+                  header: "Reason",
+                  cell: (r) => scheduleReasonLabel(r.status),
+                },
+                {
                   id: "next",
-                  header: "Next run",
+                  header: "Next Run At",
                   sort: {
                     direction: sort === "nextRunAt" ? direction : undefined,
                     onSort: () => sortBy("nextRunAt"),
@@ -223,9 +252,8 @@ export function ScheduledReportsView() {
 
   return (
     <div className="flex min-w-0 flex-col h-full gap-4 md:gap-6 w-full flex-1">
-      <PageHeader
-        title="Scheduled Reports"
-        breadcrumbItems={reportBreadcrumbs(navigate, "Scheduled Reports")}
+      <ReportTabsFrame
+        pair="scheduled"
         actions={
           canManage ? (
             <Button
@@ -237,25 +265,26 @@ export function ScheduledReportsView() {
             </Button>
           ) : undefined
         }
-      />
+      >
       {error && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="px-4 pt-4 text-sm text-red-700 md:px-5">
           {error}
         </p>
       )}
       {notice && (
-        <p role="status" className="text-sm text-emerald-700">
+        <p role="status" className="px-4 pt-4 text-sm text-emerald-700 md:px-5">
           {notice}
         </p>
       )}
       <ReportListToolbar
+            framed={false}
             searchPlaceholder="Search schedule name…"
             search={input}
             onSearch={setInput}
             filters={[
               {
                 id: "status",
-                label: "Status",
+                label: "Schedule Status",
                 value: status,
                 options: [
                   { label: "All", value: "" },
@@ -313,6 +342,7 @@ export function ScheduledReportsView() {
             />
           </div>
       </ReportListToolbar>
+      </ReportTabsFrame>
       <PortalDropdownMenu
         isOpen={canManage && !!menu.openId}
         onClose={menu.close}

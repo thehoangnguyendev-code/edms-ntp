@@ -86,20 +86,13 @@ class UncontrolledCopyServiceTest {
         copy = new UncontrolledCopyRecord();
         copy.setId(UUID.randomUUID());
         copy.setUncontrolledCopyNumber("UC-SOP-001-001");
-        copy.setStatusCode(UncontrolledCopyService.STATUS_REQUESTED);
-        copy.setStatus("Requested");
+        // Ready for Distribution with no approval time: the request waits for a decision (UCC-STATUS-2026-11-14: no status of its own).
+        copy.setStatusCode(UncontrolledCopyService.STATUS_READY);
+        copy.setStatus("Ready for Distribution");
         copy.setRequestedBy(requester);
         // A self-service request: the requester holds the copy, so is its recipient.
         copy.setRecipientUserId(requester.getId());
-        when(uncontrolledCopyRepository.findById(copy.getId())).thenReturn(Optional.of(copy));
-        // Seeded default (V502): the self-decision SoD constraint is active. lenient: not every test reaches it.
-        lenient().when(sodConstraintService.isActiveConstraint(
-                UncontrolledCopyService.P_REQUEST, UncontrolledCopyService.P_APPROVE)).thenReturn(true);
-    }
-
-    private void deactivateSelfDecisionConstraint() {
-        lenient().when(sodConstraintService.isActiveConstraint(
-                UncontrolledCopyService.P_REQUEST, UncontrolledCopyService.P_APPROVE)).thenReturn(false);
+        lenient().when(uncontrolledCopyRepository.findById(copy.getId())).thenReturn(Optional.of(copy));
     }
 
     private static UserAccount user(String email, String name) {
@@ -124,124 +117,96 @@ class UncontrolledCopyServiceTest {
     }
 
     // ---------------------------------------------------------------------------------------------------------
-    // Segregation of Duties
+    // Two actions only (UCC-SIMPLE-2026-11-14): Distribute and Cancel Request, each for whoever holds that permission
     // ---------------------------------------------------------------------------------------------------------
 
     @Test
-    void approveRequest_byRequester_isRejected_andNothingIsSignedOrSaved() {
-        actAs(requester, UncontrolledCopyService.P_APPROVE);
+    void distribute_withoutThePermissionToDistribute_isRefused_evenForTheRequesterAndForAnApprover() {
+        actAs(requester, UncontrolledCopyService.P_REQUEST, UncontrolledCopyService.P_CANCEL, UncontrolledCopyService.P_VIEW);
 
-        AccessDeniedException ex = assertThrows(AccessDeniedException.class,
-                () -> service.approveRequest(copy.getId(), action("ok")));
-
-        assertEquals("You cannot approve your own uncontrolled copy request.", ex.getMessage());
-        assertEquals(UncontrolledCopyService.STATUS_REQUESTED, copy.getStatusCode());
-        assertNull(copy.getApprovedBy());
-        verify(uncontrolledCopyRepository, never()).saveAndFlush(any());
-        verifyNoInteractions(electronicSignatureService, auditTrailService);
-    }
-
-    @Test
-    void rejectRequest_byRequester_isRejected_andNothingIsSignedOrSaved() {
-        actAs(requester, UncontrolledCopyService.P_REJECT);
-
-        AccessDeniedException ex = assertThrows(AccessDeniedException.class,
-                () -> service.rejectRequest(copy.getId(), action("no")));
-
-        assertTrue(ex.getMessage().startsWith("You cannot reject your own uncontrolled copy request."));
-        assertEquals(UncontrolledCopyService.STATUS_REQUESTED, copy.getStatusCode());
-        verify(uncontrolledCopyRepository, never()).saveAndFlush(any());
-        verifyNoInteractions(electronicSignatureService, auditTrailService);
-    }
-
-    @Test
-    void approveRequest_byAnotherUser_approves_andSigns() {
-        actAs(approver, UncontrolledCopyService.P_APPROVE);
-
-        UncontrolledCopyResponse response = service.approveRequest(copy.getId(), action("Looks fine"));
-
-        assertEquals(UncontrolledCopyService.STATUS_APPROVED, copy.getStatusCode());
-        assertSame(approver, copy.getApprovedBy());
-        assertEquals(UncontrolledCopyService.STATUS_APPROVED, response.statusCode());
-        verify(uncontrolledCopyRepository).saveAndFlush(copy);
-        verify(electronicSignatureService).createEntitySignature(eq("UncontrolledCopyRecord"), eq(copy.getId()), any(), eq(approver),
-                eq("signature-token"), eq("UNCONTROLLED_COPY_APPROVED"), any(), any(), any(), any());
-    }
-
-    @Test
-    void generate_isPartOfDistribute_withoutTheDistributePermissionTheServerRefuses() {
-        copy.setStatusCode(UncontrolledCopyService.STATUS_APPROVED);
-        actAs(approver, UncontrolledCopyService.P_APPROVE);
-
-        AccessDeniedException refused = assertThrows(AccessDeniedException.class, () -> service.generate(copy.getId(), action("x")));
+        AccessDeniedException refused = assertThrows(AccessDeniedException.class, () -> service.distribute(copy.getId(), action("x")));
 
         assertTrue(refused.getMessage().contains("distribute uncontrolled copies"));
+        assertEquals(UncontrolledCopyService.STATUS_READY, copy.getStatusCode());
+        verifyNoInteractions(electronicSignatureService);
     }
 
     @Test
-    void capabilities_generateAndDistributeBothFollowTheDistributePermission() {
-        copy.setStatusCode(UncontrolledCopyService.STATUS_APPROVED);
+    void distribute_isNotRefusedToTheRequester_whoHoldsThePermissionToDistribute_thereIsNoApprovalToSeparate() {
         actAs(requester, UncontrolledCopyService.P_DISTRIBUTE);
+        // the request waits for distribution; the missing file is made in the same step, so the step fails here only for what the test does not set up (the revision)
+        IllegalStateException refusedForTheRevision = assertThrows(IllegalStateException.class, () -> service.distribute(copy.getId(), action("x")));
 
-        assertTrue(service.getDetail(copy.getId()).capabilities().canGenerate());
+        assertTrue(refusedForTheRevision.getMessage().contains("source revision"), refusedForTheRevision.getMessage());
     }
 
     @Test
-    void capabilities_neverOfferApproveOrReject_toTheRequester() {
-        actAs(requester, UncontrolledCopyService.P_APPROVE, UncontrolledCopyService.P_REJECT);
+    void distribute_ofACopyThatIsNotReadyForDistribution_isRefused() {
+        actAs(approver, UncontrolledCopyService.P_DISTRIBUTE);
+        copy.setStatusCode(UncontrolledCopyService.STATUS_DISTRIBUTED);
+        copy.setStatus("Distributed");
 
-        UncontrolledCopyResponse response = service.getDetail(copy.getId());
+        IllegalStateException refused = assertThrows(IllegalStateException.class, () -> service.distribute(copy.getId(), action("x")));
 
-        assertFalse(response.capabilities().canApprove());
-        assertFalse(response.capabilities().canReject());
+        assertTrue(refused.getMessage().contains("cannot be distributed"));
     }
 
     @Test
-    void approveRequest_byRequester_isAllowed_whenSodConstraintIsInactive() {
-        deactivateSelfDecisionConstraint();
-        actAs(requester, UncontrolledCopyService.P_APPROVE);
+    void cancel_needsThePermissionToCancel_andNothingElse_theRequesterWithoutItCannotCancel() {
+        actAs(requester, UncontrolledCopyService.P_REQUEST, UncontrolledCopyService.P_VIEW);
 
-        UncontrolledCopyResponse response = service.approveRequest(copy.getId(), action("Self-approved"));
+        assertThrows(AccessDeniedException.class, () -> service.cancel(copy.getId(), action("not needed")));
 
-        assertEquals(UncontrolledCopyService.STATUS_APPROVED, copy.getStatusCode());
-        assertSame(requester, copy.getApprovedBy());
-        assertEquals(UncontrolledCopyService.STATUS_APPROVED, response.statusCode());
-        verify(sodConstraintService, atLeastOnce()).isActiveConstraint(
-                UncontrolledCopyService.P_REQUEST, UncontrolledCopyService.P_APPROVE);
-        verify(electronicSignatureService).createEntitySignature(eq("UncontrolledCopyRecord"), eq(copy.getId()), any(), eq(requester),
-                eq("signature-token"), eq("UNCONTROLLED_COPY_APPROVED"), any(), any(), any(), any());
+        assertEquals(UncontrolledCopyService.STATUS_READY, copy.getStatusCode());
+        verify(uncontrolledCopyRepository, never()).saveAndFlush(any());
+        verifyNoInteractions(electronicSignatureService);
     }
 
     @Test
-    void rejectRequest_byRequester_isAllowed_whenSodConstraintIsInactive() {
-        deactivateSelfDecisionConstraint();
-        actAs(requester, UncontrolledCopyService.P_REJECT);
+    void cancel_byAnyoneWhoHoldsThePermission_closesTheCopyWithTheReasonCancelled_andSigns() {
+        actAs(approver, UncontrolledCopyService.P_CANCEL);
 
-        service.rejectRequest(copy.getId(), action("Not needed any more"));
+        UncontrolledCopyResponse response = service.cancel(copy.getId(), action("Not needed any more"));
 
-        assertEquals(UncontrolledCopyService.STATUS_REJECTED, copy.getStatusCode());
-        assertSame(requester, copy.getRejectedBy());
-        verify(uncontrolledCopyRepository).saveAndFlush(copy);
+        assertEquals(UncontrolledCopyService.STATUS_CLOSED_CANCELLED, copy.getStatusCode());
+        assertEquals(UncontrolledCopyService.REASON_CANCELLED, copy.getCloseReasonCode());
+        assertEquals(UncontrolledCopyService.STATUS_CLOSED_CANCELLED, response.statusCode());
+        assertEquals("CANCELLED", response.closeReason());
+        verify(electronicSignatureService).createEntitySignature(eq("UncontrolledCopyRecord"), eq(copy.getId()), any(), eq(approver),
+                eq("signature-token"), eq("UNCONTROLLED_COPY_CANCELLED"), any(), any(), any(), any());
     }
 
     @Test
-    void capabilities_offerApproveAndReject_toTheRequester_whenSodConstraintIsInactive() {
-        deactivateSelfDecisionConstraint();
-        actAs(requester, UncontrolledCopyService.P_APPROVE, UncontrolledCopyService.P_REJECT);
+    void cancel_requiresAReason() {
+        actAs(approver, UncontrolledCopyService.P_CANCEL);
 
-        UncontrolledCopyResponse response = service.getDetail(copy.getId());
-
-        assertTrue(response.capabilities().canApprove());
-        assertTrue(response.capabilities().canReject());
+        assertThrows(IllegalArgumentException.class, () -> service.cancel(copy.getId(), action(" ")));
+        assertEquals(UncontrolledCopyService.STATUS_READY, copy.getStatusCode());
     }
 
     @Test
-    void approveRequest_byAnotherUser_doesNotDependOnSodConstraint() {
-        actAs(approver, UncontrolledCopyService.P_APPROVE);
+    void capabilities_areDistributeAndCancelOnly_andFollowTheirOwnPermissions() {
+        actAs(approver, UncontrolledCopyService.P_VIEW, UncontrolledCopyService.P_DISTRIBUTE);
+        copy.setRecipientUserId(approver.getId());
 
-        service.approveRequest(copy.getId(), action("ok"));
+        var capabilities = service.getDetail(copy.getId()).capabilities();
 
-        verify(sodConstraintService, never()).isActiveConstraint(anyString(), anyString());
+        assertTrue(capabilities.canDistribute());
+        assertFalse(capabilities.canCancel(), "to cancel takes the permission to cancel");
+        actAs(approver, UncontrolledCopyService.P_CANCEL);
+        assertTrue(service.getDetail(copy.getId()).capabilities().canCancel());
+    }
+
+    @Test
+    void thereIsNothingToDistributeOrCancelOnACopyThatIsNotReadyForDistribution() {
+        actAs(approver, UncontrolledCopyService.P_VIEW, UncontrolledCopyService.P_DISTRIBUTE, UncontrolledCopyService.P_CANCEL);
+        copy.setRecipientUserId(approver.getId());
+        copy.setStatusCode(UncontrolledCopyService.STATUS_CLOSED_CANCELLED);
+
+        var capabilities = service.getDetail(copy.getId()).capabilities();
+
+        assertFalse(capabilities.canDistribute());
+        assertFalse(capabilities.canCancel());
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -321,37 +286,23 @@ class UncontrolledCopyServiceTest {
     void operationalPermissionsNoLongerImplyViewAll() {
         UserAccount holder = user("holder@example.com", "Holder");
         copy.setRecipientUserId(holder.getId());
-        copy.setStatusCode(UncontrolledCopyService.STATUS_DISTRIBUTED); // not waiting for a decision
-        actAs(approver, UncontrolledCopyService.P_VIEW, UncontrolledCopyService.P_APPROVE,
-                UncontrolledCopyService.P_REJECT, UncontrolledCopyService.P_DISTRIBUTE);
-        lenient().when(permissionEvaluationService.hasAnyPermission(approver, UncontrolledCopyService.P_APPROVE, UncontrolledCopyService.P_REJECT)).thenReturn(true);
+        copy.setStatusCode(UncontrolledCopyService.STATUS_DISTRIBUTED); // not waiting for distribution
+        actAs(approver, UncontrolledCopyService.P_VIEW, UncontrolledCopyService.P_DISTRIBUTE, UncontrolledCopyService.P_CANCEL);
 
         assertThrows(AccessDeniedException.class, () -> service.getDetail(copy.getId()));
     }
 
     @Test
-    void anApproverSeesARequestThatWaitsForADecision_withoutTheViewEverythingPermission() {
+    void aPersonWhoMayDistributeSeesARequestThatWaitsForDistribution_withoutTheViewEverythingPermission() {
         UserAccount holder = user("holder@example.com", "Holder");
         copy.setRecipientUserId(holder.getId());
-        actAs(approver, UncontrolledCopyService.P_VIEW);
-        when(permissionEvaluationService.hasAnyPermission(approver, UncontrolledCopyService.P_APPROVE, UncontrolledCopyService.P_REJECT)).thenReturn(true);
+        actAs(approver, UncontrolledCopyService.P_VIEW, UncontrolledCopyService.P_DISTRIBUTE);
 
         assertEquals(copy.getId().toString(), service.getDetail(copy.getId()).id());
     }
 
     @Test
-    void anApproverDoesNotSeeTheRestOnceTheRequestIsDecided() {
-        UserAccount holder = user("holder@example.com", "Holder");
-        copy.setRecipientUserId(holder.getId());
-        copy.setStatusCode(UncontrolledCopyService.STATUS_APPROVED);
-        actAs(approver, UncontrolledCopyService.P_VIEW);
-        lenient().when(permissionEvaluationService.hasAnyPermission(approver, UncontrolledCopyService.P_APPROVE, UncontrolledCopyService.P_REJECT)).thenReturn(true);
-
-        assertThrows(AccessDeniedException.class, () -> service.getDetail(copy.getId()));
-    }
-
-    @Test
-    void aPersonWhoCannotApproveDoesNotSeeSomeoneElsesPendingRequest() {
+    void aPersonWhoMayNotDistributeDoesNotSeeSomeoneElsesRequest() {
         UserAccount holder = user("holder@example.com", "Holder");
         copy.setRecipientUserId(holder.getId());
         actAs(approver, UncontrolledCopyService.P_VIEW);

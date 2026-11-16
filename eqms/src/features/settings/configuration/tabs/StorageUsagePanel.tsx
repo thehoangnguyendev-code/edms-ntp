@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
+import { useEffect, useMemo, useState } from 'react';
+import type { ChartConfiguration } from 'chart.js';
 import { FormSection } from '@/components/ui/form/FormSection';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { ChartCanvas } from '@/components/ui/chart';
 import { api } from '@/services/api/client';
 import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
@@ -32,6 +32,30 @@ export const growthOf = (snapshots: Snapshot[]) => {
   if (!(days >= 1)) return null;
   const delta = newest.totalBytes - oldest.totalBytes;
   return { days, delta, perDay: delta / days };
+};
+
+/** The size of the object versions over time, a Chart.js line chart (oldest first). */
+const historyConfiguration = (snapshots: Snapshot[]): ChartConfiguration<'line'> => {
+  const ordered = [...snapshots].reverse();
+  return {
+    type: 'line',
+    data: {
+      labels: ordered.map((snapshot) => formatDate(snapshot.measuredAt)),
+      datasets: [{ label: 'Object-version size', data: ordered.map((snapshot) => snapshot.totalBytes), borderColor: '#059669', backgroundColor: 'rgba(5, 150, 105, 0.12)', fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 }],
+    },
+    options: {
+      animation: { duration: 700, easing: 'easeOutQuad' },
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 8, autoSkipPadding: 40 } },
+        y: { beginAtZero: false, grid: { color: '#f1f5f9' }, border: { display: false }, ticks: { callback: (value) => size(Number(value)) } },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: '#ffffff', titleColor: '#0f172a', bodyColor: '#334155', borderColor: '#e2e8f0', borderWidth: 1, padding: 10, callbacks: { label: (item) => `Object-version size: ${size(Number(item.parsed.y))}` } },
+      },
+    },
+  };
 };
 
 const Bars = ({ title, values, total }: { title: string; values: Record<string, number>; total: number }) => (
@@ -91,6 +115,7 @@ export function StorageUsagePanel() {
   const budgetBytes = status?.policy.budgetBytes ?? null;
   const usedPercent = latest && budgetBytes ? (latest.totalBytes / budgetBytes) * 100 : null;
   const growth = snapshots ? growthOf(snapshots) : null;
+  const history = useMemo(() => (snapshots && snapshots.length > 1 ? historyConfiguration(snapshots) : null), [snapshots]);
   const daysLeft = growth && budgetBytes && latest && growth.perDay > 0 && latest.totalBytes < budgetBytes ? Math.floor((budgetBytes - latest.totalBytes) / growth.perDay) : null;
   return <FormSection title="MinIO Storage Usage" description="Object versions in the configured buckets; local and NAS files are not included.">
     {failed ? <p role="alert" className="text-sm text-red-600">Unable to load storage measurements.</p>
@@ -130,10 +155,8 @@ export function StorageUsagePanel() {
           <Bars title="By storage domain" values={latest.byDomain} total={latest.totalBytes} />
           <Bars title="By file type" values={latest.byFileType} total={latest.totalBytes} />
         </div>
-        {snapshots.length > 1 && <div><h4 className="mb-2 text-sm font-semibold text-slate-700">Last 90 days</h4>
-          <ChartContainer config={{ totalBytes: { label: 'Object-version size', color: '#059669' } }} className="h-52 w-full">
-            <LineChart data={[...snapshots].reverse()}><CartesianGrid vertical={false} /><XAxis dataKey="measuredAt" tickFormatter={v => formatDate(v)} minTickGap={40} /><YAxis tickFormatter={size} width={70} /><ChartTooltip content={<ChartTooltipContent />} /><Line type="monotone" dataKey="totalBytes" stroke="var(--color-totalBytes)" dot={false} /></LineChart>
-          </ChartContainer>
+        {history && <div><h4 className="mb-2 text-sm font-semibold text-slate-700">Last 90 days</h4>
+          <div className="h-52 w-full"><ChartCanvas config={history} ariaLabel="Object-version size over the last 90 days" /></div>
         </div>}</>}
       </div>}
   </FormSection>;

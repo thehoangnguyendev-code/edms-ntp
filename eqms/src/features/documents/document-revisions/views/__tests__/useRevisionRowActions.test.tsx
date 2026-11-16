@@ -9,7 +9,7 @@ import type { Revision } from "../types";
 vi.mock("@/services/api/documents", () => ({ documentApi: { getRevisionByIdSnapshot: vi.fn() } }));
 
 const FROM = ROUTES.DOCUMENTS.REVISIONS.OWNED;
-const revision = { id: "rev-9", documentId: "doc-1", documentNumber: "SOP.1", revisionName: "R", revisionNumber: "1.0.0", state: "Effective" } as Revision;
+const revision = { id: "rev-9", documentId: "doc-1", documentNumber: "SOP.1", revisionName: "R", revisionNumber: "1.0.0", status: "Effective", statusCode: "EFFECTIVE" } as Revision;
 
 const setup = (onPublish?: (revision: Revision) => void) => {
   const navigateTo = vi.fn();

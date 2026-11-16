@@ -34,6 +34,7 @@ import { DocumentWorkflowRulesPanel } from "./DocumentWorkflowRulesPanel";
 import { ROUTES } from "@/app/routes.constants";
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 // ─── Main View ────────────────────────────────────────────────────────────────
 // Violation Scanner moved to its own screen: SodViolationReviewView.tsx (sibling to Access
@@ -118,7 +119,7 @@ export const SegregationOfDutiesView: React.FC = () => {
 
   // Server-side query state.
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [severityFilter, setSeverityFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -390,7 +391,7 @@ export const SegregationOfDutiesView: React.FC = () => {
                 onClick={() => setShowDocRulesESignModal(true)}
                 disabled={!isDocRulesDirty}
               >
-                Save Changes
+                Save
               </Button>
             </div>
           )

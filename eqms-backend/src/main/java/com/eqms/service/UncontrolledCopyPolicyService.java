@@ -148,7 +148,7 @@ public class UncontrolledCopyPolicyService {
         return toResponse(s);
     }
 
-    private record Snapshot(boolean approvalRequired, int validityHours, String validityBasis, boolean allowRedownload, java.util.Map<String, String> marking) {}
+    private record Snapshot(int validityHours, String validityBasis, boolean allowRedownload, java.util.Map<String, String> marking) {}
 
     private Snapshot snapshot(UncontrolledCopyPolicySetting s) {
         var m = markingFor(s);
@@ -160,15 +160,11 @@ public class UncontrolledCopyPolicyService {
         flat.put("stampPosition", m.stampPosition());
         // Drag-and-drop placement rules (edited on the PDF Markings preview) are part of the audited change set.
         flat.put("placements", m.placements() == null || m.placements().isEmpty() ? null : objectMapper.valueToTree(m.placements()).toString());
-        return new Snapshot(s.isApprovalRequired(), s.getValidityHours(), s.getValidityBasis(), s.isAllowRedownload(), flat);
+        return new Snapshot(s.getValidityHours(), s.getValidityBasis(), s.isAllowRedownload(), flat);
     }
 
     private List<AuditTrailChangeResponse> diff(Snapshot before, Snapshot after) {
         List<AuditTrailChangeResponse> changes = new ArrayList<>();
-        if (before.approvalRequired() != after.approvalRequired()) {
-            changes.add(new AuditTrailChangeResponse("approvalRequired",
-                    before.approvalRequired() ? "Enabled" : "Disabled", after.approvalRequired() ? "Enabled" : "Disabled"));
-        }
         if (before.validityHours() != after.validityHours()) {
             changes.add(new AuditTrailChangeResponse("validityHours", String.valueOf(before.validityHours()), String.valueOf(after.validityHours())));
         }
@@ -192,7 +188,6 @@ public class UncontrolledCopyPolicyService {
         if (req == null) {
             return;
         }
-        if (req.approvalRequired() != null) s.setApprovalRequired(req.approvalRequired());
         if (req.validityBasis() != null) {
             if (!"DISTRIBUTION".equals(req.validityBasis()) && !"DOCUMENT_VALID_UNTIL".equals(req.validityBasis())) {
                 throw new IllegalArgumentException("Validity basis must be DISTRIBUTION or DOCUMENT_VALID_UNTIL");
@@ -216,6 +211,6 @@ public class UncontrolledCopyPolicyService {
     }
 
     private UncontrolledCopyPolicyResponse toResponse(UncontrolledCopyPolicySetting s) {
-        return new UncontrolledCopyPolicyResponse(s.isApprovalRequired(), s.getValidityHours(), s.getValidityBasis(), s.isAllowRedownload(), markingFor(s));
+        return new UncontrolledCopyPolicyResponse(s.getValidityHours(), s.getValidityBasis(), s.isAllowRedownload(), markingFor(s));
     }
 }

@@ -11,7 +11,7 @@ Skill này chỉ lo **màn hình trong app** — dashboard, danh sách, bảng, 
 
 | Hạng mục | Trần | Ghi chú |
 | --- | --- | --- |
-| Màu nhấn | 1 | Màu thứ hai phải xin phép. Tag phân loại không tính, xem `M8` |
+| Màu nhấn | 1 | Màu thứ hai phải xin phép. Tag phân loại (`M8`) và màu nhận diện của thực thể người dùng tạo (`M34`) không tính |
 | Họ chữ | 1 | Phân vai bằng weight, không bằng font thứ hai |
 | Sắc độ chữ | 3 | chính, phụ, và màu trên nền nhấn |
 | Bậc bo góc | 4 | full, lớn, giữa, nhỏ |
@@ -20,7 +20,7 @@ Skill này chỉ lo **màn hình trong app** — dashboard, danh sách, bảng, 
 | Tầng lồng khối | 2 | |
 | Độ dài dòng chữ | 75 ký tự | |
 | Dạng nút | 4 | `outline` (mặc định; icon trái khi glyph gọi đúng hành động), `primary` nền nhấn, `secondary` nền xám, `ghost`. Nút nguy hiểm là `ghost` phủ nền `rose` mờ (`I4`), không phải dạng thứ năm. Cộng nút chỉ-icon. Xem `I1`, `components/button.md` |
-| Bậc spacing | thang 4/8/12/16/20/24/32/40 cho khoảng cách giữa các khối | Bên trong control (nút, badge, danh sách dày) được dùng nửa bậc 2/6/10 (`py-0.5`, `gap-1.5`, `py-2.5`, `space-y-0.5`). Ngoài hai thang này thì không |
+| Bậc spacing | thang 4/8/12/16/20/24/32/40 cho khoảng cách giữa các khối | Bên trong control (nút, badge) được dùng nửa bậc 2/6/10 (`py-0.5`, `gap-1.5`, `py-2.5`). **Khe giữa hai dòng bo góc có nền rê / đang chọn thì tối thiểu 4px, không dùng bậc 2** (luật khoá 19). Ngoài hai thang này thì không |
 
 ---
 
@@ -42,10 +42,10 @@ Skill này chỉ lo **màn hình trong app** — dashboard, danh sách, bảng, 
 
 **Nút trong form phải cao bằng ô nhập, và cả hai phải đổi cùng nhau.** Cùng
 `h-11 md:h-10`: đổi một cái mà giữ cái kia là lỗi thấy ngay, nút 40px nằm dưới ô
-48px trông như hai thứ của hai bộ khác nhau (đã dính ở vòng test form đăng nhập).
+48px trông như hai thứ của hai bộ khác nhau.
 
-**Vì sao 40px, không phải 48px** (đảo 22/09/2026). Bản cũ cho ô và nút form
-`h-12` ở mọi bề rộng, suy từ `R8`. Nhưng `R8` nói về **cỡ chữ** 16px, không nói
+**Vì sao 40px, không phải 48px.** Đừng dùng lại `h-12` cho ô và nút form ở mọi bề
+rộng với lý do suy từ `R8`: `R8` nói về **cỡ chữ** 16px, không nói
 chiều cao: chữ 16px nằm trong ô 40px vẫn thoáng. 48px trong dashboard thì thô,
 lệch một bậc so với link sidebar, mục menu, mục dropdown (đều `h-10`), và 2 ô + 1
 hàng nút đã ăn gần hết một modal. Màn hẹp lên 44px cho vừa ngón tay. Chỉ form
@@ -104,7 +104,7 @@ dự án) không thuộc `T9`: ở danh sách nó là một dòng bảng `text-s
 ⚠️ Hai bẫy đã dính ở dự án thật:
 
 - `md` và `lg` lỡ cùng một giá trị, nên "8 size chuẩn" thực ra chỉ có **7**. Kiểm thang của dự án trước khi tin vào tên token.
-- Tên trang từng là `2xl` ở desktop, chủ dự án chốt hạ về `xl` ngày 16/09/2026 vì đọc ra **quá to so với nội dung bên dưới**. `2xl` chỉ còn cho hero và con số card số liệu.
+- Tên trang từng là `2xl` ở desktop, chủ dự án chốt hạ về `xl` vì đọc ra **quá to so với nội dung bên dưới**. `2xl` chỉ còn cho hero và con số card số liệu.
 
 ---
 

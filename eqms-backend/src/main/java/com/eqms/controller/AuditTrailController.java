@@ -110,14 +110,6 @@ public class AuditTrailController {
             @RequestParam(required = false) String reason,
             @RequestParam(required = false) String signatureToken
     ) {
-        auditTrailService.requireValidExportSignature(signatureToken);
-        StreamingResponseBody csv = outputStream -> auditTrailService.writeExport(
-                search, module, action, user, severity, documentNumber, entityId, status, ipAddress,
-                eSignatureOnly, dateFrom, dateTo, sortBy, sortDirection, reason, signatureToken, outputStream
-        );
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=audit-trail.csv")
-                .contentType(MediaType.parseMediaType("text/csv"))
-                .body(csv);
+        return TableExportRedirect.to("audit-trail");
     }
 }

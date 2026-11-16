@@ -15,6 +15,7 @@ import type { BackupRecord } from "../types";
 import { PagedTable } from "./PagedTable";
 import { formatDateTime } from "../format";
 import { CONTENT_COLOR, statusLabel } from "../types";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 /** The backups are listed five to a page, newest first. */
 const PAGE_SIZE = 5;
@@ -45,7 +46,7 @@ export const ProductionRestoreDialog: React.FC<{
   const [page, setPage] = useState(1);
   /** Typed by the person; the server is asked once they pause, and always from the first page. */
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);

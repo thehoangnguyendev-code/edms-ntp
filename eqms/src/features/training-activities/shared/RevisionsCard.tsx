@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { Search } from "lucide-react";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import { TablePagination } from "@/components/ui/table/TablePagination";
@@ -6,6 +7,7 @@ import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives
 import { cn } from "@/components/ui/utils";
 import { useServerPagedList, type ServerPage } from "@/features/documents/shared/useServerPagedList";
 import { SortableTh, nextSort, type SortDirection } from "@/features/documents/document-detail/tabs/subtabs/components/SortableTh";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 /** One column of the revisions table. `sortKey` is the key the server sorts by; `hideOnPhone` hides the column below the md breakpoint. */
 export interface RevisionColumn<T> {
@@ -43,7 +45,7 @@ export function RevisionsCard<T extends { id: string; current: boolean }>({ tabL
   const [sort, setSort] = useState<{ key: string; direction: SortDirection }>({ key: defaultSortKey, direction: "desc" });
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 250);
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
@@ -108,10 +110,7 @@ export function RevisionsCard<T extends { id: string; current: boolean }>({ tabL
                 ) : (
                   <TableMarkup.Row>
                     <TableMarkup.Cell colSpan={span} className="py-12 text-center">
-                      <div className="flex flex-col items-center justify-center gap-2.5">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-50"><Search className="h-5 w-5 text-slate-300" /></div>
-                        <p className="text-sm font-medium text-slate-500">{debouncedSearch ? "No records matching your search" : "No records to display"}</p>
-                      </div>
+                      <TableEmptyState title={debouncedSearch ? "No records matching your search" : "No records to display"} />
                     </TableMarkup.Cell>
                   </TableMarkup.Row>
                 )}

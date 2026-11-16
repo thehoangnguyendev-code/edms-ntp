@@ -7,6 +7,7 @@ import { cn } from '../utils';
 import { InlineLoading } from '../loading/Loading';
 import { CONTROL_STATE_CLASSES } from '../controlState';
 import { useDebounce } from '@/hooks/useDebounce';
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 export interface SelectOption {
   label: string;
@@ -66,7 +67,7 @@ export const Select: React.FC<SelectProps> = ({
   isLoading = false,
   loadingText = "Loading options...",
   onSearch,
-  debounceMs = 300,
+  debounceMs = SEARCH_DEBOUNCE_MS,
   minSearchLength = 0,
   'aria-label': ariaLabel,
 }) => {

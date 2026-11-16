@@ -4,6 +4,7 @@ import { IconInfoCircle, IconPencilMinus, IconToggleLeft, IconToggleRight } from
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { trainingAnnex } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
@@ -101,7 +102,7 @@ export function TrainingAnnexView() {
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
     { id: "code", header: "Document Number", sort: sorted("code"), cell: (r) => <button type="button" className="font-medium text-emerald-700 hover:underline" onClick={() => open(r)}>{r.code}</button> },
     { id: "title", header: "Document Name", sort: sorted("title"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.title}</div> },
-    { id: "status", header: "Status", sort: sorted("status"), cell: (r) => <Badge color={r.status === "ACTIVE" ? "emerald" : "slate"}>{r.status === "ACTIVE" ? "Active" : "Inactive"}</Badge> },
+    { id: "status", header: "Status", sort: sorted("status"), cell: (r) => <Badge color={flagColor(r.status === "ACTIVE")}>{r.status === "ACTIVE" ? "Active" : "Inactive"}</Badge> },
     { id: "enabledVersion", header: "Enabled Revision", sort: sorted("enabledVersion"), cell: (r) => r.enabledVersion ?? "—" },
     { id: "tokenMode", header: "Template Written As", sort: sorted("tokenMode"), cell: (r) => <TokenModeBadge mode={r.tokenMode} checked={r.tokenChecked} /> },
     { id: "enabledAt", header: "Enabled On", sort: sorted("enabledAt"), cell: (r) => (r.enabledAt ? day(r.enabledAt) : "—") },
@@ -113,10 +114,6 @@ export function TrainingAnnexView() {
   return (
     <div className="flex h-full w-full min-w-0 flex-1 flex-col gap-4 md:gap-6">
       <PageHeader title="Training Annex" breadcrumbItems={trainingAnnex(navigate)} />
-      <p className="text-sm text-slate-600">
-        The forms in this list are fixed by the system: each one has its own contract (what it holds, when it is filled, the order of signing), so a new form cannot be added here.
-        A form is Active when a template of it is in force, and Inactive when none is. Use the menu of a row to view a form, edit it (upload a template, choose how the signatures are shown), enable a version (Inactive form) or another version (Active form), or disable the version in force (Active form).
-      </p>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar
         searchPlaceholder="Search document number or name…"

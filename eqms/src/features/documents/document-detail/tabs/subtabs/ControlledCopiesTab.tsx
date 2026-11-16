@@ -12,6 +12,7 @@ import { SortableTh } from "./components/SortableTh";
 import { buildControlledCopySnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { usagePurposeLabel } from "@/features/documents/controlled-copies/usagePurpose";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 interface ControlledCopiesTabProps {
     copies?: ControlledCopy[];
@@ -39,7 +40,7 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearchQuery(searchQuery.trim());
-        }, 250);
+        }, SEARCH_DEBOUNCE_MS);
         return () => clearTimeout(timer);
     }, [searchQuery]);
 

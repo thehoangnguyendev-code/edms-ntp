@@ -3,7 +3,7 @@ import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDeskt
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import React, { useEffect, useState } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
-import { AlertTriangle, Check, ChevronDown, ChevronUp, MoreVertical, Plus, Power, PowerOff, Search, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, ChevronUp, MoreVertical, Plus, Search, X } from "lucide-react";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
@@ -16,7 +16,7 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { cn } from "@/components/ui/utils";
-import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
+import { IconFilter2, IconPencilMinus, IconToggleLeft, IconToggleRight } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { documentTypesAdmin } from "@/components/ui/breadcrumb/breadcrumbs.config";
@@ -336,8 +336,8 @@ export const DocumentTypesView: React.FC = () => {
     },
   ]}
 >
-<div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-end">
-          <div className="sm:col-span-1 lg:col-span-4">
+<div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+          <div className="w-full">
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -354,7 +354,7 @@ export const DocumentTypesView: React.FC = () => {
             </div>
           </div>
 
-          <div className="sm:col-span-1 lg:col-span-4">
+          <div className="w-full">
             <Select
               label="Status"
               value={statusFilter}
@@ -371,7 +371,7 @@ export const DocumentTypesView: React.FC = () => {
             />
           </div>
 
-          <div className="sm:col-span-1 lg:col-span-4">
+          <div className="w-full">
             <DateRangePicker
               label="Modified Date Range"
               startDate={modifiedFromDate}
@@ -387,11 +387,10 @@ export const DocumentTypesView: React.FC = () => {
               placeholder="Select range"
             />
           </div>
-        </div>
-
-        <div className="hidden md:flex justify-start gap-2 mt-3">
-          <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} disabled={!hasActiveFilters} />
+          <div className="filter-actions flex items-end gap-2">
+            <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} disabled={!hasActiveFilters} />
             {docTypesControl}
+          </div>
         </div>
 </ConfiguredDesktopFilters>
       </div>
@@ -440,12 +439,12 @@ export const DocumentTypesView: React.FC = () => {
           >
             {items.find((current) => current.id === openDropdownId)?.isActive ? (
               <>
-                <PowerOff className="h-3.5 w-3.5" />
+                <IconToggleLeft className="h-3.5 w-3.5" />
                 <span>Disable</span>
               </>
             ) : (
               <>
-                <Power className="h-3.5 w-3.5" />
+                <IconToggleRight className="h-3.5 w-3.5" />
                 <span>Enable</span>
               </>
             )}

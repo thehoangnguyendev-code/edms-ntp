@@ -66,7 +66,7 @@ public class BackupStoreScrubController {
         BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/store-scrubs", Map.of("by", actor.getUsername()));
         if (reply.ok()) {
             String job = reply.body().path("jobId").asText("");
-            audit.logAs(actor, "BACKUP_STORE_SCRUB", job, BackupAuditIds.of("store-scrub", job), "STORE_SCRUB_STARTED", null, "QUEUED",
+            audit.logAs(actor, "BACKUP_STORE_SCRUB", "Live file store check", BackupAuditIds.of("store-scrub", job), "STORE_SCRUB_STARTED", null, "QUEUED",
                     "Started a check of the live file store");
         }
         return reply(reply);

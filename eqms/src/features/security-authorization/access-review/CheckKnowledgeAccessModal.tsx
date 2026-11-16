@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { useToast } from "@/components/ui/toast/Toast";
@@ -112,7 +113,7 @@ export const CheckKnowledgeAccessModal: React.FC<CheckKnowledgeAccessModalProps>
             <ul className="space-y-1.5">
               {result.layers.map((layer) => (
                 <li key={layer.layerCode} className="flex items-start gap-2.5 rounded-lg border border-slate-200 px-3 py-2">
-                  <Badge color={layer.passed ? "emerald" : "slate"} size="xs" className="mt-0.5 shrink-0">{layer.passed ? "Yes" : "No"}</Badge>
+                  <Badge color={flagColor(layer.passed)} size="xs" className="mt-0.5 shrink-0">{layer.passed ? "Yes" : "No"}</Badge>
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-slate-800">{LAYER_TITLES[layer.layerCode] ?? layer.layerCode}</p>
                     <p className="text-xs text-slate-500">{layer.message}</p>

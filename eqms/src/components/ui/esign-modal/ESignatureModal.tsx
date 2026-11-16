@@ -13,6 +13,7 @@ export interface ESignatureModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (data: any) => void | Promise<void>;
+  /** Not shown: the dialog header always carries the compliance line. Kept so existing callers still compile. */
   actionTitle?: string;
   changes?: {
     action: string;
@@ -49,36 +50,16 @@ export interface ESignatureModalProps {
   deferConfirm?: boolean;
 }
 
-const TRANSACTION_PRESETS = {
-  'distribute': {
-    actionTitle: "Confirm Distribution",
-    changes: [{ action: "Update Status", oldValue: "Ready for Distribution", newValue: "Distributed", category: "status" as const }]
-  },
-  'cancel-distribution': {
-    actionTitle: "Cancel Distribution",
-    changes: [{ action: "Update Status", oldValue: "Ready for Distribution", newValue: "Closed - Cancelled", category: "status" as const }]
-  },
-  'recall-distribution': {
-    actionTitle: "Recall Immediately",
-    changes: [{ action: "Update Status", oldValue: "Distributed", newValue: "Obsoleted", category: "status" as const }]
-  }
-};
-
 export const ESignatureModal: React.FC<ESignatureModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  actionTitle: propActionTitle,
-  transactionType,
   meaningDisplayName,
   meaningCode,
   deferConfirm = false,
 }) => {
   const modalId = useId();
   const titleId = `${modalId}-title`;
-
-  const preset = transactionType ? TRANSACTION_PRESETS[transactionType] : null;
-  const actionTitle = propActionTitle || preset?.actionTitle || "Electronic Signature";
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -295,7 +276,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                   <h3 id={titleId} className="text-sm md:text-base font-semibold text-slate-900 leading-tight truncate">
                     Electronic Signature
                   </h3>
-                  <p className="text-2xs text-slate-500 font-medium truncate">{actionTitle}</p>
+                  <p className="text-xs text-slate-500 font-medium truncate">Compliant with FDA 21 CFR Part 11</p>
                 </div>
               </div>
               <button
@@ -314,9 +295,9 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
 
                 {/* The signature carries its meaning; what changed is recorded in the Audit Trail. */}
                 {effectiveMeaningDisplayName && (
-                  <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 py-2.5">
-                    <span className="text-2xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">Meaning</span>
-                    <span className="text-sm font-semibold text-slate-900 break-words">{effectiveMeaningDisplayName}</span>
+                  <div className="flex items-baseline gap-3 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3.5 py-3">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">Meaning</span>
+                    <span className="text-sm sm:text-xl font-medium text-slate-900 wrap-break-word min-w-0">{effectiveMeaningDisplayName}</span>
                   </div>
                 )}
 
@@ -325,7 +306,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                   {/* Reason */}
                   <div className="space-y-1">
                     <label htmlFor={`${modalId}-reason`} className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-                      Reason for Electronic Signature
+                      Reason
                       <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>
                     </label>
 

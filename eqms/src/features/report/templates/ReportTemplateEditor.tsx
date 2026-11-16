@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { ROUTES } from "@/app/routes.constants";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { FormField, Textarea } from "@/components/ui/form/ResponsiveForm";
 import { FormModal } from "@/components/ui/modal/FormModal";
@@ -13,7 +14,8 @@ import { DataTable } from "@/components/ui/table/DataTable";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
-import { reportsApi, type ReportFormat } from "@/services/api/reports";
+import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
+import type { ReportFormat } from "@/services/api/reports";
 import { ReportChartsEditor } from "./ReportChartsEditor";
 import { reportRevisionLabel } from "../shared/reportLabels";
 import { ReportTemplateUpgradeModal } from "./ReportTemplateUpgradeModal";
@@ -21,6 +23,10 @@ import { useReportTemplateCapabilities } from "./useReportTemplateCapabilities";
 import { ReportRevisionStepper } from "../shared/ReportRevisionStepper";
 import { ReportTemplateAccessScope } from "./ReportTemplateAccessScope";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
+import { reportRevisionParent } from "../shared/reportRevisionParent";
+import { Badge } from "@/components/ui/badge/Badge";
+import { ReportFieldFilters } from "../shared/ReportFieldFilters";
+import { fieldMatches, groupNames, groupOf, initialFields, maxColumnsOf } from "../shared/reportFieldCatalog";
 import { defaultReportLayout } from "@/services/api/reportTemplates";
 import { displayDateTime } from "@/utils/format";
 import {
@@ -44,7 +50,7 @@ const tabs = [
   { id: "fields", label: "Fields & Defaults" },
   { id: "charts", label: "Charts" },
   { id: "scope", label: "Access & Scope" },
-  { id: "history", label: "History" },
+  { id: "audit", label: "Audit Trail" },
 ];
 const inputClass =
   "mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-slate-50";
@@ -63,82 +69,11 @@ function composeName(format: ReportNameFormat, values: Record<string, string>): 
   return pieces.join(format.separator);
 }
 
-const LIFECYCLE_LABEL: Record<ReportLifecycleStatus, string> = {
-  DRAFT: "Draft. Not approved, cannot run.",
-  ACTIVE: "Active. Can run.",
-  INACTIVE: "Inactive. Cannot run.",
-  PENDING_APPROVAL: "Pending Approval. Cannot run yet.",
-};
-
-/** Where the current version stands in the approval flow, and the steps the user may take (REPORT-TEMPLATE-APPROVAL-2026-10-14). */
-function ApprovalPanel({
-  stored,
-  gmpUse,
-  dirty,
-  busy,
-  canSubmit,
-  canDecide,
-  onSubmit,
-  onApprove,
-  onReject,
-}: {
-  stored: ReportTemplate;
-  gmpUse: boolean;
-  dirty: boolean;
-  busy: boolean;
-  canSubmit: boolean;
-  canDecide: boolean;
-  onSubmit: () => void;
-  onApprove: () => void;
-  onReject: () => void;
-}) {
-  const status = stored.lifecycleStatus ?? "DRAFT";
-  return (
-    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-medium">
-            Revision {stored.revision ?? stored.definitionVersion}: {LIFECYCLE_LABEL[status]}
-            {gmpUse ? " Used for GMP decisions." : ""}
-          </p>
-          {(status === "ACTIVE" || status === "INACTIVE") && stored.approvedAt && (
-            <p className="mt-1 text-xs">
-              Approved version {stored.approvedVersion} on {displayDateTime(stored.approvedAt)}.
-            </p>
-          )}
-          {status === "DRAFT" && stored.approvalComment && (
-            <p className="mt-1 text-xs">Returned for changes: {stored.approvalComment}</p>
-          )}
-          {dirty && (
-            <p className="mt-1 text-xs">Save your changes first. A saved change returns the template to draft.</p>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {status === "DRAFT" && canSubmit && (
-            <Button size="sm" variant="outline-emerald" disabled={busy || dirty} onClick={onSubmit}>
-              Submit for Approval
-            </Button>
-          )}
-          {status === "PENDING_APPROVAL" && canDecide && (
-            <Button size="sm" variant="outline" disabled={busy} onClick={onReject}>
-              Return to Draft
-            </Button>
-          )}
-          {status === "PENDING_APPROVAL" && canDecide && (
-            <Button size="sm" variant="outline-emerald" disabled={busy} onClick={onApprove}>
-              Complete Approval
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function ReportTemplateEditor() {
   const { code = "new" } = useParams();
   const create = code === "new";
   const navigate = useNavigate();
+  const location = useLocation();
   const { hasAnyPermission } = usePermissions();
   // A permission of the person: used to load the lists a template is written from, and to author a new template (there is no template yet to ask about).
   const canAuthor = hasAnyPermission([
@@ -167,14 +102,6 @@ export function ReportTemplateEditor() {
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [history, setHistory] = useState<
-    Array<{
-      version: number;
-      reason: string;
-      changedByUserId: string;
-      createdAt: string;
-    }>
-  >([]);
   const drag = useTableDragScroll();
   useEffect(() => {
     let alive = true;
@@ -190,20 +117,7 @@ export function ReportTemplateEditor() {
         const source =
           sources.find((item) => item.code === definition?.sourceCode) ??
           sources[0];
-        const fields = source
-          ? Object.entries(source.fields).map(([field]) => {
-              const existing = definition?.fields.find(
-                (item: ReportTemplate["fields"][number]) => item.code === field,
-              );
-              const required = source.requiredFields.includes(field);
-              return {
-                code: field,
-                allowed: existing?.allowed ?? create,
-                defaultSelected: existing?.defaultSelected ?? create,
-                required: existing?.required || required,
-              };
-            })
-          : (definition?.fields ?? []);
+        const fields = source ? initialFields(source, definition?.fields, create) : (definition?.fields ?? []);
         const loaded: TemplateWrite = {
           version: definition?.definitionVersion,
           sourceCode: definition?.sourceCode ?? source?.code ?? "",
@@ -261,21 +175,6 @@ export function ReportTemplateEditor() {
       alive = false;
     };
   }, [selectedFormatId]);
-  useEffect(() => {
-    if (tab !== "history" || create) return;
-    let alive = true;
-    reportsApi
-      .definitionHistory(code)
-      .then((data) => {
-        if (alive) setHistory(data);
-      })
-      .catch((error) => {
-        if (alive) setError(reportError(error));
-      });
-    return () => {
-      alive = false;
-    };
-  }, [tab, code, create, notice]);
   const change = (update: Partial<TemplateWrite>) =>
     setValue((current) => (current ? { ...current, ...update } : current));
   const source = sources.find((item) => item.code === value?.sourceCode);
@@ -308,7 +207,7 @@ export function ReportTemplateEditor() {
         create,
       );
       if (create) {
-        navigate(`/settings/report-configuration/${saved.code}`, {
+        navigate(`${ROUTES.REPORT.TEMPLATE_MANAGEMENT}/${saved.code}`, {
           replace: true,
         });
         return;
@@ -370,8 +269,28 @@ export function ReportTemplateEditor() {
     setRejecting(undefined);
     void flowStep(
       () => reportTemplatesApi.rejectTemplate(code, stored.definitionVersion, reason, signatureToken),
-      `Revision ${stored.revision ?? stored.definitionVersion} was returned to draft.`,
+      `Revision ${stored.revision ?? stored.definitionVersion} was rejected. Its author is told, in the application and by e-mail, with your reason.`,
     );
+  };
+  const [fieldSearch, setFieldSearch] = useState("");
+  const [fieldGroup, setFieldGroup] = useState("");
+  const maxColumns = maxColumnsOf(source);
+  const sensitiveOf = (code: string) => source?.sensitiveFields?.includes(code) ?? false;
+  /** The fields that show for the search and the group chosen. */
+  const shownFields = (value?.fields ?? []).filter((f) => fieldMatches(source?.fields[f.code] ?? f.code, groupOf(source, f.code), fieldSearch, fieldGroup));
+  const defaultCount = (value?.fields ?? []).filter((f) => f.allowed && (f.defaultSelected || f.required)).length;
+  const allowedCount = (value?.fields ?? []).filter((f) => f.allowed).length;
+  /** Allows or removes every field that shows; a required field stays allowed. */
+  const setShown = (update: { allowed: boolean }) => {
+    if (!value) return;
+    const codes = new Set(shownFields.map((f) => f.code));
+    change({
+      fields: value.fields.map((item) =>
+        codes.has(item.code) && !item.required && !source?.requiredFields.includes(item.code)
+          ? { ...item, allowed: update.allowed, defaultSelected: update.allowed && item.defaultSelected }
+          : item,
+      ),
+    });
   };
   const fieldChange = (
     field: string,
@@ -383,52 +302,76 @@ export function ReportTemplateEditor() {
         item.code === field ? { ...item, ...update } : item,
       ),
     });
+  const lifecycle = stored?.lifecycleStatus ?? "DRAFT";
+  const dirty = !!baseline && !!value && JSON.stringify(baseline) !== JSON.stringify(value);
+  /** The same steps in the page header and in the footer bar, so they are in reach at the top and the bottom of a long form. */
+  const actionButtons = (
+    <>
+      {editable && (
+        <Button
+          size="sm"
+          variant="outline-emerald"
+          loading={saving}
+          disabled={!value?.description.trim() || !value.displayName.trim() || !value.sourceCode || defaultCount > maxColumns}
+          title={defaultCount > maxColumns ? `A report carries at most ${maxColumns} columns: reduce the default columns.` : undefined}
+          onClick={requestSave}
+        >
+          Save
+        </Button>
+      )}
+      {!create && stored && lifecycle === "DRAFT" && can("submitForApproval") && (
+        <Button size="sm" variant="outline-emerald" disabled={saving || dirty} onClick={submitVersion} title={dirty ? "Save your changes first." : undefined}>
+          Submit for Approval
+        </Button>
+      )}
+      {!create && stored && lifecycle === "PENDING_APPROVAL" && can("approve") && (
+        <>
+          <Button size="sm" variant="outline-emerald" disabled={saving} onClick={() => setRejecting({ reason: "", step: "form" })}>
+            Reject
+          </Button>
+          <Button size="sm" variant="outline-emerald" disabled={saving} onClick={() => setApproving({ reason: "", step: "form" })}>
+            Complete Approval
+          </Button>
+        </>
+      )}
+      {locked && stored && can("upgrade") && (
+        <Button size="sm" variant="outline-emerald" onClick={() => setUpgrading(true)}>
+          Upgrade Report Template
+        </Button>
+      )}
+    </>
+  );
+  // The page is named by the work it is for, as the Document Control revision pages are (Create / Approve / Revision Details), and the breadcrumb says the same
+  // words as the title. It leads back to the list or page it was opened from; a pending revision opened by its address (a notification) belongs to Pending My Approval.
+  const canApprove = !create && stored != null && lifecycle === "PENDING_APPROVAL" && can("approve");
+  const title = create ? "Create Report Template" : !stored || !capabilitiesLoaded ? "Revision Details" : canApprove ? "Approve Revision" : editable && lifecycle === "DRAFT" ? "Edit Revision" : "Revision Details";
+  const from = (location.state as { from?: string } | null)?.from;
+  const parent = reportRevisionParent(from, navigate, !create && lifecycle === "PENDING_APPROVAL" ? ROUTES.REPORT.TEMPLATE_REVISIONS_PENDING : ROUTES.REPORT.TEMPLATE_MANAGEMENT);
   return (
     <div className="flex min-w-0 flex-col gap-5">
       <PageHeader
-        title={create ? "New Report Template" : "Report Template Configuration"}
-        breadcrumbItems={reportBreadcrumbs(
-          navigate,
-          create ? "New Report Template" : "Report Template Configuration",
-          true,
-          {
-            label: "Report Definitions",
-            onClick: () => navigate("/settings/report-configuration"),
-          },
-        )}
+        title={title}
+        breadcrumbItems={reportBreadcrumbs(navigate, title, false, parent)}
         actions={
           <>
             <Button
-              variant="outline"
+              variant="outline-emerald"
               size="sm"
               disabled={saving}
-              onClick={() => navigate("/settings/report-configuration")}
+              onClick={parent.onClick}
             >
               Back
             </Button>
-            {editable && (
-              <Button
-                size="sm"
-                loading={saving}
-                disabled={
-                  !value?.description.trim() ||
-                  !value.displayName.trim() ||
-                  !value.sourceCode
-                }
-                onClick={requestSave}
-              >
-                Save Changes
-              </Button>
-            )}
+            {actionButtons}
           </>
         }
       />
       <FormModal
         isOpen={rejecting?.step === "form"}
         onClose={() => setRejecting(undefined)}
-        title="Return to Draft"
-        description="The author sees this reason and must change the template and submit it again."
-        confirmText="Return to draft"
+        title="Reject Revision"
+        description="The reason is required. The author is told, in the application and by e-mail, with this reason, and must change the template and submit it again."
+        confirmText="Continue to sign"
         confirmDisabled={!rejecting?.reason.trim() || saving}
         onConfirm={() => rejecting && setRejecting({ ...rejecting, step: "sign" })}
       >
@@ -461,14 +404,14 @@ export function ReportTemplateEditor() {
         onClose={() => setRejecting(undefined)}
         deferConfirm
         onConfirm={(data) => rejectVersion(data.signatureToken)}
-        actionTitle={`Return Report Template ${code}, Version ${stored?.definitionVersion ?? ""}, to Draft`}
-        meaningDisplayName="Report Template Returned to Draft"
+        actionTitle={`Reject Revision of ${code}, Version ${stored?.definitionVersion ?? ""}`}
+        meaningDisplayName="Report Template Rejected"
         meaningCode="REPORT_TEMPLATE_REJECTION"
       />
       <FormModal
         isOpen={approving?.step === "form"}
         onClose={() => setApproving(undefined)}
-        title="Approve Report Template"
+        title="Approve Revision"
         description="You approve this exact saved version. You must not be its author or the person who submitted it. Say what you checked."
         confirmText="Continue to sign"
         confirmDisabled={!approving?.reason.trim()}
@@ -490,7 +433,7 @@ export function ReportTemplateEditor() {
         onClose={() => setApproving(undefined)}
         deferConfirm
         onConfirm={(data) => approveVersion(data.signatureToken)}
-        actionTitle={`Approve Report Template ${code}, Version ${stored?.definitionVersion ?? ""}`}
+        actionTitle={`Approve Revision of ${code}, Version ${stored?.definitionVersion ?? ""}`}
         meaningDisplayName="Report Template Approved"
         meaningCode="REPORT_TEMPLATE_APPROVAL"
       />
@@ -539,34 +482,22 @@ export function ReportTemplateEditor() {
                   while {reportRevisionLabel(stored.effectiveRevision)} stays in use, then {reportRevisionLabel(stored.effectiveRevision)} becomes Obsoleted.
                 </p>
                 {can("upgrade") && (
-                  <Button size="sm" onClick={() => setUpgrading(true)}>
+                  <Button size="sm" variant="outline-emerald" onClick={() => setUpgrading(true)}>
                     Upgrade Report Template
                   </Button>
                 )}
               </div>
             </div>
           )}
-          {!create && stored && (
-            <ApprovalPanel
-              stored={stored}
-              gmpUse={value.gmpUse ?? false}
-              dirty={!!baseline && JSON.stringify(baseline) !== JSON.stringify(value)}
-              busy={saving}
-              canSubmit={can("submitForApproval")}
-              canDecide={can("approve")}
-              onSubmit={submitVersion}
-              onApprove={() => setApproving({ reason: "", step: "form" })}
-              onReject={() => setRejecting({ reason: "", step: "form" })}
-            />
-          )}
           <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <TabNav
-              tabs={tabs.filter((item) => !create || item.id !== "history")}
+              tabs={tabs.filter((item) => !create && can("viewAuditTrail") && stored?.auditEntityId ? true : item.id !== "audit")}
               activeTab={tab}
               onChange={setTab}
               variant="underline"
               ariaLabel="Report template configuration"
             />
+            {tab !== "audit" && tab !== "fields" && (
             <fieldset
               disabled={!editable || saving}
               className="min-w-0 p-4 md:p-5"
@@ -574,6 +505,7 @@ export function ReportTemplateEditor() {
               {tab === "charts" && (
                 <ReportChartsEditor
                   charts={value.layout?.charts ?? []}
+                  font={value.layout?.fontFamily ?? null}
                   disabled={!editable || saving}
                   fields={value.fields
                     .filter((f) => f.allowed)
@@ -652,12 +584,7 @@ export function ReportTemplateEditor() {
                               sourceCode: source.code,
                               // A scope the new type cannot be given is dropped; the author sets the rest again.
                               roleScopes: value.roleScopes.filter((grant) => !source.allowedScopes?.length || source.allowedScopes.includes(grant.scope)),
-                              fields: Object.keys(source.fields).map((field) => ({
-                                code: field,
-                                allowed: true,
-                                defaultSelected: true,
-                                required: source.requiredFields.includes(field),
-                              })),
+                              fields: initialFields(source, undefined, true),
                             });
                         }}
                       />
@@ -732,7 +659,7 @@ export function ReportTemplateEditor() {
                         </label>
                         <Checkbox id="gmpUse" checked={value.gmpUse ?? false} onChange={(gmpUse) => change({ gmpUse })} />
                       </div>
-                      <p className="text-xs text-slate-500">A template for GMP decisions cannot be deleted; disable it instead.</p>
+                      <p className="text-xs text-slate-500">A template for GMP decisions cannot be deleted; disable it instead. Every template, whatever its use, runs only after it is approved.</p>
                     </div>
 
                     {/* Allowed output formats */}
@@ -776,9 +703,44 @@ export function ReportTemplateEditor() {
                   )}
                 </div>
               )}
-              {tab === "fields" && (
-                <DataTable
-                  rows={value.fields}
+              {tab === "scope" && (
+                <ReportTemplateAccessScope assignments={value.roleScopes} editable={editable && !saving} onChange={(roleScopes) => change({ roleScopes })} allowedScopes={source?.allowedScopes} />
+              )}
+            </fieldset>
+            )}
+            {tab === "fields" && (
+              <div className="min-w-0 space-y-4 p-4 md:p-5">
+                  <ReportFieldFilters
+                    search={fieldSearch}
+                    onSearchChange={setFieldSearch}
+                    group={fieldGroup}
+                    onGroupChange={setFieldGroup}
+                    groups={groupNames(value.fields.map((f) => groupOf(source, f.code)))}
+                  />
+                  <fieldset disabled={!editable || saving} className="min-w-0 space-y-4">
+                  <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                    <Button
+                      size="sm"
+                      variant="outline-emerald"
+                      disabled={!editable || saving || shownFields.length === 0}
+                      onClick={() => setShown({ allowed: true })}
+                    >
+                      Allow Shown
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline-emerald"
+                      disabled={!editable || saving || shownFields.length === 0}
+                      onClick={() => setShown({ allowed: false })}
+                    >
+                      Remove Shown
+                    </Button>
+                    <p className={cn("text-xs", defaultCount > maxColumns ? "font-medium text-red-600" : "text-slate-500")} aria-live="polite">
+                      {allowedCount} of {value.fields.length} fields allowed. Default columns: {defaultCount} of {maxColumns} (a report carries at most {maxColumns}).
+                    </p>
+                  </div>
+                  <DataTable
+                  rows={shownFields}
                   getRowKey={(row) => row.code}
                   scrollerRef={drag.scrollerRef}
                   scrollProps={drag.dragEvents}
@@ -792,7 +754,17 @@ export function ReportTemplateEditor() {
                     {
                       id: "name",
                       header: "Column",
-                      cell: (row) => source?.fields[row.code] ?? row.code,
+                      cell: (row) => (
+                        <span className="inline-flex flex-wrap items-center gap-2">
+                          {source?.fields[row.code] ?? row.code}
+                          {sensitiveOf(row.code) && <Badge color="amber">Sensitive</Badge>}
+                        </span>
+                      ),
+                    },
+                    {
+                      id: "group",
+                      header: "Group",
+                      cell: (row) => groupOf(source, row.code),
                     },
                     {
                       id: "allowed",
@@ -823,7 +795,7 @@ export function ReportTemplateEditor() {
                           label={`Default ${row.code}`}
                           labelClassName="sr-only"
                           checked={row.defaultSelected || row.required}
-                          disabled={row.required || !row.allowed}
+                          disabled={row.required || !row.allowed || (!row.defaultSelected && defaultCount >= maxColumns)}
                           onChange={(defaultSelected) =>
                             fieldChange(row.code, { defaultSelected })
                           }
@@ -840,7 +812,8 @@ export function ReportTemplateEditor() {
                           checked={row.required}
                           disabled={
                             source?.requiredFields.includes(row.code) ||
-                            !row.allowed
+                            !row.allowed ||
+                            (!row.required && !row.defaultSelected && defaultCount >= maxColumns)
                           }
                           onChange={(required) =>
                             fieldChange(row.code, {
@@ -853,42 +826,20 @@ export function ReportTemplateEditor() {
                     },
                   ]}
                 />
-              )}
-              {tab === "scope" && (
-                <ReportTemplateAccessScope assignments={value.roleScopes} editable={editable && !saving} onChange={(roleScopes) => change({ roleScopes })} allowedScopes={source?.allowedScopes} />
-              )}
-            </fieldset>
-            {tab === "history" && (
-              <div className="p-4 md:p-5">
-                <DataTable
-                  rows={history}
-                  getRowKey={(row) => row.version}
-                  columns={[
-                    {
-                      id: "version",
-                      header: "Version",
-                      cell: (row) => `v${row.version}`,
-                    },
-                    {
-                      id: "reason",
-                      header: "Change reason",
-                      cell: (row) => row.reason,
-                      cellClassName: "whitespace-normal min-w-56",
-                    },
-                    {
-                      id: "actor",
-                      header: "Changed by",
-                      cell: (row) => row.changedByUserId,
-                    },
-                    {
-                      id: "date",
-                      header: "Changed at",
-                      cell: (row) => displayDateTime(row.createdAt),
-                    },
-                  ]}
-                />
+                  </fieldset>
               </div>
             )}
+            {tab === "audit" && !create && stored?.auditEntityId && can("viewAuditTrail") && (
+              <div className="p-4 md:p-5">
+                <AuditTrailTab entityId={stored.auditEntityId} entityType="REPORT_DEFINITION" documentNumber={code} />
+              </div>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 md:gap-3">
+            <Button variant="outline-emerald" size="sm" disabled={saving} onClick={parent.onClick}>
+              Back
+            </Button>
+            {actionButtons}
           </div>
           </>
         )

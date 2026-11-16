@@ -53,19 +53,20 @@ export interface RevisionSummaryLike {
   openedBy: string;
   revisionName: string;
   status?: string | null;
-  state?: string | null;
   statusCode?: string | null;
   statusInfo?: StatusInfoLike | null;
   canOpenAuthoringWorkspace?: boolean;
 }
 
 export function mapRevisionSummaryFromApi<T extends RevisionSummaryLike>(revision: T) {
-  const statusCode = resolveStatusCode(revision.statusCode || revision.status || revision.state, revision.statusInfo);
+  const statusCode = resolveStatusCode(revision.statusCode || revision.status, revision.statusInfo);
 
+  // Three different things, each under its own name: the code (what logic decides on), the label (what people read), the badge key (the colour).
+  // `status` is left exactly as the server sent it; it used to be overwritten with the badge key, so it meant three things in the screens.
   return {
     ...revision,
-    status: toStatusBadge(statusCode),
-    statusLabel: resolveStatusLabel(revision.status || revision.state, revision.statusInfo),
+    statusBadge: toStatusBadge(statusCode),
+    statusLabel: resolveStatusLabel(revision.status, revision.statusInfo),
     statusCode,
   };
 }

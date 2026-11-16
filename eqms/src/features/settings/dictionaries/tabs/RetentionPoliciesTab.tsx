@@ -2,7 +2,7 @@ import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useEffect, useState } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
-import { AlertTriangle, Check, ChevronDown, ChevronUp, MoreVertical, Power, PowerOff, Search, Trash2, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, ChevronUp, MoreVertical, Search, Trash2, X } from "lucide-react";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
@@ -15,7 +15,7 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { cn } from "@/components/ui/utils";
-import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
+import { IconFilter2, IconPencilMinus, IconToggleLeft, IconToggleRight } from "@tabler/icons-react";
 import { dictionaryApi } from "@/services/api";
 import { usePortalDropdown } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
@@ -370,11 +370,10 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
                 placeholder="Select range"
               />
             </div>
-          </div>
-
-          <div className="flex justify-start gap-2">
-            <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
-            {retentionControl}
+            <div className="filter-actions flex items-end gap-2">
+              <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
+              {retentionControl}
+            </div>
           </div>
         </div>
 </ConfiguredDesktopFilters>
@@ -424,12 +423,12 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
           >
             {items.find((current) => current.id === openDropdownId)?.isActive ? (
               <>
-                <PowerOff className="h-3.5 w-3.5" />
+                <IconToggleLeft className="h-3.5 w-3.5" />
                 <span>Disable</span>
               </>
             ) : (
               <>
-                <Power className="h-3.5 w-3.5" />
+                <IconToggleRight className="h-3.5 w-3.5" />
                 <span>Enable</span>
               </>
             )}

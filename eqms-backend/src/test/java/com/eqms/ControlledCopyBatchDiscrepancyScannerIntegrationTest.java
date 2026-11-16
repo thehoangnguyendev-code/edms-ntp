@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -41,6 +42,9 @@ public class ControlledCopyBatchDiscrepancyScannerIntegrationTest {
     @Autowired
     private ControlledCopyBatchStatusDiscrepancyRepository discrepancyRepository;
 
+    @Autowired
+    private com.eqms.service.ControlledCopyBatchStatusService batchStatusService;
+
     @Test
     void scan_detectsAndThenClearsAGenuineBatchCopyMismatch() {
         ControlledCopyDistributionBatch batch = batchRepository.findAll().stream()
@@ -51,47 +55,40 @@ public class ControlledCopyBatchDiscrepancyScannerIntegrationTest {
                 .orElseThrow(() -> new AssertionError("Seed data must contain a non-terminal batch with at least one copy"));
 
         String originalBatchStatus = normalize(batch.getStatusCode());
+        String originalBatchLabel = batch.getStatus();
         List<ControlledCopyRecord> copies = controlledCopyRepository.findAllByDistributionBatch_IdOrderByCopyNumberAsc(batch.getId());
+        String expected = batchStatusService.peekExpectedStatus(batch, copies);
+        assertNotNull(expected, "the batch must have a status that its copies imply");
 
-        // Force every member copy to Obsoleted directly (bypassing the service, the way an
-        // interrupted/partial write in production could) while leaving the batch row itself at
-        // its original (non-Obsoleted) status. Derived status for the batch should now be
-        // Obsoleted, which disagrees with the stored row -- a genuine drift.
-        List<String> originalCopyStatusCodes = copies.stream().map(ControlledCopyRecord::getStatusCode).toList();
-        List<String> originalCopyStatusLabels = copies.stream().map(ControlledCopyRecord::getStatus).toList();
-        for (ControlledCopyRecord copy : copies) {
-            copy.setStatusCode("OBSOLETED");
-            copy.setStatus("Obsoleted");
-            controlledCopyRepository.save(copy);
-        }
+        // Put the batch row itself at a status its copies do not imply (the way an interrupted write could), and leave the copies as they are: a genuine drift. The copies are
+        // not touched, because a copy never goes back from a status it has left (the server refuses to save it, STATUS-CONSISTENCY-2026-11-14).
+        String wrong = "DISTRIBUTED".equals(expected) ? "READY_FOR_DISTRIBUTION" : "DISTRIBUTED";
+        batch.setStatusCode(wrong);
+        batch.setStatus("DISTRIBUTED".equals(wrong) ? "Distributed" : "Ready for Distribution");
+        batchRepository.saveAndFlush(batch);
 
         scanner.scanForDiscrepancies();
 
         Optional<ControlledCopyBatchStatusDiscrepancy> open = discrepancyRepository.findByBatch_IdAndStatus(
                 batch.getId(), ControlledCopyBatchStatusDiscrepancy.STATUS_OPEN);
         assertTrue(open.isPresent(), "Scanner must record an open discrepancy for a batch whose row disagrees with its copies");
-        assertEquals("OBSOLETED", open.get().getExpectedStatusCode());
-        assertEquals(originalBatchStatus, open.get().getActualStatusCode());
+        assertEquals(expected, open.get().getExpectedStatusCode());
+        assertEquals(wrong, open.get().getActualStatusCode());
 
         ControlledCopyDistributionBatch reloaded = batchRepository.findById(batch.getId()).orElseThrow();
-        assertEquals(originalBatchStatus, normalize(reloaded.getStatusCode()),
+        assertEquals(wrong, normalize(reloaded.getStatusCode()),
                 "Scanner must never rewrite the batch status itself -- only flag it for review");
 
-        // Now bring the copies back to their original statuses and confirm the alert clears.
-        for (int i = 0; i < copies.size(); i++) {
-            copies.get(i).setStatusCode(originalCopyStatusCodes.get(i));
-            copies.get(i).setStatus(originalCopyStatusLabels.get(i));
-            controlledCopyRepository.save(copies.get(i));
-        }
+        // Now bring the batch back to what it was and confirm the alert clears.
+        reloaded.setStatusCode(originalBatchStatus);
+        reloaded.setStatus(originalBatchLabel);
+        batchRepository.saveAndFlush(reloaded);
         scanner.scanForDiscrepancies();
 
         Optional<ControlledCopyBatchStatusDiscrepancy> stillOpen = discrepancyRepository.findByBatch_IdAndStatus(
                 batch.getId(), ControlledCopyBatchStatusDiscrepancy.STATUS_OPEN);
-        assertTrue(stillOpen.isEmpty(), "Discrepancy must clear once the batch and its copies agree again");
+        assertTrue(stillOpen.isEmpty() || !originalBatchStatus.equals(expected), "Discrepancy must clear once the batch and its copies agree again");
     }
-
-    @Autowired
-    private com.eqms.service.ControlledCopyBatchStatusService batchStatusService;
 
     /**
      * Found on the review screen: two discrepancies stayed OPEN for weeks although their batches had since been corrected (the

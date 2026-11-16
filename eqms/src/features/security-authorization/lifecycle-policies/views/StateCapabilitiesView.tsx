@@ -26,6 +26,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { ROUTES } from "@/app/routes.constants";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const BASE_PATH = `${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/state-policies`;
 
@@ -58,7 +59,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
 
   // Server-side query state.
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [capabilityFilter, setCapabilityFilter] = useState("ALL");
   const [scopeFilter, setScopeFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");

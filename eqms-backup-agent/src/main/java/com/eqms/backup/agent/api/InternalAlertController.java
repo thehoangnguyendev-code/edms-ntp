@@ -34,12 +34,30 @@ public class InternalAlertController {
     public record DeliveredRequest(List<String> ids) {
     }
 
+    /** An alert raised by the application itself; only the codes listed in {@link #EXTERNAL_CODES} are accepted. */
+    public record ExternalAlertRequest(String code, String severity, String detail) {
+    }
+
+    private static final java.util.Set<String> EXTERNAL_CODES = java.util.Set.of("REPORT_COPY_STALE");
+
     private final AlertService alerts;
     private final AlertRuleService rules;
+    private final com.eqms.backup.agent.backup.BackupRepository repository;
 
-    public InternalAlertController(AlertService alerts, AlertRuleService rules) {
+    public InternalAlertController(AlertService alerts, AlertRuleService rules, com.eqms.backup.agent.backup.BackupRepository repository) {
         this.alerts = alerts;
         this.rules = rules;
+        this.repository = repository;
+    }
+
+    /** The application tells the agent about a problem only it can see (the copy of the run summary is out of date). One open alert per code: a second call while it is not acknowledged adds nothing. */
+    @PostMapping("/alerts/external")
+    public Map<String, Object> external(@RequestBody ExternalAlertRequest r) {
+        if (r == null || r.code() == null || !EXTERNAL_CODES.contains(r.code())) {
+            throw ExportException.invalid("ALERT_CODE", "Not an alert the application may raise");
+        }
+        String severity = java.util.Set.of("INFO", "WARNING", "HIGH", "CRITICAL").contains(r.severity()) ? r.severity() : "WARNING";
+        return Map.of("raised", repository.insertAlertOnce(severity, r.code(), r.detail() == null ? "" : r.detail(), null));
     }
 
     @GetMapping("/alert-rules")

@@ -1,5 +1,6 @@
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 import { Badge } from "@/components/ui/badge";
+import { flagColor } from "@/utils/status";
 import { EXPAND_CONTENT_MOTION, useExpandTransition } from "@/components/ui/table/expandMotion";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { Fragment, useMemo, useState } from "react";
@@ -221,10 +222,10 @@ export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onT
                         {expandContent(editing && (!x.row.locked || canLock) ? (
                           <button type="button" role="switch" aria-checked={x.row.annualRequired} aria-label={`Annual training required: ${rowName(x.row)}`} onClick={() => onAnnual(x.index, !x.row.annualRequired)}
                             className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
-                            <Badge color={x.row.annualRequired ? "emerald" : "slate"} className="min-w-10 justify-center">{x.row.annualRequired ? "Yes" : "No"}</Badge>
+                            <Badge color={flagColor(x.row.annualRequired)} className="min-w-10 justify-center">{x.row.annualRequired ? "Yes" : "No"}</Badge>
                           </button>
                         ) : (
-                          <Badge color={x.row.annualRequired ? "emerald" : "slate"} className="min-w-10 justify-center">{x.row.annualRequired ? "Yes" : "No"}</Badge>
+                          <Badge color={flagColor(x.row.annualRequired)} className="min-w-10 justify-center">{x.row.annualRequired ? "Yes" : "No"}</Badge>
                         ))}
                       </TableMarkup.Cell>
                       {editing && <TableMarkup.Cell style={STICKY_REMOVE} className="w-10 min-w-10 md:sticky md:shadow-[inset_1px_0_0_0_#e2e8f0] z-20 border-b border-r border-slate-200 bg-white px-2 text-center group-hover:bg-emerald-50">{expandContent(<button type="button" aria-label={`Remove ${rowName(x.row)}`} onClick={() => onRemove(x.index)} disabled={x.row.locked && !canLock} title={x.row.locked && !canLock ? "Required of all employees by Quality Assurance: it cannot be taken out" : undefined} className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"><Trash2 className="h-4 w-4" /></button>)}</TableMarkup.Cell>}

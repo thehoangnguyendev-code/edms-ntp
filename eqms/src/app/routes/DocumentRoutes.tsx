@@ -225,7 +225,7 @@ export function documentRoutes(navigate: NavigateFunction) {
       <Route path="uncontrolled-copies">
         <Route index element={<Navigate to={ROUTES.DOCUMENTS.UNCONTROLLED_COPIES.ALL} replace />} />
         <Route path="all" element={<Suspense fallback={<LoadingFallback />}><UncontrolledCopiesView viewType="all" /></Suspense>} />
-        <Route path="pending-approval" element={<Suspense fallback={<LoadingFallback />}><UncontrolledCopiesView viewType="pending" /></Suspense>} />
+        <Route path="ready" element={<Suspense fallback={<LoadingFallback />}><UncontrolledCopiesView viewType="ready" /></Suspense>} />
         <Route path="distributed" element={<Suspense fallback={<LoadingFallback />}><UncontrolledCopiesView viewType="distributed" /></Suspense>} />
         <Route path=":id/download" element={<Suspense fallback={<LoadingFallback />}><UncontrolledCopyDownloadView /></Suspense>} />
         <Route path=":id" element={<Suspense fallback={<LoadingFallback />}><UncontrolledCopyDetailView /></Suspense>} />

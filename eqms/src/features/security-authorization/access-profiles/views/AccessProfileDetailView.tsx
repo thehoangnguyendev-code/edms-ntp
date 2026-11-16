@@ -7,6 +7,7 @@ import { IconArrowsShuffle } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
@@ -396,10 +397,10 @@ export const AccessProfileDetailView: React.FC = () => {
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-lg font-semibold text-slate-900 truncate">{profile.name}</h2>
-                    <Badge color={profile.type === "SYSTEM" ? "purple" : "slate"} size="sm">
+                    <Badge color={profile.type === "SYSTEM" ? "blue" : "teal"} size="sm">
                       {profile.type === "SYSTEM" ? "System" : "Custom"}
                     </Badge>
-                    <Badge color={profile.active ? "emerald" : "slate"} size="sm" >
+                    <Badge color={flagColor(profile.active)} size="sm" >
                       {profile.active ? "Active" : "Inactive"}
                     </Badge>
                     {profile.documentControlVisibility ? (

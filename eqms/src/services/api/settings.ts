@@ -32,6 +32,7 @@ export interface PermissionSetAssignedAccessProfile {
 }
 
 export interface PermissionSetResponse {
+  capabilities?: PermissionSetCapabilitiesResponse;
   id: string;
   name: string;
   code: string;
@@ -251,6 +252,7 @@ export type DocumentAdministrationRule = {
 // ─── Access Profile types ─────────────────────────────────────────────────────
 
 export interface AccessProfileResponse {
+  capabilities?: AccessProfileCapabilitiesResponse;
   id: string;
   code: string;
   name: string;

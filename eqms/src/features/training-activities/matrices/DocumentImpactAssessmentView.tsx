@@ -116,7 +116,6 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
   return (
     <div className="flex h-full w-full min-w-0 flex-1 flex-col gap-4 md:gap-6">
       <PageHeader title={TRAINING_PAGES.documentImpactAssessment.title} breadcrumbItems={trainingBreadcrumbs(navigate, "documentImpactAssessment")} />
-      <p className="text-xs text-slate-500">When a document is issued or revised, the department assesses its effect on the training matrix, names the Work Positions that must be trained and updates the matrix (SOP.0003 5.3.1). Each assessment is signed.</p>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar
         searchPlaceholder="Search document or training number…"

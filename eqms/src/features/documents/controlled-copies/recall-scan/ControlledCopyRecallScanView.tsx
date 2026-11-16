@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AlertTriangle, CheckCircle2, Eye, FileUp, Hash, Loader2, ScanLine, Trash2, Undo2, X } from "lucide-react";
 import { ROUTES } from "@/app/routes.constants";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DateTimePicker } from "@/components/ui/datetime-picker";
@@ -32,6 +33,7 @@ import {
 import { formatDateTime } from "@/utils/format";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { IconForms } from "@tabler/icons-react";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const QR_LABEL: Record<RecallQrStatus, string> = {
   DECODED: "Code read",
@@ -94,7 +96,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
   // Search and sort of the scans are done by the server. With the default query (no search, upload order) the batch response
   // already holds every scan in that order, so nothing more is fetched.
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearch = useDebounce(searchQuery, 300);
+  const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const [sortConfig, setSortConfig] = useState<{ key: NonNullable<RecallItemQuery["sortBy"]>; direction: "asc" | "desc" }>({
     key: "itemNo",
     direction: "asc",
@@ -452,7 +454,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
           if (isCommitted) {
             return (
               <div>
-                <Badge color={item.outcome === "RECALLED" ? "emerald" : "slate"} size="sm">
+                <Badge color={flagColor(item.outcome === "RECALLED")} size="sm">
                   {item.outcome === "RECALLED" ? "Recalled" : "Not recalled"}
                 </Badge>
                 {item.outcomeMessage && <p className="mt-1 text-2xs text-slate-500">{item.outcomeMessage}</p>}

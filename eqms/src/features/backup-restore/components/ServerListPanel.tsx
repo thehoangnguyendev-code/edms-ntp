@@ -64,6 +64,8 @@ interface Props<T> {
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   pageSizeOptions?: number[];
+  /** Extra buttons after Clear Filters, in the same last cell of the filters (for example Export). */
+  toolbarActions?: React.ReactNode;
   /** Row selection column (for example a checkbox), passed to the table as is. */
   selection?: DataTableSelection<T>;
   onRowClick?: (row: T, index: number) => void;
@@ -83,7 +85,7 @@ export function ServerListPanel<T>({
   tableKey, columns, action, rows, getRowKey, loading, hasLoaded, error, emptyTitle, emptyDescription,
   search, onSearch, searchLabel, searchPlaceholder, filters, dates = [], onClear,
   page, totalPages, totalItems, pageSize, onPageChange, onPageSizeChange, pageSizeOptions = [10, 20, 50],
-  selection, onRowClick, rowClassName, framed = true, tableFramed = false,
+  selection, onRowClick, rowClassName, framed = true, tableFramed = false, toolbarActions,
 }: Props<T>) {
   const { layout, control } = useCustomColumnLayout(tableKey, columns, action);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -129,11 +131,12 @@ export function ServerListPanel<T>({
                 Filters
               </Button>
             </div>
+            {toolbarActions && <div className="flex gap-2">{toolbarActions}</div>}
           </div>
 
           <ConfiguredDesktopFilters
             search={searchInput}
-            trailing={control}
+            trailing={<>{control}{toolbarActions}</>}
             filters={filters.map((f) => ({ id: f.id, label: f.label, value: f.value, options: f.options, defaultValue: f.defaultValue, disabled: f.disabled, onChange: f.onChange }))}
             dates={dates}
           >
@@ -169,6 +172,7 @@ export function ServerListPanel<T>({
               <div className="filter-actions flex items-end gap-2">
                 <ClearFiltersButton onClearSearch={() => onSearch("")} onClear={onClear} />
                 {control}
+                {toolbarActions}
               </div>
             </div>
           </ConfiguredDesktopFilters>

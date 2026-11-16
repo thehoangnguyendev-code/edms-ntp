@@ -2,7 +2,7 @@ import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useState, useMemo } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
-import { Trash2, MoreVertical, Power, PowerOff, Search, AlertTriangle, ChevronUp, ChevronDown, Check, X } from "lucide-react";
+import { Trash2, MoreVertical, Search, AlertTriangle, ChevronUp, ChevronDown, Check, X } from "lucide-react";
 import { Select } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { cn } from "@/components/ui/utils";
@@ -17,7 +17,7 @@ import { usePortalDropdown } from "@/hooks";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { Button } from "@/components/ui/button/Button";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
-import {IconFilter2, IconPencilMinus} from "@tabler/icons-react";
+import {IconFilter2, IconPencilMinus, IconToggleLeft, IconToggleRight} from "@tabler/icons-react";
 import { dictionaryApi } from "@/services/api";
 import { useToast } from "@/components/ui/toast";
 import { extractApiMessage } from "../utils";
@@ -469,9 +469,9 @@ export const PositionsTab = React.forwardRef<
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
             {items.find((i) => i.id === openDropdownId)?.isActive ? (
-              <><PowerOff className="h-3.5 w-3.5" /><span>Disable</span></>
+              <><IconToggleLeft className="h-3.5 w-3.5" /><span>Disable</span></>
             ) : (
-              <><Power className="h-3.5 w-3.5" /><span>Enable</span></>
+              <><IconToggleRight className="h-3.5 w-3.5" /><span>Enable</span></>
             )}
           </button>
           <button

@@ -1,10 +1,9 @@
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from "@/components/ui/filter/ConfiguredDesktopFilters";
 import React, { useCallback, useMemo, useState } from "react";
-import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
-import { AlertTriangle, Check, ChevronRight, MoreVertical, Power, PowerOff, Search, X } from "lucide-react";
+import { AlertTriangle, Check, MoreVertical, Search, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -14,18 +13,18 @@ import { Select } from "@/components/ui/select/Select";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
-import { EXPAND_CONTENT_MOTION, useExpandTransition } from "@/components/ui/table/expandMotion";
-import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { cn } from "@/components/ui/utils";
-import { IconFilter2, IconInfoCircle } from "@tabler/icons-react";
+import { IconFilter2, IconInfoCircle, IconToggleLeft, IconToggleRight } from "@tabler/icons-react";
 import { usePortalDropdown } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
 import { useDictionaryServerTable, type DictionaryServerQuery } from "@/features/settings/dictionaries/hooks/useDictionaryServerTable";
 import { usePermissions } from "@/hooks/usePermissions";
 import { reportError } from "@/services/api/reportTemplates";
-import { reportTypesApi, type ReportTypeDetail, type ReportTypeListItem } from "@/services/api/reportTypes";
+import { reportTypesApi, type ReportTypeListItem } from "@/services/api/reportTypes";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
-import { ReportTypeColumnsPanel } from "./ReportTypeColumnsPanel";
+import { pickerDateToIso } from "../shared/ReportListToolbar";
+import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { displayDateTime } from "@/utils/format";
 
 type StatusFilter = "All" | "Enabled" | "Disabled";
@@ -33,39 +32,9 @@ const SERVER_STATUS: Record<StatusFilter, "ALL" | "ENABLED" | "DISABLED"> = { Al
 const typePath = (code: string) => `/settings/report-types/${encodeURIComponent(code)}`;
 const when = (value?: string) => (value ? displayDateTime(value) : "-");
 
-/** The row that opens under a Report Type: its columns and filters, loaded from the server when it is opened. */
-const ExpandedReportTypeRow: React.FC<{ type: ReportTypeListItem; visibleColumnsLength: number }> = ({ type, visibleColumnsLength }) => {
-  const transitionConfig = useExpandTransition();
-  const [detail, setDetail] = useState<ReportTypeDetail | null>(null);
-  const [error, setError] = useState("");
-  React.useEffect(() => {
-    let alive = true;
-    reportTypesApi
-      .detail(type.code)
-      .then((value) => alive && setDetail(value))
-      .catch((e) => alive && setError(reportError(e)));
-    return () => {
-      alive = false;
-    };
-  }, [type.code, type.version]);
-  return (
-    <motion.tr key={`expanded-report-type-${type.code}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={transitionConfig} className="bg-slate-50/50">
-      <TableMarkup.Cell colSpan={visibleColumnsLength - 1} className="p-0 border-b border-slate-200">
-        <motion.div {...EXPAND_CONTENT_MOTION} transition={transitionConfig} className="overflow-hidden">
-          <div className="p-4 md:p-5">
-            <div className="ml-9">
-              {error ? <p role="alert" className="text-xs text-red-600">{error}</p> : detail ? <ReportTypeColumnsPanel detail={detail} /> : <p className="text-xs text-slate-500">Loading columns…</p>}
-            </div>
-          </div>
-        </motion.div>
-      </TableMarkup.Cell>
-    </motion.tr>
-  );
-};
-
 /**
  * Report Types (REPORT-PLATFORM-2026-10-15): the sources of report data. Laid out like Report Name Formats: filters above, the table in its own card, a row
- * that expands to show the columns, a three-dot menu and the same pagination. The server searches, filters, sorts and pages.
+ * a three-dot menu and the same pagination. The server searches, filters, sorts and pages.
  */
 export const ReportTypesView: React.FC = () => {
   const navigate = useNavigate();
@@ -83,8 +52,9 @@ export const ReportTypesView: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
+  const [modifiedFromDate, setModifiedFromDate] = useState("");
+  const [modifiedToDate, setModifiedToDate] = useState("");
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["status", "category"]));
-  const [expandedCode, setExpandedCode] = useState<string | null>(null);
 
   // A stable function: the table loads again when the fetcher changes.
   const fetcher = useCallback(async (params: DictionaryServerQuery) => {
@@ -92,6 +62,8 @@ export const ReportTypesView: React.FC = () => {
       status: params.status as "ALL" | "ENABLED" | "DISABLED",
       category: params.category as string | undefined,
       search: params.search as string | undefined,
+      modifiedFrom: params.modifiedFrom as string | undefined,
+      modifiedTo: params.modifiedTo as string | undefined,
       sortBy: params.sortBy as string,
       sortDirection: params.sortDirection as "asc" | "desc",
       page: params.page as number,
@@ -100,13 +72,16 @@ export const ReportTypesView: React.FC = () => {
     setCategories(page.categories);
     return page;
   }, []);
-  const extraParams = useMemo(() => ({ status: SERVER_STATUS[statusFilter], category: categoryFilter || undefined }), [statusFilter, categoryFilter]);
+  const extraParams = useMemo(
+    () => ({ status: SERVER_STATUS[statusFilter], category: categoryFilter || undefined, modifiedFrom: pickerDateToIso(modifiedFromDate) || undefined, modifiedTo: pickerDateToIso(modifiedToDate) || undefined }),
+    [statusFilter, categoryFilter, modifiedFromDate, modifiedToDate],
+  );
   const { searchQuery, setSearchQuery, currentPage, setCurrentPage, itemsPerPage, setItemsPerPage, totalPages, totalItems, items, isLoading, sortConfig, handleSort, reload } =
     useDictionaryServerTable<ReportTypeListItem>({ fetcher, defaultSortBy: "name", extraParams });
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, categoryFilter, setCurrentPage]);
+  }, [statusFilter, categoryFilter, modifiedFromDate, modifiedToDate, setCurrentPage]);
 
   const closeToggle = () => {
     setShowToggleModal(false);
@@ -138,9 +113,11 @@ export const ReportTypesView: React.FC = () => {
     setSearchQuery("");
     setStatusFilter("All");
     setCategoryFilter("");
+    setModifiedFromDate("");
+    setModifiedToDate("");
     setCurrentPage(1);
   };
-  const hasActiveFilters = searchQuery.length > 0 || statusFilter !== "All" || categoryFilter.length > 0;
+  const hasActiveFilters = searchQuery.length > 0 || statusFilter !== "All" || categoryFilter.length > 0 || modifiedFromDate.length > 0 || modifiedToDate.length > 0;
   const toggleSection = (section: string) =>
     setExpandedSections((prev) => {
       const next = new Set(prev);
@@ -156,39 +133,21 @@ export const ReportTypesView: React.FC = () => {
 
   const sortOf = (key: string) => ({ direction: sortConfig.key === key ? sortConfig.direction : undefined, onSort: () => handleSort(key) });
   const columns: DataTableColumn<ReportTypeListItem>[] = [
-    {
-      id: "expand",
-      header: "",
-      label: "Expand",
-      locked: true,
-      cell: (item) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            aria-label="Expand"
-            onClick={() => setExpandedCode((prev) => (prev === item.code ? null : item.code))}
-            className="inline-flex items-center justify-center h-5 w-5 rounded-lg transition-colors hover:bg-slate-200"
-          >
-            <ChevronRight className={cn("h-3.5 w-3.5 text-slate-500 transition-transform", expandedCode === item.code ? "rotate-90" : "rotate-0")} />
-          </button>
-        </div>
-      ),
-    },
     { id: "no", header: "No.", label: "No.", headerClassName: TABLE_STYLES.headerCell35, cell: (_item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
-    { id: "name", header: "Name", label: "Name", sort: sortOf("name"), cell: (item) => <span className="font-medium text-emerald-700 hover:underline">{item.name}</span> },
-    { id: "code", header: "Code", label: "Code", sort: sortOf("code"), cell: (item) => <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{item.code}</code> },
-    { id: "category", header: "Category", label: "Category", sort: sortOf("category"), cell: (item) => item.category },
+    { id: "name", header: "Report Type Name", label: "Report Type Name", sort: sortOf("name"), cell: (item) => <span className="font-medium text-emerald-700 hover:underline">{item.name}</span> },
+    { id: "code", header: "Report Type Code", label: "Report Type Code", sort: sortOf("code"), cell: (item) => <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{item.code}</code> },
+    { id: "category", header: "Report Type Category", label: "Report Type Category", sort: sortOf("category"), cell: (item) => item.category },
     { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
-    { id: "columns", header: "Columns", label: "Columns", sort: sortOf("columns"), cellClassName: "text-slate-600", cell: (item) => item.columnCount },
-    { id: "templates", header: "Templates", label: "Templates", sort: sortOf("templates"), cellClassName: "text-slate-600", cell: (item) => item.templateCount },
+    { id: "columns", header: "Number of Columns", label: "Number of Columns", sort: sortOf("columns"), cellClassName: "text-slate-600", cell: (item) => item.columnCount },
+    { id: "templates", header: "Number of Templates", label: "Number of Templates", sort: sortOf("templates"), cellClassName: "text-slate-600", cell: (item) => item.templateCount },
     {
       id: "status",
-      header: "Status",
-      label: "Status",
+      header: "Report Type Status",
+      label: "Report Type Status",
       sort: sortOf("status"),
       cell: (item) => (item.enabled ? <Badge color="emerald" size="sm">Enabled</Badge> : <Badge color="slate" size="sm">Disabled</Badge>),
     },
-    { id: "modifiedDate", header: "Modified Date", label: "Modified Date", cellClassName: "text-slate-600", cell: (item) => when(item.updatedAt) },
+    { id: "modifiedDate", header: "Modified Date", label: "Modified Date", cellClassName: "text-slate-600", sort: sortOf("updatedAt"), cell: (item) => when(item.updatedAt) },
   ];
   const action: DataTableAction<ReportTypeListItem> = {
     header: "Action",
@@ -257,12 +216,22 @@ export const ReportTypesView: React.FC = () => {
                     />
                   }
                   filters={[
-                    { id: "statusFilter", label: "Status", value: String(statusFilter), options: statusOptions, onChange: (value) => { setStatusFilter(value as StatusFilter); setCurrentPage(1); } },
-                    { id: "categoryFilter", label: "Category", value: categoryFilter, options: categoryOptions, onChange: (value) => { setCategoryFilter(value); setCurrentPage(1); } },
+                    { id: "statusFilter", label: "Report Type Status", value: String(statusFilter), options: statusOptions, onChange: (value) => { setStatusFilter(value as StatusFilter); setCurrentPage(1); } },
+                    { id: "categoryFilter", label: "Report Type Category", value: categoryFilter, options: categoryOptions, onChange: (value) => { setCategoryFilter(value); setCurrentPage(1); } },
+                  ]}
+                  dates={[
+                    {
+                      id: "modifiedFromDate",
+                      label: "Modified Date Range",
+                      from: modifiedFromDate,
+                      to: modifiedToDate,
+                      onFromChange: (v) => { setModifiedFromDate(v); setCurrentPage(1); },
+                      onToChange: (v) => { setModifiedToDate(v); setCurrentPage(1); },
+                    },
                   ]}
                 >
-                  <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-end">
-                    <div className="sm:col-span-1 lg:col-span-4">
+                  <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+                    <div className="w-full">
                       <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -275,16 +244,26 @@ export const ReportTypesView: React.FC = () => {
                         />
                       </div>
                     </div>
-                    <div className="sm:col-span-1 lg:col-span-4">
-                      <Select label="Status" value={statusFilter} onChange={(value) => { setStatusFilter(value as StatusFilter); setCurrentPage(1); }} options={statusOptions} placeholder="All" />
+                    <div className="w-full">
+                      <Select label="Report Type Status" value={statusFilter} onChange={(value) => { setStatusFilter(value as StatusFilter); setCurrentPage(1); }} options={statusOptions} placeholder="All" />
                     </div>
-                    <div className="sm:col-span-1 lg:col-span-4">
-                      <Select label="Category" value={categoryFilter} onChange={(value) => { setCategoryFilter(String(value)); setCurrentPage(1); }} options={categoryOptions} placeholder="All" />
+                    <div className="w-full">
+                      <Select label="Report Type Category" value={categoryFilter} onChange={(value) => { setCategoryFilter(String(value)); setCurrentPage(1); }} options={categoryOptions} placeholder="All" />
                     </div>
-                  </div>
-                  <div className="hidden md:flex justify-start mt-3 gap-2">
-                    <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} disabled={!hasActiveFilters} />
-                    {control}
+                    <div className="w-full">
+                      <DateRangePicker
+                        label="Modified Date Range"
+                        startDate={modifiedFromDate}
+                        endDate={modifiedToDate}
+                        onStartDateChange={(v) => { setModifiedFromDate(v); setCurrentPage(1); }}
+                        onEndDateChange={(v) => { setModifiedToDate(v); setCurrentPage(1); }}
+                        placeholder="Select range"
+                      />
+                    </div>
+                    <div className="filter-actions flex items-end gap-2">
+                      <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} disabled={!hasActiveFilters} />
+                      {control}
+                    </div>
                   </div>
                 </ConfiguredDesktopFilters>
               </div>
@@ -298,11 +277,6 @@ export const ReportTypesView: React.FC = () => {
                   columnLayout={layout}
                   action={action}
                   onRowClick={(item) => navigate(typePath(item.code))}
-                  expandedRow={{
-                    isExpanded: (item) => expandedCode === item.code,
-                    render: (item) => <ExpandedReportTypeRow type={item} visibleColumnsLength={10} />,
-                    asRow: false,
-                  }}
                   emptyState={<TableEmptyState title="No items found" description="Try adjusting your search" />}
                   pagination={
                     totalItems > 0 ? (
@@ -343,7 +317,7 @@ export const ReportTypesView: React.FC = () => {
               }}
               className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
             >
-              {openItem?.enabled ? (<><PowerOff className="h-3.5 w-3.5" /><span>Disable</span></>) : (<><Power className="h-3.5 w-3.5" /><span>Enable</span></>)}
+              {openItem?.enabled ? (<><IconToggleLeft className="h-3.5 w-3.5" /><span>Disable</span></>) : (<><IconToggleRight className="h-3.5 w-3.5" /><span>Enable</span></>)}
             </button>
           )}
         </div>
@@ -390,7 +364,7 @@ export const ReportTypesView: React.FC = () => {
       />
 
       <FilterDrawer isOpen={isFilterDrawerOpen} onClose={() => setIsFilterDrawerOpen(false)} onClear={clearFilters} onApply={() => setIsFilterDrawerOpen(false)}>
-        <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
+        <FilterAccordionItem label="Report Type Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {statusOptions.map((opt) => (
               <button key={opt.value} onClick={() => { setStatusFilter(opt.value as StatusFilter); setCurrentPage(1); }} className={getOptionClassName(statusFilter === opt.value)}>
@@ -400,7 +374,7 @@ export const ReportTypesView: React.FC = () => {
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Category" isExpanded={expandedSections.has("category")} onToggle={() => toggleSection("category")}>
+        <FilterAccordionItem label="Report Type Category" isExpanded={expandedSections.has("category")} onToggle={() => toggleSection("category")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {categoryOptions.map((opt) => (
               <button key={opt.value || "all"} onClick={() => { setCategoryFilter(opt.value); setCurrentPage(1); }} className={getOptionClassName(categoryFilter === opt.value)}>
@@ -408,6 +382,18 @@ export const ReportTypesView: React.FC = () => {
                 {categoryFilter === opt.value && <Check size={16} className="text-emerald-500" />}
               </button>
             ))}
+          </div>
+        </FilterAccordionItem>
+        <FilterAccordionItem label="Modified Date Range" isExpanded={expandedSections.has("date")} onToggle={() => toggleSection("date")}>
+          <div className="pt-2 pb-4">
+            <DateRangePicker
+              label=""
+              startDate={modifiedFromDate}
+              endDate={modifiedToDate}
+              onStartDateChange={(v) => { setModifiedFromDate(v); setCurrentPage(1); }}
+              onEndDateChange={(v) => { setModifiedToDate(v); setCurrentPage(1); }}
+              placeholder="Select range"
+            />
           </div>
         </FilterAccordionItem>
       </FilterDrawer>

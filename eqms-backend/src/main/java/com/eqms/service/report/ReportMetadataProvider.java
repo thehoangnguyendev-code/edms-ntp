@@ -22,6 +22,8 @@ public interface ReportMetadataProvider {
     default List<String> allowedScopes() { return List.of("PERSONAL", "DEPARTMENT", "BUSINESS_UNIT", "SYSTEM"); }
     /** Checks what a run must give, besides what query() accepts: for example a date range. Not applied where only the authorization query is built. */
     default void validateRun(java.util.Map<String, Object> filters) {}
+    /** The same check with the most days a range may cover, as set in Report Properties; a type with no range rule ignores it. */
+    default void validateRun(java.util.Map<String, Object> filters, int maxRangeDays) { validateRun(filters); }
     /**
      * The filters that narrow a run. A run needs at least one of them to have a value, unless it is run with the Full choice
      * (REPORT-FULL-RUN-2026-11-12). By default every filter of the type narrows.
@@ -44,6 +46,12 @@ public interface ReportMetadataProvider {
      * cannot be scheduled, because nobody is there to sign a scheduled run.
      */
     default boolean runNeedsSignature() { return false; }
+    /** Most columns one report may carry: the required and default ones of a template, and the ones chosen for a run (REPORT-FIELD-CATALOG-2026-11-15). */
+    int MAX_REPORT_COLUMNS = 30;
+    /** The group of each column in the field picker (Identity, Dates, People ...). A column not listed is in "Core", the group a new template allows from the start. */
+    default Map<String, String> fieldGroups() { return Map.of(); }
+    /** Columns that describe a person (email, phone, date of birth ...). They are labelled so; a person who may author the template may allow them (REPORT-FIELD-CATALOG-2026-11-15). */
+    default java.util.Set<String> sensitiveFields() { return java.util.Set.of(); }
     String name();
     Map<String, String> columns();
     Map<String, String> labels();

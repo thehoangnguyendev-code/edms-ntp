@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { reportsApi, type ReportAccessScopeRow, type ReportDeliveryRow, type ReportLegalHoldRow } from "@/services/api/reports";
+import { reportsApi, type ReportDeliveryRow, type ReportLegalHoldRow } from "@/services/api/reports";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
@@ -7,25 +7,23 @@ import { ReportListToolbar } from "../../report/shared/ReportListToolbar";
 import { codeLabel } from "../../report/shared/reportLabels";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge/Badge";
-import { PageHeader } from "@/components/ui/page/PageHeader";
+import { flagColor } from "@/utils/status";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
-import { reportBreadcrumbs } from "../../report/shared/reportBreadcrumbs";
+import { ReportTabsFrame } from "../../report/shared/ReportTabsFrame";
 import { displayDateTime } from "@/utils/format";
 
 /**
- * Frame of the Report Administration list screens: the header, an optional note, then the list in its own card, as the other report lists
- * (Run History, Report Definitions). The table is not wrapped in another section.
+ * Frame of the report registers (Legal Hold Register, Delivery Log): each is the second tab of a menu entry (Report Run History, Scheduled Reports), so the header,
+ * the tabs and the card are those of ReportTabsFrame. An optional note sits above the list; the list is not framed again.
  */
-const ReportAdminListPage: React.FC<{ title: string; note?: React.ReactNode; children: React.ReactNode }> = ({ title, note, children }) => {
-  const navigate = useNavigate();
-  return (
-    <div className="flex flex-col gap-4 md:gap-5">
-      <PageHeader title={title} breadcrumbItems={reportBreadcrumbs(navigate, title, true)} />
-      {note && <div className="text-xs sm:text-sm text-slate-600">{note}</div>}
+const ReportAdminListPage: React.FC<{ pair: "runs" | "scheduled"; note?: React.ReactNode; children: React.ReactNode }> = ({ pair, note, children }) => (
+  <div className="flex flex-col gap-4 md:gap-5">
+    <ReportTabsFrame pair={pair}>
+      {note && <div className="px-4 pt-4 text-xs text-slate-600 sm:text-sm md:px-5">{note}</div>}
       {children}
-    </div>
-  );
-};
+    </ReportTabsFrame>
+  </div>
+);
 
 /** The limit of recipients is a setting of Report Properties; the log below records every notice. */
 const DeliveryNote: React.FC = () => {
@@ -42,114 +40,10 @@ const DeliveryNote: React.FC = () => {
 };
 
 const Yes: React.FC<{ on: boolean }> = ({ on }) => (
-  <Badge color={on ? "emerald" : "slate"} size="sm">
+  <Badge color={flagColor(on)} size="sm">
     {on ? "Yes" : "No"}
   </Badge>
 );
-
-const SCOPE_LABEL = { PERSONAL: "Personal", DEPARTMENT: "Department", BUSINESS_UNIT: "Business Unit", SYSTEM: "Entire system" } as const;
-
-/** Role scopes of every report template, from the server. Search, filter, sort and paging are applied by the server. Read-only here: scopes are set on each template. */
-export const ReportAccessScopeView: React.FC = () => {
-  const [scope, setScope] = useState("");
-  const fetcher = useCallback(
-    (params: Record<string, string | number | boolean | undefined>) =>
-      reportsApi.listAccessScopes({
-        search: params.search as string | undefined,
-        scope: params.scope as string | undefined,
-        sortBy: params.sortBy as string,
-        sortDirection: params.sortDirection as "asc" | "desc",
-        page: params.page as number,
-        limit: params.limit as number,
-      }),
-    [],
-  );
-  const extraParams = useMemo(() => ({ scope }), [scope]);
-  const table = useServerTable<ReportAccessScopeRow>({ fetcher, defaultSortBy: "templateName", defaultSortDirection: "asc", extraParams });
-  const sortOf = (key: string) => ({
-    direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined,
-    onSort: () => table.handleSort(key),
-  });
-  const columns: DataTableColumn<ReportAccessScopeRow>[] = [
-    {
-      id: "template",
-      header: "Template",
-      sort: sortOf("templateName"),
-      cell: (row) => (
-        <div>
-          <span className="font-medium text-slate-900">{row.templateName}</span>
-          <span className="block text-xs text-slate-500">{row.templateCode}</span>
-        </div>
-      ),
-    },
-    { id: "role", header: "Role", sort: sortOf("roleName"), cell: (row) => row.roleName },
-    { id: "scope", header: "Data scope", sort: sortOf("scope"), cell: (row) => SCOPE_LABEL[row.scope] ?? row.scope },
-    {
-      id: "status",
-      header: "Template status",
-      sort: sortOf("active"),
-      cell: (row) => (
-        <Badge color={row.active ? "emerald" : "slate"} size="sm">
-          {row.active ? "Enabled" : "Disabled"}
-        </Badge>
-      ),
-    },
-  ];
-  const { layout, control } = useCustomColumnLayout("reportAccessScopes", columns);
-  return (
-    <ReportAdminListPage
-      title="Report Access & Data Scope"
-    >
-        <ReportListToolbar
-          searchPlaceholder="Search template or role…"
-          search={table.searchQuery}
-          onSearch={(value) => {
-            table.setSearchQuery(value);
-            table.setCurrentPage(1);
-          }}
-          filters={[
-            {
-              id: "scope",
-              label: "Data scope",
-              value: scope,
-              options: [{ label: "All", value: "" }, ...Object.entries(SCOPE_LABEL).map(([value, label]) => ({ label, value }))],
-              onChange: (value) => {
-                setScope(value);
-                table.setCurrentPage(1);
-              },
-            },
-          ]}
-          hasActiveFilters={!!scope}
-          onClear={() => {
-            setScope("");
-            table.setCurrentPage(1);
-          }}
-          customControl={control}
-        >
-          <DataTable
-            rows={table.items}
-            getRowKey={(row) => row.templateCode + row.roleName}
-            isLoading={table.isLoading}
-            columns={columns}
-            columnLayout={layout}
-            emptyState={<TableEmptyState title="No role scopes" description="No template has a role scope that matches the search or filter." />}
-            pagination={
-              table.totalItems > 0 ? (
-                <TablePagination
-                  currentPage={table.currentPage}
-                  totalPages={table.totalPages}
-                  totalItems={table.totalItems}
-                  itemsPerPage={table.itemsPerPage}
-                  onPageChange={table.setCurrentPage}
-                  onItemsPerPageChange={table.setItemsPerPage}
-                />
-              ) : undefined
-            }
-          />
-        </ReportListToolbar>
-    </ReportAdminListPage>
-  );
-};
 
 /** Legal Hold Register: the files held now, from the server. Placing and releasing holds is done on each run's page. */
 export const ReportRetentionView: React.FC = () => {
@@ -171,6 +65,7 @@ export const ReportRetentionView: React.FC = () => {
     onSort: () => table.handleSort(key),
   });
   const columns: DataTableColumn<ReportLegalHoldRow>[] = [
+    { id: "no", header: "No.", locked: true, cell: (_row, index) => (table.currentPage - 1) * table.itemsPerPage + index + 1 },
     {
       id: "report",
       header: "Report",
@@ -189,8 +84,9 @@ export const ReportRetentionView: React.FC = () => {
   ];
   const { layout, control } = useCustomColumnLayout("reportLegalHolds", columns);
   return (
-    <ReportAdminListPage title="Report Retention & Legal Hold">
+    <ReportAdminListPage pair="runs">
               <ReportListToolbar
+          framed={false}
           searchPlaceholder="Search report or file name…"
           search={table.searchQuery}
           onSearch={(value) => {
@@ -257,6 +153,7 @@ export const ReportDeliveryView: React.FC = () => {
     onSort: () => table.handleSort(key),
   });
   const columns: DataTableColumn<ReportDeliveryRow>[] = [
+    { id: "no", header: "No.", locked: true, cell: (_row, index) => (table.currentPage - 1) * table.itemsPerPage + index + 1 },
     { id: "at", header: "When", sort: sortOf("createdAt"), cell: (row) => displayDateTime(row.createdAt) },
     { id: "schedule", header: "Schedule", sort: sortOf("scheduleName"), cell: (row) => <span className="font-medium text-slate-900">{row.scheduleName ?? "—"}</span> },
     { id: "recipient", header: "Recipient", sort: sortOf("recipientName"), cell: (row) => row.recipientName ?? "—" },
@@ -279,8 +176,9 @@ export const ReportDeliveryView: React.FC = () => {
   ];
   const { layout, control } = useCustomColumnLayout("reportDeliveryLog", columns);
   return (
-    <ReportAdminListPage title="Scheduled Report Delivery" note={<DeliveryNote />}>
+    <ReportAdminListPage pair="scheduled" note={<DeliveryNote />}>
         <ReportListToolbar
+          framed={false}
           searchPlaceholder="Search recipient or schedule…"
           search={table.searchQuery}
           onSearch={(value) => {

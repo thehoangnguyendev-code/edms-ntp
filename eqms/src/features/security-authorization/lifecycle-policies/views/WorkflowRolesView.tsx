@@ -8,6 +8,7 @@ import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -30,6 +31,7 @@ import { useDebounce, usePortalDropdown, useTableDragScroll } from "@/hooks";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 interface WorkflowRoleCatalogEntry {
   id: string;
@@ -129,7 +131,7 @@ export const WorkflowRolesView: React.FC = () => {
     field: SortField;
     direction: "asc" | "desc";
   }>({ field: "displayOrder", direction: "asc" });
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
 
   React.useLayoutEffect(() => {
     const sortBy = searchParams.get("sortBy");
@@ -240,7 +242,7 @@ export const WorkflowRolesView: React.FC = () => {
 
   useEffect(() => {
     if (!canView) return;
-    const timer = window.setTimeout(() => loadRoles(1), 300);
+    const timer = window.setTimeout(() => loadRoles(1), SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
   }, [
     canView,
@@ -393,7 +395,7 @@ export const WorkflowRolesView: React.FC = () => {
       id: "status",
       header: "Status",
       label: "Status",
-      cell: (role) => <Badge color={role.active ? "emerald" : "slate"} size="sm">{role.active ? "Active" : "Inactive"}</Badge>,
+      cell: (role) => <Badge color={flagColor(role.active)} size="sm">{role.active ? "Active" : "Inactive"}</Badge>,
     },
     { id: "createdAt", header: "Created Date", label: "Created Date", sort: { direction: sort.field === "createdAt" ? sort.direction : undefined, onSort: () => toggleSort("createdAt") }, cell: (role) => (role.createdAt ? formatDateTime(role.createdAt) : "-") },
     { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sort.field === "updatedAt" ? sort.direction : undefined, onSort: () => toggleSort("updatedAt") }, cell: (role) => (role.updatedAt ? formatDateTime(role.updatedAt) : "-") },

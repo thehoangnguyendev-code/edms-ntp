@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bar, BarChart, XAxis, YAxis } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import type { ChartConfiguration } from "chart.js";
+import { ChartCanvas } from "@/components/ui/chart";
 import { AlertOctagon, AlertTriangle, ChevronDown, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
@@ -26,13 +26,41 @@ const GROUPS_SHOWN = 4;
 /** The status is read again this often while the page is open and visible. */
 const REFRESH_MS = 30_000;
 const DAYS = 30;
-const AXIS_TICK = { fontSize: 12 } as const;
 
-const chartConfig: ChartConfig = {
+const chartConfig = {
   verified: { label: "Verified", color: OK },
   unverified: { label: "Completed, not verified", color: WARN },
   failed: { label: "Failed", color: BAD },
 };
+
+/** The last 30 days as a Chart.js stacked column chart: one column per day, one colour per result. */
+const dailyChartConfiguration = (rows: { label: string; verified: number; unverified: number; failed: number }[]): ChartConfiguration<"bar"> => ({
+  type: "bar",
+  data: {
+    labels: rows.map((row) => row.label),
+    datasets: (["verified", "unverified", "failed"] as const).map((key) => ({
+      label: chartConfig[key].label,
+      data: rows.map((row) => row[key]),
+      backgroundColor: chartConfig[key].color,
+      stack: "runs",
+      borderRadius: key === "failed" ? { topLeft: 3, topRight: 3 } : 0,
+      categoryPercentage: 0.78,
+    })),
+  },
+  options: {
+    animation: { duration: 700, easing: "easeOutQuad" },
+    layout: { padding: { top: 8, right: 8 } },
+    interaction: { mode: "index", intersect: false },
+    scales: {
+      x: { stacked: true, grid: { display: false }, border: { display: false }, ticks: { autoSkip: false, font: { size: 12 }, callback(value, index) { return index % 4 === 0 ? String(this.getLabelForValue(Number(value))) : ""; } } },
+      y: { stacked: true, beginAtZero: true, border: { display: false }, grid: { color: "#f1f5f9" }, ticks: { precision: 0, font: { size: 12 } } },
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { backgroundColor: "#ffffff", titleColor: "#0f172a", bodyColor: "#334155", borderColor: "#e2e8f0", borderWidth: 1, padding: 10, boxPadding: 4 },
+    },
+  },
+});
 
 export interface Alert {
   id: string;
@@ -233,6 +261,7 @@ const LEGEND: { key: keyof typeof chartConfig; color: string }[] = [
 /** The last 30 days, one column per day. Shows a failed load as a failure, never as zeros. */
 const DailyChart: React.FC<{ points: BackupDailyPoint[] | null; failed: boolean }> = ({ points, failed }) => {
   const rows = useMemo(() => (points ? toRows(points) : []), [points]);
+  const dailyConfig = useMemo(() => dailyChartConfiguration(rows), [rows]);
   const runs = rows.reduce((sum, row) => sum + row.total, 0);
   return (
     <Card aria-label="Last 30 days" role="region">
@@ -248,16 +277,9 @@ const DailyChart: React.FC<{ points: BackupDailyPoint[] | null; failed: boolean 
           <div className="h-64 animate-pulse rounded-lg bg-slate-50" aria-hidden="true" />
         ) : (
           <>
-            <ChartContainer config={chartConfig} className="h-64 w-full">
-              <BarChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="28%">
-                <XAxis dataKey="label" tickLine={false} axisLine={false} interval={3} tick={AXIS_TICK} />
-                <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={28} tick={AXIS_TICK} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="verified" stackId="runs" fill={OK} />
-                <Bar dataKey="unverified" stackId="runs" fill={WARN} />
-                <Bar dataKey="failed" stackId="runs" fill={BAD} radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ChartContainer>
+            <div className="h-64 w-full">
+              <ChartCanvas config={dailyConfig} ariaLabel="Backup runs per day for the last 30 days, by result" />
+            </div>
             <ul className="mt-3 flex flex-wrap gap-4 text-xs text-slate-600" aria-label="Chart legend">
               {LEGEND.map(({ key, color }) => (
                 <li key={key} className="flex items-center gap-1.5">
@@ -278,7 +300,7 @@ const RunningCard: React.FC<{ running: number }> = ({ running }) => (
     <CardHeader
       title="Running now"
       subtitle="Backups in progress on the Backup Agent"
-      badge={<Badge color={running > 0 ? "emerald" : "slate"} size="sm">{running > 0 ? "In progress" : "Idle"}</Badge>}
+      badge={<Badge color={running > 0 ? "blue" : "sky"} size="sm">{running > 0 ? "In progress" : "Idle"}</Badge>}
     />
     <p className="px-4 pb-4 pt-2 text-sm text-slate-700">
       {running === 0 ? "No backup is running." : `${running} backup${running === 1 ? " is" : "s are"} running.`}

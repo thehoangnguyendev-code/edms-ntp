@@ -10,6 +10,7 @@ import { Button } from '../button/Button';
 import { Checkbox } from '../checkbox/Checkbox';
 import { Popover } from '../popover/Popover';
 import { useDebounce } from '@/hooks/useDebounce';
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 export interface MultiSelectOption {
   label: string;
@@ -58,7 +59,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
   isLoading = false,
   loadingText = "Loading options...",
   onSearch,
-  debounceMs = 300,
+  debounceMs = SEARCH_DEBOUNCE_MS,
   minSearchLength = 0,
 }) => {
   const selectId = useId();

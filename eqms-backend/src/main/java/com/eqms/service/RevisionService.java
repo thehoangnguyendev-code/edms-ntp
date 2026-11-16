@@ -463,45 +463,40 @@ public class RevisionService {
             boolean pending,
             String sortBy,
             String sortDirection,
-            java.io.OutputStream outputStream
+            com.eqms.service.export.TableExcelWriter writer
     ) throws IOException {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         String sortProperty = resolveSortProperty(sortBy);
         Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
-        try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
-            writer.println("Document Number,Revision Number,Created,Opened By,Revision Name,Status,Document Name,Document Type,Department,Business Unit,Author,Effective Date,Valid Until,Has Related Documents,Has Correlated Documents,Is Template");
-            Specification<DocumentRevisionRecord> specification = buildSpecification(
-                    search, ids, status, documentType, businessUnit, department, authorId, author,
-                    relatedDocument, correlatedDocument, isTemplate, trainingNumber,
-                    createdFrom, createdTo, effectiveFrom, effectiveTo, validFrom, validTo,
-                    ownedByMe, pending, currentUser
-            );
+        writer.headers("Document Number","Revision Number","Created","Opened By","Revision Name","Status","Document Name","Document Type","Department","Business Unit","Author","Effective Date","Valid Until","Has Related Documents","Has Correlated Documents","Is Template");
+        Specification<DocumentRevisionRecord> specification = buildSpecification(
+                search, ids, status, documentType, businessUnit, department, authorId, author,
+                relatedDocument, correlatedDocument, isTemplate, trainingNumber,
+                createdFrom, createdTo, effectiveFrom, effectiveTo, validFrom, validTo,
+                ownedByMe, pending, currentUser
+        );
+        specification = specification.and(com.eqms.service.export.TableExportReadScope.fetchToOne(
+                "document", "status", "documentType", "department", "businessUnit", "author", "openedBy"));
+        try (var readScope = new com.eqms.service.export.TableExportReadScope(entityManager)) {
             int page = 0;
             Page<DocumentRevisionRecord> result;
             do {
-                result = revisionRepository.findAll(specification, PageRequest.of(page++, 500, Sort.by(direction, sortProperty)));
+                result = revisionRepository.findAll(specification, PageRequest.of(page++, 500, Sort.by(direction, sortProperty).and(Sort.by("id"))));
                 for (DocumentRevisionRecord revision : result.getContent()) {
-                    RevisionListItemResponse item = toListItem(revision);
-                    writer.printf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%n",
-                            csv(item.documentNumber()),
-                            csv(item.revisionNumber()),
-                            csv(item.created()),
-                            csv(item.openedBy()),
-                            csv(item.revisionName()),
-                            csv(item.state()),
-                            csv(item.documentName()),
-                            csv(item.type()),
-                            csv(item.department()),
-                            csv(item.businessUnit()),
-                            csv(item.author()),
-                            csv(item.effectiveDate()),
-                            csv(item.validUntil()),
-                            csv(Boolean.toString(item.hasRelatedDocuments())),
-                            csv(Boolean.toString(item.hasCorrelatedDocuments())),
-                            csv(Boolean.toString(item.isTemplate()))
-                    );
+                    String title = revision.getDocument() == null ? null : revision.getDocument().getDocumentName();
+                    writer.row(revision.getDocumentNumber(), revision.getRevisionNumber(),
+                            DateTimeFormatUtils.formatDateTime(revision.getCreatedAt()),
+                            revision.getOpenedBy() == null ? null : revision.getOpenedBy().getFullName(),
+                            buildRevisionName(title, revision.getRevisionNumber()), StatusMapper.label(revision.getStatus()), title,
+                            revision.getDocumentType() == null ? null : revision.getDocumentType().getName(),
+                            revision.getDepartment() == null ? null : revision.getDepartment().getName(),
+                            revision.getBusinessUnit() == null ? null : revision.getBusinessUnit().getName(),
+                            revision.getAuthor() == null ? null : revision.getAuthor().getFullName(),
+                            DateTimeFormatUtils.formatDate(revision.getEffectiveDate()),
+                            DateTimeFormatUtils.formatDate(revision.getValidUntil()),
+                            revision.isHasRelatedDocuments(), revision.isHasCorrelatedDocuments(), revision.isTemplate());
                 }
-                writer.flush();
+                readScope.completedPage();
             } while (result.hasNext());
         }
     }
@@ -3897,6 +3892,7 @@ public class RevisionService {
                   shownRevisionNumber,
                 revision.getStatus() == null ? null : revision.getStatus().getLabel(),
                 new StatusResponse(revision.getStatus() == null ? null : revision.getStatus().getCode(), revision.getStatus() == null ? null : revision.getStatus().getLabel()),
+                revision.getStatus() == null ? null : revision.getStatus().getCode(),
                 revision.getDocumentType() == null ? null : revision.getDocumentType().getName(),
                 revision.getDocumentType() == null ? null : revision.getDocumentType().getShortCode(),
                 revision.getBusinessUnit() == null ? null : revision.getBusinessUnit().getName(),
@@ -4149,7 +4145,6 @@ public class RevisionService {
                 DateTimeFormatUtils.formatDateTime(revision.getCreatedAt()),
                 revision.getOpenedBy() == null ? null : revision.getOpenedBy().getFullName(),
                   resolvedRevisionName,
-                  StatusMapper.label(revision.getStatus()),
                   StatusMapper.label(revision.getStatus()),
                   StatusMapper.code(revision.getStatus()),
                   StatusMapper.from(revision.getStatus()),
@@ -5995,7 +5990,9 @@ public class RevisionService {
             case "created" -> "createdAt";
             case "openedBy" -> "openedBy.fullName";
             case "revisionName" -> "revisionName";
-            case "state", "status" -> "status.sortOrder";
+            // "state" is the name the old column had; both sort by the status of the revision, which is its status_code column (sorting by a column of the joined
+            // status table made the query fail, as the list is a SELECT DISTINCT).
+            case "state", "status" -> "status";
             case "documentName" -> "documentName";
             case "type" -> "documentType.name";
             case "businessUnit" -> "businessUnit.name";
@@ -6361,6 +6358,7 @@ public class RevisionService {
         DocumentRecord target = relation.getTargetDocument();
         String targetVersion = null;
         String targetStatus = target == null || target.getStatus() == null ? null : target.getStatus().getLabel();
+        String targetStatusCode = target == null || target.getStatus() == null ? null : target.getStatus().getCode();
         if (target != null) {
             var effectiveRevision = revisionRepository
                     .findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(target.getId(), "EFFECTIVE");
@@ -6371,6 +6369,7 @@ public class RevisionService {
                 }
                 if (revision.getStatus() != null) {
                     targetStatus = revision.getStatus().getLabel();
+                    targetStatusCode = revision.getStatus().getCode();
                 }
             }
         }
@@ -6381,6 +6380,7 @@ public class RevisionService {
                 target == null ? null : buildDocumentDisplayName(target.getDocumentNumber(), target.getDocumentName()),
                 targetVersion,
                 targetStatus,
+                targetStatusCode,
                 target == null || target.getDocumentType() == null ? null : target.getDocumentType().getName(),
                 target == null || target.getBusinessUnit() == null ? null : target.getBusinessUnit().getName(),
                 target == null || target.getDepartment() == null ? null : target.getDepartment().getName(),

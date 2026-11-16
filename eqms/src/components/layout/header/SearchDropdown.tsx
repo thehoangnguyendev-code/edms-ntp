@@ -5,6 +5,7 @@ import { Search, FileText, AlertTriangle, Settings } from 'lucide-react';
 import { cn } from '../../ui/utils';
 import { ICON_MAP } from '@/app/constants';
 import { navigationApi, FlatMenuItem } from '@/services/api';
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 interface SearchDropdownProps {
   className?: string;
@@ -29,7 +30,7 @@ export const SearchDropdown: React.FC<SearchDropdownProps> = ({ className, onClo
 
     debounceTimerRef.current = setTimeout(() => {
       setDebouncedQuery(searchQuery);
-    }, 300);
+    }, SEARCH_DEBOUNCE_MS);
 
     return () => {
       if (debounceTimerRef.current) {

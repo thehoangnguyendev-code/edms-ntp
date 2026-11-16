@@ -21,7 +21,7 @@ public class TrainingComplianceReportMetadataProvider implements ReportMetadataP
         column("employeeCode", "Employee Code", "x.employee_code");
         column("fullName", "Employee", "x.full_name");
         column("position", "Job Role", "x.position_name");
-        column("requirement", "Training Required", "x.title");
+        column("requirement", "Required Training", "x.title");
         column("documentNumber", "Document Number", "x.code");
         column("annual", "Annual", "case when x.annual_required then 'Yes' else 'No' end");
         column("lastDone", "Last Trained On", "x.last_done");

@@ -25,5 +25,33 @@ public record AccessProfileResponse(
         Instant createdAt,
         Instant updatedAt,
         /** Server-formatted "dd/MM/yyyy HH:mm:ss" — frontend renders this as-is, no client-side formatting. */
-        String createdAtDisplay
-) {}
+        String createdAtDisplay,
+        AccessProfileCapabilitiesResponse capabilities
+) {
+    /** Compatibility constructor for existing detail/mutation responses. */
+    public AccessProfileResponse(
+            UUID id,
+            String code,
+            String name,
+            String description,
+            String type,
+            boolean active,
+            boolean system,
+            boolean testData,
+            String businessUnitScope,
+            String departmentScope,
+            int permissionSetCount,
+            int workflowRoleCount,
+            int assignedUserCount,
+            List<String> workflowRoles,
+            String documentControlVisibility,
+            Instant createdAt,
+            Instant updatedAt,
+            String createdAtDisplay) {
+        this(id, code, name, description, type, active, system, testData, businessUnitScope, departmentScope, permissionSetCount, workflowRoleCount, assignedUserCount, workflowRoles, documentControlVisibility, createdAt, updatedAt, createdAtDisplay, null);
+    }
+
+    public AccessProfileResponse withCapabilities(AccessProfileCapabilitiesResponse capabilities) {
+        return new AccessProfileResponse(id, code, name, description, type, active, system, testData, businessUnitScope, departmentScope, permissionSetCount, workflowRoleCount, assignedUserCount, workflowRoles, documentControlVisibility, createdAt, updatedAt, createdAtDisplay, capabilities);
+    }
+}

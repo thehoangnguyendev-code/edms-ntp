@@ -9,3 +9,7 @@ administrator can choose the font family used for a stamp/watermark independentl
 
 Tinos-Regular.ttf, Tinos-Bold.ttf -- Tinos (c) The Tinos Project Authors, licensed under the SIL Open Font License 1.1 (see Tinos-OFL.txt). Tinos has the same letter widths
 as Times New Roman and supports Vietnamese, so a report set in "Times New Roman" breaks its lines where Times New Roman would, without a Microsoft font being embedded.
+
+NotoSans-Regular/Italic/BoldItalic.ttf, NotoSerif-Regular/Italic/BoldItalic.ttf, RobotoMono-Regular/Italic/BoldItalic.ttf, Oswald-Regular.ttf -- static instances (weight 400, or 700 for BoldItalic) cut with
+fonttools.varLib.instancer from the variable fonts of google/fonts (SIL Open Font License 1.1), added for the text styles of a report (REPORT-TEXT-STYLE-2026-11-14: font, bold, italic).
+Tinos-Italic.ttf, Tinos-BoldItalic.ttf -- Tinos, as above. Oswald has no italic: its italic is the upright letters slanted by the text matrix.

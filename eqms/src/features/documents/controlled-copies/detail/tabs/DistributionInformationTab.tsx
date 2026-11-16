@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { ControlledCopy } from "../../types";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -120,9 +121,7 @@ export const DistributionInformationTab: React.FC<DistributionInformationTabProp
               Loading recipients…
             </div>
           ) : members.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-300 bg-white px-3.5 py-3 text-xs sm:text-sm text-slate-500">
-              No recipients found for this batch.
-            </div>
+            <TableEmptyState title="No recipients found" description="No recipients found for this batch." />
           ) : (
             <div className="max-h-80 overflow-auto rounded-lg border border-slate-200">
               <TableMarkup.Root className="w-full text-xs sm:text-sm">

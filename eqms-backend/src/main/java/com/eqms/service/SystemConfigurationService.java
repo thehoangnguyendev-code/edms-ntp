@@ -201,6 +201,7 @@ public class SystemConfigurationService {
         JsonNode videoBackground = nextGeneral.path("appearance").path("authBackground");
         if ("video".equals(videoBackground.path("mode").asText()) && (authBackgroundVideoStore == null || !authBackgroundVideoStore.exists(UUID.fromString(videoBackground.path("videoId").asText())))) throw new IllegalArgumentException("Authentication background video does not exist");
         validateTrainingMaterialsLayout(nextGeneral);
+        validateAuditTabView(nextGeneral);
         validateKnowledgeFolderNames(nextGeneral);
         validateSystemHeaderTitle(nextGeneral);
         validateFooter(nextGeneral);
@@ -402,7 +403,9 @@ public class SystemConfigurationService {
                 pwaBranding.hasCustomIcon(pwaSource(general)) ? pwaBranding.version(pwaSource(general)) : "",
                 blankToNull(textValue(general, PwaBrandingService.SHORT_NAME_FIELD)),
                 optionalHexColor(appearance, "menuTextColor"),
-                optionalHexColor(appearance, "menuIconColor")
+                optionalHexColor(appearance, "menuIconColor"),
+                auditTabView(appearance),
+                auditTabTimelineStyle(appearance)
         );
     }
 
@@ -508,6 +511,35 @@ public class SystemConfigurationService {
             if (names != null && !names.isNull() && (!names.isTextual() || !KNOWLEDGE_FOLDER_NAMES.contains(names.asText()))) {
                 throw new IllegalArgumentException(field + " must be one of " + KNOWLEDGE_FOLDER_NAMES);
             }
+        }
+    }
+
+    /** Machine values only; the admin UI owns the labels. Missing or unknown values fall back to the table. */
+    static final java.util.Set<String> AUDIT_TAB_VIEWS = java.util.Set.of("TABLE", "TIMELINE");
+    static final String DEFAULT_AUDIT_TAB_VIEW = "TABLE";
+    /** The four timeline designs: a rail with cards, a centre spine, a compact log, a date gutter with a line that fills as the panel scrolls. */
+    static final java.util.Set<String> AUDIT_TAB_TIMELINE_STYLES = java.util.Set.of("RAIL", "CENTER", "COMPACT", "SCROLL_LIT");
+    static final String DEFAULT_AUDIT_TAB_TIMELINE_STYLE = "COMPACT";
+
+    String auditTabView(JsonNode appearance) {
+        String value = appearance == null ? null : textValue(appearance, "auditTabView");
+        return value != null && AUDIT_TAB_VIEWS.contains(value) ? value : DEFAULT_AUDIT_TAB_VIEW;
+    }
+
+    String auditTabTimelineStyle(JsonNode appearance) {
+        String value = appearance == null ? null : textValue(appearance, "auditTabTimelineStyle");
+        return value != null && AUDIT_TAB_TIMELINE_STYLES.contains(value) ? value : DEFAULT_AUDIT_TAB_TIMELINE_STYLE;
+    }
+
+    static void validateAuditTabView(JsonNode general) {
+        JsonNode appearance = general == null ? null : general.get("appearance");
+        JsonNode view = appearance == null ? null : appearance.get("auditTabView");
+        if (view != null && !view.isNull() && (!view.isTextual() || !AUDIT_TAB_VIEWS.contains(view.asText()))) {
+            throw new IllegalArgumentException("auditTabView must be one of " + AUDIT_TAB_VIEWS);
+        }
+        JsonNode style = appearance == null ? null : appearance.get("auditTabTimelineStyle");
+        if (style != null && !style.isNull() && (!style.isTextual() || !AUDIT_TAB_TIMELINE_STYLES.contains(style.asText()))) {
+            throw new IllegalArgumentException("auditTabTimelineStyle must be one of " + AUDIT_TAB_TIMELINE_STYLES);
         }
     }
 
@@ -1322,7 +1354,7 @@ public class SystemConfigurationService {
               },
               {
                 "id": "feat-system-reports",
-                "name": "Reports & Analytics",
+                "name": "Reports",
                 "description": "Generate templates, history, and scheduled reports.",
                 "enabled": true,
                 "category": "System"

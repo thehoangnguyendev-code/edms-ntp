@@ -26,9 +26,9 @@ const mount = () => render(<MemoryRouter initialEntries={["/?tab=eligibility-rul
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.hasPermissionAlias.mockImplementation((code: string) => code === "settings.configuration.manage");
-  mocks.getPolicy.mockResolvedValue({ approvalRequired: true, validityHours: 72, allowRedownload: true, marking: {} });
+  mocks.getPolicy.mockResolvedValue({ validityHours: 72, allowRedownload: true, marking: {} });
   mocks.listEligibilityRules.mockResolvedValue([rule]);
-  mocks.savePolicy.mockResolvedValue({ approvalRequired: true, validityHours: 72, allowRedownload: true, marking: {} });
+  mocks.savePolicy.mockResolvedValue({ validityHours: 72, allowRedownload: true, marking: {} });
   mocks.requestSignature.mockResolvedValue({ signatureToken: "signed-token", reason: "reviewed" });
   mocks.updateEligibilityRule.mockResolvedValue(rule);
   mocks.deleteEligibilityRule.mockResolvedValue(undefined);
@@ -36,7 +36,7 @@ beforeEach(() => {
 
 describe("Eligibility Rules table", () => {
   it.each(["Stamp", "Watermark"] as const)("resets only %s positions in its card, staged until Save Changes", async (kind) => {
-    mocks.getPolicy.mockResolvedValue({ approvalRequired: true, validityHours: 72, allowRedownload: true, marking: {
+    mocks.getPolicy.mockResolvedValue({ validityHours: 72, allowRedownload: true, marking: {
       placements: [
         { pages: "FIRST", stampX: 0.1, stampY: 0.2, stampWidthPercent: 30, watermarkX: 0.4, watermarkY: 0.5, watermarkScalePercent: 90, watermarkAngleDegrees: 35 },
         { pages: "OTHERS", ...(kind === "Stamp" ? { stampX: 0.2 } : { watermarkX: 0.3 }) },
@@ -51,7 +51,7 @@ describe("Eligibility Rules table", () => {
     expect(screen.queryByRole("button", { name: `Reset ${kind} Position` })).toBeNull();
     expect(screen.getByRole("button", { name: `Reset ${kind === "Stamp" ? "Watermark" : "Stamp"} Position` })).toBeInTheDocument();
     expect(mocks.savePolicy).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     const expected = kind === "Stamp"
       ? { pages: "FIRST", watermarkX: 0.4, watermarkY: 0.5, watermarkScalePercent: 90, watermarkAngleDegrees: 35 }
       : { pages: "FIRST", stampX: 0.1, stampY: 0.2, stampWidthPercent: 30 };
@@ -73,11 +73,11 @@ describe("Eligibility Rules table", () => {
   it("keeps only Edit/Delete in Action and changes status through the Edit modal", async () => {
     mount();
     fireEvent.click(await screen.findByRole("button", { name: "Actions for Any" }));
-    for (const name of ["Edit", "Delete"]) {
+    for (const name of ["Edit Eligibility Rules", "Delete"]) {
       expect(screen.getByRole("button", { name })).toBeEnabled();
     }
     expect(screen.queryByRole("button", { name: /Allow uncontrolled copies|Block uncontrolled copies|Activate|Deactivate/ })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit Eligibility Rules" }));
     expect(await screen.findByText("Edit Eligibility Rule")).toBeInTheDocument();
     const dialog = screen.getByRole("dialog");
     const switches = within(dialog).getAllByRole("switch");
@@ -91,7 +91,7 @@ describe("Eligibility Rules table", () => {
     expect(mocks.listEligibilityRules).toHaveBeenCalledTimes(1);
     expect(mocks.updateEligibilityRule).not.toHaveBeenCalled();
     expect(mocks.savePolicy).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(mocks.savePolicy).toHaveBeenCalledWith(expect.objectContaining({
       eligibilityRuleChanges: [{ id: "default", expectedUpdatedAt: rule.updatedAt, delete: false, documentTypeId: null, allowed: true, active: false }],
     }), { signatureToken: "signed-token", reason: "reviewed" }));
@@ -124,7 +124,7 @@ describe("Eligibility Rules table", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(mocks.deleteEligibilityRule).not.toHaveBeenCalled();
     expect(mocks.savePolicy).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(mocks.savePolicy).toHaveBeenCalledWith(expect.objectContaining({
       eligibilityRuleChanges: [expect.objectContaining({ id: "default", delete: true })],
     }), expect.anything()));
@@ -136,12 +136,12 @@ describe("Eligibility Rules table", () => {
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Apply to draft" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     mocks.requestSignature.mockResolvedValueOnce(null);
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Save Changes" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toBeEnabled());
     expect(mocks.savePolicy).not.toHaveBeenCalled();
     expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(3);
     mocks.savePolicy.mockRejectedValueOnce(new Error("conflict"));
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(mocks.toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: "error" })));
     expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(3);
     expect(mocks.listEligibilityRules).toHaveBeenCalledTimes(1);
@@ -159,7 +159,7 @@ describe("Eligibility Rules table", () => {
     expect(screen.getByText("Extra hours after the document's Valid Until (hours)")).toBeInTheDocument();
     expect(screen.getByRole("spinbutton")).toHaveValue(0);
     expect(screen.getByText(/for example 27\/10\/2027 \+ 72 hours/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(mocks.savePolicy).toHaveBeenCalledWith(
       expect.objectContaining({ validityBasis: "DOCUMENT_VALID_UNTIL", validityHours: 0 }), expect.anything()));
@@ -169,7 +169,7 @@ describe("Eligibility Rules table", () => {
     mount();
     await screen.findByRole("table");
     fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "0" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(mocks.toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: "error", message: expect.stringContaining("between 1 and 8760") })));
     expect(mocks.savePolicy).not.toHaveBeenCalled();

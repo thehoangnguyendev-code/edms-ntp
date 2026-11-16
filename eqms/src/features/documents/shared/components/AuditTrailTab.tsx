@@ -1,7 +1,7 @@
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MoreVertical, Download, X, ChevronRight, ShieldAlert, ChevronUp, ChevronDown } from "lucide-react";
+import { Search, MoreVertical, Download, X, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
 import { usePortalDropdown, useTableDragScroll, useDebounce, PortalDropdownPosition } from "@/hooks";
 import { Badge } from "@/components/ui/badge/Badge";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -10,17 +10,21 @@ import { cn } from "@/components/ui/utils";
 import { Select } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { EmptyState } from "@/components/ui/page/EmptyState";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { formatDateTime } from "@/utils/format";
 import { auditTrailApi } from "@/services/api/auditTrail";
 import { AuditExportModal } from "@/features/audit-trail/components/AuditExportModal";
 import { getAuditActionBadgeClass, formatAuditActionLabel } from "@/features/audit-trail/utils/actionBadge";
 import { getDefaultAuditTrailDateRange } from "@/features/audit-trail/utils/dateRange";
-import { formatWorkflowStatusLabel } from "@/features/audit-trail/utils/statusLabel";
+import { buildChangeSummary, buildEntityLabel } from "@/features/audit-trail/utils/recordSummary";
 import { USER_MANAGEMENT_ROUTES } from "@/features/security-authorization/user-management/constants";
 import type { AuditTrailRecord, AuditAction, AuditModule } from "@/features/audit-trail/types";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { useBranding } from "@/components/branding/BrandLogo";
+import { AuditTimeline } from "@/features/audit-trail/components/timeline/AuditTimeline";
+import { normalizeTimelineStyle } from "@/features/audit-trail/components/timeline/auditTimelineModel";
 export type { AuditTrailRecord };
 
 interface DropdownMenuProps {
@@ -81,33 +85,6 @@ export interface AuditTrailTabProps {
 
 const normalizeText = (value: unknown) => String(value ?? "").toLowerCase().trim();
 
-const buildChangeSummary = (record: AuditTrailRecord) => {
-  if (record.changes && record.changes.length > 0) {
-    const rendered = record.changes
-      // Drop a no-op "status" entry (old === new, or one side blank) -- older audit rows
-      // persisted a synthetic "Obsoleted -> Obsoleted" for non-mutating actions like View.
-      .filter((change) => {
-        if (!/status|state/i.test(change.field || "")) return true;
-        const o = (change.oldValue ?? "").trim();
-        const n = (change.newValue ?? "").trim();
-        return o !== "" && n !== "" && o.toLowerCase() !== n.toLowerCase();
-      })
-      .map((change) => {
-        const field = change.field || "Field";
-        const isStatusField = /status|state/i.test(field);
-        const oldValue = isStatusField ? formatWorkflowStatusLabel(change.oldValue) : (change.oldValue || "-");
-        const newValue = isStatusField ? formatWorkflowStatusLabel(change.newValue) : (change.newValue || "-");
-        return `${field}: ${oldValue} → ${newValue}`;
-      })
-      .join("; ");
-    if (rendered) return rendered;
-  }
-  return record.description || record.reason || record.metadata?.reason || record.metadata?.comment || "-";
-};
-
-const buildEntityLabel = (record: AuditTrailRecord) =>
-  record.entityName || record.metadata?.entityName || record.metadata?.entityType || record.module || "-";
-
 const hasESignature = (record: AuditTrailRecord) =>
   record.electronicSignatureApplied === true ||
   record.metadata?.electronicSignatureApplied === true ||
@@ -121,7 +98,7 @@ const buildUserOptionsFromRecords = (records: AuditTrailRecord[]) => {
     if (!value) {
       return;
     }
-    const label = user?.fullName || record.fullName || value;
+    const label = user?.fullName || record.fullName || user?.employeeCode || "Unknown user";
     const key = value.toLowerCase().trim();
     if (!unique.has(key)) {
       unique.set(key, { label, value });
@@ -195,6 +172,10 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
   // once, leaving that dropdown's loading spinner stuck spinning.
   const sourceRecords = useMemo(() => records ?? auditEntries ?? [], [records, auditEntries]);
   const navigate = useNavigate();
+  // The administrator chooses, in Configuration (General), whether the Audit Trail tab of a record is a table or a timeline, and the look of the timeline.
+  // The Audit Trail module itself is not this component and stays a table.
+  const { auditTabView, auditTabTimelineStyle } = useBranding();
+  const timeline = auditTabView === "TIMELINE";
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState<AuditAction | "All">("All");
   const [userFilter, setUserFilter] = useState("");
@@ -220,7 +201,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [exportingRecord, setExportingRecord] = useState<AuditTrailRecord | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const debouncedSearchQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const { openId: openDropdownId, position: dropdownPosition, getRef, toggle: handleDropdownToggle, close: closeDropdown } = usePortalDropdown();
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
 
@@ -231,6 +212,9 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
   const [dateTo, setDateTo] = useState(() => (records === undefined && auditEntries === undefined ? defaultAuditTrailDateRange.endDate : ""));
 
   const [internalRecords, setInternalRecords] = useState<AuditTrailRecord[]>([]);
+  /** A timeline is read by scrolling: the pages it has loaded so far, older ones added at its end. */
+  const [timelineRecords, setTimelineRecords] = useState<AuditTrailRecord[]>([]);
+  const pageSize = timeline ? 20 : itemsPerPage;
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -255,11 +239,11 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
         dateFrom,
         dateTo,
         page: currentPage,
-        limit: itemsPerPage,
+        limit: pageSize,
         documentNumber,
         entityId: scopedEntityId || undefined,
-        sortBy: sortConfig.key,
-        sortDirection: sortConfig.direction,
+        sortBy: timeline ? "timestamp" : sortConfig.key,
+        sortDirection: timeline ? "desc" : sortConfig.direction,
       };
     const request = scopedEntityId && entityType
       ? auditTrailApi.getEntityPage(entityType, scopedEntityId, { ...params, includeChildren })
@@ -268,12 +252,19 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
       .then((response) => {
         if (!alive) return;
         setInternalRecords(response.data || []);
+        setTimelineRecords((previous) => {
+          const page = response.data || [];
+          if (currentPage === 1) return page;
+          const known = new Set(previous.map((record) => record.id));
+          return [...previous, ...page.filter((record) => !known.has(record.id))];
+        });
         setTotalItems(response.pagination?.total || 0);
         setTotalPages(response.pagination?.totalPages || 1);
       })
       .catch((error) => {
         if (!alive) return;
         setInternalRecords([]);
+        if (currentPage === 1) setTimelineRecords([]);
         setTotalItems(0);
         setTotalPages(1);
         setLoadError(error instanceof Error ? error.message : "Failed to load audit logs");
@@ -294,7 +285,8 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
     dateFrom,
     dateTo,
     currentPage,
-    itemsPerPage,
+    pageSize,
+    timeline,
     documentNumber,
     scopedEntityId,
     entityType,
@@ -359,7 +351,13 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
     };
   }, [entityType, documentNumber, scopedEntityId, sourceRecords]);
 
-  const recordsList = internalRecords;
+  const recordsList = timeline ? timelineRecords : internalRecords;
+  const openDetails = (record: AuditTrailRecord) => window.open(`/audit-trail/${encodeURIComponent(record.id)}`, "_blank", "noopener,noreferrer");
+  const exportRecord = (record: AuditTrailRecord) => {
+    setExportingRecord(record);
+    setIsExportModalOpen(true);
+  };
+  const loadOlder = useCallback(() => setCurrentPage((page) => page + 1), []);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const displayTotalItems = totalItems;
   const displayTotalPages = totalPages;
@@ -464,6 +462,18 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
               <SectionLoading text="Loading..." minHeight="150px" />
             </div>
           )}
+          {timeline && !shouldShowEmpty ? (
+            <AuditTimeline
+              records={recordsList}
+              style={normalizeTimelineStyle(auditTabTimelineStyle)}
+              total={displayTotalItems}
+              isLoading={isLoading}
+              hasMore={currentPage < displayTotalPages}
+              onLoadMore={loadOlder}
+              onOpenDetails={openDetails}
+              onExport={exportRecord}
+            />
+          ) : (
           <div
             ref={scrollerRef}
             className={cn(
@@ -475,14 +485,12 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
             {shouldShowEmpty ? (
               <div className="py-12 text-center">
                 {loadError && /403|forbidden|permission/i.test(loadError) ? (
-                  <EmptyState
-                    icon={ShieldAlert}
+                  <TableEmptyState
                     title="Access Denied"
                     description="You don't have permission to view the audit trail for this record."
                   />
                 ) : (
-                  <EmptyState
-                    icon={Search}
+                  <TableEmptyState
                     title="No Audit Records Found"
                     description={loadError || emptyMessage}
                   />
@@ -548,7 +556,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                   {recordsList.map((record, index) => {
                     const user = record.user;
                     const fullName = user?.fullName || record.fullName || "-";
-                    const employeeId = user?.employeeCode || record.userId || "-";
+                    const employeeId = user?.employeeCode || "-";
                     const profileId = user?.id || "";
                     const accessProfileNames = user?.accessProfileNames ?? [];
                     const position = user?.position || "-";
@@ -676,8 +684,9 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
               </TableMarkup.Root>
             )}
           </div>
+          )}
 
-          {displayTotalItems > 0 && (
+          {!timeline && displayTotalItems > 0 && (
             <div className="border-t border-slate-200">
               <TablePagination
                 currentPage={currentPage}

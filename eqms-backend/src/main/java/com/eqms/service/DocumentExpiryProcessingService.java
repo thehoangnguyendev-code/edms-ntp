@@ -35,8 +35,8 @@ public class DocumentExpiryProcessingService {
     static final String REASON_EXPIRED = "EXPIRED";
     static final String CONTROLLED_DISTRIBUTED = "DISTRIBUTED";
     static final String CONTROLLED_OBSOLETED = "OBSOLETED";
-    static final String UNCONTROLLED_EXPIRED = "EXPIRED";
-    private static final Set<String> UNCONTROLLED_VOIDABLE = Set.of("REQUESTED", "APPROVED", "GENERATED", "DISTRIBUTED");
+    static final String UNCONTROLLED_CLOSED = "CLOSED_CANCELLED";
+    private static final Set<String> UNCONTROLLED_VOIDABLE = Set.of("READY_FOR_DISTRIBUTION", "DISTRIBUTED");
     private static final ZoneId SYSTEM_ZONE = DateTimeFormatUtils.ZONE;
 
     private final JdbcTemplate jdbcTemplate;
@@ -134,12 +134,13 @@ public class DocumentExpiryProcessingService {
             if (fromStatus == null || !UNCONTROLLED_VOIDABLE.contains(fromStatus.trim().toUpperCase(java.util.Locale.ROOT))) {
                 continue;
             }
-            copy.setStatusCode(UNCONTROLLED_EXPIRED);
-            copy.setStatus("Expired");
+            copy.setStatusCode(UNCONTROLLED_CLOSED);
+            copy.setStatus("Closed - Cancelled");
+            copy.setCloseReasonCode(REASON_EXPIRED);
             uncontrolledCopyRepository.save(copy);
             auditTrailService.logAs(systemActor, "Uncontrolled Copy",
                     copy.getUncontrolledCopyNumber() == null ? copy.getId().toString() : copy.getUncontrolledCopyNumber(),
-                    copy.getId(), "EXPIRE", fromStatus, UNCONTROLLED_EXPIRED,
+                    copy.getId(), "EXPIRE", fromStatus, UNCONTROLLED_CLOSED,
                     "Uncontrolled copy expired: the document's Valid Until date has passed (Reason: " + REASON_EXPIRED + ").",
                     List.of(), null);
             uncontrolledExpired++;
@@ -169,7 +170,7 @@ public class DocumentExpiryProcessingService {
         }
         List<UUID> uncontrolledRecipientIds = new ArrayList<>();
         for (UncontrolledCopyRecord copy : uncontrolledCopyRepository.findAllByDocument_IdOrderByCreatedAtDesc(documentId)) {
-            if (UNCONTROLLED_EXPIRED.equalsIgnoreCase(copy.getStatusCode()) && copy.getRecipientUserId() != null) {
+            if (UNCONTROLLED_CLOSED.equalsIgnoreCase(copy.getStatusCode()) && REASON_EXPIRED.equalsIgnoreCase(copy.getCloseReasonCode()) && copy.getRecipientUserId() != null) {
                 uncontrolledRecipientIds.add(copy.getRecipientUserId());
             }
         }

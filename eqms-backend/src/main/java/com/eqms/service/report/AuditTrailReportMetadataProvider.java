@@ -17,12 +17,16 @@ public class AuditTrailReportMetadataProvider implements ReportMetadataProvider 
     /** The widest range one report may cover. */
     public static final int MAX_DAYS = 92;
 
+    /** The module as the sidebar names it ("Training Management", "Document Control"), the same as the Audit Trail screen; the stored entity type is a machine value (REPORT-MODULE-NAMES-2026-11-16). */
+    static final String MODULE = com.eqms.util.AuditMenuModule.sqlCase("al.entity_type");
     private static final Map<String, String> COLUMNS = new LinkedHashMap<>();
     private static final Map<String, String> LABELS = new LinkedHashMap<>();
+    private static final Map<String, String> GROUPS = new LinkedHashMap<>();
     static {
         column("timestamp", "Timestamp", "al.created_at");
-        column("module", "Module", "al.entity_type");
-        column("action", "Action", "al.action_type");
+        column("module", "Module", MODULE);
+        // The action is the one verb of the Audit Trail screen; the filter and the picker still compare the stored code (REPORT-ACTION-LABEL-2026-11-16, REPORT-AUDIT-DISPLAY-2026-11-17).
+        column("action", "Action", com.eqms.util.AuditActionVerb.sqlCase("al.action_type"));
         // An identifier is never shown to a person: a record known only by its identifier is left empty (REPORT-NO-IDENTIFIER, the rule of every screen).
         column("record", "Record", "case when coalesce(nullif(al.entity_name,''), nullif(al.entity_code,''), nullif(al.document_number,'')) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then null else coalesce(nullif(al.entity_name,''), nullif(al.entity_code,''), nullif(al.document_number,'')) end");
         column("fromStatus", "From Status", "al.from_status");
@@ -34,8 +38,26 @@ public class AuditTrailReportMetadataProvider implements ReportMetadataProvider 
         column("department", "Department", "al.department_name");
         column("ipAddress", "IP Address", "al.ip_address");
         column("eSignature", "Electronic Signature", "case when al.electronic_signature_applied then 'Yes' else 'No' end");
+        // REPORT-FIELD-CATALOG-2026-11-15: more of the metadata the source holds.
+        group("Record", "recordCode", "Record Code", "al.entity_code");
+        group("Record", "documentNumber", "Document Number", "al.document_number");
+        group("Record", "revisionNumber", "Revision", "al.revision_number");
+        group("Record", "entityStatus", "Record Status", "al.entity_status");
+        group("User", "username", "Username", "coalesce(al.username, u.username)");
+        group("User", "roleName", "Role", "al.role_name");
+        group("User", "positionName", "Position", "al.position_name");
+        group("User", "accessProfiles", "Access Profiles", "array_to_string(al.access_profile_names, '; ')");
+        group("Device", "deviceName", "Device", "al.device_name");
+        group("Device", "deviceBrowser", "Browser", "al.device_browser");
+        group("Device", "devicePlatform", "Platform", "al.device_platform");
+        group("Action", "processingSeconds", "Processing Time (s)", "al.processing_duration_seconds");
+        // what was done in the words of the code, as the detail screen of a record writes it (the Action column is the one verb)
+        group("Action", "actionDetail", "Action Detail", ReportQueryKit.auditAction("al.action_type"));
     }
     private static void column(String code, String label, String sql) { COLUMNS.put(code, sql); LABELS.put(code, label); }
+    private static void group(String group, String code, String label, String sql) { column(code, label, sql); GROUPS.put(code, group); }
+    @Override public Map<String, String> fieldGroups() { return GROUPS; }
+    @Override public Set<String> sensitiveFields() { return Set.of("deviceName"); }
 
     public String code() { return "AUDIT_TRAIL"; }
     public String name() { return "Audit Trail"; }
@@ -54,20 +76,23 @@ public class AuditTrailReportMetadataProvider implements ReportMetadataProvider 
                 Map.of("code", "search", "name", "Search audit records", "type", "TEXT"),
                 Map.of("code", "module", "name", "Module", "type", "LOOKUP"),
                 Map.of("code", "action", "name", "Action", "type", "LOOKUP"),
-                Map.of("code", "createdFrom", "name", "From date (required)", "type", "DATE"),
-                Map.of("code", "createdTo", "name", "To date (required)", "type", "DATE"));
+                Map.of("code", "createdFrom", "name", "From Date", "type", "DATE", "required", "true"),
+                Map.of("code", "createdTo", "name", "To Date", "type", "DATE", "required", "true"));
     }
-    public Map<String, String> lookupColumns() { return Map.of("module", "al.entity_type", "action", "al.action_type"); }
+    public Map<String, String> lookupColumns() { return Map.of("module", MODULE, "action", "al.action_type"); }
     public Map<String, String> filterColumns() { return Map.of("module", "module", "action", "action", "createdFrom", "timestamp", "createdTo", "timestamp"); }
 
     /** A run names its range: both dates, in order, and no wider than {@link #MAX_DAYS} days. */
     @Override
-    public void validateRun(Map<String, Object> filters) {
+    public void validateRun(Map<String, Object> filters) { validateRun(filters, MAX_DAYS); }
+
+    @Override
+    public void validateRun(Map<String, Object> filters, int maxRangeDays) {
         LocalDate from = date(filters.get("createdFrom"));
         LocalDate to = date(filters.get("createdTo"));
         if (from == null || to == null) throw new IllegalArgumentException("REPORT_AUDIT_RANGE_REQUIRED");
         if (to.isBefore(from)) throw new IllegalArgumentException("REPORT_DATE_RANGE_INVALID");
-        if (ChronoUnit.DAYS.between(from, to) + 1 > MAX_DAYS) throw new IllegalArgumentException("REPORT_AUDIT_RANGE_TOO_WIDE");
+        if (ChronoUnit.DAYS.between(from, to) + 1 > maxRangeDays) throw new IllegalArgumentException("REPORT_AUDIT_RANGE_TOO_WIDE");
     }
 
     public Query query(UserAccount actor, List<String> scopes, Map<String, Object> filters) {
@@ -91,8 +116,15 @@ public class AuditTrailReportMetadataProvider implements ReportMetadataProvider 
             String value = text(filters.get(field));
             if (value.length() > 100) throw new IllegalArgumentException("REPORT_FILTER_NOT_ALLOWED");
             if (!value.isBlank()) {
-                sql.append(" and ").append("module".equals(field) ? "al.entity_type" : "al.action_type").append("=?");
-                args.add(value);
+                if ("module".equals(field)) {
+                    // The module is picked by its name; a template or a schedule saved before that holds the stored entity type, which still selects the same records.
+                    sql.append(" and (").append(MODULE).append("=? or al.entity_type=?)");
+                    args.add(value);
+                    args.add(value);
+                } else {
+                    sql.append(" and al.action_type=?");
+                    args.add(value);
+                }
             }
         }
         LocalDate from = date(filters.get("createdFrom"));

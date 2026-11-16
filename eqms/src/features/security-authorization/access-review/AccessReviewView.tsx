@@ -33,6 +33,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
 import { formatDateTime, formatDateUS } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const statusBadge = (status: AccessReviewCampaignSummary["status"]) =>
   status === "COMPLETED" ? "emerald" : status === "CANCELLED" ? "slate" : "blue";
@@ -73,7 +74,7 @@ export const AccessReviewView: React.FC = () => {
 
   // Server-side query state.
   const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") ?? "ALL");
   const [createdFrom, setCreatedFrom] = useState(() => searchParams.get("createdFrom") ?? "");
   const [createdTo, setCreatedTo] = useState(() => searchParams.get("createdTo") ?? "");

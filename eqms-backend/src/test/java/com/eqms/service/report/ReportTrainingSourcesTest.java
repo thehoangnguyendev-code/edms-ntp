@@ -152,8 +152,17 @@ class ReportTrainingSourcesTest {
     void noHashFreeTextAboutAPersonOrExemptionIsAColumn(ReportMetadataProvider provider) {
         var forbidden = List.of("content_sha256", "sha256", "absence_reason", "added_reason", "planned_absence", "participation_reason", "remarks", "cancel_reason", "exempt",
                 "kind_reason_text", "password", "token", "signature", "avatar", "email", "phone");
-        for (var sql : provider.columns().values()) {
-            for (var word : forbidden) assertFalse(sql.toLowerCase().contains(word), provider.code() + " must not report " + word + " (" + sql + ")");
+        // REPORT-FIELD-CATALOG-2026-11-15: the remarks, cancel reason and exemptions belong to the training activity, not to a person; its report may carry them.
+        var activityOnly = List.of("remarks", "cancel_reason", "exempt");
+        // The reasons about a person (absence, planned absence, participation, why added) may be columns only as Sensitive fields.
+        var aboutAPerson = List.of("absence_reason", "added_reason", "planned_absence", "participation_reason");
+        for (var entry : provider.columns().entrySet()) {
+            var sql = entry.getValue();
+            for (var word : forbidden) {
+                if (provider.code().equals("TRAINING_ACTIVITIES") && activityOnly.contains(word)) continue;
+                if (aboutAPerson.contains(word) && provider.sensitiveFields().contains(entry.getKey())) continue;
+                assertFalse(sql.toLowerCase().contains(word), provider.code() + " must not report " + word + " (" + sql + ")");
+            }
         }
     }
 

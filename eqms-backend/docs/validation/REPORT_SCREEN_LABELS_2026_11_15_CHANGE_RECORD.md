@@ -1,0 +1,25 @@
+# Change record: Report screen labels and the All Revisions row menu (REPORT-SCREEN-LABELS-2026-11-15)
+
+Status: built on DEV; **not committed**. Decision: Decision Log `REPORT-SCREEN-LABELS-2026-11-15` (owner decision; QA has not confirmed).
+
+## What changed
+1. **Labels (FE and Report Runs source).** Report Library / Report Templates: `Report Template Number|Name|Revision`, `Effective Revision`, `Revision In Progress`, `Report Type` (was Data Source), `Template Category`, `Used for GMP Decisions`, `Page Orientation`. Run History and run page: `Generated Report Name`, `Report Template Number|Revision`, `Output Format`, `File Size`, `Run Type`, `Run Status`, `Queued At`, `Completed At`, `Run Progress`, `Failure Reason`. Scheduled Reports: `Schedule Owner`, `Report Template Number`, `Frequency` (a sentence), `Schedule Status`, `Next Run At`. Create Report and the schedule editor: `Generated Report Name`. Report Appearance: `Appearance Name|Status`, `Last Updated (By)`, `Activated At`. Report Types: `Report Type Name|Code|Category|Status`, `Number of Columns|Templates`. Cover tokens: names only (token codes unchanged). Revision page: `Last Updated By`.
+2. **Report Runs source** (`ReportRunReportMetadataProvider`) and `V792__report_runs_field_display_names.sql` (display names of the fields of the templates on that source; open revisions' copies; history untouched).
+3. **All Revisions / Pending My Approval: Action column.** Backend `ReportTemplateService.revisionListAll` attaches `capabilities` to each row (one read of permissions per page, one decision per template). Frontend `reportRevisionRowActions.ts`, `ReportTemplateRevisionsView.tsx`; the details page opens the Upgrade dialog on `?action=upgrade` once the server's capabilities are loaded.
+
+## Impact analysis
+GitNexus `impact` upstream on `edms-ntp`, run after the edit (the order the project asks for was not followed this time): `revisionListAll` and `ReportTemplateRevisionsView` return no node in the index (risk UNKNOWN, 0 callers found); `ReportTemplateDetailPage` is ambiguous, its `QualityRoutes.tsx` candidate LOW (3). Read by hand: `revisionListAll` is called by `ReportTemplateController.allRevisions` only; the screens are reached from `QualityRoutes`. `detect_changes` not run (nothing committed; the tree is large).
+
+## Evidence
+- Backend `Report*Test`, `Navigation*Test`, `AuditNotificationBridgeTest`: 544 tests, 0 failed, 0 skipped, **with the database tests enabled** (`EQMS_REPORT_TEST_DB`): `ReportTemplateDatabaseTest` now asserts that each row of the revisions list carries the capabilities of its template (the actions the menu is built from).
+- Frontend (`D:/edms-project/eqms`): `tsc` clean; report, report-analytics and app tests 183 pass, with the new `ReportRevisionRowActions.test.ts` (status x permission matrix: View Details always; Edit only on a Draft; Approve only on Pending Approval and not for the author; Upgrade only on the revision in force; a permission to edit does not open a revision in force) and three menu tests in `ReportTemplateRevisionsView.test.tsx`.
+- Migration V792 dry-run in a rolled-back transaction on the DEV database: 7 field names changed on the Report Runs template; 0 open revision copies on that source.
+
+## Not done / residual risk
+- No screenshot of the new screens (the DEV password is not available to the assistant); layout and responsive behaviour are verified by code and tests only.
+- Discarding a Draft, Disable/Enable and Delete are not in the revision menu (they need a reason dialog); they stay on the details page and the Report Templates menu.
+- Generated reports keep their old column names; the column names of older and newer reports can differ.
+- Other screens' labels not listed in the plan (for example `Status` of Report Name Formats, the `Code` of the field tables on the Report Type page) were not changed.
+
+## Addendum: titles and breadcrumbs of the revision pages (REPORT-REVISION-TITLES-2026-11-15)
+Titles: `Revision Details`, `Edit Revision`, `Approve Revision`, `Create Report Template`, `Report Template Details`; the breadcrumb is built from the same `title` variable as the page title, so they cannot differ. Parent from the originating page (`reportRevisionParent`, navigation state `from`), with a fallback for a page opened by its address. `reportBreadcrumbs` puts the menu group (Template Management) before the parent and puts Report Templates before Report Template Details. Files: `shared/reportRevisionParent.ts`, `shared/reportBreadcrumbs.ts`, `ReportTemplateRevisionPage`, `ReportTemplateEditor`, `ReportTemplateRevisions`, `ReportTemplateRevisionsView`, `ReportTemplateDetailPage`. Tests: `reportRevisionParent.test.ts`, `ReportTemplateRevisionPage.test.tsx` (8 origins), `ReportTemplates.test.tsx` (Create / Edit / Approve titles); report, report-analytics and app suites 192 pass. Not verified in a browser. The sidebar highlights Report Templates for the editor and the revision page whichever list they were opened from (the highlight follows the address). The button on the list is still "New Report Template" while the page it opens is "Create Report Template".

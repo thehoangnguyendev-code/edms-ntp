@@ -48,7 +48,8 @@ export const ReplaceAssigneeBanner: React.FC<Props> = ({
   const [showSign, setShowSign] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const normalizedStatus = String(status ?? "").toUpperCase();
+  // A code (PENDING_REVIEW); a label ("Pending Review") is read the same way, so the banner does not depend on which one it is given.
+  const normalizedStatus = String(status ?? "").trim().toUpperCase().replace(/[-\s]+/g, "_");
   const unavailable = useMemo<Unavailable[]>(() => {
     const isPending = (p: RevisionPerson) =>
       String(p.actionStatus ?? "PENDING").toUpperCase() === "PENDING" &&

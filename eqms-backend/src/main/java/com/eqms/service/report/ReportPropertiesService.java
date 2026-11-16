@@ -34,6 +34,9 @@ public class ReportPropertiesService {
     public static final int MAX_MAX_ROWS_FULL = 100_000;
     public static final int DEFAULT_MAX_SCHEDULE_RECIPIENTS = 200;
     public static final int DEFAULT_SCHEDULE_RETRY_MINUTES = 5;
+    /** The most days a run of a report type that must name a date range may cover (REPORT-RANGE-DAYS-2026-11-16). */
+    public static final int DEFAULT_MAX_RANGE_DAYS = 92;
+    public static final int MAX_MAX_RANGE_DAYS = 3660;
     /** The settings are one record; its audit entries share this identity. */
     private static final UUID AUDIT_ID = UUID.nameUUIDFromBytes("REPORT_PROPERTIES".getBytes(java.nio.charset.StandardCharsets.UTF_8));
     private static final Pattern PREFIX = Pattern.compile("[A-Z][A-Z0-9]{1,9}");
@@ -48,12 +51,15 @@ public class ReportPropertiesService {
         this.audit = audit;
     }
 
-    /** What an administrator sends. A missing number keeps the present value. */
+    /**
+     * What an administrator sends for the settings. A missing number keeps the present value. The appearance of the reports is not here: it has its own screen
+     * and its own permissions (REPORT-APPEARANCE-PERMISSION-2026-11-14), see {@link #updateAppearance}.
+     */
     public record PropertiesWrite(Integer version, String templateNumberPrefix, Integer templateNumberDigits, Integer maxRows,
-                                  Integer maxScheduleRecipients, Integer scheduleRetryMinutes, ReportLayout appearance, Integer maxRowsFull) {
+                                  Integer maxScheduleRecipients, Integer scheduleRetryMinutes, Integer maxRowsFull, Integer maxRangeDays) {
         public PropertiesWrite(Integer version, String templateNumberPrefix, Integer templateNumberDigits, Integer maxRows,
-                               Integer maxScheduleRecipients, Integer scheduleRetryMinutes, ReportLayout appearance) {
-            this(version, templateNumberPrefix, templateNumberDigits, maxRows, maxScheduleRecipients, scheduleRetryMinutes, appearance, null);
+                               Integer maxScheduleRecipients, Integer scheduleRetryMinutes, Integer maxRowsFull) {
+            this(version, templateNumberPrefix, templateNumberDigits, maxRows, maxScheduleRecipients, scheduleRetryMinutes, maxRowsFull, null);
         }
         public PropertiesWrite(Integer version, String templateNumberPrefix, Integer templateNumberDigits, Integer maxRows,
                                Integer maxScheduleRecipients, Integer scheduleRetryMinutes) {
@@ -61,18 +67,16 @@ public class ReportPropertiesService {
         }
     }
 
+
     private final com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
-    private ReportWordService words;
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    public void configureWords(ReportWordService words) { this.words = words; }
 
     /**
      * The one appearance every report is rendered with (cover, header, footer, page numbers, font, stamp, watermark, logo, orientation, Word page templates);
      * the built-in default until an administrator sets one. Its charts are always empty: a report takes its charts from its template.
      */
     public ReportLayout appearance() {
-        List<String> rows = jdbc.queryForList("select appearance::text from report_properties where id=1", String.class);
-        if (rows.isEmpty() || rows.getFirst() == null) return ReportLayout.defaults();
+        List<String> rows = jdbc.queryForList("select appearance::text from report_appearances where status='ACTIVE'", String.class);
+        if (rows.isEmpty() || rows.getFirst() == null) return ReportLayout.defaults().withCharts(List.of());
         try {
             return json.readValue(rows.getFirst(), ReportLayout.class).withCharts(List.of());
         } catch (com.fasterxml.jackson.core.JsonProcessingException unreadable) {
@@ -87,6 +91,8 @@ public class ReportPropertiesService {
     public int maxRowsFull() { return Math.min(MAX_MAX_ROWS_FULL, Math.max(maxRows(), intValue("max_rows_full", DEFAULT_MAX_ROWS_FULL))); }
     public int maxScheduleRecipients() { return intValue("max_schedule_recipients", DEFAULT_MAX_SCHEDULE_RECIPIENTS); }
     public int scheduleRetryMinutes() { return intValue("schedule_retry_minutes", DEFAULT_SCHEDULE_RETRY_MINUTES); }
+    /** Most days a run of a type that must name a date range may cover. */
+    public int maxRangeDays() { return intValue("max_range_days", DEFAULT_MAX_RANGE_DAYS); }
 
     private int intValue(String column, int fallback) {
         List<Integer> rows = jdbc.queryForList("select " + column + " from report_properties where id=1", Integer.class);
@@ -99,7 +105,7 @@ public class ReportPropertiesService {
         require(actor, "reports.properties.view", "reports.properties.manage");
         var row = jdbc.queryForMap("""
             select template_number_prefix, template_number_digits, template_number_sequence,
-                   max_rows, max_rows_full, max_schedule_recipients, schedule_retry_minutes, version, updated_at
+                   max_rows, max_rows_full, max_schedule_recipients, schedule_retry_minutes, max_range_days, version, updated_at
               from report_properties where id=1
             """);
         var result = new LinkedHashMap<String, Object>();
@@ -116,7 +122,8 @@ public class ReportPropertiesService {
         result.put("maxRowsFullLimit", MAX_MAX_ROWS_FULL);
         result.put("maxScheduleRecipients", ((Number) row.get("max_schedule_recipients")).intValue());
         result.put("scheduleRetryMinutes", ((Number) row.get("schedule_retry_minutes")).intValue());
-        result.put("appearance", appearance());
+        result.put("maxRangeDays", ((Number) row.get("max_range_days")).intValue());
+        result.put("maxRangeDaysLimit", MAX_MAX_RANGE_DAYS);
         result.put("version", ((Number) row.get("version")).intValue());
         result.put("updatedAt", row.get("updated_at"));
         return result;
@@ -128,7 +135,7 @@ public class ReportPropertiesService {
         if (request == null) throw new IllegalArgumentException("REPORT_PROPERTIES_INVALID");
         var current = jdbc.queryForMap("""
             select template_number_prefix, template_number_digits,
-                   max_rows, max_rows_full, max_schedule_recipients, schedule_retry_minutes, version
+                   max_rows, max_rows_full, max_schedule_recipients, schedule_retry_minutes, max_range_days, version
               from report_properties where id=1 for update
             """);
         if (!Objects.equals(((Number) current.get("version")).intValue(), request.version())) throw new ResponseStatusException(HttpStatus.CONFLICT, "REPORT_PROPERTIES_VERSION_CHANGED");
@@ -144,6 +151,8 @@ public class ReportPropertiesService {
         if (recipients < 1 || recipients > 500) throw new IllegalArgumentException("REPORT_MAX_RECIPIENTS_INVALID");
         int retry = request.scheduleRetryMinutes() == null ? ((Number) current.get("schedule_retry_minutes")).intValue() : request.scheduleRetryMinutes();
         if (retry < 1 || retry > 60) throw new IllegalArgumentException("REPORT_RETRY_MINUTES_INVALID");
+        int rangeDays = request.maxRangeDays() == null ? ((Number) current.get("max_range_days")).intValue() : request.maxRangeDays();
+        if (rangeDays < 1 || rangeDays > MAX_MAX_RANGE_DAYS) throw new IllegalArgumentException("REPORT_MAX_RANGE_DAYS_INVALID");
 
         List<String> changes = new ArrayList<>();
         change(changes, "Template number prefix", current.get("template_number_prefix"), prefix);
@@ -152,43 +161,23 @@ public class ReportPropertiesService {
         change(changes, "Most rows in a report file run with Full", current.get("max_rows_full"), maxRowsFull);
         change(changes, "Most recipients of a schedule", current.get("max_schedule_recipients"), recipients);
         change(changes, "Retry of a schedule after a temporary failure (minutes)", current.get("schedule_retry_minutes"), retry);
-        ReportLayout before = appearance();
-        ReportLayout appearance = request.appearance() == null ? before : request.appearance().withCharts(List.of()).validated();
-        if (request.appearance() != null && !appearance.effectiveWordComponents().isEmpty()) {
-            if (words == null) throw new IllegalStateException("REPORT_WORD_RENDERER_UNAVAILABLE");
-            words.validate(appearance);
-        }
-        if (!appearance.equals(before)) changes.add("Report appearance: " + describe(before, appearance));
+        change(changes, "Most days a report of a log-like type may cover", current.get("max_range_days"), rangeDays);
         if (changes.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "REPORT_PROPERTIES_UNCHANGED");
 
-        String appearanceJson;
-        try {
-            appearanceJson = json.writeValueAsString(appearance);
-        } catch (com.fasterxml.jackson.core.JsonProcessingException invalid) {
-            throw new IllegalArgumentException("REPORT_LAYOUT_INVALID");
-        }
         jdbc.update("""
             update report_properties set template_number_prefix=?, template_number_digits=?, max_rows=?, max_rows_full=?, max_schedule_recipients=?,
-              schedule_retry_minutes=?, appearance=cast(? as jsonb), version=version+1, updated_by=?, updated_at=now() where id=1
-            """, prefix, digits, maxRows, maxRowsFull, recipients, retry, appearanceJson, actor.getId());
+              schedule_retry_minutes=?, max_range_days=?, version=version+1, updated_by=?, updated_at=now() where id=1
+            """, prefix, digits, maxRows, maxRowsFull, recipients, retry, rangeDays, actor.getId());
         audit.logAs(actor, "REPORT_PROPERTIES", "REPORT_PROPERTIES", AUDIT_ID, "REPORT_PROPERTIES_UPDATED", null, null, String.join("; ", changes));
         return get(actor);
     }
 
-    /** Which parts of the appearance changed, by name; never the contents (a logo is a picture). */
-    private static String describe(ReportLayout before, ReportLayout after) {
-        List<String> parts = new ArrayList<>();
-        if (before.cover() != after.cover() || !Objects.equals(before.coverTitle(), after.coverTitle()) || !Objects.equals(before.subtitle(), after.subtitle())
-                || before.showExecutor() != after.showExecutor() || before.showGeneratedAt() != after.showGeneratedAt()) parts.add("cover");
-        if (!Objects.equals(before.header(), after.header())) parts.add("header");
-        if (!Objects.equals(before.footer(), after.footer()) || before.pageNumbers() != after.pageNumbers()) parts.add("footer and page numbers");
-        if (!Objects.equals(before.effectiveFont(), after.effectiveFont())) parts.add("font");
-        if (!Objects.equals(before.effectiveOrientation(), after.effectiveOrientation())) parts.add("paper layout");
-        if (before.stampEnabled() != after.stampEnabled() || !Objects.equals(before.stamp(), after.stamp()) || !Objects.equals(before.effectiveStamp(), after.effectiveStamp())) parts.add("stamp");
-        if (before.watermarkEnabled() != after.watermarkEnabled() || !Objects.equals(before.watermark(), after.watermark()) || !Objects.equals(before.effectiveWatermark(), after.effectiveWatermark())) parts.add("watermark");
-        if (!Objects.equals(before.logo(), after.logo())) parts.add("logo");
-        if (!Objects.equals(before.effectiveWordComponents(), after.effectiveWordComponents())) parts.add("Word page templates");
-        return parts.isEmpty() ? "changed" : String.join(", ", parts) + " changed";
+    // ---- the appearance: its own screen, its own permissions ------------------------------------------------------------------------------------
+
+    /** One page of the automatic fields a text can hold; to see it takes the same permission as the appearance. Search, sort and paging are done on the server. */
+    public Map<String, Object> placeholders(UserAccount actor, String search, String sort, String direction, int page, int limit) {
+        require(actor, "reports.appearance.view", "reports.appearance.manage");
+        return ReportPlaceholders.page(search, sort, direction, page, limit);
     }
 
     private static void change(List<String> changes, String label, Object before, Object after) {

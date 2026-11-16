@@ -21,7 +21,7 @@ Bốn bậc, hết:
 **Luật chiều cao: từ 40px trở lên thì tối thiểu 12px.** Nhìn chiều cao phần tử
 trước rồi mới chọn bậc, đừng chọn theo tên loại ("mục menu thì 8px"). Mục menu
 cao 40px mà bo 8px thì góc trông cứng, lạc tông với nút và ô nhập 12px đứng gần
-(chủ dự án chốt 21/09/2026). Dưới 40px thì 12px bắt đầu tròn quá so với chiều
+(chủ dự án chốt). Dưới 40px thì 12px bắt đầu tròn quá so với chiều
 cao, nên hạ về 8px.
 
 Dùng `rounded-md`, `rounded` hay số tuỳ chế là đẻ bậc thứ năm. *Ngoại lệ có tên:
@@ -102,21 +102,20 @@ Muốn chữ vẫn thẳng lề với các khối khác mà nền hover vẫn tr
 
 ```html
 <!-- Sai: hover xong chữ dính hai mép -->
-<li class="py-3 hover:bg-background">…</li>
+<li class="py-3 hover:bg-item-hover">…</li>
 
 <!-- Đúng: nền tràn ra ngoài lề, chữ vẫn thẳng hàng. Card không padding ngang, mỗi khối
      tự mang px: tiêu đề px-5, khối danh sách px-2 (= 5 − 3) để chữ dòng px-3 thẳng tiêu đề -->
 <section class="rounded-2xl bg-surface py-5">
   <h2 class="px-5">…</h2>
   <ul class="px-2">
-    <li class="rounded-xl px-3 py-3 hover:bg-background">…</li>
+    <li class="rounded-xl px-3 py-3 hover:bg-item-hover">…</li>
   </ul>
 </section>
 ```
 
-Không kéo danh sách ra bằng `-mx-3` (`N11`). Đo 27/09/2026 card "Việc hôm nay" ở `/dashboard`,
-375 và 1280px: bản padding từng khối và bản `-mx-*` trùng từng pixel (chữ tiêu đề, ô tick, nền
-dòng). Ô trong bảng cùng cách: ô chứa nút bớt padding đúng bằng `px` của nút (`td` `px-2` khi
+Không kéo danh sách ra bằng `-mx-3` (`N11`). Bản padding từng khối và bản `-mx-*` trùng từng
+pixel (chữ tiêu đề, ô tick, nền dòng). Ô trong bảng cùng cách: ô chứa nút bớt padding đúng bằng `px` của nút (`td` `px-2` khi
 nút `px-2`, các ô khác `px-4`), không kéo nút ra.
 
 **F14. Không spacing tuỳ hứng, không bo góc tuỳ hứng.** Lấy từ `budgets.md`.
@@ -169,8 +168,12 @@ nền thì không blur.
 **F21. Không `border-dashed`.** Hai ngoại lệ: khung kéo thả tệp, và ô rỗng trong
 board hay lịch.
 
-**F22. Không animate hình khối.** Không `scale-105` khi hover, không nhấc lên,
-không đổ bóng thêm.
+**F22. Không animate hình khối.** Không `scale-105` khi hover, không nhấc lên
+(`hover:-translate-y-*`), không đổ bóng thêm. Ngoài chuyện gu: card nằm trong khung cuộn
+(`overflow-x-auto` cắt luôn cả chiều dọc), trong card cha `overflow-hidden`, hay sát mép trên của vùng
+cuộn chính thì nhấc 2px là **mất một khúc viền trên**. Rê vào thì
+đổi viền hoặc nền (`hover:border-strong`, `hover:bg-surface-hover`). Mũi tên nhỏ trong card nhích sang
+phải (`group-hover:translate-x-0.5` trên icon) thì được, nó không phải khối.
 
 *Gu flat — phong cách khác đã chọn theo `P1` thì xem `P2` trong `references/styles.md`.*
 
@@ -222,12 +225,11 @@ Chọn cách theo **nền hover của mục có thụt vào so với mép khung 
 mép, mất khe hở, và bo góc của mục với bo góc của khung không còn đồng tâm
 (`M19`).
 
-**Cách 1 không kéo vạch ra bằng `-mx-*`** (`N11`). Bản cũ để khung `p-2` rồi cho vạch
-`-mx-2`: hai con số phải khớp nhau, đổi padding khung mà quên đổi âm lề là vạch lại hụt
+**Cách 1 không kéo vạch ra bằng `-mx-*`** (`N11`). Để khung `p-2` rồi cho vạch
+`-mx-2` thì hai con số phải khớp nhau, đổi padding khung mà quên đổi âm lề là vạch lại hụt
 hoặc tràn khỏi khung. Gom mục thành nhóm `px-*` thì không còn số nào phải khớp. Nhóm
 chỉ là `<div>` trơn, không `role`: trình đọc màn hình vẫn thấy các `menuitem` là con của
-`menu`. Đo 27/09/2026 trên 12 menu (tài khoản, ⋯ của thành viên, ⋯ của khoá API; 375 và
-1280px): vị trí từng mục, từng vạch và chiều cao menu trùng từng pixel với bản `-mx-1`.
+`menu`. Vị trí từng mục, từng vạch và chiều cao menu trùng từng pixel với bản `-mx-1`.
 
 Cùng lý do, `divide-y` trên danh sách trong card cũng tràn hết bề ngang — xem
 `references/components/card.md`.
@@ -235,3 +237,31 @@ Cùng lý do, `divide-y` trên danh sách trong card cũng tràn hết bề ngan
 Ngoại lệ duy nhất: đường chia **giữa các dòng của một danh sách** mà muốn bắt đầu
 thẳng hàng với chữ (bỏ qua avatar bên trái). Cái đó là thụt có chủ ý, và phải
 thụt đúng bằng chiều rộng avatar cộng gap, không phải bằng padding.
+
+**F26. Hai khối có viền đứng sát nhau thì chỉ một bên vẽ đường giáp ranh.**
+
+Mỗi mục tự có `border` đủ bốn phía rồi xếp liền nhau (không `gap`) thì chỗ giáp
+nhau là **hai đường 1px chồng lên thành 2px**: đậm gấp đôi mọi viền khác, nhìn như
+kẻ bút dày, liếc là thấy lỗi. Áp cho mọi hướng, trên dưới lẫn trái phải, và mọi loại
+khối: dòng danh sách, ô lưới, nút trong nhóm nút, card xếp chồng, header với thanh
+công cụ ngay dưới nó.
+
+Đường giáp ranh **thuộc về đúng một chủ**:
+
+- **Danh sách, hàng, cột liền nhau**: viền khung ở **cha**, vạch giữa bằng `divide-y`
+  / `divide-x` trên cha. Mục con không có `border` nào. Không tự viết `border-b` cho
+  mục rồi quên `last:border-b-0`, vì dòng cuối sẽ chồng lên viền đáy khung.
+- **Lưới ô liền nhau hai chiều** (bảng số liệu dạng ô, lịch tháng, bảng so sánh): cha
+  `grid gap-px bg-border` + viền ngoài, ô `bg-surface`. Khe 1px lộ nền cha thành vạch,
+  không ô nào tự vẽ viền nên không chỗ nào dày.
+- **Nhóm nút dính nhau** (segmented, nhóm nút viền): nút đầu đủ viền, các nút sau
+  `border-l-0` (dọc thì `border-t-0`). Không kéo đè bằng `-ml-px` (`N11`).
+- **Khối có viền nằm trong khung có viền và chạm mép** (bảng chạm mép card, ô trong
+  panel): mép trùng thì bỏ viền khối trong, khung ngoài giữ. Hai vạch ngang từ hai khối
+  liền nhau (`border-b` của header + `border-t` của thanh công cụ) thì xoá một cái.
+- Muốn mỗi mục giữ viền riêng (card trong lưới) thì phải có **khe** (`gap-2` trở lên):
+  có khe thì là hai khối tách rời, không còn chồng.
+
+Rà trước khi giao: mỗi phần tử có `border` mà anh em kề nó cũng có `border` và giữa
+hai đứa không có `gap` là chỗ nghi. Phóng 200% chỗ giáp ranh: vạch nào dày hơn viền
+khung là dính.

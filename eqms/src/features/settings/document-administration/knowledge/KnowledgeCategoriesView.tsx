@@ -18,6 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { Select } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
@@ -42,6 +43,7 @@ import {
 } from "@/services/api/knowledge";
 import { formatDateTime } from "@/utils/format";
 import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const COLUMNS = [
   { key: "name", label: "Name", sortable: true },
@@ -92,7 +94,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [status, setStatus] = useState("ALL");
   const [updatedFrom, setUpdatedFrom] = useState("");
   const [updatedTo, setUpdatedTo] = useState("");
@@ -293,7 +295,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
       label: "Status",
       sort: { direction: sortKey === "active" ? sortDir : undefined, onSort: () => handleSort("active") },
       cell: (item) => (
-        <Badge size="sm" color={item.active ? "emerald" : "slate"} pill>
+        <Badge size="sm" color={flagColor(item.active)} pill>
           {item.active ? "Active" : "Inactive"}
         </Badge>
       ),

@@ -14,6 +14,7 @@ import { Card, CardHeader, GrowthColumns, KpiStrip, OutlineButton, PrimaryButton
 import { DocumentActivityPanel } from './DocumentActivityPanel';
 import { useDashboardResource } from '../shared/useDashboardResource';
 import { DashboardWidgets } from '../shared/DashboardWidgets';
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 function greeting() {
   const hour = new Date().getHours();
@@ -30,7 +31,7 @@ export function UserDashboard() {
   const { canCreateDocumentShell } = useDocumentPermissions();
   const summary = useDashboardResource(() => dashboardApi.getSummary(), []);
   const [taskQuery, setTaskQuery] = useState('');
-  const taskSearch = useDebounce(taskQuery, 300);
+  const taskSearch = useDebounce(taskQuery, SEARCH_DEBOUNCE_MS);
   const tasks = useDashboardResource(() => dashboardApi.getPendingWorkflowActions(taskSearch), [taskSearch]);
 
   const s = summary.data;

@@ -158,9 +158,9 @@ class WorkflowProgressServiceTest {
 
     @Test
     void uncontrolledCopyPhasesFollowTheServerRule() {
-        assertThat(service.forUncontrolledCopy("APPROVED").currentStepIndex()).isZero();
-        assertThat(service.forUncontrolledCopy("EXPIRED").currentStepIndex()).isEqualTo(1);
-        WorkflowProgressResponse rejected = service.forUncontrolledCopy("REJECTED");
+        assertThat(service.forUncontrolledCopy("READY_FOR_DISTRIBUTION").currentStepIndex()).isZero();
+        assertThat(service.forUncontrolledCopy("DISTRIBUTED").currentStepIndex()).isEqualTo(1);
+        WorkflowProgressResponse rejected = service.forUncontrolledCopy("CLOSED_CANCELLED");
         assertThat(rejected.steps()).extracting(s -> s.code())
                 .containsExactly("READY_FOR_DISTRIBUTION", "DISTRIBUTED", "CLOSED_CANCELLED");
         assertThat(rejected.currentStepIndex()).isEqualTo(2);

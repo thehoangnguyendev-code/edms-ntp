@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
+import { authTokenStore } from "@/services/authTokenStore";
 import { motion } from "framer-motion";
 import { EXPAND_CONTENT_MOTION, useExpandTransition } from "@/components/ui/table/expandMotion";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
@@ -21,10 +23,11 @@ import { IconArrowBackUp, IconInfoCircle, IconShape3, IconX } from "@tabler/icon
 import {
   getControlledCopyActionDecision,
 } from "../controlledCopyCapabilities";
-import { useControlledCopyActionCapabilities } from "@/hooks";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
-const CONTROLLED_COPY_CHILDREN_CACHE = new Map<string, ControlledCopy[]>();
+const CONTROLLED_COPY_CHILDREN_CACHE = new Map<string, { copies: ControlledCopy[]; expiresAt: number }>();
+const CHILDREN_CACHE_TTL_MS = 5_000;
+const childrenCacheKey = (batchId: string) => `${authTokenStore.get() ?? "anonymous"}::${batchId}`;
 const CONTROLLED_COPY_CHILDREN_IN_FLIGHT = new Map<string, Promise<ControlledCopy[]>>();
 const CHILD_PAGE_SIZE = 50;
 // Bound the module-level cache so a long session that browses many large batches can't grow it
@@ -39,12 +42,13 @@ const CHILDREN_CACHE_MAX_ENTRIES = 24;
 if (typeof window !== "undefined") {
   window.addEventListener(CONTROLLED_COPY_MUTATED_EVENT, () => {
     CONTROLLED_COPY_CHILDREN_CACHE.clear();
+    CONTROLLED_COPY_CHILDREN_IN_FLIGHT.clear();
   });
 }
 
-const writeChildrenCache = (batchId: string, copies: ControlledCopy[]) => {
-  CONTROLLED_COPY_CHILDREN_CACHE.delete(batchId);
-  CONTROLLED_COPY_CHILDREN_CACHE.set(batchId, copies);
+const writeChildrenCache = (batchId: string, copies: ControlledCopy[], key = childrenCacheKey(batchId)) => {
+  CONTROLLED_COPY_CHILDREN_CACHE.delete(key);
+  CONTROLLED_COPY_CHILDREN_CACHE.set(key, { copies, expiresAt: Date.now() + CHILDREN_CACHE_TTL_MS });
   while (CONTROLLED_COPY_CHILDREN_CACHE.size > CHILDREN_CACHE_MAX_ENTRIES) {
     const oldest = CONTROLLED_COPY_CHILDREN_CACHE.keys().next().value;
     if (oldest === undefined) break;
@@ -89,44 +93,43 @@ interface ExpandControlledCopiesRowProps {
 const getBadgeColor = (statusCode?: string, statusLabel?: string): BadgeColor =>
   getStatusBadgeColor(statusLabel, statusCode) ?? "slate";
 
-export const getCachedControlledCopyChildren = (batchId: string) =>
-  CONTROLLED_COPY_CHILDREN_CACHE.get(batchId) || null;
+export const getCachedControlledCopyChildren = (batchId: string) => {
+  const key = childrenCacheKey(batchId);
+  const cached = CONTROLLED_COPY_CHILDREN_CACHE.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.copies;
+  CONTROLLED_COPY_CHILDREN_CACHE.delete(key);
+  return null;
+};
 
 export const invalidateControlledCopyChildren = (batchId: string) => {
   if (batchId) {
-    CONTROLLED_COPY_CHILDREN_CACHE.delete(batchId);
+    const key = childrenCacheKey(batchId);
+    CONTROLLED_COPY_CHILDREN_CACHE.delete(key);
+    CONTROLLED_COPY_CHILDREN_IN_FLIGHT.delete(key);
   }
 };
 
 export const preloadControlledCopyChildren = async (batchId: string) => {
-  if (!batchId) {
-    return [];
-  }
-
-  const cached = CONTROLLED_COPY_CHILDREN_CACHE.get(batchId);
-  if (cached) {
-    return cached;
-  }
-
-  const existing = CONTROLLED_COPY_CHILDREN_IN_FLIGHT.get(batchId);
-  if (existing) {
-    return existing;
-  }
-
-  const promise = documentApi.getControlledCopyDistributionBatchCopies(batchId, {
-    page: 1,
-    limit: CHILD_PAGE_SIZE,
-  }).then((result) => {
-    const copies = (result.data || []).map((item) => normalizeControlledCopyRecord(item));
-    writeChildrenCache(batchId, copies);
-    CONTROLLED_COPY_CHILDREN_IN_FLIGHT.delete(batchId);
-    return copies;
-  }).catch((error) => {
-    CONTROLLED_COPY_CHILDREN_IN_FLIGHT.delete(batchId);
-    throw error;
-  });
-
-  CONTROLLED_COPY_CHILDREN_IN_FLIGHT.set(batchId, promise);
+  if (!batchId) return [];
+  const key = childrenCacheKey(batchId);
+  const cached = getCachedControlledCopyChildren(batchId);
+  if (cached) return cached;
+  const existing = CONTROLLED_COPY_CHILDREN_IN_FLIGHT.get(key);
+  if (existing) return existing;
+  const promise = documentApi.getControlledCopyDistributionBatchCopies(batchId, {page: 1, limit: CHILD_PAGE_SIZE})
+    .then((result) => {
+      const copies = (result.data || []).map((item) => normalizeControlledCopyRecord(item));
+      // An invalidated response must not repopulate the cache or erase a newer request.
+      if (CONTROLLED_COPY_CHILDREN_IN_FLIGHT.get(key) === promise) {
+        writeChildrenCache(batchId, copies, key);
+        CONTROLLED_COPY_CHILDREN_IN_FLIGHT.delete(key);
+      }
+      return copies;
+    }).catch((error) => {
+      if (CONTROLLED_COPY_CHILDREN_IN_FLIGHT.get(key) === promise) CONTROLLED_COPY_CHILDREN_IN_FLIGHT.delete(key);
+      throw error;
+    });
+  CONTROLLED_COPY_CHILDREN_IN_FLIGHT.set(key, promise);
   return promise;
 };
 
@@ -150,14 +153,9 @@ const ExpandedControlledCopyRow: React.FC<{
   onReissue,
 }) => {
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
-  // Fetch this row's action capabilities ONLY while its own "..." menu is open. A departmental
-  // batch expands to up to CHILD_PAGE_SIZE (50) child rows at once; fetching capabilities eagerly
-  // per row fired ~50 parallel /action-capabilities calls on every expand, for menus that are
-  // mostly never opened. This mirrors how the outer ControlledCopiesView table already scopes its
-  // capability fetch to the single open dropdown row. The 5s TTL cache in the hook keeps
-  // re-opening the same row cheap.
-  const isMenuOpen = openId === copy.id;
-  const { capabilities, loading } = useControlledCopyActionCapabilities(isMenuOpen ? copy.id : null);
+  // The member page carries server decisions; opening a menu never starts another request.
+  const capabilities = copy.capabilities ?? null;
+  const loading = false;
   const recallDecision = getControlledCopyActionDecision(capabilities, "recallCopy");
   const distributeDecision = getControlledCopyActionDecision(capabilities, "distributeCopy");
   const cancelDecision = getControlledCopyActionDecision(capabilities, "cancelRequest");
@@ -653,9 +651,7 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                   )}
 
                   {!isLoading && copies && copies.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-3 text-xs text-slate-500">
-                      No controlled copies found in this batch.
-                    </div>
+                    <TableEmptyState title="No controlled copies found" description="No controlled copies found in this batch." />
                   )}
                 </div>
               </div>

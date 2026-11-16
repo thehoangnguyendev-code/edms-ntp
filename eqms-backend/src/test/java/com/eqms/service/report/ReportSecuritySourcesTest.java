@@ -170,13 +170,20 @@ class ReportSecuritySourcesTest {
     /** A secret, a device, a token, a private detail of a person, a free text: never a column. */
     @ParameterizedTest @MethodSource("providers")
     void noSecretDeviceTokenOrPrivateDetailIsAColumn(ReportMetadataProvider provider) {
-        var forbidden = List.of("user_agent", "details_json", "token", "password_hash", "password_history", "verification_id", "checksum", "email", "phone", "date_of_birth", "u.address",
-                "id_number", "gender", "nationality", "decision_note", "description", "reason", "comment", "mfa_secret", "avatar", "by_domain", "by_file_type");
+        var forbidden = List.of("user_agent", "details_json", "token", "password_hash", "password_history", "verification_id", "checksum", "description", "mfa_secret", "avatar", "by_domain", "by_file_type",
+                "notification_preferences", "localization_preferences", "by_domain", "by_file_type");
         for (var entry : provider.columns().entrySet()) {
             var sql = entry.getValue().toLowerCase();
             for (var word : forbidden) assertFalse(sql.contains(word), provider.code() + "." + entry.getKey() + " must not report " + word + " (" + sql + ")");
         }
-        if (provider.code().equals("ELECTRONIC_SIGNATURES")) assertFalse(provider.columns().values().stream().anyMatch(sql -> sql.contains("ip_address")), "no address of a signer");
+        // REPORT-FIELD-CATALOG-2026-11-15: what describes a person may be reported, but only as a field labelled sensitive.
+        for (var entry : provider.columns().entrySet()) {
+            var sql = entry.getValue().toLowerCase();
+            for (var word : List.of(".email", "secondary_notification_email", ".phone", "date_of_birth", "u.address", "id_number", ".gender", "nationality"))
+                if (sql.contains(word)) assertTrue(provider.sensitiveFields().contains(entry.getKey()), provider.code() + "." + entry.getKey() + " describes a person and must be a sensitive field");
+        }
+        // The address of a signer is reported only as a sensitive field.
+        if (provider.code().equals("ELECTRONIC_SIGNATURES")) provider.columns().forEach((code, sql) -> { if (sql.contains("ip_address")) assertTrue(provider.sensitiveFields().contains(code), "the address of a signer is sensitive"); });
     }
 
     @Test

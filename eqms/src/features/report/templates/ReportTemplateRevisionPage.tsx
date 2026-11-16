@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { ROUTES } from "@/app/routes.constants";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
@@ -13,6 +14,7 @@ import {
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
+import { comingFrom, reportRevisionParent } from "../shared/reportRevisionParent";
 import { humanize, reportRevisionLabel } from "../shared/reportLabels";
 import {
   reportTemplatesApi,
@@ -51,6 +53,7 @@ export function ReportTemplateRevisionPage({
 }) {
   const { code = "", revision = "" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [detail, setDetail] = useState<ReportRevisionDetail>();
   const [comparison, setComparison] = useState<ReportRevisionComparison>();
   const [error, setError] = useState("");
@@ -102,13 +105,15 @@ export function ReportTemplateRevisionPage({
   }, [code, revision, withRevision]);
 
   const templatePath = inAdministration
-    ? `/settings/report-configuration/${encodeURIComponent(code)}/details`
+    ? `${ROUTES.REPORT.TEMPLATE_MANAGEMENT}/${encodeURIComponent(code)}/details`
     : `/report/templates/${encodeURIComponent(code)}`;
-  const parent = {
-    label: "Report Template Details",
-    onClick: () => navigate(templatePath),
-  };
-  const title = "Report Template Revision";
+  // As the Document Control pages of a revision: the page is named by what it is for ("Revision Details"), never by the template; which revision of which template
+  // it is shows in the fields. The breadcrumb leads back to the list or page it was opened from (All Revisions when it was opened by its address).
+  const from = (location.state as { from?: string } | null)?.from;
+  const parent = inAdministration
+    ? reportRevisionParent(from, navigate, ROUTES.REPORT.TEMPLATE_REVISIONS)
+    : { label: "Report Details", onClick: () => navigate(templatePath) };
+  const title = "Revision Details";
 
   const fieldColumns: DataTableColumn<FieldRow>[] = [
     {
@@ -197,16 +202,11 @@ export function ReportTemplateRevisionPage({
     <div className="space-y-4 md:space-y-6">
       <PageHeader
         title={title}
-        breadcrumbItems={reportBreadcrumbs(
-          navigate,
-          title,
-          inAdministration,
-          parent,
-        )}
+        breadcrumbItems={reportBreadcrumbs(navigate, title, false, parent)}
         actions={
           <Button
             size="sm"
-            variant="outline"
+            variant="outline-emerald"
             className="whitespace-nowrap touch-manipulation"
             onClick={parent.onClick}
           >
@@ -228,7 +228,8 @@ export function ReportTemplateRevisionPage({
         )
       ) : (
         <>
-          <ReportRevisionStepper workflow={detail.workflow} />
+          {/* A revision nobody had to approve did not go through the steps of an approval, so they are not drawn. */}
+          {detail.approvalBasis !== "NOT_REQUIRED" && <ReportRevisionStepper workflow={detail.workflow} />}
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <TabNav
               tabs={tabs}
@@ -244,19 +245,19 @@ export function ReportTemplateRevisionPage({
                     value={whenText(detail.createdAt)}
                   />
                   <ReadonlyField
-                    label="Last Changed By"
+                    label="Last Updated By"
                     value={detail.lastChangedByName ?? "—"}
                   />
                   <ReadonlyField
-                    label="Template Name"
+                    label="Report Template Name"
                     value={content?.displayName ?? "—"}
                   />
                   <ReadonlyField
-                    label="Template Number"
+                    label="Report Template Number"
                     value={detail.definitionCode}
                   />
                   <ReadonlyField
-                    label="Revision"
+                    label="Report Template Revision"
                     value={reportRevisionLabel(detail.revision, detail.status)}
                   />
                   <ReadonlyField
@@ -264,7 +265,7 @@ export function ReportTemplateRevisionPage({
                     value={status?.label ?? detail.status}
                   />
                   <ReadonlyField
-                    label="Data Source"
+                    label="Report Type"
                     value={humanize(content?.sourceCode)}
                   />
                   <ReadonlyField
@@ -272,7 +273,7 @@ export function ReportTemplateRevisionPage({
                     value={content?.allowedFormats?.join(" · ") ?? "—"}
                   />
                   <ReadonlyField
-                    label="Orientation"
+                    label="Page Orientation"
                     value={
                       content?.layout?.orientation === "PORTRAIT"
                         ? "Portrait"
@@ -308,11 +309,11 @@ export function ReportTemplateRevisionPage({
                   />
                   <ReadonlyField
                     label="Approved By"
-                    value={detail.approvedByName ?? "—"}
+                    value={detail.approvalBasis === "NOT_REQUIRED" ? "Not required (in force when saved, under the earlier rule)" : (detail.approvedByName ?? "—")}
                   />
                   <ReadonlyField
-                    label="Approved On"
-                    value={whenText(detail.approvedAt)}
+                    label={detail.approvalBasis === "NOT_REQUIRED" ? "In Use Since" : "Approved On"}
+                    value={whenText(detail.approvalBasis === "NOT_REQUIRED" ? detail.effectiveAt : detail.approvedAt)}
                   />
                   <ReadonlyField
                     label="Effective From"

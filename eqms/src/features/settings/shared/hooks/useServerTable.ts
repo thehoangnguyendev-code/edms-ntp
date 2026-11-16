@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { persistedKey, readPersisted, writePersisted } from "@/hooks/usePersistedState";
 import { useEntityChanged, type ChangedEntityType } from "@/features/realtime/useEntityChanged";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 export type ServerPageResponse<T> = { data: T[]; pagination: { page: number; limit: number; total: number; totalPages: number } };
 export type ServerQuery = Record<string, string | number | boolean | undefined>;
@@ -16,7 +17,7 @@ type SavedTable = { search: string; page: number; limit: number; sort: SortConfi
 /** The direction written in the address; only a list that sorts ascending by default may leave it out, so "asc" must be read as asc and not as the default. */
 const readDirection = (value: string | null, fallback: "asc" | "desc"): "asc" | "desc" => (value === "asc" || value === "desc" ? value : fallback);
 
-export function useServerTable<T>({ fetcher, defaultSortBy, defaultSortDirection = "asc", extraParams = {}, searchDelayMs = 150, initialItemsPerPage = 10, syncToUrl = true, persistKey, liveTypes }: {
+export function useServerTable<T>({ fetcher, defaultSortBy, defaultSortDirection = "asc", extraParams = {}, searchDelayMs = SEARCH_DEBOUNCE_MS, initialItemsPerPage = 10, syncToUrl = true, persistKey, liveTypes }: {
   fetcher: (params: ServerQuery, signal?: AbortSignal) => Promise<ServerPageResponse<T>>;
   defaultSortBy: string; defaultSortDirection?: "asc" | "desc"; extraParams?: ServerQuery;
   searchDelayMs?: number; initialItemsPerPage?: number;

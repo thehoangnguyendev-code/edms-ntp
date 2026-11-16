@@ -115,7 +115,7 @@ class BackupManualCopyAndScrubControllerTest {
         allow("backup.module.view", "backup.backup.verify");
         when(agent.exchange(eq(HttpMethod.POST), eq("/internal/store-scrubs"), any())).thenReturn(reply(202, "{\"jobId\":\"j-1\"}"));
         scrubs.start();
-        verify(audit).logAs(eq(actor), eq("BACKUP_STORE_SCRUB"), eq("j-1"), any(), eq("STORE_SCRUB_STARTED"), isNull(), eq("QUEUED"), anyString());
+        verify(audit).logAs(eq(actor), eq("BACKUP_STORE_SCRUB"), eq("Live file store check"), any(), eq("STORE_SCRUB_STARTED"), isNull(), eq("QUEUED"), anyString());
     }
 
     @Test

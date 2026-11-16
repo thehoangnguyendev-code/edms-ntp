@@ -271,14 +271,55 @@ public class UserManagementService {
             String sortDirection,
             boolean includeTerminated
     ) {
+        return getUsers(page, limit, search, role, status, online, businessUnit, department, position,
+                dateFrom, dateTo, suspendFrom, suspendTo, terminateFrom, terminateTo,
+                sortBy, sortDirection, includeTerminated, null, null);
+    }
+
+    public PageResponse<UserManagementResponse> getUsers(
+            int page,
+            int limit,
+            String search,
+            String role,
+            String status,
+            String online,
+            String businessUnit,
+            String department,
+            String position,
+            String dateFrom,
+            String dateTo,
+            String suspendFrom,
+            String suspendTo,
+            String terminateFrom,
+            String terminateTo,
+            String sortBy,
+            String sortDirection,
+            boolean includeTerminated,
+            String lastUpdatedFrom,
+            String lastUpdatedTo
+    ) {
         int safePage = Math.max(page, 1);
         int safeLimit = Math.max(limit, 1);
         String sortProperty = resolveSortProperty(sortBy);
         Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
-        PageRequest pageable = PageRequest.of(safePage - 1, safeLimit, Sort.by(direction, sortProperty));
-        Page<UserAccount> result = userRepository.findAll(buildSpecification(
-                search, role, status, online, businessUnit, department, position, dateFrom, dateTo, suspendFrom, suspendTo, terminateFrom, terminateTo, includeTerminated
-        ), pageable);
+        PageRequest pageable = PageRequest.of(safePage - 1, safeLimit, Sort.by(direction, sortProperty).and(Sort.by("id")));
+        LocalDate updatedFrom = parseDate(lastUpdatedFrom);
+        LocalDate updatedTo = parseDate(lastUpdatedTo);
+        if ((lastUpdatedFrom != null && !lastUpdatedFrom.isBlank() && updatedFrom == null)
+                || (lastUpdatedTo != null && !lastUpdatedTo.isBlank() && updatedTo == null)
+                || (updatedFrom != null && updatedTo != null && updatedFrom.isAfter(updatedTo))) {
+            throw new IllegalArgumentException("Invalid Last Updated date range");
+        }
+        Specification<UserAccount> specification = buildSpecification(
+                search, role, status, online, businessUnit, department, position, dateFrom, dateTo,
+                suspendFrom, suspendTo, terminateFrom, terminateTo, includeTerminated);
+        specification = specification.and((root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> dates = new ArrayList<>();
+            if (updatedFrom != null) dates.add(cb.greaterThanOrEqualTo(root.get("updatedAt"), updatedFrom.atStartOfDay(DateTimeFormatUtils.ZONE).toInstant()));
+            if (updatedTo != null) dates.add(cb.lessThan(root.get("updatedAt"), updatedTo.plusDays(1).atStartOfDay(DateTimeFormatUtils.ZONE).toInstant()));
+            return cb.and(dates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        });
+        Page<UserAccount> result = userRepository.findAll(specification, pageable);
 
         List<UUID> pageUserIds = result.getContent().stream()
                 .map(UserAccount::getId)
@@ -1523,6 +1564,7 @@ public class UserManagementService {
         );
 
         try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
+            writer.print(com.eqms.util.CsvSafety.BOM);
             writer.println("Employee ID,Full Name,Username,Email,Access Profile,Position,Business Unit,Department,Status,Last Login,Created Date");
             int page = 0;
             Page<UserAccount> result;
@@ -2026,6 +2068,7 @@ public class UserManagementService {
             case "terminationDate" -> "terminationDate";
             case "lastLogin" -> "lastLoginAt";
             case "createdDate" -> "createdAt";
+            case "lastUpdated", "updatedAt" -> "updatedAt";
             default -> "employeeCode";
         };
     }

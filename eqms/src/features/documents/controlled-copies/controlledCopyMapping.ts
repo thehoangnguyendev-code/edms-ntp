@@ -68,6 +68,7 @@ export const normalizeControlledCopyRecord = (payload: any, fallbackId = ""): Co
 
   return {
     id: String(payload?.id || fallbackId),
+    capabilities: payload?.capabilities ?? null,
     controlledCopyNumber,
     createdDate: firstText(payload?.createdDate, created.date),
     createdTime: firstText(payload?.createdTime, created.time),
@@ -160,6 +161,7 @@ export const normalizeControlledCopyBatch = (batch: ControlledCopyDistributionBa
 
   return {
     id: batch.id,
+    capabilities: batch.capabilities ?? null,
     controlledCopyNumber,
     createdDate: firstText(created.date),
     createdTime: firstText(created.time),

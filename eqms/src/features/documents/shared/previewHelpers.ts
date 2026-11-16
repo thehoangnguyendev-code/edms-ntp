@@ -1,3 +1,4 @@
+import { resolveStatusCode } from "./statusMapping";
 export const REVISION_PDF_PREVIEW_TYPES = new Set(["REVIEW_PDF", "REVIEW_SNAPSHOT", "PUBLISHED_PDF", "SOURCE_DOCX"]);
 
 export const isRevisionPdfPreviewType = (previewType?: string | null) => {
@@ -12,13 +13,13 @@ export const isRevisionPdfPreviewType = (previewType?: string | null) => {
  */
 export const describeRevisionPreviewUnavailable = (detail?: {
   status?: string | null;
-  statusInfo?: { code?: string | null } | null;
+  statusInfo?: { id?: string | null; code?: string | null } | null;
   previewType?: string | null;
   previewStatus?: string | null;
   snapshotStatus?: string | null;
   fileName?: string | null;
 } | null) => {
-  const status = String(detail?.statusInfo?.code || detail?.status || "").trim().toUpperCase();
+  const status = resolveStatusCode(detail?.status, detail?.statusInfo ?? undefined);
   const previewStatus = String(detail?.previewStatus || detail?.snapshotStatus || "").trim().toUpperCase();
   const previewType = String(detail?.previewType || "").trim().toUpperCase();
 
@@ -36,7 +37,7 @@ export const describeRevisionPreviewUnavailable = (detail?: {
   if (status === "CLOSED_CANCELLED" || status === "CANCELLED") {
     return "This cancelled revision has no retained source file or review snapshot available for preview.";
   }
-  if (status === "EFFECTIVE" || status === "OBSOLETED") {
+  if (status === "EFFECTIVE" || status === "OBSOLETED" || status === "OBSOLETE") {
     return "No published PDF is stored for this revision.";
   }
   return "No review snapshot has been created for this revision yet.";

@@ -122,6 +122,9 @@ import java.util.Arrays;
 @Service
 public class DocumentService {
 
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager exportEntityManager;
+
     private static final Logger log = LoggerFactory.getLogger(DocumentService.class);
     private static final DateTimeFormatter DMY_DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DMY_DATETIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
@@ -446,52 +449,56 @@ public class DocumentService {
             String requiresTraining,
             String sortBy,
             String sortDirection,
-            java.io.OutputStream outputStream
+            com.eqms.service.export.TableExcelWriter writer
     ) throws IOException {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         String sortProperty = resolveSortProperty(sortBy);
         Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
-        try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
-            writer.println("Document Number,Document Name,Version,Status,Document Type,Business Unit,Department,Author,Opened By,Created Date,Effective Date,Valid Until,Has Related Documents,Has Correlated Documents,Is Template,Last Modified Date,Last Modified By,Reviewers,Approvers,Requires Training,Training Period (Days)");
-            Specification<DocumentRecord> specification = buildSpecification(
-                    scope, search, ids, status, documentType, businessUnit, department, authorId, author,
-                    relatedDocument, correlatedDocument, isTemplate,
-                    createdFrom, createdTo, effectiveFrom, effectiveTo, validFrom, validTo,
-                    reviewerId, approverId, requiresTraining,
-                    currentUser
-            );
+        writer.headers("Document Number","Document Name","Version","Status","Document Type","Business Unit","Department","Author","Opened By","Created Date","Effective Date","Valid Until","Has Related Documents","Has Correlated Documents","Is Template","Last Modified Date","Last Modified By","Reviewers","Approvers","Requires Training","Training Period (Days)");
+        Specification<DocumentRecord> specification = buildSpecification(
+                scope, search, ids, status, documentType, businessUnit, department, authorId, author,
+                relatedDocument, correlatedDocument, isTemplate,
+                createdFrom, createdTo, effectiveFrom, effectiveTo, validFrom, validTo,
+                reviewerId, approverId, requiresTraining,
+                currentUser
+        );
+        specification = specification.and(com.eqms.service.export.TableExportReadScope.fetchToOne(
+                "status", "documentType", "businessUnit", "department", "author", "openedBy", "lastModifiedBy"));
+        try (var readScope = new com.eqms.service.export.TableExportReadScope(exportEntityManager)) {
             int page = 0;
             Page<DocumentRecord> result;
             do {
-                result = documentRepository.findAll(specification, PageRequest.of(page++, 500, Sort.by(direction, sortProperty)));
+                result = documentRepository.findAll(specification, PageRequest.of(page++, 500, Sort.by(direction, sortProperty).and(Sort.by("id"))));
                 Map<UUID, List<DocumentWorkflowParticipant>> participants = participantsByDocument(result.getContent());
-                for (DocumentRecord document : result.getContent()) {
-                    DocumentListItemResponse item = toListItem(document, participants);
-                    writer.printf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%n",
-                            csv(item.documentNumber()),
-                            csv(item.documentName()),
-                            csv(item.version()),
-                            csv(item.status()),
-                            csv(item.type()),
-                            csv(item.businessUnit()),
-                            csv(item.department()),
-                            csv(item.author()),
-                            csv(item.openedBy()),
-                            csv(item.created()),
-                            csv(item.effectiveDate()),
-                            csv(item.validUntil()),
-                            csv(Boolean.toString(item.hasRelatedDocuments())),
-                            csv(Boolean.toString(item.hasCorrelatedDocuments())),
-                            csv(Boolean.toString(item.isTemplate())),
-                            csv(item.lastModifiedDate()),
-                            csv(item.lastModifiedBy()),
-                            csv(String.join("; ", item.reviewerNames())),
-                            csv(String.join("; ", item.approverNames())),
-                            csv(item.requiresTraining() ? "Yes" : "No"),
-                            csv(item.trainingPeriodDays() == null ? "" : item.trainingPeriodDays().toString())
-                    );
+                Map<UUID, String> versions = new java.util.HashMap<>();
+                if (!result.isEmpty()) {
+                    for (var revision : documentRevisionRepository.findAllByDocument_IdInAndStatus_CodeInOrderByDocument_IdAscCreatedAtDesc(
+                            result.getContent().stream().map(DocumentRecord::getId).toList(), List.of("EFFECTIVE"))) {
+                        versions.putIfAbsent(revision.getDocument().getId(), revision.getRevisionNumber());
+                    }
                 }
-                writer.flush();
+                // Export metadata only: never build action capabilities, relation drawers or training state per row.
+                for (DocumentRecord document : result.getContent()) {
+                    var assigned = participants.getOrDefault(document.getId(), List.of());
+                    writer.row(document.getDocumentNumber(), document.getDocumentName(), versions.get(document.getId()),
+                            document.getStatus() == null ? null : document.getStatus().getLabel(),
+                            document.getDocumentType() == null ? null : document.getDocumentType().getName(),
+                            document.getBusinessUnit() == null ? null : document.getBusinessUnit().getName(),
+                            document.getDepartment() == null ? null : document.getDepartment().getName(),
+                            document.getAuthor() == null ? null : document.getAuthor().getFullName(),
+                            document.getOpenedBy() == null ? null : document.getOpenedBy().getFullName(),
+                            DateTimeFormatUtils.formatDateTime(document.getCreatedAt()),
+                            DateTimeFormatUtils.formatDate(document.getEffectiveDate()),
+                            DateTimeFormatUtils.formatDate(document.getValidUntil()),
+                            document.isHasRelatedDocuments(), document.isHasCorrelatedDocuments(), document.isTemplate(),
+                            DateTimeFormatUtils.formatDateTime(document.getUpdatedAt()),
+                            document.getLastModifiedBy() == null ? null : document.getLastModifiedBy().getFullName(),
+                            String.join("; ", participantNames(assigned, "REVIEWER")),
+                            String.join("; ", participantNames(assigned, "APPROVER")),
+                            document.isRequiresTraining() ? "Yes" : "No",
+                            document.isRequiresTraining() ? document.getTrainingPeriodDays() : null);
+                }
+                readScope.completedPage();
             } while (result.hasNext());
         }
     }
@@ -573,6 +580,7 @@ public class DocumentService {
                 document.getVersion(),
                 document.getStatus() == null ? null : document.getStatus().getLabel(),
                 new StatusResponse(document.getStatus() == null ? null : document.getStatus().getCode(), document.getStatus() == null ? null : document.getStatus().getLabel()),
+                document.getStatus() == null ? null : document.getStatus().getCode(),
                 document.getDocumentType() == null ? null : document.getDocumentType().getName(),
                 document.getBusinessUnit() == null ? null : document.getBusinessUnit().getName(),
                 document.getDepartment() == null ? null : document.getDepartment().getName(),
@@ -2942,6 +2950,7 @@ public class DocumentService {
                 currentEffectiveRevision.isPresent(),
                 document.getStatus() == null ? null : document.getStatus().getLabel(),
                 new StatusResponse(document.getStatus() == null ? null : document.getStatus().getCode(), document.getStatus() == null ? null : document.getStatus().getLabel()),
+                document.getStatus() == null ? null : document.getStatus().getCode(),
                 document.getDocumentType() == null ? null : document.getDocumentType().getName(),
                 document.getBusinessUnit() == null ? null : document.getBusinessUnit().getName(),
                 document.getDepartment() == null ? null : document.getDepartment().getName(),
@@ -2994,6 +3003,7 @@ public class DocumentService {
         DocumentRecord target = relation.getTargetDocument();
         String targetVersion = null;
         String targetStatus = target == null || target.getStatus() == null ? null : target.getStatus().getLabel();
+        String targetStatusCode = target == null || target.getStatus() == null ? null : target.getStatus().getCode();
         if (target != null) {
             var effectiveRevision = documentRevisionRepository
                     .findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(target.getId(), "EFFECTIVE");
@@ -3004,6 +3014,7 @@ public class DocumentService {
                 }
                 if (revision.getStatus() != null) {
                     targetStatus = revision.getStatus().getLabel();
+                    targetStatusCode = revision.getStatus().getCode();
                 }
             }
         }
@@ -3014,6 +3025,7 @@ public class DocumentService {
                 target == null ? null : formatDocumentLabel(target),
                 targetVersion,
                 targetStatus,
+                targetStatusCode,
                 target == null || target.getDocumentType() == null ? null : target.getDocumentType().getName(),
                 target == null || target.getBusinessUnit() == null ? null : target.getBusinessUnit().getName(),
                 target == null || target.getDepartment() == null ? null : target.getDepartment().getName(),

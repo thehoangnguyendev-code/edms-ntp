@@ -455,7 +455,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
             created: mapped.created,
             openedBy: mapped.openedBy,
             revisionName: mapped.revisionName,
-            status: mapped.status as any,
+            statusBadge: mapped.statusBadge as any,
+            statusCode: mapped.statusCode,
             statusLabel: mapped.statusLabel,
             canOpenAuthoringWorkspace: Boolean(
               revision.canOpenAuthoringWorkspace,
@@ -891,9 +892,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     () =>
       revisions.some(
         (rev) =>
-          String(rev.status || "")
-            .toLowerCase()
-            .replace(/ /g, "") === "draft",
+          rev.statusCode === "DRAFT",
       ),
     [revisions],
   );
@@ -1386,7 +1385,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       const publishableRevision =
         revisions.find(
           (revision) =>
-            String(revision.status).toLowerCase() === "readyforpublishing",
+            revision.statusCode === "READY_FOR_PUBLISHING",
         ) || revisions[0];
 
       if (!publishableRevision?.id) {

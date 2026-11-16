@@ -14,6 +14,7 @@ public record RevisionDetailResponse(
         String revisionNumber,
         String status,
         StatusResponse statusInfo,
+        String statusCode,
         String type,
         /** Short code of the Document Type, read from the Document Type dictionary (never derived by the client). */
         String typeShortCode,

@@ -11,6 +11,7 @@ import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { cn } from "@/components/ui/utils";
 import { trainingActivitiesApi, type TrainingGroup, type TrainingPerson, type TrainingSuggestedParticipant } from "@/services/api/trainingActivities";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type Scope = "matrix" | "business_unit" | "department" | "individual" | "outside";
 export interface Outsider { name: string; org: string }
@@ -68,7 +69,7 @@ export function TrainingAssigneePicker({ onChange, matrix, initialPeople }: { on
     trainingActivitiesApi.peopleGroups("DEPARTMENT").then(setDepartments).catch(() => setDepartments([]));
   }, []);
   useEffect(() => {
-    const timer = setTimeout(() => { trainingActivitiesApi.people(search, 50).then(setFound).catch(() => setFound([])); }, 250);
+    const timer = setTimeout(() => { trainingActivitiesApi.people(search, 50).then(setFound).catch(() => setFound([])); }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [search]);
   useEffect(() => {
@@ -112,7 +113,7 @@ export function TrainingAssigneePicker({ onChange, matrix, initialPeople }: { on
     { id: "name", header: "Full Name", cell: (p) => <span className="font-medium text-slate-900">{p.fullName}</span> },
     { id: "email", header: "Email", cell: (p) => p.email ?? "—" },
     { id: "position", header: "Position", cell: (p) => p.position ?? "—" },
-    { id: "department", header: scope === "outside" ? "Organisation" : "Department", cell: (p) => p.department ?? "—" },
+    { id: "department", header: scope === "outside" ? "Organization" : "Department", cell: (p) => p.department ?? "—" },
     { id: "unit", header: "Business Unit", cell: (p) => p.businessUnit || "—" },
   ];
 
@@ -201,7 +202,7 @@ export function TrainingAssigneePicker({ onChange, matrix, initialPeople }: { on
             {outsiders.map((o, i) => (
               <div key={i} className="grid grid-cols-1 items-center gap-3 md:grid-cols-[1fr_1fr_auto]">
                 <Input value={o.name} placeholder="Full name" onChange={(e) => setOutsiders(outsiders.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />
-                <Input value={o.org} placeholder="Organisation" onChange={(e) => setOutsiders(outsiders.map((x, k) => (k === i ? { ...x, org: e.target.value } : x)))} />
+                <Input value={o.org} placeholder="Organization" onChange={(e) => setOutsiders(outsiders.map((x, k) => (k === i ? { ...x, org: e.target.value } : x)))} />
                 <Button size="icon-sm" variant="ghost" aria-label="Remove this person" disabled={outsiders.length === 1} onClick={() => setOutsiders(outsiders.filter((_x, k) => k !== i))}><Trash2 className="h-4 w-4" /></Button>
               </div>
             ))}

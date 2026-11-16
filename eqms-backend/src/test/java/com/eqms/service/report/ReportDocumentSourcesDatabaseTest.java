@@ -23,6 +23,7 @@ class ReportDocumentSourcesDatabaseTest {
     static {
         PROVIDERS.addAll(ReportTrainingSourcesTest.providers());
         PROVIDERS.addAll(ReportSecuritySourcesTest.providers());
+        PROVIDERS.addAll(ReportFieldCatalogTest.catalogueSources());
     }
 
     private UserAccount actor() {
@@ -35,7 +36,7 @@ class ReportDocumentSourcesDatabaseTest {
 
     private Map<String, Object> everyFilter(ReportMetadataProvider provider) {
         var values = new HashMap<String, Object>();
-        for (var filter : provider.filters()) values.put(filter.get("code"), "DATE".equals(filter.get("type")) ? "2026-01-15" : "x");
+        for (var filter : provider.filters()) values.put(filter.get("code"), "DATE".equals(filter.get("type")) ? "2026-01-15" : "NUMBER".equals(filter.get("type")) ? "30" : "x");
         return values;
     }
 
@@ -82,6 +83,6 @@ class ReportDocumentSourcesDatabaseTest {
         long all = Objects.requireNonNull(jdbc.queryForObject("select count(*) from document_revisions", Long.class));
         assertEquals(all, listed);
         var codes = PROVIDERS.stream().map(ReportMetadataProvider::code).collect(Collectors.toSet());
-        assertEquals(14, codes.size());
+        assertEquals(22, codes.size());
     }
 }

@@ -97,7 +97,7 @@ class DocumentReopenIntegrationTest {
 
     private DocumentRecord documentWithRevisions() {
         for (DocumentRecord document : documentRepository.findAll()) {
-            if (!document.isTemplate() && revisionRepository.existsByDocument_Id(document.getId())) {
+            if (!document.isTemplate() && document.getStatus() != null && "ACTIVE".equals(document.getStatus().getCode()) && revisionRepository.existsByDocument_Id(document.getId())) {
                 return document;
             }
         }
@@ -107,7 +107,7 @@ class DocumentReopenIntegrationTest {
 
     private DocumentRecord documentWithoutRevisions() {
         for (DocumentRecord document : documentRepository.findAll()) {
-            if (!revisionRepository.existsByDocument_Id(document.getId())) {
+            if (document.getStatus() != null && "DRAFT".equals(document.getStatus().getCode()) && !revisionRepository.existsByDocument_Id(document.getId())) {
                 return document;
             }
         }

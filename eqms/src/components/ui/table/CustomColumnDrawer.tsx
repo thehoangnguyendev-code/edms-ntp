@@ -8,6 +8,7 @@ import { DraggableReorderList } from "@/components/ui/draggable-reorder-list/Dra
 import { cn } from "@/components/ui/utils";
 import { MAX_PINNED_COLUMNS, normalizeColumnOrder, type CustomizableColumn } from "./useTableColumnPreferences";
 import { IconLock, IconPin, IconPinnedOff } from "@tabler/icons-react";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 interface CustomColumnDrawerProps {
   columns: CustomizableColumn[];
@@ -164,7 +165,7 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
               placeholder="Search columns..."
               value={query}
               onChange={setQuery}
-              debounceMs={300}
+              debounceMs={SEARCH_DEBOUNCE_MS}
             />
           </div>
 

@@ -112,7 +112,7 @@ export function ScheduleEditorPage() {
       </Button>
       {canManage && (
         <Button size="sm" variant="outline-emerald" loading={saving} disabled={!canSave} onClick={() => void save()} className="whitespace-nowrap touch-manipulation">
-          Save Changes
+          Save
         </Button>
       )}
     </>
@@ -163,7 +163,7 @@ export function ScheduleEditorPage() {
                       });
                     }}
                   />
-                  <FormField label="Report Name" hint="Optional. The name written on the report; the template name is used when empty.">
+                  <FormField label="Generated Report Name" hint="Optional. The name written on the report; the template name is used when empty.">
                     <Input
                       maxLength={255}
                       value={String(draft.parameters?.reportTitle ?? "")}

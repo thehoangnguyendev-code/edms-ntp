@@ -32,4 +32,23 @@ public final class ReportFonts {
             default -> "NotoSans-Bold.ttf";
         };
     }
+
+    /** The report font as it has always been drawn: the bundled Noto, Roboto Mono and Oswald files are weight 700, Tinos is regular. A text with no bold setting keeps that. */
+    public static boolean legacyBold(String key) { return !"TIMES_NEW_ROMAN".equals(key == null ? "NOTO_SANS" : key); }
+
+    /** True when the family has a real italic file; Oswald has none, and its italic is the upright letters slanted. */
+    public static boolean hasItalic(String key) { return !"OSWALD".equals(key); }
+
+    /** The file of one family in one weight and slant (REPORT-TEXT-STYLE-2026-11-14); an italic that the family does not have is the upright file. */
+    public static String styledResource(String key, boolean bold, boolean italic) {
+        String family = switch (key == null ? "NOTO_SANS" : key) {
+            case "NOTO_SERIF" -> "NotoSerif";
+            case "ROBOTO_MONO" -> "RobotoMono";
+            case "OSWALD" -> "Oswald";
+            case "TIMES_NEW_ROMAN" -> "Tinos";
+            default -> "NotoSans";
+        };
+        boolean slanted = italic && hasItalic(key);
+        return "/fonts/" + family + "-" + (bold ? (slanted ? "BoldItalic" : "Bold") : (slanted ? "Italic" : "Regular")) + ".ttf";
+    }
 }

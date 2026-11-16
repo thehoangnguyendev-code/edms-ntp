@@ -48,6 +48,7 @@ class DocumentControlMenuAccessTest {
     @Test
     void aNewUserWithNoNameAndNoViewEverythingSeesNoGroup() {
         when(permissions.hasPermission(any(), any())).thenReturn(true); // every single permission is granted: the permission alone is not enough
+        when(permissions.hasPermission(user, DocumentControlMenuAccess.P_UNCONTROLLED_COPY_DISTRIBUTE)).thenReturn(false); // except the one that shows the requests that wait for distribution
         when(permissions.hasAnyPermission(user, DocumentControlMenuAccess.P_UNCONTROLLED_COPY_VIEW, DocumentControlMenuAccess.P_UNCONTROLLED_COPY_REQUEST)).thenReturn(true);
 
         assertThat(access.sectionsFor(user)).isEqualTo(new DocumentControlMenuAccess.Sections(false, false, false));
@@ -100,9 +101,9 @@ class DocumentControlMenuAccessTest {
     }
 
     @Test
-    void anApproverOfUncontrolledCopiesSeesThatGroupForTheRequestsThatWaitForHim() {
+    void aPersonWhoMayDistributeUncontrolledCopiesSeesThatGroupForTheRequestsThatWaitForDistribution() {
         when(permissions.hasAnyPermission(user, DocumentControlMenuAccess.P_UNCONTROLLED_COPY_VIEW, DocumentControlMenuAccess.P_UNCONTROLLED_COPY_REQUEST)).thenReturn(true);
-        when(permissions.hasAnyPermission(user, DocumentControlMenuAccess.P_UNCONTROLLED_COPY_APPROVE, DocumentControlMenuAccess.P_UNCONTROLLED_COPY_REJECT)).thenReturn(true);
+        when(permissions.hasPermission(user, DocumentControlMenuAccess.P_UNCONTROLLED_COPY_DISTRIBUTE)).thenReturn(true);
 
         assertThat(access.sectionsFor(user).uncontrolledCopies()).isTrue();
     }

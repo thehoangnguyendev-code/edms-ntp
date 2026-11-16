@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { DataTable, TableEmptyState, TablePagination, TABLE_STYLES, type DataTableColumn, type DataTableSortDirection } from "@/components/ui/table";
 import { formatDateTime } from "@/utils/format";
@@ -11,6 +12,7 @@ import { useDebounce } from "@/hooks";
 import { settingsApi } from "@/services/api/settings";
 import { metadataApi } from "@/services/api/metadata";
 import type { AssignDiff } from "../AccessProfileDetailView";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 /** Row shared by the paged assignment list and the paged active-user search. */
 interface UserRow {
@@ -40,7 +42,7 @@ export const AccessProfileAssignedUsersTab: React.FC<{
   const [original, setOriginal] = useState<string[]>([]);
   const [assignedIds, setAssignedIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [searchResults, setSearchResults] = useState<UserRow[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -175,7 +177,7 @@ export const AccessProfileAssignedUsersTab: React.FC<{
       header: "Status",
       label: "Status",
       sort: sortOf("status"),
-      cell: (u) => (u.status ? <Badge color={u.status === "Active" ? "emerald" : "slate"} size="sm">{u.status}</Badge> : "-"),
+      cell: (u) => (u.status ? <Badge color={flagColor(u.status === "Active")} size="sm">{u.status}</Badge> : "-"),
     },
     { id: "assignedAt", header: "Assigned At", label: "Assigned At", sort: sortOf("assignedAt"), cellClassName: "text-slate-600", cell: (u) => (u.assignedAt ? formatDateTime(u.assignedAt) : "-") },
   ];

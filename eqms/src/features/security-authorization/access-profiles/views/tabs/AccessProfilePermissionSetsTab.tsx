@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/toast";
 import { ROUTES } from "@/app/routes.constants";
 import { settingsApi, type PermissionSetSummary, type PermissionSetResponse } from "@/services/api/settings";
 import type { AssignDiff } from "../AccessProfileDetailView";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type SortKey = "name" | "type" | "permissionCount" | "moduleCount";
 
@@ -38,7 +39,7 @@ export const PermissionSetsTab: React.FC<{
   const [originalIds, setOriginalIds] = useState<string[]>([]);
   const [assignedIds, setAssignedIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const searchTerm = useDebounce(search, 300);
+  const searchTerm = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [sort, setSort] = useState<{ key: SortKey; direction: DataTableSortDirection }>({ key: "name", direction: "asc" });
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);

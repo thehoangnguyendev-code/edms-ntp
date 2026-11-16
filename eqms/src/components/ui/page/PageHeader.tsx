@@ -46,18 +46,20 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   return (
     <div
       className={cn(
-        "flex flex-col sm:flex-row flex-wrap items-start sm:items-end justify-between gap-4 md:gap-5",
+        // The row is as tall as a small button (h-9) with or without actions, and the title is centred in it: a page with buttons and a page with a title only then
+        // start at the same height under the top bar, and the content below starts at the same place.
+        "flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-between gap-4 md:gap-5 sm:min-h-9",
         className
       )}
     >
       {/* Title + Breadcrumb */}
       {/* The title asks for 20rem; when the actions do not fit beside it (a narrow content area next to the open sidebar), they wrap under it instead of squeezing the title. */}
-      <div className="w-full sm:w-auto sm:flex-[1_1_20rem] min-w-0 overflow-hidden flex items-start gap-3">
+      <div className="w-full sm:w-auto sm:flex-[1_1_20rem] min-w-0 overflow-hidden flex items-center gap-3">
         {onBack && (
           <button 
             type="button"
             onClick={onBack}
-            className="mt-1 flex-shrink-0 h-8 w-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-emerald-600 hover:border-emerald-100 hover:bg-emerald-50 transition-all shadow-sm"
+            className="flex-shrink-0 h-8 w-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-emerald-600 hover:border-emerald-100 hover:bg-emerald-50 transition-all shadow-sm"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>

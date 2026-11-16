@@ -51,6 +51,54 @@ public record ControlledCopyDistributionBatchSummaryResponse(
         // the default created-date sort with no visual cue anything happened.
         String lastUpdatedAt,
         /** READ_AND_COMPLY, RECORD_KEEPING, or null for a batch issued before the purpose existed. */
-        String usagePurpose
+        String usagePurpose,
+        com.eqms.dto.security.ControlledCopyActionCapabilitiesResponse capabilities
 ) {
+    /** Compatibility constructor for existing detail/mutation responses. */
+    public ControlledCopyDistributionBatchSummaryResponse(
+            String id,
+            String batchNumber,
+            String controlledCopyNumber,
+            String controlledCopyName,
+            String revisionName,
+            String primaryControlledCopyId,
+            String documentId,
+            String documentNumber,
+            String documentTitle,
+            String documentDisplayLabel,
+            String revisionNumber,
+            String sourceRevisionId,
+            String validUntil,
+            String expiryDate,
+            Boolean hasExpiryDate,
+            Integer quantity,
+            Integer readyCount,
+            Integer distributedCount,
+            String status,
+            String statusCode,
+            String distributionList,
+            String distributionMode,
+            String distributionRecipients,
+            String distributionScope,
+            String location,
+            String locationCode,
+            String externalRecipients,
+            String requestedBy,
+            String requestedAt,
+            String distributedBy,
+            String distributedAt,
+            String recallDate,
+            String recallReason,
+            String businessUnitName,
+            String departmentName,
+            List<String> copyIds,
+            String lastUpdatedAt,
+            String usagePurpose) {
+        this(id, batchNumber, controlledCopyNumber, controlledCopyName, revisionName, primaryControlledCopyId, documentId, documentNumber, documentTitle, documentDisplayLabel, revisionNumber, sourceRevisionId, validUntil, expiryDate, hasExpiryDate, quantity, readyCount, distributedCount, status, statusCode, distributionList, distributionMode, distributionRecipients, distributionScope, location, locationCode, externalRecipients, requestedBy, requestedAt, distributedBy, distributedAt, recallDate, recallReason, businessUnitName, departmentName, copyIds, lastUpdatedAt, usagePurpose, null);
+    }
+
+    public ControlledCopyDistributionBatchSummaryResponse withCapabilities(com.eqms.dto.security.ControlledCopyActionCapabilitiesResponse capabilities) {
+        return new ControlledCopyDistributionBatchSummaryResponse(id, batchNumber, controlledCopyNumber, controlledCopyName, revisionName, primaryControlledCopyId, documentId, documentNumber, documentTitle, documentDisplayLabel, revisionNumber, sourceRevisionId, validUntil, expiryDate, hasExpiryDate, quantity, readyCount, distributedCount, status, statusCode, distributionList, distributionMode, distributionRecipients, distributionScope, location, locationCode, externalRecipients, requestedBy, requestedAt, distributedBy, distributedAt, recallDate, recallReason, businessUnitName, departmentName, copyIds, lastUpdatedAt, usagePurpose, capabilities);
+    }
+
 }

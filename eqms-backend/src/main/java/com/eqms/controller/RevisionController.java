@@ -129,16 +129,7 @@ public class RevisionController {
             @RequestParam(defaultValue = "revisionName") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDirection
     ) {
-        StreamingResponseBody csv = outputStream -> revisionService.writeRevisionsExport(
-                search, ids, status, documentType, businessUnit, department, authorId, author,
-                relatedDocument, correlatedDocument, isTemplate, trainingNumber,
-                createdFrom, createdTo, effectiveFrom, effectiveTo, validFrom, validTo,
-                ownedByMe, pending, sortBy, sortDirection, outputStream
-        );
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=revisions-export.csv")
-                .contentType(MediaType.parseMediaType("text/csv"))
-                .body(csv);
+        return TableExportRedirect.to("revisions");
     }
 
     @GetMapping("/pending-counts")

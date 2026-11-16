@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { IconCalendarTime } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { FormSection } from "@/components/ui/form";
 import type { DataTableColumn } from "@/components/ui/table";
 import { TABLE_STYLES } from "@/components/ui/table";
@@ -13,6 +14,7 @@ import { Fact } from "../components/Fact";
 import { ServerListPanel } from "../components/ServerListPanel";
 import { BACKUP_STATUS_COLOR, COMPONENT_LABEL, statusLabel, type BackupComponentKey } from "../types";
 import { formatDateTime } from "../format";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type SortKey = "component" | "type" | "frequency" | "time" | "status";
 
@@ -48,7 +50,7 @@ export const BackupSchedulesView: React.FC = () => {
   const [policyError, setPolicyError] = useState("");
 
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [status, setStatus] = useState(ALL);
   const [type, setType] = useState(ALL);
   const [frequency, setFrequency] = useState(ALL);
@@ -142,7 +144,7 @@ export const BackupSchedulesView: React.FC = () => {
       header: "Status",
       label: "Status",
       sort: sortFor("status"),
-      cell: (row) => <Badge color={row.status === "ACTIVE" ? "emerald" : "slate"}>{row.status === "ACTIVE" ? "Active" : "Not scheduled"}</Badge>,
+      cell: (row) => <Badge color={flagColor(row.status === "ACTIVE")}>{row.status === "ACTIVE" ? "Active" : "Not scheduled"}</Badge>,
     },
   ];
 

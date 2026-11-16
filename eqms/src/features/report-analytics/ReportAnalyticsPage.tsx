@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import type { BreadcrumbItem } from "@/components/ui/breadcrumb/Breadcrumb";
 import { reportBreadcrumbs } from "@/features/report/shared/reportBreadcrumbs";
 
-/** Frame of the Reports Overview and Quality Analytics screens: the header, then the sections. */
+/** Frame of the report administration screens: the header, then the sections. */
 export const ReportAnalyticsPage: React.FC<{
   title: string;
   actions?: React.ReactNode;

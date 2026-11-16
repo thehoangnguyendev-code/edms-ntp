@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { useDebounce } from "@/hooks";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -28,6 +29,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { EditAccessProfilesModal } from "../components/EditAccessProfilesModal";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 /** One normalized table row, shared by both modes so the Access Profiles table renders
  *  identically in the Add New User flow and the Detail/Edit screen -- only the Action column's
@@ -195,7 +197,7 @@ const AccessProfilesSection: React.FC<AccessProfilesSectionProps> = ({
                       </div>
                     </TableMarkup.Cell>
                     <TableMarkup.Cell className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <Badge color={row.active ? "emerald" : "slate"} size="sm" showDot>
+                      <Badge color={flagColor(row.active)} size="sm" showDot>
                         {row.active ? "Active" : "Inactive"}
                       </Badge>
                     </TableMarkup.Cell>
@@ -333,7 +335,7 @@ const ExistingModeSecurityTab: React.FC<ExistingModeProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const search = useDebounce(searchQuery, 300);
+  const search = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const generation = useRef(0);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 

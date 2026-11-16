@@ -144,6 +144,30 @@ final class ReportQueryKit {
     }
 
     /** A moment as text to the second (2026-09-21 15:57:39), in the time zone of the session; a report shows no fraction of a second. */
+    /** The full name of the person whose id is in a column, as a sub-select that never multiplies rows. */
+    static String person(String idColumn) { return "(select pu.full_name from app_users pu where pu.id=" + idColumn + ")"; }
+    /** A yes/no column as the words Yes and No. */
+    static String yesNo(String column) { return "case when " + column + " then 'Yes' else 'No' end"; }
+
+    /** Words that keep their own spelling in a label (an acronym or a product name); the same list as the Audit Trail screen (formatAuditActionLabel). */
+    private static final String[][] LABEL_WORDS = {{"Pdf","PDF"},{"Sop","SOP"},{"Id","ID"},{"Ip","IP"},{"Url","URL"},{"Api","API"},{"Otp","OTP"},{"Mfa","MFA"},{"Sso","SSO"},{"Qr","QR"},{"Ai","AI"},{"Minio","MinIO"},{"Onlyoffice","OnlyOffice"}};
+
+    /**
+     * The label of an audit action as the Audit Trail screen shows it: the stored code in Title Case without underscores ("Training Activity Created"), the acronyms in capitals
+     * and the two labels that keep a small "to" (REPORT-ACTION-LABEL-2026-11-16). Only for display: the stored code is what a filter compares.
+     */
+    static String auditAction(String column) {
+        String sql = "initcap(btrim(regexp_replace(lower(" + column + "),'[_[:space:]-]+',' ','g')))";
+        for (String[] word : LABEL_WORDS) sql = "regexp_replace(" + sql + ",'\\m" + word[0] + "\\M','" + word[1] + "','g')";
+        sql = "replace(" + sql + ",'Publish To Effective','Publish to Effective')";
+        return "replace(" + sql + ",'Copied To New Version','Copied to New Version')";
+    }
+
+    /** A stored type written as words: CamelCase and underscores split, Title Case ("ControlledCopyRecord" and "CONTROLLED_COPY" both read "Controlled Copy Record"). */
+    static String words(String column) {
+        return "initcap(btrim(regexp_replace(regexp_replace(" + column + ",'([a-z])([A-Z])','\\1 \\2','g'),'[_[:space:]]+',' ','g')))";
+    }
+
     static String timestamp(String column) { return "to_char(" + column + ", 'YYYY-MM-DD HH24:MI:SS')"; }
 
     /** "from" and "to" of one date filter (prefix + From, prefix + To), in order and within {@link #MAX_RANGE_DAYS} days. */

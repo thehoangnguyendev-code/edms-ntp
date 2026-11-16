@@ -67,6 +67,10 @@ export interface AppearanceSettings {
   compactDesktopFilters?: boolean;
   /** How the materials of a training are drawn on every Training screen: a table (default) or tiles. */
   trainingMaterialsLayout?: 'TABLE' | 'TILES';
+  /** The Audit Trail tab of a record (document, revision, copy, training ...): a table (default) or a vertical timeline. Not the Audit Trail module. */
+  auditTabView?: 'TABLE' | 'TIMELINE';
+  /** The look of the timeline: a rail with cards, a centre spine, a compact log (default) or a date gutter with a line that fills as the panel scrolls. */
+  auditTabTimelineStyle?: 'RAIL' | 'CENTER' | 'COMPACT' | 'SCROLL_LIT';
   /** How the folders of the Knowledge Base are named: the full name (default) or its abbreviation. */
   knowledgeFolderNames?: 'FULL' | 'ABBREVIATION';
   /** How the folders are named in the sidebar of the Knowledge Base; follows `knowledgeFolderNames` until chosen. */

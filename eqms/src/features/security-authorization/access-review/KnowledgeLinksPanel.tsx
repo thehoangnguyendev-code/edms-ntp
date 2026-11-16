@@ -21,6 +21,7 @@ import { useDebounce, usePortalDropdown } from "@/hooks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { knowledgeSharesApi, type KnowledgeLinkAdminRow } from "@/services/api/knowledgeShares";
 import { formatDateTime } from "@/utils/format";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const STATUS_OPTIONS: SelectOption[] = [
   { value: "ALL", label: "All" },
@@ -57,7 +58,7 @@ export const KnowledgeLinksPanel: React.FC = () => {
   const [loadError, setLoadError] = useState(false);
 
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [status, setStatus] = useState("ALL");
   const [sortKey, setSortKey] = useState("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");

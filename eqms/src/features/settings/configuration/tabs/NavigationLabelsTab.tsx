@@ -9,6 +9,7 @@ import { cn } from '@/components/ui/utils';
 import { NAVIGATION_LABEL_OPTIONS } from '@/app/navigation';
 import { GeneralConfig } from '../types';
 import { useDebounce } from '@/hooks/useDebounce';
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 interface NavigationLabelsTabProps {
   config: GeneralConfig;
@@ -17,7 +18,7 @@ interface NavigationLabelsTabProps {
 
 export const NavigationLabelsTab: React.FC<NavigationLabelsTabProps> = ({ config, onChange }) => {
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [showOnlyCustomized, setShowOnlyCustomized] = useState(false);
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
 

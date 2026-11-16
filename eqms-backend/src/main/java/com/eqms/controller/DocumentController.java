@@ -411,18 +411,7 @@ public class DocumentController {
             @RequestParam(defaultValue = "created") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection
     ) {
-        StreamingResponseBody csv = outputStream -> documentService.writeDocumentsExport(
-                scope, search, ids, status, documentType, businessUnit, department, authorId, author,
-                relatedDocument, correlatedDocument, isTemplate,
-                createdFrom, createdTo, effectiveFrom, effectiveTo, validFrom, validTo,
-                reviewerId, approverId, requiresTraining,
-                sortBy, sortDirection, outputStream
-        );
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=documents-export.csv")
-                .contentType(MediaType.parseMediaType("text/csv"))
-                .body(csv);
+        return TableExportRedirect.to("documents");
     }
 
     @GetMapping("/{id}/preview")

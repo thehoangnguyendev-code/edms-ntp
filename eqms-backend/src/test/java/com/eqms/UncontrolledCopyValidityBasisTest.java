@@ -46,7 +46,7 @@ class UncontrolledCopyValidityBasisTest {
 
     private void apply(UncontrolledCopyPolicySetting setting, Integer hours, String basis) {
         ReflectionTestUtils.invokeMethod(policyService, "applyRequest", setting,
-                new UncontrolledCopyPolicyRequest(null, hours, basis, null, null, null, null, null));
+                new UncontrolledCopyPolicyRequest(hours, basis, null, null, null, null, null));
     }
 
     @Test

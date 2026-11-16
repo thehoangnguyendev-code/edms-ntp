@@ -20,6 +20,10 @@ public final class ReportPdfRenderer {
     }
     /** As above, in the font of the report (see ReportFonts); Noto Sans when none is given. */
     public static byte[] render(List<List<String>> rows,float pageWidth,float pageHeight,float topMargin,float bottomMargin,String fontKey) throws Exception {
+        return render(rows,pageWidth,pageHeight,topMargin,bottomMargin,fontKey,0);
+    }
+    /** firstPageOffset: room left free at the top of the first page, below the top margin, for a block that is drawn there (the information of the report). */
+    public static byte[] render(List<List<String>> rows,float pageWidth,float pageHeight,float topMargin,float bottomMargin,String fontKey,float firstPageOffset) throws Exception {
         if (rows.isEmpty() || rows.getFirst().isEmpty()) throw new IllegalArgumentException("REPORT_EMPTY_COLUMNS");
         try (PDDocument pdf = new PDDocument(); var input = ReportPdfRenderer.class.getResourceAsStream(ReportFonts.bodyResource(fontKey)); var out = new ByteArrayOutputStream()) {
             if (input == null) throw new IllegalStateException("REPORT_FONT_UNAVAILABLE");
@@ -29,6 +33,9 @@ public final class ReportPdfRenderer {
             PDPageContentStream stream = null;
             float y = 0;
             int pageNumber = 0;
+            // The table has a frame: a line above the header, one under every row and one between every two columns (REPORT-PDF-GRID-2026-11-16).
+            int columns = rows.getFirst().size();
+            float segmentTop = 0;
             try {
                 for (int r=0;r<rows.size();r++) {
                     var wrapped = new ArrayList<List<String>>();
@@ -36,34 +43,53 @@ public final class ReportPdfRenderer {
                     int lines = wrapped.stream().mapToInt(List::size).max().orElse(1);
                     // Keep ordinary rows together; only a row taller than a full page may continue.
                     if (r>0 && stream!=null && lines*lineHeight+5>y-bottomMargin && lines*lineHeight+5<height-topMargin-bottomMargin-70) y=0;
+                    segmentTop = y+9;
                     for (int line=0;line<lines;line++) {
                         if (y < bottomMargin+lineHeight) {
-                            if (stream != null) stream.close();
+                            if (stream != null) { if (line>0) columnLines(stream,margin,cellWidth,columns,segmentTop,y+3); stream.close(); }
                             PDPage page = new PDPage(new PDRectangle(width,height)); pdf.addPage(page);
                             stream = new PDPageContentStream(pdf,page); stream.setFont(font,size);
-                            y=height-topMargin;
-                            text(stream,margin,y,"Metadata report • Page " + (++pageNumber)); y-=22;
+                            y=height-topMargin-(pageNumber==0?firstPageOffset:0);
+                            pageNumber++;
                             if (r>0) {
-                                for (int c=0;c<rows.getFirst().size();c++) {
+                                // the header of the table again at the top of the page, framed like the first one
+                                float headerTop = y+9;
+                                rule(stream,margin,width-margin,headerTop);
+                                int headerLines=1;
+                                for (int c=0;c<columns;c++) {
                                     var heading = wrap(font,rows.getFirst().get(c),size,cellWidth-10);
+                                    headerLines=Math.max(headerLines,heading.size());
                                     for (int h=0;h<heading.size();h++) text(stream,margin+c*cellWidth+5,y-h*lineHeight,heading.get(h));
                                 }
-                                int headerLines=rows.getFirst().stream().mapToInt(value -> {
-                                    try { return wrap(font,value,size,cellWidth-10).size(); } catch (Exception e) { throw new IllegalStateException(e); }
-                                }).max().orElse(1);
-                                y-=(headerLines+1)*lineHeight;
+                                y-=headerLines*lineHeight;
+                                rule(stream,margin,width-margin,y+3);
+                                columnLines(stream,margin,cellWidth,columns,headerTop,y+3);
+                                y-=5;
+                            } else {
+                                rule(stream,margin,width-margin,y+9);
                             }
+                            segmentTop = y+9;
                         }
                         for (int c=0;c<wrapped.size();c++) {
                             if (line<wrapped.get(c).size()) text(stream,margin+c*cellWidth+5,y,wrapped.get(c).get(line));
                         }
                         y-=lineHeight;
                     }
-                    stream.moveTo(margin,y+3); stream.lineTo(width-margin,y+3); stream.setLineWidth(0.25f); stream.stroke(); y-=5;
+                    rule(stream,margin,width-margin,y+3);
+                    columnLines(stream,margin,cellWidth,columns,segmentTop,y+3);
+                    y-=5;
                 }
             } finally { if (stream!=null) stream.close(); }
             pdf.save(out); return out.toByteArray();
         }
+    }
+    private static void rule(PDPageContentStream stream,float from,float to,float y) throws Exception {
+        stream.moveTo(from,y); stream.lineTo(to,y); stream.setLineWidth(0.25f); stream.stroke();
+    }
+    /** The lines between the columns (and the two outer ones) for the part of the table from top down to bottom on this page. */
+    private static void columnLines(PDPageContentStream stream,float margin,float cellWidth,int columns,float top,float bottom) throws Exception {
+        stream.setLineWidth(0.25f);
+        for (int c=0;c<=columns;c++) { stream.moveTo(margin+c*cellWidth,top); stream.lineTo(margin+c*cellWidth,bottom); stream.stroke(); }
     }
     private static void text(PDPageContentStream stream,float x,float y,String value) throws Exception {
         stream.beginText(); stream.newLineAtOffset(x,y); stream.showText(value); stream.endText();

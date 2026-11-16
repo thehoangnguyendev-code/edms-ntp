@@ -245,39 +245,6 @@ export const UncontrolledCopyDetailView: React.FC = () => {
             Download
           </Button>
         )}
-        {caps.canApprove && (
-          <Button
-            size="sm"
-            variant="outline-emerald"
-            className="whitespace-nowrap gap-2"
-            disabled={busy}
-            onClick={() => void runAction(copy, "approve")}
-          >
-            <IconThumbUp className="h-4 w-4" /> Complete Approval
-          </Button>
-        )}
-        {caps.canReject && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="whitespace-nowrap gap-2"
-            disabled={busy}
-            onClick={() => void runAction(copy, "reject")}
-          >
-            <IconThumbDown className="h-4 w-4" /> Reject
-          </Button>
-        )}
-        {caps.canGenerate && (
-          <Button
-            size="sm"
-            variant="outline-emerald"
-            className="whitespace-nowrap gap-2"
-            loading={busy}
-            onClick={() => void runAction(copy, "generate")}
-          >
-            <IconFileCheck className="h-4 w-4" /> Generate Copy
-          </Button>
-        )}
         {caps.canDistribute && (
           <Button
             size="sm"
@@ -286,18 +253,18 @@ export const UncontrolledCopyDetailView: React.FC = () => {
             disabled={busy}
             onClick={() => void runAction(copy, "distribute")}
           >
-            <IconShare3 className="h-4 w-4" /> Distribute
+             Distribute
           </Button>
         )}
         {caps.canCancel && (
           <Button
             size="sm"
-            variant="outline"
+            variant="outline-emerald"
             className="whitespace-nowrap gap-2"
             disabled={busy}
             onClick={() => void runAction(copy, "cancel")}
           >
-            <IconX className="h-4 w-4" /> Cancel Request
+            Cancel Request
           </Button>
         )}
       </div>

@@ -13,7 +13,6 @@ export interface DocumentRelationBase extends Omit<DocumentSummary, "documentNam
   displayLabel?: string;
   documentName?: string;
   type?: string;
-  state?: string;
   status?: string;
   correlationType?: string;
   relationType?: string;

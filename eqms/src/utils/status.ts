@@ -453,6 +453,10 @@ export function mapStatusToStatusType(status: string): string {
   return mapping[status] || "draft";
 }
 
-
-
+/**
+ * Colour of a badge that says whether something is on or off (Active/Inactive, Enabled/Disabled, Yes/No, On/Off, Online/Offline):
+ * the "on" state is green and the "off" state is rose, so the two are told apart at a glance; grey is not used for a state.
+ * Failure and suspension stay red, waiting stays amber.
+ */
+export const flagColor = (on: boolean): BadgeColor => (on ? "emerald" : "rose");
 

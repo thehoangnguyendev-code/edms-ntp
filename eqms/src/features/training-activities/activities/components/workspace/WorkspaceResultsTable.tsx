@@ -192,7 +192,7 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
           return <Badge color={pass ? "emerald" : "red"}>{pass ? "Pass" : "Not passed"} ({percent}%) · not saved</Badge>;
         }
         return (
-          <Badge color={p.result === "PASSED" ? "emerald" : p.result === "FAILED" ? "red" : "slate"}>
+          <Badge color={p.result === "PASSED" ? "emerald" : p.result === "FAILED" ? "red" : "amber"}>
             {p.result === "PASSED" ? "Pass" : p.result === "FAILED" ? "Not passed" : "Pending"}
             {p.lastPercent != null && !allLines ? ` (${p.lastPercent}%)` : ""}
           </Badge>

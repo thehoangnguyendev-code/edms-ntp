@@ -51,10 +51,10 @@ export const auditTrailReviewCampaignDetail = (navigate?: NavigateFn, campaignNa
 export const report = (navigate?: NavigateFn, subLabel?: string): BreadcrumbItem[] => {
   const items = [dashboard(navigate)];
   if (subLabel) {
-    items.push({ label: "Reports & Analytics", onClick: () => navigate?.(ROUTES.REPORT.TEMPLATES) });
+    items.push({ label: "Reports", onClick: () => navigate?.(ROUTES.REPORT.TEMPLATES) });
     items.push({ label: subLabel, isActive: true });
   } else {
-    items.push({ label: "Reports & Analytics", isActive: true });
+    items.push({ label: "Reports", isActive: true });
   }
   return items;
 };

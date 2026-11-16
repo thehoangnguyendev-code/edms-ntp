@@ -188,7 +188,12 @@ public class AccessProfileService {
             return cb.conjunction();
         });
         Page<RoleDefinition> roles = roleRepo.findAll(ordered, PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size))));
-        return roles.map(this::toSummaryResponse);
+        UserAccount actor = currentUserService.requireCurrentUser();
+        boolean view = canView(actor), manage = canManage(actor), assign = canAssign(actor);
+        return roles.map(role -> {
+            var row = toSummaryResponse(role);
+            return row.withCapabilities(buildCapabilities(row.id(), view, manage, assign, row.assignedUserCount()));
+        });
     }
 
     @Transactional(readOnly = true)
@@ -222,6 +227,11 @@ public class AccessProfileService {
         boolean canManage = canManage(actor);
         boolean canAssign = canAssign(actor);
         long assignedUsers = uapRepo.countByAccessProfileId(id);
+        return buildCapabilities(id, canView, canManage, canAssign, assignedUsers);
+    }
+
+    private AccessProfileCapabilitiesResponse buildCapabilities(UUID id, boolean canView, boolean canManage,
+            boolean canAssign, long assignedUsers) {
         boolean deletingWouldRemoveAssignedAccess = assignedUsers > 0;
 
         // No profile -- including the system super admin one -- is hard-locked by name here.

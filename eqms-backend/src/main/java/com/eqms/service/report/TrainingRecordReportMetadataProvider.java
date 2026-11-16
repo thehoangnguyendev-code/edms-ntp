@@ -30,7 +30,7 @@ public class TrainingRecordReportMetadataProvider implements ReportMetadataProvi
         column("position", "Position", "r.position");
         column("recordedAt", "Recorded At", ReportQueryKit.timestamp("r.created_at"));
         column("recordNumber", "Record Number", "r.record_no");
-        column("recordStatus", "Record", "case when v.id is null then 'Valid' else 'Voided' end");
+        column("recordStatus", "Record Status", "case when v.id is null then 'Valid' else 'Voided' end");
         column("voidedAt", "Voided At", ReportQueryKit.timestamp("v.voided_at"));
         column("voidedBy", "Voided By", "vb.full_name");
         column("voidReason", "Void Reason", "v.reason");
@@ -62,7 +62,7 @@ public class TrainingRecordReportMetadataProvider implements ReportMetadataProvi
                 Map.of("code", "result", "name", "Result", "type", "LOOKUP"),
                 Map.of("code", "source", "name", "Source", "type", "LOOKUP"),
                 Map.of("code", "department", "name", "Department", "type", "LOOKUP"),
-                Map.of("code", "recordStatus", "name", "Record", "type", "LOOKUP"),
+                Map.of("code", "recordStatus", "name", "Record Status", "type", "LOOKUP"),
                 Map.of("code", "completedFrom", "name", "Completed from", "type", "DATE"),
                 Map.of("code", "completedTo", "name", "Completed to", "type", "DATE"),
                 Map.of("code", "recordedFrom", "name", "Recorded from", "type", "DATE"),

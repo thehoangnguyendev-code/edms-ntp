@@ -72,8 +72,8 @@ public class DocumentReportVisibility {
             return ReportQueryKit.EVERYTHING;
         }
         String sql = "(" + copy + ".recipient_user_id=?";
-        if (permissions.hasAnyPermission(actor, UncontrolledCopyService.P_APPROVE, UncontrolledCopyService.P_REJECT)) {
-            sql += " or " + copy + ".status_code='" + UncontrolledCopyService.STATUS_REQUESTED + "'";
+        if (permissions.hasPermission(actor, UncontrolledCopyService.P_DISTRIBUTE)) {
+            sql += " or " + copy + ".status_code='" + UncontrolledCopyService.STATUS_READY + "'";
         }
         return new ReportQueryKit.Cond(sql + ")", List.of(actor.getId()));
     }

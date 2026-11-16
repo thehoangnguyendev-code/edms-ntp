@@ -8,6 +8,7 @@ import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { flagColor } from "@/utils/status";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
@@ -156,7 +157,7 @@ export const LoggedInUsersView: React.FC = () => {
     { id: "fullName", header: "Full Name", label: "Full Name", sort: { direction: sortConfig.key === "fullName" ? sortConfig.direction : undefined, onSort: () => handleSort("fullName") }, cell: (s) => <span className="font-medium text-slate-900">{s.fullName}</span> },
     { id: "username", header: "Username", label: "Username", sort: { direction: sortConfig.key === "username" ? sortConfig.direction : undefined, onSort: () => handleSort("username") }, cell: (s) => s.username },
     { id: "email", header: "Email", label: "Email", sort: { direction: sortConfig.key === "email" ? sortConfig.direction : undefined, onSort: () => handleSort("email") }, cell: (s) => s.email },
-    { id: "online", header: "Online", label: "Online", cell: (s) => <Badge size="sm" color={s.online ? "emerald" : "slate"}>{s.online ? "Online" : "Offline"}</Badge> },
+    { id: "online", header: "Online", label: "Online", cell: (s) => <Badge size="sm" color={flagColor(s.online)}>{s.online ? "Online" : "Offline"}</Badge> },
     { id: "lastLogin", header: "Last Login", label: "Last Login", sort: { direction: sortConfig.key === "lastLogin" ? sortConfig.direction : undefined, onSort: () => handleSort("lastLogin") }, cell: (s) => (s.lastLoginAt ? formatDateTime(s.lastLoginAt) : "-") },
     { id: "deviceName", header: "Device", label: "Device", sort: { direction: sortConfig.key === "deviceName" ? sortConfig.direction : undefined, onSort: () => handleSort("deviceName") }, cellClassName: "max-w-xs truncate", cell: (s) => <span title={s.userAgent ?? undefined}>{s.deviceName || s.userAgent || "-"}</span> },
     { id: "ipAddress", header: "IP Address", label: "IP Address", sort: { direction: sortConfig.key === "ipAddress" ? sortConfig.direction : undefined, onSort: () => handleSort("ipAddress") }, cell: (s) => s.ipAddress || "-" },

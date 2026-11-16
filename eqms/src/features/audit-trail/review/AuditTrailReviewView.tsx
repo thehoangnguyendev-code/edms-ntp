@@ -32,6 +32,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { formatDateUS } from "@/utils/format";
 import { auditTrailReview as auditTrailReviewBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const STATUS_OPTIONS = [
   { label: "All", value: "ALL" },
@@ -116,7 +117,7 @@ export const AuditTrailReviewView: React.FC = () => {
   );
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const searchQuery = useDebounce(search, 350);
+  const searchQuery = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [status, setStatus] = useState("ALL");
   const [sortBy, setSortBy] = useState<SortKey>("createdAt");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");

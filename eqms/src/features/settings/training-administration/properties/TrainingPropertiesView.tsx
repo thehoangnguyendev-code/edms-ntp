@@ -449,7 +449,7 @@ export const TrainingPropertiesView: React.FC = () => {
         actions={
           settingTab && canManage && settings ? (
             <Button size="sm" variant="outline-emerald" disabled={!isDirty || saving || hasFileNameProblem} onClick={() => setShowSaveModal(true)}>
-              Save Changes
+              Save
             </Button>
           ) : undefined
         }
@@ -474,7 +474,7 @@ export const TrainingPropertiesView: React.FC = () => {
             )}
             {!loading && !error && settings && (
               <div className="space-y-4">
-                <p className="text-sm text-slate-600">{settingTab.about} Changes made in any tab are saved together with Save Changes.</p>
+                <p className="text-sm text-slate-600">{settingTab.about} Changes made in any tab are saved together with Save.</p>
                 {panels[settingTab.id]}
               </div>
             )}
@@ -492,7 +492,7 @@ export const TrainingPropertiesView: React.FC = () => {
         type="confirm"
         title="Save Training Properties?"
         description="You are about to save changes to Training Properties. The previous and new values will be recorded in the Audit Trail."
-        confirmText="Save Changes"
+        confirmText="Save"
         cancelText="Cancel"
         isLoading={saving}
       />

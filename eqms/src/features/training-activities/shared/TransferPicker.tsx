@@ -3,6 +3,7 @@ import { Check, ChevronLeft, ChevronRight, FileText, Search } from "lucide-react
 import { cn } from "@/components/ui/utils";
 import { useDebounce } from "@/hooks/useDebounce";
 import { SectionLoading } from "@/components/ui/loading/Loading";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type Side = "available" | "selected";
 
@@ -41,7 +42,7 @@ export function TransferPicker<T>({
   availableSearchPlaceholder, loading, emptyAvailable, emptySelected, readOnly,
 }: Props<T>) {
   const [selectedQuery, setSelectedQuery] = useState("");
-  const debouncedSelectedQuery = useDebounce(selectedQuery, 300);
+  const debouncedSelectedQuery = useDebounce(selectedQuery, SEARCH_DEBOUNCE_MS);
   const [markedAvailable, setMarkedAvailable] = useState<string[]>([]);
   const [markedSelected, setMarkedSelected] = useState<string[]>([]);
 

@@ -105,6 +105,8 @@ describe("Backup alerts", () => {
 
   it("acknowledges an alert with the note typed, through the server", async () => {
     renderView();
+    // the action is in the menu of the three dots, as in every table
+    fireEvent.click(await screen.findByRole("button", { name: "More actions" }));
     fireEvent.click(await screen.findByRole("button", { name: "Acknowledge" }));
     fireEvent.change(document.querySelector("textarea") as HTMLTextAreaElement, { target: { value: "Checked with the agent log" } });
     const confirm = screen.getAllByRole("button", { name: "Acknowledge" }).pop() as HTMLElement;

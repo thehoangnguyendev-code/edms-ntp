@@ -73,7 +73,6 @@ interface ExpandedDocumentRelation {
   revisionNumber?: string;
   version?: string;
   type?: string;
-  state?: string;
   status?: string;
   statusCode?: string;
   correlationType?: string;
@@ -188,7 +187,7 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
       documentName: r.documentName,
       revisionNumber: r.revisionNumber || r.version || "-",
       type: r.type,
-      state: r.state || r.status,
+      state: r.status,
       statusCode: r.statusCode,
       correlationType: r.correlationType || r.relationType,
     });

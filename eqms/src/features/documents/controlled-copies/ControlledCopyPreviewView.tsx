@@ -5,11 +5,15 @@ import {
   Download,
   Eye,
   EyeOff,
-  FileWarning,
   Lock,
   Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button/Button";
+import {
+  DocumentStateMessage,
+  documentStateFromError,
+  type DocumentStateVariant,
+} from "@/components/ui/document-state/DocumentStateMessage";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
 import { documentApi } from "@/services/api/documents";
@@ -181,6 +185,7 @@ export const ControlledCopyPreviewView: React.FC = () => {
   });
   const [isLoadingFile, setIsLoadingFile] = useState(true);
   const [fileError, setFileError] = useState(false);
+  const [fileErrorState, setFileErrorState] = useState<DocumentStateVariant>("no-document");
   const [openedAt] = useState(() => new Date());
 
   const allowDownload = manifest?.allowDownload ?? false;
@@ -300,8 +305,10 @@ export const ControlledCopyPreviewView: React.FC = () => {
         if (!active) return;
         setBlobUrl(URL.createObjectURL(blob));
       })
-      .catch(() => {
-        if (active) setFileError(true);
+      .catch((error) => {
+        if (!active) return;
+        setFileErrorState(documentStateFromError(error));
+        setFileError(true);
       })
       .finally(() => {
         if (active) setIsLoadingFile(false);
@@ -411,25 +418,21 @@ export const ControlledCopyPreviewView: React.FC = () => {
             danger ? "border-red-300" : "border-amber-300"
           }`}
         >
-          <div
-            className={`mx-auto h-14 w-14 rounded-full flex items-center justify-center ${
-              danger ? "bg-red-50" : "bg-amber-50"
-            }`}
+          <DocumentStateMessage
+            variant="no-access"
+            title={unavailable.title}
+            description={unavailable.message}
+            compact
           >
-            <FileWarning className={`h-7 w-7 ${danger ? "text-red-600" : "text-amber-600"}`} />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">{unavailable.title}</h1>
-            <p className="text-sm text-slate-700 mt-2">{unavailable.message}</p>
-          </div>
-          <div className="rounded-lg bg-slate-50 border border-slate-200 px-4 py-3 text-left text-xs sm:text-sm text-slate-600 space-y-1">
-            <p className="font-semibold text-slate-800">This copy must no longer be used.</p>
-            <p>
-              The document you were viewing has been closed on this page. Do not rely on any printed or saved version of
-              it. Contact Document Control if you need the current version.
-            </p>
-          </div>
-          <p className="text-2xs sm:text-xs text-slate-400">Updated {displayDateTime(unavailable.at)}</p>
+            <div className="w-full rounded-lg bg-slate-50 border border-slate-200 px-4 py-3 text-left text-xs sm:text-sm text-slate-600 space-y-1">
+              <p className="font-semibold text-slate-800">This copy must no longer be used.</p>
+              <p>
+                The document you were viewing has been closed on this page. Do not rely on any printed or saved version of
+                it. Contact Document Control if you need the current version.
+              </p>
+            </div>
+            <p className="text-2xs sm:text-xs text-slate-400">Updated {displayDateTime(unavailable.at)}</p>
+          </DocumentStateMessage>
         </div>
       </div>
     );
@@ -438,16 +441,13 @@ export const ControlledCopyPreviewView: React.FC = () => {
   if (manifestError) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="max-w-lg w-full bg-white border border-slate-200 rounded-xl shadow-sm p-6 text-center space-y-4">
-          <div className="mx-auto h-12 w-12 rounded-full bg-rose-50 flex items-center justify-center">
-            <Lock className="h-6 w-6 text-rose-600" />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold text-slate-900">
-              Access Denied
-            </h1>
-            <p className="text-sm text-slate-600 mt-2">{manifestError}</p>
-          </div>
+        <div className="max-w-lg w-full bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+          <DocumentStateMessage
+            variant="no-access"
+            title="Access Denied"
+            description={manifestError}
+            compact
+          />
         </div>
       </div>
     );
@@ -601,11 +601,20 @@ export const ControlledCopyPreviewView: React.FC = () => {
 
       <div className="relative flex-1 min-h-0">
         {fileError || (!isLoadingFile && !blobUrl) ? (
-          <div className="h-full flex flex-col items-center justify-center gap-3">
-            <FileWarning className="h-10 w-10 text-red-300" />
-            <p className="text-sm font-medium text-red-500">
-              Unable to load this controlled copy's preview
-            </p>
+          <div className="h-full overflow-y-auto flex items-center justify-center">
+            {fileErrorState === "no-access" ? (
+              <DocumentStateMessage
+                variant="no-access"
+                title="You can no longer open this controlled copy"
+                description="Access to it was withdrawn or it is no longer valid. Contact Document Control if you need the current version."
+              />
+            ) : (
+              <DocumentStateMessage
+                variant="no-document"
+                title="Unable to load this controlled copy's preview"
+                description="The document could not be found or opened. Please try again later."
+              />
+            )}
           </div>
         ) : isLoadingFile || !blobUrl ? (
           <FullPageLoading text="Loading preview..." />

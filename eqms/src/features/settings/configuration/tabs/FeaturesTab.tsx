@@ -56,7 +56,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
   return (
     <div className="p-4 md:p-5 space-y-4">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div data-configuration-lead className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-5">
           <div className="flex items-center justify-between">
             <div>

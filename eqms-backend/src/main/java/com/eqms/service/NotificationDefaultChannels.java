@@ -52,6 +52,7 @@ public final class NotificationDefaultChannels {
             "backup.restore_requested",
             "report.ready",
             "report.schedule_suspended",
+            "report.template_rejected",
             "report.template_submitted",
             "security.account_locked",
             "security.esignature_settings_changed",

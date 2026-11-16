@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { codeLabel, humanize, runStatusLabel, scheduleStatusLabel } from "../reportLabels";
+import { codeLabel, humanize, runStatusLabel, scheduleReasonLabel, scheduleStatusColor, scheduleStatusLabel } from "../reportLabels";
 
 describe("report display labels", () => {
   it("shows a run status as ordinary text", () => {
@@ -11,7 +11,18 @@ describe("report display labels", () => {
 
   it("shows a schedule status as ordinary text", () => {
     expect(scheduleStatusLabel("ACTIVE")).toBe("Active");
-    expect(scheduleStatusLabel("SUSPENDED_TEMPLATE_NOT_APPROVED")).toBe("Suspended: template not approved");
+    expect(scheduleStatusLabel("PAUSED")).toBe("Paused");
+    expect(scheduleStatusLabel("SUSPENDED_TEMPLATE_NOT_APPROVED")).toBe("Suspended");
+  });
+
+  it("gives the reason of a suspension on its own, and every status a colour", () => {
+    expect(scheduleReasonLabel("SUSPENDED_TEMPLATE_NOT_APPROVED")).toBe("Template not approved");
+    expect(scheduleReasonLabel("SUSPENDED_SIGNATURE_REQUIRED")).toBe("Signature required");
+    expect(scheduleReasonLabel("ACTIVE")).toBe("—");
+    expect(scheduleReasonLabel("PAUSED")).toBe("—");
+    expect(scheduleStatusColor("ACTIVE")).toBe("emerald");
+    expect(scheduleStatusColor("PAUSED")).toBe("amber");
+    expect(scheduleStatusColor("SUSPENDED_INVALID_SCHEDULE")).toBe("red");
   });
 
   it("turns an unknown code into a sentence-case phrase, never leaving capitals", () => {

@@ -16,6 +16,7 @@ import {
 } from "@/services/api/security";
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const RESOURCE_TYPE_OPTIONS: SelectOption[] = [
   { label: "All", value: "ALL" },
@@ -71,7 +72,7 @@ export const EngineHealthTab: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 350);
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [resourceTypeFilter, setResourceTypeFilter] = useState("ALL");
   const [mismatchesOnly, setMismatchesOnly] = useState(true);
   const [sortConfig, setSortConfig] = useState<{
@@ -245,7 +246,7 @@ export const EngineHealthTab: React.FC = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 items-end gap-4 pb-4 md:grid-cols-2 lg:grid-cols-4 md:pb-5">
+      <div className="grid grid-cols-1 items-end gap-4 pb-4 md:grid-cols-2 lg:grid-cols-3 md:pb-5">
         <div className="w-full">
           <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">
             Search

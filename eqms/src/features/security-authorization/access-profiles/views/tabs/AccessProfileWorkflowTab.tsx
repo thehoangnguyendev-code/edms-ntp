@@ -11,6 +11,7 @@ import { settingsApi } from "@/services/api/settings";
 import { api } from "@/services/api/client";
 import { WorkflowRoleDrawer, type WorkflowRolePreview } from "./accessProfileDetailShared";
 import type { AssignDiff } from "../AccessProfileDetailView";
+import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 type SortKey = "label" | "code" | "module" | "users";
 type WorkflowRoleRow = WorkflowRolePreview & { moduleKey?: string | null; totalUsers?: number };
@@ -29,7 +30,7 @@ export const WorkflowTab: React.FC<{
   const [assigned, setAssigned] = useState<string[]>([]);
   const [rows, setRows] = useState<WorkflowRoleRow[]>([]);
   const [search, setSearch] = useState("");
-  const searchTerm = useDebounce(search, 300);
+  const searchTerm = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [sort, setSort] = useState<{ key: SortKey; direction: DataTableSortDirection }>({ key: "label", direction: "asc" });
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
