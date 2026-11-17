@@ -8,16 +8,19 @@ import org.junit.jupiter.api.Test;
 /** REPORT-AUDIT-DISPLAY-2026-11-17: the Object Type and the Object Code of an audit record; the values are the ones found in the DEV audit log. */
 class AuditObjectCatalogTest {
     @Test
-    void oneNameForEveryKindHoweverItWasSpelled() {
-        assertEquals("Controlled Copy", AuditObjectCatalog.typeLabel("CONTROLLED_COPY"));
-        assertEquals("Controlled Copy", AuditObjectCatalog.typeLabel("Controlled Copy"));
-        assertEquals("Controlled Copy", AuditObjectCatalog.typeLabel("ControlledCopyRecord"));
-        assertEquals("Document", AuditObjectCatalog.typeLabel("documents"));
-        assertEquals("Login Session", AuditObjectCatalog.typeLabel("SESSION"));
-        assertEquals("Report File", AuditObjectCatalog.typeLabel("REPORT_ARTIFACT"));
-        assertEquals("Training Activity", AuditObjectCatalog.typeLabel("TRAINING_ACTIVITY"));
-        assertEquals("SoD Constraint", AuditObjectCatalog.typeLabel("SOD_CONSTRAINT"));
+    void theObjectTypeIsTheDefaultNameOfTheMenuHoweverTheKindWasSpelled() {
+        assertEquals("Controlled Copies", AuditObjectCatalog.typeLabel("CONTROLLED_COPY"));
+        assertEquals("Controlled Copies", AuditObjectCatalog.typeLabel("Controlled Copy"));
+        assertEquals("Controlled Copies", AuditObjectCatalog.typeLabel("ControlledCopyRecord"));
+        assertEquals("Controlled Copies", AuditObjectCatalog.typeLabel("CONTROLLED_COPY_DISTRIBUTION_BATCH"), "a batch has the menu of its parent and is found by its own code");
+        assertEquals("All Documents", AuditObjectCatalog.typeLabel("documents"));
+        assertEquals("Document Revisions", AuditObjectCatalog.typeLabel("Revision"));
+        assertEquals("Logged in Users", AuditObjectCatalog.typeLabel("SESSION"));
+        assertEquals("Report Run History", AuditObjectCatalog.typeLabel("REPORT_ARTIFACT"));
+        assertEquals("Training Activities", AuditObjectCatalog.typeLabel("TRAINING_ACTIVITY"));
+        assertEquals("Segregation of Duties", AuditObjectCatalog.typeLabel("SOD_CONSTRAINT"));
         assertEquals("-", AuditObjectCatalog.typeLabel(null));
+        assertEquals("Some New Kind", AuditObjectCatalog.typeLabel("SOME_NEW_KIND"), "an unregistered kind is written in words (the build fails for it)");
     }
 
     @Test

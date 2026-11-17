@@ -311,4 +311,38 @@ class ControlledCopyScanCodeTest {
         org.assertj.core.api.Assertions.assertThat(first.get(2).code()).isNull();
         org.assertj.core.api.Assertions.assertThat(firstOnly.placements()).hasSize(1);
     }
+
+    @Test
+    void many_pages_are_read_in_parallel_yet_come_back_in_page_order_and_report_each_page() throws Exception {
+        int pages = 12;
+        byte[] pdf;
+        try (org.apache.pdfbox.pdmodel.PDDocument document = new org.apache.pdfbox.pdmodel.PDDocument();
+             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+            for (int i = 0; i < pages; i++) {
+                document.addPage(new org.apache.pdfbox.pdmodel.PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4));
+            }
+            document.save(out);
+            pdf = out.toByteArray();
+        }
+        String token = ControlledCopyScanCodeService.newToken();
+        var marked = new ControlledCopyPdfMarkingService().applyScanCodes(
+                pdf, index -> ControlledCopyScanCodeService.encode(ControlledCopyScanCodeService.pagePayload(token, index + 1, pages)),
+                true, "CC-1", "BOTTOM_RIGHT", null, null, 20, 4, List.of());
+        java.util.concurrent.atomic.AtomicInteger reported = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.atomic.AtomicInteger highest = new java.util.concurrent.atomic.AtomicInteger();
+
+        var read = ControlledCopyScanCodeService.decodePages(marked.pdf(), (finished, total) -> {
+            reported.incrementAndGet();
+            highest.accumulateAndGet(finished, Math::max);
+            org.assertj.core.api.Assertions.assertThat(total).isEqualTo(pages);
+        });
+
+        org.assertj.core.api.Assertions.assertThat(read).extracting(page -> page.index()).containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+        org.assertj.core.api.Assertions.assertThat(read).extracting(page -> page.code().page()).containsExactly(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+        org.assertj.core.api.Assertions.assertThat(reported.get()).isEqualTo(pages);
+        org.assertj.core.api.Assertions.assertThat(highest.get()).isEqualTo(pages);
+        // the whole-file result is the one of the first page, with no second rendering
+        org.assertj.core.api.Assertions.assertThat(ControlledCopyScanCodeService.firstPageResult(read).token()).isEqualTo(token);
+        org.assertj.core.api.Assertions.assertThat(ControlledCopyScanCodeService.firstPageResult(List.of()).status()).isEqualTo(ControlledCopyScanCodeService.STATUS_UNREADABLE_FILE);
+    }
 }

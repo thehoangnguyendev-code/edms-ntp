@@ -418,6 +418,11 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
       />
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
         <div className="flex flex-wrap items-center gap-3">
+          {campaign.campaignNumber && (
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700" title="Audit Trail Campaign Number">
+              {campaign.campaignNumber}
+            </span>
+          )}
           <h2 className="text-lg font-semibold text-slate-800">
             {campaign.name}
           </h2>

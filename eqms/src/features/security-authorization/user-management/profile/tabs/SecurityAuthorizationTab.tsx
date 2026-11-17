@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Search,
-  X,
   ShieldAlert,
   Eye,
   Plus,
@@ -28,7 +26,10 @@ import { IconPencilMinus, IconUserKey } from "@tabler/icons-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { EditAccessProfilesModal } from "../components/EditAccessProfilesModal";
-import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { DataTable, useCustomColumnLayout } from "@/components/ui/table";
+import type { DataTableColumn } from "@/components/ui/table";
+import { FilterSearchInput } from "@/components/ui/filter/FilterSearchInput";
+import { IconTile } from "@/components/ui/icon-tile";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 /** One normalized table row, shared by both modes so the Access Profiles table renders
@@ -52,7 +53,7 @@ interface MfaSectionProps {
 }
 
 const MfaSection: React.FC<MfaSectionProps> = ({ mfaRequiredByAdmin, onMfaRequiredByAdminChange, editable, disabledReason }) => (
-  <div className="flex items-start gap-3">
+  <div className="flex w-full items-start gap-3">
     {editable ? (
       <Checkbox
         checked={mfaRequiredByAdmin}
@@ -66,15 +67,12 @@ const MfaSection: React.FC<MfaSectionProps> = ({ mfaRequiredByAdmin, onMfaRequir
     ) : (
       <Checkbox checked={false} onChange={() => {}} disabled className="mt-0.5 shrink-0" />
     )}
-    <span>
+    <span className="min-w-0 flex-1">
       <span className="block text-sm font-medium text-slate-700">
         Require Multifactor Authentication
       </span>
-      <span className="mt-1 block text-xs text-slate-500 max-w-2xl">
-        Forces this user to set up MFA (authenticator app or email) before they can use
-        the system, even if "Enforce Two-Factor Authentication" is off globally in
-        Settings &gt; Security. This only adds a requirement -- it never exempts the user
-        from the global setting.
+      <span className="mt-1 block text-xs text-slate-500">
+        The user must set up MFA before using the system, even if Two-Factor Authentication is off globally.
       </span>
       {disabledReason && (
         <span className="mt-1.5 block text-2xs text-slate-400">{disabledReason}</span>
@@ -86,12 +84,17 @@ const MfaSection: React.FC<MfaSectionProps> = ({ mfaRequiredByAdmin, onMfaRequir
 interface AccessProfilesSectionProps {
   eyebrow: string;
   statLine: string;
+  /** Names the saved Custom Column layout of this table. */
+  tableKey: string;
   searchQuery: string;
   onSearchChange: (value: string) => void;
   headerAction?: React.ReactNode;
   rows: AccessProfileRow[];
   totalCount: number;
   rowOffset?: number;
+  isLoading?: boolean;
+  /** The table's own pagination, drawn inside its frame like every other table. */
+  pagination?: React.ReactNode;
   emptyStateTitle: string;
   emptyStateDescription: string;
   noSearchMatchDescription: string;
@@ -100,120 +103,96 @@ interface AccessProfilesSectionProps {
 const AccessProfilesSection: React.FC<AccessProfilesSectionProps> = ({
   eyebrow,
   statLine,
+  tableKey,
   searchQuery,
   onSearchChange,
   headerAction,
   rows,
   totalCount,
   rowOffset = 0,
+  isLoading,
+  pagination,
   emptyStateTitle,
   emptyStateDescription,
   noSearchMatchDescription,
-}) => (
-  <div className="mt-5 pt-5 border-t border-slate-100">
-    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-3">
-      <h3 className="text-2xs sm:text-xs font-bold uppercase tracking-wider text-slate-500">{eyebrow}</h3>
-      <p className="text-xs text-slate-500">{statLine}</p>
-    </div>
+}) => {
+  const columns: DataTableColumn<AccessProfileRow>[] = [
+    { id: "rowNo", header: "No.", locked: true, cell: (_row, index) => rowOffset + index + 1 },
+    {
+      id: "profile",
+      header: "Access Profile",
+      cell: (row) => (
+        <div className="flex items-center gap-2.5">
+          <IconTile size="sm" color="emerald" icon={<IconUserKey className="h-3.5 w-3.5" />} />
+          <div className="min-w-0">
+            <p className="font-medium text-slate-900">{row.name}</p>
+            <p className="text-2xs text-slate-400">{row.code}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (row) => (
+        <Badge color={flagColor(row.active)} size="sm" showDot>
+          {row.active ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+  ];
+  const action = { header: "Action", cell: (row: AccessProfileRow) => row.actionSlot };
+  const { layout, control } = useCustomColumnLayout(tableKey, columns, action);
 
-    {(totalCount > 0 || headerAction) && (
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-3">
-        {totalCount > 0 ? (
-          <div className="w-full sm:max-w-md">
-            <label htmlFor="access-profile-search" className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">
-              Search
-            </label>
-            <div className="relative">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 transition-colors">
-                <Search className="h-4 w-4 text-slate-400 transition-colors" />
-              </div>
-              <input
-                id="access-profile-search"
-                type="text"
-                placeholder="Search access profiles..."
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="block h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-10 text-sm text-slate-800 transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 md:h-9"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => onSearchChange("")}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 transition-colors hover:text-slate-600"
-                  aria-label="Clear search"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
+  return (
+    <div className="mt-5 pt-5 border-t border-slate-100">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-3">
+        <h3 className="text-2xs sm:text-xs font-bold uppercase tracking-wider text-slate-500">{eyebrow}</h3>
+        <p className="text-xs text-slate-500">{statLine}</p>
+      </div>
+
+      {totalCount === 0 ? (
+        <>
+          {headerAction && <div className="mb-3 flex justify-end">{headerAction}</div>}
+          <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-5 text-slate-800 flex items-start gap-3">
+            <ShieldAlert className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-bold text-amber-900">{emptyStateTitle}</h4>
+              <p className="mt-1 text-xs text-amber-800 leading-relaxed">{emptyStateDescription}</p>
             </div>
           </div>
-        ) : <div />}
-        {headerAction && <div className="flex-shrink-0">{headerAction}</div>}
-      </div>
-    )}
-
-    {totalCount === 0 ? (
-      <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-5 text-slate-800 flex items-start gap-3">
-        <ShieldAlert className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-        <div>
-          <h4 className="text-sm font-bold text-amber-900">{emptyStateTitle}</h4>
-          <p className="mt-1 text-xs text-amber-800 leading-relaxed">{emptyStateDescription}</p>
-        </div>
-      </div>
-    ) : (
-      <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-        <div className="overflow-x-auto">
-          <TableMarkup.Root className="w-full">
-            <TableMarkup.Head className="bg-slate-50 border-b border-slate-200 text-slate-500">
-              <TableMarkup.Row>
-                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell8}>No.</TableMarkup.HeaderCell>
-                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>Access Profile</TableMarkup.HeaderCell>
-                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>Status</TableMarkup.HeaderCell>
-                <TableMarkup.HeaderCell className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-center text-2xs md:text-xs font-bold uppercase tracking-wider whitespace-nowrap">Action</TableMarkup.HeaderCell>
-              </TableMarkup.Row>
-            </TableMarkup.Head>
-            <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-              {rows.length === 0 ? (
-                <TableMarkup.Row>
-                  <TableMarkup.Cell colSpan={4} className="p-0">
-                    <TableEmptyState title="No access profiles match your search" description={noSearchMatchDescription} />
-                  </TableMarkup.Cell>
-                </TableMarkup.Row>
-              ) : (
-                rows.map((row, index) => (
-                  <TableMarkup.Row key={row.id} className="hover:bg-slate-50/80 transition-colors group">
-                    <TableMarkup.Cell className={TABLE_STYLES.cell1}>
-                      {rowOffset + index + 1}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-xs sm:text-sm">
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-7 w-7 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
-                          <IconUserKey className="h-3.5 w-3.5 text-emerald-600" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-slate-900 truncate">{row.name}</p>
-                          <p className="text-2xs text-slate-400 truncate">{row.code}</p>
-                        </div>
-                      </div>
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <Badge color={flagColor(row.active)} size="sm" showDot>
-                        {row.active ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-center whitespace-nowrap">
-                      {row.actionSlot}
-                    </TableMarkup.Cell>
-                  </TableMarkup.Row>
-                ))
-              )}
-            </TableMarkup.Body>
-          </TableMarkup.Root>
-        </div>
-      </div>
-    )}
-  </div>
-);
+        </>
+      ) : (
+        <>
+          <div className="mb-3 flex items-end gap-2">
+            <div className="min-w-0 flex-1">
+              <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Search</label>
+              <FilterSearchInput
+                aria-label="Search access profiles"
+                placeholder="Search access profiles..."
+                value={searchQuery}
+                onChange={onSearchChange}
+                debounceMs={0}
+              />
+            </div>
+            {headerAction && <div className="flex-shrink-0">{headerAction}</div>}
+            {control}
+          </div>
+          <DataTable
+            rows={rows}
+            columns={columns}
+            columnLayout={layout}
+            action={action}
+            getRowKey={(row) => row.id}
+            isLoading={isLoading}
+            emptyState={<TableEmptyState title="No access profiles found" description={noSearchMatchDescription} />}
+            pagination={pagination}
+          />
+        </>
+      )}
+    </div>
+  );
+};
 
 interface ExistingModeProps {
   mode?: "existing";
@@ -291,6 +270,7 @@ const CreateModeSecurityTab: React.FC<CreateModeProps> = ({
       />
       <AccessProfilesSection
         eyebrow="Access Profiles"
+        tableKey="security.user-access-profiles.create"
         statLine={`${selectedProfileIds.length} profile${selectedProfileIds.length === 1 ? "" : "s"} selected`}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -398,10 +378,11 @@ const ExistingModeSecurityTab: React.FC<ExistingModeProps> = ({
         mfaRequiredByAdmin={mfaRequiredByAdmin}
         onMfaRequiredByAdminChange={onMfaRequiredByAdminChange}
         editable={isEditingProfile && canEditMfaRequirement}
-        disabledReason={isSelf ? "You cannot change your own MFA requirement here -- use Preferences > Security." : undefined}
+        disabledReason={isSelf ? "You cannot change your own MFA requirement here. Use Preferences > Security." : undefined}
       />
       <AccessProfilesSection
         eyebrow="Access Profiles"
+        tableKey="security.user-access-profiles"
         statLine={`${summary.effectivePermissionCount} effective permission${summary.effectivePermissionCount === 1 ? "" : "s"}`}
         searchQuery={searchQuery}
         onSearchChange={(value) => { setSearchQuery(value); setPage(1); }}
@@ -416,13 +397,15 @@ const ExistingModeSecurityTab: React.FC<ExistingModeProps> = ({
         rows={rows}
         totalCount={summary.assignedProfileIds.length}
         rowOffset={(page - 1) * limit}
+        isLoading={loading}
+        pagination={summary.pagination.total > 0 ? (
+          <TablePagination currentPage={page} totalPages={Math.max(1, summary.pagination.totalPages)} totalItems={summary.pagination.total}
+            itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} />
+        ) : undefined}
         emptyStateTitle="No Access Profile Assigned"
         emptyStateDescription="This user has no application permissions assigned. Please contact a System Administrator to assign an active Access Profile."
         noSearchMatchDescription={`No results for "${searchQuery}".`}
       />
-
-      {summary.pagination.total > 0 && <TablePagination currentPage={page} totalPages={Math.max(1, summary.pagination.totalPages)} totalItems={summary.pagination.total}
-        itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} />}
 
       {canEditAccessProfiles && (
         <EditAccessProfilesModal

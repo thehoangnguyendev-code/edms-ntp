@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { trainingWorkPositionApi } from "@/services/api/trainingActivities";
-import { EditableField, InfoField } from "../components/ProfileSectionCard";
+import { EditableField, InfoField, FieldGroup } from "../components/ProfileSectionCard";
 import { formatDate } from "@/utils/format";
 import type { User } from "../../types";
 
@@ -49,7 +49,7 @@ export const EmploymentTab: React.FC<EmploymentTabProps> = ({
 
   return (
     <div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+      <FieldGroup title="Position">
         <EditableField
           label="Business Unit *" value={user.businessUnit} draftValue={draft.businessUnit}
           isEditing={isEditing}
@@ -89,6 +89,8 @@ export const EmploymentTab: React.FC<EmploymentTabProps> = ({
           onChange={onDraftChange}
           error={fieldErrors.managerName}
         />
+      </FieldGroup>
+      <FieldGroup title="Contract" divided>
         <EditableField
           label="Employment Type" value={user.employmentType} draftValue={draft.employmentType}
           isEditing={isEditing}
@@ -111,7 +113,7 @@ export const EmploymentTab: React.FC<EmploymentTabProps> = ({
           error={fieldErrors.startDate}
         />
         <InfoField label="Timeserving" value={yearsOfService} />
-      </div>
+      </FieldGroup>
     </div>
   );
 };

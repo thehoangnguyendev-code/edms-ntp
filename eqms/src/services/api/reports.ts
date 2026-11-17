@@ -130,6 +130,8 @@ export interface ReportRunDetail extends ReportRunSummary {
 }
 export interface ReportSchedule {
   id: string;
+  /** The Scheduled Report Number (Object Numbering). */
+  scheduleNumber?: string | null;
   name: string;
   definitionCode: string;
   cronExpression: string;
@@ -156,6 +158,7 @@ export interface ReportSchedulePage {
 }
 export interface ReportScheduleDetail extends CreateReportScheduleRequest {
   id: string;
+  scheduleNumber?: string | null;
   version: number;
   recipients?: ReportRecipientPerson[];
   /** The template of the schedule and the formats it allows, also when the template is not one that the person may run now. */

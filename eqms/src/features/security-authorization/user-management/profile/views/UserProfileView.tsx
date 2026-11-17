@@ -10,8 +10,6 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { Avatar } from "@/components/ui/avatar";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { FormModal } from "@/components/ui/modal/FormModal";
-import { TabNav } from "@/components/ui/tabs/TabNav";
-import type { TabItem } from "@/components/ui/tabs/TabNav";
 import { useToast } from "@/components/ui/toast";
 import { usePortalDropdown } from "@/hooks";
 import { userProfile as userProfileBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs.config";
@@ -19,6 +17,9 @@ import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { ResetPasswordModal } from "../components/ResetPasswordModal";
 import { UnlockAccountModal } from "../components/UnlockAccountModal";
+import { UserProfileSummary } from "../components/UserProfileSummary";
+import { ProfileTabLayout, profileTabItems } from "../components/ProfileTabLayout";
+import type { ProfileTabId } from "../components/ProfileTabLayout";
 import { SuspendModal } from "../components/SuspendModal";
 import { TerminateModal } from "../components/TerminateModal";
 import { PersonalTab } from "../tabs/PersonalTab";
@@ -26,7 +27,7 @@ import { EmploymentTab } from "../tabs/EmploymentTab";
 import { QualificationsTab } from "../tabs/QualificationsTab";
 import { AccountStatusTab } from "../tabs/AccountStatusTab";
 import { SecurityAuthorizationTab } from "../tabs/SecurityAuthorizationTab";
-import { USER_MANAGEMENT_ROUTES, USER_STATUS_DESCRIPTIONS } from "../../constants";
+import { USER_MANAGEMENT_ROUTES } from "../../constants";
 import type { User } from "../../types";
 import { formatDate } from "@/utils/format";
 import { useUserProfile } from "../hooks/useUserProfile";
@@ -37,7 +38,7 @@ import { subscribeNotificationRealtime } from "@/features/notifications/notifica
 import { AvatarCropModal } from "@/features/settings/user-profile/AvatarCropModal";
 import { isAvatarFileWithinLimit, isSupportedAvatarFile } from "@/utils/avatar";
 
-type MainTab = "personal" | "employment" | "qualifications" | "account" | "security";
+type MainTab = ProfileTabId;
 
 export const UserProfileView: React.FC = () => {
   const navigate = useNavigate();
@@ -136,13 +137,7 @@ export const UserProfileView: React.FC = () => {
     setUnlockModal(false);
   };
 
-  const tabs: TabItem[] = [
-    { id: "personal", label: "Personal & Identity" },
-    { id: "employment", label: "Employment Record" },
-    { id: "qualifications", label: "Training & Competency" },
-    { id: "account", label: "Account Status" },
-    { id: "security", label: "Security & Compliance" },
-  ];
+  const tabs = profileTabItems();
 
   const handleAvatarClick = () => {
     if (!canPerform("edit")) return;
@@ -188,8 +183,30 @@ export const UserProfileView: React.FC = () => {
     void handleAvatarChange(new File([croppedBlob], "avatar.jpg", { type: "image/jpeg" }));
   };
 
+  const avatarNode = (
+    <div className="group relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-full shadow-md">
+      <Avatar name={user.fullName} src={avatarPreview} tone="solid" className="h-16 w-16 text-xl" />
+      <button
+        type="button"
+        onClick={handleAvatarClick}
+        disabled={!canPerform("edit") || isAvatarSaving}
+        className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 transition-colors hover:bg-black/20 disabled:cursor-not-allowed"
+        aria-label="Change avatar"
+      >
+        <Camera className="h-4.5 w-4.5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+      </button>
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept=".png,.jpg,.jpeg"
+        className="hidden"
+        onChange={handleAvatarFileChange}
+      />
+    </div>
+  );
+
   return (
-    <div className="space-y-6 w-full flex-1 flex flex-col">
+    <div className="flex w-full flex-1 flex-col gap-4 md:gap-6">
       <PageHeader
         title="User Profile"
         breadcrumbItems={userProfileBreadcrumb(navigate, user.fullName)}
@@ -205,10 +222,10 @@ export const UserProfileView: React.FC = () => {
                 <>
                   <Button variant="outline-emerald" size="sm" onClick={resetEdit} disabled={!isDraftDirty} className="whitespace-nowrap">Reset</Button>
                   <Button variant="outline-emerald" size="sm" onClick={cancelEdit} className="whitespace-nowrap">Cancel</Button>
-                  <Button variant="outline-emerald" size="sm" onClick={saveAll} className="whitespace-nowrap">Save</Button>
+                  <Button variant="default" size="sm" onClick={saveAll} className="whitespace-nowrap">Save</Button>
                 </>
               ) : (
-                <Button variant="outline-emerald" size="sm" onClick={startEdit} className="whitespace-nowrap">Edit</Button>
+                <Button variant="default" size="sm" onClick={startEdit} className="whitespace-nowrap">Edit</Button>
               )
             )}
           </>
@@ -265,61 +282,13 @@ export const UserProfileView: React.FC = () => {
         </div>
       )}
 
-      {/* Hero identity card — avatar, name, status only, no longer sharing space with banners */}
-      <div className="bg-gradient-to-br from-emerald-50 via-white to-slate-50 rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-5 p-5">
-          <div className="group relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-full shadow-md">
-            <Avatar name={user.fullName} src={avatarPreview} tone="solid" className="h-16 w-16 text-xl" />
-            <button
-              type="button"
-              onClick={handleAvatarClick}
-              disabled={!canPerform("edit") || isAvatarSaving}
-              className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 transition-colors hover:bg-black/20 disabled:cursor-not-allowed"
-              aria-label="Change avatar"
-            >
-              <Camera className="h-4.5 w-4.5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
-            </button>
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept=".png,.jpg,.jpeg"
-              className="hidden"
-              onChange={handleAvatarFileChange}
-            />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-semibold text-slate-900 leading-tight">{user.fullName}</h2>
-            <p className="text-sm mt-0.5">
-              <span className="text-emerald-600 font-medium">{user.position || user.accessProfileNames?.[0] || "—"}</span>
-              <span className="text-slate-400"> &middot; </span>
-              <span className="text-slate-500">{user.department}</span>
-            </p>
-            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-              <Badge
-                color={
-                  user.status === "Active" ? "emerald" :
-                    user.status === "Inactive" ? "slate" :
-                      user.status === "Pending" ? "amber" :
-                        user.status === "Suspended" ? "orange" : "red"
-                }
-                size="sm"
-                showDot
-                pill
-                title={USER_STATUS_DESCRIPTIONS[user.status]}
-              >
-                {user.status}
-              </Badge>
-              {user.employmentType && (
-                <Badge color="slate" size="sm">{user.employmentType}</Badge>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <TabNav tabs={tabs} activeTab={activeTab} onChange={(id) => setActiveTab(id as MainTab)} />
-        <div className="p-4 md:p-5 animate-in fade-in duration-200">
+      <ProfileTabLayout
+        summary={<UserProfileSummary user={user} avatar={avatarNode} />}
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        panelBadge={isEditingProfile ? <Badge color="emerald" size="sm">Editing</Badge> : undefined}
+      >
           {activeTab === "personal" && (
             <PersonalTab
               user={user}
@@ -388,8 +357,7 @@ export const UserProfileView: React.FC = () => {
               onMfaRequiredByAdminChange={updateMfaRequiredByAdmin}
             />
           )}
-        </div>
-      </div>
+      </ProfileTabLayout>
 
       <ResetPasswordModal
         isOpen={resetPasswordModal}

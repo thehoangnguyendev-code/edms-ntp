@@ -80,7 +80,7 @@ class ReportTemplateRevisionActionsTest {
         when(revisions.effective(CODE)).thenReturn(Map.of("revision", 2));
         service.setEnabled(actor, CODE, false, "Retired by QA");
         verify(jdbc).update(anyString(), eq(false), eq(CODE));
-        verify(audit).logAs(any(), eq("REPORT_DEFINITION"), eq(CODE), any(), eq("REPORT_TEMPLATE_DISABLED"), eq("ACTIVE"), eq("INACTIVE"), eq("Retired by QA"));
+        verify(audit).logAs(any(), eq("REPORT_DEFINITION"), eq(CODE), any(), eq("REPORT_TEMPLATE_DISABLED"), eq("ACTIVE"), eq("INACTIVE"), eq("Retired by QA"), any());
     }
 
     @Test
@@ -88,7 +88,7 @@ class ReportTemplateRevisionActionsTest {
         stored(template(false, null, 5));
         when(revisions.effective(CODE)).thenReturn(Map.of("revision", 2));
         service.setEnabled(actor, CODE, true, null);
-        verify(audit).logAs(any(), eq("REPORT_DEFINITION"), eq(CODE), any(), eq("REPORT_TEMPLATE_ENABLED"), eq("INACTIVE"), eq("ACTIVE"), eq("Enabled"));
+        verify(audit).logAs(any(), eq("REPORT_DEFINITION"), eq(CODE), any(), eq("REPORT_TEMPLATE_ENABLED"), eq("INACTIVE"), eq("ACTIVE"), eq("Enabled"), any());
     }
 
     @Test
@@ -141,7 +141,7 @@ class ReportTemplateRevisionActionsTest {
         when(revisions.open(CODE)).thenReturn(open("DRAFT", true));
         when(revisions.discard(eq(CODE), any(), eq("Not needed"))).thenReturn(true);
         service.discardRevision(actor, CODE, 6, "Not needed");
-        verify(audit).logAs(any(), eq("REPORT_DEFINITION"), eq(CODE), any(), eq("REPORT_TEMPLATE_REVISION_DISCARDED"), eq("DRAFT_REV3"), eq("DISCARDED"), eq("Not needed"));
+        verify(audit).logAs(any(), eq("REPORT_DEFINITION"), eq(CODE), any(), eq("REPORT_TEMPLATE_REVISION_DISCARDED"), eq("DRAFT_REV3"), eq("DISCARDED"), eq("Not needed"), any());
         assertThat(true).isTrue();
         assertThat(HttpStatus.CONFLICT.value()).isEqualTo(409);
     }

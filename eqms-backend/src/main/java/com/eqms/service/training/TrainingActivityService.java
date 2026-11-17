@@ -746,7 +746,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
                 external ? request.externalType() : null, request.dueDate(), request.remarks(), external ? unit : null, external ? blankToNull(request.vendorRef()) : null, actor.getId());
         Map<String, Object> created = store.activity(id).orElseThrow();
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "NUMBER_ISSUED", Map.of("number", issued.baseNumber(), "kind", request.kind()), actor.getId());
-        store.auditActivity(actor, created, "TRAINING_ACTIVITY_CREATED", null, "PLANNED", issued.baseNumber());
+        store.auditActivity(actor, created, "TRAINING_ACTIVITY_CREATED", null, "PLANNED", issued.baseNumber(),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Training Number",null,issued.baseNumber())));
         return get(actor, id);
     }
 
@@ -791,7 +792,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         if (added > 0) {
             store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "PARTICIPANTS_ADDED", Map.of("count", added, "reason", "Proposed when the document was prepared"), actor.getId());
             String names = jdbc.queryForObject("select string_agg(full_name || coalesce(' (' || employee_code || ')', ''), ', ' order by full_name) from training_participants where session_id=? and added_reason='Proposed when the document was prepared'", String.class, sessionId);
-            store.auditActivity(actor, activity, "TRAINING_PARTICIPANTS_ADDED", null, null, added + " added to Session 1 from the people proposed when the document was prepared: " + names);
+            store.auditActivity(actor, activity, "TRAINING_PARTICIPANTS_ADDED", null, null, added + " added to Session 1 from the people proposed when the document was prepared: " + names,
+                java.util.List.of(com.eqms.util.AuditChanges.of("Participants Added",null,added), com.eqms.util.AuditChanges.of("People",null,names)));
         }
     }
 
@@ -828,7 +830,11 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         }
         // New content or a new session means the earlier confirmations of the list no longer cover it: they are asked again before the activity is notified.
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "SESSION_ADDED", Map.of("sessionNo", next), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_SESSION_ADDED", null, null, "Session " + next);
+        List<com.eqms.dto.audittrail.AuditTrailChangeResponse> sessionChanges = new ArrayList<>();
+        sessionChanges.add(new com.eqms.dto.audittrail.AuditTrailChangeResponse("Session", null, "Session " + next));
+        if (request.method() != null) sessionChanges.add(new com.eqms.dto.audittrail.AuditTrailChangeResponse("Training Method", null, TrainingStore.words(String.valueOf(request.method()))));
+        if (request.scheduledOn() != null) sessionChanges.add(new com.eqms.dto.audittrail.AuditTrailChangeResponse("Scheduled On", null, String.valueOf(request.scheduledOn())));
+        store.auditActivity(actor, activity, "TRAINING_SESSION_ADDED", null, null, "Session " + next, sessionChanges);
         if (next == 1) applyProposedParticipants(actor, activity, sessionId);
         return get(actor, id);
     }
@@ -878,7 +884,9 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         }
         if (added == 0) throw new IllegalArgumentException("TRAINING_PARTICIPANT_REQUIRED");
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "PARTICIPANTS_ADDED", Map.of("count", added, "reason", request.reason().trim()), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_PARTICIPANTS_ADDED", null, null, added + " added: " + request.reason().trim());
+        store.auditActivity(actor, activity, "TRAINING_PARTICIPANTS_ADDED", null, null, added + " added: " + request.reason().trim(),
+                List.of(new com.eqms.dto.audittrail.AuditTrailChangeResponse("Participants Added", null, String.valueOf(added)),
+                        new com.eqms.dto.audittrail.AuditTrailChangeResponse("Reason for Adding", null, request.reason().trim())));
         return get(actor, id);
     }
 
@@ -892,7 +900,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         UUID signature = sign(actor, activity, "TRAINING_LIST_VERIFIED", request);
         jdbc.update("update training_activities set list_prepared_by=?, version=version+1, updated_at=now() where id=?", actor.getId(), id);
         confirmation(id, null, "ATTENDEE_LIST_PREPARED", actor, signature, null, null);
-        store.auditActivity(actor, activity, "TRAINING_LIST_CONFIRMED", null, null, "Attendee list confirmed");
+        store.auditActivity(actor, activity, "TRAINING_LIST_CONFIRMED", null, null, "Attendee list confirmed",
+                List.of(new com.eqms.dto.audittrail.AuditTrailChangeResponse("Attendee List", null, "Confirmed")));
         return get(actor, id);
     }
 
@@ -933,7 +942,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         UUID signature = sign(actor, activity, approvals.step(step).meaning(), request);
         approvals.complete(assignment, signature);
         confirmation(id, null, "CONTENT_REVIEW".equals(step) ? "CONTENT_REVIEWED" : "CONTENT_APPROVED", actor, signature, assignment, null);
-        store.auditActivity(actor, activity, "TRAINING_" + step, null, null, "Content " + ("CONTENT_REVIEW".equals(step) ? "reviewed" : "approved"));
+        store.auditActivity(actor, activity, "TRAINING_" + step, null, null, "Content " + ("CONTENT_REVIEW".equals(step) ? "reviewed" : "approved"),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Content",null,"CONTENT_REVIEW".equals(step) ? "Reviewed" : "Approved")));
         if ("CONTENT_REVIEW".equals(step)) {
             // The person who approves was asked at the designation, but could not approve before the review: now it is the turn.
             tell("TRAINING_STEP_READY", actor, jdbc.queryForList("select assignee_user_id from training_approval_assignments where object_type='TRAINING_ACTIVITY' and object_id=? and step_code='CONTENT_APPROVE' and status='PENDING'", UUID.class, id),
@@ -994,7 +1004,11 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         List<String> changes = new ArrayList<>();
         if (materials != wasMaterials) changes.add("Training Materials " + (materials ? "not required" : "required again"));
         if (assessment != wasAssessment) changes.add("Assessment form " + (assessment ? "not required" : "required again"));
-        store.auditActivity(actor, activity, "TRAINING_CONTENT_EXEMPTION", null, null, String.join("; ", changes) + (reason == null ? "" : ". Reason: " + reason));
+        List<com.eqms.dto.audittrail.AuditTrailChangeResponse> exemptionChanges = new ArrayList<>();
+        if (materials != wasMaterials) exemptionChanges.add(TrainingStore.change("Training Materials Required", wasMaterials ? "No" : "Yes", materials ? "No" : "Yes"));
+        if (assessment != wasAssessment) exemptionChanges.add(TrainingStore.change("Assessment Form Required", wasAssessment ? "No" : "Yes", assessment ? "No" : "Yes"));
+        if (reason != null) exemptionChanges.add(TrainingStore.change("Reason", null, reason));
+        store.auditActivity(actor, activity, "TRAINING_CONTENT_EXEMPTION", null, null, String.join("; ", changes) + (reason == null ? "" : ". Reason: " + reason), exemptionChanges);
         return get(actor, id);
     }
 
@@ -1038,7 +1052,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         if ("NOTIFIED".equals(activity.get("status"))) sign(actor, activity, "TRAINING_SESSION_STARTED", new CommandRequest(null, null, request == null ? null : request.signatureToken()));
         jdbc.update("update training_sessions set held_on=?, version=version+1 where id=?", heldOn, sessionId);
         if ("NOTIFIED".equals(activity.get("status"))) transition(actor, activity, "IN_PROGRESS", "TRAINING_SESSION_HELD", "First session held on " + heldOn);
-        else store.auditActivity(actor, activity, "TRAINING_SESSION_HELD", null, null, "Session " + session.get("session_no") + " held on " + heldOn);
+        else store.auditActivity(actor, activity, "TRAINING_SESSION_HELD", null, null, "Session " + session.get("session_no") + " held on " + heldOn,
+                List.of(TrainingStore.change("Session " + session.get("session_no") + " › Held On", null, heldOn)));
         return get(actor, (UUID) activity.get("id"));
     }
 
@@ -1162,7 +1177,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         // The signature of the trainer is also the confirmation of the attendance of every session that was held (APD.0117 item 5).
         jdbc.update("update training_sessions set attendance_confirmed_at = now(), attendance_confirmed_by = ?, attendance_signature_id = ? where activity_id = ? and status = 'PLANNED' and held_on is not null", actor.getId(), signature, id);
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "ATTENDANCE_LIST_SENT", Map.of("late", late), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_LIST_SENT", null, "SENT", late ? "Attendance list sent to QA late: it was due on " + qa.get("dueOn") + " (SOP.0003 5.3.6)" : "Attendance list sent to QA");
+        store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_LIST_SENT", null, "SENT", late ? "Attendance list sent to QA late: it was due on " + qa.get("dueOn") + " (SOP.0003 5.3.6)" : "Attendance list sent to QA",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Sent Late",null,late ? "Yes" : "No")));
         // QA is told by e-mail with the list APD.0117 as a PDF: the people who hold the permission to receive it and the people who confirm the completion of this training.
         java.util.Map<UUID, UserAccount> toTell = new java.util.LinkedHashMap<>();
         for (UserAccount receiver : attendanceReceivers(activity)) toTell.put(receiver.getId(), receiver);
@@ -1199,13 +1215,15 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
                 jdbc.update("update training_activities set due_date=?, version=version+1, updated_at=now() where id=?", newDue, activity.get("id"));
                 store.event(TrainingStore.OBJECT_ACTIVITY, (UUID) activity.get("id"), (UUID) activity.get("id"), "DUE_DATE_MOVED",
                         Map.of("from", oldDue.toString(), "to", newDue.toString(), "reason", request.reason().trim()), actor.getId());
-                store.auditActivity(actor, activity, "TRAINING_DUE_DATE_MOVED", oldDue.toString(), newDue.toString(), request.reason().trim());
+                store.auditActivity(actor, activity, "TRAINING_DUE_DATE_MOVED", oldDue.toString(), newDue.toString(), request.reason().trim(),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Due Date",oldDue,newDue), com.eqms.util.AuditChanges.of("Reason",null,request.reason().trim())));
                 followOnRequirementLine(actor, activity, newDue.withDayOfMonth(1), request.reason().trim());
             }
         }
         store.event(TrainingStore.OBJECT_ACTIVITY, (UUID) activity.get("id"), (UUID) activity.get("id"), "SESSION_POSTPONED",
                 Map.of("sessionNo", session.get("session_no"), "from", String.valueOf(session.get("scheduled_on")), "to", request.newDate().toString(), "reason", request.reason().trim()), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_SESSION_POSTPONED", String.valueOf(session.get("scheduled_on")), request.newDate().toString(), request.reason().trim());
+        store.auditActivity(actor, activity, "TRAINING_SESSION_POSTPONED", String.valueOf(session.get("scheduled_on")), request.newDate().toString(), request.reason().trim(),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Session Date",session.get("scheduled_on"),request.newDate()), com.eqms.util.AuditChanges.of("Reason",null,request.reason().trim())));
         if (NOTIFIED_OR_LATER.contains(String.valueOf(activity.get("status")))) {
             tell("TRAINING_POSTPONED", actor, jdbc.queryForList("select distinct person_user_id from training_participants where session_id = ? and person_user_id is not null", UUID.class, sessionId),
                     "Training: the session was postponed", "Session " + session.get("session_no") + " of " + label(activity) + " moves from "
@@ -1263,7 +1281,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         String result = resultOnAttendance(activity, participant, request.state());
         jdbc.update("update training_participants set state=?, absence_reason=?, result=?, version=version+1 where id=?", request.state(),
                 "ABSENT".equals(request.state()) ? request.absenceReason().trim() : null, result, participantId);
-        store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_RECORDED", String.valueOf(participant.get("state")), request.state(), String.valueOf(participant.get("full_name")));
+        store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_RECORDED", String.valueOf(participant.get("state")), request.state(), String.valueOf(participant.get("full_name")),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Participant",null,participant.get("full_name"))));
         return get(actor, (UUID) activity.get("id"));
     }
 
@@ -1298,7 +1317,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
                 request.state(), "ABSENT".equals(request.state()) ? reason : null, result, participantId);
         store.event(TrainingStore.OBJECT_ACTIVITY, (UUID) activity.get("id"), (UUID) activity.get("id"), "ATTENDANCE_CORRECTED",
                 Map.of("participant", String.valueOf(participant.get("full_name")), "from", before, "to", request.state(), "reason", reason, "was", String.valueOf(participant.get("sign_mode"))), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_CORRECTED", before, request.state(), participant.get("full_name") + " (was " + participant.get("sign_mode") + "): " + reason);
+        store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_CORRECTED", before, request.state(), participant.get("full_name") + " (was " + participant.get("sign_mode") + "): " + reason,
+                com.eqms.util.AuditChanges.with("Reason", reason, com.eqms.util.AuditChanges.of("Participant",null,participant.get("full_name")), com.eqms.util.AuditChanges.of("Previous Sign Mode",null,participant.get("sign_mode"))));
         return get(actor, (UUID) activity.get("id"));
     }
 
@@ -1342,7 +1362,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
                 request.role(), reason, actor.getId(), result, participantId);
         store.event(TrainingStore.OBJECT_ACTIVITY, activityId, activityId, "PARTICIPATION_SET",
                 Map.of("participant", String.valueOf(p.get("full_name")), "from", before, "to", request.role(), "reason", reason == null ? "" : reason), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_PARTICIPATION_SET", before, request.role(), p.get("full_name") + (reason == null ? "" : ": " + reason));
+        store.auditActivity(actor, activity, "TRAINING_PARTICIPATION_SET", before, request.role(), p.get("full_name") + (reason == null ? "" : ": " + reason),
+                com.eqms.util.AuditChanges.with("Reason", reason, com.eqms.util.AuditChanges.of("Participant",null,p.get("full_name")), com.eqms.util.AuditChanges.of("Role",before,request.role())));
         return get(actor, activityId);
     }
 
@@ -1378,7 +1399,9 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         // A failed assessment raises the "work suspended" flag; a pass (this attempt or the retraining) ends it.
         if ("FAILED".equals(result)) suspensions.raise(actor, activity, participant, percent);
         else suspensions.clearOnPass(actor, activity, participant);
-        store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_RECORDED", null, result, participant.get("full_name") + ": " + percent + "% (pass mark " + pass + "%), attempt " + attempt);
+        store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_RECORDED", null, result, participant.get("full_name") + ": " + percent + "% (pass mark " + pass + "%), attempt " + attempt,
+                List.of(TrainingStore.change("Participant", null, participant.get("full_name")), TrainingStore.change("Attempt", null, attempt),
+                        TrainingStore.change("Score", null, percent + "%"), TrainingStore.change("Pass Mark", null, pass + "%"), TrainingStore.change("Result", null, TrainingStore.words(result))));
         return get(actor, (UUID) activity.get("id"));
     }
 
@@ -1448,7 +1471,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         String accountStatus = participant.get("person_user_id") == null ? "-" : jdbc.queryForList("select status from app_users where id = ?", String.class, participant.get("person_user_id")).stream().findFirst().orElse("-");
         jdbc.update("update training_participants set state='ABSENT', absence_reason=?, result='PENDING', sign_mode='NONE', attend_signature_id=?, version=version+1 where id=?", reason, signature, participantId);
         store.event(TrainingStore.OBJECT_ACTIVITY, (UUID) activity.get("id"), (UUID) activity.get("id"), "READER_EXCUSED", Map.of("participant", String.valueOf(participant.get("full_name")), "reason", reason, "accountStatus", accountStatus), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_READER_EXCUSED", "INVITED", "ABSENT", participant.get("full_name") + " (account " + accountStatus + "): " + reason);
+        store.auditActivity(actor, activity, "TRAINING_READER_EXCUSED", "INVITED", "ABSENT", participant.get("full_name") + " (account " + accountStatus + "): " + reason,
+                com.eqms.util.AuditChanges.with("Reason", reason, com.eqms.util.AuditChanges.of("Participant",null,participant.get("full_name")), com.eqms.util.AuditChanges.of("Account Status",null,accountStatus)));
         return get(actor, (UUID) activity.get("id"));
     }
 
@@ -1509,7 +1533,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
                     e.getValue() + " self-readings verified" + (substituted.contains(e.getKey() == null ? new UUID(0, 0) : e.getKey()) ? " in place of the department head (the department has none)" : ""), e.getKey());
         }
         if ("NOTIFIED".equals(activity.get("status"))) transition(actor, activity, "IN_PROGRESS", "TRAINING_READ_VERIFIED", rows.size() + " self-readings verified");
-        else store.auditActivity(actor, activity, "TRAINING_READ_VERIFIED", null, null, rows.size() + " self-readings verified");
+        else store.auditActivity(actor, activity, "TRAINING_READ_VERIFIED", null, null, rows.size() + " self-readings verified",
+                List.of(TrainingStore.change("Self-Readings Verified", null, rows.size())));
         return get(actor, activityId);
     }
 
@@ -1587,7 +1612,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         // hybrid operation: a numbered paper copy that is still Issued does not stop the confirmation (a warning on the screen); that it was open is in the Audit Trail
         Integer open = jdbc.queryForObject("select count(*) from training_paper_packs p where p.activity_id = ? and not exists (select 1 from training_paper_pack_events e where e.pack_id = p.id)", Integer.class, id);
         store.auditActivity(actor, activity, "TRAINING_ACTIVITY_COMPLETED", "PENDING_QA_CONFIRMATION", "COMPLETED",
-                records + " personal training records written" + (open != null && open > 0 ? "; " + open + " numbered paper copy(ies) were still Issued" : ""));
+                records + " personal training records written" + (open != null && open > 0 ? "; " + open + " numbered paper copy(ies) were still Issued" : ""),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Training Records Written",null,records)));
         String on = com.eqms.util.DateTimeFormatUtils.display(completedOn);
         tell("TRAINING_COMPLETED", actor, organizersOf(activity), "Training: completed", actor.getFullName() + " confirmed that the training " + label(activity) + " is completed on " + on + ".", id);
         tell("TRAINING_RECORDED", actor, jdbc.queryForList("select distinct person_user_id from training_records where activity_id = ? and person_user_id is not null", UUID.class, id),
@@ -1694,7 +1720,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
             if (p.get("person_user_id") != null) jdbc.update("insert into training_proposed_participants(id, activity_id, person_user_id, proposed_by) values (?,?,?,?) on conflict do nothing", UUID.randomUUID(), childId, p.get("person_user_id"), actor.getId());
         Map<String, Object> child = store.activity(childId).orElseThrow();
         store.event(TrainingStore.OBJECT_ACTIVITY, childId, childId, "NUMBER_ISSUED", Map.of("number", number, "parent", String.valueOf(parent.get("training_number"))), actor.getId());
-        store.auditActivity(actor, child, "TRAINING_ACTIVITY_CREATED", null, "PLANNED", "Supplementary of " + parent.get("training_number") + ": " + request.reason().trim());
+        store.auditActivity(actor, child, "TRAINING_ACTIVITY_CREATED", null, "PLANNED", "Supplementary of " + parent.get("training_number") + ": " + request.reason().trim(),
+                com.eqms.util.AuditChanges.with("Reason", request.reason(), com.eqms.util.AuditChanges.of("Supplementary Of",null,parent.get("training_number")), com.eqms.util.AuditChanges.of("Training Number",null,child.get("training_number"))));
         return get(actor, childId);
     }
 
@@ -1734,7 +1761,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         jdbc.update("delete from training_participants where id=?", participantId);
         store.event(TrainingStore.OBJECT_ACTIVITY, activityId, activityId, "PARTICIPANT_REMOVED", Map.of("name", String.valueOf(p.get("full_name")), "reason", request.reason().trim()), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_PARTICIPANT_REMOVED", null, null, p.get("full_name") + ": " + request.reason().trim());
+        store.auditActivity(actor, activity, "TRAINING_PARTICIPANT_REMOVED", null, null, p.get("full_name") + ": " + request.reason().trim(),
+                com.eqms.util.AuditChanges.with("Reason", request.reason(), com.eqms.util.AuditChanges.of("Participant Removed",p.get("full_name"),null)));
         return get(actor, activityId);
     }
 
@@ -1748,7 +1776,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         if (!"INVITED".equals(p.get("state"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PARTICIPANT_LOCKED");
         String reason = request == null || request.reason() == null || request.reason().isBlank() ? null : request.reason().trim();
         jdbc.update("update training_participants set planned_absence=?, version=version+1 where id=?", reason, participantId);
-        store.auditActivity(actor, activity, reason == null ? "TRAINING_PLANNED_ABSENCE_CLEARED" : "TRAINING_PLANNED_ABSENCE_SET", null, null, p.get("full_name") + (reason == null ? "" : ": " + reason));
+        store.auditActivity(actor, activity, reason == null ? "TRAINING_PLANNED_ABSENCE_CLEARED" : "TRAINING_PLANNED_ABSENCE_SET", null, null, p.get("full_name") + (reason == null ? "" : ": " + reason),
+                com.eqms.util.AuditChanges.with("Reason", reason, com.eqms.util.AuditChanges.of("Participant",null,p.get("full_name")), com.eqms.util.AuditChanges.of("Planned Absence",reason == null ? "Yes" : "No",reason == null ? "No" : "Yes")));
         return get(actor, activityId);
     }
 
@@ -1935,7 +1964,8 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
                 "Content reopened", id);
         String kinds = String.join(" and ", given.stream().map(c -> "CONTENT_REVIEWED".equals(c.get("kind")) ? "review" : "approval").toList());
         if ("NOTIFIED".equals(activity.get("status"))) transition(actor, activity, "PLANNED", "TRAINING_CONTENT_REOPENED", "Content reopened (" + kinds + " no longer count); notify again after the new approval. Reason: " + request.reason().trim());
-        else store.auditActivity(actor, activity, "TRAINING_CONTENT_REOPENED", null, null, "Content reopened (" + kinds + " no longer count). Reason: " + request.reason().trim());
+        else store.auditActivity(actor, activity, "TRAINING_CONTENT_REOPENED", null, null, "Content reopened (" + kinds + " no longer count). Reason: " + request.reason().trim(),
+                com.eqms.util.AuditChanges.with("Reason", request.reason(), com.eqms.util.AuditChanges.of("Content Reopened",null,kinds)));
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "CONTENT_REOPENED", Map.of("reason", request.reason().trim()), actor.getId());
         return get(actor, id);
     }

@@ -32,6 +32,7 @@ import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives
 import { FileIcon } from "@/features/self-service/knowledge/explorer/ExplorerIcons";
 import { typeColor } from "@/features/self-service/knowledge/explorer/explorerModel";
 import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput";
+import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 
 type ResultModalState = {
   isOpen: boolean;
@@ -109,9 +110,7 @@ export const DocumentTypesView: React.FC = () => {
 
   const closeResultModal = () => setResultModal((prev) => ({ ...prev, isOpen: false }));
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter, modifiedFromDate, modifiedToDate, setCurrentPage]);
+  useResetPageOnChange(setCurrentPage, [statusFilter, modifiedFromDate, modifiedToDate]);
 
   const handleSave = async (payload: DocumentTypeFormData) => {
     try {

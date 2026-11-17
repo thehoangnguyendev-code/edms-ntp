@@ -52,6 +52,8 @@ public class AuditTrailReviewService {
     private static final Set<String> DECISIONS = Set.of("CONFIRMED", "FLAGGED", "PENDING");
 
     private final com.eqms.repository.UserAccountRepository userRepo;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ObjectNumberService numbers;
     private final AuditTrailReviewCampaignRepository campaignRepo;
     private final AuditTrailReviewItemRepository itemRepo;
     private final AuditLogRepository auditLogRepository;
@@ -139,6 +141,7 @@ public class AuditTrailReviewService {
         }
 
         AuditTrailReviewCampaign campaign = new AuditTrailReviewCampaign();
+        if (numbers != null) campaign.setCampaignNumber(numbers.allocate(ObjectNumberService.AUDIT_TRAIL_CAMPAIGN));
         campaign.setName(request.name().trim());
         campaign.setDescription(request.description());
         campaign.setReviewPeriodStart(request.reviewPeriodStart());
@@ -163,11 +166,14 @@ public class AuditTrailReviewService {
             count++;
         }
 
-        auditTrailService.logAs(actor, ENTITY_TYPE, campaign.getName(), campaign.getId(),
+        auditTrailService.logAs(actor, ENTITY_TYPE, auditCode(campaign), campaign.getId(),
                 "AUDIT_TRAIL_REVIEW_CAMPAIGN_CREATED", null, "In Progress",
-                "Created audit trail review campaign with " + count + " log entries for period "
+                "Created audit trail review campaign \"" + campaign.getName() + "\" with " + count + " log entries for period "
                         + request.reviewPeriodStart() + " to " + request.reviewPeriodEnd()
-                        + (reviewer.getId().equals(actor.getId()) ? "" : ". Reviewer: " + reviewer.getFullName()));
+                        + (reviewer.getId().equals(actor.getId()) ? "" : ". Reviewer: " + reviewer.getFullName()),
+                java.util.List.of(new com.eqms.dto.audittrail.AuditTrailChangeResponse("Campaign Name", null, campaign.getName()), new com.eqms.dto.audittrail.AuditTrailChangeResponse("Log Entries to Review", null, String.valueOf(count)),
+                        new com.eqms.dto.audittrail.AuditTrailChangeResponse("Review Period", null, request.reviewPeriodStart() + " to " + request.reviewPeriodEnd()),
+                        new com.eqms.dto.audittrail.AuditTrailChangeResponse("Reviewer", null, reviewer.getFullName())));
         return getCampaignInternal(campaign.getId());
     }
 
@@ -195,10 +201,13 @@ public class AuditTrailReviewService {
         item.setDecidedAt("PENDING".equals(decision) ? null : Instant.now());
         itemRepo.save(item);
 
-        auditTrailService.logAs(actor, ENTITY_TYPE, campaign.getName(), campaign.getId(),
+        auditTrailService.logAs(actor, ENTITY_TYPE, auditCode(campaign), campaign.getId(),
                 "AUDIT_TRAIL_REVIEW_ITEM_DECIDED", oldDecision, decision,
                 "Review decision for audit log entry (" + item.getAuditLog().getAction() + " on " + item.getAuditLog().getEntityName() + ")"
-                        + (StringUtils.hasText(request.note()) ? ": " + request.note() : ""));
+                        + (StringUtils.hasText(request.note()) ? ": " + request.note() : ""),
+                StringUtils.hasText(request.note())
+                        ? java.util.List.of(new com.eqms.dto.audittrail.AuditTrailChangeResponse("Entry (" + item.getAuditLog().getAction() + " on " + item.getAuditLog().getEntityName() + ") \u203a Decision", oldDecision, decision), new com.eqms.dto.audittrail.AuditTrailChangeResponse("Reviewer Note", null, request.note()))
+                        : java.util.List.of(new com.eqms.dto.audittrail.AuditTrailChangeResponse("Entry (" + item.getAuditLog().getAction() + " on " + item.getAuditLog().getEntityName() + ") \u203a Decision", oldDecision, decision)));
         return toItemResponse(item);
     }
 
@@ -231,7 +240,7 @@ public class AuditTrailReviewService {
         campaign.setSignatureId(signature.getId());
         campaignRepo.save(campaign);
 
-        auditTrailService.logAs(actor, ENTITY_TYPE, campaign.getName(), campaign.getId(),
+        auditTrailService.logAs(actor, ENTITY_TYPE, auditCode(campaign), campaign.getId(),
                 "AUDIT_TRAIL_REVIEW_CAMPAIGN_COMPLETED", "In Progress", "Completed",
                 "Completed audit trail review campaign. Signature: " + signature.getSignatureId(),
                 List.of(), signature.getId());
@@ -248,7 +257,7 @@ public class AuditTrailReviewService {
         campaign.setStatus("CANCELLED");
         campaign.setUpdatedBy(actor);
         campaignRepo.save(campaign);
-        auditTrailService.logAs(actor, ENTITY_TYPE, campaign.getName(), campaign.getId(),
+        auditTrailService.logAs(actor, ENTITY_TYPE, auditCode(campaign), campaign.getId(),
                 "AUDIT_TRAIL_REVIEW_CAMPAIGN_CANCELLED", "In Progress", "Cancelled",
                 "Cancelled audit trail review campaign");
         return getCampaignInternal(id);
@@ -305,11 +314,16 @@ public class AuditTrailReviewService {
         return u;
     }
 
+    /** What the Audit Trail shows as the Object Code of a campaign: its number (its name where an old record has none). */
+    private static String auditCode(AuditTrailReviewCampaign c) {
+        return c.getCampaignNumber() != null ? c.getCampaignNumber() : c.getName();
+    }
+
     private CampaignSummaryResponse toSummary(AuditTrailReviewCampaign c) {
         long total = itemRepo.findByCampaign_IdOrderByAuditLog_CreatedAtAsc(c.getId()).size();
         long pending = itemRepo.countByCampaign_IdAndDecision(c.getId(), "PENDING");
         return new CampaignSummaryResponse(
-                c.getId(), c.getName(), c.getDescription(),
+                c.getId(), c.getCampaignNumber(), c.getName(), c.getDescription(),
                 c.getReviewPeriodStart(), c.getReviewPeriodEnd(), c.getStatus(),
                 displayLabel(c.getStatus()),
                 c.getReviewer() != null ? c.getReviewer().getFullName() : null,
@@ -365,7 +379,7 @@ public class AuditTrailReviewService {
 
     private static Sort campaignSort(String sortBy, String sortDirection) {
         String property = switch (sortBy == null ? "createdAt" : sortBy) {
-            case "name", "status", "reviewPeriodStart", "reviewPeriodEnd", "signedAt" -> sortBy;
+            case "campaignNumber", "name", "status", "reviewPeriodStart", "reviewPeriodEnd", "signedAt" -> sortBy;
             default -> "createdAt";
         };
         return Sort.by("asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC, property);

@@ -43,6 +43,8 @@ public class AccessReviewService {
     private static final String MANAGE_PERMISSION = "security.access_review.manage";
     private static final Set<String> DECISIONS = Set.of("CONFIRMED", "REVOKE_REQUESTED", "MODIFY_REQUESTED", "PENDING");
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ObjectNumberService numbers;
     private final AccessReviewCampaignRepository campaignRepo;
     private final AccessReviewItemRepository itemRepo;
     private final UserAccountRepository userRepo;
@@ -90,12 +92,13 @@ public class AccessReviewService {
                     if (!com.eqms.util.DateRangeFilter.matches(c.updatedAt(), updatedFrom, updatedTo)) return false;
                     String q = search == null ? "" : search.trim().toLowerCase(java.util.Locale.ROOT);
                     if (q.isEmpty()) return true;
-                    return (c.name() + " " + (c.description() == null ? "" : c.description()) + " "
+                    return ((c.campaignNumber() == null ? "" : c.campaignNumber()) + " " + c.name() + " " + (c.description() == null ? "" : c.description()) + " "
                             + (c.reviewerName() == null ? "" : c.reviewerName()))
                             .toLowerCase(java.util.Locale.ROOT).contains(q);
                 })
                 .collect(java.util.stream.Collectors.toList());
         java.util.Comparator<CampaignSummaryResponse> cmp = switch (sortBy == null ? "createdAt" : sortBy) {
+            case "campaignNumber" -> java.util.Comparator.comparing(c -> c.campaignNumber() == null ? "" : c.campaignNumber(), String.CASE_INSENSITIVE_ORDER);
             case "name" -> java.util.Comparator.comparing(CampaignSummaryResponse::name, String.CASE_INSENSITIVE_ORDER);
             case "status" -> java.util.Comparator.comparing(CampaignSummaryResponse::status);
             case "totalItems" -> java.util.Comparator.comparingLong(CampaignSummaryResponse::totalItems);
@@ -197,6 +200,7 @@ public class AccessReviewService {
         }
 
         AccessReviewCampaign campaign = new AccessReviewCampaign();
+        if (numbers != null) campaign.setCampaignNumber(numbers.allocate(ObjectNumberService.ACCESS_REVIEW_CAMPAIGN));
         campaign.setName(request.name().trim());
         campaign.setDescription(request.description());
         campaign.setReviewPeriodStart(request.reviewPeriodStart());
@@ -231,10 +235,12 @@ public class AccessReviewService {
             count++;
         }
 
-        auditTrailService.logAs(actor, ENTITY_TYPE, campaign.getName(), campaign.getId(),
+        auditTrailService.logAs(actor, ENTITY_TYPE, auditCode(campaign), campaign.getId(),
                 "ACCESS_REVIEW_CAMPAIGN_CREATED", null, "In Progress",
-                "Created access review campaign with " + count + " user snapshots"
-                        + (reviewer.getId().equals(actor.getId()) ? "" : ". Reviewer: " + reviewer.getFullName()));
+                "Created access review campaign \"" + campaign.getName() + "\" with " + count + " user snapshots"
+                        + (reviewer.getId().equals(actor.getId()) ? "" : ". Reviewer: " + reviewer.getFullName()),
+                java.util.List.of(new com.eqms.dto.audittrail.AuditTrailChangeResponse("Campaign Name", null, campaign.getName()), new com.eqms.dto.audittrail.AuditTrailChangeResponse("Users to Review", null, String.valueOf(count)),
+                        new com.eqms.dto.audittrail.AuditTrailChangeResponse("Reviewer", null, reviewer.getFullName())));
         return getCampaignInternal(campaign.getId());
     }
 
@@ -262,10 +268,13 @@ public class AccessReviewService {
         item.setDecidedAt("PENDING".equals(decision) ? null : Instant.now());
         itemRepo.save(item);
 
-        auditTrailService.logAs(actor, ENTITY_TYPE, campaign.getName(), campaign.getId(),
+        auditTrailService.logAs(actor, ENTITY_TYPE, auditCode(campaign), campaign.getId(),
                 "ACCESS_REVIEW_ITEM_DECIDED", oldDecision, decision,
                 "Review decision for user " + item.getUsername()
-                        + (StringUtils.hasText(request.note()) ? ": " + request.note() : ""));
+                        + (StringUtils.hasText(request.note()) ? ": " + request.note() : ""),
+                StringUtils.hasText(request.note())
+                        ? java.util.List.of(new com.eqms.dto.audittrail.AuditTrailChangeResponse("User " + item.getUsername() + " \u203a Decision", oldDecision, decision), new com.eqms.dto.audittrail.AuditTrailChangeResponse("Reviewer Note", null, request.note()))
+                        : java.util.List.of(new com.eqms.dto.audittrail.AuditTrailChangeResponse("User " + item.getUsername() + " \u203a Decision", oldDecision, decision)));
         return toItemResponse(item, deciderNames(List.of(item)));
     }
 
@@ -299,7 +308,7 @@ public class AccessReviewService {
         campaign.setSignatureId(signature.getId());
         campaignRepo.save(campaign);
 
-        auditTrailService.logAs(actor, ENTITY_TYPE, campaign.getName(), campaign.getId(),
+        auditTrailService.logAs(actor, ENTITY_TYPE, auditCode(campaign), campaign.getId(),
                 "ACCESS_REVIEW_CAMPAIGN_COMPLETED", "In Progress", "Completed",
                 "Completed access review campaign. Signature: " + signature.getSignatureId(),
                 List.of(), signature.getId());
@@ -316,7 +325,7 @@ public class AccessReviewService {
         campaign.setStatus("CANCELLED");
         campaign.setUpdatedBy(actor);
         campaignRepo.save(campaign);
-        auditTrailService.logAs(actor, ENTITY_TYPE, campaign.getName(), campaign.getId(),
+        auditTrailService.logAs(actor, ENTITY_TYPE, auditCode(campaign), campaign.getId(),
                 "ACCESS_REVIEW_CAMPAIGN_CANCELLED", "In Progress", "Cancelled",
                 "Cancelled access review campaign");
         return getCampaignInternal(id);
@@ -378,11 +387,16 @@ public class AccessReviewService {
         return u;
     }
 
+    /** What the Audit Trail shows as the Object Code of a campaign: its number (its name where an old record has none). */
+    private static String auditCode(AccessReviewCampaign c) {
+        return c.getCampaignNumber() != null ? c.getCampaignNumber() : c.getName();
+    }
+
     private CampaignSummaryResponse toSummary(AccessReviewCampaign c) {
         long total = itemRepo.findByCampaign_IdOrderByUsernameAsc(c.getId()).size();
         long pending = itemRepo.countByCampaign_IdAndDecision(c.getId(), "PENDING");
         return new CampaignSummaryResponse(
-                c.getId(), c.getName(), c.getDescription(),
+                c.getId(), c.getCampaignNumber(), c.getName(), c.getDescription(),
                 c.getReviewPeriodStart(), c.getReviewPeriodEnd(), c.getStatus(),
                 displayLabel(c.getStatus()),
                 c.getReviewer() != null ? c.getReviewer().getFullName() : null,

@@ -1000,9 +1000,7 @@ public class DocumentService {
     @Transactional(readOnly = true)
     public boolean isLegacyDocumentNumberAvailable(String documentNumber) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.hasPermission(currentUser, "documents.legacy_import.manage")) {
-            throw new AccessDeniedException("Only Legacy Import is permitted to check a document number this way.");
-        }
+        documentAuthorizationService.requireCanCreateDocument(currentUser);
         if (!StringUtils.hasText(documentNumber)) {
             return false;
         }
@@ -1120,11 +1118,13 @@ public class DocumentService {
 
     /**
      * Legacy Import (owner decision D5): a person imports into the department they belong to; another department only with {@code training.scope.all}, the permission that
-     * Training Management uses for "other departments' data".
+     * Training Management uses for "other departments' data", or with {@code documents.document.view_all} (amended 2026-11-17, see the Decision Log).
      */
     private void requireLegacyDepartmentScope(UserAccount user, Department department) {
         if (department == null) return;
         if (permissionEvaluationService.hasPermission(user, "training.scope.all")) return;
+        // Amended by the owner on 2026-11-17: whoever sees the records of every department in Document Control (the Document Control Officer) may import into any department.
+        if (permissionEvaluationService.hasPermission(user, "documents.document.view_all")) return;
         String own = user.getDepartment() == null ? "" : user.getDepartment().trim();
         if (!own.equalsIgnoreCase(department.getName() == null ? "" : department.getName().trim())) {
             throw new AccessDeniedException("A document can be imported from paper only into your own department, unless you hold the scope of all departments.");
@@ -3363,12 +3363,11 @@ public class DocumentService {
             if (StringUtils.hasText(request.legacyDocumentNumber())) {
                 // Legacy Import path: the caller supplies the document number that already
                 // exists outside the system (e.g. on the paper original) instead of the
-                // auto-generated sequence. Gated on its own permission so an ordinary Author can
-                // never influence numbering, and validated for uniqueness the same as the normal
-                // generator's own collision check.
-                if (!permissionEvaluationService.hasPermission(currentUser, "documents.legacy_import.manage")) {
-                    throw new AccessDeniedException("Only Legacy Import is permitted to set a document number directly.");
-                }
+                // auto-generated sequence. Owner decision 2026-11-17 (LEGACY-IMPORT-ONE-PERMISSION):
+                // it rides on the same create permission as any new document, there is no separate
+                // Legacy Import permission. The number is validated for uniqueness the same as the
+                // normal generator's own collision check.
+                documentAuthorizationService.requireCanCreateDocument(currentUser);
                 String legacyNumber = request.legacyDocumentNumber().trim();
                 requireLegacyDocumentNumberFormat(legacyNumber, documentType);
                 requireLegacyDepartmentScope(currentUser, department);

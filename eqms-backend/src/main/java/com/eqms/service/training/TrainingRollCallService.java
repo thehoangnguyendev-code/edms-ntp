@@ -74,7 +74,8 @@ public class TrainingRollCallService {
         for (UUID id : present) activities.recordAttendance(actor, id, new TrainingActivityService.AttendanceRequest("ATTENDED", null));
         for (Absent a : absent) activities.recordAttendance(actor, a.participantId(), new TrainingActivityService.AttendanceRequest("ABSENT", a.reason().trim()));
         for (UUID id : seen) jdbc.update("update training_participants set sign_mode = 'TRAINER_ATTESTED', attend_signature_id = ? where id = ?", signature, id);
-        store.auditActivity(actor, activity, "TRAINING_ROLL_CALL_ATTESTED", null, "S" + session.get("session_no"), present.size() + " present, " + absent.size() + " absent");
+        store.auditActivity(actor, activity, "TRAINING_ROLL_CALL_ATTESTED", null, "S" + session.get("session_no"), present.size() + " present, " + absent.size() + " absent",
+                java.util.List.of(TrainingStore.change("Present", null, present.size()), TrainingStore.change("Absent", null, absent.size())));
         return activities.get(actor, activityId);
     }
 }

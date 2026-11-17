@@ -78,7 +78,7 @@ class BackupAlertControllerTest {
                 .thenReturn(reply(200, "{\"code\":\"CAPACITY_HIGH\",\"previous\":{\"inApp\":true,\"email\":true,\"threshold\":80}}"));
         controller.changeRule("CAPACITY_HIGH", new BackupAlertController.RuleBody(true, false, 90, "The NAS is large"));
         ArgumentCaptor<String> text = ArgumentCaptor.forClass(String.class);
-        verify(audit).logAs(eq(actor), eq("BACKUP_ALERT_RULE"), eq("CAPACITY_HIGH"), any(), eq("ALERT_RULE_CHANGED"), isNull(), eq("CHANGED"), text.capture());
+        verify(audit).logAs(eq(actor), eq("BACKUP_ALERT_RULE"), eq("Capacity High"), any(), eq("ALERT_RULE_CHANGED"), isNull(), eq("CHANGED"), text.capture(), any());
         assertThat(text.getValue()).contains("e-mail off").contains("limit 90").contains("was: in the application on, e-mail on, limit 80").contains("The NAS is large");
     }
 
@@ -87,7 +87,7 @@ class BackupAlertControllerTest {
         when(agent.exchange(eq(HttpMethod.POST), eq("/internal/alert-rules/CAPACITY_HIGH"), any())).thenReturn(reply(400, "{\"code\":\"ALERT_RULE_THRESHOLD_RANGE\"}"));
         var out = controller.changeRule("CAPACITY_HIGH", new BackupAlertController.RuleBody(true, true, 100, "too high"));
         assertThat(out.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), anyString());
+        verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), anyString(), any());
     }
 
     @org.junit.jupiter.api.Test
@@ -95,6 +95,30 @@ class BackupAlertControllerTest {
         when(agent.exchange(eq(HttpMethod.GET), anyString(), any())).thenReturn(reply(200, "[]"));
         controller.rules();
         verify(agent).exchange(HttpMethod.GET, "/internal/alert-rules", null);
+    }
+
+    /** AUDIT-OBJECT-REGISTRY-2026-11-17: every alert of the list carries its Backup Alert Number, the older alert numbered first, and a search by a number asks the agent for that alert. */
+    @Test
+    void theListCarriesTheNumberOfEveryAlertAndASearchByNumberFindsTheAlert() throws Exception {
+        com.eqms.service.ObjectNumberService numbers = mock(com.eqms.service.ObjectNumberService.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(controller, "numbers", numbers);
+        when(numbers.backupAlertNumber(eq("A-OLD"), org.mockito.ArgumentMatchers.anyInt())).thenReturn("BAL-2026-00001");
+        when(numbers.backupAlertNumber(eq("A-NEW"), org.mockito.ArgumentMatchers.anyInt())).thenReturn("BAL-2026-00002");
+        when(agent.exchange(eq(HttpMethod.GET), anyString(), isNull())).thenReturn(reply(200,
+                "{\"data\":[{\"id\":\"A-NEW\",\"at\":\"2026-11-17T02:00:00Z\"},{\"id\":\"A-OLD\",\"at\":\"2026-11-16T22:00:00Z\"}],\"pagination\":{\"total\":2}}"));
+        var body = controller.list(null, null, null, 1, 10, null, null, "at", "desc").getBody();
+        assertThat(body.path("data").get(0).path("alertNumber").asText()).isEqualTo("BAL-2026-00002");
+        assertThat(body.path("data").get(1).path("alertNumber").asText()).isEqualTo("BAL-2026-00001");
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(numbers);
+        order.verify(numbers).backupAlertNumber(eq("A-OLD"), org.mockito.ArgumentMatchers.anyInt());
+        order.verify(numbers).backupAlertNumber(eq("A-NEW"), org.mockito.ArgumentMatchers.anyInt());
+
+        when(numbers.backupAlertIdsByNumber("BAL-2026-00001")).thenReturn(java.util.List.of("A-OLD"));
+        controller.list(null, null, "BAL-2026-00001", 1, 10, null, null, "at", "desc");
+        ArgumentCaptor<String> uri = ArgumentCaptor.forClass(String.class);
+        verify(agent, org.mockito.Mockito.atLeast(2)).exchange(eq(HttpMethod.GET), uri.capture(), isNull());
+        String last = uri.getAllValues().get(uri.getAllValues().size() - 1);
+        assertThat(last).contains("ids=A-OLD").doesNotContain("search=");
     }
 
     @BeforeEach
@@ -125,7 +149,7 @@ class BackupAlertControllerTest {
     void anAcknowledgedAlertIsAuditedByNameAndKeepsItsIdentifierInItsOwnColumn() throws Exception {
         when(agent.exchange(eq(HttpMethod.POST), eq("/internal/alerts/" + ALERT + "/acknowledge"), any())).thenReturn(reply(200, "{\"id\":\"" + ALERT + "\"}"));
         assertThat(controller.acknowledge(ALERT, new BackupAlertController.AcknowledgeBody("seen")).getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(audit).logAs(eq(actor), eq("BACKUP_ALERT"), eq("Backup alert"), notNull(), eq("ALERT_ACKNOWLEDGED"), eq("OPEN"), eq("ACKNOWLEDGED"), argThat(text -> !text.contains(ALERT)));
+        verify(audit).logAs(eq(actor), eq("BACKUP_ALERT"), eq("Backup alert"), notNull(), eq("ALERT_ACKNOWLEDGED"), eq("OPEN"), eq("ACKNOWLEDGED"), argThat(text -> !text.contains(ALERT)), any());
     }
 
     @Test
@@ -159,6 +183,6 @@ class BackupAlertControllerTest {
         when(agent.exchange(eq(HttpMethod.POST), eq("/internal/alert-recipients"), any())).thenReturn(reply(201, "{\"username\":\"dco.test1\"}"));
 
         controller.addRecipient(new BackupAlertController.RecipientBody("dco.test1"));
-        verify(audit).logAs(eq(actor), eq("BACKUP_ALERT_RECIPIENT"), eq("dco.test1"), notNull(), eq("ALERT_RECIPIENT_ADDED"), isNull(), eq("ACTIVE"), anyString());
+        verify(audit).logAs(eq(actor), eq("BACKUP_ALERT_RECIPIENT"), eq("dco.test1"), notNull(), eq("ALERT_RECIPIENT_ADDED"), isNull(), eq("ACTIVE"), anyString(), any());
     }
 }

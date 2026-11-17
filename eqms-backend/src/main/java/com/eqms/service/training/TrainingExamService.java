@@ -159,7 +159,8 @@ public class TrainingExamService {
                     UUID.randomUUID(), activityId, r[0], r[1], r[2], r[3], r[4], r[5], actor.getId(), r[6]);
         }
         jdbc.update("update training_activities set exam_minutes = ?, version = version + 1, updated_at = now() where id = ?", minutes, activityId);
-        store.auditActivity(actor, activity, "TRAINING_EXAM_SAVED", null, null, rows.size() + " question(s)" + (minutes == null ? "" : ", " + minutes + " minutes"));
+        store.auditActivity(actor, activity, "TRAINING_EXAM_SAVED", null, null, rows.size() + " question(s)" + (minutes == null ? "" : ", " + minutes + " minutes"),
+                minutes == null ? List.of(TrainingStore.change("Questions", null, rows.size())) : List.of(TrainingStore.change("Questions", null, rows.size()), TrainingStore.change("Time Allowed (Minutes)", null, minutes)));
         return get(actor, activityId);
     }
 
@@ -202,7 +203,8 @@ public class TrainingExamService {
         Integer minutes = jdbc.queryForObject("select exam_minutes from training_activities where id = ?", Integer.class, activityId);
         UUID id = UUID.randomUUID();
         jdbc.update("insert into training_exam_attempts(id, participant_id, attempt_no, due_at) values (?,?,?, case when ?::int is null then null else now() + (?::int * interval '1 minute') end)", id, participantId, attempts + 1, minutes, minutes);
-        store.auditActivity(actor, activityOf(activityId), "TRAINING_EXAM_STARTED", null, null, "Attempt " + (attempts + 1) + " of " + p.get("full_name"));
+        store.auditActivity(actor, activityOf(activityId), "TRAINING_EXAM_STARTED", null, null, "Attempt " + (attempts + 1) + " of " + p.get("full_name"),
+                List.of(TrainingStore.change("Participant", null, p.get("full_name")), TrainingStore.change("Attempt", null, attempts + 1)));
         return view(jdbc.queryForMap("select * from training_exam_attempts where id = ?", id), activityId);
     }
 
@@ -311,7 +313,9 @@ public class TrainingExamService {
         else suspensions.clearOnPass(actor, activity, p);
         jdbc.update("update training_exam_attempts set status = 'SUBMITTED', submitted_at = now(), answers = cast(? as jsonb), score_obtained = ?, score_max = ?, percent = ?, assessment_id = ?, signature_id = ? where id = ?",
                 write(answers), got, max, percent, assessmentId, signature, attemptId);
-        store.auditActivity(actor, activity, "TRAINING_EXAM_SUBMITTED", null, result, p.get("full_name") + ": " + percent + "% (pass mark " + pass + "%), attempt " + attempt.get("attempt_no"));
+        store.auditActivity(actor, activity, "TRAINING_EXAM_SUBMITTED", null, result, p.get("full_name") + ": " + percent + "% (pass mark " + pass + "%), attempt " + attempt.get("attempt_no"),
+                List.of(TrainingStore.change("Participant", null, p.get("full_name")), TrainingStore.change("Attempt", null, attempt.get("attempt_no")),
+                        TrainingStore.change("Score", null, percent + "%"), TrainingStore.change("Pass Mark", null, pass + "%"), TrainingStore.change("Result", null, TrainingStore.words(String.valueOf(result)))));
         return mine(actor, participantId);
     }
 
@@ -329,7 +333,8 @@ public class TrainingExamService {
         if (last == null || "SUBMITTED".equals(last.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_AVAILABLE");
         if ("IN_PROGRESS".equals(last.get("status"))) jdbc.update("update training_exam_attempts set status = 'EXPIRED' where id = ?", last.get("id"));
         jdbc.update("insert into training_exam_resets(id, participant_id, reason, reset_by) values (?,?,?,?)", UUID.randomUUID(), participantId, request.reason().trim(), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_EXAM_RELEASED", null, null, p.get("full_name") + ": " + request.reason().trim());
+        store.auditActivity(actor, activity, "TRAINING_EXAM_RELEASED", null, null, p.get("full_name") + ": " + request.reason().trim(),
+                List.of(TrainingStore.change("Participant", null, p.get("full_name")), TrainingStore.change("Reason for Releasing", null, request.reason().trim())));
         return Map.of("released", true);
     }
 

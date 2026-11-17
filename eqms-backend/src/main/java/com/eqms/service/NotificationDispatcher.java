@@ -223,7 +223,9 @@ public class NotificationDispatcher {
             logger.warn("Notification dispatch skipped: no policy configured for event '{}'", eventCode);
             return Outcome.blocked("NOT_REGISTERED");
         }
-        if (NotificationPolicy.STATUS_DISABLED.equalsIgnoreCase(policy.getStatus())) {
+        // an account e-mail that carries a secret or that the person cannot do without is sent whatever the policy says (see NotificationMandatoryEvents)
+        boolean mandatory = NotificationMandatoryEvents.isMandatory(eventCode);
+        if (!mandatory && NotificationPolicy.STATUS_DISABLED.equalsIgnoreCase(policy.getStatus())) {
             return Outcome.blocked("POLICY_OFF");
         }
 
@@ -241,6 +243,10 @@ public class NotificationDispatcher {
         Set<java.util.UUID> emailPeople = ruleChannels ? idsOf(resolveRecipients(NotificationRecipientRules.forChannel(policyRules, NotificationTemplateVersion.CHANNEL_EMAIL), recipients)) : null;
 
         Set<String> channels = parseChannels(policy.getEnabledChannels());
+        if (mandatory) {
+            // e-mail only: a secret is never kept as an in-app notification
+            channels = new LinkedHashSet<>(Set.of(NotificationTemplateVersion.CHANNEL_EMAIL));
+        }
         if (onlyChannels != null) channels.retainAll(onlyChannels);
         NotificationTemplateVersion inAppVersion = channels.contains(NotificationTemplateVersion.CHANNEL_IN_APP)
                 ? activeVersion(policy.getId(), NotificationTemplateVersion.CHANNEL_IN_APP) : null;
@@ -277,7 +283,8 @@ public class NotificationDispatcher {
                 String subject = render(emailVersion.getSubject(), recipientVariables);
                 String body = composeEmailBody(emailVersion, inAppVersion, recipientVariables);
                 if (StringUtils.hasText(subject) && StringUtils.hasText(body)) {
-                    Instant deferredUntil = file == null ? computeDeferredSendTime(policy) : null;
+                    // a mandatory e-mail goes out at once: a digest or quiet hours would delay a code and would keep the secret unencrypted in the dispatch queue
+                    Instant deferredUntil = file == null && !mandatory ? computeDeferredSendTime(policy) : null;
                     if (deferredUntil != null) {
                         queueDeferredSend(policy, event.getCode(), recipient,
                                 NotificationTemplateVersion.CHANNEL_EMAIL, subject, body, deferredUntil);

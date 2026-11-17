@@ -153,7 +153,8 @@ public class TrainingTranscriptionService {
             jdbc.update("insert into training_transcription_lines(transcription_id, participant_id, state, absence_reason, score_obtained, score_max, remarks) values (?,?,?,?,?,?,?)",
                     id, line.participantId(), line.state(), "ABSENT".equals(line.state()) ? line.absenceReason().trim() : null, line.scoreObtained(), line.scoreMax(), blank(line.remarks()));
         }
-        store.auditActivity(actor, activity, "TRAINING_TRANSCRIPTION_ENTERED", null, "ENTERED", "Session S" + session.get("session_no") + ", " + lines.size() + " line(s)" + (late.isEmpty() ? "" : ". Late: " + late));
+        store.auditActivity(actor, activity, "TRAINING_TRANSCRIPTION_ENTERED", null, "ENTERED", "Session S" + session.get("session_no") + ", " + lines.size() + " line(s)" + (late.isEmpty() ? "" : ". Late: " + late),
+                java.util.List.of(TrainingStore.change("Session", null, "S" + session.get("session_no")), TrainingStore.change("Lines", null, lines.size()), TrainingStore.change("Late", null, late.isEmpty() ? null : late)));
         return one(actor, activityId, id);
     }
 
@@ -177,7 +178,8 @@ public class TrainingTranscriptionService {
             }
         }
         jdbc.update("update training_transcriptions set status='VERIFIED', verified_by=?, verified_at=now(), signature_id=? where id=?", actor.getId(), signature, id);
-        store.auditActivity(actor, activity, "TRAINING_TRANSCRIPTION_VERIFIED", "ENTERED", "VERIFIED", "Entered by " + enterer.getFullName());
+        store.auditActivity(actor, activity, "TRAINING_TRANSCRIPTION_VERIFIED", "ENTERED", "VERIFIED", "Entered by " + enterer.getFullName(),
+                java.util.List.of(TrainingStore.change("Entered By", null, enterer.getFullName())));
         return one(actor, (UUID) t.get("activity_id"), id);
     }
 
@@ -187,7 +189,8 @@ public class TrainingTranscriptionService {
         Map<String, Object> activity = decideChecks(actor, t);
         if (reason == null || reason.isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         jdbc.update("update training_transcriptions set status='REJECTED', verified_by=?, verified_at=now(), reject_reason=? where id=?", actor.getId(), reason.trim(), id);
-        store.auditActivity(actor, activity, "TRAINING_TRANSCRIPTION_REJECTED", "ENTERED", "REJECTED", reason.trim());
+        store.auditActivity(actor, activity, "TRAINING_TRANSCRIPTION_REJECTED", "ENTERED", "REJECTED", reason.trim(),
+                java.util.List.of(TrainingStore.change("Reason for Rejection", null, reason.trim())));
         return one(actor, (UUID) t.get("activity_id"), id);
     }
 

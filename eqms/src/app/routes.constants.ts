@@ -237,6 +237,7 @@ export const ROUTES = {
     LOGGED_IN_USERS: '/settings/users/logged-in',
     ACCESS_PROFILES: '/security/access-profiles',
     ESIGN_POLICIES: '/settings/electronic-signature',
+    OBJECT_NUMBERING: '/settings/object-numbering',
     // New pages
     PERMISSION_SETS: '/security/permission-sets',
     WORKFLOW_ROLE_CATALOG: '/security/advanced/workflow-roles',

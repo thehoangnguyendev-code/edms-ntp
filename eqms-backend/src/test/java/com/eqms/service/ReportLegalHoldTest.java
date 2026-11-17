@@ -130,6 +130,6 @@ class ReportLegalHoldTest {
         verify(signatures).requireValidToken(actor, "tok");
         verify(jdbc).update(anyString(), eq(false), eq(artifactId), eq(runId));
         verify(audit).logAs(eq(actor), eq("REPORT_ARTIFACT"), eq(artifactId.toString()), eq(artifactId), eq("REPORT_LEGAL_HOLD_RELEASED"), any(), any(),
-                eq("Investigation closed [signature ESIG-900]"));
+                eq("Investigation closed [signature ESIG-900]"), any());
     }
 }

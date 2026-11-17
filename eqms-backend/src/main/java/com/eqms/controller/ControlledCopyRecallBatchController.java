@@ -5,8 +5,10 @@ import com.eqms.dto.controlledcopyrecall.RecallBatchResponse;
 import com.eqms.dto.controlledcopyrecall.RecallBatchSummaryResponse;
 import com.eqms.dto.controlledcopyrecall.RecallItemResponse;
 import com.eqms.dto.controlledcopyrecall.RecallItemUpdateRequest;
+import com.eqms.dto.controlledcopyrecall.RecallCopyLookupResponse;
 import com.eqms.service.ControlledCopyRecallBatchService;
 import com.eqms.service.ExecutedRecordService;
+import com.eqms.service.RecallUploadProgress;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -48,13 +51,22 @@ public class ControlledCopyRecallBatchController {
 
     /** Starts a draft from up to 50 scans (PDF, PNG or JPEG). Nothing about any copy changes yet. */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<RecallBatchResponse> create(@RequestPart("files") List<MultipartFile> files) {
-        return ResponseEntity.ok(recallBatchService.createDraft(files));
+    public ResponseEntity<RecallBatchResponse> create(@RequestPart("files") List<MultipartFile> files,
+                                                     @RequestHeader(value = "X-Upload-Id", required = false) String uploadId) {
+        return ResponseEntity.ok(recallBatchService.createDraft(files, uploadId));
+    }
+
+    /** Where an upload is, by the id the browser sent in X-Upload-Id, so the progress bar follows the real work. 204 when nothing is known. */
+    @GetMapping("/upload-progress/{uploadId}")
+    public ResponseEntity<RecallUploadProgress.Snapshot> uploadProgress(@PathVariable String uploadId) {
+        RecallUploadProgress.Snapshot snapshot = recallBatchService.uploadProgress(uploadId);
+        return snapshot == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(snapshot);
     }
 
     @PostMapping(value = "/{batchId}/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<RecallBatchResponse> addFiles(@PathVariable UUID batchId, @RequestPart("files") List<MultipartFile> files) {
-        return ResponseEntity.ok(recallBatchService.addFiles(batchId, files));
+    public ResponseEntity<RecallBatchResponse> addFiles(@PathVariable UUID batchId, @RequestPart("files") List<MultipartFile> files,
+                                                        @RequestHeader(value = "X-Upload-Id", required = false) String uploadId) {
+        return ResponseEntity.ok(recallBatchService.addFiles(batchId, files, uploadId));
     }
 
     @GetMapping("/{batchId}")
@@ -68,8 +80,15 @@ public class ControlledCopyRecallBatchController {
             @PathVariable UUID batchId,
             @RequestParam(required = false) String search,
             @RequestParam(required = false, defaultValue = "itemNo") String sortBy,
-            @RequestParam(required = false, defaultValue = "asc") String sortDirection) {
-        return ResponseEntity.ok(recallBatchService.listItems(batchId, search, sortBy, sortDirection));
+            @RequestParam(required = false, defaultValue = "asc") String sortDirection,
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(recallBatchService.listItems(batchId, search, sortBy, sortDirection, status));
+    }
+
+    /** The controlled copy a typed number would match, with the reason it cannot be recalled by scan if there is one. */
+    @GetMapping("/{batchId}/copy-lookup")
+    public ResponseEntity<RecallCopyLookupResponse> copyLookup(@PathVariable UUID batchId, @RequestParam String number) {
+        return ResponseEntity.ok(recallBatchService.lookupCopy(batchId, number));
     }
 
     /** Excludes a scan, or identifies its copy by number when the QR code could not be read. */

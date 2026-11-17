@@ -230,7 +230,8 @@ public class TrainingRecordService {
         jdbc.update("insert into training_record_voids(id, record_id, reason, voided_by, signature_id) values (?,?,?,?,?)", UUID.randomUUID(), recordId, request.reason().trim(), actor.getId(), signature);
         store.event(TrainingStore.OBJECT_ACTIVITY, (UUID) activity.get("id"), (UUID) activity.get("id"), "RECORD_VOIDED",
                 Map.of("recordNo", String.valueOf(record.get("record_no")), "reason", request.reason().trim()), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_RECORD_VOIDED", null, null, "Record #" + record.get("record_no") + " of " + record.get("full_name") + ": " + request.reason().trim());
+        store.auditActivity(actor, activity, "TRAINING_RECORD_VOIDED", null, null, "Record #" + record.get("record_no") + " of " + record.get("full_name") + ": " + request.reason().trim(),
+                com.eqms.util.AuditChanges.with("Reason", request.reason(), com.eqms.util.AuditChanges.of("Record #" + record.get("record_no") + " \u203a Voided","No","Yes")));
         return TrainingRows.camel(jdbc.queryForList(RECORD_SELECT + " where r.id=?", recordId).getFirst());
     }
 

@@ -692,6 +692,18 @@ public class AuditTrailService {
             childType = "REPORTARTIFACT";
             childIds.addAll(reportPlatformService.getObject().artifactIdsOfRun(entityId));
         }
+        if (includeChildren && "DOCUMENT".equals(normalized)) {
+            // The history of a document includes the entries of its revisions (one source: the Audit Trail), each only if the person may open that revision's own Audit Trail tab.
+            childType = "REVISION";
+            for (DocumentRevisionRecord revision : documentRevisionRepository.findAllByDocument_IdOrderByCreatedAtDesc(entityId)) {
+                try {
+                    requireScopedEntityView("Revision", revision.getId().toString());
+                    childIds.add(revision.getId());
+                } catch (AccessDeniedException denied) {
+                    // this revision is not visible to the person: its entries stay out of the document's history
+                }
+            }
+        }
         final String childEntityType = childType;
         if (includeChildren && "CONTROLLED COPY DISTRIBUTION BATCH".equals(normalized)) {
             UserAccount actor = currentUserService.requireCurrentUser();
@@ -1565,7 +1577,7 @@ public class AuditTrailService {
      * in one word. The stored codes stay in the record and on the detail screen; the full action is the "action" of the detail.
      */
     private void putShownColumns(Map<String, Object> metadata, AuditLog log, AuditEntitySnapshot snapshot) {
-        metadata.put("objectTypeLabel", com.eqms.util.AuditObjectCatalog.typeLabel(log.getEntityType()));
+        metadata.put("objectTypeLabel", com.eqms.util.AuditObjectCatalog.typeLabel(log.getEntityType(), log.getActionType()));
         metadata.put("objectCodeLabel", com.eqms.util.AuditObjectCatalog.objectCode(log.getEntityType(), snapshot.documentNumber(), snapshot.revisionNumber(),
                 snapshot.entityCode(), snapshot.entityName(), log.getComment()));
         metadata.put("actionLabel", com.eqms.util.AuditActionVerb.of(log.getActionType()));
@@ -1752,7 +1764,8 @@ public class AuditTrailService {
                     ))
                     .orElseGet(() -> fallbackEntitySnapshot(entityType, entityId, fallbackEntityName));
         }
-        if ("REVISION".equals(normalizedType)) {
+        // the files of a revision (its published PDF, its review snapshot, its source) are named by the revision they belong to: their identifier is the revision's
+        if ("REVISION".equals(normalizedType) || "PUBLISHEDPDF".equals(normalizedType) || "REVIEWSNAPSHOT".equals(normalizedType) || "SOURCEDOCX".equals(normalizedType)) {
             return documentRevisionRepository.findById(entityId)
                     .map(revision -> new AuditEntitySnapshot(
                             revision.getRevisionName(),

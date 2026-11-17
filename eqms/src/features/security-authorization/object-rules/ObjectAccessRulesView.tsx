@@ -210,6 +210,7 @@ export const ObjectAccessRulesView: React.FC = () => {
     );
 
   const SORTABLE_COLS = [
+    { key: "ruleNumber", label: "Rule Number" },
     { key: "name", label: "Rule" },
     { key: "resourceType", label: "Resource" },
     { key: "createdAt", label: "Created Date" },
@@ -219,6 +220,13 @@ export const ObjectAccessRulesView: React.FC = () => {
   type RuleRow = (typeof rules)[number];
   const ruleColumns: DataTableColumn<RuleRow>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell33, cell: (_r, idx) => (currentPage - 1) * itemsPerPage + idx + 1 },
+    {
+      id: "ruleNumber",
+      header: "Rule Number",
+      label: "Rule Number",
+      sort: { direction: sortKey === "ruleNumber" ? sortDir : undefined, onSort: () => handleSort("ruleNumber") },
+      cell: (r) => <span className="text-xs sm:text-sm font-medium text-emerald-600 whitespace-nowrap">{r.ruleNumber ?? "—"}</span>,
+    },
     {
       id: "name",
       header: "Rule",

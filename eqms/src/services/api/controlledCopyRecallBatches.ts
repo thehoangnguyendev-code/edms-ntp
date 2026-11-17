@@ -11,12 +11,18 @@ export type RecallOutcome = 'PENDING' | 'RECALLED' | 'SKIPPED';
 
 /** The server's per-batch upload limit. */
 export const MAX_RECALL_SCANS = 50;
+/** The server's size limit for one scan (25 MB); checked here too so a big file is not uploaded just to be refused. */
+export const MAX_RECALL_FILE_BYTES = 25 * 1024 * 1024;
 /** Accepted scan type: PDF only (the company scanner produces PDF). The server decides from the file's own bytes; this guides the picker and the drop zone. */
 export const RECALL_SCAN_ACCEPT = '.pdf,application/pdf';
 
-/** Search and sort of a batch's scans, applied by the server. */
+/** The groups of scans the badges of a draft count: will be recalled, needs a match or is blocked, copy for reading only, left out. */
+export type RecallItemGroup = 'READY' | 'ATTENTION' | 'READ_ONLY' | 'EXCLUDED';
+
+/** Search, group and sort of a batch's scans, applied by the server. */
 export interface RecallItemQuery {
   search?: string;
+  status?: RecallItemGroup;
   sortBy?: 'itemNo' | 'file' | 'size' | 'code' | 'copy' | 'document' | 'recipient' | 'result';
   sortDirection?: 'asc' | 'desc';
 }
@@ -51,6 +57,8 @@ export interface RecallItem {
   outcome: RecallOutcome;
   outcomeMessage?: string | null;
   executedRecordId?: string | null;
+  /** The number of the record the scan was filed as, once the batch is signed. */
+  executedRecordNumber?: string | null;
   previewAvailable: boolean;
   copy?: RecallItemCopy | null;
   /** The scan this item was cut from, when one upload held pages of several copies. */
@@ -64,6 +72,12 @@ export interface RecallItem {
   loosePage: boolean;
   /** The scan is of a copy issued for reading only: never recalled by scan; the DCO removes it from the batch. */
   readAndComply: boolean;
+}
+
+/** What a typed controlled copy number matches, and why it cannot be recalled by scan (null when it can). */
+export interface RecallCopyLookup {
+  copy: RecallItemCopy | null;
+  problem: string | null;
 }
 
 export interface RecallBatch {
@@ -120,8 +134,17 @@ const MULTIPART = { headers: { 'Content-Type': 'multipart/form-data' } };
 /** Bytes sent so far for the current request (the request body is a little larger than the file itself). */
 export type UploadProgressHandler = (loadedBytes: number) => void;
 
-const withProgress = (onProgress?: UploadProgressHandler) => ({
-  ...MULTIPART,
+/** Where the server is in processing an upload (virus scan, storing, reading the code, matching): what the progress bar follows after the bytes are sent. */
+export interface RecallUploadStep {
+  stage: string;
+  message: string;
+  /** 0-100 of the server's work on this upload. */
+  percent: number;
+}
+
+/** The browser names each upload with a random id (X-Upload-Id) so it can ask the server where that upload is. */
+const withProgress = (onProgress?: UploadProgressHandler, uploadId?: string) => ({
+  headers: { ...MULTIPART.headers, ...(uploadId ? { 'X-Upload-Id': uploadId } : {}) },
   ...(onProgress ? { onUploadProgress: (event: { loaded: number }) => onProgress(event.loaded) } : {}),
 });
 
@@ -133,20 +156,32 @@ export const controlledCopyRecallApi = {
   },
 
   /** POST /controlled-copies/recall-batches -- starts a draft from up to 50 scans. Nothing about any copy changes yet. */
-  createDraft: async (files: File[], onProgress?: UploadProgressHandler): Promise<RecallBatch> => {
-    const response = await api.post<RecallBatch>(ENDPOINT, multipart(files), withProgress(onProgress));
+  createDraft: async (files: File[], onProgress?: UploadProgressHandler, uploadId?: string): Promise<RecallBatch> => {
+    const response = await api.post<RecallBatch>(ENDPOINT, multipart(files), withProgress(onProgress, uploadId));
     return response.data;
   },
 
   /** POST /controlled-copies/recall-batches/:id/files */
-  addFiles: async (batchId: string, files: File[], onProgress?: UploadProgressHandler): Promise<RecallBatch> => {
-    const response = await api.post<RecallBatch>(`${ENDPOINT}/${batchId}/files`, multipart(files), withProgress(onProgress));
+  addFiles: async (batchId: string, files: File[], onProgress?: UploadProgressHandler, uploadId?: string): Promise<RecallBatch> => {
+    const response = await api.post<RecallBatch>(`${ENDPOINT}/${batchId}/files`, multipart(files), withProgress(onProgress, uploadId));
     return response.data;
+  },
+
+  /** GET /controlled-copies/recall-batches/upload-progress/:uploadId -- the step the server is on for an upload; null when it knows nothing yet. */
+  getUploadProgress: async (uploadId: string): Promise<RecallUploadStep | null> => {
+    const response = await api.get<RecallUploadStep | ''>(`${ENDPOINT}/upload-progress/${uploadId}`);
+    return response.status === 204 || !response.data ? null : response.data;
   },
 
   /** GET /controlled-copies/recall-batches/:id/items -- the scans searched and sorted by the server. */
   listItems: async (batchId: string, query: RecallItemQuery = {}): Promise<RecallItem[]> => {
     const response = await api.get<RecallItem[]>(`${ENDPOINT}/${batchId}/items`, { params: query });
+    return response.data;
+  },
+
+  /** GET /controlled-copies/recall-batches/:id/copy-lookup -- the copy a number would match, before anything is matched. */
+  lookupCopy: async (batchId: string, number: string): Promise<RecallCopyLookup> => {
+    const response = await api.get<RecallCopyLookup>(`${ENDPOINT}/${batchId}/copy-lookup`, { params: { number } });
     return response.data;
   },
 

@@ -100,6 +100,21 @@ class SystemConfigurationServiceBrandingTest {
     }
 
     @Test
+    void loginLayoutIsClassicUnlessTheAdministratorChoosesSplitAndOnlyKnownValuesAreSaved() throws Exception {
+        assertEquals("CLASSIC", serviceWithGeneral("{}").getPublicBranding().loginLayout());
+        assertEquals("SPLIT", serviceWithGeneral("{\"appearance\":{\"loginLayout\":\"SPLIT\"}}").getPublicBranding().loginLayout());
+        assertEquals("CLASSIC", serviceWithGeneral("{\"appearance\":{\"loginLayout\":\"modern\"}}").getPublicBranding().loginLayout());
+        for (String ok : new String[] {"\"CLASSIC\"", "\"SPLIT\"", "null"}) {
+            var general = mapper.readTree("{\"appearance\":{\"loginLayout\":" + ok + "}}");
+            assertDoesNotThrow(() -> SystemConfigurationService.validateLoginLayout(general), ok);
+        }
+        for (String bad : new String[] {"\"split\"", "\"MODERN\"", "1", "true"}) {
+            var general = mapper.readTree("{\"appearance\":{\"loginLayout\":" + bad + "}}");
+            assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validateLoginLayout(general), bad);
+        }
+    }
+
+    @Test
     void knowledgeFolderNamesAreFullUnlessTheAdministratorChoosesAbbreviationAndOnlyKnownValuesAreSaved() throws Exception {
         assertEquals("FULL", serviceWithGeneral("{}").getPublicBranding().knowledgeFolderNames());
         assertEquals("ABBREVIATION", serviceWithGeneral("{\"appearance\":{\"knowledgeFolderNames\":\"ABBREVIATION\"}}").getPublicBranding().knowledgeFolderNames());

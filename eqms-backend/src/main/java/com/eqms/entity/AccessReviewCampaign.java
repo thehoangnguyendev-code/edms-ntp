@@ -13,6 +13,10 @@ public class AccessReviewCampaign {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    /** The number of the campaign (ObjectNumberService, kind ACCESS_REVIEW_CAMPAIGN); given once, never changed. */
+    @Column(name = "campaign_number", length = 40, updatable = false)
+    private String campaignNumber;
+
     @Column(nullable = false, length = 200)
     private String name;
 
@@ -63,6 +67,8 @@ public class AccessReviewCampaign {
     void onUpdate() { updatedAt = Instant.now(); }
 
     public UUID getId() { return id; }
+    public String getCampaignNumber() { return campaignNumber; }
+    public void setCampaignNumber(String campaignNumber) { this.campaignNumber = campaignNumber; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getDescription() { return description; }

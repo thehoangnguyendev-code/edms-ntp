@@ -71,6 +71,8 @@ public class KnowledgeSharingService {
     private static final int MAX_DEPARTMENTS = 50;
     private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(com.eqms.util.DateTimeFormatUtils.ZONE);
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ObjectNumberService numbers;
     private final ObjectAccessRuleRepository ruleRepository;
     private final DepartmentRepository departmentRepository;
     private final BusinessUnitRepository businessUnitRepository;
@@ -433,7 +435,7 @@ public class KnowledgeSharingService {
         boolean headOfOwner = mine == Level.DEPARTMENT_HEAD || (mine == Level.UNIT_HEAD && rule.getOwnerBusinessUnit() != null);
         String note = mine == Level.DELEGATE ? " (by a person who may share on behalf of the Head)"
                 : headOfOwner ? "" : " by " + actor.getFullName() + ", who is not the Department Head of " + owner;
-        auditTrailService.logAs(actor, "OBJECT_ACCESS_RULE", rule.getName(), rule.getId(), "UPDATED", "Active", "Active",
+        auditTrailService.logAs(actor, "OBJECT_ACCESS_RULE", rule.auditCode(), rule.getId(), "UPDATED", "Active", "Active",
                 "Took " + removed + " out of the " + ("DENY".equals(rule.getEffect()) ? "exclusion" : "share") + " of " + scopeLabel(rule) + " in " + owner + note,
                 List.of(new AuditTrailChangeResponse("People", String.join(", ", before), String.join(", ", granteeLabels(rule)))));
         if (mine == Level.DELEGATE) {
@@ -489,6 +491,7 @@ public class KnowledgeSharingService {
         }
 
         ObjectAccessRule rule = new ObjectAccessRule();
+        if (numbers != null) rule.setRuleNumber(numbers.allocate(ObjectNumberService.OBJECT_ACCESS_RULE));
         rule.setResourceType(target.kind());
         switch (target.kind()) {
             case "BUSINESS_UNIT" -> {
@@ -536,7 +539,7 @@ public class KnowledgeSharingService {
         rule.setCreatedBy(actor);
         rule.setUpdatedBy(actor);
         ruleRepository.save(rule);
-        auditTrailService.logAs(actor, "OBJECT_ACCESS_RULE", rule.getName(), rule.getId(), "CREATED", null, "Active",
+        auditTrailService.logAs(actor, "OBJECT_ACCESS_RULE", rule.auditCode(), rule.getId(), "CREATED", null, "Active",
                 (effect.equals("DENY") ? "Excluded " : "Shared ") + nodeLabel(target) + " in the Knowledge Base with " + String.join(", ", who)
                         + (level == Level.DELEGATE ? " (made by a person who may share on behalf of the Head)" : ""),
                 List.of(new AuditTrailChangeResponse("Item", null, nodeLabel(target)),
@@ -567,7 +570,7 @@ public class KnowledgeSharingService {
         boolean headOfOwner = mine == Level.DEPARTMENT_HEAD || (mine == Level.UNIT_HEAD && rule.getOwnerBusinessUnit() != null);
         String note = mine == Level.DELEGATE ? " (by a person who may share on behalf of the Head)"
                 : headOfOwner ? "" : " by " + actor.getFullName() + ", who is not the Department Head of " + owner;
-        auditTrailService.logAs(actor, "OBJECT_ACCESS_RULE", rule.getName(), rule.getId(), "DELETED", "Active", null,
+        auditTrailService.logAs(actor, "OBJECT_ACCESS_RULE", rule.auditCode(), rule.getId(), "DELETED", "Active", null,
                 "Removed the " + ("DENY".equals(rule.getEffect()) ? "exclusion" : "share") + " of " + scopeLabel(rule) + " in " + owner
                         + " (" + String.join(", ", who) + ")" + note,
                 List.of(new AuditTrailChangeResponse("People", String.join(", ", who), null)));

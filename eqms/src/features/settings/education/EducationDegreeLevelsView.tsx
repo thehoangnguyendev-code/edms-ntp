@@ -33,6 +33,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 
 /** Application Settings > Education > Degree Levels -- its own page, not part of "Dictionaries". */
 export const EducationDegreeLevelsView: React.FC = () => {
@@ -70,7 +71,7 @@ export const EducationDegreeLevelsView: React.FC = () => {
   const openResultModal = (type: "success" | "error", title: string, description: string) => setResultModal({ isOpen: true, type, title, description });
   const closeResultModal = () => setResultModal((prev) => ({ ...prev, isOpen: false }));
 
-  React.useEffect(() => { setCurrentPage(1); }, [statusFilter, modifiedFrom, modifiedTo, setCurrentPage]);
+  useResetPageOnChange(setCurrentPage, [statusFilter, modifiedFrom, modifiedTo]);
 
   const handleEdit = (item: EducationDegreeLevelItem) => { setSelectedItem(item); setShowEditModal(true); closeDropdown(); };
   const handleDelete = (item: EducationDegreeLevelItem) => { setSelectedItem(item); setShowDeleteModal(true); closeDropdown(); };

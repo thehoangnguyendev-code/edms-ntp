@@ -63,8 +63,7 @@ class LegacyBatchImportFullFlowTest {
     private DocumentType type;
     private BusinessUnit businessUnit;
     private Department department;
-    /** Real "admin" fixture -- V463 backfills documents.legacy_import.batch to every Permission
-     *  Set already holding documents.legacy_import.manage, which admin's Access Profile has. */
+    /** Real "admin" fixture. Legacy Import has no permission of its own since V801: it needs the permission that creates a document. */
     private UserAccount batchImportActor;
     private UserAccount singleOnlyActor;
 
@@ -78,7 +77,7 @@ class LegacyBatchImportFullFlowTest {
         batchImportActor = userAccountRepository.findAll().stream()
                 .filter(u -> "admin".equals(u.getUsername()))
                 .findFirst().orElseThrow(() -> new IllegalStateException(
-                        "Fixture 'admin' account not found -- required to hold documents.legacy_import.batch per V463"));
+                        "Fixture 'admin' account not found -- required to be allowed to create documents"));
 
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         singleOnlyActor = tx.execute(status -> {

@@ -178,7 +178,7 @@ export function documentRoutes(navigate: NavigateFunction) {
       <Route path="owned" element={<Suspense fallback={<LoadingFallback />}><DocumentsView viewType="owned-by-me" /></Suspense>} />
       <Route path="all" element={<Suspense fallback={<LoadingFallback />}><DocumentsView viewType="all" /></Suspense>} />
       <Route path="all/new" element={<Suspense fallback={<LoadingFallback />}><NewDocumentView /></Suspense>} />
-      <Route path="all/legacy-import" element={<ProtectedRoute requiredPermissions={["documents.legacy_import.manage"]}><Suspense fallback={<LoadingFallback />}><LegacyImportView /></Suspense></ProtectedRoute>} />
+      <Route path="all/legacy-import" element={<ProtectedRoute requiredPermissions={["documents.document.create"]}><Suspense fallback={<LoadingFallback />}><LegacyImportView /></Suspense></ProtectedRoute>} />
       <Route path="all/edit/:id" element={<Suspense fallback={<LoadingFallback />}><NewDocumentView /></Suspense>} />
 
       {/* Document Administration -- moved to System Administration, see SettingsRoutes.tsx

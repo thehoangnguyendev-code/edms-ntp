@@ -6,6 +6,7 @@ import java.util.UUID;
 /** An announcement in the administration screens. {@code state} is ACTIVE, SCHEDULED, EXPIRED or DISABLED. */
 public record AnnouncementResponse(
         UUID id,
+        String announcementNumber,
         String title,
         String message,
         String severity,

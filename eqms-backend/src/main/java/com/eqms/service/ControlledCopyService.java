@@ -3836,7 +3836,8 @@ public class ControlledCopyService {
                 evidence.setUploadedAt(uploadedAt);
                 evidence.setUploadedBy(currentUser);
                 controlledCopyEvidenceFileRepository.save(evidence);
-                auditTrailService.logAs(currentUser, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "UPLOAD_EVIDENCE", null, copy.getStatus(), evidence.getFileName());
+                auditTrailService.logAs(currentUser, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "UPLOAD_EVIDENCE", null, copy.getStatus(), evidence.getFileName(),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Evidence File",null,evidence.getFileName())));
             } catch (IOException ex) {
                 throw new IllegalStateException("Failed to store controlled copy evidence file: " + file.getOriginalFilename(), ex);
             }

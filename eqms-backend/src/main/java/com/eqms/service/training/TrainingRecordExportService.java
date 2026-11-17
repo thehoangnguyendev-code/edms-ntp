@@ -126,7 +126,8 @@ public class TrainingRecordExportService {
                 request.reason().trim(), null, null, null).getId();
         jdbc.update("insert into training_record_exports(id, person_user_id, reason, prepared_by, prepared_signature_id) values (?,?,?,?,?)", id, person.getId(), request.reason().trim(), actor.getId(), prepared);
         approvals.designate(actor, subject(id, person.getId()), "RECORD_EXPORT_APPROVE", request.approverUserId(), TrainingApprovalService.apart(actor.getId()));
-        audit.logAs(actor, TYPE, label(person), id, "TRAINING_RECORD_EXPORT_PREPARED", null, "PENDING_APPROVAL", request.reason().trim());
+        audit.logAs(actor, TYPE, codeOf(person), id, "TRAINING_RECORD_EXPORT_PREPARED", null, "PENDING_APPROVAL", request.reason().trim(),
+                List.of(TrainingStore.change("Reason for Export", null, request.reason().trim())));
         return TrainingRows.camel(jdbc.queryForList(SELECT + " where e.id=?", id).getFirst());
     }
 
@@ -158,7 +159,8 @@ public class TrainingRecordExportService {
         }
         jdbc.update("update training_record_exports set status='APPROVED', approved_by=?, approved_signature_id=?, provider=?, stored_path=?, sha256=?, size_bytes=?, record_count=?, generated_at=now(), updated_at=now() where id=?",
                 actor.getId(), signature, stored.provider(), stored.storedPath(), sha256(pdf), pdf.length, records.size(), id);
-        audit.logAs(actor, TYPE, label(owner), id, "TRAINING_RECORD_EXPORT_APPROVED", "PENDING_APPROVAL", "APPROVED", records.size() + " records, SHA-256 " + sha256(pdf));
+        audit.logAs(actor, TYPE, codeOf(owner), id, "TRAINING_RECORD_EXPORT_APPROVED", "PENDING_APPROVAL", "APPROVED", records.size() + " records, SHA-256 " + sha256(pdf),
+                List.of(TrainingStore.change("Records", null, records.size()), TrainingStore.change("SHA-256 Checksum", null, sha256(pdf))));
         return TrainingRows.camel(jdbc.queryForList(SELECT + " where e.id=?", id).getFirst());
     }
 
@@ -170,7 +172,8 @@ public class TrainingRecordExportService {
         UUID assignment = approvals.requireCanSign(actor, subject(id, (UUID) e.get("person_user_id")), "RECORD_EXPORT_APPROVE", TrainingApprovalService.apart((UUID) e.get("prepared_by")));
         approvals.complete(assignment, null);
         jdbc.update("update training_record_exports set status='REJECTED', reject_reason=?, approved_by=?, updated_at=now() where id=?", request.reason().trim(), actor.getId(), id);
-        audit.logAs(actor, TYPE, "Record export", id, "TRAINING_RECORD_EXPORT_REJECTED", "PENDING_APPROVAL", "REJECTED", request.reason().trim());
+        audit.logAs(actor, TYPE, auditCode(id), id, "TRAINING_RECORD_EXPORT_REJECTED", "PENDING_APPROVAL", "REJECTED", request.reason().trim(),
+                List.of(TrainingStore.change("Reason for Rejection", null, request.reason().trim())));
         return TrainingRows.camel(jdbc.queryForList(SELECT + " where e.id=?", id).getFirst());
     }
 
@@ -185,7 +188,7 @@ public class TrainingRecordExportService {
         try {
             byte[] bytes = files.readReportArtifact(String.valueOf(e.get("provider")), String.valueOf(e.get("stored_path")));
             if (!sha256(bytes).equals(e.get("sha256"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXPORT_INTEGRITY_FAILED");
-            audit.logAs(actor, TYPE, label(person), id, "TRAINING_RECORD_EXPORT_DOWNLOADED", null, null, "Downloaded");
+            audit.logAs(actor, TYPE, codeOf(person), id, "TRAINING_RECORD_EXPORT_DOWNLOADED", null, null, "Downloaded");
             return Map.of("bytes", bytes, "name", templates.fileName("APD.0014", "APD.0014", currentRevision(), Map.of("EMPLOYEE_CODE", person.getEmployeeCode() == null ? person.getUsername() : person.getEmployeeCode(),
                     "EMPLOYEE_NAME", String.valueOf(person.getFullName()), "DEPARTMENT", String.valueOf(person.getDepartment() == null ? "" : person.getDepartment()))) + ".pdf");
         } catch (IOException ex) {
@@ -237,6 +240,15 @@ public class TrainingRecordExportService {
     private TrainingApprovalService.Subject subject(UUID id, UUID personId) {
         UserAccount person = users.findById(personId).orElseThrow(() -> new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE"));
         return new TrainingApprovalService.Subject(TYPE, id, access.departmentOf(person), label(person), "training.record.export");
+    }
+
+    /** What the Audit Trail names an export by: the employee code of the person whose record it is (AUDIT-OBJECT-REGISTRY-2026-11-17). */
+    private static String codeOf(UserAccount person) {
+        return person.getEmployeeCode() != null && !person.getEmployeeCode().isBlank() ? person.getEmployeeCode() : person.getFullName();
+    }
+
+    private String auditCode(UUID id) {
+        return jdbc.queryForList("select coalesce(nullif(u.employee_code, ''), u.full_name) from training_record_exports e join app_users u on u.id = e.person_user_id where e.id=?", String.class, id).stream().findFirst().orElse("Training record export");
     }
 
     private static String label(UserAccount person) { return "Training record of " + person.getFullName(); }

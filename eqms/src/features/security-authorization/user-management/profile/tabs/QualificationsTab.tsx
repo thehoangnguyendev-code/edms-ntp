@@ -101,7 +101,7 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 auto-rows-min">
+    <div className="grid grid-cols-1 gap-4 md:gap-6">
       {/* Education Details — same table style as External Certifications below, for one
           consistent list UI across the tab instead of two different visual languages. */}
       <FormSection
@@ -251,7 +251,6 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
       <FormSection
         title="External Certifications"
         icon={<IconCertificate className="h-4 w-4" />}
-        className="xl:col-span-2"
         headerRight={
           <div className="flex flex-wrap items-center gap-2">
             {canEdit && isEditing && (

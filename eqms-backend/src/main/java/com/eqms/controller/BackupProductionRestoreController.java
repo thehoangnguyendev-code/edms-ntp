@@ -149,7 +149,8 @@ public class BackupProductionRestoreController {
                 "Restore of backup " + backupNumber + " into production" + (parts == null ? "" : " (" + String.join(", ", parts) + ")"),
                 "/internal/restores/production", extra, null);
         audit.logAs(actor, "BACKUP_RESTORE", backupNumber, entity, reply.ok() ? "PRODUCTION_RESTORE_REQUESTED" : "PRODUCTION_RESTORE_REFUSED", null, null,
-                reply.ok() ? "Requested a restore of backup " + backupNumber + (parts == null ? "" : " (" + String.join(", ", parts) + ")") + " into production, signed" : "Refused: " + reply.body().path("code").asText("UNKNOWN"));
+                reply.ok() ? "Requested a restore of backup " + backupNumber + (parts == null ? "" : " (" + String.join(", ", parts) + ")") + " into production, signed" : "Refused: " + reply.body().path("code").asText("UNKNOWN"),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Backup",null,backupNumber), com.eqms.util.AuditChanges.of("Result",null,reply.ok() ? "Requested and signed" : "Refused: " + reply.body().path("code").asText("UNKNOWN"))));
         return reply(reply);
     }
 
@@ -167,13 +168,20 @@ public class BackupProductionRestoreController {
         return action(actor, runCode, body, MEANING_ROLLBACK, "rollback", "PRODUCTION_RESTORE_ROLLED_BACK", "Rolled back");
     }
 
+    /** The run code is RR-<Restore Number>-<8 characters>; the Audit Trail names the restore by its Restore Number. A code of another shape is kept as it is. */
+    static String restoreNumberOf(String runCode) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("^RR-(.+)-[0-9a-f]{8}$").matcher(runCode == null ? "" : runCode);
+        return m.matches() ? m.group(1) : runCode;
+    }
+
     private ResponseEntity<JsonNode> action(UserAccount actor, String runCode, SignedBody body, String meaning, String path, String auditAction, String verb) {
         if (runCode == null || !RUN_CODE.matcher(runCode).matches()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "RESTORE_NOT_FOUND");
         UUID entity = UUID.nameUUIDFromBytes(("BACKUP_RESTORE:" + runCode).getBytes(StandardCharsets.UTF_8));
         BackupAgentClient.Reply reply = signedCall(actor, body, meaning, entity, runCode, verb + " restore " + runCode,
                 "/internal/restores/production/" + runCode + "/" + path, Map.of(), null);
-        audit.logAs(actor, "BACKUP_RESTORE", runCode, entity, reply.ok() ? auditAction : auditAction + "_REFUSED", null, null,
-                reply.ok() ? verb + " restore " + runCode + " with an electronic signature" : "Refused: " + reply.body().path("code").asText("UNKNOWN"));
+        audit.logAs(actor, "BACKUP_RESTORE", restoreNumberOf(runCode), entity, reply.ok() ? auditAction : auditAction + "_REFUSED", null, null,
+                reply.ok() ? verb + " restore " + runCode + " with an electronic signature" : "Refused: " + reply.body().path("code").asText("UNKNOWN"),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Restore",null,runCode), com.eqms.util.AuditChanges.of("Result",null,reply.ok() ? "Signed" : "Refused: " + reply.body().path("code").asText("UNKNOWN"))));
         return reply(reply);
     }
 

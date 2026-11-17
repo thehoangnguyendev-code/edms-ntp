@@ -26,6 +26,7 @@ import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
 import { pickerDateToIso } from "../shared/ReportListToolbar";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { displayDateTime } from "@/utils/format";
+import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 
 type StatusFilter = "All" | "Enabled" | "Disabled";
 const SERVER_STATUS: Record<StatusFilter, "ALL" | "ENABLED" | "DISABLED"> = { All: "ALL", Enabled: "ENABLED", Disabled: "DISABLED" };
@@ -79,9 +80,7 @@ export const ReportTypesView: React.FC = () => {
   const { searchQuery, setSearchQuery, currentPage, setCurrentPage, itemsPerPage, setItemsPerPage, totalPages, totalItems, items, isLoading, sortConfig, handleSort, reload } =
     useDictionaryServerTable<ReportTypeListItem>({ fetcher, defaultSortBy: "name", extraParams });
 
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter, categoryFilter, modifiedFromDate, modifiedToDate, setCurrentPage]);
+  useResetPageOnChange(setCurrentPage, [statusFilter, categoryFilter, modifiedFromDate, modifiedToDate]);
 
   const closeToggle = () => {
     setShowToggleModal(false);

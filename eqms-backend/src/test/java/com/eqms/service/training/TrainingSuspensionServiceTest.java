@@ -23,6 +23,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -85,7 +86,7 @@ class TrainingSuspensionServiceTest {
 
         service.raise(actor, activity(), participant(personId), new BigDecimal("55.00"));
 
-        verify(store).auditActivity(eq(actor), any(), eq("TRAINING_WORK_SUSPENSION_RAISED"), any(), eq("OPEN"), contains("did not pass (55.00%)"));
+        verify(store).auditActivity(eq(actor), any(), eq("TRAINING_WORK_SUSPENSION_RAISED"), any(), eq("OPEN"), contains("did not pass (55.00%)"), any());
         verify(notifier).send(eq("TRAINING_WORK_SUSPENDED"), eq(trainee), eq(actor), any(), any(), any(), eq(activityId), any());
     }
 
@@ -95,7 +96,7 @@ class TrainingSuspensionServiceTest {
 
         service.raise(actor, activity(), participant(personId), new BigDecimal("40"));
 
-        verify(store, never()).auditActivity(any(), any(), any(), any(), any(), any());
+        verify(store, never()).auditActivity(any(), any(), any(), any(), any(), any(), any());
         verify(notifier, never()).send(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
@@ -118,7 +119,7 @@ class TrainingSuspensionServiceTest {
 
         service.clearOnPass(actor, retraining, participant(personId));
 
-        verify(store).auditActivity(eq(actor), any(), eq("TRAINING_WORK_SUSPENSION_CLEARED"), eq("OPEN"), eq("CLEARED"), contains("retraining was passed"));
+        verify(store).auditActivity(eq(actor), any(), eq("TRAINING_WORK_SUSPENSION_CLEARED"), eq("OPEN"), eq("CLEARED"), contains("retraining was passed"), any());
     }
 
     @Test
@@ -137,7 +138,7 @@ class TrainingSuspensionServiceTest {
         service.clearOnPass(actor, secondRetraining, person);
 
         verify(jdbc).queryForList(contains("person_user_id = ? and (activity_id = ?"), eq(new Object[] {person.get("id"), personId, root, root}));
-        verify(store).auditActivity(eq(actor), any(), eq("TRAINING_WORK_SUSPENSION_CLEARED"), eq("OPEN"), eq("CLEARED"), contains("retraining was passed"));
+        verify(store).auditActivity(eq(actor), any(), eq("TRAINING_WORK_SUSPENSION_CLEARED"), eq("OPEN"), eq("CLEARED"), contains("retraining was passed"), any());
     }
 
     private Map<String, Object> open() {
@@ -188,7 +189,8 @@ class TrainingSuspensionServiceTest {
         service.resume(actor, (UUID) row.get("id"), new TrainingSuspensionService.ResumeRequest("Retrained on the job", "token"));
 
         verify(signatures).createEntitySignature(any(), any(), any(), any(), eq("token"), eq("TRAINING_WORK_RESUMED"), any(), any(), any(), any());
-        verify(store).auditActivity(eq(actor), any(), eq("TRAINING_WORK_SUSPENSION_CLEARED"), eq("OPEN"), eq("CLEARED"), contains("Retrained on the job"));
+        verify(store).auditActivity(eq(actor), any(), eq("TRAINING_WORK_SUSPENSION_CLEARED"), eq("OPEN"), eq("CLEARED"), contains("Retrained on the job"),
+                argThat(changes -> changes.size() == 1 && "Reason for Resuming Work".equals(changes.get(0).field()) && "Retrained on the job".equals(changes.get(0).newValue())));
         verify(notifier).send(eq("TRAINING_WORK_RESUMED"), eq(trainee), eq(actor), any(), any(), any(), eq(activityId), any());
     }
 }

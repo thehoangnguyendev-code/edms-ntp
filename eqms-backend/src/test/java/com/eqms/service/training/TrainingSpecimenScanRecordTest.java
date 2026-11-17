@@ -93,7 +93,7 @@ class TrainingSpecimenScanRecordTest {
         var order = inOrder(jdbc, audit);
         order.verify(jdbc).update(contains("set status='OBSOLETED'"), any(UUID.class));
         order.verify(jdbc).update(contains("values (?,?,?,'APPROVED',current_date"), any(Object[].class));
-        order.verify(audit).logAs(eq(actor), eq("TRAINING_SPECIMEN_SIGNATURE"), anyString(), any(UUID.class), eq("TRAINING_SPECIMEN_UPLOADED"), eq("APPROVED"), eq("APPROVED"), eq("Signature changed"));
+        order.verify(audit).logAs(eq(actor), eq("TRAINING_SPECIMEN_SIGNATURE"), anyString(), any(UUID.class), eq("TRAINING_SPECIMEN_UPLOADED"), eq("APPROVED"), eq("APPROVED"), eq("Signature changed"), any());
     }
 
     @Test

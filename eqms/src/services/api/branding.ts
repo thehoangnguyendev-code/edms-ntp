@@ -27,6 +27,8 @@ export interface PublicBranding {
   toastColor?: string;
   /** How strong the shadow of every system message is, 0 (none) to 100 (40 when nothing was set). */
   toastShadow?: number;
+  /** The sign-in screen: CLASSIC (default) or SPLIT (card with a blue product panel). Chosen by the administrator, the same for every user. */
+  loginLayout?: 'CLASSIC' | 'SPLIT';
   /** How the materials of a training are drawn: TABLE (default) or TILES. Chosen by the administrator. */
   trainingMaterialsLayout?: 'TABLE' | 'TILES';
   /** How the Audit Trail tab of a record is drawn (the Audit Trail module itself is always a table), and the look of the timeline. */

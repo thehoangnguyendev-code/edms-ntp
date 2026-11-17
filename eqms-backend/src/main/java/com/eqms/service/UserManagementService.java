@@ -54,6 +54,7 @@ public class UserManagementService {
     /** app_users.role_name is retired as an entitlement source (V280); every create/update sets it
      *  to this fixed marker instead of accepting caller-supplied free text. Preserved as a column
      *  (not dropped) for historical audit-trail compatibility per V280's own stated intent. */
+    private static final String SELF_RESET_PASSWORD_MESSAGE = "You cannot reset your own password here. Use Preferences > Security.";
     private static final String LEGACY_ROLE_NAME_MARKER = "ACCESS_PROFILE_MANAGED";
 
     /** Sentinel value for the "role" list-filter/export param (kept as "role" to avoid an
@@ -336,7 +337,7 @@ public class UserManagementService {
                 .stream()
                 .map(user -> toResponse(user, false, activeSessionUserIds.contains(user.getId()), onlineUserIds.contains(user.getId()),
                         accessProfileNamesByUser.getOrDefault(user.getId(), List.of()),
-                        buildCapabilities(user.getId(), isLockedOut(user),
+                        buildCapabilities(user.getId(), isLockedOut(user), java.util.Objects.equals(user.getId(), currentUser.getId()),
                                 code -> heldPermissions.computeIfAbsent(code, c -> permissionEvaluationService.hasPermission(currentUser, c)))))
                 .toList();
 
@@ -527,9 +528,7 @@ public class UserManagementService {
         // let them know they are no longer required to use MFA, so they don't assume it's still
         // mandatory (and, e.g., don't get locked out worrying their authenticator app is broken).
         if (wasMfaRequiredByAdmin && !user.isMfaRequiredByAdmin() && wasMfaEnabled) {
-            emailService.sendEmail(user.getEmail(), "Multifactor Authentication No Longer Required", Map.of(
-                    "fullName", user.getFullName() == null ? user.getUsername() : user.getFullName()
-            ));
+            notificationDispatcher.dispatch(NotificationMandatoryEvents.MFA_REQUIREMENT_REMOVED, List.of(user), Map.of());
         }
 
         auditService.log("user_updated", user, auditDetails(
@@ -791,19 +790,12 @@ public class UserManagementService {
 
     @Transactional
     public ResetPasswordResponse resetPassword(UUID id, UserResetPasswordRequest request, HttpServletRequest httpRequest) {
+        // Owner decision (2026-11-17): Reset Password needs no electronic signature. The action is
+        // still permission-gated (requireUserResetPassword) and recorded in the audit log/trail.
         UserAccount actor = currentUserService.requireCurrentUser();
         UserAccount user = requireUser(id);
-        // GMP gap fix: the FE modal has always collected and sent a signature token for this
-        // action (ResetPasswordModal.tsx) but the backend previously had no field to bind it to
-        // and silently discarded it -- verify it for real now, same pattern as forceLogout.
-        String signatureToken = request == null ? null : request.signatureToken();
-        if (signatureToken == null || signatureToken.isBlank()) {
-            throw new IllegalArgumentException("Signature token is required");
-        }
-        var signatureClaims = tokenService.parseSignatureToken(signatureToken)
-                .orElseThrow(() -> new UnauthorizedException("Invalid signature token"));
-        if (!signatureClaims.principal().userId().equals(actor.getId())) {
-            throw new UnauthorizedException("Signature token does not belong to current user");
+        if (java.util.Objects.equals(actor.getId(), user.getId())) {
+            throw new IllegalArgumentException(SELF_RESET_PASSWORD_MESSAGE);
         }
         String oldStatus = user.getStatus() != null ? user.getStatus().name() : null;
 
@@ -852,6 +844,17 @@ public class UserManagementService {
                 user.getStatus() != null ? user.getStatus().name() : null,
                 "Password reset for user " + user.getUsername()
         );
+        // The new temporary password is e-mailed to the person (owner request 2026-11-17), the same way as for Unlock: a mandatory e-mail only event.
+        // It is not put in the general "Password changed" notice, which is also sent after a person changed their own password.
+        String baseUrl = httpRequest == null ? null : httpRequest.getHeader("Origin");
+        if (baseUrl == null || baseUrl.isBlank()) {
+            baseUrl = "http://localhost:3000";
+        }
+        notificationDispatcher.dispatch(NotificationMandatoryEvents.ACCOUNT_PASSWORD_RESET, List.of(user), Map.of(
+                "username", user.getUsername(),
+                "tempPassword", rawPassword,
+                "loginLink", baseUrl + "/login"
+        ));
         notificationDispatcher.dispatch("security.password_changed", List.of(user), Map.of());
 
         return new ResetPasswordResponse(rawPassword);
@@ -912,8 +915,7 @@ public class UserManagementService {
         if (baseUrl == null || baseUrl.isBlank()) {
             baseUrl = "http://localhost:3000";
         }
-        emailService.sendEmail(user.getEmail(), "Account Unlocked - Temporary Password", Map.of(
-                "fullName", user.getFullName() == null ? user.getUsername() : user.getFullName(),
+        notificationDispatcher.dispatch(NotificationMandatoryEvents.ACCOUNT_UNLOCKED, List.of(user), Map.of(
                 "username", user.getUsername(),
                 "tempPassword", rawPassword,
                 "loginLink", baseUrl + "/login"
@@ -1081,9 +1083,8 @@ public class UserManagementService {
                 oldStatus,
                 "REVOKED",
                 "Logged out immediately: " + request.reason(),
-                null,
-                null
-        );
+                com.eqms.util.AuditChanges.reason("Reason", request.reason()),
+                null);
     }
 
     public UserPermissionsResponse getPermissions(UUID id) {
@@ -1101,7 +1102,7 @@ public class UserManagementService {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         UserAccount targetUser = requireUser(id);
         Map<String, Boolean> heldPermissions = new HashMap<>();
-        return buildCapabilities(id, isLockedOut(targetUser),
+        return buildCapabilities(id, isLockedOut(targetUser), java.util.Objects.equals(targetUser.getId(), currentUser.getId()),
                 code -> heldPermissions.computeIfAbsent(code, c -> permissionEvaluationService.hasPermission(currentUser, c)));
     }
 
@@ -1110,7 +1111,7 @@ public class UserManagementService {
     }
 
     /** The one place that decides the row actions, for the list and for the single-account endpoint: the permission checks are given as a function so a caller can read each permission once. */
-    private com.eqms.dto.user.UserActionCapabilitiesResponse buildCapabilities(UUID id, boolean isLockedOut, java.util.function.Predicate<String> has) {
+    private com.eqms.dto.user.UserActionCapabilitiesResponse buildCapabilities(UUID id, boolean isLockedOut, boolean isSelf, java.util.function.Predicate<String> has) {
         Map<String, com.eqms.dto.user.UserActionCapabilitiesResponse.ActionCapability> actions = new LinkedHashMap<>();
         actions.put("view", userCapability(has, "settings.user.view"));
         // Profile editing is a first-class row action.  The UI consumes this
@@ -1118,7 +1119,8 @@ public class UserManagementService {
         // Keep it backed by the same permission used by the mutation endpoints
         // instead of inferring editability from a role name.
         actions.put("edit", userCapability(has, "settings.user.edit"));
-        actions.put("resetPassword", userCapability(has, "settings.user.reset_password"));
+        // Resetting revokes every session of the account, so doing it to your own account would end your own session.
+        actions.put("resetPassword", userCapability(has, "settings.user.reset_password", !isSelf, SELF_RESET_PASSWORD_MESSAGE));
         actions.put("suspend", userCapability(has, "settings.user.edit"));
         actions.put("terminate", userCapability(has, "settings.user.edit"));
         actions.put("reinstate", userCapability(has, "settings.user.edit"));

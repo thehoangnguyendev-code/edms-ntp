@@ -102,7 +102,8 @@ public class BackupRehearsalController {
         BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/backups/" + id + "/rehearsals", body);
         if (reply.ok()) {
             audit.logAs(actor, "BACKUP", id, uuid(reply.body().path("id").asText()), "RESTORE_REHEARSAL_REQUESTED", null, "QUEUED",
-                    "Asked for a test restore of " + id + " as " + reply.body().path("rehearsalId").asText() + ". Reason: " + reason);
+                    "Asked for a test restore of " + id + " as " + reply.body().path("rehearsalId").asText() + ". Reason: " + reason,
+                com.eqms.util.AuditChanges.with("Reason", reason, com.eqms.util.AuditChanges.of("Backup",null,id), com.eqms.util.AuditChanges.of("Test Restore",null,reply.body().path("rehearsalId").asText())));
         }
         return reply(reply);
     }

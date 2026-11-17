@@ -39,12 +39,12 @@ class ReportFileVerifyTest {
     @Test void theStoredFileMatchesAndIsRecordedAsVerified(){
         var result=service.verifyArtifactFile(actor,runId,artifactId,bytes("abc"),"copy.xlsx");
         assertTrue(result.match());assertEquals(ABC,result.uploadedSha256());assertEquals(3,result.uploadedSize());assertEquals(3,result.storedSize());
-        verify(audit).logAs(eq(actor),eq("REPORT_ARTIFACT"),eq("RPT.0008-RUN-000007.xlsx"),eq(artifactId),eq("REPORT_ARTIFACT_VERIFIED"),isNull(),isNull(),anyString());
+        verify(audit).logAs(eq(actor),eq("REPORT_ARTIFACT"),eq("RPT.0008-RUN-000007.xlsx"),eq(artifactId),eq("REPORT_ARTIFACT_VERIFIED"),isNull(),isNull(),anyString(), any());
     }
     @Test void aFileWithOneChangedByteDoesNotMatchAndIsRecordedUnderItsOwnEvent(){
         var result=service.verifyArtifactFile(actor,runId,artifactId,bytes("abd"),"edited.xlsx");
         assertFalse(result.match());assertNotEquals(ABC,result.uploadedSha256());assertEquals(ABC,result.storedSha256());
-        verify(audit).logAs(eq(actor),eq("REPORT_ARTIFACT"),anyString(),eq(artifactId),eq("REPORT_ARTIFACT_VERIFY_MISMATCH"),isNull(),isNull(),contains("NOT the stored file"));
+        verify(audit).logAs(eq(actor),eq("REPORT_ARTIFACT"),anyString(),eq(artifactId),eq("REPORT_ARTIFACT_VERIFY_MISMATCH"),isNull(),isNull(),contains("NOT the stored file"), any());
     }
     @Test void aPersonWhoMayNotDownloadTheFileCannotLearnAnythingAboutIt(){
         artifact.put("requester_user_id",UUID.randomUUID());
@@ -68,7 +68,7 @@ class ReportFileVerifyTest {
     }
     @Test void aControlCharacterInTheUploadedNameDoesNotReachTheAuditText(){
         service.verifyArtifactFile(actor,runId,artifactId,bytes("abc"),"a\nforged line.xlsx");
-        verify(audit).logAs(any(),any(),any(),any(),any(),any(),any(),argThat(text->!String.valueOf(text).contains("\n")));
+        verify(audit).logAs(any(),any(),any(),any(),any(),any(),any(),argThat(text->!String.valueOf(text).contains("\n")), any());
     }
 
     @Test void theInformationSheetOfAWorkbookNamesTheRunAndSaysItIsADataCopy() throws Exception {

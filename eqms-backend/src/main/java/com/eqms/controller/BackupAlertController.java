@@ -6,6 +6,7 @@ import com.eqms.entity.UserStatus;
 import com.eqms.repository.UserAccountRepository;
 import com.eqms.service.AuditTrailService;
 import com.eqms.service.BackupAgentClient;
+import com.eqms.service.ObjectNumberService;
 import com.eqms.service.PermissionEvaluationService;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.CacheControl;
@@ -52,6 +53,8 @@ public class BackupAlertController {
 
     private final CurrentUserService currentUserService;
     private final PermissionEvaluationService permissions;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ObjectNumberService numbers;
     private final BackupAgentClient agent;
     private final AuditTrailService audit;
     private final UserAccountRepository users;
@@ -89,11 +92,18 @@ public class BackupAlertController {
             uri.queryParam("severity", "{severity}");
             vars.put("severity", cut(severity, 20));
         }
-        if (search != null && !search.isBlank()) {
+        // a search that is (part of) the number of an alert finds that alert: the numbers are kept here, the alerts in the Backup Agent
+        java.util.List<String> byNumber = numbers == null || search == null ? java.util.List.of() : numbers.backupAlertIdsByNumber(search);
+        if (!byNumber.isEmpty()) {
+            uri.queryParam("ids", "{ids}");
+            vars.put("ids", String.join(",", byNumber));
+        } else if (search != null && !search.isBlank()) {
             uri.queryParam("search", "{search}");
             vars.put("search", cut(search, 200));
         }
-        return reply(agent.exchange(HttpMethod.GET, uri.buildAndExpand(vars).encode().toUriString(), null));
+        BackupAgentClient.Reply listed = agent.exchange(HttpMethod.GET, uri.buildAndExpand(vars).encode().toUriString(), null);
+        if (listed.ok()) numberTheAlerts(listed.body());
+        return reply(listed);
     }
 
     @PostMapping("/alerts/{alertId}/acknowledge")
@@ -106,8 +116,9 @@ public class BackupAlertController {
         BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/alerts/" + id + "/acknowledge",
                 Map.of("by", actor.getUsername(), "comment", comment));
         if (reply.ok()) {
-            audit.logAs(actor, "BACKUP_ALERT", "Backup alert", BackupAuditIds.of("alert", id), "ALERT_ACKNOWLEDGED", "OPEN", "ACKNOWLEDGED",
-                    "Acknowledged a backup alert" + (comment.isEmpty() ? "" : ". Note: " + comment));
+            audit.logAs(actor, "BACKUP_ALERT", numbers == null ? "Backup alert" : numbers.backupAlertNumber(id, ObjectNumberService.currentYear()), BackupAuditIds.of("alert", id), "ALERT_ACKNOWLEDGED", "OPEN", "ACKNOWLEDGED",
+                    "Acknowledged a backup alert" + (comment.isEmpty() ? "" : ". Note: " + comment),
+                com.eqms.util.AuditChanges.reason("Note", comment));
         }
         return reply(reply);
     }
@@ -136,9 +147,10 @@ public class BackupAlertController {
             JsonNode before = reply.body() == null ? null : reply.body().path("previous");
             String was = before == null || before.isMissingNode() ? "" : " (was: in the application " + (before.path("inApp").asBoolean() ? "on" : "off")
                     + ", e-mail " + (before.path("email").asBoolean() ? "on" : "off") + (before.path("threshold").isNull() ? "" : ", limit " + before.path("threshold").asText()) + ")";
-            audit.logAs(actor, "BACKUP_ALERT_RULE", code, BackupAuditIds.of("alert-rule", code), "ALERT_RULE_CHANGED", null, "CHANGED",
+            audit.logAs(actor, "BACKUP_ALERT_RULE", ruleName(code), BackupAuditIds.of("alert-rule", code), "ALERT_RULE_CHANGED", null, "CHANGED",
                     "Changed alert rule " + code + ": in the application " + (body.inApp() ? "on" : "off") + ", e-mail " + (body.email() ? "on" : "off")
-                            + (body.threshold() == null ? "" : ", limit " + body.threshold()) + was + ". Reason: " + reason);
+                            + (body.threshold() == null ? "" : ", limit " + body.threshold()) + was + ". Reason: " + reason,
+                com.eqms.util.AuditChanges.with("Reason", reason, com.eqms.util.AuditChanges.of("Rule",null,code), com.eqms.util.AuditChanges.of("In-App Notification",null,body.inApp() ? "On" : "Off"), com.eqms.util.AuditChanges.of("E-mail",null,body.email() ? "On" : "Off"), com.eqms.util.AuditChanges.of("Limit",null,body.threshold())));
         }
         return reply(reply);
     }
@@ -162,7 +174,8 @@ public class BackupAlertController {
                 Map.of("by", actor.getUsername(), "username", person.getUsername()));
         if (reply.ok()) {
             audit.logAs(actor, "BACKUP_ALERT_RECIPIENT", person.getUsername(), BackupAuditIds.of("recipient", person.getUsername()), "ALERT_RECIPIENT_ADDED", null, "ACTIVE",
-                    "Added " + person.getUsername() + " to the people who receive backup alerts");
+                    "Added " + person.getUsername() + " to the people who receive backup alerts",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Recipient",null,person.getUsername())));
         }
         return reply(reply);
     }
@@ -177,7 +190,8 @@ public class BackupAlertController {
                 Map.of("by", actor.getUsername()));
         if (reply.ok()) {
             audit.logAs(actor, "BACKUP_ALERT_RECIPIENT", target, BackupAuditIds.of("recipient", target), "ALERT_RECIPIENT_REMOVED", "ACTIVE", "REMOVED",
-                    "Removed " + target + " from the people who receive backup alerts");
+                    "Removed " + target + " from the people who receive backup alerts",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Recipient",target,null)));
         }
         return reply(reply);
     }
@@ -195,6 +209,34 @@ public class BackupAlertController {
 
     private static String cut(String value, int max) {
         return value.length() > max ? value.substring(0, max) : value;
+    }
+
+    /** Gives each alert of the page its number (the oldest first, so the numbers follow the order the alerts were raised) and puts it in the answer. */
+    private void numberTheAlerts(JsonNode body) {
+        if (numbers == null || body == null || !body.path("data").isArray()) return;
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> alerts = new java.util.ArrayList<>();
+        for (JsonNode alert : body.path("data")) if (alert instanceof com.fasterxml.jackson.databind.node.ObjectNode node && node.hasNonNull("id")) alerts.add(node);
+        alerts.sort(java.util.Comparator.comparing(a -> a.path("at").asText("")));
+        for (com.fasterxml.jackson.databind.node.ObjectNode alert : alerts) {
+            int year = ObjectNumberService.currentYear();
+            try {
+                year = java.time.OffsetDateTime.parse(alert.path("at").asText()).atZoneSameInstant(com.eqms.util.DateTimeFormatUtils.ZONE).getYear();
+            } catch (RuntimeException ignored) {
+                // an alert with no readable time is numbered in the current year
+            }
+            alert.put("alertNumber", numbers.backupAlertNumber(alert.path("id").asText(), year));
+        }
+    }
+
+    /** The name of an alert rule as a person reads it ("Capacity High"), not its code (CAPACITY_HIGH). */
+    static String ruleName(String code) {
+        StringBuilder out = new StringBuilder();
+        for (String word : (code == null ? "" : code).toLowerCase(java.util.Locale.ROOT).split("[_\\s]+")) {
+            if (word.isEmpty()) continue;
+            if (out.length() > 0) out.append(' ');
+            out.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return out.toString();
     }
 
     private static ResponseEntity<JsonNode> reply(BackupAgentClient.Reply reply) {

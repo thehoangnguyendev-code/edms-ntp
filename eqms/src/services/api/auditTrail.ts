@@ -345,6 +345,8 @@ export const auditTrailApi = {
 
 export interface AuditTrailReviewCampaignSummary {
   id: string;
+  /** The Audit Trail Campaign Number (Object Numbering); a campaign made before numbers existed has none until the start-up numbering gave it one. */
+  campaignNumber?: string | null;
   name: string;
   description?: string | null;
   reviewPeriodStart?: string | null;

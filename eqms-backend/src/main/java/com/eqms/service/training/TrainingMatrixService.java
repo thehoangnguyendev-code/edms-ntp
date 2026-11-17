@@ -287,7 +287,8 @@ public class TrainingMatrixService {
                      order by coalesce(training_topic_key(r.topic_text), r.document_id::text), v.effective_at desc nulls last) src
             """, versionId);
         ensureAllEmployees(versionId, departmentId);
-        audit.logAs(actor, "TRAINING_MATRIX", code, matrixId, "TRAINING_MATRIX_CREATED", null, "DRAFT", "Matrix created with a draft version 1");
+        audit.logAs(actor, "TRAINING_MATRIX", code, matrixId, "TRAINING_MATRIX_CREATED", null, "DRAFT", "Matrix created with a draft version 1",
+                List.of(TrainingStore.change("Version", null, "1")));
         return version(actor, versionId);
     }
 
@@ -389,7 +390,8 @@ public class TrainingMatrixService {
             jdbc.update("insert into training_matrix_cells(row_id, position_id) select ?, position_id from training_matrix_cells where row_id=?", rowId, row.get("id"));
         }
         ensureAllEmployees(versionId, (UUID) m.get("department_id"));
-        audit.logAs(actor, "TRAINING_MATRIX", m.get("code") + " v" + next, versionId, "TRAINING_MATRIX_UPGRADED", null, "DRAFT", "New version " + next + " started from version " + effective.getFirst().get("version_no"));
+        audit.logAs(actor, "TRAINING_MATRIX", m.get("code") + " v" + next, versionId, "TRAINING_MATRIX_UPGRADED", null, "DRAFT", "New version " + next + " started from version " + effective.getFirst().get("version_no"),
+                List.of(TrainingStore.change("Version", effective.getFirst().get("version_no"), next)));
         return versionId;
     }
 
@@ -452,13 +454,15 @@ public class TrainingMatrixService {
             else {
                 jdbc.update("update training_matrix_versions set version=version+1, updated_at=now() where id=?", target);
                 audit.logAs(actor, "TRAINING_MATRIX", m.get("code") + " (draft)", target, "TRAINING_MATRIX_LOCKED_ROWS_APPLIED", null, "DRAFT",
-                        changed + " row" + (changed == 1 ? "" : "s") + " locked by Quality Assurance applied from " + label(source));
+                        changed + " row" + (changed == 1 ? "" : "s") + " locked by Quality Assurance applied from " + label(source),
+                        List.of(TrainingStore.change("Locked Rows Applied", null, changed), TrainingStore.change("Applied From", null, label(source))));
             }
             entry.put("outcome", outcome);
             entry.put("rows", changed);
             report.add(entry);
         }
-        audit.logAs(actor, "TRAINING_MATRIX", label(source), versionId, "TRAINING_MATRIX_LOCKED_ROWS_APPLY", null, null, rows.size() + " locked row" + (rows.size() == 1 ? "" : "s") + " applied to " + report.size() + " other matrices");
+        audit.logAs(actor, "TRAINING_MATRIX", label(source), versionId, "TRAINING_MATRIX_LOCKED_ROWS_APPLY", null, null, rows.size() + " locked row" + (rows.size() == 1 ? "" : "s") + " applied to " + report.size() + " other matrices",
+                List.of(TrainingStore.change("Locked Rows", null, rows.size()), TrainingStore.change("Matrices Updated", null, report.size())));
         return Map.of("lockedRows", rows.size(), "matrices", report);
     }
 
@@ -529,7 +533,8 @@ public class TrainingMatrixService {
         approvals.complete(assignment, null);
         approvals.cancelOpen(TYPE, versionId, "Rejected");
         jdbc.update("update training_matrix_versions set status='DRAFT', reject_reason=?, version=version+1, updated_at=now() where id=?", request.reason().trim(), versionId);
-        audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_REJECTED", "PENDING_APPROVAL", "DRAFT", request.reason().trim());
+        audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_REJECTED", "PENDING_APPROVAL", "DRAFT", request.reason().trim(),
+                List.of(TrainingStore.change("Reason for Rejection", null, request.reason().trim())));
         tellPreparer(v, actor, "TRAINING_MATRIX_REJECTED", "Training: matrix sent back", label(v) + " was sent back by " + actor.getFullName() + ". Reason: " + request.reason().trim());
         return version(actor, versionId);
     }

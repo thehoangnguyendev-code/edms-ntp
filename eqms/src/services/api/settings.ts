@@ -99,6 +99,8 @@ export interface UserAuthorizationSummary {
 
 export interface ObjectAccessRuleResponse {
   id: string;
+  /** The Object Access Rule Number (Object Numbering). */
+  ruleNumber?: string | null;
   name: string;
   description: string | null;
   accessProfileId: string | null;
@@ -1298,6 +1300,8 @@ export const settingsApi = {
 
 export interface AccessReviewCampaignSummary {
   id: string;
+  /** The Access Review Campaign Number (Object Numbering). */
+  campaignNumber?: string | null;
   name: string;
   description?: string | null;
   reviewPeriodStart?: string | null;

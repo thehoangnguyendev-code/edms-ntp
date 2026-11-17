@@ -124,7 +124,7 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
   {
     code: "documents.document.create",
     label: "Create Document Shell",
-    description: "Create a new document shell with metadata and workflow configuration.",
+    description: "Create a new document shell with metadata and workflow configuration. Also covers Legacy Import: bringing in a document that already exists outside the system (e.g. a paper original), with its existing document number and its historical revision chain.",
     module: "documents",
     group: "document_authoring",
     legacyCodes: ["CREATE_DOCUMENT_SHELL", "CREATE_DOCUMENTS"],
@@ -496,13 +496,6 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     code: "documents.admin.controlled_copies_policy.manage",
     label: "Manage Controlled Copies Policy",
     description: "Create and edit the Controlled Copies Policy (expiry limits, placeholder fields, distribution rules).",
-    module: "documents",
-    group: "document_administration",
-  },
-  {
-    code: "documents.legacy_import.manage",
-    label: "Legacy Import",
-    description: "Import a document that already exists outside the system (e.g. a paper original) -- one revision or its entire historical revision chain (e.g. 1.0 through 4.0) -- assigning its existing document number and revision number(s) directly instead of the automatic sequence.",
     module: "documents",
     group: "document_administration",
   },

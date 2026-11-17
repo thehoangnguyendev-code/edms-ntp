@@ -26,6 +26,8 @@ import com.eqms.service.ControlledCopyService;
 import com.eqms.service.DocumentAuthorizationService;
 import com.eqms.service.ElectronicSignatureService;
 import com.eqms.service.ExecutedRecordService;
+import com.eqms.service.ObjectNumberService;
+import com.eqms.service.RecallUploadProgress;
 import com.eqms.service.FileStorageService;
 import com.eqms.service.PermissionEvaluationService;
 import com.eqms.service.SignatureTokenConsumptionService;
@@ -39,6 +41,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -87,6 +90,9 @@ class ControlledCopyRecallBatchServiceTest {
     @Mock private AuditTrailService auditTrailService;
     @Mock private ElectronicSignatureService electronicSignatureService;
     @Mock private SignatureTokenConsumptionService signatureTokenConsumptionService;
+    @Mock private ObjectNumberService objectNumberService;
+    @Mock private com.eqms.repository.ExecutedRecordRepository executedRecordRepository;
+    @Spy private RecallUploadProgress uploadProgress = new RecallUploadProgress();
 
     @InjectMocks private ControlledCopyRecallBatchService service;
 
@@ -94,6 +100,7 @@ class ControlledCopyRecallBatchServiceTest {
     private final List<ControlledCopyRecallItem> storedItems = new ArrayList<>();
     private final List<ControlledCopyRecallBatch> storedBatches = new ArrayList<>();
     private final java.util.Map<String, byte[]> storedFiles = new java.util.HashMap<>();
+    private final List<ExecutedRecord> filedRecords = new ArrayList<>();
     private UserAccount dco;
     private UUID signatureId;
 
@@ -105,7 +112,7 @@ class ControlledCopyRecallBatchServiceTest {
         when(documentAuthorizationService.canViewAllControlledCopies(dco)).thenReturn(true);
         when(clamAvScanService.isEnabled()).thenReturn(false);
 
-        when(batchRepository.nextBatchSequence()).thenReturn(7L);
+        when(objectNumberService.allocate(ObjectNumberService.RECALL_BATCH)).thenReturn("RCB-2026-00007");
         when(batchRepository.saveAndFlush(any(ControlledCopyRecallBatch.class))).thenAnswer(inv -> {
             ControlledCopyRecallBatch batch = inv.getArgument(0);
             storedBatches.removeIf(existing -> existing.getId().equals(batch.getId()));
@@ -149,9 +156,11 @@ class ControlledCopyRecallBatchServiceTest {
         when(executedRecordService.recordRecalledCopyScan(any(), any(), any(), any(), any(), anyString(), any())).thenAnswer(inv -> {
             ExecutedRecord record = new ExecutedRecord();
             record.setId(UUID.randomUUID());
-            record.setRecordNumber("EXEC-1");
+            record.setRecordNumber("EXEC-" + (filedRecords.size() + 1));
+            filedRecords.add(record);
             return record;
         });
+        when(executedRecordRepository.findAllById(any())).thenAnswer(inv -> filedRecords);
     }
 
     // ── fixtures ─────────────────────────────────────────────────────────────
@@ -210,7 +219,7 @@ class ControlledCopyRecallBatchServiceTest {
         RecallBatchResponse batch = service.createDraft(List.of(file("a.pdf", scanOf(copy))));
 
         assertThat(batch.status()).isEqualTo("DRAFT");
-        assertThat(batch.batchNumber()).matches("RCB-\\d{4}-00007");
+        assertThat(batch.batchNumber()).isEqualTo("RCB-2026-00007");
         RecallItemResponse item = item(batch, 1);
         assertThat(item.matchStatus()).isEqualTo("READY");
         assertThat(item.matchSource()).isEqualTo("QR");
@@ -271,7 +280,50 @@ class ControlledCopyRecallBatchServiceTest {
         assertThat(item(matched, 1).matchSource()).isEqualTo("MANUAL");
         assertThat(item(matched, 1).copy().id()).isEqualTo(copy.getId().toString());
         verify(auditTrailService).logAs(eq(dco), eq("Controlled Copy Recall Batch"), anyString(), any(), eq("MATCH_ITEM"), any(), any(),
-                org.mockito.ArgumentMatchers.contains("matched by hand"));
+                org.mockito.ArgumentMatchers.contains("matched by hand"), any());
+    }
+
+    @Test
+    void the_scans_can_be_narrowed_to_the_group_a_badge_counts() throws Exception {
+        ControlledCopyRecord ready = copyWithToken("CC-001", "DISTRIBUTED");
+        ControlledCopyRecord readOnly = copyWithToken("CC-002", "DISTRIBUTED");
+        readOnly.setUsagePurpose(ControlledCopyService.USAGE_READ_AND_COMPLY);
+        RecallBatchResponse draft = service.createDraft(List.of(
+                file("ok.pdf", scanOf(ready)), file("read-only.pdf", scanOf(readOnly)), file("blurry.pdf", scanOf(null)), file("left-out.pdf", scanOf(null))));
+        UUID batchId = UUID.fromString(draft.id());
+        service.updateItem(batchId, UUID.fromString(item(draft, 4).id()), new RecallItemUpdateRequest(true, null, null));
+
+        assertThat(service.listItems(batchId, null, "itemNo", "asc", "READY")).extracting(RecallItemResponse::fileName).containsExactly("ok.pdf");
+        assertThat(service.listItems(batchId, null, "itemNo", "asc", "READ_ONLY")).extracting(RecallItemResponse::fileName).containsExactly("read-only.pdf");
+        assertThat(service.listItems(batchId, null, "itemNo", "asc", "ATTENTION")).extracting(RecallItemResponse::fileName).containsExactly("blurry.pdf");
+        assertThat(service.listItems(batchId, null, "itemNo", "asc", "EXCLUDED")).extracting(RecallItemResponse::fileName).containsExactly("left-out.pdf");
+        assertThat(service.listItems(batchId, null, "itemNo", "asc", "")).hasSize(4);
+        // a search and a group work together
+        assertThat(service.listItems(batchId, "blurry", "itemNo", "asc", "READY")).isEmpty();
+        assertThatThrownBy(() -> service.listItems(batchId, null, "itemNo", "asc", "NOPE")).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void a_typed_copy_number_shows_the_copy_and_why_it_cannot_be_recalled_before_anything_is_matched() throws Exception {
+        ControlledCopyRecord distributed = copyWithToken("CC-001", "DISTRIBUTED");
+        ControlledCopyRecord recalled = copyWithToken("CC-009", "OBSOLETED");
+        recalled.setRecalledAt(Instant.parse("2026-01-02T03:04:05Z"));
+        ControlledCopyRecord noCode = copyWithToken("CC-OLD", "DISTRIBUTED");
+        noCode.setScanToken(null);
+        UUID batchId = UUID.fromString(service.createDraft(List.of(file("x.pdf", scanOf(null)))).id());
+        when(controlledCopyRepository.findByControlledCopyNumberIgnoreCase("NOPE")).thenReturn(Optional.empty());
+
+        var ok = service.lookupCopy(batchId, " cc-001 ");
+        assertThat(ok.copy().number()).isEqualTo("CC-001");
+        assertThat(ok.problem()).isNull();
+        assertThat(service.lookupCopy(batchId, "CC-009").problem()).contains("already recalled");
+        assertThat(service.lookupCopy(batchId, "CC-OLD").problem()).contains("no scan code");
+        var missing = service.lookupCopy(batchId, "NOPE");
+        assertThat(missing.copy()).isNull();
+        assertThat(missing.problem()).contains("NOPE");
+        assertThat(service.lookupCopy(batchId, " ").copy()).isNull();
+        // nothing was matched by looking
+        assertThat(service.get(batchId).items().get(0).copy()).isNull();
     }
 
     @Test
@@ -493,6 +545,10 @@ class ControlledCopyRecallBatchServiceTest {
         assertThat(item(result, 1).outcome()).isEqualTo("RECALLED");
         assertThat(item(result, 2).outcome()).isEqualTo("RECALLED");
         assertThat(item(result, 3).outcome()).isEqualTo("SKIPPED");
+        // each recalled scan names the record it was filed as, so the screen can link it
+        assertThat(item(result, 1).executedRecordNumber()).isEqualTo("EXEC-1");
+        assertThat(item(result, 2).executedRecordNumber()).isEqualTo("EXEC-2");
+        assertThat(item(result, 3).executedRecordNumber()).isNull();
         // ONE signature for the whole reviewed list, created after the token was consumed once.
         InOrder order = inOrder(signatureTokenConsumptionService, electronicSignatureService, controlledCopyService);
         order.verify(signatureTokenConsumptionService).requireAndConsume("sig-token", dco);

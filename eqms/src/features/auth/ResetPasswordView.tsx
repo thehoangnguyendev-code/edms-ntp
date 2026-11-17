@@ -7,7 +7,7 @@ import { ButtonLoading, FullPageLoading } from "@/components/ui/loading/Loading"
 import { cn } from "@/components/ui/utils";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BrandLogo } from "@/components/branding/BrandLogo";
-import { AUTH_UI } from "./auth-ui";
+import { useAuthUi } from "./useAuthUi";
 import { AuthBackLink, AuthField, AuthLayout, AuthTopBackButton } from "./components";
 import { authApi } from "@/services/api";
 import { usePasswordPolicy } from "./usePasswordPolicy";
@@ -21,6 +21,7 @@ const checkPasswordStrength = (password: string, policy: ReturnType<typeof usePa
   evaluatePasswordPolicy(password, policy);
 
 export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLogin }) => {
+  const ui = useAuthUi();
   const passwordPolicy = usePasswordPolicy();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token")?.trim() || "";
@@ -144,7 +145,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
       >
         {passed && <ShieldCheck className="h-2.5 w-2.5" />}
       </div>
-      <span className={cn(AUTH_UI.hintText, passed && "text-slate-900")}>{label}</span>
+      <span className={cn(ui.hintText, passed && "text-slate-900")}>{label}</span>
     </div>
   );
 
@@ -157,47 +158,47 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
       {isSubmitting && <FullPageLoading text="Resetting password..." />}
       <AuthLayout
         left={
-          <div className={AUTH_UI.formColumn}>
+          <div className={ui.formColumn}>
             <AuthTopBackButton onClick={onBackToLogin} label="Back to Sign In" disabled={isSubmitting} />
-            <div className="mb-6 flex items-center gap-3 text-slate-900 sm:mb-10 lg:mb-12">
+            <div className={ui.brand}>
               <BrandLogo className="h-8 w-auto object-contain sm:h-9" />
             </div>
 
             {validationError ? (
               <div className="space-y-6">
-                <div className={AUTH_UI.headerArea}>
-                  <div className={AUTH_UI.headingBlock}>
-                    <h1 className={AUTH_UI.pageTitle}>Reset Link Unavailable</h1>
-                    <p className={AUTH_UI.description}>{validationError}</p>
+                <div className={ui.headerArea}>
+                  <div className={ui.headingBlock}>
+                    <h1 className={ui.pageTitle}>Reset Link Unavailable</h1>
+                    <p className={ui.description}>{validationError}</p>
                   </div>
                 </div>
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                   Request a new password reset link and use the latest email only.
                 </div>
-                <Button onClick={onBackToLogin} className={AUTH_UI.submitButton}>
+                <Button onClick={onBackToLogin} className={ui.submitButton}>
                   Back to Sign In
                 </Button>
               </div>
             ) : isSuccess ? (
               <div className="space-y-6">
-                <div className={AUTH_UI.headerArea}>
-                  <div className={AUTH_UI.headingBlock}>
-                    <h1 className={AUTH_UI.pageTitle}>Password Reset Complete</h1>
-                    <p className={AUTH_UI.description}>
+                <div className={ui.headerArea}>
+                  <div className={ui.headingBlock}>
+                    <h1 className={ui.pageTitle}>Password Reset Complete</h1>
+                    <p className={ui.description}>
                       Your password has been updated successfully. All active sessions were revoked for security.
                     </p>
                   </div>
                 </div>
-                <Button onClick={onBackToLogin} className={AUTH_UI.submitButton}>
+                <Button onClick={onBackToLogin} className={ui.submitButton}>
                   Back to Sign In
                 </Button>
               </div>
             ) : (
               <>
-                <div className={AUTH_UI.headerArea}>
-                  <div className={AUTH_UI.headingBlock}>
-                    <h1 className={AUTH_UI.pageTitle}>Reset Your Password</h1>
-                    <p className={AUTH_UI.description}>
+                <div className={ui.headerArea}>
+                  <div className={ui.headingBlock}>
+                    <h1 className={ui.pageTitle}>Reset Your Password</h1>
+                    <p className={ui.description}>
                       Choose a new password for your account.
                       {expiresAt ? ` This link expires at ${expiresAt}.` : ""}
                     </p>
@@ -216,7 +217,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className={AUTH_UI.formStack} noValidate>
+                <form onSubmit={handleSubmit} className={ui.formStack} noValidate>
                   <AuthField htmlFor="newPassword" label="New Password" required error={errors.newPassword}>
                     <div className="relative">
                       <input
@@ -225,10 +226,10 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                         value={formData.newPassword}
                         onChange={(e) => setField("newPassword", e.target.value)}
                         className={cn(
-                          AUTH_UI.inputBase,
+                          ui.inputBase,
                           "pr-12",
-                          AUTH_UI.inputFocus,
-                          errors.newPassword ? AUTH_UI.inputError : AUTH_UI.inputDefault
+                          ui.inputFocus,
+                          errors.newPassword ? ui.inputError : ui.inputDefault
                         )}
                         disabled={isSubmitting}
                         placeholder="Enter new password"
@@ -236,7 +237,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                       <button
                         type="button"
                         onClick={() => setShowPasswords((prev) => ({ ...prev, newPassword: !prev.newPassword }))}
-                        className={AUTH_UI.eyeButtonAbsolute}
+                        className={ui.eyeButtonAbsolute}
                       >
                         {showPasswords.newPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
                       </button>
@@ -281,10 +282,10 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                         value={formData.confirmPassword}
                         onChange={(e) => setField("confirmPassword", e.target.value)}
                         className={cn(
-                          AUTH_UI.inputBase,
+                          ui.inputBase,
                           "pr-12",
-                          AUTH_UI.inputFocus,
-                          errors.confirmPassword ? AUTH_UI.inputError : AUTH_UI.inputDefault
+                          ui.inputFocus,
+                          errors.confirmPassword ? ui.inputError : ui.inputDefault
                         )}
                         disabled={isSubmitting}
                         placeholder="Confirm new password"
@@ -292,7 +293,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                       <button
                         type="button"
                         onClick={() => setShowPasswords((prev) => ({ ...prev, confirmPassword: !prev.confirmPassword }))}
-                        className={AUTH_UI.eyeButtonAbsolute}
+                        className={ui.eyeButtonAbsolute}
                       >
                         {showPasswords.confirmPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
                       </button>
@@ -301,7 +302,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
 
                   <Button
                     type="submit"
-                    className={AUTH_UI.submitButton}
+                    className={ui.submitButton}
                     disabled={isSubmitting || !strength.isValid || formData.confirmPassword !== formData.newPassword}
                   >
                     {isSubmitting ? <ButtonLoading text="Updating Password..." light /> : "Reset Password"}

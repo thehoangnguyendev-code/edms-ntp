@@ -106,7 +106,8 @@ public class TrainingCodeService {
             jdbc.update("update training_code_rules set pattern = ?, version = version + 1, updated_by = ?, updated_at = now() where entity = ?", pattern, actor.getId(), entity);
             String reason = request.reason() == null ? "" : request.reason().trim();
             audit.logAs(actor, "TRAINING_CODE_RULE", entity, UUID.nameUUIDFromBytes(("training-code-rule-" + entity).getBytes()), "TRAINING_CODE_RULE_UPDATED", String.valueOf(current.get("pattern")), pattern,
-                    (reason.isEmpty() ? "" : reason + " | ") + label(entity) + ": " + current.get("pattern") + " -> " + pattern + " (the codes already issued are not changed)");
+                    (reason.isEmpty() ? "" : reason + " | ") + label(entity) + ": " + current.get("pattern") + " -> " + pattern + " (the codes already issued are not changed)",
+                com.eqms.util.AuditChanges.with("Reason", reason, com.eqms.util.AuditChanges.of("Pattern (" + label(entity) + ")",current.get("pattern"),pattern)));
         }
         return rules(actor).stream().filter(r -> entity.equals(r.get("entity"))).findFirst().orElseThrow();
     }

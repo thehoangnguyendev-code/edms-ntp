@@ -38,6 +38,7 @@ public final class AuditTrailReviewDtos {
 
     public record CampaignSummaryResponse(
             UUID id,
+            String campaignNumber,
             String name,
             String description,
             LocalDate reviewPeriodStart,

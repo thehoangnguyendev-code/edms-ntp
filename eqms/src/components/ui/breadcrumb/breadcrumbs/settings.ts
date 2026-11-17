@@ -478,6 +478,11 @@ export const electronicSignatureSettings = (navigate?: NavigateFn): BreadcrumbIt
   { label: "E-Sign Config", isActive: true },
 ];
 
+export const objectNumbering = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...systemAdminBase(navigate),
+  { label: "Object Numbering", isActive: true },
+];
+
 export const permissionSets = (navigate?: NavigateFn): BreadcrumbItem[] => [
   ...securityAdvancedBase(navigate),
   { label: "Shared Permission Sets", isActive: true },

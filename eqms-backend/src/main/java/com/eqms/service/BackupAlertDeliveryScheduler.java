@@ -28,6 +28,8 @@ public class BackupAlertDeliveryScheduler {
     static final String ACTION_URL = "/settings/administration/backup/alerts";
     static final String MODULE = "Backup & Restore";
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ObjectNumberService numbers;
     private final BackupAgentClient agent;
     private final UserAccountRepository users;
     private final NotificationDispatcher dispatcher;
@@ -69,7 +71,8 @@ public class BackupAlertDeliveryScheduler {
             String severity = alert.path("severity").asText("HIGH");
             String detail = alert.path("detail").asText("");
             String ref = alert.path("ref").asText("");
-            String title = "Backup alert: " + code;
+            String number = numbers == null ? null : numbers.backupAlertNumber(alert.path("id").asText(), ObjectNumberService.currentYear());
+            String title = "Backup alert" + (number == null ? "" : " " + number) + ": " + code;
             boolean failed = false;
             for (UserAccount person : recipients) {
                 try {

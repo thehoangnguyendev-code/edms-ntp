@@ -157,7 +157,8 @@ public class ReportAppearanceService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "REPORT_APPEARANCE_NAME_TAKEN");
         }
         com.eqms.service.EntityChangeBroadcaster.changed("REPORT_APPEARANCE", id, null);
-        audit.logAs(actor, "REPORT_APPEARANCE", name, id, "REPORT_APPEARANCE_CREATED", null, "INACTIVE", request.copyFromId() == null ? "Appearance created" : "Appearance created as a copy of another");
+        audit.logAs(actor, "REPORT_APPEARANCE", name, id, "REPORT_APPEARANCE_CREATED", null, "INACTIVE", request.copyFromId() == null ? "Appearance created" : "Appearance created as a copy of another",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Name",null,name), com.eqms.util.AuditChanges.of("Copied From Another Appearance",null,request.copyFromId() == null ? "No" : "Yes")));
         return detail(id);
     }
 
@@ -184,7 +185,8 @@ public class ReportAppearanceService {
         List<String> parts = new ArrayList<>(describe(before, after));
         if (renamed) parts.add("name");
         com.eqms.service.EntityChangeBroadcaster.changed("REPORT_APPEARANCE", id, null);
-        audit.logAs(actor, "REPORT_APPEARANCE", name, id, "REPORT_APPEARANCE_UPDATED", null, null, "Report appearance: " + String.join(", ", parts) + " changed");
+        audit.logAs(actor, "REPORT_APPEARANCE", name, id, "REPORT_APPEARANCE_UPDATED", null, null, "Report appearance: " + String.join(", ", parts) + " changed",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Changed",null,String.join(", ", parts))));
         return detail(id);
     }
 

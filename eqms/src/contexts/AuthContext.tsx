@@ -12,6 +12,7 @@ import { authTokenStore } from '@/services/authTokenStore';
 import { setActiveUserId, clearActiveUserId } from '@/services/activeUser';
 import type { AuthResponse, LoginChallengeResponse, MfaMethod, AuthUser } from '@/services/api/auth';
 import { getApiErrorMessage } from '@/utils/apiError';
+import { SESSION_ENDED_EVENT } from '@/app/navigation/routeRedirect';
 import { clearDismissedAnnouncements } from '@/components/layout/announcementDismissal';
 
 interface AuthContextType {
@@ -73,6 +74,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       clearActiveUserId();
     }
   }, [user?.id]);
+
+  // The API layer reports a session the server has ended (revoked, expired, refresh refused).
+  useEffect(() => {
+    const handleSessionEnded = () => {
+      setUser(null);
+      setIsAuthenticated(false);
+    };
+    window.addEventListener(SESSION_ENDED_EVENT, handleSessionEnded);
+    return () => window.removeEventListener(SESSION_ENDED_EVENT, handleSessionEnded);
+  }, []);
 
   const mapAuthUserToUser = (authUser: AuthResponse['user']): User => {
     const nameParts = authUser.fullName?.trim().split(' ') ?? [];

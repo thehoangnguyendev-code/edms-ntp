@@ -511,7 +511,7 @@ public class ReportTemplateService {
         jdbc.update("insert into report_definition_versions(definition_code,version,snapshot,reason,changed_by_user_id) values(?,?,cast(? as jsonb),?,?)", code, after.get("definitionVersion"), write(after), request.reason().trim(), actor.getId());
         if (revisions != null && !create) revisions.touchLive(code, actor.getId(), request.reason().trim());
         String auditReason = request.reason().trim() + (signature == null ? "" : " [signature " + signature.getSignatureId() + "]");
-        audit.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), create ? "REPORT_TEMPLATE_CREATED" : "REPORT_TEMPLATE_UPDATED", null, null, auditReason);
+        audit.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), create ? "REPORT_TEMPLATE_CREATED" : "REPORT_TEMPLATE_UPDATED", null, null, auditReason, com.eqms.util.AuditChanges.reason("Reason", auditReason));
         // The stepper goes with every answer the editor keeps; this answer carries no revision info, so it follows the approval status as the screen did.
         after.put("workflow", ReportRevisionWorkflow.ofTemplate(after.get("openRevision"), after.get("openRevisionStatus"), after.get("effectiveRevision"), after.get("approvalStatus")));
         return after;
@@ -573,7 +573,9 @@ public class ReportTemplateService {
         var revision = revisions.open(code);
         audit.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)),
                 open == null ? "REPORT_TEMPLATE_REVISION_STARTED" : "REPORT_TEMPLATE_REVISION_UPDATED", null, "DRAFT",
-                "Revision " + (revision == null ? "" : revision.get("revision")) + ": " + reason + (signature == null ? "" : " [signature " + signature.getSignatureId() + "]"));
+                "Revision " + (revision == null ? "" : revision.get("revision")) + ": " + reason + (signature == null ? "" : " [signature " + signature.getSignatureId() + "]"),
+                com.eqms.util.AuditChanges.with("Reason", reason, com.eqms.util.AuditChanges.of("Revision", null, revision == null ? null : revision.get("revision"))));
+
         return withRevisionInfo(overlay(definition(code), revisions.open(code)));
     }
 
@@ -677,7 +679,8 @@ public class ReportTemplateService {
         revisions.startRevision(code, actor.getId(), liveVersion, payload, reason.trim());
         var started = revisions.open(code);
         audit.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), "REPORT_TEMPLATE_UPGRADED", "EFFECTIVE_REV" + effective.get("revision"),
-                "DRAFT_REV" + started.get("revision"), reason.trim());
+                "DRAFT_REV" + started.get("revision"), reason.trim(),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Revision", effective.get("revision"), started.get("revision")), com.eqms.util.AuditChanges.of("Reason", null, reason.trim())));
         return withRevisionInfo(overlay(definition(code), started));
     }
 
@@ -697,7 +700,7 @@ public class ReportTemplateService {
         if (Boolean.TRUE.equals(rows.getFirst().get("active")) == enabled) throw new ResponseStatusException(HttpStatus.CONFLICT, enabled ? "REPORT_TEMPLATE_ALREADY_ENABLED" : "REPORT_TEMPLATE_ALREADY_DISABLED");
         jdbc.update("update report_definitions set active=?,updated_at=now() where code=?", enabled, code);
         audit.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), enabled ? "REPORT_TEMPLATE_ENABLED" : "REPORT_TEMPLATE_DISABLED",
-                enabled ? "INACTIVE" : "ACTIVE", enabled ? "ACTIVE" : "INACTIVE", blank(reason) ? (enabled ? "Enabled" : "Disabled") : reason.trim());
+                enabled ? "INACTIVE" : "ACTIVE", enabled ? "ACTIVE" : "INACTIVE", blank(reason) ? (enabled ? "Enabled" : "Disabled") : reason.trim(), com.eqms.util.AuditChanges.reason("Reason", reason));
         return withRevisionInfo(overlay(definition(code), revisions == null ? null : revisions.open(code)));
     }
 
@@ -721,7 +724,7 @@ public class ReportTemplateService {
         if (!"DRAFT".equals(open.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "REPORT_TEMPLATE_NOT_DRAFT");
         if (!revisions.discard(code, actor.getId(), reason.trim())) throw new ResponseStatusException(HttpStatus.CONFLICT, "REPORT_NO_OPEN_REVISION");
         audit.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), "REPORT_TEMPLATE_REVISION_DISCARDED",
-                "DRAFT_REV" + open.get("revision"), "DISCARDED", reason.trim());
+                "DRAFT_REV" + open.get("revision"), "DISCARDED", reason.trim(), com.eqms.util.AuditChanges.reason("Reason for Discarding", reason));
         return withRevisionInfo(overlay(definition(code), null));
     }
 
@@ -830,7 +833,8 @@ public class ReportTemplateService {
             if (revisions != null) revisions.markSubmitted(code, actor.getId());
         }
         audit.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), "REPORT_TEMPLATE_SUBMITTED", "DRAFT", "PENDING_APPROVAL",
-                "Submitted version " + version + (blank(note) ? "" : ": " + note.trim()));
+                "Submitted version " + version + (blank(note) ? "" : ": " + note.trim()),
+                com.eqms.util.AuditChanges.with("Note", note, com.eqms.util.AuditChanges.of("Version", null, version)));
         return withRevisionInfo(overlay(definition(code), revisions == null ? null : revisions.open(code)));
     }
 
@@ -866,8 +870,7 @@ public class ReportTemplateService {
                 approved = "APPROVED_REV" + number;
             }
         }
-        audit.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), "REPORT_TEMPLATE_APPROVED", "PENDING_APPROVAL", approved,
-                reason.trim() + " [signature " + signature.getSignatureId() + "]");
+        audit.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), "REPORT_TEMPLATE_APPROVED", "PENDING_APPROVAL", approved, reason.trim() + " [signature " + signature.getSignatureId() + "]", com.eqms.util.AuditChanges.reason("Reason", reason));
         return withRevisionInfo(overlay(definition(code), revisions == null ? null : revisions.open(code)));
     }
 
@@ -889,8 +892,7 @@ public class ReportTemplateService {
                     reason.trim(), code);
             if (revisions != null) revisions.markReturned(code, reason.trim());
         }
-        audit.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), "REPORT_TEMPLATE_REJECTED", "PENDING_APPROVAL", "DRAFT",
-                reason.trim() + " [signature " + signature.getSignatureId() + "]");
+        audit.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), "REPORT_TEMPLATE_REJECTED", "PENDING_APPROVAL", "DRAFT", reason.trim() + " [signature " + signature.getSignatureId() + "]", com.eqms.util.AuditChanges.reason("Reason for Rejection", reason));
         return withRevisionInfo(overlay(definition(code), revisions == null ? null : revisions.open(code)));
     }
 
@@ -1005,7 +1007,7 @@ public class ReportTemplateService {
         jdbc.update("update report_definitions set deleted_at=now(),deleted_by_user_id=?,definition_version=definition_version+1,updated_at=now() where code=?",actor.getId(),code);
         var after=definition(code);
         jdbc.update("insert into report_definition_versions(definition_code,version,snapshot,reason,changed_by_user_id) values(?,?,cast(? as jsonb),?,?)",code,after.get("definitionVersion"),write(after),reason.trim(),actor.getId());
-        audit.logAs(actor,"REPORT_DEFINITION",code,UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)),"REPORT_TEMPLATE_DELETED",null,null,reason.trim());
+        audit.logAs(actor,"REPORT_DEFINITION",code,UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)),"REPORT_TEMPLATE_DELETED",null,null,reason.trim(),com.eqms.util.AuditChanges.reason("Reason for Deleting", reason));
     }
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)

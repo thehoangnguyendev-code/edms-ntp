@@ -73,7 +73,7 @@ class BackupManualCopyAndScrubControllerTest {
         allow("backup.admin.storage.view", "backup.admin.manual_copy.manage");
         when(agent.exchange(eq(HttpMethod.POST), eq("/internal/manual-copies"), any())).thenReturn(reply(201, "{\"id\":\"abc\",\"copiedOn\":\"2026-11-10\"}"));
         copies.record(new BackupManualCopyController.RecordBody("2026-11-10", "BK-1", "Safe, head office", "Nguyen Van A", "first"));
-        verify(audit).logAs(eq(actor), eq("BACKUP_MANUAL_COPY"), eq("abc"), any(), eq("MANUAL_COPY_RECORDED"), isNull(), eq("RECORDED"), anyString());
+        verify(audit).logAs(eq(actor), eq("BACKUP_MANUAL_COPY"), eq("abc"), any(), eq("MANUAL_COPY_RECORDED"), isNull(), eq("RECORDED"), anyString(), any());
         @SuppressWarnings("unchecked")
         org.mockito.ArgumentCaptor<java.util.Map<String, Object>> sent = org.mockito.ArgumentCaptor.forClass(java.util.Map.class);
         verify(agent).exchange(eq(HttpMethod.POST), eq("/internal/manual-copies"), sent.capture());
@@ -89,7 +89,7 @@ class BackupManualCopyAndScrubControllerTest {
         org.mockito.ArgumentCaptor<java.util.Map<String, Object>> sent = org.mockito.ArgumentCaptor.forClass(java.util.Map.class);
         verify(agent).exchange(eq(HttpMethod.POST), eq("/internal/manual-copies"), sent.capture());
         assertThat(((String) sent.getValue().get("place")).length()).isLessThanOrEqualTo(201);
-        verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), anyString());
+        verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), anyString(), any());
     }
 
     @Test

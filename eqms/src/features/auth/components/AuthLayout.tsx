@@ -2,6 +2,9 @@ import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AUTH_UI } from "../auth-ui";
 import { AuthVideoBackground } from '@/components/branding/AuthVideoBackground';
+import { useBranding } from '@/components/branding/BrandLogo';
+import { DEFAULT_FOOTER_LEFT } from '@/services/api/branding';
+import { LoginSplitLayout } from './LoginSplitLayout';
 
 interface AuthLayoutProps {
   left: React.ReactNode;
@@ -10,6 +13,19 @@ interface AuthLayoutProps {
 
 export const AuthLayout: React.FC<AuthLayoutProps> = ({ left, right: _right }) => {
   const prefersReducedMotion = useReducedMotion();
+  const { loginLayout, systemFooterLeft, systemFooterRight } = useBranding();
+
+  // The administrator's choice (Configuration > General) applies to every authentication screen.
+  if (loginLayout === "SPLIT") {
+    return (
+      <LoginSplitLayout
+        footerLeft={(systemFooterLeft ?? DEFAULT_FOOTER_LEFT).replace("{year}", String(new Date().getFullYear()))}
+        footerRight={systemFooterRight ?? ""}
+      >
+        {left}
+      </LoginSplitLayout>
+    );
+  }
 
   const transition = prefersReducedMotion
     ? { duration: 0 }

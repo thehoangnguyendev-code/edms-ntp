@@ -129,8 +129,9 @@ public class TrainingFormTemplateService {
             values (?,?,?,?,?,?,?,?,?,?,?,?,?,?, now())
             """, id, cleanCode, title.trim(), cleanVersion, stored.name(), stored.provider(), stored.path(), stored.contentType(), stored.size(), stored.sha256(),
                 remark == null || remark.isBlank() ? null : remark.trim(), actor.getId(), check.mode(), check.problems().isEmpty() ? null : String.join("\n", check.problems()));
-        audit.logAs(actor, AUDIT_ENTITY, AUDIT_ENTITY, id, "TRAINING_FORM_TEMPLATE_UPLOADED", null, "DISABLED",
-                cleanCode + " " + cleanVersion + " (SHA-256 " + stored.sha256().substring(0, 12) + "); " + check.summary());
+        audit.logAs(actor, AUDIT_ENTITY, cleanCode + " " + cleanVersion, id, "TRAINING_FORM_TEMPLATE_UPLOADED", null, "DISABLED",
+                cleanCode + " " + cleanVersion + " (SHA-256 " + stored.sha256().substring(0, 12) + "); " + check.summary(),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Template",null,cleanCode + " " + cleanVersion), com.eqms.util.AuditChanges.of("SHA-256 Checksum",null,stored.sha256())));
         return one(id);
     }
 
@@ -150,7 +151,8 @@ public class TrainingFormTemplateService {
         UUID signature = signatures.createEntitySignature(TYPE, id, label, actor, request.signatureToken(), "TRAINING_FORM_TEMPLATE_ENABLED", request.reason().trim(), null, null, null).getId();
         jdbc.update("update training_form_templates set status = 'DISABLED', disabled_by = ?, disabled_at = now(), disable_reason = 'Another revision of the document was enabled' where code = ? and status = 'ENABLED'", actor.getId(), t.get("code"));
         jdbc.update("update training_form_templates set status = 'ENABLED', activated_by = ?, activated_at = now(), activate_signature_id = ?, disabled_by = null, disabled_at = null, disable_reason = null where id = ?", actor.getId(), signature, id);
-        audit.logAs(actor, AUDIT_ENTITY, AUDIT_ENTITY, id, "TRAINING_FORM_TEMPLATE_ENABLED", "DISABLED", "ENABLED", label + ": " + request.reason().trim());
+        audit.logAs(actor, AUDIT_ENTITY, label, id, "TRAINING_FORM_TEMPLATE_ENABLED", "DISABLED", "ENABLED", label + ": " + request.reason().trim(),
+                com.eqms.util.AuditChanges.reason("Reason", request.reason()));
         return one(id);
     }
 
@@ -162,7 +164,8 @@ public class TrainingFormTemplateService {
         if (!"ENABLED".equals(t.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_TEMPLATE_NOT_ENABLED");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         jdbc.update("update training_form_templates set status = 'DISABLED', disabled_by = ?, disabled_at = now(), disable_reason = ? where id = ?", actor.getId(), request.reason().trim(), id);
-        audit.logAs(actor, AUDIT_ENTITY, AUDIT_ENTITY, id, "TRAINING_FORM_TEMPLATE_DISABLED", "ENABLED", "DISABLED", t.get("code") + " " + t.get("version_label") + ": " + request.reason().trim());
+        audit.logAs(actor, AUDIT_ENTITY, t.get("code") + " " + t.get("version_label"), id, "TRAINING_FORM_TEMPLATE_DISABLED", "ENABLED", "DISABLED", t.get("code") + " " + t.get("version_label") + ": " + request.reason().trim(),
+                com.eqms.util.AuditChanges.reason("Reason", request.reason()));
         return one(id);
     }
 

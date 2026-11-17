@@ -286,6 +286,13 @@ export const AnnouncementsView: React.FC = () => {
       cell: (_row, index) => (currentPage - 1) * itemsPerPage + index + 1,
     },
     {
+      id: "announcementNumber",
+      header: "Announcement Number",
+      label: "Announcement Number",
+      sort: sort("announcementNumber"),
+      cell: (row) => <span className="text-xs sm:text-sm font-medium text-emerald-600 whitespace-nowrap">{row.announcementNumber ?? "—"}</span>,
+    },
+    {
       id: "title",
       header: "Announcement",
       label: "Announcement",

@@ -109,7 +109,8 @@ public class BackupDrPlanController {
         });
         if (reply.ok()) {
             audit.logAs(actor, "BACKUP_DR_SCENARIO", scenario, id, "DR_TARGET_CHANGED", null, "APPROVED",
-                    "Changed recovery targets of " + scenario + " to RPO " + body.rpoHours() + " h and RTO " + body.rtoHours() + " h. Reason: " + reason);
+                    "Changed recovery targets of " + scenario + " to RPO " + body.rpoHours() + " h and RTO " + body.rtoHours() + " h. Reason: " + reason,
+                com.eqms.util.AuditChanges.with("Reason", reason, com.eqms.util.AuditChanges.of("Scenario",null,scenario), com.eqms.util.AuditChanges.of("RPO (Hours)",null,body.rpoHours()), com.eqms.util.AuditChanges.of("RTO (Hours)",null,body.rtoHours())));
         }
         return reply(reply);
     }
@@ -188,7 +189,8 @@ public class BackupDrPlanController {
         });
         if (reply.ok()) {
             String code = reply.body().path("code").asText(scenario);
-            audit.logAs(actor, "BACKUP_DR_DECLARATION", code, id, "DR_DECLARED", null, "OPEN", "Declared a disaster (" + scenario + "). Reason: " + reason);
+            audit.logAs(actor, "BACKUP_DR_DECLARATION", code, id, "DR_DECLARED", null, "OPEN", "Declared a disaster (" + scenario + "). Reason: " + reason,
+                com.eqms.util.AuditChanges.with("Reason", reason, com.eqms.util.AuditChanges.of("Scenario",null,scenario)));
         }
         return reply(reply);
     }
@@ -216,7 +218,8 @@ public class BackupDrPlanController {
             return closed;
         });
         if (reply.ok()) {
-            audit.logAs(actor, "BACKUP_DR_DECLARATION", code, id, "DR_DECLARATION_CLOSED", "OPEN", "CLOSED", "Closed disaster declaration " + code + ". " + summary);
+            audit.logAs(actor, "BACKUP_DR_DECLARATION", code, id, "DR_DECLARATION_CLOSED", "OPEN", "CLOSED", "Closed disaster declaration " + code + ". " + summary,
+                com.eqms.util.AuditChanges.reason("Summary", summary));
         }
         return reply(reply);
     }
@@ -243,7 +246,8 @@ public class BackupDrPlanController {
         BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/dr/kit/" + item + "/verify", out);
         if (reply.ok()) {
             audit.logAs(actor, "BACKUP_DR_KIT", item, BackupAuditIds.of("kit", item), "DR_KIT_VERIFIED", "NOT_VERIFIED", "VERIFIED",
-                    "Verified rebuild kit item " + item + " as of " + body.verifiedAt().trim() + (note == null ? "" : ". Note: " + note));
+                    "Verified rebuild kit item " + item + " as of " + body.verifiedAt().trim() + (note == null ? "" : ". Note: " + note),
+                com.eqms.util.AuditChanges.with("Note", note, com.eqms.util.AuditChanges.of("Verified As Of",null,body.verifiedAt().trim())));
         }
         return reply(reply);
     }
@@ -283,7 +287,8 @@ public class BackupDrPlanController {
         });
         if (reply.ok()) {
             audit.logAs(actor, "BACKUP_DR_SETTING", "DECLARATION_AUTHORITY", id, "DR_AUTHORITY_CHANGED", null, person.getUsername(),
-                    "Changed who may declare a disaster to " + person.getUsername() + ". Reason: " + reason);
+                    "Changed who may declare a disaster to " + person.getUsername() + ". Reason: " + reason,
+                com.eqms.util.AuditChanges.with("Reason", reason, com.eqms.util.AuditChanges.of("Who May Declare a Disaster",null,person.getUsername())));
         }
         return reply(reply);
     }

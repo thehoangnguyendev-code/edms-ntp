@@ -23,6 +23,10 @@ public class ObjectAccessRule {
     @Column(nullable = false)
     private long version;
 
+    /** The number of the rule (ObjectNumberService, kind OBJECT_ACCESS_RULE); given once, never changed. */
+    @Column(name = "rule_number", length = 40, updatable = false)
+    private String ruleNumber;
+
     @Column(nullable = false, length = 200)
     private String name;
 
@@ -142,6 +146,10 @@ public class ObjectAccessRule {
     void onUpdate() { updatedAt = Instant.now(); }
 
     public UUID getId() { return id; }
+    public String getRuleNumber() { return ruleNumber; }
+    public void setRuleNumber(String ruleNumber) { this.ruleNumber = ruleNumber; }
+    /** What the Audit Trail shows as the Object Code of a rule: its number (its name for a rule made before numbers existed). */
+    public String auditCode() { return ruleNumber != null ? ruleNumber : name; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getDescription() { return description; }

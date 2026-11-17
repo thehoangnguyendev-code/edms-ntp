@@ -19,6 +19,10 @@ public class SystemAnnouncement {
     @Id
     private UUID id;
 
+    /** The number of the announcement (ObjectNumberService, kind ANNOUNCEMENT); given once, never changed. */
+    @Column(name = "announcement_number", length = 40, updatable = false)
+    private String announcementNumber;
+
     @Column(nullable = false, length = 150)
     private String title;
 
@@ -73,6 +77,10 @@ public class SystemAnnouncement {
     }
 
     public UUID getId() { return id; }
+    public String getAnnouncementNumber() { return announcementNumber; }
+    public void setAnnouncementNumber(String announcementNumber) { this.announcementNumber = announcementNumber; }
+    /** What the Audit Trail shows as the Object Code: the number (the title for an announcement made before numbers existed). */
+    public String auditCode() { return announcementNumber != null ? announcementNumber : title; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getMessage() { return message; }

@@ -1,12 +1,11 @@
 import React from "react";
-import { KeyRound, PauseCircle, RotateCcw, LockOpen } from "lucide-react";
-import { IconUserX } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
-import { Button } from "@/components/ui/button/Button";
 import { Select } from "@/components/ui/select/Select";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { formatDate } from "@/utils/format";
-import { InfoField } from "../components/ProfileSectionCard";
+import { InfoField, FieldGroup } from "../components/ProfileSectionCard";
+import { AccountActionList } from "../components/AccountActionList";
+import { buildAccountActions } from "../components/accountActions";
 import type { User } from "../../types";
 
 const HOME_PAGE_OPTIONS: { label: string; value: string }[] = [
@@ -61,7 +60,7 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
     const { status, statusOptions, onStatusChange, statusError, homePage, onHomePageChange } = props;
     return (
       <div>
-        <div className="grid grid-cols-1 gap-y-5">
+        <FieldGroup title="Account">
           <div>
             <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
               Account Status <span className="text-red-500">*</span>
@@ -86,7 +85,7 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
               className="w-full sm:max-w-xs"
             />
           </div>
-        </div>
+        </FieldGroup>
       </div>
     );
   }
@@ -108,11 +107,23 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
     onReinstate,
     onUnlock,
   } = props;
-  const hasAnyStatusAction = canResetPassword || canSuspend || canTerminate || canReinstate || canUnlock;
+  const actions = buildAccountActions({
+    user,
+    canResetPassword,
+    canSuspend,
+    canTerminate,
+    canReinstate,
+    canUnlock,
+    onResetPassword,
+    onSuspend,
+    onTerminate,
+    onReinstate,
+    onUnlock,
+  });
 
   return (
     <div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+      <FieldGroup title="Account">
         <InfoField label="Account Created" value={formatDate(user.createdDate)} />
         <InfoField label="Last Login" value={user.lastLogin !== "Never" ? user.lastLogin : "Never logged in"} />
         {isEditingProfile && canEdit ? (
@@ -130,40 +141,14 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
         ) : (
           <InfoField label="Home Page" value={HOME_PAGE_LABELS[user.homePage || "DASHBOARD"]} />
         )}
-      </div>
+      </FieldGroup>
 
-      {hasAnyStatusAction && (
-        <div className="flex flex-wrap items-center gap-2 pt-5 mt-5 border-t border-slate-100">
-          {canResetPassword && (
-            <Button variant="outline-emerald" size="sm" className="gap-1.5" onClick={onResetPassword}>
-              <KeyRound className="h-3.5 w-3.5" />
-              Reset Password
-            </Button>
-          )}
-          {canUnlock && user.accountLocked && (
-            <Button variant="outline-emerald" size="sm" className="gap-1.5" onClick={onUnlock}>
-              <LockOpen className="h-3.5 w-3.5" />
-              Unlock Account
-            </Button>
-          )}
-          {canSuspend && user.status === "Active" && (
-            <Button variant="outline-emerald" size="sm" className="gap-1.5" onClick={onSuspend}>
-              <PauseCircle className="h-3.5 w-3.5" />
-              Suspend
-            </Button>
-          )}
-          {canReinstate && user.status === "Suspended" && (
-            <Button variant="outline-emerald" size="sm" className="gap-1.5" onClick={onReinstate}>
-              <RotateCcw className="h-3.5 w-3.5" />
-              Reinstate
-            </Button>
-          )}
-          {canTerminate && (
-            <Button variant="outline-emerald" size="sm" className="gap-1.5" onClick={onTerminate}>
-              <IconUserX className="h-3.5 w-3.5" />
-              Terminate
-            </Button>
-          )}
+      {actions.length > 0 && (
+        <div className="mt-5 pt-5 border-t border-slate-100">
+          <h3 className="text-2xs sm:text-xs font-bold uppercase tracking-wider text-slate-500">Account Actions</h3>
+          <div className="mt-3">
+            <AccountActionList actions={actions} />
+          </div>
         </div>
       )}
     </div>

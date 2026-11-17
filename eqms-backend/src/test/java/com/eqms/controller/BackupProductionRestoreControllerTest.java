@@ -116,7 +116,7 @@ class BackupProductionRestoreControllerTest {
         Map<String, Object> sent = payload.getValue();
         assertThat(sent).containsEntry("backupNumber", BACKUP).containsEntry("by", "qa.one").containsEntry("signatureRef", "SIG-42");
         verify(signatures).record(eq(actor), eq("tok"), eq("BACKUP_RESTORE_EXECUTION"), eq("BACKUP_RESTORE"), any(UUID.class), eq(BACKUP), anyString(), isNull(), isNull());
-        verify(audit).logAs(eq(actor), eq("BACKUP_RESTORE"), eq(BACKUP), any(UUID.class), eq("PRODUCTION_RESTORE_REQUESTED"), any(), any(), anyString());
+        verify(audit).logAs(eq(actor), eq("BACKUP_RESTORE"), eq(BACKUP), any(UUID.class), eq("PRODUCTION_RESTORE_REQUESTED"), any(), any(), anyString(), any());
         assertThat(txStatus.isRollbackOnly()).isFalse();
     }
 
@@ -128,7 +128,7 @@ class BackupProductionRestoreControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(txStatus.isRollbackOnly()).isTrue();
         verify(signatures).record(eq(actor), eq("tok"), eq("BACKUP_RESTORE_FINALIZATION"), eq("BACKUP_RESTORE"), any(UUID.class), eq(RUN), anyString(), isNull(), isNull());
-        verify(audit).logAs(eq(actor), eq("BACKUP_RESTORE"), eq(RUN), any(UUID.class), eq("PRODUCTION_RESTORE_FINALIZED_REFUSED"), any(), any(), anyString());
+        verify(audit).logAs(eq(actor), eq("BACKUP_RESTORE"), eq(RUN), any(UUID.class), eq("PRODUCTION_RESTORE_FINALIZED_REFUSED"), any(), any(), anyString(), any());
     }
 
     @Test

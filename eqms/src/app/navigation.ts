@@ -788,6 +788,12 @@ const SYSTEM_MODULES: NavItem[] = [
         allowedPermissions: ["settings.configuration.view"],
       },
       {
+        id: "object-numbering",
+        label: "Object Numbering",
+        path: ROUTES.SECURITY.OBJECT_NUMBERING,
+        allowedPermissions: ["settings.object_numbering.view", "settings.object_numbering.manage", "settings.configuration.view"],
+      },
+      {
         // Its own id: the inbox above is "notifications", and two items with one id lit up this entry (and its unread badge) on the inbox page.
         id: "notification-settings",
         label: "Notifications Administration",

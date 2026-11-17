@@ -1,5 +1,5 @@
 ﻿import React from "react";
-import { AUTH_UI } from "../auth-ui";
+import { useAuthUi } from "../useAuthUi";
 
 interface AuthFieldProps {
   htmlFor: string;
@@ -10,10 +10,11 @@ interface AuthFieldProps {
 }
 
 export const AuthField: React.FC<AuthFieldProps> = ({ htmlFor, label, required, error, children }) => {
+  const ui = useAuthUi();
   const errorId = error ? `${htmlFor}-error` : undefined;
 
   return (
-    <div className={AUTH_UI.fieldBlock}>
+    <div className={ui.fieldBlock}>
       <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-900 sm:text-sm capitalize">
         {label} {required && <span className="text-red-600" aria-hidden="true">*</span>}
       </label>

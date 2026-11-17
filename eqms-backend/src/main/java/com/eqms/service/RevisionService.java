@@ -863,18 +863,6 @@ public class RevisionService {
                 currentUser,
                 signatureSessionId
         );
-        auditTrailService.logAs(
-                currentUser,
-                "DOCUMENT_REVISION",
-                revisionLabel,
-                revision.getId(),
-                "DOCUMENT_LEGACY_IMPORT_EFFECTIVE",
-                "DRAFT",
-                "EFFECTIVE",
-                auditComment,
-                List.of(),
-                signatureSessionId
-        );
     }
 
     /**
@@ -924,9 +912,8 @@ public class RevisionService {
             String signatureToken
     ) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.hasPermission(currentUser, "documents.legacy_import.manage")) {
-            throw new AccessDeniedException("Only Legacy Import is permitted to create revisions this way.");
-        }
+        // Legacy Import has no permission of its own: whoever may create a document may import one (LEGACY-IMPORT-ONE-PERMISSION).
+        documentAuthorizationService.requireCanCreateDocument(currentUser);
         DocumentRecord document = requireDocument(documentId);
         if (!document.isLegacyImport()) {
             throw new IllegalArgumentException("This document was not created through Legacy Import.");
@@ -1238,13 +1225,11 @@ public class RevisionService {
             if (StringUtils.hasText(revision.getTrainingNumber())) {
                 createComment = createComment + " Paper Training Number: " + revision.getTrainingNumber() + ".";
             }
+            // One entry for the import: the history of the revision and the Audit Trail are the same record (AUDIT-DETAIL-2026-11-17), so the reason the person signed with is part of it.
+            createComment = createComment + " Reason: " + legacyJustification.trim();
             recordRevisionHistory(revision, "LEGACY_IMPORT", null,
                     revision.getStatus() == null ? null : revision.getStatus().getCode(),
                     createComment, currentUser, signature.getId());
-            auditTrailService.logAs(currentUser, "DOCUMENT_REVISION", revisionLabel, revision.getId(),
-                    "DOCUMENT_LEGACY_IMPORTED", null,
-                    revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                    legacyJustification, List.of(), signature.getId());
 
             if (isLast) {
                 try {
@@ -1279,11 +1264,8 @@ public class RevisionService {
 
                 recordRevisionHistory(revision, "LEGACY_BATCH_SUPERSEDED", previousStatus, "OBSOLETED",
                         "Historical revision superseded by revision " + sections.get(i + 1).revisionNumber()
-                                + " (Legacy Batch Import).",
+                                + " (Legacy Batch Import). Reason: " + legacyJustification.trim(),
                         currentUser, signature.getId());
-                auditTrailService.logAs(currentUser, "DOCUMENT_REVISION", revisionLabel, revision.getId(),
-                        "DOCUMENT_LEGACY_BATCH_SUPERSEDED", previousStatus, "OBSOLETED",
-                        legacyJustification, List.of(), signature.getId());
             }
 
             createdRevisions.add(toDetailResponse(revision));

@@ -475,7 +475,8 @@ public class TrainingAssessmentLibraryService {
         jdbc.update("insert into training_assessment_defs(id, code, version_no, revision_number, name, kind, duration_minutes, essay_numbering, created_by, updated_by) values (?,?,1,'0.0.1',?,?,?,?,?,?)",
                 id, code, request.name().trim(), request.kind(), request.durationMinutes(), restart(request.essayNumbering()) ? "RESTART" : "CONTINUE", actor.getId(), actor.getId());
         writeItems(id, items);
-        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_CREATED", null, "DRAFT", code + " 0.0.1: " + request.name().trim() + " (" + items.size() + " item(s))");
+        audit.logAs(actor, TYPE, code + " 0.0.1", id, "TRAINING_ASSESSMENT_CREATED", null, "DRAFT", code + " 0.0.1: " + request.name().trim() + " (" + items.size() + " item(s))",
+                List.of(TrainingStore.change("Name", null, request.name().trim()), TrainingStore.change("Items", null, items.size())));
         return detail(actor, row(id));
     }
 
@@ -492,7 +493,8 @@ public class TrainingAssessmentLibraryService {
                 request.name().trim(), request.durationMinutes(), restart(request.essayNumbering()) ? "RESTART" : "CONTINUE", actor.getId(), id);
         jdbc.update("delete from training_assessment_def_items where def_id = ?", id);
         writeItems(id, items);
-        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_UPDATED", "DRAFT", "DRAFT", def.get("code") + " " + def.get("revision_number") + ": " + items.size() + " item(s), total " + total(items) + " point(s)");
+        audit.logAs(actor, TYPE, def.get("code") + " " + def.get("revision_number"), id, "TRAINING_ASSESSMENT_UPDATED", "DRAFT", "DRAFT", def.get("code") + " " + def.get("revision_number") + ": " + items.size() + " item(s), total " + total(items) + " point(s)",
+                List.of(TrainingStore.change("Items", null, items.size()), TrainingStore.change("Total Points", null, total(items))));
         return detail(actor, row(id));
     }
 
@@ -504,7 +506,8 @@ public class TrainingAssessmentLibraryService {
         if (!"DRAFT".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_DRAFT");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         jdbc.update("delete from training_assessment_defs where id = ?", id);
-        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_DELETED", "DRAFT", null, def.get("code") + " " + def.get("revision_number") + ": " + request.reason().trim());
+        audit.logAs(actor, TYPE, def.get("code") + " " + def.get("revision_number"), id, "TRAINING_ASSESSMENT_DELETED", "DRAFT", null, def.get("code") + " " + def.get("revision_number") + ": " + request.reason().trim(),
+                List.of(TrainingStore.change("Reason for Deleting", null, request.reason().trim())));
         return Map.of("deleted", true);
     }
 
@@ -517,7 +520,7 @@ public class TrainingAssessmentLibraryService {
         Integer count = jdbc.queryForObject("select count(*) from training_assessment_def_items where def_id = ?", Integer.class, id);
         if (count == null || count == 0) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEMS_REQUIRED");
         jdbc.update("update training_assessment_defs set status = 'PENDING_APPROVAL', submitted_by = ?, submitted_at = now(), version = version + 1 where id = ?", actor.getId(), id);
-        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_SUBMITTED", "DRAFT", "PENDING_APPROVAL", def.get("code") + " " + def.get("revision_number") + ": " + def.get("name"));
+        audit.logAs(actor, TYPE, def.get("code") + " " + def.get("revision_number"), id, "TRAINING_ASSESSMENT_SUBMITTED", "DRAFT", "PENDING_APPROVAL", def.get("code") + " " + def.get("revision_number") + ": " + def.get("name"));
         return detail(actor, row(id));
     }
 
@@ -529,7 +532,8 @@ public class TrainingAssessmentLibraryService {
         if (!"PENDING_APPROVAL".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_PENDING");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         jdbc.update("update training_assessment_defs set status = 'DRAFT', submitted_by = null, submitted_at = null, version = version + 1 where id = ?", id);
-        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_RETURNED", "PENDING_APPROVAL", "DRAFT", def.get("code") + " " + def.get("revision_number") + ": " + request.reason().trim());
+        audit.logAs(actor, TYPE, def.get("code") + " " + def.get("revision_number"), id, "TRAINING_ASSESSMENT_RETURNED", "PENDING_APPROVAL", "DRAFT", def.get("code") + " " + def.get("revision_number") + ": " + request.reason().trim(),
+                List.of(TrainingStore.change("Reason for Returning", null, request.reason().trim())));
         return detail(actor, row(id));
     }
 
@@ -547,7 +551,7 @@ public class TrainingAssessmentLibraryService {
         UUID signature = signatures.createEntitySignature(TYPE, id, label, actor, request.signatureToken(), "TRAINING_ASSESSMENT_APPROVED", reason, null, null, null).getId();
         jdbc.update("update training_assessment_defs set status = 'OBSOLETED' where code = ? and status = 'EFFECTIVE'", def.get("code"));
         jdbc.update("update training_assessment_defs set status = 'EFFECTIVE', revision_number = ?, approved_by = ?, approved_at = now(), approval_signature_id = ?, version = version + 1 where id = ?", approvedRevision, actor.getId(), signature, id);
-        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_APPROVED", "PENDING_APPROVAL", "EFFECTIVE", label + ": " + def.get("name"));
+        audit.logAs(actor, TYPE, label, id, "TRAINING_ASSESSMENT_APPROVED", "PENDING_APPROVAL", "EFFECTIVE", label + ": " + def.get("name"));
         return detail(actor, row(id));
     }
 
@@ -567,7 +571,8 @@ public class TrainingAssessmentLibraryService {
             insert into training_assessment_def_items(id, def_id, item_no, kind, prompt, options, correct, points, model_answer, option_layout, answer_lines, image)
             select gen_random_uuid(), ?, item_no, kind, prompt, options, correct, points, model_answer, option_layout, answer_lines, image from training_assessment_def_items where def_id = ?
             """, created, id);
-        audit.logAs(actor, TYPE, TYPE, created, "TRAINING_ASSESSMENT_NEW_VERSION", "EFFECTIVE", "DRAFT", def.get("code") + " " + nextDraftRevision(String.valueOf(def.get("revision_number"))) + " from " + def.get("revision_number"));
+        audit.logAs(actor, TYPE, def.get("code") + " " + nextDraftRevision(String.valueOf(def.get("revision_number"))), created, "TRAINING_ASSESSMENT_NEW_VERSION", "EFFECTIVE", "DRAFT", def.get("code") + " " + nextDraftRevision(String.valueOf(def.get("revision_number"))) + " from " + def.get("revision_number"),
+                List.of(TrainingStore.change("Revision", def.get("revision_number"), nextDraftRevision(String.valueOf(def.get("revision_number"))))));
         return detail(actor, row(created));
     }
 
@@ -652,7 +657,8 @@ public class TrainingAssessmentLibraryService {
         jdbc.update("update training_activities set assessment_def_id = ?, assessment_def_code = ?, assessment_def_version = ?, assessment_def_revision = ?, assessment_name = ?, assessment_kind = ?, assessment_max_score = ?, assessment_chosen_by = ?, assessment_chosen_at = now(), version = version + 1, updated_at = now() where id = ?",
                 def.get("id"), def.get("code"), def.get("version_no"), def.get("revision_number"), def.get("name"), def.get("kind"), checklist ? null : total(items), actor.getId(), activityId);
         store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_CHOSEN", before, label, def.get("name") + ": " + items.size() + " item(s)" + (checklist ? ", no score" : ", total " + total(items) + " point(s)")
-                + ", written into the form APD.0009 as the exam file and the answer key");
+                + ", written into the form APD.0009 as the exam file and the answer key",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Items",null,items.size())));
     }
 
     /** Takes the choice off: the two files that were made from the assessment are marked removed (they stay on record); the organizer may then write or upload another. */

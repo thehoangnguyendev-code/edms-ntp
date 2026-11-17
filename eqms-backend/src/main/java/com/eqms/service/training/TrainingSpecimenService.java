@@ -209,7 +209,7 @@ public class TrainingSpecimenService {
         String prefix = fromOriginal ? "original_" : "";
         try {
             byte[] bytes = files.readReportArtifact(String.valueOf(s.get(prefix + "provider" + suffix)), String.valueOf(s.get(prefix + "stored_path" + suffix)));
-            audit.logAs(actor, TYPE, "Specimen signature #" + s.get("version_no"), id, original ? "TRAINING_SPECIMEN_ORIGINAL_VIEWED" : "TRAINING_SPECIMEN_VIEWED", null, null,
+            audit.logAs(actor, TYPE, auditCode(id), id, original ? "TRAINING_SPECIMEN_ORIGINAL_VIEWED" : "TRAINING_SPECIMEN_VIEWED", null, null,
                     (original ? "Original of image " : "Image ") + which + " opened");
             return Map.of("bytes", bytes, "contentType", String.valueOf(s.get(prefix + "content_type" + suffix)));
         } catch (IOException e) {
@@ -274,8 +274,9 @@ public class TrainingSpecimenService {
                 original == null ? null : original.provider(), original == null ? null : original.storedPath(), original == null ? null : original.objectKey(), original == null ? null : first.type(), original == null ? null : first.bytes().length, original == null ? null : sha256(first.bytes()),
                 original2 == null ? null : original2.provider(), original2 == null ? null : original2.storedPath(), original2 == null ? null : original2.objectKey(), original2 == null ? null : second.type(), original2 == null ? null : second.bytes().length, original2 == null ? null : sha256(second.bytes()),
                 java.sql.Timestamp.from(uploadedAt));
-        audit.logAs(actor, TYPE, "Specimen signature of " + owner.getFullName() + " #" + versionNo, id, "TRAINING_SPECIMEN_UPLOADED", current != null && current > 0 ? "APPROVED" : null, "APPROVED",
-                reason == null || reason.isBlank() ? "Scan of the signed paper kept as the current record" : reason.trim());
+        audit.logAs(actor, TYPE, owner.getEmployeeCode() != null && !owner.getEmployeeCode().isBlank() ? owner.getEmployeeCode() : owner.getFullName(), id, "TRAINING_SPECIMEN_UPLOADED", current != null && current > 0 ? "APPROVED" : null, "APPROVED",
+                reason == null || reason.isBlank() ? "Scan of the signed paper kept as the current record" : reason.trim(),
+                com.eqms.util.AuditChanges.reason("Reason", reason));
         return TrainingRows.camel(jdbc.queryForList(SELECT + " where s.id=?", id).getFirst());
     }
 
@@ -335,4 +336,9 @@ public class TrainingSpecimenService {
 
     @SuppressWarnings("unused")
     private static byte[] utf8(String value) { return value.getBytes(StandardCharsets.UTF_8); }
+
+    /** What the Audit Trail names a specimen signature by: the employee code of its owner (AUDIT-OBJECT-REGISTRY-2026-11-17). */
+    private String auditCode(UUID id) {
+        return jdbc.queryForList("select coalesce(nullif(u.employee_code, ''), u.full_name) from training_specimen_signatures s join app_users u on u.id = s.person_user_id where s.id=?", String.class, id).stream().findFirst().orElse("Specimen signature");
+    }
 }

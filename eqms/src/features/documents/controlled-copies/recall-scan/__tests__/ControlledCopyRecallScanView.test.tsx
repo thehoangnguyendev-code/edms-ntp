@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
     listMyDrafts: vi.fn(),
     createDraft: vi.fn(),
     addFiles: vi.fn(),
+    getUploadProgress: vi.fn(),
+    lookupCopy: vi.fn(),
     getBatch: vi.fn(),
     listItems: vi.fn(),
     updateItem: vi.fn(),
@@ -128,7 +130,7 @@ const upload = async (files: File[]) => {
   // Files go up one at a time: the first starts the draft, the others are added to it. The mocked server answers every call with the batch the test set up.
   mocks.api.addFiles.mockImplementation(() => mocks.api.createDraft.mock.results[0]?.value);
   fireEvent.change(screen.getByTestId("recall-scan-input"), { target: { files } });
-  fireEvent.click(await screen.findByRole("button", { name: "Read codes and review" }));
+  fireEvent.click(await screen.findByRole("button", { name: /Read codes and review/i }));
 };
 
 beforeEach(() => {
@@ -148,6 +150,8 @@ beforeEach(() => {
   mocks.showToast.mockReset();
   Object.values(mocks.api).forEach((fn) => fn.mockReset());
   mocks.api.listMyDrafts.mockResolvedValue([]);
+  mocks.api.lookupCopy.mockImplementation((_batch: string, number: string) =>
+    Promise.resolve({ copy: { id: "c1", number, documentNumber: "SOP.0001", revisionNumber: "2.0", documentTitle: "Cleaning", recipientName: "Minh Le", status: "Distributed" }, problem: null }));
 });
 
 describe("Recall by Scan", () => {
@@ -174,9 +178,9 @@ describe("Recall by Scan", () => {
 
     await upload(files);
 
-    await waitFor(() => expect(mocks.api.createDraft).toHaveBeenCalledWith([files[0]], expect.any(Function)));
+    await waitFor(() => expect(mocks.api.createDraft).toHaveBeenCalledWith([files[0]], expect.any(Function), expect.any(String)));
     expect(mocks.api.addFiles).toHaveBeenCalledTimes(3);
-    expect(mocks.api.addFiles).toHaveBeenNthCalledWith(1, "b1", [files[1]], expect.any(Function));
+    expect(mocks.api.addFiles).toHaveBeenNthCalledWith(1, "b1", [files[1]], expect.any(Function), expect.any(String));
     expect(await screen.findByText("RCB-2026-00001")).toBeInTheDocument();
     expect(screen.getByText("CC-001")).toBeInTheDocument();
     expect(screen.getByText("Ready")).toBeInTheDocument();
@@ -189,7 +193,7 @@ describe("Recall by Scan", () => {
     // An infected file offers no preview and cannot be matched.
     expect(screen.queryByRole("button", { name: "Preview bad.pdf" })).toBeNull();
     // Nothing can be recalled while a scan still needs attention.
-    expect(screen.getByRole("button", { name: /Recall 1 controlled copy/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Recall 1 controlled copy/i })).toBeDisabled();
   });
 
   it("keeps at most 50 scans in one batch", () => {
@@ -225,7 +229,7 @@ describe("Recall by Scan", () => {
     render(<ControlledCopyRecallScanView />);
     fireEvent.change(screen.getByTestId("recall-scan-input"), { target: { files: [pdf("a.pdf"), pdf("b.pdf")] } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Read codes and review" }));
+    fireEvent.click(screen.getByRole("button", { name: /Read codes and review/i }));
 
     const bar = await screen.findByRole("progressbar", { name: "Upload progress" });
     expect(bar).toHaveAttribute("aria-valuenow", "0");
@@ -236,9 +240,188 @@ describe("Recall by Scan", () => {
     finishFirst(batchOf([item({ id: "i1", itemNo: 1 })]));
 
     await waitFor(() => expect(mocks.api.addFiles).toHaveBeenCalledTimes(1));
-    expect(mocks.api.addFiles).toHaveBeenCalledWith("b1", [expect.objectContaining({ name: "b.pdf" })], expect.any(Function));
+    expect(mocks.api.addFiles).toHaveBeenCalledWith("b1", [expect.objectContaining({ name: "b.pdf" })], expect.any(Function), expect.any(String));
     expect(await screen.findByText("RCB-2026-00001")).toBeInTheDocument();
     expect(screen.queryByRole("progressbar")).toBeNull();
+  });
+
+  it("does not show 100% when the bytes are sent: the bar follows the step the server reports", async () => {
+    let finish: (value: RecallBatch) => void = () => undefined;
+    mocks.api.createDraft.mockImplementation((files: File[], onProgress?: (loaded: number) => void) => {
+      onProgress?.(files[0].size); // all bytes sent; the server is still working
+      return new Promise<RecallBatch>((resolve) => {
+        finish = resolve;
+      });
+    });
+    mocks.api.getUploadProgress.mockResolvedValue({ stage: "VIRUS_SCAN", message: "Scanning for viruses...", percent: 15 });
+    render(<ControlledCopyRecallScanView />);
+    fireEvent.change(screen.getByTestId("recall-scan-input"), { target: { files: [pdf("a.pdf")] } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Read codes and review/i }));
+
+    expect(await screen.findByText("Scanning for viruses...")).toBeInTheDocument();
+    // 20% for sending the file + 80% of the server's 15% = 32%
+    expect(screen.getByRole("progressbar", { name: "Upload progress" })).toHaveAttribute("aria-valuenow", "32");
+    expect(mocks.api.getUploadProgress).toHaveBeenCalledWith(expect.any(String));
+
+    mocks.api.getUploadProgress.mockResolvedValue({ stage: "STORING", message: "Storing the file...", percent: 55 });
+    expect(await screen.findByText("Storing the file...")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Upload progress" })).toHaveAttribute("aria-valuenow", "64");
+
+    finish(batchOf([item({ id: "i1", itemNo: 1 })]));
+    expect(await screen.findByText("RCB-2026-00001")).toBeInTheDocument();
+  });
+
+  it("opens the batch only when the bar is full, not as soon as the server answers", async () => {
+    mocks.api.createDraft.mockResolvedValue(batchOf([item({ id: "i1", itemNo: 1 })]));
+    render(<ControlledCopyRecallScanView />);
+    fireEvent.change(screen.getByTestId("recall-scan-input"), { target: { files: [pdf("a.pdf")] } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Read codes and review/i }));
+
+    // The server has answered, yet the bar is shown at 100% first and the upload screen stays until then.
+    const bar = await screen.findByRole("progressbar", { name: "Upload progress" });
+    await waitFor(() => expect(bar).toHaveAttribute("aria-valuenow", "100"));
+    expect(screen.queryByText("RCB-2026-00001")).toBeNull();
+    expect(await screen.findByText("RCB-2026-00001")).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).toBeNull();
+  });
+
+  it("shows each scan as a card on a narrow screen, with the same actions and no table", async () => {
+    window.matchMedia = ((query: string) => ({
+      matches: false, media: query, addEventListener: () => undefined, removeEventListener: () => undefined,
+      addListener: () => undefined, removeListener: () => undefined, onchange: null, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    mocks.api.createDraft.mockResolvedValue(batchOf([
+      item({ id: "i2", itemNo: 1, fileName: "blurry.pdf", matchStatus: "UNMATCHED", qrStatus: "NOT_FOUND", copy: null, matchSource: null, matchMessage: "No code could be read on this scan." }),
+    ]));
+    mocks.api.updateItem.mockResolvedValue(batchOf([item({ id: "i2", itemNo: 1, fileName: "blurry.pdf", matchStatus: "UNMATCHED", qrStatus: "NOT_FOUND", copy: null, matchSource: null, excluded: true })]));
+    render(<ControlledCopyRecallScanView />);
+    await upload([pdf("blurry.pdf")]);
+
+    expect(await screen.findByText("1. blurry.pdf")).toBeInTheDocument();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.getByText("No code could be read on this scan.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Exclude" }));
+    await waitFor(() => expect(mocks.api.updateItem).toHaveBeenCalledWith("b1", "i2", { excluded: true }));
+  });
+
+  it("leaves out a file over the size limit before anything is uploaded", () => {
+    render(<ControlledCopyRecallScanView />);
+    const big = new File(["x"], "huge.pdf", { type: "application/pdf" });
+    Object.defineProperty(big, "size", { value: 26 * 1024 * 1024 });
+
+    fireEvent.change(screen.getByTestId("recall-scan-input"), { target: { files: [pdf("a.pdf"), big] } });
+
+    expect(screen.getByText(/1 of 50 files chosen/)).toBeInTheDocument();
+    expect(mocks.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: "warning", title: "File too large" }));
+    expect(mocks.api.createDraft).not.toHaveBeenCalled();
+  });
+
+  it("lists each file of an upload with its state and can stop after the file being sent", async () => {
+    let finishFirst: (value: RecallBatch) => void = () => undefined;
+    mocks.api.createDraft.mockImplementation((_files: File[], onProgress?: (loaded: number) => void) => {
+      onProgress?.(0);
+      return new Promise<RecallBatch>((resolve) => {
+        finishFirst = resolve;
+      });
+    });
+    render(<ControlledCopyRecallScanView />);
+    fireEvent.change(screen.getByTestId("recall-scan-input"), { target: { files: [pdf("a.pdf"), pdf("b.pdf")] } });
+    fireEvent.click(screen.getByRole("button", { name: /Read codes and review/i }));
+
+    const list = await screen.findByRole("list", { name: "Files in this upload" });
+    expect(within(list).getByLabelText("Uploading")).toBeInTheDocument();
+    expect(within(list).getByLabelText("Waiting")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Stop After This File" }));
+    finishFirst(batchOf([item({ id: "i1", itemNo: 1 })]));
+
+    await waitFor(() => expect(mocks.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: "Upload stopped", message: "1 file not sent." })));
+    // the file that went in is in the draft that opens; the second was never sent
+    expect(await screen.findByText("RCB-2026-00001")).toBeInTheDocument();
+    expect(mocks.api.addFiles).not.toHaveBeenCalled();
+  });
+
+  it("narrows the table to the group a badge counts, asked of the server, and shows every scan again when pressed twice", async () => {
+    const blurry = item({ id: "i2", itemNo: 2, fileName: "blurry.pdf", matchStatus: "UNMATCHED", qrStatus: "NOT_FOUND", copy: null, matchSource: null });
+    mocks.api.createDraft.mockResolvedValue(batchOf([item({ id: "i1", itemNo: 1, fileName: "ok.pdf" }), blurry]));
+    mocks.api.listItems.mockResolvedValue([blurry]);
+    render(<ControlledCopyRecallScanView />);
+    await upload([pdf("ok.pdf"), pdf("blurry.pdf")]);
+    await screen.findByText("RCB-2026-00001");
+
+    fireEvent.click(await screen.findByRole("button", { name: "1 need attention" }));
+
+    await waitFor(() => expect(mocks.api.listItems).toHaveBeenCalledWith("b1", { search: undefined, status: "ATTENTION", sortBy: "itemNo", sortDirection: "asc" }));
+    await waitFor(() => expect(screen.queryByText("ok.pdf")).toBeNull());
+    expect(screen.getByRole("button", { name: "1 need attention" })).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "1 need attention" }));
+    expect(await screen.findByText("ok.pdf")).toBeInTheDocument();
+  });
+
+  it("keeps the Recall button off while a scan needs attention, and enables it once the list can be recalled", async () => {
+    const blurry = item({ id: "i2", itemNo: 2, fileName: "blurry.pdf", matchStatus: "UNMATCHED", qrStatus: "NOT_FOUND", copy: null, matchSource: null });
+    mocks.api.createDraft.mockResolvedValue(batchOf([item({ id: "i1", itemNo: 1, fileName: "ok.pdf" }), blurry]));
+    mocks.api.updateItem.mockResolvedValue(batchOf([item({ id: "i1", itemNo: 1, fileName: "ok.pdf" }), { ...blurry, excluded: true }]));
+    render(<ControlledCopyRecallScanView />);
+    await upload([pdf("ok.pdf"), pdf("blurry.pdf")]);
+
+    expect(await screen.findByRole("button", { name: /Recall 1 controlled copy/i })).toBeDisabled();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Exclude" })[1]);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /Recall 1 controlled copy/i })).toBeEnabled());
+  });
+
+  it("links the record a signed scan was filed as", async () => {
+    mocks.api.createDraft.mockResolvedValue(batchOf(
+      [item({ id: "i1", itemNo: 1, outcome: "RECALLED", outcomeMessage: "Recalled; scan filed as REC-0007", executedRecordId: "r1", executedRecordNumber: "REC-0007" })],
+      { status: "COMMITTED" },
+    ));
+    render(<ControlledCopyRecallScanView />);
+    await upload([pdf("scan-1.pdf")]);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Open REC-0007/ }));
+
+    expect(mocks.navigateTo).toHaveBeenCalledWith("/documents/records?search=REC-0007");
+  });
+
+  it("discards any open draft from the list after a confirmation, without opening it", async () => {
+    mocks.api.listMyDrafts.mockResolvedValue([
+      { id: "d1", batchNumber: "RCB-2026-00005", status: "DRAFT", createdAt: "2026-11-10T01:00:00Z", totalItems: 2 },
+      { id: "d2", batchNumber: "RCB-2026-00006", status: "DRAFT", createdAt: "2026-11-11T01:00:00Z", totalItems: 1 },
+    ]);
+    mocks.api.discard.mockResolvedValue(undefined);
+    render(<ControlledCopyRecallScanView />);
+
+    expect(await screen.findByText(/2 scans/)).toBeInTheDocument();
+    expect(screen.getByText(/1 scan ·/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Discard RCB-2026-00006" }));
+    expect(mocks.api.discard).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Discard draft/i }));
+
+    await waitFor(() => expect(mocks.api.discard).toHaveBeenCalledWith("d2"));
+    await waitFor(() => expect(screen.queryByText("RCB-2026-00006")).toBeNull());
+    expect(screen.getByText("RCB-2026-00005")).toBeInTheDocument();
+    expect(mocks.api.getBatch).not.toHaveBeenCalled();
+  });
+
+  it("asks before leaving while an upload is under way", async () => {
+    mocks.api.createDraft.mockImplementation((_files: File[], onProgress?: (loaded: number) => void) => {
+      onProgress?.(0);
+      return new Promise<RecallBatch>(() => undefined);
+    });
+    render(<ControlledCopyRecallScanView />);
+    fireEvent.change(screen.getByTestId("recall-scan-input"), { target: { files: [pdf("a.pdf")] } });
+    fireEvent.click(screen.getByRole("button", { name: /Read codes and review/i }));
+    await screen.findByRole("progressbar", { name: "Upload progress" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(mocks.navigateTo).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Leave" }));
+    expect(mocks.navigateTo).toHaveBeenCalledWith("/documents/controlled-copies/all");
   });
 
   it("stops at the first file that fails and leaves the rest chosen for a retry", async () => {
@@ -247,7 +430,7 @@ describe("Recall by Scan", () => {
     render(<ControlledCopyRecallScanView />);
     fireEvent.change(screen.getByTestId("recall-scan-input"), { target: { files: [pdf("a.pdf"), pdf("b.pdf"), pdf("c.pdf")] } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Read codes and review" }));
+    fireEvent.click(screen.getByRole("button", { name: /Read codes and review/i }));
 
     await waitFor(() => expect(mocks.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: "error" })));
     expect(mocks.api.addFiles).toHaveBeenCalledTimes(1);
@@ -263,6 +446,7 @@ describe("Recall by Scan", () => {
     mocks.api.listItems.mockResolvedValue([item({ id: "i2", itemNo: 2, fileName: "alpha.pdf", copy: { id: "c2", number: "CC-002", recipientName: "Minh Le" } })]);
     render(<ControlledCopyRecallScanView />);
     await upload([pdf("zeta.pdf"), pdf("alpha.pdf")]);
+    await screen.findByText("RCB-2026-00001"); // the screen opens once the bar is full
     await screen.findByText("zeta.pdf");
     // Nothing is fetched while the query is the default one.
     expect(mocks.api.listItems).not.toHaveBeenCalled();
@@ -272,7 +456,7 @@ describe("Recall by Scan", () => {
     await waitFor(() => expect(mocks.api.listItems).toHaveBeenCalledWith("b1", { search: "CC-002", sortBy: "itemNo", sortDirection: "asc" }));
     await waitFor(() => expect(screen.queryByText("zeta.pdf")).toBeNull());
     expect(screen.getByText("alpha.pdf")).toBeInTheDocument();
-    expect(screen.getByText("1 of 2 scans")).toBeInTheDocument();
+    expect(screen.queryByText(/of 2 scans/)).toBeNull();
 
     fireEvent.click(screen.getByRole("columnheader", { name: /^Scan/ }));
 
@@ -291,6 +475,7 @@ describe("Recall by Scan", () => {
     ]));
     render(<ControlledCopyRecallScanView />);
     await upload([pdf("a.pdf"), pdf("blurry.pdf")]);
+    await screen.findByText("RCB-2026-00001"); // the screen opens once the bar is full
     await screen.findByText("blurry.pdf");
     const excludeButtons = screen.getAllByRole("button", { name: /Exclude/ });
     expect(excludeButtons).toHaveLength(2);
@@ -299,7 +484,7 @@ describe("Recall by Scan", () => {
 
     await waitFor(() => expect(mocks.api.updateItem).toHaveBeenCalledWith("b1", "i2", { excluded: true }));
     expect(await screen.findByText("Excluded")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Recall 1 controlled copy/ })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Recall 1 controlled copy/i })).toBeEnabled();
   });
 
   it("matches a scan whose code could not be read by the copy number typed in", async () => {
@@ -312,6 +497,7 @@ describe("Recall by Scan", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Match by number" }));
     fireEvent.change(screen.getByLabelText("Controlled copy number"), { target: { value: " CC-001 " } });
+    expect(await screen.findByText("Issued to Minh Le")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Match" }));
 
     await waitFor(() => expect(mocks.api.updateItem).toHaveBeenCalledWith("b1", "i2", { copyNumber: "CC-001" }));
@@ -334,12 +520,38 @@ describe("Recall by Scan", () => {
     expect(screen.getByText("page 4 of pile.pdf")).toBeInTheDocument();
     fireEvent.click(await screen.findByRole("button", { name: "Match by number" }));
     fireEvent.change(screen.getByLabelText("Controlled copy number"), { target: { value: "CC-001" } });
+    await screen.findByText("Issued to Minh Le");
     // Without the page number the page cannot be placed.
     expect(screen.getByRole("button", { name: "Place page" })).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Page number"), { target: { value: "x2" } });
     fireEvent.click(screen.getByRole("button", { name: "Place page" }));
 
     await waitFor(() => expect(mocks.api.updateItem).toHaveBeenCalledWith("b1", "p1", { copyNumber: "CC-001", pageNumber: 2 }));
+  });
+
+  it("shows the copy a typed number matches and will not match one that cannot be recalled or does not exist", async () => {
+    mocks.api.createDraft.mockResolvedValue(batchOf([
+      item({ id: "i2", itemNo: 1, fileName: "blurry.pdf", matchStatus: "UNMATCHED", qrStatus: "NOT_FOUND", copy: null, matchSource: null }),
+    ]));
+    mocks.api.lookupCopy.mockImplementation((_batch: string, number: string) => {
+      if (number === "CC-009") {
+        return Promise.resolve({ copy: { id: "c9", number, documentNumber: "SOP.0009", status: "Obsoleted" }, problem: "Controlled copy CC-009 was already recalled." });
+      }
+      return Promise.resolve({ copy: null, problem: `No controlled copy has the number "${number}".` });
+    });
+    render(<ControlledCopyRecallScanView />);
+    await upload([pdf("blurry.pdf")]);
+    fireEvent.click(await screen.findByRole("button", { name: "Match by number" }));
+    expect(screen.getByRole("button", { name: "Match" })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Controlled copy number"), { target: { value: "CC-009" } });
+    expect(await screen.findByText(/already recalled/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Match" })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Controlled copy number"), { target: { value: "NOPE" } });
+    expect(await screen.findByText(/No controlled copy has the number "NOPE"/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Match" })).toBeDisabled();
+    expect(mocks.api.updateItem).not.toHaveBeenCalled();
   });
 
   it("shows which pages of a copy a split item holds", async () => {
@@ -364,15 +576,15 @@ describe("Recall by Scan", () => {
     render(<ControlledCopyRecallScanView />);
     await upload([pdf("written.pdf"), pdf("read.pdf")]);
 
-    expect(await screen.findByText(/scan\(s\) are of copies issued for reading only/)).toBeInTheDocument();
+    expect(await screen.findByText(/scan is of copies issued for reading only/)).toBeInTheDocument();
     expect(screen.queryByText(/need attention/)).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Recall 1 controlled copy/ })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /Recall 1 controlled copy/i })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Remove read.pdf" }));
 
     await waitFor(() => expect(mocks.api.updateItem).toHaveBeenCalledWith("b1", "r1", { excluded: true }));
     expect(await screen.findByText("Removed")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Recall 1 controlled copy/ })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Recall 1 controlled copy/i })).toBeEnabled();
   });
 
   it("opens a scan in the preview modal", async () => {
@@ -397,7 +609,7 @@ describe("Recall by Scan", () => {
     render(<ControlledCopyRecallScanView />);
     await upload([pdf("scan-1.pdf")]);
 
-    fireEvent.click(await screen.findByRole("button", { name: /Recall 1 controlled copy/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Recall 1 controlled copy/i }));
 
     const proceed = screen.getByRole("button", { name: "Continue to sign" });
     expect(proceed).toBeDisabled();
@@ -417,7 +629,7 @@ describe("Recall by Scan", () => {
     render(<ControlledCopyRecallScanView />);
     await upload([pdf("a.pdf"), pdf("b.pdf")]);
 
-    fireEvent.click(await screen.findByRole("button", { name: /Recall 2 controlled copies/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Recall 2 controlled copies/i }));
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Continue to sign" }));
     expect(screen.getByText("signing RCB-2026-00001")).toBeInTheDocument();
@@ -428,7 +640,7 @@ describe("Recall by Scan", () => {
     expect(await screen.findByText("Committed")).toBeInTheDocument();
     expect(screen.getAllByText("Recalled")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Open Records" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Recall 2 controlled copies/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Recall 2 controlled copies/i })).toBeNull();
   });
 
   it("sends the date the paper was received when it is not today", async () => {
@@ -437,7 +649,7 @@ describe("Recall by Scan", () => {
     render(<ControlledCopyRecallScanView />);
     await upload([pdf("a.pdf")]);
 
-    fireEvent.click(await screen.findByRole("button", { name: /Recall 1 controlled copy/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Recall 1 controlled copy/i }));
     // Pick the 1st of the previous month in the date picker (dd/MM/yyyy on screen, an ISO date in the request).
     const now = new Date();
     const target = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -462,7 +674,7 @@ describe("Recall by Scan", () => {
     render(<ControlledCopyRecallScanView />);
     await upload([pdf("a.pdf")]);
 
-    fireEvent.click(await screen.findByRole("button", { name: /Recall 1 controlled copy/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Recall 1 controlled copy/i }));
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Continue to sign" }));
     fireEvent.click(screen.getByText("sign"));
@@ -479,9 +691,9 @@ describe("Recall by Scan", () => {
     render(<ControlledCopyRecallScanView />);
     await upload([pdf("a.pdf")]);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Discard draft" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Discard Draft" }));
     expect(mocks.api.discard).not.toHaveBeenCalled();
-    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Discard draft" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Discard draft/i }));
 
     await waitFor(() => expect(mocks.api.discard).toHaveBeenCalledWith("b1"));
     expect(mocks.api.commit).not.toHaveBeenCalled();

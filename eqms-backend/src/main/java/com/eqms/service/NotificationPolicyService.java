@@ -186,6 +186,9 @@ public class NotificationPolicyService {
         String effectiveQuietHoursStart = request.quietHoursStart() == null ? policy.getQuietHoursStart() : requestedQuietHoursStart;
         String effectiveQuietHoursEnd = request.quietHoursEnd() == null ? policy.getQuietHoursEnd() : requestedQuietHoursEnd;
         validateQuietHours(effectiveQuietHoursStart, effectiveQuietHoursEnd);
+        if (NotificationMandatoryEvents.isMandatory(eventCode)) {
+            requireMandatoryStaysSent(request, requestedChannels, requestedQuietHoursStart, requestedQuietHoursEnd);
+        }
 
         boolean effectiveEscalationEnabled = request.escalationEnabled() == null
                 ? policy.isEscalationEnabled() : request.escalationEnabled();
@@ -197,7 +200,7 @@ public class NotificationPolicyService {
 
         String effectiveStatus = request.status() == null ? policy.getStatus() : request.status();
         if (NotificationPolicy.STATUS_ACTIVE.equalsIgnoreCase(effectiveStatus)) {
-            validateActivation(policy, request.recipientRules());
+            validateActivation(event, policy, request.recipientRules());
         }
 
         if (request.status() != null) {
@@ -272,6 +275,29 @@ public class NotificationPolicyService {
         }
 
         return getDetail(eventCode);
+    }
+
+    /**
+     * An account e-mail that carries a secret (a sign-in code, a reset link, a temporary password) or that the person cannot do without is always sent, at once,
+     * by e-mail only: it cannot be switched off, moved to another channel, held by a digest or by quiet hours, or escalated. Who gets it and its wording can change.
+     */
+    private static void requireMandatoryStaysSent(UpdateNotificationPolicyRequest request, List<String> requestedChannels, String quietStart, String quietEnd) {
+        String why = " It is an account e-mail that is always sent; only its wording and who gets it can be changed.";
+        if (request.status() != null && !NotificationPolicy.STATUS_ACTIVE.equalsIgnoreCase(request.status())) {
+            throw new IllegalArgumentException("This notification cannot be switched off." + why);
+        }
+        if (requestedChannels != null && !requestedChannels.equals(List.of(NotificationTemplateVersion.CHANNEL_EMAIL))) {
+            throw new IllegalArgumentException("This notification is sent by e-mail only." + why);
+        }
+        if (request.digestMode() != null && !NotificationPolicy.DIGEST_IMMEDIATE.equalsIgnoreCase(request.digestMode())) {
+            throw new IllegalArgumentException("This notification cannot be held back in a digest." + why);
+        }
+        if (StringUtils.hasText(quietStart) || StringUtils.hasText(quietEnd)) {
+            throw new IllegalArgumentException("This notification cannot be held back by quiet hours." + why);
+        }
+        if (Boolean.TRUE.equals(request.escalationEnabled())) {
+            throw new IllegalArgumentException("This notification cannot be escalated." + why);
+        }
     }
 
     /**
@@ -695,10 +721,21 @@ public class NotificationPolicyService {
         }
     }
 
-    private void validateActivation(NotificationPolicy policy, com.fasterxml.jackson.databind.JsonNode requestedRecipients) {
+    private void validateActivation(NotificationEventDefinition event, NotificationPolicy policy, com.fasterxml.jackson.databind.JsonNode requestedRecipients) {
         com.fasterxml.jackson.databind.JsonNode recipients = requestedRecipients == null ? policy.getRecipientRules() : requestedRecipients;
         if (recipients == null || !recipients.isArray() || recipients.isEmpty()) {
             throw new IllegalArgumentException("An active notification policy requires at least one recipient rule.");
+        }
+        // an e-mail-only notification (an account e-mail that carries a secret) has no in-app wording: its e-mail wording is what must exist
+        if (!parseCsv(event.getSupportedChannels()).contains(NotificationTemplateVersion.CHANNEL_IN_APP)) {
+            NotificationTemplateVersion mail = templateVersionRepository
+                    .findFirstByPolicy_IdAndChannelAndStatusOrderByVersionNumberDesc(
+                            policy.getId(), NotificationTemplateVersion.CHANNEL_EMAIL, NotificationTemplateVersion.STATUS_ACTIVE)
+                    .orElse(null);
+            if (mail == null || !StringUtils.hasText(mail.getSubject()) || !StringUtils.hasText(mail.getBody())) {
+                throw new IllegalArgumentException("An active notification policy requires an e-mail subject and message.");
+            }
+            return;
         }
         NotificationTemplateVersion template = templateVersionRepository
                 .findFirstByPolicy_IdAndChannelAndStatusOrderByVersionNumberDesc(

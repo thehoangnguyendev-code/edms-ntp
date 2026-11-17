@@ -77,7 +77,8 @@ public class BackupManualCopyController {
             String id = reply.body().path("id").asText("");
             audit.logAs(actor, "BACKUP_MANUAL_COPY", id, BackupAuditIds.of("manual-copy", id), "MANUAL_COPY_RECORDED", null, "RECORDED",
                     "Recorded a manual copy made on " + out.get("copiedOn") + " at " + out.get("place") + " by " + out.get("madeBy")
-                            + (out.get("backupNumber") == null ? "" : ", holding up to " + out.get("backupNumber")));
+                            + (out.get("backupNumber") == null ? "" : ", holding up to " + out.get("backupNumber")),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Copied On",null,out.get("copiedOn")), com.eqms.util.AuditChanges.of("Place",null,out.get("place")), com.eqms.util.AuditChanges.of("Made By",null,out.get("madeBy")), com.eqms.util.AuditChanges.of("Backup",null,out.get("backupNumber"))));
         }
         return reply(reply);
     }

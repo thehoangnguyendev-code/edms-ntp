@@ -100,7 +100,7 @@ class BackupRehearsalControllerTest {
         ArgumentCaptor<Map> body = ArgumentCaptor.forClass(Map.class);
         verify(agent).exchange(eq(HttpMethod.POST), anyString(), body.capture());
         assertThat(body.getValue()).containsEntry("by", "tester.one").containsEntry("reason", "Annual test");
-        verify(audit).logAs(eq(actor), eq("BACKUP"), eq(BACKUP), eq(id), eq("RESTORE_REHEARSAL_REQUESTED"), isNull(), eq("QUEUED"), anyString());
+        verify(audit).logAs(eq(actor), eq("BACKUP"), eq(BACKUP), eq(id), eq("RESTORE_REHEARSAL_REQUESTED"), isNull(), eq("QUEUED"), anyString(), any());
     }
 
     @Test
@@ -108,7 +108,7 @@ class BackupRehearsalControllerTest {
         when(agent.exchange(eq(HttpMethod.POST), anyString(), any()))
                 .thenReturn(new BackupAgentClient.Reply(409, json("{\"code\":\"REHEARSAL_BUSY\"}")));
         assertThat(controller.request(BACKUP, new BackupRehearsalController.RehearsalRequest("why")).getBody().path("code").asText()).isEqualTo("REHEARSAL_BUSY");
-        verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), anyString());
+        verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), anyString(), any());
     }
 
     @Test

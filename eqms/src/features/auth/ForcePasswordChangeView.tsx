@@ -7,6 +7,7 @@ import { cn } from "@/components/ui/utils";
 import { resetViewportZoom, blurActiveInput } from "@/utils/viewport";
 import { BrandLogo } from "@/components/branding/BrandLogo";
 import { AUTH_UI } from "./auth-ui";
+import { useAuthUi } from "./useAuthUi";
 import { AuthField, AuthLayout, AuthBackLink, AuthTopBackButton } from "./components";
 import { IconArrowBigUpFilled } from "@tabler/icons-react";
 import { usePasswordPolicy } from "./usePasswordPolicy";
@@ -69,6 +70,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
   loginIdentifier = "",
   passwordChangeReason,
 }) => {
+  const ui = useAuthUi();
   const passwordPolicy = usePasswordPolicy();
   // ========================================================================
   // STATE
@@ -215,7 +217,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
     <button
       type="button"
       onClick={() => togglePasswordVisibility(field)}
-      className={AUTH_UI.eyeButton}
+      className={ui.eyeButton}
       aria-label={showPasswords[field] ? "Hide password" : "Show password"}
       tabIndex={-1}
     >
@@ -236,16 +238,16 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
       {isLoading && <FullPageLoading text="Updating credentials..." />}
       <AuthLayout
         left={
-          <div className={AUTH_UI.formColumn}>
+          <div className={ui.formColumn}>
             <AuthTopBackButton onClick={onBackToLogin} label="Back to Sign In" disabled={isLoading} />
-            <div className="mb-6 flex items-center gap-3 text-slate-900 sm:mb-10 lg:mb-12">
+            <div className={ui.brand}>
               <BrandLogo className="h-8 w-auto object-contain sm:h-9" />
             </div>
 
-            <div className={AUTH_UI.headerArea}>
-              <div className={AUTH_UI.headingBlock}>
-              <h1 className={AUTH_UI.pageTitle}>{passwordChangeContext.title}</h1>
-              <p className={AUTH_UI.description}>
+            <div className={ui.headerArea}>
+              <div className={ui.headingBlock}>
+              <h1 className={ui.pageTitle}>{passwordChangeContext.title}</h1>
+              <p className={ui.description}>
                   {passwordChangeContext.description}
               </p>
               </div>
@@ -270,7 +272,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                 Password updated successfully. Opening your workspace…
               </div>
             ) : (
-            <form id="change-password-form" name="change-password-form" onSubmit={handleSubmit} className={AUTH_UI.formStack} noValidate autoComplete="on">
+            <form id="change-password-form" name="change-password-form" onSubmit={handleSubmit} className={ui.formStack} noValidate autoComplete="on">
               {/* This route is separate from login. Keep the account identifier in the form so
                   Chrome can associate the successful password change with the right credential. */}
               <input
@@ -293,7 +295,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                     autoComplete="current-password"
                     value={formData.currentPassword}
                     onChange={(e) => handleInputChange("currentPassword", e.target.value)}
-                    className={cn(AUTH_UI.inputBase, "pr-12", AUTH_UI.inputFocus, errors.currentPassword ? AUTH_UI.inputError : AUTH_UI.inputDefault)}
+                    className={cn(ui.inputBase, "pr-12", ui.inputFocus, errors.currentPassword ? ui.inputError : ui.inputDefault)}
                     disabled={isLoading}
                     placeholder='Enter Current Password'
                   />
@@ -317,7 +319,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                     autoComplete="new-password"
                     value={formData.newPassword}
                     onChange={(e) => handleInputChange("newPassword", e.target.value)}
-                    className={cn(AUTH_UI.inputBase, "pr-12", AUTH_UI.inputFocus, errors.newPassword ? AUTH_UI.inputError : AUTH_UI.inputDefault)}
+                    className={cn(ui.inputBase, "pr-12", ui.inputFocus, errors.newPassword ? ui.inputError : ui.inputDefault)}
                     disabled={isLoading}
                     onKeyUp={handleCapsLockCheck}
                     onKeyDown={handleCapsLockCheck}
@@ -381,7 +383,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                     autoComplete="new-password"
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                    className={cn(AUTH_UI.inputBase, "pr-12", AUTH_UI.inputFocus, errors.confirmPassword ? AUTH_UI.inputError : AUTH_UI.inputDefault)}
+                    className={cn(ui.inputBase, "pr-12", ui.inputFocus, errors.confirmPassword ? ui.inputError : ui.inputDefault)}
                     disabled={isLoading}
                     onKeyUp={handleCapsLockCheck}
                     onKeyDown={handleCapsLockCheck}
@@ -407,14 +409,14 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
 
               <Button
                 type="submit"
-                className={cn(AUTH_UI.submitButton, "mt-2")}
+                className={cn(ui.submitButton, "mt-2")}
                 disabled={continueDisabled}
                 aria-describedby={continueDisabled && !isLoading ? "continue-hint" : undefined}
               >
                 Continue
               </Button>
               {continueDisabled && !isLoading && (
-                <p id="continue-hint" className={AUTH_UI.hintText}>
+                <p id="continue-hint" className={ui.hintText}>
                   Enter your current password and meet every password rule to continue.
                 </p>
               )}

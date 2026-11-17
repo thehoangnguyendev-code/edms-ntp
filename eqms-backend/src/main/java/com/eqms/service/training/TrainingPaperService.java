@@ -84,7 +84,8 @@ public class TrainingPaperService {
         if (why.length() > 1000) throw new IllegalArgumentException("TRAINING_REASON_TOO_LONG");
         jdbc.update("insert into training_paper_pack_events(id, pack_id, status, reason, by_user) values (?,?,?,?,?)", UUID.randomUUID(), packId, status, why.isEmpty() ? null : why, actor.getId());
         Map<String, Object> activity = store.activity((UUID) pack.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        store.auditActivity(actor, activity, "TRAINING_PAPER_COPY_" + status, "ISSUED", status, pack.get("pack_code") + (why.isEmpty() ? "" : ". Reason: " + why));
+        store.auditActivity(actor, activity, "TRAINING_PAPER_COPY_" + status, "ISSUED", status, pack.get("pack_code") + (why.isEmpty() ? "" : ". Reason: " + why),
+                com.eqms.util.AuditChanges.reason("Reason", why));
         return packs(actor, (UUID) pack.get("activity_id")).stream().filter(p -> packId.equals(p.get("id"))).findFirst().orElseThrow();
     }
 
@@ -146,7 +147,8 @@ public class TrainingPaperService {
         String why = reason == null ? "" : reason.trim();
         if (printed != null && printed > 0 && why.isEmpty()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         jdbc.update("update training_sessions set delivery_mode = ?, version = version + 1 where id = ?", mode, sessionId);
-        store.auditActivity(actor, activity, "TRAINING_DELIVERY_MODE_CHANGED", from, mode, "Session S" + session.get("session_no") + (why.isEmpty() ? "" : ". " + why));
+        store.auditActivity(actor, activity, "TRAINING_DELIVERY_MODE_CHANGED", from, mode, "Session S" + session.get("session_no") + (why.isEmpty() ? "" : ". " + why),
+                com.eqms.util.AuditChanges.with("Reason", why, com.eqms.util.AuditChanges.of("Session S" + session.get("session_no") + " \u203a Delivery Mode",from,mode)));
         return Map.of("deliveryMode", mode);
     }
 

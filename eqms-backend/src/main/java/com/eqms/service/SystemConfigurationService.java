@@ -202,6 +202,7 @@ public class SystemConfigurationService {
         if ("video".equals(videoBackground.path("mode").asText()) && (authBackgroundVideoStore == null || !authBackgroundVideoStore.exists(UUID.fromString(videoBackground.path("videoId").asText())))) throw new IllegalArgumentException("Authentication background video does not exist");
         validateTrainingMaterialsLayout(nextGeneral);
         validateAuditTabView(nextGeneral);
+        validateLoginLayout(nextGeneral);
         validateKnowledgeFolderNames(nextGeneral);
         validateSystemHeaderTitle(nextGeneral);
         validateFooter(nextGeneral);
@@ -257,11 +258,7 @@ public class SystemConfigurationService {
                 "Updated system configuration",
                 changes
         );
-        sendPreferenceUpdateNotification(
-                "General and notification settings updated",
-                summarizeConfigFromSections(previousGeneral, previousSecurity, previousDocuments, previousNotifications, previousIntegrations, previousFeatures),
-                summarizeConfig(saved)
-        );
+        // No e-mail or bell notification to the person who just saved: the screen shows its own "Changes saved" message and the Audit Trail records the change.
         publishBrandingInvalidationAfterCommit(previousGeneral, nextGeneral);
         publishOnlyOfficeViewerInvalidationAfterCommit(previousGeneral, nextGeneral);
         publishDocumentsPreviewInvalidationAfterCommit(previousDocuments, saved.getDocumentsConfig());
@@ -405,7 +402,8 @@ public class SystemConfigurationService {
                 optionalHexColor(appearance, "menuTextColor"),
                 optionalHexColor(appearance, "menuIconColor"),
                 auditTabView(appearance),
-                auditTabTimelineStyle(appearance)
+                auditTabTimelineStyle(appearance),
+                loginLayout(appearance)
         );
     }
 
@@ -540,6 +538,23 @@ public class SystemConfigurationService {
         JsonNode style = appearance == null ? null : appearance.get("auditTabTimelineStyle");
         if (style != null && !style.isNull() && (!style.isTextual() || !AUDIT_TAB_TIMELINE_STYLES.contains(style.asText()))) {
             throw new IllegalArgumentException("auditTabTimelineStyle must be one of " + AUDIT_TAB_TIMELINE_STYLES);
+        }
+    }
+
+    /** Machine values only; the admin UI owns the labels. CLASSIC is the sign-in screen that existed before; SPLIT is the card with the blue product panel. Missing or unknown values fall back to CLASSIC. */
+    static final java.util.Set<String> LOGIN_LAYOUTS = java.util.Set.of("CLASSIC", "SPLIT");
+    static final String DEFAULT_LOGIN_LAYOUT = "CLASSIC";
+
+    String loginLayout(JsonNode appearance) {
+        String value = appearance == null ? null : textValue(appearance, "loginLayout");
+        return value != null && LOGIN_LAYOUTS.contains(value) ? value : DEFAULT_LOGIN_LAYOUT;
+    }
+
+    static void validateLoginLayout(JsonNode general) {
+        JsonNode appearance = general == null ? null : general.get("appearance");
+        JsonNode layout = appearance == null ? null : appearance.get("loginLayout");
+        if (layout != null && !layout.isNull() && (!layout.isTextual() || !LOGIN_LAYOUTS.contains(layout.asText()))) {
+            throw new IllegalArgumentException("loginLayout must be one of " + LOGIN_LAYOUTS);
         }
     }
 
@@ -1916,22 +1931,80 @@ public class SystemConfigurationService {
             SystemConfiguration current
     ) {
         List<AuditTrailChangeResponse> changes = new ArrayList<>();
-        addConfigurationChange(changes, "General Configuration", sanitizeGeneralForAudit(previousGeneral), sanitizeGeneralForAudit(current.getGeneralConfig()));
-        addConfigurationChange(changes, "Security Configuration", sanitizeForAudit(previousSecurity), sanitizeForAudit(current.getSecurityConfig()));
-        addConfigurationChange(changes, "Documents Configuration", sanitizeForAudit(previousDocuments), sanitizeForAudit(current.getDocumentsConfig()));
-        addConfigurationChange(changes, "Notification Configuration", sanitizeForAudit(previousNotifications), sanitizeForAudit(current.getNotificationsConfig()));
-        addConfigurationChange(changes, "Integration Configuration", sanitizeForAudit(previousIntegrations), sanitizeForAudit(current.getIntegrationsConfig()));
-        addConfigurationChange(changes, "Feature Flags", sanitizeForAudit(previousFeatures), sanitizeForAudit(current.getFeaturesConfig()));
+        addConfigurationChanges(changes, "General", sanitizeForAudit(sanitizeGeneralForAudit(previousGeneral)), sanitizeForAudit(sanitizeGeneralForAudit(current.getGeneralConfig())));
+        addConfigurationChanges(changes, "Security", sanitizeForAudit(previousSecurity), sanitizeForAudit(current.getSecurityConfig()));
+        addConfigurationChanges(changes, "Documents", sanitizeForAudit(previousDocuments), sanitizeForAudit(current.getDocumentsConfig()));
+        addConfigurationChanges(changes, "Notifications", sanitizeForAudit(previousNotifications), sanitizeForAudit(current.getNotificationsConfig()));
+        addConfigurationChanges(changes, "Integrations", sanitizeForAudit(previousIntegrations), sanitizeForAudit(current.getIntegrationsConfig()));
+        addConfigurationChanges(changes, "Features", sanitizeForAudit(previousFeatures), sanitizeForAudit(current.getFeaturesConfig()));
         if (changes.isEmpty()) {
             changes.add(new AuditTrailChangeResponse("System Configuration", summarizeConfigFromSections(previousGeneral, previousSecurity, previousDocuments, previousNotifications, previousIntegrations, previousFeatures), summarizeConfig(current)));
         }
         return changes;
     }
 
-    private void addConfigurationChange(List<AuditTrailChangeResponse> changes, String label, JsonNode previous, JsonNode next) {
-        if (!Objects.equals(previous, next)) {
-            changes.add(new AuditTrailChangeResponse(label, stringifyJson(previous), stringifyJson(next)));
+    /** One audit row per setting that really changed (never a whole section), named by its path, e.g. "General > Appearance > Primary Color". */
+    private void addConfigurationChanges(List<AuditTrailChangeResponse> changes, String section, JsonNode previous, JsonNode next) {
+        Map<String, String> before = new java.util.LinkedHashMap<>();
+        Map<String, String> after = new java.util.LinkedHashMap<>();
+        flattenForAudit("", previous, before);
+        flattenForAudit("", next, after);
+        java.util.Set<String> paths = new java.util.LinkedHashSet<>(before.keySet());
+        paths.addAll(after.keySet());
+        for (String path : paths) {
+            String was = before.getOrDefault(path, "");
+            String now = after.getOrDefault(path, "");
+            if (!was.equals(now)) {
+                changes.add(new AuditTrailChangeResponse(section + " > " + humanizeAuditPath(path), was, now));
+            }
         }
+    }
+
+    /** Leaves of a configuration section by path. Lists of objects that have an "id" are compared item by item; any other list is one value. */
+    static void flattenForAudit(String path, JsonNode node, Map<String, String> out) {
+        if (node == null || node.isNull() || node.isMissingNode()) return;
+        if (node.isObject()) {
+            node.fieldNames().forEachRemaining(name -> flattenForAudit(path.isEmpty() ? name : path + "." + name, node.get(name), out));
+        } else if (node.isArray() && !node.isEmpty() && isListOfIdentified(node)) {
+            for (JsonNode item : node) {
+                flattenForAudit(path + "[" + item.get("id").asText() + "]", item, out);
+            }
+        } else if (node.isArray()) {
+            out.put(path, auditText(node.toString()));
+        } else {
+            out.put(path, auditText(node.asText()));
+        }
+    }
+
+    private static boolean isListOfIdentified(JsonNode array) {
+        for (JsonNode item : array) {
+            if (!item.isObject() || !item.path("id").isValueNode() || item.path("id").asText().isBlank()) return false;
+        }
+        return true;
+    }
+
+    /** A picture or any very long text is named by its size and fingerprint: the Audit Trail shows that it changed without storing or printing it. */
+    private static String auditText(String text) {
+        if (text == null) return "";
+        if (text.startsWith("data:") || text.length() > 300) {
+            String kind = text.startsWith("data:") ? text.substring(5, Math.max(5, Math.min(text.indexOf(';') < 0 ? text.length() : text.indexOf(';'), 40))) : "text";
+            return "[" + kind + ", " + text.length() + " characters, sha256:" + ImageWatermarkService.sha256(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)).substring(0, 16) + "]";
+        }
+        return text;
+    }
+
+    static String humanizeAuditPath(String path) {
+        StringBuilder result = new StringBuilder();
+        for (String segment : path.split("\\.")) {
+            int bracket = segment.indexOf('[');
+            String name = bracket < 0 ? segment : segment.substring(0, bracket);
+            String suffix = bracket < 0 ? "" : " " + segment.substring(bracket);
+            String words = name.replaceAll("([a-z0-9])([A-Z])", "$1 $2");
+            if (!words.isEmpty()) words = Character.toUpperCase(words.charAt(0)) + words.substring(1);
+            if (result.length() > 0) result.append(" > ");
+            result.append(words).append(suffix);
+        }
+        return result.toString();
     }
 
     private JsonNode sanitizeGeneralForAudit(JsonNode generalConfig) {

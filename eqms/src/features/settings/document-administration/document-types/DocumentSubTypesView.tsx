@@ -31,6 +31,7 @@ import { useDictionaryServerTable } from "@/features/settings/dictionaries/hooks
 import { usePermissions } from "@/hooks/usePermissions";
 import { formatDocumentTypeLookupLabel } from "@/features/documents/shared/documentTypeDisplay";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 
 type ResultModalState = {
   isOpen: boolean;
@@ -130,15 +131,7 @@ export const DocumentSubTypesView: React.FC = () => {
       };
     }, []);
 
-    useEffect(() => {
-      setCurrentPage(1);
-    }, [
-      statusFilter,
-      documentTypeFilter,
-      modifiedFromDate,
-      modifiedToDate,
-      setCurrentPage,
-    ]);
+    useResetPageOnChange(setCurrentPage, [statusFilter, documentTypeFilter, modifiedFromDate, modifiedToDate]);
 
     const documentTypeOptions = useMemo<DocumentTypeOption[]>(() => {
       const activeOptions = documentTypes.map((item) => ({

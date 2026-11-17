@@ -38,6 +38,11 @@ const ACTION_LABEL_MAP: Record<string, string> = {
   placeholder_style_updated: "Placeholder Style Updated",
   placeholder_style_deleted: "Placeholder Style Deleted",
   placeholder_style_copied_to_new_version: "Placeholder Style Copied to New Version",
+  // The same event was written twice under two codes (the revision history and the document audit): one name for both (AUDIT-DETAIL-2026-11-17).
+  legacy_import: "Legacy Import",
+  legacy_imported: "Legacy Import",
+  legacy_import_effective: "Legacy Import Effective",
+  legacy_batch_superseded: "Legacy Batch Superseded",
 };
 
 /** Words that keep their own spelling in a label (an acronym or a product name), by their lower-case form. */
@@ -50,7 +55,7 @@ const LABEL_WORDS: Record<string, string> = {
  * screen shows the same words in Title Case without the underscores: "Training Activity Created".
  */
 export const formatAuditActionLabel = (action: string) => {
-  const normalized = action.trim().toLowerCase();
+  const normalized = action.trim().toLowerCase().replace(/^document_(?=legacy_)/, "");
   const mapped = ACTION_LABEL_MAP[normalized];
   if (mapped) {
     return mapped;

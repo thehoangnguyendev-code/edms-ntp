@@ -330,8 +330,8 @@ public class EmailTemplateService {
                 ACTION_EMAIL_TEMPLATE_TEST_SENT,
                 template.getStatus(),
                 template.getStatus(),
-                "Test email sent to " + to
-        );
+                "Test email sent to " + to,
+                java.util.List.of(com.eqms.util.AuditChanges.of("Test Sent To",null,to)));
         return new EmailTemplateTestSendResponse(true, "Test email sent successfully.", template.getId(), template.getName(), to, Instant.now());
     }
 
@@ -410,8 +410,8 @@ public class EmailTemplateService {
                 ACTION_EMAIL_TEMPLATE_VERSION_RESTORED,
                 previousStatus,
                 saved.getStatus(),
-                "Restored email template version " + version.getVersionNumber()
-        );
+                "Restored email template version " + version.getVersionNumber(),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Version Restored",null,version.getVersionNumber())));
         return toResponse(saved);
     }
 

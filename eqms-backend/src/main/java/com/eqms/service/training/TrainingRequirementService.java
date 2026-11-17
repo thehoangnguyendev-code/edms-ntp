@@ -218,7 +218,8 @@ public class TrainingRequirementService {
         UUID id = UUID.randomUUID();
         jdbc.update("insert into training_requirements(id, request_no, year, kind, department_id, due_by, created_by, prepared_by, review_completed_on) values (?,?,?,?,?,?,?,?,?)",
                 id, number, request.year(), kind, department, dueBy, actor.getId(), actor.getId(), reviewDone);
-        audit.logAs(actor, TYPE, number, id, "TRAINING_REQUIREMENT_CREATED", null, "DRAFT", "Requirement " + number + " for " + request.year());
+        audit.logAs(actor, TYPE, number, id, "TRAINING_REQUIREMENT_CREATED", null, "DRAFT", "Requirement " + number + " for " + request.year(),
+                java.util.List.of(TrainingStore.change("Year", null, request.year())));
         return get(actor, id);
     }
 
@@ -251,7 +252,8 @@ public class TrainingRequirementService {
         }
         if (request.dueBy() != null) jdbc.update("update training_requirements set due_by=? where id=?", request.dueBy(), id);
         jdbc.update("update training_requirements set version=version+1, updated_at=now() where id=?", id);
-        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), id, "TRAINING_REQUIREMENT_SAVED", null, null, no + " lines saved");
+        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), id, "TRAINING_REQUIREMENT_SAVED", null, null, no + " lines saved",
+                java.util.List.of(TrainingStore.change("Lines Saved", null, no)));
         return get(actor, id);
     }
 
@@ -329,7 +331,8 @@ public class TrainingRequirementService {
         approvals.complete(assignment, null);
         approvals.cancelOpen(TYPE, id, "Rejected");
         jdbc.update("update training_requirements set status='DRAFT', reject_reason=?, reviewed_by=null, reviewed_signature_id=null, reviewed_at=null, version=version+1, updated_at=now() where id=?", request.reason().trim(), id);
-        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), id, "TRAINING_REQUIREMENT_REJECTED", String.valueOf(r.get("status")), "DRAFT", request.reason().trim());
+        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), id, "TRAINING_REQUIREMENT_REJECTED", String.valueOf(r.get("status")), "DRAFT", request.reason().trim(),
+                java.util.List.of(TrainingStore.change("Reason for Rejection", null, request.reason().trim())));
         tell(r, actor, "TRAINING_REQUIREMENT_REJECTED", "Training: requirement sent back", r.get("request_no") + " was sent back by " + actor.getFullName() + ". Reason: " + request.reason().trim());
         return get(actor, id);
     }
@@ -349,7 +352,8 @@ public class TrainingRequirementService {
         LocalDate current = ((java.sql.Date) line.get("planned_month")).toLocalDate();
         LocalDate original = line.get("postponed_from") == null ? current : ((java.sql.Date) line.get("postponed_from")).toLocalDate();
         jdbc.update("update training_requirement_lines set planned_month=?, postponed_from=?, postpone_reason=? where id=?", current.plusMonths(1), original, request.reason().trim(), lineId);
-        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), (UUID) r.get("id"), "TRAINING_REQUIREMENT_LINE_POSTPONED", current.toString(), current.plusMonths(1).toString(), request.reason().trim());
+        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), (UUID) r.get("id"), "TRAINING_REQUIREMENT_LINE_POSTPONED", current.toString(), current.plusMonths(1).toString(), request.reason().trim(),
+                java.util.List.of(TrainingStore.change("Reason for Postponing", null, request.reason().trim())));
         return get(actor, (UUID) r.get("id"));
     }
 
@@ -374,7 +378,8 @@ public class TrainingRequirementService {
                 due, "From " + r.get("request_no"), null, null));
         jdbc.update("update training_activities set requirement_line_id=? where id=?", lineId, created.get("id"));
         jdbc.update("update training_requirement_lines set activity_id=? where id=?", created.get("id"), lineId);
-        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), (UUID) r.get("id"), "TRAINING_REQUIREMENT_ACTIVITY_OPENED", null, String.valueOf(created.get("trainingNumber")), title);
+        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), (UUID) r.get("id"), "TRAINING_REQUIREMENT_ACTIVITY_OPENED", null, String.valueOf(created.get("trainingNumber")), title,
+                java.util.List.of(TrainingStore.change("Training Number", null, created.get("trainingNumber")), TrainingStore.change("Topic", null, title)));
         return get(actor, (UUID) r.get("id"));
     }
 
@@ -395,7 +400,8 @@ public class TrainingRequirementService {
                 "Training Management: line of the requirement completed", null, null, null).getId();
         jdbc.update("update training_requirement_lines set qa_comment=?, qa_signed_by=?, qa_signature_id=?, qa_signed_at=now() where id=?",
                 request.comment() == null || request.comment().isBlank() ? null : request.comment().trim(), actor.getId(), signature, lineId);
-        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), (UUID) r.get("id"), "TRAINING_REQUIREMENT_LINE_SIGNED", null, null, "Line " + line.get("line_no") + " signed by QA");
+        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), (UUID) r.get("id"), "TRAINING_REQUIREMENT_LINE_SIGNED", null, null, "Line " + line.get("line_no") + " signed by QA",
+                java.util.List.of(TrainingStore.change("Line " + line.get("line_no") + " › Signed by QA", "No", "Yes")));
         return get(actor, (UUID) r.get("id"));
     }
 

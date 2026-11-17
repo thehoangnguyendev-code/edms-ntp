@@ -20,13 +20,13 @@ import org.junit.jupiter.api.Test;
  */
 class AuditedEntityTypesHaveAModuleTest {
     /** Written by the code, but whose screen nobody could name yet: they show as "Other" until the owner says (each is checked to still be unplaced, so the list can only shrink). */
-    private static final Set<String> NOT_PLACED_YET = Set.of("TABLE_EXPORT", "PROMPT_SPECIFICATION", "PROMPT_GENERATION_RUN");
+    private static final Set<String> NOT_PLACED_YET = Set.of("PROMPT_SPECIFICATION", "PROMPT_GENERATION_RUN");
 
     private static final Pattern CALL = Pattern.compile(
             "(?:logAs|logAsWithUserReason|logSafely|logSystem|logExternal|auditTrail\\.log|auditTrailService\\.log|audit\\.log)\\(\\s*(?:[A-Za-z_.()]+,\\s*)?\"([A-Za-z_ ]+)\"");
     private static final Pattern CONSTANT = Pattern.compile("(?:ENTITY_TYPE|AUDIT_ENTITY)[A-Z_]*\\s*=\\s*\"([A-Za-z_ ]+)\"");
 
-    private static Set<String> entityTypesInTheSources() throws IOException {
+    static Set<String> entityTypesInTheSources() throws IOException {
         Set<String> found = new TreeSet<>();
         try (Stream<Path> files = Files.walk(Path.of("src/main/java"))) {
             for (Path file : (Iterable<Path>) files.filter(path -> path.toString().endsWith(".java"))::iterator) {

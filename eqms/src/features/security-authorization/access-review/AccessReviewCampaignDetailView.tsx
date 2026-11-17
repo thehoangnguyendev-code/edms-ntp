@@ -580,6 +580,11 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
         <div className="p-4 md:p-5">
           <div className="flex flex-wrap items-center gap-3">
+            {campaign.campaignNumber && (
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700" title="Access Review Campaign Number">
+                {campaign.campaignNumber}
+              </span>
+            )}
             <h2 className="text-base md:text-lg font-semibold text-slate-800">{campaign.name}</h2>
             <Badge color={statusBadge(campaign.status)} size="sm">{campaign.statusLabel}</Badge>
           </div>

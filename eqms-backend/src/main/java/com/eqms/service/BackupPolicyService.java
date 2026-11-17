@@ -40,7 +40,7 @@ public class BackupPolicyService {
         BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/policies", body);
         if (reply.ok()) {
             auditTrailService.logAs(actor, "BACKUP_POLICY", "Backup policy v" + reply.body().path("version").asInt(), uuid(reply.body().path("id").asText()),
-                    "BACKUP_POLICY_PROPOSED", null, "DRAFT", "Proposed a backup policy change. Reason: " + reason);
+                    "BACKUP_POLICY_PROPOSED", null, "DRAFT", "Proposed a backup policy change. Reason: " + reason, com.eqms.util.AuditChanges.reason("Reason for Change", reason));
         }
         return reply;
     }
@@ -52,7 +52,8 @@ public class BackupPolicyService {
 
     public void recordTargetTest(UserAccount actor, String code, boolean ok) {
         auditTrailService.logAs(actor, "BACKUP_TARGET", code, targetAuditId(code), "BACKUP_TARGET_TESTED", null, ok ? "OK" : "FAILED",
-                "Tested backup target " + code + ": " + (ok ? "it accepted, returned and (if immutable) refused to delete a test file" : "the test failed"));
+                "Tested backup target " + code + ": " + (ok ? "it accepted, returned and (if immutable) refused to delete a test file" : "the test failed"),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Target", null, code), com.eqms.util.AuditChanges.of("Result", null, ok ? "OK" : "Failed")));
     }
 
     public BackupAgentClient.Reply discard(UserAccount actor, int version, String reason) {
@@ -60,7 +61,7 @@ public class BackupPolicyService {
                 Map.of("discardedBy", actor.getUsername(), "reason", reason));
         if (reply.ok()) {
             auditTrailService.logAs(actor, "BACKUP_POLICY", "Backup policy v" + version, uuid(reply.body().path("id").asText()),
-                    "BACKUP_POLICY_DISCARDED", "DRAFT", "DISCARDED", "Discarded a draft backup policy. Reason: " + reason);
+                    "BACKUP_POLICY_DISCARDED", "DRAFT", "DISCARDED", "Discarded a draft backup policy. Reason: " + reason, com.eqms.util.AuditChanges.reason("Reason for Discarding", reason));
         }
         return reply;
     }
@@ -93,7 +94,8 @@ public class BackupPolicyService {
         });
         if (reply != null && !reply.ok() && policyId[0] != null) {
             auditTrailService.logAs(actor, "BACKUP_POLICY", "Backup policy v" + version, policyId[0], "BACKUP_POLICY_ACTIVATION_REFUSED", "DRAFT", "DRAFT",
-                    "Activation refused: " + reply.body().path("code").asText("UNKNOWN"));
+                    "Activation refused: " + reply.body().path("code").asText("UNKNOWN"),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Refusal Code", null, reply.body().path("code").asText("UNKNOWN"))));
         }
         return reply;
     }

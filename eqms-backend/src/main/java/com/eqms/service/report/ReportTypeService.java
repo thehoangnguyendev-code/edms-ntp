@@ -151,8 +151,9 @@ public class ReportTypeService {
         if (((Number) current.get("version")).intValue() != version) throw new ResponseStatusException(HttpStatus.CONFLICT, "REPORT_TYPE_VERSION_CHANGED");
         if (Boolean.TRUE.equals(current.get("enabled")) == enabled) throw new ResponseStatusException(HttpStatus.CONFLICT, "REPORT_TYPE_UNCHANGED");
         jdbc.update("update report_types set enabled=?, version=version+1, updated_by=?, updated_at=now() where code=?", enabled, actor.getId(), code);
-        audit.logAs(actor, "REPORT_TYPE", code, UUID.nameUUIDFromBytes(("REPORT_TYPE:" + code).getBytes(StandardCharsets.UTF_8)),
-                enabled ? "REPORT_TYPE_ENABLED" : "REPORT_TYPE_DISABLED", enabled ? "DISABLED" : "ENABLED", enabled ? "ENABLED" : "DISABLED", reason.trim());
+        audit.logAs(actor, "REPORT_TYPE", provider.name(), UUID.nameUUIDFromBytes(("REPORT_TYPE:" + code).getBytes(StandardCharsets.UTF_8)),
+                enabled ? "REPORT_TYPE_ENABLED" : "REPORT_TYPE_DISABLED", enabled ? "DISABLED" : "ENABLED", enabled ? "ENABLED" : "DISABLED", reason.trim(),
+                com.eqms.util.AuditChanges.reason("Reason", reason));
         return detail(actor, code);
     }
 

@@ -32,6 +32,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
 import type { DocumentComponentItem } from "../document-name-formats/documentNameFormatTypes";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 
 export const DocumentComponentsTab: React.FC = () => {
   const navigate = useNavigate();
@@ -56,9 +57,7 @@ export const DocumentComponentsTab: React.FC = () => {
     extraParams: { status: statusFilter },
   });
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter, setCurrentPage]);
+  useResetPageOnChange(setCurrentPage, [statusFilter]);
 
   const goToEdit = (id: string) => navigate(ROUTES.DOCUMENTS.ADMIN.DOCUMENT_COMPONENTS_EDIT(id));
 

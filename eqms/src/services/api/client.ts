@@ -13,7 +13,7 @@ import { config } from "@/config";
 import { secureStorage, safeRandomUUID } from "@/utils/security";
 import { authTokenStore } from "@/services/authTokenStore";
 import { ROUTES } from "@/app/routes.constants";
-import { dispatchRouteRedirect } from "@/app/navigation/routeRedirect";
+import { dispatchRouteRedirect, dispatchSessionEnded } from "@/app/navigation/routeRedirect";
 
 const API_BASE_URL = config.api.baseURL;
 const SESSION_LOCKED_EVENT = "eqms:session-locked";
@@ -442,6 +442,7 @@ apiClient.interceptors.response.use(
           secureStorage.removeItem("authToken");
           secureStorage.removeItem("refreshToken");
           secureStorage.removeItem("user");
+          dispatchSessionEnded();
           dispatchRouteRedirect(ROUTES.LOGIN, true);
           break;
         }

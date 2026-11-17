@@ -344,6 +344,9 @@ public class NavigationService {
                 sysAdminChildren.add(new NavigationItemResponse("config", "Configuration", "IconDeviceDesktopCog", "/settings/configuration", false, null));
                 sysAdminChildren.add(new NavigationItemResponse("electronic-signature-policies", "E-Sign Config", "PenTool", "/settings/electronic-signature", false, null));
             }
+            if (hasAnyPermission(normalizedPermissions, "settings.object_numbering.view", "settings.object_numbering.manage", "settings.configuration.view")) {
+                sysAdminChildren.add(new NavigationItemResponse("object-numbering", "Object Numbering", null, "/settings/object-numbering", false, null));
+            }
             if (hasAnyPermission(normalizedPermissions, "settings.notification_policy.view", "settings.notification_policy.manage",
                     "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view")) {
                 sysAdminChildren.add(new NavigationItemResponse("notification-settings", "Notifications Administration", "Bell", "/settings/notifications", false, null));

@@ -134,7 +134,8 @@ public class TrainingCopyService {
             sent += jdbc.update("insert into training_copy_distributions(id, object_type, object_id, recipient_department, sent_by, note) values (?,?,?,?,?,?) on conflict do nothing",
                     UUID.randomUUID(), type, id, department, actor.getId(), note);
         }
-        if (sent > 0) audit.logAs(actor, type, subject.name(), id, "TRAINING_COPY_SENT", null, null, sent + " department(s)" + (note == null ? "" : ". " + note));
+        if (sent > 0) audit.logAs(actor, type, subject.name(), id, "TRAINING_COPY_SENT", null, null, sent + " department(s)" + (note == null ? "" : ". " + note),
+                note == null ? java.util.List.of(TrainingStore.change("Departments Sent To", null, sent)) : java.util.List.of(TrainingStore.change("Departments Sent To", null, sent), TrainingStore.change("Note", null, note)));
         return list(actor, type, id);
     }
 
@@ -149,7 +150,8 @@ public class TrainingCopyService {
         if (own == null || !own.equals(copy.get("recipient_department"))) throw new SecurityException(TrainingAccess.DENIED);
         if (copy.get("received_at") != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_COPY_ALREADY_RECEIVED");
         jdbc.update("update training_copy_distributions set received_by = ?, received_at = now() where id = ?", actor.getId(), copyId);
-        audit.logAs(actor, type, subject(type, id).name(), id, "TRAINING_COPY_RECEIVED", null, null, "Department " + own);
+        audit.logAs(actor, type, subject(type, id).name(), id, "TRAINING_COPY_RECEIVED", null, null, "Department " + own,
+                java.util.List.of(TrainingStore.change("Department", null, own)));
         // The reader of a received copy sees the log of the object, so the scope check of list() would refuse a person of another department; answer with the row alone.
         return Map.of("received", true);
     }

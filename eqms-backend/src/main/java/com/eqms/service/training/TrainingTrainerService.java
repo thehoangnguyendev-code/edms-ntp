@@ -122,7 +122,8 @@ public class TrainingTrainerService {
         jdbc.update("insert into training_trainer_exceptions(id, activity_id, session_id, trainer_user_id, reason, requested_by) values (?,?,?,?,?,?)", id, activity.get("id"), sessionId, trainer, request.reason().trim(), actor.getId());
         approvals.designate(actor, subject(activity, id), "TRAINER_EXCEPTION", request.approverUserId(), TrainingApprovalService.apart(actor.getId(), trainer));
         store.event(TrainingStore.OBJECT_ACTIVITY, id, (UUID) activity.get("id"), "TRAINER_EXCEPTION_REQUESTED", Map.of("session", sessionId.toString(), "reason", request.reason().trim()), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_TRAINER_EXCEPTION_REQUESTED", null, null, "Session " + session.get("session_no") + ": " + request.reason().trim());
+        store.auditActivity(actor, activity, "TRAINING_TRAINER_EXCEPTION_REQUESTED", null, null, "Session " + session.get("session_no") + ": " + request.reason().trim(),
+                java.util.List.of(TrainingStore.change("Session", null, "Session " + session.get("session_no")), TrainingStore.change("Reason", null, request.reason().trim())));
         return qualification(sessionId);
     }
 
@@ -144,7 +145,8 @@ public class TrainingTrainerService {
                 "Training Management: trainer exception approved", null, null, null).getId();
         approvals.complete(assignment, signature);
         jdbc.update("update training_trainer_exceptions set status='APPROVED', approved_by=?, signature_id=?, decided_at=now() where id=?", actor.getId(), signature, exceptionId);
-        store.auditActivity(actor, activity, "TRAINING_TRAINER_EXCEPTION_APPROVED", "PENDING", "APPROVED", String.valueOf(e.get("reason")));
+        store.auditActivity(actor, activity, "TRAINING_TRAINER_EXCEPTION_APPROVED", "PENDING", "APPROVED", String.valueOf(e.get("reason")),
+                java.util.List.of(TrainingStore.change("Reason", null, e.get("reason"))));
         return qualification((UUID) e.get("session_id"));
     }
 
@@ -157,7 +159,8 @@ public class TrainingTrainerService {
         UUID assignment = approvals.requireCanSign(actor, subject(activity, exceptionId), "TRAINER_EXCEPTION", TrainingApprovalService.apart((UUID) e.get("requested_by"), (UUID) e.get("trainer_user_id")));
         approvals.complete(assignment, null);
         jdbc.update("update training_trainer_exceptions set status='REJECTED', approved_by=?, reject_reason=?, decided_at=now() where id=?", actor.getId(), request.reason().trim(), exceptionId);
-        store.auditActivity(actor, activity, "TRAINING_TRAINER_EXCEPTION_REJECTED", "PENDING", "REJECTED", request.reason().trim());
+        store.auditActivity(actor, activity, "TRAINING_TRAINER_EXCEPTION_REJECTED", "PENDING", "REJECTED", request.reason().trim(),
+                java.util.List.of(TrainingStore.change("Reason for Rejection", null, request.reason().trim())));
         return qualification((UUID) e.get("session_id"));
     }
 

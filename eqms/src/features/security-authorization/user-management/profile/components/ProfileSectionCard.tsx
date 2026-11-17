@@ -31,6 +31,20 @@ export const InfoField: React.FC<{
   </div>
 );
 
+// ── Field Group — an eyebrow title over a two-column grid of fields ───────────
+/** Groups the fields of a tab ("Identity", "Contact"...). `divided` draws the thin rule that
+ *  separates it from the group above, so a tab with several groups reads as one card. */
+export const FieldGroup: React.FC<{
+  title: string;
+  children: React.ReactNode;
+  divided?: boolean;
+}> = ({ title, children, divided }) => (
+  <div className={cn(divided && "mt-5 pt-5 border-t border-slate-100")}>
+    <h3 className="text-2xs sm:text-xs font-bold uppercase tracking-wider text-slate-500">{title}</h3>
+    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">{children}</div>
+  </div>
+);
+
 // ── Section Card with optional pencil-edit button ─────────────────────────────
 export const SectionCard: React.FC<{
   title: string;

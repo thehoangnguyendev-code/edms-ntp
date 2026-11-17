@@ -8,7 +8,7 @@ import { BrandLogo } from "@/components/branding/BrandLogo";
 import { captureLoginLogo, startLoginLogoTransition } from "@/components/branding/loginLogoTransition";
 import { IconMailOpened, IconQrcode, IconRefresh } from "@tabler/icons-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { AUTH_UI } from "./auth-ui";
+import { useAuthUi } from "./useAuthUi";
 import { AuthBackLink, AuthLayout, AuthTopBackButton } from "./components";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { OtpInput } from "@/components/ui/otp-input";
@@ -51,6 +51,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
   availableMethods = ['email', 'app'],
   rememberDeviceAllowed = true,
 }) => {
+  const ui = useAuthUi();
   // ========================================================================
   // STATE
   // ========================================================================
@@ -228,9 +229,9 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
       {isLoading && <FullPageLoading text="Verifying code..." />}
       <AuthLayout
         left={
-          <div className={AUTH_UI.formColumn}>
+          <div className={ui.formColumn}>
             <AuthTopBackButton onClick={onBackToLogin} label="Back to Sign In" disabled={isLoading} />
-            <div className="mb-6 flex items-center gap-3 text-slate-900 sm:mb-10 lg:mb-12">
+            <div className={ui.brand}>
               <div data-login-logo><BrandLogo className="h-8 w-auto object-contain sm:h-9" /></div>
             </div>
 
@@ -245,10 +246,10 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                     transition={swapTransition}
                     className="space-y-6 sm:space-y-5"
                   >
-                    <div className={AUTH_UI.headerArea}>
-                      <div className={AUTH_UI.headingBlock}>
-                        <h1 className={AUTH_UI.pageTitle}>Verify Your Identity</h1>
-                        <p className={AUTH_UI.description}>
+                    <div className={ui.headerArea}>
+                      <div className={ui.headingBlock}>
+                        <h1 className={ui.pageTitle}>Verify Your Identity</h1>
+                        <p className={ui.description}>
                           Select a verification method for account <span className="font-semibold text-slate-700">{username}</span>.
                         </p>
                       </div>
@@ -259,7 +260,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                         type="button"
                         onClick={() => setMethod("email")}
                         disabled={!emailMethodEnabled}
-                        className="group flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white p-2.5 text-left transition-colors hover:border-emerald-700/40 hover:bg-emerald-50/30 sm:p-4"
+                        className={`group flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white p-2.5 text-left transition-colors ${ui.choiceCard} sm:p-4`}
                       >
                         <div className="flex items-center gap-2 sm:gap-3">
                           <span className="text-slate-600">
@@ -277,7 +278,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                         type="button"
                         onClick={() => setMethod("app")}
                         disabled={!appMethodEnabled}
-                        className="group flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white p-2.5 text-left transition-colors hover:border-emerald-700/40 hover:bg-emerald-50/30 sm:p-4"
+                        className={`group flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white p-2.5 text-left transition-colors ${ui.choiceCard} sm:p-4`}
                       >
                         <div className="flex items-center gap-2 sm:gap-3">
                           <span className="text-slate-600">
@@ -304,12 +305,12 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                     exit={prefersReducedMotion ? { opacity: 1, x: 0 } : { opacity: 0, x: -16 }}
                     transition={swapTransition}
                     onSubmit={handleSubmit}
-                    className={`${AUTH_UI.formStack} flex flex-col justify-start sm:justify-center`}
+                    className={`${ui.formStack} flex flex-col justify-start sm:justify-center`}
                   >
-                    <div className={cn(AUTH_UI.headerArea, "mb-1 sm:mb-1")}>
-                      <div className={AUTH_UI.headingBlock}>
-                        <h1 className={AUTH_UI.pageTitle}>Enter Verification Code</h1>
-                        <p className={AUTH_UI.description}>
+                    <div className={cn(ui.headerArea, "mb-1 sm:mb-1")}>
+                      <div className={ui.headingBlock}>
+                        <h1 className={ui.pageTitle}>Enter Verification Code</h1>
+                        <p className={ui.description}>
                           {method === "email" ? (
                             <>
                               Enter the 6-digit code sent to <span className="font-semibold text-slate-700">{maskEmail(email)}</span>.
@@ -338,13 +339,13 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                         disabled={isLoading}
                         autoFocus
                         aria-label="Verification code"
-                        slotClassName="max-[399px]:size-10 focus-visible:ring-emerald-600/60"
+                        slotClassName={`max-[399px]:size-10 ${ui.otpRing}`}
                       />
                     </div>
 
                     <Button
                       type="submit"
-                      className={cn(AUTH_UI.submitButton, "mt-4")}
+                      className={cn(ui.submitButton, "mt-4")}
                       disabled={isLoading || otp.length < OTP_LENGTH}
                     >
                       Verify Account
@@ -367,7 +368,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                           disabled={!canResend || isLoading || isSendingEmail}
                           className={cn(
                             "flex items-center gap-2 text-xs sm:text-sm font-semibold transition-colors sm:text-sm",
-                            canResend && !isSendingEmail ? "text-emerald-700 hover:text-emerald-800" : "cursor-not-allowed text-slate-500"
+                            canResend && !isSendingEmail ? ui.accentLink : "cursor-not-allowed text-slate-500"
                           )}
                         >
                           <IconRefresh

@@ -34,6 +34,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 
 const typeLabel = (type: string) => SCHOOL_TYPE_OPTIONS.find((o) => o.value === type)?.label ?? type;
 const ownershipLabel = (ownership: string | null | undefined) => SCHOOL_OWNERSHIP_OPTIONS.find((o) => o.value === ownership)?.label ?? (ownership || "-");
@@ -81,7 +82,7 @@ export const EducationSchoolsView: React.FC = () => {
   const openResultModal = (type: "success" | "error", title: string, description: string) => setResultModal({ isOpen: true, type, title, description });
   const closeResultModal = () => setResultModal((prev) => ({ ...prev, isOpen: false }));
 
-  React.useEffect(() => { setCurrentPage(1); }, [statusFilter, typeFilter, ownershipFilter, governanceFilter, originFilter, modifiedFrom, modifiedTo, setCurrentPage]);
+  useResetPageOnChange(setCurrentPage, [statusFilter, typeFilter, ownershipFilter, governanceFilter, originFilter, modifiedFrom, modifiedTo]);
 
   const handleEdit = (item: SchoolItem) => { navigate(`/settings/education/schools/${item.id}/edit`); closeDropdown(); };
   const handleDelete = (item: SchoolItem) => { setSelectedItem(item); setShowDeleteModal(true); closeDropdown(); };

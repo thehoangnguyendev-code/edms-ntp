@@ -28,6 +28,7 @@ const EmailMessageEditView = lazy(() => import('@/features/settings').then(m => 
 const EmailDesignView = lazy(() => import('@/features/settings').then(m => ({ default: m.EmailDesignView })));
 const InAppDesignView = lazy(() => import('@/features/settings').then(m => ({ default: m.InAppDesignView })));
 const ConfigurationView = lazy(() => import('@/features/settings/configuration/ConfigurationView').then(m => ({ default: m.ConfigurationView })));
+const ObjectNumberingView = lazy(() => import('@/features/settings/object-numbering/ObjectNumberingView'));
 const ElectronicSignatureSettingsView = lazy(() => import('@/features/settings').then(m => ({ default: m.ElectronicSignatureSettingsView })));
 const SystemInformationView = lazy(() => import('@/features/settings').then(m => ({ default: m.SystemInformationView })));
 const ReportTypesView = lazy(() => import('@/features/report/types/ReportTypesView').then(m => ({ default: m.ReportTypesView })));
@@ -156,6 +157,7 @@ export function settingsRoutes(navigate: NavigateFunction) {
         <Route path="report-configuration/:code/revisions/:revision" element={<LegacyReportTemplateRedirect page="revision" />} />
         <Route path="report-configuration/:code/details" element={<LegacyReportTemplateRedirect page="details" />} />
         <Route path="report-configuration/:code" element={<LegacyReportTemplateRedirect page="edit" />} />
+        <Route path="object-numbering" element={<ProtectedRoute requiredPermissions={["settings.object_numbering.view", "settings.object_numbering.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ObjectNumberingView /></Suspense></ProtectedRoute>} />
         <Route path="electronic-signature" element={<ProtectedRoute requiredPermissions={["settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ElectronicSignatureSettingsView /></Suspense></ProtectedRoute>} />
         <Route path="notifications">
           <Route index element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage", "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><NotificationsView /></Suspense></ProtectedRoute>} />

@@ -21,7 +21,7 @@ import java.util.Set;
 public final class SystemAnnouncementSpecifications {
 
     /** The sortable columns. */
-    public static final Set<String> SORT_KEYS = Set.of("title", "severity", "state", "startsAt", "endsAt", "updatedAt", "updatedBy", "createdBy");
+    public static final Set<String> SORT_KEYS = Set.of("announcementNumber", "title", "severity", "state", "startsAt", "endsAt", "updatedAt", "updatedBy", "createdBy");
     private static final char ESCAPE = '\\';
 
     private SystemAnnouncementSpecifications() {
@@ -45,6 +45,7 @@ public final class SystemAnnouncementSpecifications {
         return (root, query, cb) -> {
             List<Predicate> where = new ArrayList<>();
             where.add(cb.or(
+                    cb.like(cb.lower(cb.coalesce(root.<String>get("announcementNumber"), "")), c.pattern(), ESCAPE),
                     cb.like(cb.lower(root.get("title")), c.pattern(), ESCAPE),
                     cb.like(cb.lower(root.get("message")), c.pattern(), ESCAPE),
                     cb.like(cb.lower(cb.coalesce(root.<String>get("createdBy"), "")), c.pattern(), ESCAPE),
@@ -83,6 +84,7 @@ public final class SystemAnnouncementSpecifications {
     private static Expression<?> sortExpression(Criteria c, Root<SystemAnnouncement> root, CriteriaBuilder cb) {
         Instant now = c.now();
         return switch (normalizeSortKey(c.sortKey())) {
+            case "announcementNumber" -> cb.lower(cb.coalesce(root.<String>get("announcementNumber"), ""));
             case "title" -> cb.lower(root.get("title"));
             // most severe first when ascending
             case "severity" -> cb.<Integer>selectCase()

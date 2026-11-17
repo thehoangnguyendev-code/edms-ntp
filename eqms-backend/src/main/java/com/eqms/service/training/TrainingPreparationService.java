@@ -96,11 +96,18 @@ public class TrainingPreparationService {
         }
         String note = request.note() == null || request.note().isBlank() ? null : request.note().trim();
         if (note != null && note.length() > 500) throw new IllegalArgumentException("TRAINING_NOTE_TOO_LONG");
+        String previousStatus = jdbc.queryForList("select status from training_session_preparation where session_id = ? and item_code = ?", String.class, sessionId, itemCode)
+                .stream().findFirst().orElse(null);
         jdbc.update("""
             insert into training_session_preparation(session_id, item_code, status, assigned_to, note, updated_by, updated_at) values (?,?,?,?,?,?, now())
             on conflict (session_id, item_code) do update set status = excluded.status, assigned_to = excluded.assigned_to, note = excluded.note, updated_by = excluded.updated_by, updated_at = now()
             """, sessionId, itemCode, request.status(), assignedTo, note, actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_PREPARATION_UPDATED", null, request.status(), "Session S" + session.get("session_no") + ", " + itemCode + (note == null ? "" : ". " + note));
+        String itemField = "Session S" + session.get("session_no") + " › " + TrainingStore.words(itemCode);
+        List<com.eqms.dto.audittrail.AuditTrailChangeResponse> preparationChanges = new ArrayList<>();
+        preparationChanges.add(new com.eqms.dto.audittrail.AuditTrailChangeResponse(itemField + " › Status",
+                previousStatus == null ? null : TrainingStore.words(previousStatus), TrainingStore.words(request.status())));
+        if (note != null) preparationChanges.add(new com.eqms.dto.audittrail.AuditTrailChangeResponse(itemField + " › Note", null, note));
+        store.auditActivity(actor, activity, "TRAINING_PREPARATION_UPDATED", null, request.status(), "Session S" + session.get("session_no") + ", " + itemCode + (note == null ? "" : ". " + note), preparationChanges);
         if (assignedTo != null && !assignedTo.equals(currentAssignee) && !assignedTo.equals(actor.getId())) {
             users.findById(assignedTo).ifPresent(person -> notifier.send("TRAINING_PREPARATION_ASSIGNED", person, actor, "Preparation for training " + activity.get("training_number"),
                     "You were asked to prepare: " + itemCode.toLowerCase() + " for session " + session.get("session_no") + " of " + activity.get("training_topics") + ".", "TRAINING_ACTIVITY", activityId, null));

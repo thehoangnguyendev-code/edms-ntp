@@ -24,6 +24,7 @@ import type { RetentionPolicyItem } from "../types";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 
 type ResultModalState = {
   isOpen: boolean;
@@ -96,9 +97,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
   };
   const closeResultModal = () => setResultModal((prev) => ({ ...prev, isOpen: false }));
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter, modifiedFromDate, modifiedToDate, setCurrentPage]);
+  useResetPageOnChange(setCurrentPage, [statusFilter, modifiedFromDate, modifiedToDate]);
 
   const handleSave = async (payload: RetentionPolicyFormData) => {
       try {

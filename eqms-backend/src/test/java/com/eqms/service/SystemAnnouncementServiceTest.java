@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -173,7 +174,7 @@ class SystemAnnouncementServiceTest {
         var created = service.create(request("Maintenance", "The system will be unavailable from 22:00.", "WARNING",
                 now.plus(Duration.ofHours(1)), now.plus(Duration.ofHours(13)), null));
         assertEquals("Quality Admin", created.createdBy());
-        verify(audit).logAs(eq(actor), eq("SYSTEM_ANNOUNCEMENT"), eq("Maintenance"), any(), eq("SYSTEM_ANNOUNCEMENT_CREATED"), eq(null), any(), any());
+        verify(audit).logAs(eq(actor), eq("SYSTEM_ANNOUNCEMENT"), eq("Maintenance"), any(), eq("SYSTEM_ANNOUNCEMENT_CREATED"), eq(null), any(), any(), argThat(changes -> changes.size() == 4 && "Title".equals(changes.get(0).field())));
     }
 
     @Test
@@ -204,7 +205,7 @@ class SystemAnnouncementServiceTest {
         when(repository.findById(existing.getId())).thenReturn(Optional.of(existing));
         service.delete(existing.getId());
         InOrder order = inOrder(audit, repository);
-        order.verify(audit).logAs(eq(actor), eq("SYSTEM_ANNOUNCEMENT"), eq("Maintenance"), eq(existing.getId()), eq("SYSTEM_ANNOUNCEMENT_DELETED"), any(), eq(null), any());
+        order.verify(audit).logAs(eq(actor), eq("SYSTEM_ANNOUNCEMENT"), eq("Maintenance"), eq(existing.getId()), eq("SYSTEM_ANNOUNCEMENT_DELETED"), any(), eq(null), any(), argThat(changes -> changes.size() == 1 && changes.get(0).newValue() == null));
         order.verify(repository).delete(existing);
     }
 
@@ -265,7 +266,7 @@ class SystemAnnouncementServiceTest {
         for (String key : com.eqms.repository.SystemAnnouncementSpecifications.SORT_KEYS) {
             assertEquals(key, SystemAnnouncementService.criteriaOf(query("", "ALL", "ALL", key, "asc"), NOW).sortKey());
         }
-        assertEquals(8, com.eqms.repository.SystemAnnouncementSpecifications.SORT_KEYS.size());
+        assertEquals(9, com.eqms.repository.SystemAnnouncementSpecifications.SORT_KEYS.size());
         for (String hostile : List.of("bogus", "title) desc, (select 1", "a.title; drop table system_announcements", "")) {
             assertEquals("startsAt", SystemAnnouncementService.criteriaOf(query("", "ALL", "ALL", hostile, "desc"), NOW).sortKey(), hostile);
         }

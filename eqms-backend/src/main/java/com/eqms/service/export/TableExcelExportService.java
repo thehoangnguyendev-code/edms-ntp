@@ -30,6 +30,27 @@ public class TableExcelExportService {
         this.entityManager = entityManager;
         transaction.setIsolationLevel(org.springframework.transaction.TransactionDefinition.ISOLATION_REPEATABLE_READ);
     }
+    /**
+     * The kind of object an export is recorded against: the one the screen it was made on shows, so the Audit Trail names it by that screen's menu ("All Documents", "Backup History")
+     * and by the name of the file, and finds it with the other records of that screen (AUDIT-OBJECT-REGISTRY-2026-11-17, owner decision D5).
+     */
+    static String auditKind(String name) {
+        return switch (name) {
+            case "All_Document", "Documents_Owned_By_Me" -> "DOCUMENT";
+            case "All_Revisions", "Revisions_Owned_By_Me", "Pending_Revisions" -> "REVISION";
+            case "Controlled_Copies" -> "CONTROLLED_COPY";
+            case "Users" -> "USER";
+            case "Notifications" -> "NOTIFICATION";
+            case "Access_Profiles" -> "ACCESS_PROFILE";
+            case "Permission_Sets" -> "PERMISSION_SET";
+            case "Audit_Trail" -> "AUDIT_TRAIL";
+            case "Backups" -> "BACKUP";
+            case "Backup_Rehearsals" -> "BACKUP_INSPECTION";
+            case "Production_Restores" -> "BACKUP_RESTORE";
+            default -> "TABLE_EXPORT";
+        };
+    }
+
     @FunctionalInterface public interface Rows { void write(TableExcelWriter writer) throws IOException; }
 
     public ResponseEntity<StreamingResponseBody> generate(String name, Map<String,String> query, Rows source) throws IOException {
@@ -60,7 +81,7 @@ public class TableExcelExportService {
                     criteria.keySet().removeIf(k -> k.toLowerCase(Locale.ROOT).matches(".*(token|secret|password|signature).*"));
                     criteria.remove("page"); criteria.remove("limit"); criteria.remove("size");
                     UUID registerId = UUID.nameUUIDFromBytes(("table-export:" + name).getBytes(StandardCharsets.UTF_8));
-                    audit.logAs(actor, "TABLE_EXPORT", name, registerId, "EXPORT", null, null,
+                    audit.logAs(actor, auditKind(name), filename, registerId, "EXPORT", null, null,
                             "Generated Excel file=" + filename + "; records=" + writer.recordCount()
                             + "; SHA-256=" + checksum + "; criteria=" + criteria);
                 } catch (IOException ex) { throw new UncheckedIOException(ex); }

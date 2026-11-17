@@ -1572,28 +1572,6 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         breadcrumbItems={controlledCopies(navigateTo, viewType)}
         actions={
           <div className="flex items-center gap-2">
-            {canRecallByScan && (
-              <Button
-                onClick={() => navigateTo(ROUTES.DOCUMENTS.CONTROLLED_COPIES.RECALL_SCAN)}
-                variant="outline-emerald"
-                size="sm"
-                className="whitespace-nowrap gap-2"
-              >
-                <ScanLine className="h-4 w-4" />
-                Recall by Scan
-              </Button>
-            )}
-            {canReviewBatchDiscrepancies && (
-              <Button
-                onClick={() => navigateTo(ROUTES.DOCUMENTS.CONTROLLED_COPIES.DISCREPANCIES)}
-                variant="outline"
-                size="sm"
-                className="whitespace-nowrap gap-2"
-              >
-                <IconHandClick className="h-4 w-4" />
-                Needs Review
-              </Button>
-            )}
             <Button
               onClick={() => void handleExport()}
               loading={isExporting}
@@ -1604,6 +1582,37 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
               <Download className="h-4 w-4" />
               Export
             </Button>
+                        {canRecallByScan && (
+              <Button
+                onClick={() => {
+                  // Keep the loading overlay until the Recall by Scan chunk is loaded; navigating first made the
+                  // page flash back to this list while the lazy chunk was still downloading.
+                  const target = ROUTES.DOCUMENTS.CONTROLLED_COPIES.RECALL_SCAN;
+                  void navigateToPrepared(target, () => import("./recall-scan/ControlledCopyRecallScanView").then(() => undefined)).catch(() => navigateTo(target));
+                }}
+                variant="default"
+                size="sm"
+                className="whitespace-nowrap gap-2"
+              >
+                <ScanLine className="h-4 w-4" />
+                Recall by Scan
+              </Button>
+            )}
+            {canReviewBatchDiscrepancies && (
+              <Button
+                onClick={() => {
+                  // Same as Recall by Scan: keep the loading overlay until the screen's chunk is loaded, so this list does not flash back first.
+                  const target = ROUTES.DOCUMENTS.CONTROLLED_COPIES.DISCREPANCIES;
+                  void navigateToPrepared(target, () => import("./ControlledCopyBatchStatusDiscrepanciesView").then(() => undefined)).catch(() => navigateTo(target));
+                }}
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap gap-2"
+              >
+                <IconHandClick className="h-4 w-4" />
+                Needs Review
+              </Button>
+            )}
           </div>
         }
       />

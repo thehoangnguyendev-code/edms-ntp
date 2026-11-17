@@ -145,7 +145,7 @@ public class NotificationAdministrationService {
         java.util.Set<String> supported = channelsOf(e.supportedChannels());
         java.util.Set<String> enabled = channelsOf(e.enabledChannels());
         for (String channel : List.of(IN_APP, EMAIL)) {
-            if (EMAIL.equals(channel) && !supported.contains(EMAIL)) continue;
+            if (!supported.contains(channel)) continue;
             String status = statusKey(e.policyStatus());
             if ("ACTIVE".equals(status) && !enabled.contains(channel)) status = "INACTIVE";
             rows.add(new Row(e.eventCode(), channel, e.name(), e.eventCode(), e.description(), e.module(), e.priority(), null, null, status, e.updatedAt()));

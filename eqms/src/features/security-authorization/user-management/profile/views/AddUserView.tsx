@@ -8,15 +8,13 @@ import { useToast } from"@/components/ui/toast";
 import { NewUser } from"../../types";
 import { USER_MANAGEMENT_ROUTES } from"../../constants";
 import { PageHeader } from"@/components/ui/page/PageHeader";
-import { TabNav } from "@/components/ui/tabs/TabNav";
-import type { TabItem } from "@/components/ui/tabs/TabNav";
+import { Progress } from "@/components/ui/progress";
 import { addUser as addUserBreadcrumb } from"@/components/ui/breadcrumb/breadcrumbs.config";
 import { FullPageLoading } from"@/components/ui/loading/Loading";
 import { settingsApi, type AccessProfileResponse } from "@/services/api/settings";
 import { dictionaryApi } from "@/services/api";
 import type { User, EducationItem, Certification } from "../../types";
 import { isFutureDateValue, isValidEmail, isValidPhone, normalizeDigitsOnly } from "../validation";
-import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { useSodAccessProfileCheck } from "@/features/security-authorization/shared/useSodAccessProfileCheck";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PersonalTab } from "../tabs/PersonalTab";
@@ -24,6 +22,9 @@ import { EmploymentTab } from "../tabs/EmploymentTab";
 import { QualificationsTab } from "../tabs/QualificationsTab";
 import { AccountStatusTab } from "../tabs/AccountStatusTab";
 import { SecurityAuthorizationTab } from "../tabs/SecurityAuthorizationTab";
+import { ProfileTabLayout, profileTabItems } from "../components/ProfileTabLayout";
+import type { ProfileTabId } from "../components/ProfileTabLayout";
+import { TOTAL_REQUIRED, countMissingRequired, tabsWithErrors } from "../requiredFields";
 
 type LookupOption = { label: string; value: string };
 type DictionaryBusinessUnit = { name: string; isActive?: boolean };
@@ -84,7 +85,6 @@ const dedupeLookupOptions = (options: LookupOption[]) => {
 export const AddUserView: React.FC = () => {
  const navigate = useNavigate();
  const { showToast } = useToast();
- const { requestSignature, signatureModal } = useSecurityESign();
  const { hasPermission } = usePermissions();
 
  const [isLoading, setIsLoading] = useState(true);
@@ -106,8 +106,7 @@ export const AddUserView: React.FC = () => {
     mfaRequiredByAdmin: false,
   });
  const [isUsernameEdited, setIsUsernameEdited] = useState(false);
- type CreateTab = "personal" | "employment" | "qualifications" | "account" | "security";
- const [activeTab, setActiveTab] = useState<CreateTab>("personal");
+ const [activeTab, setActiveTab] = useState<ProfileTabId>("personal");
 
  // Education & Certifications -- same multi-entry table + Add/Edit/Delete UI as the Detail/Edit
  // screen's Training & Competency tab (QualificationsTab, reused directly below). The user
@@ -411,6 +410,9 @@ export const AddUserView: React.FC = () => {
  }
 
  setFormErrors(errors);
+ // Take the admin to the first tab with an error instead of leaving them to hunt for it.
+ const errorTabs = tabsWithErrors(errors);
+ if (errorTabs.length > 0 && !errorTabs.includes(activeTab)) setActiveTab(errorTabs[0]);
  return Object.keys(errors).length === 0;
  };
 
@@ -418,15 +420,9 @@ export const AddUserView: React.FC = () => {
  if (!generatedCredentials.id || isRegeneratingPassword) {
  return;
  }
- const signature = await requestSignature("Reset temporary password", "User Access Change");
- if (!signature) return;
  setIsRegeneratingPassword(true);
  try {
- const result = await settingsApi.resetPassword(generatedCredentials.id, {
-  signatureToken: signature.signatureToken,
-  reason: signature.reason,
-  sendEmail: false,
- });
+ const result = await settingsApi.resetPassword(generatedCredentials.id, { sendEmail: false });
  setGeneratedCredentials((prev) => ({ ...prev, password: result.password }));
  } catch (error: any) {
  showToast({
@@ -667,8 +663,16 @@ export const AddUserView: React.FC = () => {
   });
  };
 
+ const missing = countMissingRequired(newUser);
+ const missingTotal = Object.values(missing).reduce((sum, count) => sum + count, 0);
+ const doneTotal = TOTAL_REQUIRED - missingTotal;
+ const tabs = profileTabItems((id) => ({
+  description: missing[id] > 0 ? `${missing[id]} required left` : id === "qualifications" ? "Optional" : "Complete",
+  count: missing[id] > 0 ? missing[id] : undefined,
+ }));
+
  return (
- <div className="space-y-6 w-full flex-1 flex flex-col">
+ <div className="flex w-full flex-1 flex-col gap-4 md:gap-6">
   {/* Header */}
   <PageHeader
    title="Add New User"
@@ -676,26 +680,30 @@ export const AddUserView: React.FC = () => {
    actions={
     <>
      <Button onClick={handleCancel} variant="outline-emerald" size="sm" className="whitespace-nowrap gap-2">Cancel</Button>
-     <Button onClick={handleSubmit} variant="outline-emerald" size="sm" className="whitespace-nowrap gap-2" disabled={isSubmitting || isLoading || hasBlockingSodViolation || checkingSod}>
+     <Button onClick={handleSubmit} variant="default" size="sm" className="whitespace-nowrap gap-2" disabled={isSubmitting || isLoading || hasBlockingSodViolation || checkingSod}>
       Create User
      </Button>
     </>
    }
   />
 
-  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-   <TabNav
-    tabs={[
-     { id: "personal", label: "Personal & Identity" },
-     { id: "employment", label: "Employment Record" },
-     { id: "qualifications", label: "Training & Competency" },
-     { id: "account", label: "Account Status" },
-     { id: "security", label: "Security & Compliance" },
-    ] as TabItem[]}
-    activeTab={activeTab}
-    onChange={(id) => setActiveTab(id as CreateTab)}
-   />
-   <div className="p-4 md:p-5">
+  <ProfileTabLayout
+   summary={
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+     <div className="flex items-baseline justify-between gap-2">
+      <h2 className="text-sm font-semibold text-slate-900">Required Fields</h2>
+      <span className="text-xs text-slate-600">
+       <span className="font-semibold text-slate-900">{doneTotal}</span> of {TOTAL_REQUIRED} done
+      </span>
+     </div>
+     <Progress value={doneTotal} max={TOTAL_REQUIRED} size="sm" className="mt-3" />
+    </div>
+   }
+   tabs={tabs}
+   activeTab={activeTab}
+   onTabChange={setActiveTab}
+   compactNav={false}
+  >
    {activeTab === "personal" && (
   <div>
    <PersonalTab
@@ -760,8 +768,7 @@ export const AddUserView: React.FC = () => {
     selectionError={formErrors.accessProfileIds}
    />
    )}
-   </div>
-  </div>
+  </ProfileTabLayout>
 
   {/* Modals */}
  <NavigationGuardModal
@@ -796,7 +803,6 @@ export const AddUserView: React.FC = () => {
   showCancel={false}
  />
 
- {signatureModal}
 
  {isNavigating && <FullPageLoading text="Loading..." />}
  </div>

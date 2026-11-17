@@ -29,6 +29,7 @@ import { FolderIcon } from "@/features/self-service/knowledge/explorer/ExplorerI
 import { folderColor } from "@/features/self-service/knowledge/explorer/explorerModel";
 import { FolderColorField } from "../FolderColorField";
 import { userOptionLabel } from "../userOptionLabel";
+import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 
 export const BusinessUnitsTab = React.forwardRef<
   { openAddModal: () => void },
@@ -92,9 +93,7 @@ export const BusinessUnitsTab = React.forwardRef<
     openAddModal: () => setShowAddModal(true),
   }));
 
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter, modifiedFromDate, modifiedToDate, setCurrentPage]);
+  useResetPageOnChange(setCurrentPage, [statusFilter, modifiedFromDate, modifiedToDate]);
 
   React.useEffect(() => {
     const load = async () => {

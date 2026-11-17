@@ -26,9 +26,11 @@ public class AuditTrailReportMetadataProvider implements ReportMetadataProvider 
         column("timestamp", "Timestamp", "al.created_at");
         column("module", "Module", MODULE);
         // The action is the one verb of the Audit Trail screen; the filter and the picker still compare the stored code (REPORT-ACTION-LABEL-2026-11-16, REPORT-AUDIT-DISPLAY-2026-11-17).
+        // the Object Type is the default name of the menu of the object's function, the one the Audit Trail screen shows (AUDIT-OBJECT-REGISTRY-2026-11-17)
+        column("objectType", "Object Type", com.eqms.util.AuditObjectRegistry.sqlCase("al.entity_type", "al.action_type"));
         column("action", "Action", com.eqms.util.AuditActionVerb.sqlCase("al.action_type"));
         // An identifier is never shown to a person: a record known only by its identifier is left empty (REPORT-NO-IDENTIFIER, the rule of every screen).
-        column("record", "Record", "case when coalesce(nullif(al.entity_name,''), nullif(al.entity_code,''), nullif(al.document_number,'')) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then null else coalesce(nullif(al.entity_name,''), nullif(al.entity_code,''), nullif(al.document_number,'')) end");
+        column("record", "Object Code", "case when coalesce(nullif(al.entity_name,''), nullif(al.entity_code,''), nullif(al.document_number,'')) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then null else coalesce(nullif(al.entity_name,''), nullif(al.entity_code,''), nullif(al.document_number,'')) end");
         column("fromStatus", "From Status", "al.from_status");
         column("toStatus", "To Status", "al.to_status");
         column("description", "Description", "al.comment");

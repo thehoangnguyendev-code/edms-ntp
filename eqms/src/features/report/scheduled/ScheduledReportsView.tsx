@@ -166,6 +166,15 @@ export function ScheduledReportsView() {
                   cell: (_r, i) => (page - 1) * 10 + i + 1,
                 },
                 {
+                  id: "scheduleNumber",
+                  header: "Scheduled Report Number",
+                  sort: {
+                    direction: sort === "scheduleNumber" ? direction : undefined,
+                    onSort: () => sortBy("scheduleNumber"),
+                  },
+                  cell: (r) => <span className="text-xs sm:text-sm font-medium text-emerald-600 whitespace-nowrap">{r.scheduleNumber ?? "—"}</span>,
+                },
+                {
                   id: "name",
                   header: "Schedule name",
                   sort: {

@@ -52,7 +52,7 @@ class TrainingNotificationAdminServiceTest {
         assertThatThrownBy(() -> service().runReminders(actor)).isInstanceOf(SecurityException.class);
 
         verify(reminders, never()).sendAll(any());
-        verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), anyString());
+        verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), anyString(), any());
     }
 
     @Test
@@ -100,7 +100,7 @@ class TrainingNotificationAdminServiceTest {
 
         assertThat(result).containsEntry("candidates", 5).containsEntry("sent", 3L).containsEntry("skipped", 2L).containsEntry("failed", 0L);
         ArgumentCaptor<String> comment = ArgumentCaptor.forClass(String.class);
-        verify(audit).logAs(eq(actor), eq("TRAINING_NOTIFICATIONS"), eq("TRAINING_NOTIFICATIONS"), any(), eq("TRAINING_REMINDERS_RUN"), any(), any(), comment.capture());
+        verify(audit).logAs(eq(actor), eq("TRAINING_NOTIFICATIONS"), eq("TRAINING_NOTIFICATIONS"), any(), eq("TRAINING_REMINDERS_RUN"), any(), any(), comment.capture(), any());
         assertThat(comment.getValue()).contains("candidates=5").contains("sent=3").contains("skipped=2").contains("failed=0");
     }
 }

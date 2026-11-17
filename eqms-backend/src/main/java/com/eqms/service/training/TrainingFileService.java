@@ -140,7 +140,8 @@ public class TrainingFileService {
         jdbc.update("insert into training_materials(id, activity_id, title, purpose, original_name, provider, stored_path, content_type, size_bytes, sha256, uploaded_by) values (?,?,?,?,?,?,?,?,?,?,?)",
                 id, activityId, name, kind, checked.name(), stored.provider(), stored.storedPath(), checked.contentType(), checked.bytes().length, checked.sha256(), actor.getId());
         store.event(TrainingStore.OBJECT_ACTIVITY, id, activityId, "MATERIAL_ADDED", Map.of("name", checked.name(), "sha256", checked.sha256()), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_MATERIAL_ADDED", null, null, name + " (SHA-256 " + checked.sha256().substring(0, 12) + ")");
+        store.auditActivity(actor, activity, "TRAINING_MATERIAL_ADDED", null, null, name + " (SHA-256 " + checked.sha256().substring(0, 12) + ")",
+                List.of(TrainingStore.change("Material", null, name), TrainingStore.change("File Name", null, checked.name()), TrainingStore.change("Purpose", null, TrainingStore.words(String.valueOf(kind)))));
         return list(actor, activityId);
     }
 
@@ -161,7 +162,8 @@ public class TrainingFileService {
         UUID id = UUID.randomUUID();
         jdbc.update("insert into training_materials(id, activity_id, title, purpose, link_url, uploaded_by) values (?,?,?,'CONTENT',?,?)", id, activityId, name, link, actor.getId());
         store.event(TrainingStore.OBJECT_ACTIVITY, id, activityId, "MATERIAL_LINK_ADDED", Map.of("title", name, "url", link), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_MATERIAL_LINK_ADDED", null, null, name + " (" + link + ")");
+        store.auditActivity(actor, activity, "TRAINING_MATERIAL_LINK_ADDED", null, null, name + " (" + link + ")",
+                List.of(TrainingStore.change("Material", null, name), TrainingStore.change("Link", null, link)));
         return list(actor, activityId);
     }
 
@@ -175,7 +177,8 @@ public class TrainingFileService {
         if (m.get("removed_at") != null || !Set.of("PLANNED", "NOTIFIED").contains(String.valueOf(activity.get("status"))) || contentReviewed(activityId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_ALREADY_REVIEWED");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         jdbc.update("update training_materials set removed_at=now(), removed_by=?, remove_reason=? where id=?", actor.getId(), request.reason().trim(), id);
-        store.auditActivity(actor, activity, "TRAINING_MATERIAL_REMOVED", null, null, m.get("title") + ": " + request.reason().trim());
+        store.auditActivity(actor, activity, "TRAINING_MATERIAL_REMOVED", null, null, m.get("title") + ": " + request.reason().trim(),
+                List.of(TrainingStore.change("Material", m.get("title"), null), TrainingStore.change("Reason for Removal", null, request.reason().trim())));
         return list(actor, activityId);
     }
 
@@ -262,7 +265,8 @@ public class TrainingFileService {
         jdbc.update("insert into training_paper_evidence(id, activity_id, participant_id, kind, original_name, provider, stored_path, content_type, size_bytes, sha256, remark, form_used, uploaded_by, pack_id) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 id, activityId, participantId, kind, checked.name(), stored.provider(), stored.storedPath(), checked.contentType(), checked.bytes().length, checked.sha256(),
                 remark == null || remark.isBlank() ? null : remark.trim(), formUsed == null || formUsed.isBlank() ? null : formUsed.trim(), actor.getId(), packId);
-        store.auditActivity(actor, activity, "TRAINING_PAPER_EVIDENCE_UPLOADED", null, null, kind + ": " + checked.name() + (formUsed == null || formUsed.isBlank() ? "" : " [form " + formUsed.trim() + "]") + (packId == null ? "" : " [copy " + jdbc.queryForObject("select pack_code from training_paper_packs where id=?", String.class, packId) + "]") + " (SHA-256 " + checked.sha256().substring(0, 12) + ")");
+        store.auditActivity(actor, activity, "TRAINING_PAPER_EVIDENCE_UPLOADED", null, null, kind + ": " + checked.name() + (formUsed == null || formUsed.isBlank() ? "" : " [form " + formUsed.trim() + "]") + (packId == null ? "" : " [copy " + jdbc.queryForObject("select pack_code from training_paper_packs where id=?", String.class, packId) + "]") + " (SHA-256 " + checked.sha256().substring(0, 12) + ")",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Evidence File",null,checked.name()), com.eqms.util.AuditChanges.of("Kind",null,String.valueOf(kind)), com.eqms.util.AuditChanges.of("SHA-256 Checksum",null,checked.sha256())));
         if (packId != null) returnCopyByScan(actor, activity, packId, checked.name());
         return list(actor, activityId);
     }
@@ -275,7 +279,8 @@ public class TrainingFileService {
         int closed = jdbc.update("insert into training_paper_pack_events(id, pack_id, status, reason, by_user) values (?,?,'RETURNED',null,?) on conflict (pack_id) do nothing", UUID.randomUUID(), packId, actor.getId());
         if (closed == 0) return;
         String code = jdbc.queryForObject("select pack_code from training_paper_packs where id=?", String.class, packId);
-        store.auditActivity(actor, activity, "TRAINING_PAPER_COPY_RETURNED", "ISSUED", "RETURNED", code + ". Returned by the scan " + scanName);
+        store.auditActivity(actor, activity, "TRAINING_PAPER_COPY_RETURNED", "ISSUED", "RETURNED", code + ". Returned by the scan " + scanName,
+                java.util.List.of(TrainingStore.change("Paper Copy", code, "Returned")));
     }
 
     /** Most pages of one scanned batch (the reader of the codes stops there), so a hostile file cannot keep the server rendering. */
@@ -366,7 +371,8 @@ public class TrainingFileService {
                     String remark = "Sorted from the scanned batch " + batch.name() + " by the QR code" + (complete ? "" : ": " + g.pages().size() + " of " + g.expected()[0] + " page(s) found");
                     jdbc.update("insert into training_paper_evidence(id, activity_id, participant_id, kind, original_name, provider, stored_path, content_type, size_bytes, sha256, remark, form_used, uploaded_by, pack_id) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                             id, activityId, who == null ? null : who[0], kind, checked.name(), saved.provider(), saved.storedPath(), checked.contentType(), checked.bytes().length, checked.sha256(), remark, null, actor.getId(), g.packId());
-                    store.auditActivity(actor, activity, "TRAINING_PAPER_EVIDENCE_UPLOADED", null, null, kind + ": " + checked.name() + " [copy " + g.packCode() + "] (SHA-256 " + checked.sha256().substring(0, 12) + "). " + remark);
+                    store.auditActivity(actor, activity, "TRAINING_PAPER_EVIDENCE_UPLOADED", null, null, kind + ": " + checked.name() + " [copy " + g.packCode() + "] (SHA-256 " + checked.sha256().substring(0, 12) + "). " + remark,
+                com.eqms.util.AuditChanges.with("Remark", remark == null ? null : String.valueOf(remark), com.eqms.util.AuditChanges.of("Evidence File",null,checked.name()), com.eqms.util.AuditChanges.of("Kind",null,String.valueOf(kind)), com.eqms.util.AuditChanges.of("SHA-256 Checksum",null,checked.sha256())));
                     returnCopyByScan(actor, activity, g.packId(), checked.name());
                     stored++;
                     state = complete ? "STORED" : "STORED_INCOMPLETE";
@@ -383,7 +389,8 @@ public class TrainingFileService {
         } catch (IOException e) {
             throw new IllegalStateException("TRAINING_FILE_REJECTED", e);
         }
-        store.auditActivity(actor, activity, "TRAINING_PAPER_SCAN_BATCH", null, null, "Batch " + batch.name() + " (SHA-256 " + batch.sha256().substring(0, 12) + "): " + total + " page(s), " + stored + " file(s) stored, " + unrecognised.size() + " page(s) not recognised" + (unrecognised.isEmpty() ? "" : " " + unrecognised));
+        store.auditActivity(actor, activity, "TRAINING_PAPER_SCAN_BATCH", null, null, "Batch " + batch.name() + " (SHA-256 " + batch.sha256().substring(0, 12) + "): " + total + " page(s), " + stored + " file(s) stored, " + unrecognised.size() + " page(s) not recognised" + (unrecognised.isEmpty() ? "" : " " + unrecognised),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Batch File",null,batch.name()), com.eqms.util.AuditChanges.of("SHA-256 Checksum",null,batch.sha256()), com.eqms.util.AuditChanges.of("Pages",null,total), com.eqms.util.AuditChanges.of("Files Stored",null,stored), com.eqms.util.AuditChanges.of("Pages Not Recognised",null,unrecognised.size())));
         Map<String, Object> answer = new LinkedHashMap<>();
         answer.put("totalPages", total);
         answer.put("stored", stored);
@@ -403,7 +410,8 @@ public class TrainingFileService {
         if (actor.getId().equals(e.get("uploaded_by"))) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
         jdbc.update("update training_paper_evidence set received_by=?, received_at=now() where id=?", actor.getId(), id);
         if (e.get("participant_id") != null) jdbc.update("update training_participants set sign_mode='PAPER_SCAN', version=version+1 where id=?", e.get("participant_id"));
-        store.auditActivity(actor, activity, "TRAINING_PAPER_EVIDENCE_RECEIVED", null, null, e.get("original_name") + " checked against the paper");
+        store.auditActivity(actor, activity, "TRAINING_PAPER_EVIDENCE_RECEIVED", null, null, e.get("original_name") + " checked against the paper",
+                java.util.List.of(TrainingStore.change("File", null, e.get("original_name")), TrainingStore.change("Checked Against the Paper", "No", "Yes")));
         return list(actor, activityId);
     }
 

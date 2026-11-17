@@ -451,7 +451,8 @@ public class TrainingJobAssignmentService {
         for (UUID role : given) jdbc.update("insert into training_job_assignment_roles(assignment_id, job_role_id, sort_order, carried) values (?,?,?,false)", id, role, ++order);
         writeDuties(id, request.duties());
         writeRequired(id, request.requiredTopics(), request.requiredDocumentIds());
-        audit.logAs(actor, TYPE, label(id), id, "TRAINING_JOB_ASSIGNMENT_CREATED", null, "DRAFT", "Draft for " + person.getFullName());
+        audit.logAs(actor, TYPE, auditCode(id), id, "TRAINING_JOB_ASSIGNMENT_CREATED", null, "DRAFT", "Draft for " + person.getFullName(),
+                List.of(TrainingStore.change("Employee", null, person.getFullName())));
         return get(actor, id);
     }
 
@@ -470,7 +471,7 @@ public class TrainingJobAssignmentService {
             jdbc.update("delete from training_job_required_items where assignment_id=?", id);
             writeRequired(id, request.requiredTopics(), request.requiredDocumentIds());
         }
-        audit.logAs(actor, TYPE, label(id), id, "TRAINING_JOB_ASSIGNMENT_UPDATED", null, null, "Draft changed");
+        audit.logAs(actor, TYPE, auditCode(id), id, "TRAINING_JOB_ASSIGNMENT_UPDATED", null, null, "Draft changed");
         return get(actor, id);
     }
 
@@ -484,7 +485,8 @@ public class TrainingJobAssignmentService {
         approvals.cancelOpen(TYPE, id, "Replaced");
         approvals.designate(actor, subject(j), "JOB_ASSIGN_EXCEPTION", request.approverUserId(), TrainingApprovalService.apart(actor.getId(), (UUID) j.get("person_user_id")));
         jdbc.update("update training_job_assignments set exception_reason=?, exception_approved_by=null, exception_signature_id=null, version=version+1, updated_at=now() where id=?", request.reason().trim(), id);
-        audit.logAs(actor, TYPE, label(id), id, "TRAINING_JOB_EXCEPTION_REQUESTED", null, null, request.reason().trim());
+        audit.logAs(actor, TYPE, auditCode(id), id, "TRAINING_JOB_EXCEPTION_REQUESTED", null, null, request.reason().trim(),
+                com.eqms.util.AuditChanges.reason("Exception Reason", request.reason()));
         return get(actor, id);
     }
 
@@ -503,7 +505,8 @@ public class TrainingJobAssignmentService {
         UUID signature = sign(actor, j, "TRAINING_JOB_EXCEPTION_APPROVED", request == null ? null : request.signatureToken());
         approvals.complete(assignment, signature);
         jdbc.update("update training_job_assignments set exception_approved_by=?, exception_signature_id=?, version=version+1, updated_at=now() where id=?", actor.getId(), signature, id);
-        audit.logAs(actor, TYPE, label(id), id, "TRAINING_JOB_EXCEPTION_APPROVED", null, null, String.valueOf(j.get("exception_reason")));
+        audit.logAs(actor, TYPE, auditCode(id), id, "TRAINING_JOB_EXCEPTION_APPROVED", null, null, String.valueOf(j.get("exception_reason")),
+                com.eqms.util.AuditChanges.reason("Exception Reason", String.valueOf(j.get("exception_reason"))));
         return get(actor, id);
     }
 
@@ -525,7 +528,8 @@ public class TrainingJobAssignmentService {
         try { snapshot = json.writeValueAsString(eligibility); } catch (JsonProcessingException e) { snapshot = "{}"; }
         jdbc.update("update training_job_assignments set status='PENDING_RECEIVER', assignor_user_id=?, assignor_title=?, assignor_signature_id=?, matrix_version_id=?, matrix_completion_snapshot=cast(? as jsonb), version=version+1, updated_at=now() where id=?",
                 actor.getId(), request.assignorTitle() == null || request.assignorTitle().isBlank() ? actor.getPosition() : request.assignorTitle().trim(), signature, eligibility.get("matrixVersionId"), snapshot, id);
-        audit.logAs(actor, TYPE, label(id), id, "TRAINING_JOB_ASSIGNED", "DRAFT", "PENDING_RECEIVER", complete ? "Matrix training complete" : "Exception approved: " + j.get("exception_reason"));
+        audit.logAs(actor, TYPE, auditCode(id), id, "TRAINING_JOB_ASSIGNED", "DRAFT", "PENDING_RECEIVER", complete ? "Matrix training complete" : "Exception approved: " + j.get("exception_reason"),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Basis",null,complete ? "Matrix training complete" : "Exception approved")));
         users.findById((UUID) j.get("person_user_id")).ifPresent(person -> notifier.send("TRAINING_JOB_WAITING", person, actor, "Training: a job assignment waits for you",
                 actor.getFullName() + " assigned you a position. Please read and accept it.", TYPE, id, null));
         return get(actor, id);
@@ -550,7 +554,7 @@ public class TrainingJobAssignmentService {
             jdbc.update("update training_person_positions set valid_to=current_date where person_user_id=? and position_id=? and valid_to is null", actor.getId(), role.get("job_role_id"));
             jdbc.update("insert into training_person_positions(id, person_user_id, position_id, department_id, source, created_by) values (?,?,?,?, 'JOB_ASSIGNMENT', ?)", UUID.randomUUID(), actor.getId(), role.get("job_role_id"), role.get("department_id"), actor.getId());
         }
-        audit.logAs(actor, TYPE, label(id), id, "TRAINING_JOB_ACCEPTED", "PENDING_RECEIVER", "EFFECTIVE", "Assignment accepted");
+        audit.logAs(actor, TYPE, auditCode(id), id, "TRAINING_JOB_ACCEPTED", "PENDING_RECEIVER", "EFFECTIVE", "Assignment accepted");
         if (j.get("assignor_user_id") != null) {
             users.findById((UUID) j.get("assignor_user_id")).ifPresent(assignor -> notifier.send("TRAINING_JOB_ACCEPTED", assignor, actor, "Training: job assignment accepted",
                     actor.getFullName() + " accepted the job assignment.", TYPE, id, null));
@@ -567,7 +571,8 @@ public class TrainingJobAssignmentService {
         if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         approvals.cancelOpen(TYPE, id, "Cancelled");
         jdbc.update("update training_job_assignments set status='CANCELLED', cancel_reason=?, version=version+1, updated_at=now() where id=?", request.reason().trim(), id);
-        audit.logAs(actor, TYPE, label(id), id, "TRAINING_JOB_ASSIGNMENT_CANCELLED", String.valueOf(j.get("status")), "CANCELLED", request.reason().trim());
+        audit.logAs(actor, TYPE, auditCode(id), id, "TRAINING_JOB_ASSIGNMENT_CANCELLED", String.valueOf(j.get("status")), "CANCELLED", request.reason().trim(),
+                com.eqms.util.AuditChanges.reason("Reason for Cancelling", request.reason()));
         return get(actor, id);
     }
 
@@ -603,6 +608,11 @@ public class TrainingJobAssignmentService {
         List<UUID> rows = jdbc.queryForList("select department_id from training_job_roles where id=? and is_active", UUID.class, positionId);
         if (rows.isEmpty() || rows.getFirst() == null) throw new IllegalArgumentException("TRAINING_POSITION_INVALID");
         return rows.getFirst();
+    }
+
+    /** What the Audit Trail names an assignment by: the employee code of the person it concerns (AUDIT-OBJECT-REGISTRY-2026-11-17). */
+    private String auditCode(UUID id) {
+        return jdbc.queryForList("select coalesce(nullif(u.employee_code, ''), u.full_name) from training_job_assignments j join app_users u on u.id = j.person_user_id where j.id=?", String.class, id).stream().findFirst().orElse("Job assignment");
     }
 
     private String label(UUID id) {

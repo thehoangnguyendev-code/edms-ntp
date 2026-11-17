@@ -139,6 +139,11 @@ export function ScheduleEditorPage() {
             <fieldset disabled={saving || !canManage} className="m-0 min-w-0 space-y-4 border-0 p-4 md:p-5">
               {activeTab === "general" && (
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+                  {draft.id && (
+                    <FormField label="Scheduled Report Number">
+                      <Input readOnly value={draft.scheduleNumber ?? "—"} className="font-mono" />
+                    </FormField>
+                  )}
                   <FormField label="Schedule Name" required>
                     <Input maxLength={255} value={draft.name} onChange={(e) => patch({ name: e.target.value })} />
                   </FormField>

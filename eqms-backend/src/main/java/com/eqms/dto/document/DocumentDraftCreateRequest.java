@@ -31,7 +31,7 @@ public record DocumentDraftCreateRequest(
         List<String> relatedDocumentIds,
         List<String> correlatedDocumentIds,
         // Legacy Import only (see DocumentService#applyDraftFields): honored solely when the
-        // caller holds documents.legacy_import.manage, silently ignored otherwise -- an ordinary
+        // caller may create documents (documents.document.create), silently ignored otherwise -- an ordinary
         // caller sending none of these gets exactly today's auto-generated document number.
         String legacyDocumentNumber,
         String legacyOriginalEffectiveDate,

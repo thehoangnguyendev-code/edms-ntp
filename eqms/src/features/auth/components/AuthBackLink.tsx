@@ -1,6 +1,6 @@
 import React from "react";
 import { ArrowLeft } from "lucide-react";
-import { AUTH_UI } from "../auth-ui";
+import { useAuthUi } from "../useAuthUi";
 
 interface AuthBackLinkProps {
   onClick?: () => void;
@@ -9,8 +9,9 @@ interface AuthBackLinkProps {
 }
 
 export const AuthBackLink: React.FC<AuthBackLinkProps> = ({ onClick, label, disabled }) => {
+  const ui = useAuthUi();
   return (
-    <button type="button" onClick={onClick} className={AUTH_UI.backLink} disabled={disabled}>
+    <button type="button" onClick={onClick} className={ui.backLink} disabled={disabled}>
       <span
         className="inline-flex w-0 -translate-x-1 items-center overflow-hidden opacity-0 transition-all duration-200 group-hover:mr-2 group-hover:w-4 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:mr-2 group-focus-visible:w-4 group-focus-visible:translate-x-0 group-focus-visible:opacity-100"
         aria-hidden="true"

@@ -297,7 +297,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                 {effectiveMeaningDisplayName && (
                   <div className="flex items-baseline gap-3 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3.5 py-3">
                     <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">Meaning</span>
-                    <span className="text-sm sm:text-xl font-medium text-slate-900 wrap-break-word min-w-0">{effectiveMeaningDisplayName}</span>
+                    <span className="text-xs sm:text-sm font-medium text-slate-900 wrap-break-word min-w-0">{effectiveMeaningDisplayName}</span>
                   </div>
                 )}
 

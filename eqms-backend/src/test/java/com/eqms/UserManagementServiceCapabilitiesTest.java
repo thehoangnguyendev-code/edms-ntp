@@ -49,6 +49,10 @@ class UserManagementServiceCapabilitiesTest {
     @Mock private com.eqms.repository.AuthSessionRepository sessionRepository;
     @Mock private com.eqms.repository.UserAccessProfileRepository userAccessProfileRepository;
     @Mock private com.eqms.service.SystemConfigurationService systemConfigurationService;
+    @Mock private com.eqms.service.NotificationDispatcher notificationDispatcher;
+    @Mock private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    @Mock private com.eqms.service.AuthAuditService auditService;
+    @Mock private com.eqms.service.AuditTrailService auditTrailService;
     @InjectMocks private UserManagementService service;
 
     private UserAccount actor;
@@ -93,6 +97,43 @@ class UserManagementServiceCapabilitiesTest {
         assertThat(forFree.actions().get("unlock").allowed()).isFalse();
         assertThat(forFree.actions().get("unlock").reason()).isEqualTo("Account is not currently locked.");
         assertThat(forFree.actions()).containsKeys("view", "edit", "resetPassword", "suspend", "terminate", "reinstate", "forceLogout", "unlock");
+    }
+
+    @Test
+    void resettingYourOwnPasswordIsNotOfferedAndIsRefused() {
+        when(permissionEvaluationService.hasPermission(eq(actor), anyString())).thenReturn(true);
+        when(userRepository.findById(actor.getId())).thenReturn(Optional.of(actor));
+
+        var reset = service.getUserCapabilities(actor.getId()).actions().get("resetPassword");
+
+        assertThat(reset.allowed()).isFalse();
+        assertThat(reset.reason()).contains("Preferences > Security");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.resetPassword(actor.getId(), null, null))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("cannot reset your own password");
+        assertThat(actor.getPasswordHash()).isNull();
+    }
+
+    /** Owner request 2026-11-17: the e-mail to the person carries the new temporary password, in its own e-mail only event, not in the general "Password changed" notice. */
+    @Test
+    void resettingAnotherPersonsPasswordEmailsThemTheTemporaryPasswordInItsOwnEvent() {
+        UserAccount user = account(false);
+        user.setEmail("person@example.local");
+        when(passwordEncoder.encode(anyString())).thenReturn("hash");
+        when(systemConfigurationService.requireConfiguration()).thenReturn(new com.eqms.entity.SystemConfiguration());
+        var http = mock(jakarta.servlet.http.HttpServletRequest.class);
+        when(http.getHeader("Origin")).thenReturn("http://localhost:3000");
+        var request = new com.eqms.dto.user.UserResetPasswordRequest(false, "Temp#Passw0rd-123");
+
+        var response = service.resetPassword(user.getId(), request, http);
+
+        org.mockito.ArgumentCaptor<java.util.Map<String, String>> variables = org.mockito.ArgumentCaptor.forClass(java.util.Map.class);
+        verify(notificationDispatcher).dispatch(eq("security.account_password_reset"), eq(List.of(user)), variables.capture());
+        assertThat(variables.getValue()).containsEntry("tempPassword", "Temp#Passw0rd-123").containsEntry("username", user.getUsername())
+                .containsEntry("loginLink", "http://localhost:3000/login");
+        assertThat(response.password()).isEqualTo("Temp#Passw0rd-123");
+        // the general notice is still sent, and it never carries a password
+        verify(notificationDispatcher).dispatch("security.password_changed", List.of(user), java.util.Map.of());
+        assertThat(user.isMustChangePassword()).isTrue();
     }
 
     @Test

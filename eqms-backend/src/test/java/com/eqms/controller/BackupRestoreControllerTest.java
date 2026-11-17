@@ -143,7 +143,7 @@ class BackupRestoreControllerTest {
         ArgumentCaptor<Map<String, Object>> body = ArgumentCaptor.forClass(Map.class);
         verify(agent).post(eq("/internal/backups"), body.capture());
         assertThat(body.getValue()).containsEntry("requestedBy", "Quality Admin (qadmin)").containsEntry("reason", "quarterly check").containsEntry("type", "FULL");
-        verify(audit).logAs(eq(actor), eq("BACKUP"), anyString(), any(UUID.class), eq("BACKUP_REQUESTED"), any(), eq("QUEUED"), org.mockito.ArgumentMatchers.contains("quarterly check"));
+        verify(audit).logAs(eq(actor), eq("BACKUP"), anyString(), any(UUID.class), eq("BACKUP_REQUESTED"), any(), eq("QUEUED"), org.mockito.ArgumentMatchers.contains("quarterly check"), any());
     }
 
     @Test
@@ -161,7 +161,7 @@ class BackupRestoreControllerTest {
         var response = controller.verify("BK-20261008-0200-0001");
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         verify(agent).post(eq("/internal/backups/BK-20261008-0200-0001/verify"), eq(Map.of("requestedBy", "Quality Admin (qadmin)")));
-        verify(audit).logAs(eq(actor), eq("BACKUP"), eq("BK-20261008-0200-0001"), any(UUID.class), eq("BACKUP_VERIFY_REQUESTED"), any(), eq("QUEUED"), anyString());
+        verify(audit).logAs(eq(actor), eq("BACKUP"), eq("BK-20261008-0200-0001"), any(UUID.class), eq("BACKUP_VERIFY_REQUESTED"), any(), eq("QUEUED"), anyString(), any());
     }
 
     @Test

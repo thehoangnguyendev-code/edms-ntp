@@ -94,8 +94,19 @@ public class InternalAlertController {
                                     @RequestParam(required = false) String search, @RequestParam(defaultValue = "1") int page,
                                     @RequestParam(defaultValue = "10") int limit, @RequestParam(required = false) String from,
                                     @RequestParam(required = false) String to, @RequestParam(defaultValue = "at") String sortBy,
-                                    @RequestParam(defaultValue = "desc") String sortDirection, @RequestParam(required = false) String people) {
-        return alerts.page(state, severity, search, instant(from, "from"), instant(to, "to"), sortBy, "asc".equalsIgnoreCase(sortDirection), page, limit, SearchClause.split(people));
+                                    @RequestParam(defaultValue = "desc") String sortDirection, @RequestParam(required = false) String people,
+                                    @RequestParam(required = false) String ids) {
+        List<java.util.UUID> idList = new java.util.ArrayList<>();
+        if (ids != null && !ids.isBlank()) {
+            for (String id : ids.split(",")) {
+                try {
+                    idList.add(java.util.UUID.fromString(id.trim()));
+                } catch (IllegalArgumentException e) {
+                    throw ExportException.invalid("ALERT_ID", "Not an alert id: " + id);
+                }
+            }
+        }
+        return alerts.page(state, severity, search, instant(from, "from"), instant(to, "to"), sortBy, "asc".equalsIgnoreCase(sortDirection), page, limit, SearchClause.split(people), idList);
     }
 
     private static java.time.Instant instant(String value, String name) {

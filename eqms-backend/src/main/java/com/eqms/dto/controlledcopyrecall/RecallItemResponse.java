@@ -26,6 +26,7 @@ public record RecallItemResponse(
         String outcome,
         String outcomeMessage,
         String executedRecordId,
+        String executedRecordNumber,
         boolean previewAvailable,
         RecallItemCopyResponse copy,
         String sourceFileName,

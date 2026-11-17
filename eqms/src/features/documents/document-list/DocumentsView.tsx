@@ -22,7 +22,6 @@ import { ExpandedDocumentRow, preloadExpandedDocumentDetails } from "@/features/
 import { hasDocumentExpansion } from "@/features/documents/shared/rowExpansion";
 import { useDocumentServerTable } from "@/features/documents/hooks";
 import { useDocumentPermissions } from "@/features/documents/shared/useDocumentPermissions";
-import { usePermissions } from "@/hooks/usePermissions";
 import {
   buildControlledCopyRequestStateFromDocument,
   canRequestControlledCopyFromDocument,
@@ -136,8 +135,6 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
   const { user } = useAuth();
   const location = useLocation();
   const { canCreateDocumentShell } = useDocumentPermissions();
-  const { hasPermissionAlias } = usePermissions();
-  const canLegacyImport = hasPermissionAlias("documents.legacy_import.manage");
   const { showToast } = useToast();
   const { navigateTo, navigateToPrepared, isNavigating } = useNavigateWithLoading();
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
@@ -537,20 +534,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
                 </>
               )}
             </Button>
-            {showNewDocButton && canCreateDocument && !canLegacyImport && (
-              <Button
-                onClick={() => {
-                  clearNewDocumentDraftState();
-                  navigateTo(ROUTES.DOCUMENTS.NEW);
-                }}
-                size="sm"
-                className="whitespace-nowrap gap-2"
-              >
-                <IconPlus className="h-4 w-4" />
-                New Document
-              </Button>
-            )}
-            {showNewDocButton && canCreateDocument && canLegacyImport && (
+            {showNewDocButton && canCreateDocument && (
               <Button onClick={() => setIsNewDocChoiceOpen(true)} size="sm" className="whitespace-nowrap gap-2">
                 <IconPlus className="h-4 w-4" />
                 New Document
@@ -568,7 +552,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
         showFooter={false}
         size="xl"
       >
-        <div className={cn("grid gap-3", canLegacyImport && "sm:grid-cols-2")}>
+        <div className="grid gap-3 sm:grid-cols-2">
           <NewDocumentChoiceCard
             icon={<IconFilePlus className="h-5 w-5" />}
             title="New Document"
@@ -581,18 +565,16 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
             }}
           />
 
-          {canLegacyImport && (
-            <NewDocumentChoiceCard
-              icon={<IconFileUpload className="h-5 w-5" />}
-              title="Legacy Import"
-              description="Bring in a document that already exists outside the system (e.g. a paper original) — one revision, or its entire historical revision chain — publishing it directly as Effective."
-              cta="Import existing document"
-              onClick={() => {
-                setIsNewDocChoiceOpen(false);
-                navigateTo(ROUTES.DOCUMENTS.LEGACY_IMPORT);
-              }}
-            />
-          )}
+          <NewDocumentChoiceCard
+            icon={<IconFileUpload className="h-5 w-5" />}
+            title="Legacy Import"
+            description="Bring in a document that already exists outside the system (e.g. a paper original) — one revision, or its entire historical revision chain — publishing it directly as Effective."
+            cta="Import existing document"
+            onClick={() => {
+              setIsNewDocChoiceOpen(false);
+              navigateTo(ROUTES.DOCUMENTS.LEGACY_IMPORT);
+            }}
+          />
         </div>
       </FormModal>
 

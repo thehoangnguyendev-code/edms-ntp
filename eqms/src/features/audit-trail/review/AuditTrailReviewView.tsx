@@ -62,7 +62,7 @@ const inputClass =
   "h-9 w-full rounded-lg border border-slate-200 px-3 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500";
 
 type SortKey =
-  "createdAt" | "name" | "status" | "reviewPeriodStart" | "reviewPeriodEnd";
+  "createdAt" | "campaignNumber" | "name" | "status" | "reviewPeriodStart" | "reviewPeriodEnd";
 
 const SortHeader: React.FC<{
   label: string;
@@ -404,6 +404,13 @@ export const AuditTrailReviewView: React.FC = () => {
                         No.
                       </TableMarkup.HeaderCell>
                       <SortHeader
+                        label="Campaign Number"
+                        column="campaignNumber"
+                        current={sortBy}
+                        direction={sortDirection}
+                        onSort={changeSort}
+                      />
+                      <SortHeader
                         label="Campaign"
                         column="name"
                         current={sortBy}
@@ -448,7 +455,7 @@ export const AuditTrailReviewView: React.FC = () => {
                   <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                     {!loading && campaigns.length === 0 ? (
                       <TableMarkup.Row>
-                        <TableMarkup.Cell colSpan={9} className="p-0">
+                        <TableMarkup.Cell colSpan={10} className="p-0">
                           <TableEmptyState
                            
                             title="No Audit Trail Review Campaigns"
@@ -469,6 +476,9 @@ export const AuditTrailReviewView: React.FC = () => {
                         >
                           <TableMarkup.Cell className={TABLE_STYLES.cell36}>
                             {(currentPage - 1) * itemsPerPage + index + 1}
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="px-4 py-3 text-xs sm:text-sm font-medium text-emerald-600 whitespace-nowrap">
+                            {campaign.campaignNumber ?? "—"}
                           </TableMarkup.Cell>
                           <TableMarkup.Cell className="px-4 py-3 text-xs sm:text-sm">
                             <p className="font-medium text-emerald-600">

@@ -36,12 +36,12 @@ class TableExcelExportServiceTest {
             assertThat(response.getHeaders().getContentDisposition().getFilename()).matches("All_Document_\\d{8}_\\d{4}\\.xlsx");
             assertThat(response.getHeaders().getCacheControl()).isEqualTo("no-store");
             var comment=ArgumentCaptor.forClass(String.class);
-            verify(audit).logAs(eq(actor),eq("TABLE_EXPORT"),eq("All_Document"),any(UUID.class),eq("EXPORT"),isNull(),isNull(),comment.capture());
+            verify(audit).logAs(eq(actor),eq("DOCUMENT"),matches("All_Document_\\d{8}_\\d{4}\\.xlsx"),any(UUID.class),eq("EXPORT"),isNull(),isNull(),comment.capture());
             assertThat(comment.getValue()).contains("records=1","SHA-256=","search=SOP").doesNotContain("DO_NOT_LOG","signatureToken","page=");
             verify(manager).commit(any());
             var order=inOrder(session,audit);
             order.verify(session).setHibernateFlushMode(org.hibernate.FlushMode.AUTO);
-            order.verify(audit).logAs(eq(actor),eq("TABLE_EXPORT"),anyString(),any(UUID.class),eq("EXPORT"),isNull(),isNull(),anyString());
+            order.verify(audit).logAs(eq(actor),eq("DOCUMENT"),anyString(),any(UUID.class),eq("EXPORT"),isNull(),isNull(),anyString());
             var output=new ByteArrayOutputStream();
             response.getBody().writeTo(output);
             assertThat(output.size()).isGreaterThan(100);

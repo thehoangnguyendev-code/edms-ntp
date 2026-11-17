@@ -24,6 +24,7 @@ import { extractApiMessage } from "../utils";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 
 export const PositionsTab = React.forwardRef<
   { openAddModal: () => void },
@@ -107,9 +108,7 @@ export const PositionsTab = React.forwardRef<
     return ["All", ...filtered];
   }, [businessUnitFilter, departments]);
 
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [businessUnitFilter, departmentFilter, statusFilter, modifiedFromDate, modifiedToDate, setCurrentPage]);
+  useResetPageOnChange(setCurrentPage, [businessUnitFilter, departmentFilter, statusFilter, modifiedFromDate, modifiedToDate]);
 
   React.useEffect(() => {
     const load = async () => {

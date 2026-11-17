@@ -109,7 +109,8 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
             if (!policyRepository.existsByEventCode(seed.code())) {
                 NotificationPolicy policy = new NotificationPolicy();
                 policy.setEventCode(seed.code());
-                String enabledChannels = com.eqms.service.NotificationDefaultChannels.of(seed.code(), supportedChannels(seed));
+                String enabledChannels = "EMAIL".equals(supportedChannels(seed)) ? "EMAIL"
+                        : com.eqms.service.NotificationDefaultChannels.of(seed.code(), supportedChannels(seed));
                 policy.setStatus(seed.status() == null ? NotificationPolicy.STATUS_ACTIVE : seed.status());
                 policy.setEnabledChannels(enabledChannels);
                 policy.setRecipientRules(seed.rules() != null ? seed.rules() : buildDefaultRecipientRules(seed.defaultRecipientRoles()));
@@ -118,8 +119,11 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                 policy.setEscalationRecipientRules(objectMapper.createArrayNode());
                 policy = policyRepository.save(policy);
 
-                templateVersionRepository.save(buildVersion(policy, NotificationTemplateVersion.CHANNEL_IN_APP,
-                        seed.inAppTitle(), seed.inAppSummary(), seed.variables()));
+                // an e-mail-only event has no in-app notification (a secret must not be kept as one)
+                if (!"EMAIL".equals(supportedChannels(seed))) {
+                    templateVersionRepository.save(buildVersion(policy, NotificationTemplateVersion.CHANNEL_IN_APP,
+                            seed.inAppTitle(), seed.inAppSummary(), seed.variables()));
+                }
                 // an event that is sent by e-mail by default has e-mail wording: its own, or the in-app wording as a start
                 String[] content = enabledChannels.contains(NotificationTemplateVersion.CHANNEL_EMAIL)
                         ? java.util.Objects.requireNonNullElseGet(emailContent(seed), () -> new String[]{"[EQMS] " + seed.inAppTitle(), "<p>" + seed.inAppSummary() + "</p>"})
@@ -145,11 +149,13 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
     private static final java.util.Set<String> IN_APP_ONLY = java.util.Set.of("backup.maintenance_drained");
 
     private static String supportedChannels(EventSeed seed) {
+        if (com.eqms.service.NotificationMandatoryEvents.isMandatory(seed.code())) return "EMAIL";
         return IN_APP_ONLY.contains(seed.code()) ? "IN_APP" : "IN_APP,EMAIL";
     }
 
     /** The e-mail of an event: its own wording, or for a Training notice the title and text the module composes. */
     private static String[] emailContent(EventSeed seed) {
+        if (ACCOUNT_EMAIL_CONTENT.containsKey(seed.code())) return ACCOUNT_EMAIL_CONTENT.get(seed.code());
         if (REPORT_TEMPLATE_REJECTED.equals(seed.code())) return new String[]{"[EQMS] Report Template Rejected: {{entityName}}",
                 "<p>The report template <b>{{entityName}}</b> was rejected by {{actorName}}.</p><p><b>Reason:</b> {{actionComment}}</p><p>Change the template and submit it again: {{actionUrl}}</p>"};
         if (EMAIL_CONTENT.containsKey(seed.code())) return EMAIL_CONTENT.get(seed.code());
@@ -251,6 +257,29 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
         }
         return array;
     }
+
+    /** The wording of the account e-mails (they started from the e-mail messages of the same name, which are kept for older callers). */
+    private static final java.util.Map<String, String[]> ACCOUNT_EMAIL_CONTENT = java.util.Map.of(
+            com.eqms.service.NotificationMandatoryEvents.MFA_LOGIN_CODE, new String[]{
+                    "Your EQMS verification code: {{otpCode}}",
+                    "<p>Hello {{recipientName}},</p><p>Your verification code is: <strong>{{otpCode}}</strong></p><p>This code will expire in {{expiresIn}} minutes.</p><p>If you did not request this code, please ignore this email.</p>"
+            },
+            com.eqms.service.NotificationMandatoryEvents.PASSWORD_RESET_LINK, new String[]{
+                    "EQMS password reset request",
+                    "<p>Hello {{recipientName}},</p><p>You requested a password reset. Please click the link below to set a new password:</p><p><a href=\"{{resetLink}}\">{{resetLink}}</a></p><p>This link is valid for 24 hours.</p><p>If you did not request a password reset, please ignore this email.</p>"
+            },
+            com.eqms.service.NotificationMandatoryEvents.ACCOUNT_UNLOCKED, new String[]{
+                    "Your EQMS account has been unlocked",
+                    "<p>Hello {{recipientName}},</p><p>Your EQMS account was locked after too many failed login attempts. An administrator has unlocked it and issued a new temporary password.</p><p><strong>Username:</strong> {{username}}<br/><strong>Temporary password:</strong> {{tempPassword}}</p><p><a href=\"{{loginLink}}\">Click here to sign in</a></p><p>For security, you will be required to set a new password immediately after signing in. If you did not expect this, please contact your system administrator right away.</p>"
+            },
+            com.eqms.service.NotificationMandatoryEvents.ACCOUNT_PASSWORD_RESET, new String[]{
+                    "Your EQMS password has been reset",
+                    "<p>Hello {{recipientName}},</p><p>An administrator has reset your EQMS password and issued a new temporary password.</p><p><strong>Username:</strong> {{username}}<br/><strong>Temporary password:</strong> {{tempPassword}}</p><p><a href=\"{{loginLink}}\">Click here to sign in</a></p><p>For security, you will be required to set a new password immediately after signing in. If you did not expect this, please contact your system administrator right away.</p>"
+            },
+            com.eqms.service.NotificationMandatoryEvents.MFA_REQUIREMENT_REMOVED, new String[]{
+                    "Multifactor authentication is no longer required for your EQMS account",
+                    "<p>Hello {{recipientName}},</p><p>An administrator no longer requires multi-factor authentication for your EQMS account. You can keep using it, or switch it off in your profile settings.</p><p>If you did not expect this change, please contact your system administrator.</p>"
+            });
 
     /** Email subject and body (HTML) per event code. Index 0 = subject, 1 = body. English only. */
     private static final java.util.Map<String, String[]> EMAIL_CONTENT = java.util.Map.of(
@@ -503,6 +532,47 @@ new EventSeed(
                         "TIME_LIMITED_EXPIRE", "USER_ACCOUNT", "IN_APP", STD_VARS,
                         new String[]{"OWNER"},
                         "Your access has expired", "Your time-limited access ended on {{endDate}} and your account has been suspended."
+                ),
+                // Account e-mails that carry a secret or that the person cannot do without: e-mail only, always sent (NotificationMandatoryEvents)
+                new EventSeed(
+                        com.eqms.service.NotificationMandatoryEvents.MFA_LOGIN_CODE, "MFA Sign-in Code",
+                        "The one-time code sent by e-mail to sign in, or to set up multi-factor authentication. E-mail only and always sent: it carries a secret and cannot be switched off.",
+                        "SECURITY", NotificationEventDefinition.PRIORITY_HIGH,
+                        "MFA_LOGIN_CODE", "USER_ACCOUNT", "EMAIL", "recipientName,systemName,otpCode,expiresIn",
+                        new String[]{"AFFECTED_USERS"},
+                        "MFA sign-in code", "Your verification code is {{otpCode}}."
+                ),
+                new EventSeed(
+                        com.eqms.service.NotificationMandatoryEvents.PASSWORD_RESET_LINK, "Password Reset Link",
+                        "The link to set a new password, sent when a user asks to reset it. E-mail only and always sent: it carries a secret and cannot be switched off.",
+                        "SECURITY", NotificationEventDefinition.PRIORITY_HIGH,
+                        "REQUEST_PASSWORD_RESET", "USER_ACCOUNT", "EMAIL", "recipientName,systemName,resetLink",
+                        new String[]{"AFFECTED_USERS"},
+                        "Password reset link", "Use the link to set a new password."
+                ),
+                new EventSeed(
+                        com.eqms.service.NotificationMandatoryEvents.ACCOUNT_UNLOCKED, "Account Unlocked - Temporary Password",
+                        "Sent when an administrator unlocks an account: the user name, the temporary password and the address to sign in. E-mail only and always sent: it carries a secret and cannot be switched off.",
+                        "SECURITY", NotificationEventDefinition.PRIORITY_HIGH,
+                        "UNLOCK_ACCOUNT", "USER_ACCOUNT", "EMAIL", "recipientName,systemName,username,tempPassword,loginLink",
+                        new String[]{"AFFECTED_USERS"},
+                        "Account unlocked", "Your account was unlocked and has a temporary password."
+                ),
+                new EventSeed(
+                        com.eqms.service.NotificationMandatoryEvents.ACCOUNT_PASSWORD_RESET, "Password Reset - Temporary Password",
+                        "Sent when an administrator resets a password: the user name, the temporary password and the address to sign in. E-mail only and always sent: it carries a secret and cannot be switched off.",
+                        "SECURITY", NotificationEventDefinition.PRIORITY_HIGH,
+                        "RESET_PASSWORD", "USER_ACCOUNT", "EMAIL", "recipientName,systemName,username,tempPassword,loginLink",
+                        new String[]{"AFFECTED_USERS"},
+                        "Password reset", "Your password was reset and has a temporary password."
+                ),
+                new EventSeed(
+                        com.eqms.service.NotificationMandatoryEvents.MFA_REQUIREMENT_REMOVED, "MFA No Longer Required",
+                        "Sent when an administrator stops requiring multi-factor authentication for a user who had already set it up. E-mail only and always sent.",
+                        "SECURITY", NotificationEventDefinition.PRIORITY_MEDIUM,
+                        "UPDATE_MFA", "USER_ACCOUNT", "EMAIL", "recipientName,systemName",
+                        new String[]{"AFFECTED_USERS"},
+                        "MFA no longer required", "An administrator no longer requires multi-factor authentication for your account."
                 ),
 
                 // ── System ───────────────────────────────────────────────────────

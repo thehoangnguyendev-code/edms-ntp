@@ -217,7 +217,7 @@ class TrainingParticipationRoleTest {
 
         // Before the training the person has not attended, so the result stays as it was; the audit trail keeps the old and the new role and the reason.
         verify(jdbc).update(contains("participation_role=?"), eq("NAME_ONLY"), eq("Senior management attending"), any(), eq("PENDING"), eq(participantId));
-        verify(store).auditActivity(any(), any(), eq("TRAINING_PARTICIPATION_SET"), eq("TRAINEE"), eq("NAME_ONLY"), contains("Senior management attending"));
-        verify(store, never()).auditActivity(any(), any(), eq("TRAINING_ATTENDANCE_RECORDED"), anyString(), anyString(), anyString());
+        verify(store).auditActivity(any(), any(), eq("TRAINING_PARTICIPATION_SET"), eq("TRAINEE"), eq("NAME_ONLY"), contains("Senior management attending"), any());
+        verify(store, never()).auditActivity(any(), any(), eq("TRAINING_ATTENDANCE_RECORDED"), anyString(), anyString(), anyString(), any());
     }
 }

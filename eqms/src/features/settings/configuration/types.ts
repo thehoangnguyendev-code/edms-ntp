@@ -65,6 +65,8 @@ export interface AppearanceSettings {
   tableColumnDividers?: boolean;
   /** Desktop Search + two-column draft filter panel. */
   compactDesktopFilters?: boolean;
+  /** The sign-in screen every user sees: the classic one (default) or a card with a blue product panel beside the form. */
+  loginLayout?: 'CLASSIC' | 'SPLIT';
   /** How the materials of a training are drawn on every Training screen: a table (default) or tiles. */
   trainingMaterialsLayout?: 'TABLE' | 'TILES';
   /** The Audit Trail tab of a record (document, revision, copy, training ...): a table (default) or a vertical timeline. Not the Audit Trail module. */

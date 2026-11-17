@@ -22,13 +22,13 @@ public class ReportScheduleAdministrationService {
     public Map<String,Object> list(UserAccount actor,String search,String status,int page,String sort,String direction) {
         templates.require(actor,"reports.schedule.view","report.module.view");
         if(search.length()>200||!Set.of("","ACTIVE","PAUSED","SUSPENDED_AUTHORIZATION_CHANGED","SUSPENDED_INVALID_SCHEDULE","SUSPENDED_TEMPLATE_NOT_APPROVED","SUSPENDED_TEMPLATE_DISABLED","SUSPENDED_SIGNATURE_REQUIRED").contains(status)||!Set.of("asc","desc").contains(direction))throw new IllegalArgumentException("REPORT_SCHEDULE_FILTER_INVALID");
-        String order=switch(sort){case "name"->"s.name";case "nextRunAt"->"s.next_run_at";case "status"->"s.status";default->throw new IllegalArgumentException("REPORT_SORT_NOT_ALLOWED");};
+        String order=switch(sort){case "scheduleNumber"->"s.schedule_number";case "name"->"s.name";case "nextRunAt"->"s.next_run_at";case "status"->"s.status";default->throw new IllegalArgumentException("REPORT_SORT_NOT_ALLOWED");};
         boolean all=permissions.hasPermission(actor,"reports.schedule.manage");
-        String where=" from report_schedules s where s.name ilike ? and (?='' or s.status=?)"+(all?"":" and s.creator_user_id=?");
-        var args=new ArrayList<Object>(List.of("%"+search.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"%",status,status));if(!all)args.add(actor.getId());
+        String where=" from report_schedules s where (s.name ilike ? or coalesce(s.schedule_number,'') ilike ?) and (?='' or s.status=?)"+(all?"":" and s.creator_user_id=?");
+        var like="%"+search.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"%";var args=new ArrayList<Object>(List.of(like,like,status,status));if(!all)args.add(actor.getId());
         long total=Objects.requireNonNullElse(jdbc.queryForObject("select count(*)"+where,Long.class,args.toArray()),0L);
         int safePage=Math.max(1,page);args.add((safePage-1L)*10);
-        var rows=jdbc.queryForList("select s.id,s.name,s.definition_code as \"definitionCode\",s.cron_expression as \"cronExpression\",s.requested_format as format,s.status,s.active,s.version,s.next_run_at as \"nextRunAt\",s.last_run_at as \"lastRunAt\",s.owner_user_id as \"ownerUserId\",(select u.full_name from app_users u where u.id=s.owner_user_id) as \"ownerName\",(select coalesce(json_agg(u.full_name order by u.full_name),'[]'::json)::text from report_schedule_recipients r join app_users u on u.id=r.user_id where r.schedule_id=s.id) as \"recipientNames\""+where+" order by "+order+" "+direction+" nulls last,s.id limit 10 offset ?",args.toArray());
+        var rows=jdbc.queryForList("select s.id,s.schedule_number as \"scheduleNumber\",s.name,s.definition_code as \"definitionCode\",s.cron_expression as \"cronExpression\",s.requested_format as format,s.status,s.active,s.version,s.next_run_at as \"nextRunAt\",s.last_run_at as \"lastRunAt\",s.owner_user_id as \"ownerUserId\",(select u.full_name from app_users u where u.id=s.owner_user_id) as \"ownerName\",(select coalesce(json_agg(u.full_name order by u.full_name),'[]'::json)::text from report_schedule_recipients r join app_users u on u.id=r.user_id where r.schedule_id=s.id) as \"recipientNames\""+where+" order by "+order+" "+direction+" nulls last,s.id limit 10 offset ?",args.toArray());
         // The names of the recipients come as one JSON text per schedule; the list shows them (the count, and the names when they are few).
         rows.forEach(row->{try{row.put("recipientNames",json.readTree(String.valueOf(row.get("recipientNames"))));}catch(Exception e){row.put("recipientNames",List.of());}});
         return Map.of("data",rows,"pagination",Map.of("page",safePage,"limit",10,"total",total,"totalPages",(total+9)/10));
@@ -40,7 +40,7 @@ public class ReportScheduleAdministrationService {
     }
     public Map<String,Object> detail(UserAccount actor,UUID id) throws Exception {
         var row=scoped(actor,id,false);var result=new LinkedHashMap<String,Object>();
-        result.put("id",id);result.put("version",row.get("version"));result.put("name",row.get("name"));result.put("definitionCode",row.get("definition_code"));result.put("cronExpression",row.get("cron_expression"));result.put("format",row.get("requested_format"));
+        result.put("id",id);result.put("scheduleNumber",row.get("schedule_number"));result.put("version",row.get("version"));result.put("name",row.get("name"));result.put("definitionCode",row.get("definition_code"));result.put("cronExpression",row.get("cron_expression"));result.put("format",row.get("requested_format"));
         result.put("parameters",json.readTree(row.get("parameters").toString()));result.put("fields",json.readTree(row.get("selected_fields").toString()));
         // The template of the schedule is named, with the formats it allows, even when it is not one that the person may run now (not approved, or outside the scope).
         var template=jdbc.queryForList("select display_name, allowed_formats::text as formats from report_definitions where code=?",row.get("definition_code"));
@@ -72,7 +72,8 @@ public class ReportScheduleAdministrationService {
         for(var recipient:recipients){if(recipient==null)throw new IllegalArgumentException("REPORT_RECIPIENT_INVALID");var user=users.findById(recipient).orElseThrow(()->new IllegalArgumentException("REPORT_RECIPIENT_INVALID"));if(user.getStatus()!=UserStatus.Active||(!permissions.hasPermission(user,"reports.artifact.download")&&!permissions.hasPermission(user,"report.module.export")))throw new SecurityException("REPORT_RECIPIENT_DENIED");}
         jdbc.update("update report_schedules set name=?,cron_expression=?,requested_format=?,parameters=cast(? as jsonb),selected_fields=cast(? as jsonb),next_run_at=?,version=version+1,updated_at=now() where id=?",value.name().trim(),value.cronExpression(),value.format(),json.writeValueAsString(value.parameters()==null?Map.of():value.parameters()),snapshot.path("fields").toString(),java.sql.Timestamp.from(next.toInstant()),id);
         jdbc.update("delete from report_schedule_recipients where schedule_id=?",id);for(var recipient:recipients)jdbc.update("insert into report_schedule_recipients values(?,?)",id,recipient);
-        audit.logAs(actor,"REPORT_SCHEDULE",value.name(),id,"REPORT_SCHEDULE_UPDATED",null,null,request.reason().trim());
+        audit.logAs(actor,"REPORT_SCHEDULE",row.get("schedule_number")!=null?row.get("schedule_number").toString():value.name(),id,"REPORT_SCHEDULE_UPDATED",null,null,request.reason().trim(),
+                com.eqms.util.AuditChanges.reason("Reason", request.reason()));
     }
     public record Update(int version,ReportPlatformService.ScheduleRequest value,String reason) {}
 }

@@ -32,6 +32,8 @@ public class ObjectAccessRuleService {
     private static final String VIEW_PERMISSION = "security.object_rules.view";
     private static final String MANAGE_PERMISSION = "security.object_rules.manage";
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ObjectNumberService numbers;
     private final ObjectAccessRuleRepository ruleRepository;
     private final RoleDefinitionRepository roleRepository;
     private final DocumentSubTypeRepository documentSubTypeRepository;
@@ -96,12 +98,13 @@ public class ObjectAccessRuleService {
                     if (!com.eqms.util.DateRangeFilter.matches(r.createdAt(), createdFrom, createdTo)) return false;
                     if (!com.eqms.util.DateRangeFilter.matches(r.updatedAt(), updatedFrom, updatedTo)) return false;
                     if (q.isEmpty()) return true;
-                    return (r.name() + " " + (r.description() == null ? "" : r.description()) + " "
+                    return ((r.ruleNumber() == null ? "" : r.ruleNumber()) + " " + r.name() + " " + (r.description() == null ? "" : r.description()) + " "
                             + r.resourceType() + " " + (r.resourceName() == null ? "" : r.resourceName()))
                             .toLowerCase(java.util.Locale.ROOT).contains(q);
                 })
                 .collect(java.util.stream.Collectors.toList());
         java.util.Comparator<ObjectAccessRuleResponse> cmp = switch (sortBy == null ? "priority" : sortBy) {
+            case "ruleNumber" -> java.util.Comparator.comparing(r -> r.ruleNumber() == null ? "" : r.ruleNumber(), String.CASE_INSENSITIVE_ORDER);
             case "name" -> java.util.Comparator.comparing(ObjectAccessRuleResponse::name, String.CASE_INSENSITIVE_ORDER);
             case "resourceType" -> java.util.Comparator.comparing(ObjectAccessRuleResponse::resourceType);
             case "effect" -> java.util.Comparator.comparing(ObjectAccessRuleResponse::effect);
@@ -158,6 +161,7 @@ public class ObjectAccessRuleService {
         securityChangeSignatureService.requireValidToken(actor, request.signatureToken());
 
         ObjectAccessRule rule = new ObjectAccessRule();
+        if (numbers != null) rule.setRuleNumber(numbers.allocate(ObjectNumberService.OBJECT_ACCESS_RULE));
         applyRequest(rule, request);
         rule.setCreatedBy(actor);
         rule.setUpdatedBy(actor);
@@ -168,7 +172,7 @@ public class ObjectAccessRuleService {
                 "OBJECT_ACCESS_RULE", rule.getId(), rule.getName(), request.reason(),
                 null, rule.getEffect() + " rule for " + rule.getResourceType());
 
-        auditTrailService.logAs(actor, "OBJECT_ACCESS_RULE", rule.getName(), rule.getId(),
+        auditTrailService.logAs(actor, "OBJECT_ACCESS_RULE", rule.auditCode(), rule.getId(),
                 "CREATED", null, "Active",
                 withReason("Created " + rule.getEffect() + " rule for " + rule.getResourceType(), request.reason()),
                 List.of(), esig == null ? null : esig.getId());
@@ -217,7 +221,7 @@ public class ObjectAccessRuleService {
                 "OBJECT_ACCESS_RULE", rule.getId(), rule.getName(), request.reason(),
                 oldStatus, rule.isActive() ? "Active" : "Inactive");
 
-        auditTrailService.logAs(actor, "OBJECT_ACCESS_RULE", rule.getName(), rule.getId(),
+        auditTrailService.logAs(actor, "OBJECT_ACCESS_RULE", rule.auditCode(), rule.getId(),
                 "UPDATED", oldStatus, rule.isActive() ? "Active" : "Inactive",
                 withReason("Updated object access rule", request.reason()),
                 changes, esig == null ? null : esig.getId());
@@ -252,7 +256,7 @@ public class ObjectAccessRuleService {
                 SecurityChangeSignatureService.MEANING_SECURITY_CONFIGURATION_CHANGE,
                 "OBJECT_ACCESS_RULE", id, rule.getName(), sig.reason(),
                 rule.getEffect() + " rule for " + rule.getResourceType(), null);
-        auditTrailService.logAs(actor, "OBJECT_ACCESS_RULE", rule.getName(), rule.getId(),
+        auditTrailService.logAs(actor, "OBJECT_ACCESS_RULE", rule.auditCode(), rule.getId(),
                 "DELETED", rule.isActive() ? "Active" : "Inactive", null,
                 withReason("Deleted object access rule", sig.reason()),
                 List.of(), esig == null ? null : esig.getId());
@@ -386,7 +390,7 @@ public class ObjectAccessRuleService {
 
     private ObjectAccessRuleResponse toResponse(ObjectAccessRule r) {
         return new ObjectAccessRuleResponse(
-                r.getId(), r.getName(), r.getDescription(),
+                r.getId(), r.getRuleNumber(), r.getName(), r.getDescription(),
                 !r.getAccessProfiles().isEmpty() ? r.getAccessProfiles().iterator().next().getId() : null,
                 !r.getAccessProfiles().isEmpty() ? r.getAccessProfiles().iterator().next().getName() : null,
                 r.getResourceType(), r.getResourceId(), r.getResourceName(),

@@ -83,7 +83,8 @@ public class TrainingAssessmentEditService {
         UUID sessionId = (UUID) session.get("id");
         String fileName = String.valueOf(session.get("file_name"));
         ObjectNode config = onlyOffice.buildTrainingEditConfig(sessionId, "training-edit-" + sessionId, fileName, actor);
-        store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_EDIT_OPENED", null, null, ("EXAM".equals(purpose) ? "Exam template" : "Answer key") + ": " + fileName);
+        store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_EDIT_OPENED", null, null, ("EXAM".equals(purpose) ? "Exam template" : "Answer key") + ": " + fileName,
+                java.util.List.of(com.eqms.util.AuditChanges.of("File",null,fileName), com.eqms.util.AuditChanges.of("Purpose",null,"EXAM".equals(purpose) ? "Exam Template" : "Answer Key")));
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("config", config);
         out.put("fileName", fileName);
@@ -178,7 +179,8 @@ public class TrainingAssessmentEditService {
         jdbc.update("update training_edit_sessions set provider = ?, stored_path = ?, sha256 = ?, last_saved_at = now(), saved_material_id = ?, status = ? where id = ?",
                 stored.provider(), stored.path(), stored.sha256(), materialId, closing ? "CLOSED" : "OPEN", sessionId);
         UserAccount who = users.findById(editor).orElse(null);
-        if (who != null) store.auditActivity(who, activity, "TRAINING_ASSESSMENT_EDIT_SAVED", null, null, ("EXAM".equals(purpose) ? "Exam template" : "Answer key") + " saved: " + stored.name() + " (SHA-256 " + stored.sha256().substring(0, 12) + ")");
+        if (who != null) store.auditActivity(who, activity, "TRAINING_ASSESSMENT_EDIT_SAVED", null, null, ("EXAM".equals(purpose) ? "Exam template" : "Answer key") + " saved: " + stored.name() + " (SHA-256 " + stored.sha256().substring(0, 12) + ")",
+                java.util.List.of(com.eqms.util.AuditChanges.of("File Saved",null,stored.name()), com.eqms.util.AuditChanges.of("SHA-256 Checksum",null,stored.sha256())));
         store.event(TrainingStore.OBJECT_ACTIVITY, materialId, activityId, "MATERIAL_EDITED", Map.of("name", stored.name(), "sha256", stored.sha256()), editor);
         EntityChangeBroadcaster.changed("TRAINING", materialId, null);
     }

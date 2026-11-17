@@ -5,6 +5,7 @@ import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.controlledcopyrecall.RecallBatchCommitRequest;
 import com.eqms.dto.controlledcopyrecall.RecallBatchResponse;
 import com.eqms.dto.controlledcopyrecall.RecallBatchSummaryResponse;
+import com.eqms.dto.controlledcopyrecall.RecallCopyLookupResponse;
 import com.eqms.dto.controlledcopyrecall.RecallItemCopyResponse;
 import com.eqms.dto.controlledcopyrecall.RecallItemResponse;
 import com.eqms.dto.controlledcopyrecall.RecallItemUpdateRequest;
@@ -15,6 +16,7 @@ import com.eqms.entity.ElectronicSignature;
 import com.eqms.entity.UserAccount;
 import com.eqms.exception.RecallBatchNotReadyException;
 import com.eqms.repository.ControlledCopyRecallBatchRepository;
+import com.eqms.repository.ExecutedRecordRepository;
 import com.eqms.repository.ControlledCopyRecallItemRepository;
 import com.eqms.repository.ControlledCopyRepository;
 import org.springframework.security.access.AccessDeniedException;
@@ -86,6 +88,9 @@ public class ControlledCopyRecallBatchService {
     private final AuditTrailService auditTrailService;
     private final ElectronicSignatureService electronicSignatureService;
     private final SignatureTokenConsumptionService signatureTokenConsumptionService;
+    private final ObjectNumberService objectNumberService;
+    private final RecallUploadProgress uploadProgress;
+    private final ExecutedRecordRepository executedRecordRepository;
 
     /** The watermark and traceability of Settings > Configuration > Preview File, drawn on a PDF that is sent to be looked at (see {@code TrainingPreviewMarking}). */
     @org.springframework.beans.factory.annotation.Autowired
@@ -105,7 +110,10 @@ public class ControlledCopyRecallBatchService {
             FileStorageService fileStorageService,
             AuditTrailService auditTrailService,
             ElectronicSignatureService electronicSignatureService,
-            SignatureTokenConsumptionService signatureTokenConsumptionService
+            SignatureTokenConsumptionService signatureTokenConsumptionService,
+            ObjectNumberService objectNumberService,
+            RecallUploadProgress uploadProgress,
+            ExecutedRecordRepository executedRecordRepository
     ) {
         this.batchRepository = batchRepository;
         this.itemRepository = itemRepository;
@@ -121,6 +129,9 @@ public class ControlledCopyRecallBatchService {
         this.auditTrailService = auditTrailService;
         this.electronicSignatureService = electronicSignatureService;
         this.signatureTokenConsumptionService = signatureTokenConsumptionService;
+        this.objectNumberService = objectNumberService;
+        this.uploadProgress = uploadProgress;
+        this.executedRecordRepository = executedRecordRepository;
     }
 
     // ------------------------------------------------------------------------------------------------------------
@@ -129,29 +140,49 @@ public class ControlledCopyRecallBatchService {
 
     @Transactional
     public RecallBatchResponse createDraft(List<MultipartFile> files) {
+        return createDraft(files, null);
+    }
+
+    /** {@code uploadId} is the browser's name for this upload, so its progress bar can follow the steps below (see {@link RecallUploadProgress}). */
+    @Transactional
+    public RecallBatchResponse createDraft(List<MultipartFile> files, String uploadId) {
         UserAccount actor = currentUserService.requireCurrentUser();
+        RecallUploadProgress.Reporter progress = uploadProgress.reporter(actor.getId(), uploadId);
         requireOperator(actor);
         List<MultipartFile> uploads = nonEmpty(files);
         requireFileCount(uploads.size());
 
         ControlledCopyRecallBatch batch = new ControlledCopyRecallBatch();
         batch.setId(UUID.randomUUID());
-        batch.setBatchNumber("RCB-" + LocalDate.now(SYSTEM_ZONE).getYear() + "-"
-                + String.format("%05d", batchRepository.nextBatchSequence()));
+        // Recall Batch Number: format set in System Administration > Object Numbering (default RCB-yyyy-NNNNN).
+        batch.setBatchNumber(objectNumberService.allocate(ObjectNumberService.RECALL_BATCH));
         batch.setStatus(ControlledCopyRecallBatch.STATUS_DRAFT);
         batch.setCreatedBy(actor);
         batchRepository.saveAndFlush(batch);
 
-        addItems(batch, uploads, 0);
+        addItems(batch, uploads, 0, progress);
+        progress.report("MATCHING", "Matching the scans to controlled copies...", 96);
         revalidate(batch, actor);
-        auditTrailService.logAs(actor, ENTITY_TYPE, batch.getBatchNumber(), batch.getId(), "CREATE", null, batch.getStatus(),
-                "Uploaded " + uploads.size() + " scan(s) for recall");
+        auditTrailService.logAs(actor, ENTITY_TYPE, batch.getBatchNumber(), batch.getId(), "CREATE", null, batch.getStatus(), "Uploaded " + uploads.size() + " scan(s) for recall",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Scans Uploaded", null, uploads.size())));
+        progress.report("DONE", "Done.", 100);
         return toResponse(batch);
+    }
+
+    /** Where the caller's upload with this id is; null when nothing is known about it. */
+    public RecallUploadProgress.Snapshot uploadProgress(String uploadId) {
+        return uploadProgress.snapshot(currentUserService.requireCurrentUser().getId(), uploadId);
     }
 
     @Transactional
     public RecallBatchResponse addFiles(UUID batchId, List<MultipartFile> files) {
+        return addFiles(batchId, files, null);
+    }
+
+    @Transactional
+    public RecallBatchResponse addFiles(UUID batchId, List<MultipartFile> files, String uploadId) {
         UserAccount actor = currentUserService.requireCurrentUser();
+        RecallUploadProgress.Reporter progress = uploadProgress.reporter(actor.getId(), uploadId);
         requireOperator(actor);
         ControlledCopyRecallBatch batch = requireOwnDraft(batchId, actor);
         List<MultipartFile> uploads = nonEmpty(files);
@@ -160,10 +191,12 @@ public class ControlledCopyRecallBatchService {
 
         // Item numbers are never reused: placing a loose page removes an item, which leaves a gap.
         int lastNo = itemRepository.findAllByBatch_IdOrderByItemNoAsc(batchId).stream().mapToInt(ControlledCopyRecallItem::getItemNo).max().orElse(0);
-        addItems(batch, uploads, lastNo);
+        addItems(batch, uploads, lastNo, progress);
+        progress.report("MATCHING", "Matching the scans to controlled copies...", 96);
         revalidate(batch, actor);
-        auditTrailService.logAs(actor, ENTITY_TYPE, batch.getBatchNumber(), batch.getId(), "ADD_FILES", batch.getStatus(), batch.getStatus(),
-                "Added " + uploads.size() + " scan(s)");
+        auditTrailService.logAs(actor, ENTITY_TYPE, batch.getBatchNumber(), batch.getId(), "ADD_FILES", batch.getStatus(), batch.getStatus(), "Added " + uploads.size() + " scan(s)",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Scans Added", null, uploads.size())));
+        progress.report("DONE", "Done.", 100);
         return toResponse(batch);
     }
 
@@ -174,6 +207,15 @@ public class ControlledCopyRecallBatchService {
      */
     @Transactional(readOnly = true)
     public List<RecallItemResponse> listItems(UUID batchId, String search, String sortBy, String sortDirection) {
+        return listItems(batchId, search, sortBy, sortDirection, null);
+    }
+
+    /**
+     * As above, narrowed by {@code status}: READY (will be recalled), ATTENTION (needs a match or is blocked), READ_ONLY (copies issued for reading
+     * only, to be removed) or EXCLUDED. These are the groups the badges at the top of the screen count.
+     */
+    @Transactional(readOnly = true)
+    public List<RecallItemResponse> listItems(UUID batchId, String search, String sortBy, String sortDirection, String status) {
         UserAccount actor = currentUserService.requireCurrentUser();
         requireOperator(actor);
         requireBatch(batchId);
@@ -191,10 +233,13 @@ public class ControlledCopyRecallBatchService {
         if ("desc".equalsIgnoreCase(sortDirection)) {
             order = order.reversed();
         }
-        return itemRepository.findAllByBatch_IdOrderByItemNoAsc(batchId).stream()
+        List<ControlledCopyRecallItem> all = itemRepository.findAllByBatch_IdOrderByItemNoAsc(batchId);
+        Map<UUID, String> recordNumbers = recordNumbersOf(all);
+        return all.stream()
                 .filter(item -> needle == null || matches(item, needle))
+                .filter(item -> inGroup(item, status))
                 .sorted(order)
-                .map(this::toItemResponse)
+                .map(item -> toItemResponse(item, recordNumbers))
                 .toList();
     }
 
@@ -268,12 +313,13 @@ public class ControlledCopyRecallBatchService {
             item.setMatchSource(ControlledCopyRecallItem.SOURCE_MANUAL);
             auditTrailService.logAs(actor, ENTITY_TYPE, batch.getBatchNumber(), batch.getId(), "MATCH_ITEM", batch.getStatus(), batch.getStatus(),
                     "Scan " + item.getItemNo() + " (" + item.getFileName() + ") matched by hand to controlled copy " + copy.getControlledCopyNumber()
-                            + (StringUtils.hasText(item.getQrValue()) ? "; the code on the scan read: " + item.getQrValue() : "; no readable code"));
+                            + (StringUtils.hasText(item.getQrValue()) ? "; the code on the scan read: " + item.getQrValue() : "; no readable code"),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Scan " + item.getItemNo() + " \u203a Matched To", null, copy.getControlledCopyNumber())));
         }
         if (request.excluded() != null && request.excluded() != item.isExcluded()) {
             item.setExcluded(request.excluded());
-            auditTrailService.logAs(actor, ENTITY_TYPE, batch.getBatchNumber(), batch.getId(), request.excluded() ? "EXCLUDE_ITEM" : "INCLUDE_ITEM",
-                    batch.getStatus(), batch.getStatus(), "Scan " + item.getItemNo() + " (" + item.getFileName() + ")");
+            auditTrailService.logAs(actor, ENTITY_TYPE, batch.getBatchNumber(), batch.getId(), request.excluded() ? "EXCLUDE_ITEM" : "INCLUDE_ITEM", batch.getStatus(), batch.getStatus(), "Scan " + item.getItemNo() + " (" + item.getFileName() + ")",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Scan " + item.getItemNo() + " \u203a Included in Recall", request.excluded() ? "Yes" : "No", request.excluded() ? "No" : "Yes")));
         }
         itemRepository.save(item);
         revalidate(batch, actor);
@@ -407,19 +453,26 @@ public class ControlledCopyRecallBatchService {
     // Matching
     // ------------------------------------------------------------------------------------------------------------
 
-    private void addItems(ControlledCopyRecallBatch batch, List<MultipartFile> uploads, int alreadyThere) {
+    private void addItems(ControlledCopyRecallBatch batch, List<MultipartFile> uploads, int alreadyThere, RecallUploadProgress.Reporter progress) {
         int number = alreadyThere;
         for (MultipartFile upload : uploads) {
-            List<ControlledCopyRecallItem> built = buildItems(batch, number + 1, upload);
+            List<ControlledCopyRecallItem> built = buildItems(batch, number + 1, upload, progress);
             for (ControlledCopyRecallItem item : built) {
                 itemRepository.save(item);
             }
             number += built.size();
         }
+        progress.report("SAVING", "Saving the scans...", 94);
         itemRepository.flush();
     }
 
-    private ControlledCopyRecallItem buildItem(ControlledCopyRecallBatch batch, int itemNo, MultipartFile upload) {
+    /** The pages of a scan as read once, handed from buildItem to buildItems so the file is not rendered twice. */
+    private static final class ScanReading {
+        List<ControlledCopyScanCodeService.PageScan> pages;
+    }
+
+    private ControlledCopyRecallItem buildItem(ControlledCopyRecallBatch batch, int itemNo, MultipartFile upload, RecallUploadProgress.Reporter progress,
+                                                ScanReading reading) {
         ControlledCopyRecallItem item = new ControlledCopyRecallItem();
         item.setId(UUID.randomUUID());
         item.setBatch(batch);
@@ -433,6 +486,7 @@ public class ControlledCopyRecallBatchService {
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to read the uploaded file " + item.getFileName(), ex);
         }
+        progress.report("CHECKING", "Checking the file...", 5);
         item.setFileSize(bytes.length);
         item.setSha256(sha256(bytes));
         item.setContentType(ControlledCopyScanCodeService.sniffContentType(bytes));
@@ -448,6 +502,7 @@ public class ControlledCopyRecallBatchService {
             return reject(item, "Unsupported file: only PDF scans are accepted.");
         }
         if (clamAvScanService.isEnabled()) {
+            progress.report("VIRUS_SCAN", "Scanning for viruses...", 15);
             // Fails the whole upload if the scanner cannot be reached (VirusScanUnavailableException): an unreachable
             // control is never treated as "clean".
             ClamAvScanService.ScanResult scan = clamAvScanService.scan(bytes);
@@ -460,6 +515,7 @@ public class ControlledCopyRecallBatchService {
             item.setVirusStatus(ControlledCopyRecallItem.VIRUS_CLEAN);
         }
 
+        progress.report("CHECKING_PDF", "Checking the PDF...", 45);
         // Opened only after the scanner found it clean. It must be a PDF the stamp and watermark can be drawn on.
         String pdfProblem = ControlledCopyScanCodeService.pdfProblem(bytes);
         if (pdfProblem != null) {
@@ -473,6 +529,7 @@ public class ControlledCopyRecallBatchService {
             return reject(item, "The PDF could not be opened.");
         }
 
+        progress.report("STORING", "Storing the file...", 55);
         try {
             FileStorageService.StorageWriteResult stored = fileStorageService.storeControlledCopyRecallScan(
                     batch.getId(), item.getId(), item.getFileName(), new ByteArrayInputStream(bytes));
@@ -485,7 +542,17 @@ public class ControlledCopyRecallBatchService {
             throw new IllegalStateException("Failed to store the scan " + item.getFileName(), ex);
         }
 
-        ControlledCopyScanCodeService.DecodeResult decoded = ControlledCopyScanCodeService.decode(bytes);
+        progress.report("READING_CODE", "Reading the QR code on each page...", 70);
+        // Every page is read once, in parallel; the code of the whole file is the one on its first page. The bar follows the pages as they finish.
+        ControlledCopyScanCodeService.DecodeResult decoded;
+        try {
+            reading.pages = ControlledCopyScanCodeService.decodePages(bytes,
+                    (finished, total) -> progress.report("READING_CODE", "Reading the QR code on each page (" + finished + " of " + total + ")...", 70 + 22 * finished / Math.max(total, 1)));
+            decoded = ControlledCopyScanCodeService.firstPageResult(reading.pages);
+        } catch (IOException | RuntimeException ex) {
+            reading.pages = null;
+            decoded = ControlledCopyScanCodeService.DecodeResult.of(ControlledCopyScanCodeService.STATUS_UNREADABLE_FILE);
+        }
         item.setQrStatus(decoded.status());
         item.setQrValue(truncate(decoded.rawValue(), 2000));
         if (decoded.token() != null) {
@@ -508,8 +575,9 @@ public class ControlledCopyRecallBatchService {
      * assign by typing the copy number and the page number. A scan with no per-page code at all (an old copy, or a code that
      * cannot be read) stays one item for the whole file, exactly as before.
      */
-    private List<ControlledCopyRecallItem> buildItems(ControlledCopyRecallBatch batch, int firstItemNo, MultipartFile upload) {
-        ControlledCopyRecallItem whole = buildItem(batch, firstItemNo, upload);
+    private List<ControlledCopyRecallItem> buildItems(ControlledCopyRecallBatch batch, int firstItemNo, MultipartFile upload, RecallUploadProgress.Reporter progress) {
+        ScanReading reading = new ScanReading();
+        ControlledCopyRecallItem whole = buildItem(batch, firstItemNo, upload, progress, reading);
         if (!StringUtils.hasText(whole.getStoredPath())) {
             return List.of(whole); // rejected at upload
         }
@@ -519,10 +587,8 @@ public class ControlledCopyRecallBatchService {
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to read the uploaded file " + whole.getFileName(), ex);
         }
-        List<ControlledCopyScanCodeService.PageScan> scans;
-        try {
-            scans = ControlledCopyScanCodeService.decodePages(bytes);
-        } catch (IOException | RuntimeException ex) {
+        List<ControlledCopyScanCodeService.PageScan> scans = reading.pages;
+        if (scans == null) {
             return List.of(whole);
         }
         Map<String, java.util.TreeMap<Integer, Integer>> pagesByToken = new LinkedHashMap<>();
@@ -597,7 +663,8 @@ public class ControlledCopyRecallBatchService {
         auditTrailService.logAs(currentUserService.requireCurrentUser(), ENTITY_TYPE, batch.getBatchNumber(), batch.getId(), "SPLIT_SCAN",
                 batch.getStatus(), batch.getStatus(),
                 "Scan " + whole.getFileName() + " (" + scans.size() + " pages, SHA-256 " + whole.getSha256() + ") was read page by page: "
-                        + pagesByToken.size() + " controlled copy(ies) put in page order, " + loose.size() + " page(s) not recognised");
+                        + pagesByToken.size() + " controlled copy(ies) put in page order, " + loose.size() + " page(s) not recognised",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Controlled Copies Put in Page Order", null, pagesByToken.size()), com.eqms.util.AuditChanges.of("Pages Not Recognised", null, loose.size())));
         return built;
     }
 
@@ -767,7 +834,8 @@ public class ControlledCopyRecallBatchService {
         auditTrailService.logAs(actor, ENTITY_TYPE, batch.getBatchNumber(), batch.getId(), "MATCH_ITEM", batch.getStatus(), batch.getStatus(),
                 "Scan " + loose.getItemNo() + " (" + loose.getFileName() + ", " + loose.getSourcePages() + ") assigned by hand to controlled copy "
                         + copy.getControlledCopyNumber() + " as page " + pageNumber + "; " + message
-                        + (StringUtils.hasText(loose.getQrValue()) ? "; the code on the page read: " + loose.getQrValue() : "; no readable code"));
+                        + (StringUtils.hasText(loose.getQrValue()) ? "; the code on the page read: " + loose.getQrValue() : "; no readable code"),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Scan " + loose.getItemNo() + " \u203a Assigned To", null, copy.getControlledCopyNumber()), com.eqms.util.AuditChanges.of("Page", null, pageNumber)));
     }
 
     /** Why a scan made of numbered pages cannot be recalled yet (pages missing), or null. */
@@ -1004,6 +1072,7 @@ public class ControlledCopyRecallBatchService {
         int unmatched = 0;
         int excluded = 0;
         List<RecallItemResponse> responses = new ArrayList<>();
+        Map<UUID, String> recordNumbers = recordNumbersOf(items);
         for (ControlledCopyRecallItem item : items) {
             if (item.isExcluded()) {
                 excluded++;
@@ -1014,7 +1083,7 @@ public class ControlledCopyRecallBatchService {
             } else {
                 unmatched++;
             }
-            responses.add(toItemResponse(item));
+            responses.add(toItemResponse(item, recordNumbers));
         }
         boolean draft = ControlledCopyRecallBatch.STATUS_DRAFT.equals(batch.getStatus());
         return new RecallBatchResponse(
@@ -1032,9 +1101,23 @@ public class ControlledCopyRecallBatchService {
                 responses);
     }
 
-    private RecallItemResponse toItemResponse(ControlledCopyRecallItem item) {
-        ControlledCopyRecord copy = item.getControlledCopy();
-        RecallItemCopyResponse copyResponse = copy == null ? null : new RecallItemCopyResponse(
+    private static boolean inGroup(ControlledCopyRecallItem item, String status) {
+        if (!StringUtils.hasText(status)) {
+            return true;
+        }
+        boolean readOnly = isReadAndComply(item.getControlledCopy());
+        boolean ready = ControlledCopyRecallItem.MATCH_READY.equals(item.getMatchStatus());
+        return switch (status.trim().toUpperCase(java.util.Locale.ROOT)) {
+            case "EXCLUDED" -> item.isExcluded();
+            case "READ_ONLY" -> readOnly && !item.isExcluded();
+            case "READY" -> ready && !readOnly && !item.isExcluded();
+            case "ATTENTION" -> !ready && !readOnly && !item.isExcluded();
+            default -> throw new IllegalArgumentException("Unknown scan status filter: " + status);
+        };
+    }
+
+    private static RecallItemCopyResponse copyResponse(ControlledCopyRecord copy) {
+        return new RecallItemCopyResponse(
                 copy.getId().toString(),
                 copy.getControlledCopyNumber(),
                 copy.getDocumentNumber(),
@@ -1044,6 +1127,41 @@ public class ControlledCopyRecallBatchService {
                 copy.getStatus(),
                 copy.getDistributedAt(),
                 copy.getRecalledAt());
+    }
+
+    /**
+     * What typing a controlled copy number into "Match by Number" would match: the copy found (null when there is none) and the reason it could not be
+     * recalled by scan right now (null when it can). Lets the screen show the document and recipient before the DCO confirms a hand match.
+     */
+    @Transactional(readOnly = true)
+    public RecallCopyLookupResponse lookupCopy(UUID batchId, String number) {
+        UserAccount actor = currentUserService.requireCurrentUser();
+        requireOperator(actor);
+        requireOwnDraft(batchId, actor);
+        if (!StringUtils.hasText(number)) {
+            return new RecallCopyLookupResponse(null, null);
+        }
+        return controlledCopyRepository.findByControlledCopyNumberIgnoreCase(number.trim())
+                .map(copy -> new RecallCopyLookupResponse(copyResponse(copy),
+                        isReadAndComply(copy)
+                                ? "Controlled copy " + copy.getControlledCopyNumber() + " is for reading only (Read and comply) and is not recalled by scan."
+                                : recallProblem(copy, actor)))
+                .orElseGet(() -> new RecallCopyLookupResponse(null, "No controlled copy has the number \"" + number.trim() + "\"."));
+    }
+
+    /** The numbers of the records the scans of a committed batch were filed as, by record id. */
+    private Map<UUID, String> recordNumbersOf(List<ControlledCopyRecallItem> items) {
+        List<UUID> ids = items.stream().map(ControlledCopyRecallItem::getExecutedRecordId).filter(java.util.Objects::nonNull).toList();
+        Map<UUID, String> numbers = new HashMap<>();
+        if (!ids.isEmpty()) {
+            executedRecordRepository.findAllById(ids).forEach(record -> numbers.put(record.getId(), record.getRecordNumber()));
+        }
+        return numbers;
+    }
+
+    private RecallItemResponse toItemResponse(ControlledCopyRecallItem item, Map<UUID, String> recordNumbers) {
+        ControlledCopyRecord copy = item.getControlledCopy();
+        RecallItemCopyResponse copyResponse = copy == null ? null : copyResponse(copy);
         return new RecallItemResponse(
                 item.getId().toString(),
                 item.getItemNo(),
@@ -1062,6 +1180,7 @@ public class ControlledCopyRecallBatchService {
                 item.getOutcome(),
                 item.getOutcomeMessage(),
                 item.getExecutedRecordId() == null ? null : item.getExecutedRecordId().toString(),
+                item.getExecutedRecordId() == null ? null : recordNumbers.get(item.getExecutedRecordId()),
                 StringUtils.hasText(item.getStoredPath()),
                 copyResponse,
                 item.getSourceFileName(),

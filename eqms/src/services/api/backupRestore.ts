@@ -317,6 +317,8 @@ export interface RehearsalListParams {
 /** A backup alert (SDS 15.1) and whether someone has acknowledged it. */
 export interface BackupAlertRecord {
   id: string;
+  /** The Backup Alert Number (Object Numbering), given the first time the application sees the alert. */
+  alertNumber?: string | null;
   at: string;
   severity: "INFO" | "WARNING" | "HIGH" | "CRITICAL";
   code: string;

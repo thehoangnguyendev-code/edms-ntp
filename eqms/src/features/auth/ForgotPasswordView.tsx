@@ -5,7 +5,7 @@ import { cn } from "@/components/ui/utils";
 import { resetViewportZoom, blurActiveInput } from "@/utils/viewport";
 import { isValidEmail } from "@/utils/validation";
 import { BrandLogo } from "@/components/branding/BrandLogo";
-import { AUTH_UI } from "./auth-ui";
+import { useAuthUi } from "./useAuthUi";
 import { AuthBackLink, AuthField, AuthLayout, AuthTopBackButton } from "./components";
 import { getApiErrorMessage } from "@/utils/apiError";
 
@@ -98,6 +98,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
   onBackToLogin,
   onRequestSubmit
 }) => {
+  const ui = useAuthUi();
   // ========================================================================
   // STATE
   // ========================================================================
@@ -174,18 +175,18 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
   return (
     <AuthLayout
       left={
-        <div className={AUTH_UI.formColumn}>
+        <div className={ui.formColumn}>
           <AuthTopBackButton onClick={handleBackToLogin} label="Back to Sign In" disabled={isLoading} />
-          <div className="mb-6 flex items-center gap-3 text-slate-900 sm:mb-10 lg:mb-12">
+          <div className={ui.brand}>
             <BrandLogo className="h-8 w-auto object-contain sm:h-9" />
           </div>
 
           {isSuccess ? (
             <div className="space-y-6 sm:space-y-5" role="status" aria-live="polite">
-              <div className={AUTH_UI.headerArea}>
-                <div className={AUTH_UI.headingBlock}>
-                  <h1 className={AUTH_UI.pageTitle}>Request Sent</h1>
-                  <p className={AUTH_UI.description}>{SUCCESS_MESSAGE}</p>
+              <div className={ui.headerArea}>
+                <div className={ui.headingBlock}>
+                  <h1 className={ui.pageTitle}>Request Sent</h1>
+                  <p className={ui.description}>{SUCCESS_MESSAGE}</p>
                 </div>
               </div>
 
@@ -193,7 +194,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                 <Button
                   onClick={handleBackToLogin}
                   size="default"
-                  className={cn(AUTH_UI.submitButton, "sm:h-12")}
+                  className={cn(ui.submitButton, "sm:h-12")}
                 >
                   Back to Sign In
                 </Button>
@@ -203,10 +204,10 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
             </div>
           ) : (
             <>
-              <div className={AUTH_UI.headerArea}>
-                <div className={AUTH_UI.headingBlock}>
-                  <h1 className={AUTH_UI.pageTitle}>Forgot Password</h1>
-                  <p className={AUTH_UI.description}>
+              <div className={ui.headerArea}>
+                <div className={ui.headingBlock}>
+                  <h1 className={ui.pageTitle}>Forgot Password</h1>
+                  <p className={ui.description}>
                     Enter your username or email. If the account is eligible, the system will send a password reset link to the registered email address.
                   </p>
                 </div>
@@ -218,7 +219,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className={AUTH_UI.formStack} noValidate>
+              <form onSubmit={handleSubmit} className={ui.formStack} noValidate>
 
               <AuthField htmlFor="identifier" label="Email or Username" required error={errors.identifier}>
                 <input
@@ -229,9 +230,9 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                   value={formData.identifier}
                   onChange={(e) => handleInputChange("identifier", e.target.value)}
                   className={cn(
-                    AUTH_UI.inputBase,
-                    AUTH_UI.inputFocus,
-                    errors.identifier ? AUTH_UI.inputError : AUTH_UI.inputDefault
+                    ui.inputBase,
+                    ui.inputFocus,
+                    errors.identifier ? ui.inputError : ui.inputDefault
                   )}
                   placeholder="Enter your email or username"
                   disabled={isLoading}
@@ -249,8 +250,8 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                   onChange={(e) => handleInputChange("reason", e.target.value)}
                   className={cn(
                     "w-full resize-none rounded-xl border bg-white px-3 py-3 text-sm text-slate-700 transition-all sm:px-4 sm:py-3 sm:text-sm",
-                    AUTH_UI.inputFocus,
-                    errors.reason ? AUTH_UI.inputError : AUTH_UI.inputDefault
+                    ui.inputFocus,
+                    errors.reason ? ui.inputError : ui.inputDefault
                   )}
                   placeholder="Provide a short reason for the reset request"
                   disabled={isLoading}
@@ -262,7 +263,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
               <Button
                 type="submit"
                 size="default"
-                className={AUTH_UI.submitButton}
+                className={ui.submitButton}
                 disabled={isLoading}
                 aria-busy={isLoading}
               >

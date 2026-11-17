@@ -127,7 +127,8 @@ public class TrainingNotificationAdminService {
         }
 
         audit.logAs(actor, "TRAINING_NOTIFICATIONS", "TRAINING_NOTIFICATIONS", AUDIT_ID, "TRAINING_REMINDERS_RUN", null, null,
-                "Manual run of the Training reminders | candidates=" + candidates + "; sent=" + byStatus.get("SENT") + "; skipped=" + byStatus.get("SKIPPED") + "; failed=" + byStatus.get("FAILED"));
+                "Manual run of the Training reminders | candidates=" + candidates + "; sent=" + byStatus.get("SENT") + "; skipped=" + byStatus.get("SKIPPED") + "; failed=" + byStatus.get("FAILED"),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Candidates",null,candidates), com.eqms.util.AuditChanges.of("Sent",null,byStatus.get("SENT")), com.eqms.util.AuditChanges.of("Skipped",null,byStatus.get("SKIPPED")), com.eqms.util.AuditChanges.of("Failed",null,byStatus.get("FAILED"))));
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("candidates", candidates);

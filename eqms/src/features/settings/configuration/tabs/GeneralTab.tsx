@@ -360,6 +360,24 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
             </div>
           </div>
           <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Sign-in Screen</p>
+            <div className="w-full md:w-1/2">
+              <Select
+                label="Sign-in screen layout"
+                value={config.appearance?.loginLayout ?? 'CLASSIC'}
+                enableSearch={false}
+                onChange={(val) => handleAppearanceChange('loginLayout', val)}
+                options={[
+                  { label: 'Classic', value: 'CLASSIC' },
+                  { label: 'Split with product panel', value: 'SPLIT' },
+                ]}
+              />
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Classic is the single card on the page background. Split puts the form on the left and a blue product panel on the right (hidden on phones). Applies to the sign-in page of every user after you save.
+            </p>
+          </div>
+          <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Training Management</p>
             <div className="w-full md:w-1/2">
               <Select

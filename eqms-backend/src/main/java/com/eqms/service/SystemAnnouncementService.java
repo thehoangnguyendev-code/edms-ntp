@@ -41,6 +41,8 @@ public class SystemAnnouncementService {
     private static final Set<String> SEVERITY_FILTERS = Set.of("ALL", "INFO", "WARNING", "CRITICAL");
     private static final String ENTITY_TYPE = "SYSTEM_ANNOUNCEMENT";
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ObjectNumberService numbers;
     private final SystemAnnouncementRepository repository;
     private final CurrentUserService currentUserService;
     private final AuditTrailService auditTrailService;
@@ -98,13 +100,16 @@ public class SystemAnnouncementService {
         Instant now = Instant.now();
         Validated v = validate(request, true, now);
         SystemAnnouncement announcement = new SystemAnnouncement();
+        if (numbers != null) announcement.setAnnouncementNumber(numbers.allocate(ObjectNumberService.ANNOUNCEMENT));
         apply(announcement, v);
         announcement.setCreatedBy(actor.getFullName());
         announcement.setUpdatedBy(actor.getFullName());
         SystemAnnouncement saved = repository.save(announcement);
-        auditTrailService.logAs(actor, ENTITY_TYPE, saved.getTitle(), saved.getId(), "SYSTEM_ANNOUNCEMENT_CREATED",
-                null, stateOf(saved, now), "Created announcement (" + saved.getSeverity() + ") shown "
-                        + saved.getStartsAt() + " to " + saved.getEndsAt());
+        auditTrailService.logAs(actor, ENTITY_TYPE, saved.auditCode(), saved.getId(), "SYSTEM_ANNOUNCEMENT_CREATED",
+                null, stateOf(saved, now), "Created announcement \"" + saved.getTitle() + "\" (" + saved.getSeverity() + ") shown "
+                        + saved.getStartsAt() + " to " + saved.getEndsAt(),
+                java.util.List.of(new com.eqms.dto.audittrail.AuditTrailChangeResponse("Title", null, saved.getTitle()), new com.eqms.dto.audittrail.AuditTrailChangeResponse("Severity", null, String.valueOf(saved.getSeverity())),
+                        new com.eqms.dto.audittrail.AuditTrailChangeResponse("Shown From", null, String.valueOf(saved.getStartsAt())), new com.eqms.dto.audittrail.AuditTrailChangeResponse("Shown Until", null, String.valueOf(saved.getEndsAt()))));
         return toResponse(saved, now);
     }
 
@@ -117,6 +122,7 @@ public class SystemAnnouncementService {
         Instant now = Instant.now();
         Validated v = validate(new AnnouncementRequest(title, message, severity, startsAt, endsAt, true, null), true, now);
         SystemAnnouncement announcement = new SystemAnnouncement();
+        if (numbers != null) announcement.setAnnouncementNumber(numbers.allocate(ObjectNumberService.ANNOUNCEMENT));
         apply(announcement, v);
         announcement.setCreatedBy(by);
         announcement.setUpdatedBy(by);
@@ -154,7 +160,7 @@ public class SystemAnnouncementService {
         apply(announcement, v);
         announcement.setUpdatedBy(actor.getFullName());
         SystemAnnouncement saved = repository.saveAndFlush(announcement);
-        auditTrailService.logAs(actor, ENTITY_TYPE, saved.getTitle(), saved.getId(), "SYSTEM_ANNOUNCEMENT_UPDATED",
+        auditTrailService.logAs(actor, ENTITY_TYPE, saved.auditCode(), saved.getId(), "SYSTEM_ANNOUNCEMENT_UPDATED",
                 before, stateOf(saved, now), "Updated announcement", changes);
         return toResponse(saved, now);
     }
@@ -168,7 +174,7 @@ public class SystemAnnouncementService {
         announcement.setEnabled(enabled);
         announcement.setUpdatedBy(actor.getFullName());
         SystemAnnouncement saved = repository.saveAndFlush(announcement);
-        auditTrailService.logAs(actor, ENTITY_TYPE, saved.getTitle(), saved.getId(),
+        auditTrailService.logAs(actor, ENTITY_TYPE, saved.auditCode(), saved.getId(),
                 enabled ? "SYSTEM_ANNOUNCEMENT_ENABLED" : "SYSTEM_ANNOUNCEMENT_DISABLED",
                 before, stateOf(saved, now), enabled ? "Switched the announcement on" : "Switched the announcement off");
         return toResponse(saved, now);
@@ -181,8 +187,8 @@ public class SystemAnnouncementService {
         SystemAnnouncement announcement = require(id);
         String before = stateOf(announcement, now);
         // The audit entry is written first and carries the title, so the deletion stays traceable after the row is gone.
-        auditTrailService.logAs(actor, ENTITY_TYPE, announcement.getTitle(), announcement.getId(), "SYSTEM_ANNOUNCEMENT_DELETED",
-                before, null, "Deleted announcement");
+        auditTrailService.logAs(actor, ENTITY_TYPE, announcement.auditCode(), announcement.getId(), "SYSTEM_ANNOUNCEMENT_DELETED",
+                before, null, "Deleted announcement", java.util.List.of(new com.eqms.dto.audittrail.AuditTrailChangeResponse("Title", announcement.getTitle(), null)));
         repository.delete(announcement);
     }
 
@@ -323,7 +329,7 @@ public class SystemAnnouncementService {
     }
 
     private static AnnouncementResponse toResponse(SystemAnnouncement a, Instant now) {
-        return new AnnouncementResponse(a.getId(), a.getTitle(), a.getMessage(), a.getSeverity(), a.getStartsAt(), a.getEndsAt(),
+        return new AnnouncementResponse(a.getId(), a.getAnnouncementNumber(), a.getTitle(), a.getMessage(), a.getSeverity(), a.getStartsAt(), a.getEndsAt(),
                 a.isEnabled(), stateOf(a, now), a.getVersion(), a.getCreatedBy(), a.getUpdatedBy(), a.getCreatedAt(), a.getUpdatedAt());
     }
 }

@@ -51,10 +51,6 @@ describe("TrainingAnnexView", () => {
     fireEvent.change(screen.getAllByPlaceholderText(/Search document number or name/)[0], { target: { value: "matrix" } });
     await vi.waitFor(() => expect(page).toHaveBeenCalledWith(expect.objectContaining({ search: "matrix" })));
   });
-  it("explains that the list is fixed by the system", async () => {
-    render(<MemoryRouter><TrainingAnnexView /></MemoryRouter>);
-    expect(await screen.findByText(/fixed by the system/)).toBeTruthy();
-  });
 
   it("offers in the menu of a row only what the server allows", async () => {
     render(<MemoryRouter><TrainingAnnexView /></MemoryRouter>);

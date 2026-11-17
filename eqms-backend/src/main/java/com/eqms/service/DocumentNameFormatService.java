@@ -145,7 +145,7 @@ public class DocumentNameFormatService {
         component.setActive(request.isActive() == null || request.isActive());
         component.setDisplayOrder(request.displayOrder() == null ? nextComponentDisplayOrder() : request.displayOrder());
         componentRepository.save(component);
-        auditTrailService.logSafely("SETTINGS", component.getName(), component.getId(), ACTION_COMPONENT_CREATED, null, null,
+        auditTrailService.logSafely("DOCUMENT_COMPONENT", component.getName(), component.getId(), ACTION_COMPONENT_CREATED, null, null,
                 "Document Component created: " + component.getName() + " (Free Text: \"" + component.getFreeText() + "\")");
         return toComponentResponse(component);
     }
@@ -184,7 +184,7 @@ public class DocumentNameFormatService {
             addChange(changes, "Order", String.valueOf(component.getDisplayOrder()), String.valueOf(request.displayOrder()));
             component.setDisplayOrder(request.displayOrder());
         }
-        auditTrailService.logAs(currentUserService.requireCurrentUser(), "SETTINGS", component.getName(), component.getId(),
+        auditTrailService.logAs(currentUserService.requireCurrentUser(), "DOCUMENT_COMPONENT", component.getName(), component.getId(),
                 ACTION_COMPONENT_UPDATED, null, null, "Updated Document Component: " + component.getName(), changes);
         return toComponentResponse(component);
     }
@@ -290,7 +290,7 @@ public class DocumentNameFormatService {
         format.setActive(request.isActive() == null || request.isActive());
         applyComponents(format, request.components());
         formatRepository.save(format);
-        auditTrailService.logSafely("SETTINGS", format.getName(), format.getId(), ACTION_FORMAT_CREATED, null, null,
+        auditTrailService.logSafely("DOCUMENT_NAME_FORMAT", format.getName(), format.getId(), ACTION_FORMAT_CREATED, null, null,
                 "Document Name Format created: " + format.getName() + " (" + describeComponents(format) + ")");
         return toFormatResponse(format);
     }
@@ -324,7 +324,7 @@ public class DocumentNameFormatService {
         if (!Objects.equals(beforeComponents, afterComponents)) {
             changes.add(new AuditTrailChangeResponse("Components", beforeComponents, afterComponents));
         }
-        auditTrailService.logAs(currentUserService.requireCurrentUser(), "SETTINGS", format.getName(), format.getId(),
+        auditTrailService.logAs(currentUserService.requireCurrentUser(), "DOCUMENT_NAME_FORMAT", format.getName(), format.getId(),
                 ACTION_FORMAT_UPDATED, null, null, "Updated Document Name Format: " + format.getName(), changes);
         return toFormatResponse(format);
     }

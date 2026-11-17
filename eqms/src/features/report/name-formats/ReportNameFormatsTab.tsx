@@ -25,6 +25,7 @@ import { reportNameFormatsApi, type ReportNameFormatListItem } from "@/services/
 import { pickerDateToIso } from "../shared/ReportListToolbar";
 import { ExpandedReportNameFormatRow } from "./ExpandedReportNameFormatRow";
 import { displayDateTime } from "@/utils/format";
+import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 
 type StatusFilter = "All" | "Active" | "Inactive";
 /** What the server calls each status filter. */
@@ -89,9 +90,7 @@ export const ReportNameFormatsTab: React.FC = () => {
     extraParams,
   });
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter, modifiedFromDate, modifiedToDate, setCurrentPage]);
+  useResetPageOnChange(setCurrentPage, [statusFilter, modifiedFromDate, modifiedToDate]);
 
   const closeToggle = () => {
     setShowToggleModal(false);

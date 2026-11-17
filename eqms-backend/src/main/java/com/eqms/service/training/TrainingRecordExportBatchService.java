@@ -175,7 +175,8 @@ public class TrainingRecordExportBatchService {
         jdbc.update("insert into training_record_export_batches(id, department_id, year, reason, person_count, prepared_by, prepared_signature_id) values (?,?,?,?,?,?,?)",
                 id, request.departmentId(), year, request.reason().trim(), count, actor.getId(), prepared);
         approvals.designate(actor, subject, STEP, request.approverUserId(), TrainingApprovalService.apart(actor.getId()));
-        audit.logAs(actor, TYPE, subject.label(), id, "TRAINING_RECORD_EXPORT_BATCH_PREPARED", null, "PENDING_APPROVAL", count + " people. " + request.reason().trim());
+        audit.logAs(actor, TYPE, department, id, "TRAINING_RECORD_EXPORT_BATCH_PREPARED", null, "PENDING_APPROVAL", count + " people. " + request.reason().trim(),
+                List.of(TrainingStore.change("People", null, count), TrainingStore.change("Reason for Export", null, request.reason().trim())));
         return TrainingRows.camel(jdbc.queryForList(SELECT + " where b.id = ?", id).getFirst());
     }
 
@@ -219,7 +220,8 @@ public class TrainingRecordExportBatchService {
         }
         jdbc.update("update training_record_export_batches set status='APPROVED', approved_by=?, approved_signature_id=?, provider=?, stored_path=?, sha256=?, size_bytes=?, person_count=?, generated_at=now(), updated_at=now() where id=?",
                 actor.getId(), signature, stored.provider(), stored.storedPath(), sha256(zip), zip.length, people.size(), id);
-        audit.logAs(actor, TYPE, subject.label(), id, "TRAINING_RECORD_EXPORT_BATCH_APPROVED", "PENDING_APPROVAL", "APPROVED", people.size() + " people, SHA-256 " + sha256(zip));
+        audit.logAs(actor, TYPE, batchDepartment(id), id, "TRAINING_RECORD_EXPORT_BATCH_APPROVED", "PENDING_APPROVAL", "APPROVED", people.size() + " people, SHA-256 " + sha256(zip),
+                List.of(TrainingStore.change("People", null, people.size()), TrainingStore.change("SHA-256 Checksum", null, sha256(zip))));
         return TrainingRows.camel(jdbc.queryForList(SELECT + " where b.id = ?", id).getFirst());
     }
 
@@ -233,7 +235,8 @@ public class TrainingRecordExportBatchService {
         UUID assignment = approvals.requireCanSign(actor, subject, STEP, TrainingApprovalService.apart((UUID) b.get("prepared_by")));
         approvals.complete(assignment, null);
         jdbc.update("update training_record_export_batches set status='REJECTED', reject_reason=?, approved_by=?, updated_at=now() where id=?", request.reason().trim(), actor.getId(), id);
-        audit.logAs(actor, TYPE, subject.label(), id, "TRAINING_RECORD_EXPORT_BATCH_REJECTED", "PENDING_APPROVAL", "REJECTED", request.reason().trim());
+        audit.logAs(actor, TYPE, subject.label(), id, "TRAINING_RECORD_EXPORT_BATCH_REJECTED", "PENDING_APPROVAL", "REJECTED", request.reason().trim(),
+                List.of(TrainingStore.change("Reason for Rejection", null, request.reason().trim())));
         return TrainingRows.camel(jdbc.queryForList(SELECT + " where b.id = ?", id).getFirst());
     }
 
@@ -272,5 +275,10 @@ public class TrainingRecordExportBatchService {
         } catch (java.security.NoSuchAlgorithmException impossible) {
             throw new IllegalStateException(impossible);
         }
+    }
+
+    /** What the Audit Trail names a batch export by: the department it is for (AUDIT-OBJECT-REGISTRY-2026-11-17). */
+    private String batchDepartment(UUID id) {
+        return jdbc.queryForList("select d.name from training_record_export_batches b join departments d on d.id = b.department_id where b.id=?", String.class, id).stream().findFirst().orElse("Training record export");
     }
 }

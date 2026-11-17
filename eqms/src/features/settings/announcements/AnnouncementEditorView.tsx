@@ -103,6 +103,7 @@ export const AnnouncementEditorView: React.FC = () => {
     defaultFormValues(),
   );
   const [version, setVersion] = useState<number | undefined>();
+  const [number, setNumber] = useState("");
   const [errors, setErrors] = useState<AnnouncementFormErrors>({});
   const [loading, setLoading] = useState(!creating);
   const [loadError, setLoadError] = useState("");
@@ -126,6 +127,7 @@ export const AnnouncementEditorView: React.FC = () => {
           enabled: a.enabled,
         });
         setVersion(a.version);
+        setNumber(a.announcementNumber ?? "");
       })
       .catch((error) => {
         if (alive)
@@ -255,6 +257,11 @@ export const AnnouncementEditorView: React.FC = () => {
             icon={<IconSpeakerphone className="h-4 w-4" />}
           >
             <div className="space-y-4">
+              {number && (
+                <p className="text-xs text-slate-500">
+                  Announcement Number: <span className="font-mono text-slate-700">{number}</span>
+                </p>
+              )}
               <Field
                 label="Title"
                 required

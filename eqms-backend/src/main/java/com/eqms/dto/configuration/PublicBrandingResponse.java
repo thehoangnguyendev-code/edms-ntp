@@ -56,6 +56,8 @@ public record PublicBrandingResponse(
         /** How the Audit Trail tab of a record (document, revision, copy, training ...) is drawn: TABLE or TIMELINE (TABLE when the administrator set nothing). The Audit Trail module itself is always a table. */
         String auditTabView,
         /** The look of the timeline when auditTabView is TIMELINE: RAIL, CENTER, COMPACT or SCROLL_LIT (COMPACT when the administrator set nothing). */
-        String auditTabTimelineStyle
+        String auditTabTimelineStyle,
+        /** Which sign-in screen every user sees: CLASSIC (the screen that existed before) or SPLIT (a card with the form on the left and a blue product panel on the right). CLASSIC when the administrator set nothing. */
+        String loginLayout
 ) {
 }

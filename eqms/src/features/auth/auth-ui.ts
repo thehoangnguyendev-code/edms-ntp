@@ -88,4 +88,38 @@ export const AUTH_UI = {
     "absolute inset-y-0 right-0 my-auto flex size-10 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-600 sm:right-1.5",
   // Password rules / helper text: 12px, slate-500 (4.8:1 on white) instead of 11px slate-400 (2.6:1).
   hintText: "text-xs text-slate-500",
+  // The logo block of a screen: the Split layout lifts it to the top-left corner of the card.
+  brand: "auth-brand mb-6 flex items-center gap-3 text-slate-900 sm:mb-10 lg:mb-12",
+  // Text links and the interactive accent. Split swaps the green for the blue of its panel.
+  accentLink: "text-emerald-700 hover:text-emerald-800",
+  // A choice card (pick the verification method).
+  choiceCard: "hover:border-emerald-700/40 hover:bg-emerald-50/30",
+  // Focus ring of the one-digit code boxes.
+  otpRing: "focus-visible:ring-emerald-600/60",
 } as const;
+
+/**
+ * Class strings of the "Split" sign-in design (a card with a blue product panel), under the same keys as
+ * AUTH_UI so a screen picks one set with useAuthUi() and uses it unchanged. The blue is the colour of that
+ * design, not the green of the app, so it is kept here as literals.
+ */
+export const SPLIT_AUTH_UI: Record<keyof typeof AUTH_UI, string> = {
+  ...AUTH_UI,
+  formColumn: "flex w-full max-w-full flex-1 flex-col justify-center",
+  headerArea: "mb-8 text-center",
+  headingBlock: "space-y-3",
+  pageTitle: "text-[32px] font-semibold leading-tight tracking-tight text-[#111111] sm:text-[40px]",
+  pageTitleStrong: "text-[32px] font-semibold leading-tight tracking-tight text-[#111111] sm:text-[40px]",
+  description: "text-[15px] leading-6 text-[#6b7280]",
+  formStack: "space-y-5",
+  inputBase:
+    "auth-input h-[46px] w-full rounded-[10px] border bg-white px-3.5 text-base text-[#111111] shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-colors md:text-[15px]",
+  inputFocus: "placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-[#4340f5]/20",
+  inputDefault: "border-[#e4e4e7] hover:border-[#c7c7d1] focus:border-[#4340f5]",
+  inputError: "border-red-300 hover:border-red-300 focus:border-red-500 focus:ring-red-500/20",
+  submitButton:
+    "mt-2 h-[46px] w-full rounded-[10px] bg-[linear-gradient(180deg,#5250f7_0%,#3f3cf0_100%)] text-[15px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_1px_2px_rgba(67,64,245,0.35)] transition-[filter] hover:bg-[linear-gradient(180deg,#5250f7_0%,#3f3cf0_100%)] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4340f5]/40 focus-visible:ring-offset-2 disabled:opacity-60",
+  accentLink: "text-[#2b2bd9] hover:text-[#1f1fb5]",
+  choiceCard: "hover:border-[#4340f5]/40 hover:bg-[#4340f5]/5",
+  otpRing: "focus-visible:ring-[#4340f5]/60",
+};

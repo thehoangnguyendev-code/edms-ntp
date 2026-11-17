@@ -201,7 +201,7 @@ class UserManagementServiceStatusTransitionTest {
         verify(auditService).log(eq("user_force_logout"), eq(user), anyMap(), any(), any());
         verify(auditTrailService).logAs(
                 eq(actor), eq("USER"), eq("Jane Doe"), eq(userId), eq("USER_FORCE_LOGOUT"),
-                eq("Active"), eq("REVOKED"), anyString(), isNull(), isNull());
+                eq("Active"), eq("REVOKED"), anyString(), anyList(), isNull());
         verifyNoInteractions(tokenService, electronicSignatureService);
     }
 

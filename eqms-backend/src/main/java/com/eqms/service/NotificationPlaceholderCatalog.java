@@ -177,6 +177,8 @@ public final class NotificationPlaceholderCatalog {
         one(SECURITY, "tempPassword", "Temporary password", "Tmp#4821");
         one(SECURITY, "resetLink", "Address to reset the password", "https://eqms.example.com/reset-password?token=abc");
         one(SECURITY, "loginLink", "Address to sign in", "https://eqms.example.com/login");
+        one(SECURITY, "otpCode", "One-time verification code", "482913");
+        one(SECURITY, "expiresIn", "Minutes the code is valid", "10");
 
         // Access Review
         one(ACCESS_REVIEW, "campaignName", "Campaign name", "Q3 Audit Trail Review");

@@ -248,6 +248,8 @@ export const AuditTrailView: React.FC = () => {
   const debouncedSearchQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const [actionFilter, setActionFilter] = useState<string>("All");
   const [userFilter, setUserFilter] = useState("");
+  /** One object whose whole history is shown (from the link on a record's detail); the code is the words the chip shows. */
+  const [entityFilter, setEntityFilter] = useState<{ id: string; code: string } | null>(null);
   const [eSignatureFilter, setESignatureFilter] = useState<
     "All" | "Yes" | "No"
   >("All");
@@ -282,12 +284,18 @@ export const AuditTrailView: React.FC = () => {
     setSearchQuery(searchParams.get("search") ?? "");
     setActionFilter(searchParams.get("action") ?? "All");
     setUserFilter(searchParams.get("user") ?? "");
+    const entityIdParam = searchParams.get("entityId");
+    const entityCodeParam = searchParams.get("objectCode") ?? "";
+    setEntityFilter((current) => (entityIdParam ? (current?.id === entityIdParam && current.code === entityCodeParam ? current : { id: entityIdParam, code: entityCodeParam }) : null));
     setESignatureFilter((searchParams.get("eSignature") as "All" | "Yes" | "No") ?? "All");
     setDateFrom(searchParams.get("dateFrom") ?? defaults.startDate);
     setDateTo(searchParams.get("dateTo") ?? defaults.endDate);
     setCurrentPage(Math.max(1, Number(searchParams.get("page")) || 1));
     setItemsPerPage(Number(searchParams.get("limit")) || 10);
-    setSortConfig({ key: (searchParams.get("sortBy") as typeof sortConfig.key) ?? "timestamp", direction: searchParams.get("sortDirection") === "asc" ? "asc" : "desc" });
+    const sortBy = (searchParams.get("sortBy") as typeof sortConfig.key) ?? "timestamp";
+    const sortDirection = searchParams.get("sortDirection") === "asc" ? "asc" : "desc";
+    // Keep the same object when nothing changed: a new one on every URL update looked like a new sort and sent the list back to page 1.
+    setSortConfig((current) => (current.key === sortBy && current.direction === sortDirection ? current : { key: sortBy, direction: sortDirection }));
   }, [searchParams]);
 
   useEffect(() => {
@@ -296,6 +304,10 @@ export const AuditTrailView: React.FC = () => {
     if (debouncedSearchQuery.trim()) params.set("search", debouncedSearchQuery.trim());
     if (actionFilter !== "All") params.set("action", actionFilter);
     if (userFilter) params.set("user", userFilter);
+    if (entityFilter) {
+      params.set("entityId", entityFilter.id);
+      if (entityFilter.code) params.set("objectCode", entityFilter.code);
+    }
     if (eSignatureFilter !== "All") params.set("eSignature", eSignatureFilter);
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
@@ -304,7 +316,7 @@ export const AuditTrailView: React.FC = () => {
     if (sortConfig.key !== "timestamp") params.set("sortBy", sortConfig.key);
     if (sortConfig.direction !== "desc") params.set("sortDirection", sortConfig.direction);
     if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
-  }, [searchQuery, debouncedSearchQuery, actionFilter, userFilter, eSignatureFilter, dateFrom, dateTo, currentPage, itemsPerPage, sortConfig, searchParams, setSearchParams]);
+  }, [searchQuery, debouncedSearchQuery, actionFilter, userFilter, entityFilter, eSignatureFilter, dateFrom, dateTo, currentPage, itemsPerPage, sortConfig, searchParams, setSearchParams]);
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => {
@@ -322,6 +334,7 @@ export const AuditTrailView: React.FC = () => {
     setSearchQuery("");
     setActionFilter("All");
     setUserFilter("");
+    setEntityFilter(null);
     setESignatureFilter("All");
     const defaults = getDefaultAuditTrailDateRange();
     setDateFrom(defaults.startDate);
@@ -380,7 +393,8 @@ export const AuditTrailView: React.FC = () => {
     dateFrom,
     dateTo,
     itemsPerPage,
-    sortConfig,
+    sortConfig.key,
+    sortConfig.direction,
   ]);
 
   useEffect(() => {
@@ -401,6 +415,7 @@ export const AuditTrailView: React.FC = () => {
           searchQuery: debouncedSearchQuery,
           action: actionFilter as any,
           user: userFilter,
+          entityId: entityFilter?.id,
           eSignatureOnly:
             eSignatureFilter === "All" ? undefined : eSignatureFilter === "Yes",
           dateFrom,
@@ -439,6 +454,7 @@ export const AuditTrailView: React.FC = () => {
     debouncedSearchQuery,
     actionFilter,
     userFilter,
+    entityFilter,
     eSignatureFilter,
     dateFrom,
     dateTo,
@@ -673,6 +689,15 @@ export const AuditTrailView: React.FC = () => {
             </div>
           </div>
 </ConfiguredDesktopFilters>
+
+          {entityFilter && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-800 sm:text-sm">
+              <span>History of this object only{entityFilter.code ? <>: <span className="font-semibold">{entityFilter.code}</span></> : null}</span>
+              <button type="button" onClick={() => { setEntityFilter(null); setCurrentPage(1); }} className="ml-auto font-semibold text-emerald-700 hover:underline">
+                Show all records
+              </button>
+            </div>
+          )}
 
           <div className="relative flex flex-1 flex-col">
             {isTableLoading && (

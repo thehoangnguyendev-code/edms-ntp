@@ -52,8 +52,6 @@ export interface TerminateUserPayload {
 export interface ResetPasswordPayload {
   newPassword?: string;
   sendEmail?: boolean;
-  signatureToken: string;
-  reason?: string;
 }
 
 export interface ForceLogoutPayload {

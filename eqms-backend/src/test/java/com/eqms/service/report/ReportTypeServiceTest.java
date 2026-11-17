@@ -114,8 +114,8 @@ class ReportTypeServiceTest {
         assertThatThrownBy(() -> service.setEnabled(manager, "DOCUMENT_STATUS", 4, false, " ")).hasMessage("REPORT_CHANGE_REASON_REQUIRED");
         assertThatThrownBy(() -> service.setEnabled(manager, "DOCUMENT_STATUS", 3, false, "stale")).isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> service.setEnabled(manager, "DOCUMENT_STATUS", 4, true, "already")).isInstanceOf(ResponseStatusException.class);
-        verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), any());
+        verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), any(), any());
         service.setEnabled(manager, "DOCUMENT_STATUS", 4, false, "retired source");
-        verify(audit).logAs(any(), eq("REPORT_TYPE"), eq("DOCUMENT_STATUS"), any(), eq("REPORT_TYPE_DISABLED"), eq("ENABLED"), eq("DISABLED"), eq("retired source"));
+        verify(audit).logAs(any(), eq("REPORT_TYPE"), eq("Document Register"), any(), eq("REPORT_TYPE_DISABLED"), eq("ENABLED"), eq("DISABLED"), eq("retired source"), any());
     }
 }

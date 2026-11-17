@@ -140,7 +140,7 @@ public class TrainingLegacyEvidenceService {
     /** What the import form needs to know about a paper Training Number typed by the person: is it new, does it join an activity of another document, is there evidence already. */
     @Transactional(readOnly = true)
     public Map<String, Object> numberInfo(UserAccount actor, String number) {
-        access.require(actor, "documents.legacy_import.manage", "training.activity.view", "training.activity.organize");
+        access.require(actor, "documents.document.create", "documents.workspace.manage", "training.activity.view", "training.activity.organize");
         Map<String, Object> out = new LinkedHashMap<>();
         String typed = number == null ? "" : number.trim();
         out.put("number", typed);
@@ -348,7 +348,7 @@ public class TrainingLegacyEvidenceService {
         try {
             byte[] bytes = files.readReportArtifact(String.valueOf(e.get("provider")), String.valueOf(e.get("stored_path")));
             if (!sha256(bytes).equals(e.get("sha256"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_FILE_INTEGRITY_FAILED");
-            audit.logAs(actor, TYPE, label(r), evidenceId, auditAction, null, null, auditComment);
+            audit.logAs(actor, TYPE, auditCode(r), evidenceId, auditAction, null, null, auditComment);
             return Map.of("bytes", bytes, "contentType", String.valueOf(e.get("content_type")), "name", String.valueOf(e.get("original_name")));
         } catch (IOException ex) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TRAINING_FILE_UNAVAILABLE");
@@ -378,7 +378,8 @@ public class TrainingLegacyEvidenceService {
                     completion, "Paper training imported with the document (Legacy Import)", actor.getId(),
                     paper == null ? null : blankToNull(paper.topic()), paper == null ? null : blankToNull(paper.trainer()), paper == null ? null : blankToNull(paper.method()));
             numbers.reserveFromPaper(number);
-            audit.logAs(actor, "TRAINING_ACTIVITY", number, id, "TRAINING_LEGACY_ACTIVITY_CREATED", null, "COMPLETED", "Paper Training Number " + number + " of " + r.get("document_number") + " Rev " + r.get("revision_number"));
+            audit.logAs(actor, "TRAINING_ACTIVITY", number, id, "TRAINING_LEGACY_ACTIVITY_CREATED", null, "COMPLETED", "Paper Training Number " + number + " of " + r.get("document_number") + " Rev " + r.get("revision_number"),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Paper Training Number",null,number), com.eqms.util.AuditChanges.of("Document",null,r.get("document_number")), com.eqms.util.AuditChanges.of("Revision",null,r.get("revision_number"))));
         } else {
             if (!"LEGACY".equals(existing.getFirst().get("kind"))) throw new IllegalArgumentException("TRAINING_LEGACY_NUMBER_IN_USE");
             id = (UUID) existing.getFirst().get("id");
@@ -453,8 +454,9 @@ public class TrainingLegacyEvidenceService {
                     original.length() > 255 ? original.substring(0, 255) : original, stored.provider(), stored.storedPath(), type, bytes.length, sha256(bytes), actor.getId(), signatureId);
         }
         if (activityId != null) addPeople(actor, id, activityId, null, "TRAINEE", trainees);
-        audit.logAs(actor, TYPE, label(r), id, "TRAINING_LEGACY_EVIDENCE_FILED", null, "FILED",
-                (notEvidenced ? "Declared without evidence: " + reason.trim() : "Scan of the paper record attached") + (trainees.isEmpty() ? "" : "; " + trainees.size() + " trainee(s) named"));
+        audit.logAs(actor, TYPE, auditCode(r), id, "TRAINING_LEGACY_EVIDENCE_FILED", null, "FILED",
+                (notEvidenced ? "Declared without evidence: " + reason.trim() : "Scan of the paper record attached") + (trainees.isEmpty() ? "" : "; " + trainees.size() + " trainee(s) named"),
+                com.eqms.util.AuditChanges.with("Reason", notEvidenced ? reason : null, com.eqms.util.AuditChanges.of("Evidence",null,notEvidenced ? "Declared without evidence" : "Scan of the paper record attached"), com.eqms.util.AuditChanges.of("Trainees Named",null,trainees.size())));
         return id;
     }
 
@@ -536,6 +538,13 @@ public class TrainingLegacyEvidenceService {
             """, revisionId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         if (!"LEGACY_IMPORT".equals(r.get("training_origin")) || !Boolean.TRUE.equals(r.get("requires_training"))) throw new IllegalArgumentException("TRAINING_LEGACY_NOT_APPLICABLE");
         return r;
+    }
+
+    /** What the Audit Trail names a piece of legacy evidence by: the paper Training Number and the Document Number (AUDIT-OBJECT-REGISTRY-2026-11-17). */
+    private static String auditCode(Map<String, Object> r) {
+        Object training = r.get("paper_training_number");
+        String document = r.get("document_number") + " Rev " + r.get("revision_number");
+        return training == null || String.valueOf(training).isBlank() ? document : training + " / " + document;
     }
 
     private static String label(Map<String, Object> r) {

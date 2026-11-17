@@ -90,6 +90,6 @@ class ReportScheduleOwnerTest {
 
         verify(jdbc).update(eq("update report_schedules set owner_user_id=?,updated_at=now() where id=?"), eq(newOwner), eq(scheduleId));
         verify(audit).logAs(eq(actor), eq("REPORT_SCHEDULE"), eq("Monthly status"), eq(scheduleId), eq("REPORT_SCHEDULE_OWNER_CHANGED"),
-                eq(currentOwner.toString()), eq(newOwner.toString()), eq("Owner transferred to QA"));
+                eq(currentOwner.toString()), eq(newOwner.toString()), eq("Owner transferred to QA"), any());
     }
 }

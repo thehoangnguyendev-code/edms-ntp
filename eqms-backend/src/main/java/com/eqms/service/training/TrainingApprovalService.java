@@ -156,7 +156,9 @@ public class TrainingApprovalService {
                 id, subject.objectType(), subject.id(), stepCode, assigneeId, actor.getId());
         store.event(subject.objectType(), subject.id(), "TRAINING_ACTIVITY".equals(subject.objectType()) ? subject.id() : null, "APPROVER_DESIGNATED",
                 Map.of("step", stepCode, "assignee", assigneeId.toString()), actor.getId());
-        audit.logAs(actor, subject.objectType(), subject.label(), subject.id(), "TRAINING_APPROVER_DESIGNATED", null, null, stepCode + " -> " + assignee.getFullName());
+        audit.logAs(actor, subject.objectType(), subject.label(), subject.id(), "TRAINING_APPROVER_DESIGNATED", null, null, stepCode + " -> " + assignee.getFullName(),
+                List.of(new com.eqms.dto.audittrail.AuditTrailChangeResponse("Step", null, TrainingStore.words(stepCode)),
+                        new com.eqms.dto.audittrail.AuditTrailChangeResponse("Approver", null, assignee.getFullName())));
         notifier.send("TRAINING_STEP_ASSIGNED", assignee, actor, "Training: your action is needed",
                 actor.getFullName() + " asked you to " + TrainingNotifier.stepText(stepCode) + ": " + subject.label() + ".", subject.objectType(), subject.id(), null);
         return id;
@@ -179,7 +181,8 @@ public class TrainingApprovalService {
                 UUID.randomUUID(), subject.objectType(), subject.id(), step.code(), newAssigneeId, actor.getId());
         store.event(subject.objectType(), subject.id(), "TRAINING_ACTIVITY".equals(subject.objectType()) ? subject.id() : null, "APPROVER_REASSIGNED",
                 Map.of("step", step.code(), "from", String.valueOf(row.get("assignee_user_id")), "to", newAssigneeId.toString(), "reason", reason.trim()), actor.getId());
-        audit.logAs(actor, subject.objectType(), subject.label(), subject.id(), "TRAINING_APPROVER_REASSIGNED", String.valueOf(row.get("assignee_user_id")), newAssigneeId.toString(), reason.trim());
+        audit.logAs(actor, subject.objectType(), subject.label(), subject.id(), "TRAINING_APPROVER_REASSIGNED", String.valueOf(row.get("assignee_user_id")), newAssigneeId.toString(), reason.trim(),
+                com.eqms.util.AuditChanges.reason("Reason", reason));
         notifier.send("TRAINING_STEP_ASSIGNED", next, actor, "Training: your action is needed",
                 actor.getFullName() + " handed over to you the task to " + TrainingNotifier.stepText(step.code()) + ": " + subject.label() + ".", subject.objectType(), subject.id(), null);
         users.findById((UUID) row.get("assignee_user_id")).ifPresent(previous -> notifier.send("TRAINING_STEP_REASSIGNED", previous, actor, "Training: task handed over",

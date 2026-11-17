@@ -79,6 +79,23 @@ public class TrainingStore {
         audit.logAs(actor, OBJECT_ACTIVITY, String.valueOf(activity.get("training_number")), (UUID) activity.get("id"), action, from, to, comment);
     }
 
+    /** One field change of an Audit Trail entry; a null side is a value that was not there. */
+    public static com.eqms.dto.audittrail.AuditTrailChangeResponse change(String field, Object before, Object after) {
+        return new com.eqms.dto.audittrail.AuditTrailChangeResponse(field, before == null ? null : String.valueOf(before), after == null ? null : String.valueOf(after));
+    }
+
+    /** A code in words for the Audit Trail (CONTENT_APPROVE -> "Content Approve"). */
+    public static String words(String code) {
+        if (code == null || code.isBlank()) return code;
+        StringBuilder out = new StringBuilder();
+        for (String part : code.toLowerCase(java.util.Locale.ROOT).split("[_ ]+")) {
+            if (part.isEmpty()) continue;
+            if (out.length() > 0) out.append(' ');
+            out.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1));
+        }
+        return out.toString();
+    }
+
     /** The same, with the field-level changes the Audit Trail shows (before and after). */
     public void auditActivity(UserAccount actor, Map<String, Object> activity, String action, String from, String to, String comment, java.util.List<com.eqms.dto.audittrail.AuditTrailChangeResponse> changes) {
         audit.logAs(actor, OBJECT_ACTIVITY, String.valueOf(activity.get("training_number")), (UUID) activity.get("id"), action, from, to, comment, changes);

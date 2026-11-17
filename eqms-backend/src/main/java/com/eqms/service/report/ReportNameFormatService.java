@@ -156,7 +156,8 @@ public class ReportNameFormatService {
         jdbc.update("insert into report_name_formats(id, code, name, separator, description, active) values(?,?,?,?,?,?)",
                 id, request.code(), request.name().trim(), request.separator(), blankToNull(request.description()), noneActive);
         writeParts(id, request.parts());
-        audit.logAs(actor, "REPORT_NAME_FORMAT", request.code(), id, "REPORT_NAME_FORMAT_CREATED", null, noneActive ? "ACTIVE" : "INACTIVE", request.reason().trim());
+        audit.logAs(actor, "REPORT_NAME_FORMAT", request.code(), id, "REPORT_NAME_FORMAT_CREATED", null, noneActive ? "ACTIVE" : "INACTIVE", request.reason().trim(),
+                com.eqms.util.AuditChanges.with("Reason", request.reason(), com.eqms.util.AuditChanges.of("Code",null,request.code())));
         return detail(actor, id);
     }
 
@@ -173,7 +174,8 @@ public class ReportNameFormatService {
                 request.name().trim(), request.separator(), blankToNull(request.description()), id);
         jdbc.update("delete from report_name_format_parts where format_id=?", id);
         writeParts(id, request.parts());
-        audit.logAs(actor, "REPORT_NAME_FORMAT", request.code(), id, "REPORT_NAME_FORMAT_UPDATED", null, null, request.reason().trim());
+        audit.logAs(actor, "REPORT_NAME_FORMAT", request.code(), id, "REPORT_NAME_FORMAT_UPDATED", null, null, request.reason().trim(),
+                com.eqms.util.AuditChanges.reason("Reason", request.reason()));
         return detail(actor, id);
     }
 
@@ -189,12 +191,14 @@ public class ReportNameFormatService {
             for (var other : jdbc.queryForList("select id, code from report_name_formats where active=true and id<>? for update", id)) {
                 jdbc.update("update report_name_formats set active=false, version=version+1, updated_at=now() where id=?", other.get("id"));
                 audit.logAs(actor, "REPORT_NAME_FORMAT", String.valueOf(other.get("code")), (UUID) other.get("id"), "REPORT_NAME_FORMAT_DISABLED", "ACTIVE", "INACTIVE",
-                        "Replaced by " + rows.getFirst().get("code") + ". " + reason.trim());
+                        "Replaced by " + rows.getFirst().get("code") + ". " + reason.trim(),
+                com.eqms.util.AuditChanges.with("Reason", reason, com.eqms.util.AuditChanges.of("Replaced By",null,rows.getFirst().get("code"))));
             }
         }
         jdbc.update("update report_name_formats set active=?, version=version+1, updated_at=now() where id=?", active, id);
         audit.logAs(actor, "REPORT_NAME_FORMAT", String.valueOf(rows.getFirst().get("code")), id,
-                active ? "REPORT_NAME_FORMAT_ENABLED" : "REPORT_NAME_FORMAT_DISABLED", null, String.valueOf(active).toUpperCase(), reason.trim());
+                active ? "REPORT_NAME_FORMAT_ENABLED" : "REPORT_NAME_FORMAT_DISABLED", null, String.valueOf(active).toUpperCase(), reason.trim(),
+                com.eqms.util.AuditChanges.reason("Reason", reason));
         return detail(actor, id);
     }
 

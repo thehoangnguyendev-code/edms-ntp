@@ -134,6 +134,7 @@ const AlertsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
 
   const columns: DataTableColumn<BackupAlertRecord>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => (page - 1) * pageSize + index + 1 },
+    { id: "alertNumber", header: "Alert Number", label: "Alert Number", cell: (row) => <span className="text-xs sm:text-sm font-medium text-emerald-600 whitespace-nowrap">{row.alertNumber ?? "—"}</span> },
     { id: "at", header: "When", label: "When", sort: sortFor("at"), cell: (row) => formatDateTime(row.at) },
     { id: "severity", header: "Severity", label: "Severity", sort: sortFor("severity"), cell: (row) => <Badge color={SEVERITY_COLOR[row.severity]}>{row.severity}</Badge> },
     { id: "code", header: "Alert", label: "Alert", sort: sortFor("code"), cell: (row) => row.code },

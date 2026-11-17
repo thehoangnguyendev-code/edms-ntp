@@ -152,7 +152,8 @@ public class BackupRestoreController {
         JsonNode accepted = agent.post("/internal/backups", body);
         auditTrailService.logAs(actor, "BACKUP", "Backup request", jobId(accepted), "BACKUP_REQUESTED", null, "QUEUED",
                 "Requested a " + type + " backup of " + (components == null ? "what the policy covers" : String.join(", ", components))
-                        + ". Reason: " + reason + (reference.isEmpty() ? "" : " (" + reference + ")"));
+                        + ". Reason: " + reason + (reference.isEmpty() ? "" : " (" + reference + ")"),
+                com.eqms.util.AuditChanges.with("Reason", reason, com.eqms.util.AuditChanges.of("Backup Type",null,type), com.eqms.util.AuditChanges.of("Components",null,components == null ? "What the policy covers" : String.join(", ", components))));
         return ResponseEntity.status(HttpStatus.ACCEPTED).cacheControl(CacheControl.noStore()).body(accepted);
     }
 
@@ -162,7 +163,8 @@ public class BackupRestoreController {
         require(actor, VERIFY_PERMISSION);
         String id = validId(backupNumber);
         JsonNode accepted = agent.post("/internal/backups/" + id + "/verify", Map.of("requestedBy", identity(actor)));
-        auditTrailService.logAs(actor, "BACKUP", id, jobId(accepted), "BACKUP_VERIFY_REQUESTED", null, "QUEUED", "Requested an integrity check of " + id);
+        auditTrailService.logAs(actor, "BACKUP", id, jobId(accepted), "BACKUP_VERIFY_REQUESTED", null, "QUEUED", "Requested an integrity check of " + id,
+                java.util.List.of(com.eqms.util.AuditChanges.of("Backup Checked",null,id)));
         return ResponseEntity.status(HttpStatus.ACCEPTED).cacheControl(CacheControl.noStore()).body(accepted);
     }
 

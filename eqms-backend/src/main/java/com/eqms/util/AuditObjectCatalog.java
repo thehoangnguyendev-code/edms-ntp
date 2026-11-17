@@ -1,7 +1,6 @@
 package com.eqms.util;
 
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,34 +24,38 @@ public final class AuditObjectCatalog {
         return entityType == null ? "" : entityType.trim().toUpperCase(Locale.ROOT).replace(" ", "").replace("_", "");
     }
 
-    /** One name for the kinds that were written under several spellings (documents / DOCUMENT / DocumentRecord), the others in their own words. */
-    private static final Map<String, String> TYPE_LABEL = Map.ofEntries(
-            Map.entry("DOCUMENT", "Document"), Map.entry("DOCUMENTS", "Document"), Map.entry("DOCUMENTRECORD", "Document"),
-            Map.entry("REVISION", "Revision"), Map.entry("DOCUMENTREVISION", "Revision"), Map.entry("DOCUMENTREVISIONRECORD", "Revision"),
-            Map.entry("CONTROLLEDCOPY", "Controlled Copy"), Map.entry("CONTROLLEDCOPYRECORD", "Controlled Copy"),
-            Map.entry("CONTROLLEDCOPYDISTRIBUTIONBATCH", "Controlled Copy Batch"),
-            Map.entry("CONTROLLEDCOPYRECALLBATCH", "Controlled Copy Recall Batch"),
-            Map.entry("UNCONTROLLEDCOPY", "Uncontrolled Copy"), Map.entry("UNCONTROLLEDCOPYRECORD", "Uncontrolled Copy"),
-            Map.entry("USER", "User"), Map.entry("USERACCOUNT", "User"),
-            Map.entry("SESSION", "Login Session"), Map.entry("AUTH", "Authentication"), Map.entry("AUTHENTICATION", "Authentication"),
-            Map.entry("NOTIFICATION", "Notification"),
-            Map.entry("EXECUTEDRECORD", "Executed Record"),
-            Map.entry("AUDITTRAIL", "Audit Trail"),
-            Map.entry("EMAILTEMPLATE", "E-mail Template"),
-            Map.entry("REPORTARTIFACT", "Report File"),
-            Map.entry("REPORTDEFINITION", "Report Template"), Map.entry("REPORTTEMPLATE", "Report Template"),
-            Map.entry("SODCONSTRAINT", "SoD Constraint"),
-            Map.entry("PUBLISHEDPDF", "Published PDF"),
-            Map.entry("EFORMEDITSESSION", "E-form Edit Session"),
-            Map.entry("EMAILDESIGN", "E-mail Design"), Map.entry("INAPPDESIGN", "In-app Notification Design"),
-            Map.entry("BACKUPRESTORE", "Restore Request"),
-            Map.entry("SETTINGS", "Setting")
-    );
-
+    /**
+     * The Object Type: the default name of the menu of the object's function ("Controlled Copies"), from {@link AuditObjectRegistry}. A kind that is not
+     * registered (the build fails for a new one) is written in words.
+     */
     public static String typeLabel(String entityType) {
         if (entityType == null || entityType.isBlank()) return "-";
-        String known = TYPE_LABEL.get(key(entityType));
-        if (known != null) return known;
+        String menu = AuditObjectRegistry.menuName(entityType);
+        return menu != null ? menu : typeWords(entityType);
+    }
+
+    /** The words an action code of the old catch-all type SETTINGS starts with, and the kind of dictionary each names (the most specific first). */
+    static final String[][] LEGACY_SETTINGS = {
+            {"DOCUMENT_SUB_TYPE_", "DOCUMENT_SUB_TYPE"}, {"DOCUMENT_TYPE_", "DOCUMENT_TYPE"}, {"DOCUMENT_NAME_FORMAT_", "DOCUMENT_NAME_FORMAT"},
+            {"DOCUMENT_COMPONENT_", "DOCUMENT_COMPONENT"}, {"CONTROLLED_COPY_PLACEHOLDER_FIELD_", "CONTROLLED_COPY_PLACEHOLDER_FIELD"},
+            {"BUSINESS_UNIT_", "BUSINESS_UNIT"}, {"DEPARTMENT_", "DEPARTMENT"}, {"POSITION_", "POSITION"}, {"STORAGE_LOCATION_", "STORAGE_LOCATION"},
+            {"RETENTION_POLICY_", "RETENTION_POLICY"}, {"SCHOOL_", "SCHOOL"}, {"EDUCATION_DEGREE_LEVEL_", "DEGREE_LEVEL"}, {"DEGREE_LEVEL_", "DEGREE_LEVEL"},
+    };
+
+    /**
+     * The Object Type of a record, also for the records written before the catch-all type SETTINGS was split into one kind per menu (2026-11-17): those are told
+     * from the others by the words their action code starts with ("POSITION_UPDATED" is a Position). An audit record is never rewritten, so this is done on reading.
+     */
+    public static String typeLabel(String entityType, String actionType) {
+        if ("SETTINGS".equals(key(entityType)) && actionType != null) {
+            String action = actionType.trim().toUpperCase(Locale.ROOT).replaceAll("[ -]+", "_");
+            for (String[] rule : LEGACY_SETTINGS) if (action.startsWith(rule[0])) return typeLabel(rule[1]);
+        }
+        return typeLabel(entityType);
+    }
+
+    /** The entity type written in words ("TRAINING_ACTIVITY" and "TrainingActivity" read "Training Activity"): what a record that only repeats its type is called. */
+    static String typeWords(String entityType) {
         // CamelCase and underscores split into words, Title Case ("TRAINING_ACTIVITY" and "TrainingActivity" read "Training Activity")
         String spaced = entityType.trim().replaceAll("([a-z])([A-Z])", "$1 $2").replaceAll("[_\\s]+", " ");
         StringBuilder out = new StringBuilder();
@@ -119,7 +122,7 @@ public final class AuditObjectCatalog {
         }
         if (key.equals("NOTIFICATION")) {
             Matcher m = SENT_TO.matcher(text);
-            if (m.find()) return AuditObjectCatalog.typeLabel(m.group(1).replace('.', '_')) + " > " + m.group(2).trim();
+            if (m.find()) return AuditObjectCatalog.typeWords(m.group(1).replace('.', '_')) + " > " + m.group(2).trim();
         }
         return null;
     }
@@ -144,6 +147,7 @@ public final class AuditObjectCatalog {
         String plain = value.replaceAll("[\\s_]+", "").toLowerCase(Locale.ROOT);
         if (plain.equals(key(entityType).toLowerCase(Locale.ROOT))) return false;
         if (plain.equals(typeLabel(entityType).replaceAll("[\\s_]+", "").toLowerCase(Locale.ROOT))) return false;
+        if (plain.equals(typeWords(entityType).replaceAll("[\\s_]+", "").toLowerCase(Locale.ROOT))) return false;
         return !GENERIC.contains(value.trim().toLowerCase(Locale.ROOT));
     }
 }

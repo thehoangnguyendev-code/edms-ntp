@@ -89,7 +89,7 @@ class BackupDrPlanControllerTest {
                 .thenReturn(new BackupAgentClient.Reply(200, JSON.readTree("{\"code\":\"SERVER_LOSS\",\"status\":\"APPROVED\"}")));
 
         controller.changeTargets("SERVER_LOSS", new BackupDrPlanController.TargetBody(12, 12, "tighter", "tok"));
-        verify(audit).logAs(eq(actor), eq("BACKUP_DR_SCENARIO"), eq("SERVER_LOSS"), any(), eq("DR_TARGET_CHANGED"), isNull(), eq("APPROVED"), anyString());
+        verify(audit).logAs(eq(actor), eq("BACKUP_DR_SCENARIO"), eq("SERVER_LOSS"), any(), eq("DR_TARGET_CHANGED"), isNull(), eq("APPROVED"), anyString(), any());
     }
 
     @Test
@@ -113,7 +113,7 @@ class BackupDrPlanControllerTest {
         when(agent.exchange(eq(HttpMethod.POST), eq("/internal/dr/kit/BACKUP_KEY/verify"), any()))
                 .thenReturn(new BackupAgentClient.Reply(200, JSON.readTree("{\"code\":\"BACKUP_KEY\"}")));
         controller.verify("BACKUP_KEY", new BackupDrPlanController.VerifyBody("2026-10-10T08:00:00Z", "checked with two people"));
-        verify(audit).logAs(eq(actor), eq("BACKUP_DR_KIT"), eq("BACKUP_KEY"), notNull(), eq("DR_KIT_VERIFIED"), eq("NOT_VERIFIED"), eq("VERIFIED"), anyString());
+        verify(audit).logAs(eq(actor), eq("BACKUP_DR_KIT"), eq("BACKUP_KEY"), notNull(), eq("DR_KIT_VERIFIED"), eq("NOT_VERIFIED"), eq("VERIFIED"), anyString(), any());
         verifyNoInteractions(signatures);
     }
 
@@ -140,7 +140,7 @@ class BackupDrPlanControllerTest {
         when(agent.exchange(eq(HttpMethod.POST), eq("/internal/dr/declarations"), any()))
                 .thenReturn(new BackupAgentClient.Reply(200, JSON.readTree("{\"code\":\"DR-2026-0001\",\"status\":\"OPEN\"}")));
         controller.declare(new BackupDrPlanController.DeclareBody("SITE_LOSS", "The building burned", "tok"));
-        verify(audit).logAs(eq(actor), eq("BACKUP_DR_DECLARATION"), eq("DR-2026-0001"), any(), eq("DR_DECLARED"), isNull(), eq("OPEN"), anyString());
+        verify(audit).logAs(eq(actor), eq("BACKUP_DR_DECLARATION"), eq("DR-2026-0001"), any(), eq("DR_DECLARED"), isNull(), eq("OPEN"), anyString(), any());
     }
 
     @Test
@@ -168,7 +168,7 @@ class BackupDrPlanControllerTest {
         when(agent.exchange(eq(HttpMethod.POST), eq("/internal/dr/declarations/DR-2026-0001/close"), any()))
                 .thenReturn(new BackupAgentClient.Reply(200, JSON.readTree("{\"code\":\"DR-2026-0001\",\"status\":\"CLOSED\"}")));
         controller.close("DR-2026-0001", new BackupDrPlanController.CloseBody("Rebuilt on the spare server", "tok"));
-        verify(audit).logAs(eq(actor), eq("BACKUP_DR_DECLARATION"), eq("DR-2026-0001"), any(), eq("DR_DECLARATION_CLOSED"), eq("OPEN"), eq("CLOSED"), anyString());
+        verify(audit).logAs(eq(actor), eq("BACKUP_DR_DECLARATION"), eq("DR-2026-0001"), any(), eq("DR_DECLARATION_CLOSED"), eq("OPEN"), eq("CLOSED"), anyString(), any());
     }
 
     @Test

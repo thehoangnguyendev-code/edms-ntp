@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import { InfoField, EditableField } from "../components/ProfileSectionCard";
+import { InfoField, EditableField, FieldGroup } from "../components/ProfileSectionCard";
 import { formatDate } from "@/utils/format";
 import { cn } from "@/components/ui/utils";
 import { useDebounce } from "@/hooks";
@@ -128,7 +128,7 @@ export const PersonalTab: React.FC<PersonalTabProps> = ({
 
   return (
     <div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+      <FieldGroup title="Identity">
         <EmployeeIdField
           value={user.employeeCode}
           draftValue={draft.employeeCode}
@@ -145,26 +145,12 @@ export const PersonalTab: React.FC<PersonalTabProps> = ({
           error={fieldErrors.fullName}
           />
         <EditableField
-          label="Phone Number" value={user.phone} draftValue={draft.phone}
-          isEditing={isEditing}
-          field={{ type: "tel", fieldKey: "phone" }}
-          onChange={onDraftChange}
-          error={fieldErrors.phone}
-        />
-        <EditableField
           label="Username *" value={user.username} draftValue={draft.username}
           isEditing={isEditing}
           field={{ type: "text", fieldKey: "username" }}
           onChange={onDraftChange}
           error={fieldErrors.username}
           />
-        <EditableField
-          label="Email *" value={user.email} draftValue={draft.email}
-          isEditing={isEditing}
-          field={{ type: "email", fieldKey: "email" }}
-          onChange={onDraftChange}
-          error={fieldErrors.email}
-        />
         <EditableField
           label="Gender" value={user.gender} draftValue={draft.gender}
           isEditing={isEditing}
@@ -206,6 +192,22 @@ export const PersonalTab: React.FC<PersonalTabProps> = ({
           onChange={onDraftChange}
           error={fieldErrors.idNumber}
           />
+      </FieldGroup>
+      <FieldGroup title="Contact" divided>
+        <EditableField
+          label="Email *" value={user.email} draftValue={draft.email}
+          isEditing={isEditing}
+          field={{ type: "email", fieldKey: "email" }}
+          onChange={onDraftChange}
+          error={fieldErrors.email}
+        />
+        <EditableField
+          label="Phone Number" value={user.phone} draftValue={draft.phone}
+          isEditing={isEditing}
+          field={{ type: "tel", fieldKey: "phone" }}
+          onChange={onDraftChange}
+          error={fieldErrors.phone}
+        />
         <EditableField
           label="Address" value={user.address} draftValue={draft.address}
           isEditing={isEditing}
@@ -214,7 +216,7 @@ export const PersonalTab: React.FC<PersonalTabProps> = ({
           className="md:col-span-2"
           error={fieldErrors.address}
           />
-      </div>
+      </FieldGroup>
     </div>
   );
 };

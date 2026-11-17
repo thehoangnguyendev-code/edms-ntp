@@ -62,7 +62,8 @@ public class TrainingSuspensionService {
         String name = String.valueOf(participant.get("full_name"));
         store.event(TrainingStore.OBJECT_ACTIVITY, activityId, activityId, "WORK_SUSPENSION_RAISED", Map.of("person", name), actor == null ? null : actor.getId());
         store.auditActivity(actor, activity, "TRAINING_WORK_SUSPENSION_RAISED", null, "OPEN",
-                name + " did not pass" + (percent == null ? "" : " (" + percent + "%)") + ". The work that depends on this training is suspended until the person is retrained and passes, or the head of the unit resumes it.");
+                name + " did not pass" + (percent == null ? "" : " (" + percent + "%)") + ". The work that depends on this training is suspended until the person is retrained and passes, or the head of the unit resumes it.",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Participant",null,name), com.eqms.util.AuditChanges.of("Score",null,percent == null ? null : percent + "%")));
         UserAccount trainee = users.findById(person).orElse(null);
         String title = "Training: retraining required";
         if (trainee != null) {
@@ -95,7 +96,8 @@ public class TrainingSuspensionService {
             if (done == 0) continue;
             Map<String, Object> original = store.activity((UUID) row.get("activity_id")).orElse(activity);
             store.auditActivity(actor, original, "TRAINING_WORK_SUSPENSION_CLEARED", "OPEN", "CLEARED",
-                    participant.get("full_name") + " passed (" + activity.get("training_number") + "). The suspension ends because the retraining was passed.");
+                    participant.get("full_name") + " passed (" + activity.get("training_number") + "). The suspension ends because the retraining was passed.",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Participant",null,participant.get("full_name")), com.eqms.util.AuditChanges.of("Reason",null,"Retraining was passed")));
         }
     }
 
@@ -159,7 +161,8 @@ public class TrainingSuspensionService {
                 "Training Management: work resumed after a failed assessment", null, null, null).getId();
         jdbc.update("update training_work_suspensions set status='CLEARED', cleared_at=now(), cleared_by=?, clear_basis='RESUMED_BY_HEAD', clear_reason=?, signature_id=? where id=?", actor.getId(), request.reason().trim(), signature, id);
         String name = users.findById(person).map(UserAccount::getFullName).orElse(String.valueOf(person));
-        store.auditActivity(actor, activity, "TRAINING_WORK_SUSPENSION_CLEARED", "OPEN", "CLEARED", name + ": work resumed by " + actor.getFullName() + ". Reason: " + request.reason().trim());
+        store.auditActivity(actor, activity, "TRAINING_WORK_SUSPENSION_CLEARED", "OPEN", "CLEARED", name + ": work resumed by " + actor.getFullName() + ". Reason: " + request.reason().trim(),
+                java.util.List.of(TrainingStore.change("Reason for Resuming Work", null, request.reason().trim())));
         users.findById(person).ifPresent(p -> notifier.send("TRAINING_WORK_RESUMED", p, actor, "Training: work resumed", "The head of your unit decided that the work suspended after the assessment of "
                 + activity.get("training_topics") + " may resume.", TrainingStore.OBJECT_ACTIVITY, (UUID) activity.get("id"), "resume:" + id));
         return Map.of("id", id, "status", "CLEARED");

@@ -1917,6 +1917,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
               documentId={document.id}
               documentNumber={document.documentNumber}
               entityType="Document"
+              includeChildren
             />
           )}
         </div>

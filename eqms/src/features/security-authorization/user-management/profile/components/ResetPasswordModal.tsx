@@ -8,7 +8,6 @@ import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { settingsApi } from "@/services/api/settings";
 import { useEffect, useState } from "react";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
-import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 
 interface ResetPasswordModalProps {
     isOpen: boolean;
@@ -26,7 +25,6 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
     onSuccess,
 }) => {
     const { showToast } = useToast();
-    const { requestSignature, signatureModal } = useSecurityESign();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [generatedPassword, setGeneratedPassword] = useState("");
     const [resultModal, setResultModal] = useState<{
@@ -125,14 +123,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
 
         try {
             setIsSubmitting(true);
-            const signature = await requestSignature("Reset temporary password", "User Access Change");
-            if (!signature) return;
-
-            const response = await settingsApi.resetPassword(userId, {
-                signatureToken: signature.signatureToken,
-                reason: signature.reason,
-                sendEmail: false,
-            });
+            const response = await settingsApi.resetPassword(userId, { sendEmail: false });
             const nextPassword = response.password;
             if (!nextPassword) {
                 throw new Error("The server did not return a temporary password.");
@@ -197,7 +188,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                     ) : (
                         <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
                             <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600" />
-                            <span>The temporary password is generated securely by the server after e-signature confirmation.</span>
+                            <span>The temporary password is generated securely by the server when you confirm.</span>
                         </div>
                     )}
                 </div>
@@ -212,7 +203,6 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                 confirmText="Close"
                 showCancel={false}
             />
-            {signatureModal}
         </>
     );
 };

@@ -258,6 +258,13 @@ export const AccessReviewView: React.FC = () => {
                       cell: (_campaign, index) => (currentPage - 1) * itemsPerPage + index + 1,
                     },
                     {
+                      id: "campaignNumber",
+                      header: "Campaign Number",
+                      label: "Campaign Number",
+                      sort: { direction: sortKey === "campaignNumber" ? sortDir : undefined, onSort: () => handleSort("campaignNumber") },
+                      cell: (campaign) => <span className="text-xs sm:text-sm font-medium text-emerald-600 whitespace-nowrap">{campaign.campaignNumber ?? "—"}</span>,
+                    },
+                    {
                       id: "name",
                       header: "Campaign",
                       label: "Campaign",

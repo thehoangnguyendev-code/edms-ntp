@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button/Button";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { cn } from "@/components/ui/utils";
 import { resetViewportZoom, blurActiveInput } from "@/utils/viewport";
-import { BrandLogo } from "@/components/branding/BrandLogo";
+import { BrandLogo, useBranding } from "@/components/branding/BrandLogo";
+import { DEFAULT_FOOTER_LEFT } from "@/services/api/branding";
+import { LoginSplitLayout, SPLIT_UI, SplitField } from "./components/LoginSplitLayout";
 import { captureLoginLogo, startLoginLogoTransition } from "@/components/branding/loginLogoTransition";
 import { IconArrowBigUpFilled } from "@tabler/icons-react";
 import { AUTH_UI } from "./auth-ui";
@@ -130,6 +132,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
   // REFS
   // ========================================================================
   const usernameRef = React.useRef<HTMLInputElement>(null);
+  const { loginLayout, systemFooterLeft, systemFooterRight } = useBranding();
+  const isSplit = loginLayout === "SPLIT";
 
   // ========================================================================
   // STATE
@@ -284,6 +288,94 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
       />
 
       {isLoading && <FullPageLoading text="Signing in..." />}
+      {isSplit ? (
+        <LoginSplitLayout
+          logo={<div data-login-logo><BrandLogo className="h-8 w-auto object-contain sm:h-9" /></div>}
+          footerLeft={(systemFooterLeft ?? DEFAULT_FOOTER_LEFT).replace("{year}", String(new Date().getFullYear()))}
+          footerRight={systemFooterRight ?? ""}
+          headline="Keep your quality processes under control."
+          tagline="Sign in to access your eQMS and manage your quality."
+        >
+          <h1 className={SPLIT_UI.title}>Welcome Back</h1>
+          <p className={SPLIT_UI.subtitle}>Enter your credentials to access your account.</p>
+
+          {!isSignInAccepted && <div className="mt-6"><LoginMaintenanceNotice /></div>}
+
+          {isSignInAccepted ? (
+            <div className="mt-10 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800" role="status">
+              Sign-in successful. Opening your workspace…
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="mt-10" noValidate autoComplete="on">
+              <div className="space-y-6">
+                <SplitField htmlFor="username" label="Email or Username" error={errors.username}>
+                  <input
+                    id="username"
+                    ref={usernameRef}
+                    name="username"
+                    type="text"
+                    autoComplete="username"
+                    value={formData.username}
+                    onChange={(e) => handleInputChange("username", e.target.value)}
+                    className={cn(SPLIT_UI.input, errors.username && SPLIT_UI.inputError)}
+                    placeholder="Enter your email or username"
+                    disabled={isLoading}
+                    aria-invalid={!!errors.username}
+                    aria-describedby={errors.username ? "username-error" : undefined}
+                  />
+                </SplitField>
+
+                <SplitField htmlFor="current-password" label="Password" error={errors.password}>
+                  <div className="relative">
+                    <input
+                      id="current-password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      value={formData.password}
+                      onChange={(e) => handleInputChange("password", e.target.value)}
+                      className={cn(SPLIT_UI.input, "pr-12", errors.password && SPLIT_UI.inputError)}
+                      placeholder="Enter your password"
+                      disabled={isLoading}
+                      onKeyUp={handleCapsLockCheck}
+                      onKeyDown={handleCapsLockCheck}
+                      aria-invalid={!!errors.password}
+                      aria-describedby={errors.password ? "current-password-error" : undefined}
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center">
+                      {isCapsLockOn && (
+                        <div className="mr-1 rounded-md border border-amber-200 bg-amber-50 p-1" title="Caps Lock is ON">
+                          <IconArrowBigUpFilled className="h-4 w-4 text-amber-600" />
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleTogglePassword}
+                        className={cn(SPLIT_UI.eye, "static my-0")}
+                        disabled={isLoading}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
+                      </button>
+                    </div>
+                  </div>
+                </SplitField>
+              </div>
+
+              <div className="mt-3 flex justify-end">
+                <button type="button" onClick={handleForgotPasswordClick} className={cn(SPLIT_UI.link, "flex min-h-8 items-center")} disabled={isLoading} aria-label="Forgot password">
+                  Forgot Your Password?
+                </button>
+              </div>
+
+              <Button type="submit" size="default" className={SPLIT_UI.button} disabled={isLoading} aria-busy={isLoading}>
+                Log In
+              </Button>
+            </form>
+          )}
+        </LoginSplitLayout>
+      ) : (
       <AuthLayout
         left={
           <div className={AUTH_UI.formColumn}>
@@ -416,6 +508,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
           </div>
         }
       />
+      )}
     </>
   );
 };

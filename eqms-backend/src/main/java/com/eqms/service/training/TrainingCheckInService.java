@@ -65,7 +65,8 @@ public class TrainingCheckInService {
             insert into training_session_checkins(session_id, opened_by, code) values (?,?,?)
             on conflict (session_id) do update set opened_by = excluded.opened_by, opened_at = now(), closed_at = null, closed_by = null, code = excluded.code, previous_code = null, code_issued_at = now()
             """, sessionId, actor.getId(), newCode());
-        store.auditActivity(actor, activity, "TRAINING_CHECKIN_OPENED", null, "S" + session.get("session_no"), null);
+        store.auditActivity(actor, activity, "TRAINING_CHECKIN_OPENED", null, "S" + session.get("session_no"), null,
+                java.util.List.of(TrainingStore.change("Session S" + session.get("session_no") + " › Check-in", "Closed", "Open")));
         return status(actor, sessionId);
     }
 
@@ -74,7 +75,8 @@ public class TrainingCheckInService {
         Map<String, Object> session = sessionForConductor(actor, sessionId);
         Map<String, Object> activity = store.activityForUpdate((UUID) session.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         int n = jdbc.update("update training_session_checkins set closed_at = now(), closed_by = ? where session_id = ? and closed_at is null", actor.getId(), sessionId);
-        if (n > 0) store.auditActivity(actor, activity, "TRAINING_CHECKIN_CLOSED", null, "S" + session.get("session_no"), null);
+        if (n > 0) store.auditActivity(actor, activity, "TRAINING_CHECKIN_CLOSED", null, "S" + session.get("session_no"), null,
+                java.util.List.of(TrainingStore.change("Session S" + session.get("session_no") + " › Check-in", "Open", "Closed")));
         return status(actor, sessionId);
     }
 
@@ -128,7 +130,8 @@ public class TrainingCheckInService {
         UUID signature = signatures.createEntitySignature("TRAINING_ACTIVITY", (UUID) hit.get("activity_id"), String.valueOf(activity.get("training_number")), actor, request.signatureToken(),
                 "TRAINING_ATTENDED", "Trainee confirms attending session " + hit.get("session_no") + " by the check-in code", null, null, null).getId();
         jdbc.update("update training_participants set state = 'ATTENDED', result = ?, sign_mode = 'SELF', attend_signature_id = ?, version = version + 1 where id = ?", result, signature, participantId);
-        store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_SELF_CONFIRMED", "INVITED", "ATTENDED", "S" + hit.get("session_no"));
+        store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_SELF_CONFIRMED", "INVITED", "ATTENDED", "S" + hit.get("session_no"),
+                java.util.List.of(TrainingStore.change("Session S" + hit.get("session_no") + " › Attendance", "Invited", "Attended")));
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("activityId", hit.get("activity_id"));
         out.put("trainingNumber", activity.get("training_number"));

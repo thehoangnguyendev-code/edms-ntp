@@ -133,7 +133,8 @@ public class ControlledCopyDistributionWorkerStore {
             finishItem(itemId,"FAILED",code,message);
             var actor=users.findById(claim.actorId()).orElse(null);
             audit.logAs(actor,"CONTROLLED_COPY_DISTRIBUTION_JOB","Controlled copy distribution",claim.jobId(),
-                    "DISTRIBUTION_JOB_ITEM_FAILED","PROCESSING","FAILED",message);
+                    "DISTRIBUTION_JOB_ITEM_FAILED","PROCESSING","FAILED",message,
+                com.eqms.util.AuditChanges.reason("Failure", message));
         }
         renew(claim);
     }

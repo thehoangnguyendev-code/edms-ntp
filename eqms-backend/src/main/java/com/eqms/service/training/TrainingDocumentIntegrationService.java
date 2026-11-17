@@ -317,7 +317,8 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         }
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "RELATED_REVISION_JOINED", Map.of("document", String.valueOf(revision.getDocumentNumber()), "revision", String.valueOf(revision.getRevisionNumber())), actor == null ? null : actor.getId());
         store.auditActivity(actor, lead, "TRAINING_RELATED_DOCUMENT_JOINED", String.valueOf(lead.get("status")), String.valueOf(lead.get("status")),
-                "Revision " + revision.getRevisionNumber() + " of the related document " + revision.getDocumentNumber() + " goes with this Training Number");
+                "Revision " + revision.getRevisionNumber() + " of the related document " + revision.getDocumentNumber() + " goes with this Training Number",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Related Document",null,revision.getDocumentNumber() + " Rev " + revision.getRevisionNumber())));
         waitAgainIfOpen(id, actor);
     }
 
@@ -346,7 +347,8 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         store.cancel(own, "Merged into " + lead.get("training_number") + ": the document goes with the document of that Training Number", actor);
         store.event(TrainingStore.OBJECT_ACTIVITY, (UUID) lead.get("id"), (UUID) lead.get("id"), "RELATED_NUMBER_MERGED", Map.of("merged", String.valueOf(own.get("training_number"))), actor == null ? null : actor.getId());
         store.auditActivity(actor, lead, "TRAINING_RELATED_NUMBER_MERGED", String.valueOf(lead.get("status")), String.valueOf(lead.get("status")),
-                "The Training Number " + own.get("training_number") + " of the related document " + own.get("document_number") + " was given up for this one");
+                "The Training Number " + own.get("training_number") + " of the related document " + own.get("document_number") + " was given up for this one",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Training Number Given Up",own.get("training_number"),null), com.eqms.util.AuditChanges.of("Related Document",null,own.get("document_number"))));
         waitAgainIfOpen((UUID) lead.get("id"), actor);
     }
 
@@ -394,7 +396,8 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         }
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "RELATED_REVISION_LEFT", Map.of("document", String.valueOf(revision.getDocumentNumber())), actor == null ? null : actor.getId());
         store.auditActivity(actor, activity, "TRAINING_RELATED_DOCUMENT_LEFT", String.valueOf(activity.get("status")), String.valueOf(activity.get("status")),
-                "Revision " + revision.getRevisionNumber() + " of " + revision.getDocumentNumber() + " was cancelled and leaves this Training Number");
+                "Revision " + revision.getRevisionNumber() + " of " + revision.getDocumentNumber() + " was cancelled and leaves this Training Number",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Related Document Left",revision.getDocumentNumber() + " Rev " + revision.getRevisionNumber(),null)));
     }
 
     /** The activity opens when every revision of the group has been approved (the group is one release); the day of the last approval starts the period. */
@@ -506,7 +509,8 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
                                        and exists (select 1 from training_proposed_participants q where q.activity_id = a.id) order by a.created_at desc limit 1)
             """, id, document.getId(), id);
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "NUMBER_ISSUED", Map.of("trainingNumber", issued.baseNumber(), "document", String.valueOf(document.getDocumentNumber())), actor == null ? null : actor.getId());
-        store.auditActivity(actor, created, "TRAINING_NUMBER_ASSIGNED", null, "RESERVED", "Training Number assigned to " + (revision == null ? "the first revision of " : "revision of ") + document.getDocumentNumber());
+        store.auditActivity(actor, created, "TRAINING_NUMBER_ASSIGNED", null, "RESERVED", "Training Number assigned to " + (revision == null ? "the first revision of " : "revision of ") + document.getDocumentNumber(),
+                List.of(TrainingStore.change("Training Number", null, issued.baseNumber()), TrainingStore.change("Document", null, document.getDocumentNumber())));
         if (revision != null) {
             revision.setTrainingActivityId(id);
             revision.setTrainingNumber(issued.baseNumber());
@@ -523,7 +527,8 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         revision.setTrainingMode(MODE_INTEGRATED);
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "BOUND_TO_REVISION", Map.of("revision", String.valueOf(revision.getRevisionNumber())), actor == null ? null : actor.getId());
         store.auditActivity(actor, activity, "TRAINING_ACTIVITY_LINKED", String.valueOf(activity.get("status")), String.valueOf(activity.get("status")),
-                "Linked to revision " + revision.getRevisionNumber());
+                "Linked to revision " + revision.getRevisionNumber(),
+                List.of(TrainingStore.change("Revision", null, revision.getRevisionNumber())));
     }
 
     private void updatePeriod(Map<String, Object> activity, int days, UserAccount actor) {
@@ -536,7 +541,8 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         jdbc.update("update training_activities set training_period_days=?, due_date=?, version=version+1, updated_at=now() where id=?",
                 days, approvedOn == null ? null : approvedOn.plusDays(days), id);
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "PERIOD_CHANGED", Map.of("from", String.valueOf(current), "to", days), actor == null ? null : actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_PERIOD_CHANGED", status, status, "Training period " + current + " -> " + days + " days");
+        store.auditActivity(actor, activity, "TRAINING_PERIOD_CHANGED", status, status, "Training period " + current + " -> " + days + " days",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Training Period (Days)",current,days)));
     }
 
     private void cancelOrRefuse(Map<String, Object> activity, String reason, UserAccount actor) {

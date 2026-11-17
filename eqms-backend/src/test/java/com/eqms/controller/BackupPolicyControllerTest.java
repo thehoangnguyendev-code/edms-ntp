@@ -137,7 +137,7 @@ class BackupPolicyControllerTest {
         ArgumentCaptor<Map<String, Object>> body = ArgumentCaptor.forClass(Map.class);
         verify(agent).exchange(eq(HttpMethod.POST), eq("/internal/policies"), body.capture());
         assertThat(body.getValue()).containsEntry("proposedBy", "bob").containsEntry("reason", "Add T3");
-        verify(audit).logAs(eq(actor), eq("BACKUP_POLICY"), eq("Backup policy v3"), eq(id), eq("BACKUP_POLICY_PROPOSED"), any(), eq("DRAFT"), anyString());
+        verify(audit).logAs(eq(actor), eq("BACKUP_POLICY"), eq("Backup policy v3"), eq(id), eq("BACKUP_POLICY_PROPOSED"), any(), eq("DRAFT"), anyString(), any());
     }
 
     @Test
@@ -146,7 +146,7 @@ class BackupPolicyControllerTest {
         ResponseEntity<JsonNode> response = controller.propose(new BackupPolicyController.ProposeRequest(null, null, null, null, "why"));
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody().path("code").asText()).isEqualTo("POLICY_RETENTION");
-        verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), anyString());
+        verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), anyString(), any());
     }
 
     @Test
@@ -202,7 +202,7 @@ class BackupPolicyControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
         assertThat(response.getBody().path("code").asText()).isEqualTo("POLICY_GATE_FAILED");
         assertThat(status.isRollbackOnly()).as("the signature must not outlive a refused activation").isTrue();
-        verify(audit).logAs(eq(actor), eq("BACKUP_POLICY"), eq("Backup policy v2"), eq(id), eq("BACKUP_POLICY_ACTIVATION_REFUSED"), eq("DRAFT"), eq("DRAFT"), org.mockito.ArgumentMatchers.contains("POLICY_GATE_FAILED"));
+        verify(audit).logAs(eq(actor), eq("BACKUP_POLICY"), eq("Backup policy v2"), eq(id), eq("BACKUP_POLICY_ACTIVATION_REFUSED"), eq("DRAFT"), eq("DRAFT"), org.mockito.ArgumentMatchers.contains("POLICY_GATE_FAILED"), any());
         verify(audit, never()).logAs(any(), anyString(), anyString(), any(), eq("BACKUP_POLICY_ACTIVATED"), any(), any(), anyString(), any(), any());
     }
 
@@ -230,7 +230,7 @@ class BackupPolicyControllerTest {
         assertThatThrownBy(() -> controller.discard(2, new BackupPolicyController.DiscardRequest(""))).isInstanceOf(ResponseStatusException.class);
         when(agent.exchange(eq(HttpMethod.POST), eq("/internal/policies/2/discard"), any())).thenReturn(reply(200, "{\"id\":\"" + id + "\",\"status\":\"DISCARDED\"}"));
         assertThat(controller.discard(2, new BackupPolicyController.DiscardRequest("Wrong list")).getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(audit).logAs(eq(actor), eq("BACKUP_POLICY"), eq("Backup policy v2"), eq(id), eq("BACKUP_POLICY_DISCARDED"), eq("DRAFT"), eq("DISCARDED"), anyString());
+        verify(audit).logAs(eq(actor), eq("BACKUP_POLICY"), eq("Backup policy v2"), eq(id), eq("BACKUP_POLICY_DISCARDED"), eq("DRAFT"), eq("DISCARDED"), anyString(), any());
     }
 
     @Test
@@ -252,7 +252,7 @@ class BackupPolicyControllerTest {
         when(agent.exchange(eq(HttpMethod.POST), eq("/internal/targets/T3/test"), any())).thenReturn(reply(200, "{\"ok\":false}"));
         assertThat(controller.testTarget("T3").getStatusCode()).isEqualTo(HttpStatus.OK);
         // the audit row needs a non-null id; a target has a stable one derived from its code (a null id made the audit write fail)
-        verify(audit).logAs(eq(actor), eq("BACKUP_TARGET"), eq("T3"), eq(com.eqms.service.BackupPolicyService.targetAuditId("T3")), eq("BACKUP_TARGET_TESTED"), isNull(), eq("FAILED"), anyString());
+        verify(audit).logAs(eq(actor), eq("BACKUP_TARGET"), eq("T3"), eq(com.eqms.service.BackupPolicyService.targetAuditId("T3")), eq("BACKUP_TARGET_TESTED"), isNull(), eq("FAILED"), anyString(), any());
     }
 
     @Test
@@ -260,6 +260,6 @@ class BackupPolicyControllerTest {
         allow("backup.admin.storage.test");
         when(agent.exchange(eq(HttpMethod.POST), anyString(), any())).thenReturn(reply(404, "{\"error\":\"Unknown target T9\"}"));
         assertThat(controller.testTarget("T9").getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), anyString());
+        verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), anyString(), any());
     }
 }

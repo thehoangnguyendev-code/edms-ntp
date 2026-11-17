@@ -17,6 +17,8 @@ import { USER_MANAGEMENT_ROUTES } from "@/features/security-authorization/user-m
 import { ROUTES } from "@/app/routes.constants";
 import { formatWorkflowStatusLabel } from "./utils/statusLabel";
 import type { AuditTrailDetailRecord, AuditTrailRecord } from "./types";
+import { objectHistoryPath } from "./utils/objectHistory";
+import { CHANGE_KIND_LABEL, expandChange, formatAuditField, isBlank, isTechnicalField, type ChangeRow } from "./utils/changeRows";
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 import { Collapsible } from "@/components/ui/collapsible";
 
@@ -76,26 +78,6 @@ const BOOLEAN_AUDIT_FIELDS = new Set([
   "inappenabled", "mfaenabled", "twofactorenabled", "forcepasswordchange",
 ]);
 
-const formatAuditField = (field?: string | null): string => {
-  const raw = String(field || "").trim();
-  if (!raw) return "Field";
-  const normalized = raw
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/[_./-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  const specialLabels: Record<string, string> = {
-    "is active": "Active",
-    "has expiry date": "Has Expiry Date",
-    "email notifications enabled": "Email Notifications Enabled",
-    "two factor enabled": "Two-Factor Authentication Enabled",
-    "mfa enabled": "Multi-Factor Authentication Enabled",
-    "file size bytes": "File Size",
-  };
-  const key = normalized.toLowerCase();
-  return specialLabels[key] || normalized.replace(/\b\w/g, (letter) => letter.toUpperCase());
-};
-
 const isBooleanAuditField = (field?: string | null): boolean => {
   const normalized = String(field || "").replace(/[^a-z0-9]/gi, "").toLowerCase();
   return BOOLEAN_AUDIT_FIELDS.has(normalized)
@@ -144,9 +126,6 @@ const formatProcessingDuration = (seconds: number): string => {
   if (seconds < 1) return `${Math.round(seconds * 1000)} ms`;
   return `${seconds.toFixed(seconds < 10 ? 3 : 2)} sec`;
 };
-
-/** A value that says nothing: empty, "-", "null", "Not specified". It is left out instead of being shown as a value. */
-const isBlank = (value?: string | null) => /^(|-|—|null|undefined|n\/a|not specified)$/i.test((value ?? "").trim());
 
 /** A before or after value as a chip; a missing value is a dash. */
 const ValueChip: React.FC<{ field: string | null | undefined; value?: string | null; side: "before" | "after" }> = ({ field, value, side }) =>
@@ -230,6 +209,9 @@ export const AuditTrailDetailView: React.FC<{
     : r ? eventLabel(r) : "-";
   // The module is the name of the sidebar menu the object belongs to (sent by the server).
   const moduleLabel = r ? getMetadataValue(r.metadata, "menuModule") || formatAuditModuleLabel(r.module) : "";
+  const recordObjectType = r ? getMetadataValue(r.metadata, "objectTypeLabel") || formatAuditModuleLabel(r.entityType || r.module) : "-";
+  const recordObjectCode = r ? getMetadataValue(r.metadata, "objectCodeLabel") || r.objectCode || "-" : "-";
+  const recordAction = r ? getMetadataValue(r.metadata, "actionLabel") || eventLabel(r) : "-";
   const profileId = r?.user?.id || "";
   const userName = r?.user?.fullName || r?.fullName || "System User";
   const isDestroyAction = r ? isControlledCopyDestroyAction(r) : false;
@@ -272,9 +254,12 @@ export const AuditTrailDetailView: React.FC<{
   const hasStatusRow = fieldChanges.some((c) => /^(status|state)$/i.test((c.field || "").trim()));
   const readOnlyEvent = /^(view|login|logout|failed[ _]login|preview|open|download|export|send[ _]email)/i.test((r?.actionType || r?.action || "").toString().trim());
   const statusMoved = !readOnlyEvent && !(fromStatus === "" && toStatus === "") && fromStatus.toLowerCase() !== toStatus.toLowerCase();
-  const changeRows = [
-    ...(statusMoved && !hasStatusRow ? [{ field: "Status", oldValue: fromStatus, newValue: toStatus }] : []),
-    ...fieldChanges,
+  // File internals (checksum, storage keys, paths) are for an investigator: they are listed under "Technical details", not here.
+  const userFieldChanges = fieldChanges.filter((c) => !isTechnicalField(c.field));
+  const technicalChanges = fieldChanges.filter((c) => isTechnicalField(c.field));
+  const changeRows: ChangeRow[] = [
+    ...(statusMoved && !hasStatusRow ? expandChange({ field: "Status", oldValue: fromStatus, newValue: toStatus }) : []),
+    ...userFieldChanges.flatMap(expandChange),
   ];
   // A record that was just created has nothing "before": that column is left out.
   const hasBefore = changeRows.some((c) => !isBlank(c.oldValue));
@@ -284,12 +269,18 @@ export const AuditTrailDetailView: React.FC<{
   if (r) {
     technicalItems.push({ label: "Record ID", value: r.id });
     if (r.entityId) technicalItems.push({ label: "Entity ID", value: r.entityId });
-    if (r.objectCode) technicalItems.push({ label: "Object Code", value: r.objectCode });
     if (r.severity) technicalItems.push({ label: "Severity", value: r.severity });
     technicalItems.push({ label: "IP Address", value: r.ipAddress || "-" });
     if (r.userAgent || r.device) technicalItems.push({ label: "Client Device / Agent", value: r.device || r.userAgent });
     if (r.progressDurationSeconds !== undefined && r.progressDurationSeconds !== null) {
       technicalItems.push({ label: "Processing Duration", value: formatProcessingDuration(r.progressDurationSeconds) });
+    }
+    for (const row of technicalChanges.flatMap(expandChange)) {
+      const after = isBlank(row.newValue) ? "(cleared)" : formatAuditChangeValue(row.valueField, row.newValue);
+      technicalItems.push({
+        label: row.field,
+        value: <span className="font-mono text-xs">{isBlank(row.oldValue) ? after : `${formatAuditChangeValue(row.valueField, row.oldValue)} → ${after}`}</span>,
+      });
     }
   }
 
@@ -346,9 +337,6 @@ export const AuditTrailDetailView: React.FC<{
                   <h2 className="text-balance text-lg font-semibold leading-snug text-slate-900">{actionLabel}</h2>
                   <p className="mt-0.5 break-words text-sm text-slate-600">
                     {entityLabel}
-                    {r.objectCode && r.objectCode !== entityLabel && (
-                      <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-600">{r.objectCode}</span>
-                    )}
                   </p>
                 </div>
                 <div className="hidden shrink-0 flex-wrap justify-end gap-1.5 sm:flex">
@@ -369,6 +357,25 @@ export const AuditTrailDetailView: React.FC<{
                 </span>
                 {userCodeNode}
               </p>
+              {/* The four words the Audit Trail list shows, so this screen can be matched with the line that was opened. */}
+              <dl className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                <DetailItem label="Module" value={moduleLabel || "General"} />
+                <DetailItem label="Object Type" value={recordObjectType} />
+                <DetailItem
+                  label="Object Code"
+                  value={
+                    <span className="inline-flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <span className="font-mono">{recordObjectCode}</span>
+                      {r.entityId && recordObjectCode !== "-" && (
+                        <button type="button" onClick={() => navigate(objectHistoryPath(r.entityId as string, recordObjectCode))} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline">
+                          View all records of this object
+                        </button>
+                      )}
+                    </span>
+                  }
+                />
+                <DetailItem label="Action" value={recordAction} />
+              </dl>
               {description && description !== entityLabel && changeRows.length === 0 && permissionChanges.length === 0 && (
                 <p className="mt-3 break-words border-t border-slate-100 pt-3 text-xs text-slate-600 sm:text-sm">{description}</p>
               )}
@@ -395,11 +402,19 @@ export const AuditTrailDetailView: React.FC<{
                       <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
                         {changeRows.map((change, i) => (
                           <TableMarkup.Row key={`${change.field}-${i}`}>
-                            <TableMarkup.Cell className="px-3 py-3 text-xs font-semibold sm:px-4 text-slate-900 md:px-5 md:text-sm">{formatAuditField(change.field)}</TableMarkup.Cell>
+                            <TableMarkup.Cell className="px-3 py-3 text-xs font-semibold sm:px-4 text-slate-900 md:px-5 md:text-sm">
+                              <span className="[overflow-wrap:anywhere]">{change.field}</span>
+                              <span className={cn("ml-2 inline-block rounded px-1.5 py-0.5 align-middle text-2xs font-medium",
+                                change.kind === "set" && "bg-emerald-50 text-emerald-700",
+                                change.kind === "changed" && "bg-amber-50 text-amber-700",
+                                change.kind === "cleared" && "bg-rose-50 text-rose-700")}>
+                                {CHANGE_KIND_LABEL[change.kind]}
+                              </span>
+                            </TableMarkup.Cell>
                             {hasBefore && (
-                              <TableMarkup.Cell className="px-3 py-3 sm:px-4"><ValueChip field={change.field} value={change.oldValue} side="before" /></TableMarkup.Cell>
+                              <TableMarkup.Cell className="px-3 py-3 sm:px-4"><ValueChip field={change.valueField} value={change.oldValue} side="before" /></TableMarkup.Cell>
                             )}
-                            <TableMarkup.Cell className="px-3 py-3 sm:px-4 md:pr-5"><ValueChip field={change.field} value={change.newValue} side="after" /></TableMarkup.Cell>
+                            <TableMarkup.Cell className="px-3 py-3 sm:px-4 md:pr-5"><ValueChip field={change.valueField} value={change.newValue} side="after" /></TableMarkup.Cell>
                           </TableMarkup.Row>
                         ))}
                       </TableMarkup.Body>
@@ -503,7 +518,7 @@ export const AuditTrailDetailView: React.FC<{
                   aria-expanded={showTechnical}
                   className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-xs text-slate-500 transition-colors hover:bg-slate-50 sm:text-sm md:px-5"
                 >
-                  <span>Technical details <span className="text-slate-400">· IP address, device, record ID</span></span>
+                  <span>Technical details <span className="text-slate-400">· IP address, device, record ID, file internals</span></span>
                   <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-emerald-600">
                     {showTechnical ? "Hide" : "Show"}
                     <ChevronDown className={cn("h-4 w-4 transition-transform", showTechnical && "rotate-180")} />

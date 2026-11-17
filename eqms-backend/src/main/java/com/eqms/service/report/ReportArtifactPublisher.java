@@ -22,6 +22,12 @@ public class ReportArtifactPublisher {
     public ReportArtifactPublisher(JdbcTemplate jdbc, ReportTemplateService templates, UserAccountRepository users) {
         this.jdbc=jdbc; this.templates=templates; this.users=users;
     }
+    /** What the Audit Trail calls a run: its own number (RUN-000176), never the code of its template, which every run of that template shares. */
+    private String runCode(UUID runId, String fallback) {
+        String number = jdbc.query("select run_number from report_runs where id=?", rs -> rs.next() ? com.eqms.service.ReportPlatformService.runLabel(rs.getObject(1)) : null, runId);
+        return number == null || number.isEmpty() ? fallback : number;
+    }
+
     @Transactional
     public void publish(UUID runId, int attempt, UUID artifactId, String code, JsonNode snapshot, String format,
                         String filename, FileStorageService.StorageWriteResult stored, String mime, long size, String hash, Instant expiry) {
@@ -36,7 +42,7 @@ public class ReportArtifactPublisher {
                 artifactId,runId,format,filename,stored.provider(),stored.bucket(),stored.storedPath(),stored.versionId(),mime,size,hash,expiry==null?null:java.sql.Timestamp.from(expiry));
         jdbc.update("update report_runs set authorization_snapshot=cast(? as jsonb),as_of_at=coalesce(cast(? as timestamptz),started_at,as_of_at),status='COMPLETED',progress=100,completed_at=now(),lease_until=null,reason_code=null,error_message=null where id=?",snapshot.toString(),snapshot.path("asOfAt").isTextual()?snapshot.path("asOfAt").asText():null,runId);
         com.eqms.service.EntityChangeBroadcaster.changed("REPORT_RUN", runId, null);
-        if (audit != null) audit.logSystem("REPORT_RUN", code, runId, "REPORT_RUN_COMPLETED", "PROCESSING", "COMPLETED",
+        if (audit != null) audit.logSystem("REPORT_RUN", runCode(runId, code), runId, "REPORT_RUN_COMPLETED", "PROCESSING", "COMPLETED",
                 "Report file made: " + filename + " (" + format + ", " + size + " bytes, SHA-256 " + hash + ")");
         jdbc.update("insert into report_run_events(run_id,event_type,detail) values(?,'COMPLETED',jsonb_build_object('artifactId',cast(? as text),'sha256',cast(? as text)))",runId,artifactId.toString(),hash);
         jdbc.update("update report_artifact_publication_journal set status='PUBLISHED',published_at=now() where artifact_id=?",artifactId);
@@ -65,7 +71,7 @@ public class ReportArtifactPublisher {
         long delay=Math.min(300L,15L*(1L<<Math.max(0,attempt-1)));
         jdbc.update("update report_runs set status=?,reason_code=?,error_message=?,next_attempt_at=now()+(?*interval '1 second'),lease_until=null where id=?",retry?"RETRY_SCHEDULED":"FAILED",reason,message,delay,runId);
         com.eqms.service.EntityChangeBroadcaster.changed("REPORT_RUN", runId, null);
-        if (audit != null) audit.logSystem("REPORT_RUN", String.valueOf(run.get("definition_code")), runId, retry ? "REPORT_RUN_RETRY_SCHEDULED" : "REPORT_RUN_FAILED", "PROCESSING", retry ? "RETRY_SCHEDULED" : "FAILED",
+        if (audit != null) audit.logSystem("REPORT_RUN", runCode(runId, String.valueOf(run.get("definition_code"))), runId, retry ? "REPORT_RUN_RETRY_SCHEDULED" : "REPORT_RUN_FAILED", "PROCESSING", retry ? "RETRY_SCHEDULED" : "FAILED",
                 "Attempt " + attempt + " failed (" + reason + "): " + message + (retry ? " Next attempt in " + delay + " seconds." : " No further attempt will be made."));
         jdbc.update("insert into report_run_events(run_id,event_type,reason_code,detail) values(?,?,?,jsonb_build_object('attempt',cast(? as integer),'delaySeconds',cast(? as bigint)))",runId,retry?"RETRY_SCHEDULED":"DEAD_LETTERED",reason,attempt,delay);
     }

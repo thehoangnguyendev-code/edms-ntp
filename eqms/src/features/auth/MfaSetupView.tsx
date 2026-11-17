@@ -6,7 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button/Button";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { cn } from "@/components/ui/utils";
-import { AUTH_UI } from "./auth-ui";
+import { useAuthUi } from "./useAuthUi";
 import { AuthBackLink, AuthLayout } from "./components";
 import { BrandLogo } from "@/components/branding/BrandLogo";
 import { authApi } from "@/services/api";
@@ -26,6 +26,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
   onBackToLogin,
   email = "a***n@eqms.com",
 }) => {
+  const ui = useAuthUi();
   const { updateUser } = useAuth();
   const [step, setStep] = useState<SetupStep>("selection");
   const [method, setMethod] = useState<MfaMethod | null>(null);
@@ -145,10 +146,10 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
       exit={prefersReducedMotion ? { opacity: 1, x: 0 } : { opacity: 0, x: 20 }}
       className="space-y-6"
     >
-      <div className={AUTH_UI.headerArea}>
-        <div className={AUTH_UI.headingBlock}>
-          <h1 className={AUTH_UI.pageTitle}>Multi-Factor Setup</h1>
-          <p className={AUTH_UI.description}>
+      <div className={ui.headerArea}>
+        <div className={ui.headingBlock}>
+          <h1 className={ui.pageTitle}>Multi-Factor Setup</h1>
+          <p className={ui.description}>
             Choose how you would like to receive your secure login verification codes.
           </p>
         </div>
@@ -158,7 +159,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
         <button
           type="button"
           onClick={() => handleMethodSelect("email")}
-          className="group flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white p-2.5 text-left transition-colors hover:border-emerald-700/40 hover:bg-emerald-50/30 sm:p-4"
+          className={`group flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white p-2.5 text-left transition-colors ${ui.choiceCard} sm:p-4`}
         >
           <div className="flex items-center gap-2 sm:gap-3">
             <span className="text-slate-600"><IconMailOpened size={26} stroke={1.5} /></span>
@@ -172,7 +173,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
         <button
           type="button"
           onClick={() => handleMethodSelect("app")}
-          className="group flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white p-2.5 text-left transition-colors hover:border-emerald-700/40 hover:bg-emerald-50/30 sm:p-4"
+          className={`group flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white p-2.5 text-left transition-colors ${ui.choiceCard} sm:p-4`}
         >
           <div className="flex items-center gap-2 sm:gap-3">
             <span className="text-slate-600"><IconQrcode size={26} stroke={1.5} /></span>
@@ -195,10 +196,10 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
       exit={prefersReducedMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 1.04 }}
       className="space-y-4 sm:space-y-6"
     >
-      <div className={cn(AUTH_UI.headerArea, "mb-1 sm:mb-1")}>
-        <div className={AUTH_UI.headingBlock}>
-          <h1 className={AUTH_UI.pageTitle}>{method === "app" ? "Scan QR Code" : "Verify Email"}</h1>
-          <p className={AUTH_UI.description}>
+      <div className={cn(ui.headerArea, "mb-1 sm:mb-1")}>
+        <div className={ui.headingBlock}>
+          <h1 className={ui.pageTitle}>{method === "app" ? "Scan QR Code" : "Verify Email"}</h1>
+          <p className={ui.description}>
             {method === "app" ? (
               "Open your authenticator app and scan the code below."
             ) : (
@@ -300,7 +301,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
         </motion.div>
       </div>
 
-      <Button className={cn(AUTH_UI.submitButton, "mt-4")} onClick={verifySetup} disabled={isLoading || otp.join("").length < 6}>
+      <Button className={cn(ui.submitButton, "mt-4")} onClick={verifySetup} disabled={isLoading || otp.join("").length < 6}>
         Verify & Finalize
       </Button>
 
@@ -355,7 +356,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
       </div>
 
       <div className="space-y-3">
-        <h1 className={AUTH_UI.pageTitleStrong}>Account Secured</h1>
+        <h1 className={ui.pageTitleStrong}>Account Secured</h1>
         <p className="max-w-xs text-sm leading-6 text-slate-500 sm:text-sm sm:leading-7">
           Two-factor authentication has been successfully enabled.
         </p>
@@ -376,7 +377,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
           </div>
         </div>
 
-        <Button className={cn("w-full py-6 text-lg", AUTH_UI.submitButton)} onClick={onComplete}>
+        <Button className={cn("w-full py-6 text-lg", ui.submitButton)} onClick={onComplete}>
           Continue to System
         </Button>
       </div>
@@ -388,8 +389,8 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
       {(isLoading && step !== "config") && <FullPageLoading text="Finalizing security setup..." />}
       <AuthLayout
         left={
-          <div className={AUTH_UI.formColumn}>
-            <div className="mb-6 flex items-center gap-3 text-slate-900 sm:mb-10 lg:mb-12">
+          <div className={ui.formColumn}>
+            <div className={ui.brand}>
               <BrandLogo className="h-8 w-auto object-contain sm:h-9" />
             </div>
 

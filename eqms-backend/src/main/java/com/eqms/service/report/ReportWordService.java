@@ -98,7 +98,8 @@ public class ReportWordService {
         if(!Set.of("cover","header","footer").contains(type)||name==null||name.length()>255||name.contains("/")||name.contains("\\")||!name.toLowerCase(Locale.ROOT).endsWith(".docx"))throw new IllegalArgumentException("REPORT_WORD_COMPONENT_INVALID");
         var placeholders=inspect(bytes);var id=UUID.randomUUID();String hash=hash(bytes);
         jdbc.update("insert into report_word_components(id,component_type,file_name,content,sha256,placeholders,created_by_user_id) values(?,?,?,?,?,cast(? as jsonb),?)",id,type,name,bytes,hash,json.writeValueAsString(placeholders),actor.getId());
-        audit.logAs(actor,"REPORT_TEMPLATE",name,id,"REPORT_WORD_COMPONENT_UPLOADED",null,null,type+" DOCX uploaded; SHA-256 "+hash);
+        audit.logAs(actor,"REPORT_TEMPLATE",name,id,"REPORT_WORD_COMPONENT_UPLOADED",null,null,type+" DOCX uploaded; SHA-256 "+hash,
+                java.util.List.of(com.eqms.util.AuditChanges.of("File Type",null,type), com.eqms.util.AuditChanges.of("SHA-256 Checksum",null,hash)));
         return new ReportLayout.WordComponent(id,hash,name,placeholders);
     }
     public void validate(ReportLayout layout) { for(var part:layout.effectiveWordComponents().entrySet())load(part.getKey(),part.getValue()); }

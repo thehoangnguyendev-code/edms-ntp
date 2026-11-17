@@ -113,9 +113,10 @@ public class TrainingSettingsService {
             select count(*) from up
             """, Integer.class, request.departmentId(), request.year(), request.lastSerial());
         if (changed == null || changed == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_NUMBER_COUNTER_CAN_ONLY_RISE");
-        audit.logAs(actor, "TRAINING_SETTINGS", "TRAINING_NUMBER_COUNTER " + code + " " + request.year(), AUDIT_ID, "TRAINING_NUMBER_COUNTER_RAISED", null, null,
+        audit.logAs(actor, "TRAINING_SETTINGS", "Training Number Counter " + code + " " + request.year(), AUDIT_ID, "TRAINING_NUMBER_COUNTER_RAISED", null, null,
                 "Counter of " + department.getFirst().get("name") + " " + request.year() + " raised from " + (before.isEmpty() ? "none" : before.getFirst()) + " to " + request.lastSerial()
-                        + ". Next number: " + TrainingNumberService.format(code.toUpperCase(java.util.Locale.ROOT), request.year(), request.lastSerial() + 1) + ". Reason: " + request.reason().trim());
+                        + ". Next number: " + TrainingNumberService.format(code.toUpperCase(java.util.Locale.ROOT), request.year(), request.lastSerial() + 1) + ". Reason: " + request.reason().trim(),
+                com.eqms.util.AuditChanges.with("Reason", request.reason(), com.eqms.util.AuditChanges.of("Last Serial Used (" + code + " " + request.year() + ")",before.isEmpty() ? null : before.getFirst(),request.lastSerial())));
         return numberCounters(actor, 1, 10);
     }
 

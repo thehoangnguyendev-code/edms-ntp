@@ -212,7 +212,8 @@ public class TrainingPersonnelReviewService {
                 id, person.getId(), request.kind(), Date.valueOf(request.eventDate()), absence ? Date.valueOf(request.absenceFrom()) : null, absence ? Date.valueOf(request.absenceTo()) : null,
                 transfer ? plan.get("departmentFrom") : null, transfer ? plan.get("departmentTo") : null, note, actor.getId());
         for (Item item : ITEMS.get(request.kind())) jdbc.update("insert into training_personnel_review_items(review_id, item_code) values (?,?)", id, item.code());
-        audit.logAs(actor, TYPE, "Training review of " + person.getFullName(), id, "TRAINING_PERSONNEL_REVIEW_OPENED", null, "OPEN", request.kind() + (note == null ? "" : ". " + note));
+        audit.logAs(actor, TYPE, person.getEmployeeCode() != null && !person.getEmployeeCode().isBlank() ? person.getEmployeeCode() : person.getFullName(), id, "TRAINING_PERSONNEL_REVIEW_OPENED", null, "OPEN", request.kind() + (note == null ? "" : ". " + note),
+                noteChanges(TrainingStore.change("Review Type", null, TrainingStore.words(String.valueOf(request.kind()))), note));
         // The head of the department signs to close the review, as for the other signing steps.
         approvals.designate(actor, subject(lock(id), person), "REVIEW_CLOSE", (UUID) plan.get("closerUserId"), TrainingApprovalService.apart(person.getId()));
         return get(actor, id);
@@ -291,7 +292,8 @@ public class TrainingPersonnelReviewService {
         int pendingBefore = ((Number) r.get("open_items")).intValue();
         jdbc.update("update training_personnel_review_items set status = ?, activity_id = ?, note = ?, done_by = ?, done_at = case when ? then now() else null end where review_id = ? and item_code = ?",
                 request.status(), activityId, note, done ? actor.getId() : null, done, id, itemCode);
-        audit.logAs(actor, TYPE, "Training review " + r.get("review_no"), id, "TRAINING_PERSONNEL_REVIEW_ITEM", null, request.status(), item.label() + (note == null ? "" : ". " + note));
+        audit.logAs(actor, TYPE, auditCode(id), id, "TRAINING_PERSONNEL_REVIEW_ITEM", null, request.status(), item.label() + (note == null ? "" : ". " + note),
+                noteChanges(TrainingStore.change(item.label() + " › Status", null, TrainingStore.words(request.status())), note));
         Integer pendingAfter = jdbc.queryForObject("select count(*) from training_personnel_review_items where review_id = ? and status = 'PENDING'", Integer.class, id);
         if (pendingBefore > 0 && pendingAfter != null && pendingAfter == 0) tellCloser(actor, r);
         return get(actor, id);
@@ -319,7 +321,8 @@ public class TrainingPersonnelReviewService {
                 "From training review " + r.get("review_no"), null, null));
         UUID activityId = (UUID) created.get("id");
         jdbc.update("update training_personnel_review_items set activity_id = ? where review_id = ? and item_code = ?", activityId, id, itemCode);
-        audit.logAs(actor, TYPE, "Training review " + r.get("review_no"), id, "TRAINING_PERSONNEL_REVIEW_TRAINING_CREATED", null, String.valueOf(created.get("trainingNumber")), item.label());
+        audit.logAs(actor, TYPE, auditCode(id), id, "TRAINING_PERSONNEL_REVIEW_TRAINING_CREATED", null, String.valueOf(created.get("trainingNumber")), item.label(),
+                List.of(TrainingStore.change("Training Number", null, created.get("trainingNumber")), TrainingStore.change("Review Item", null, item.label())));
         Map<String, Object> out = get(actor, id);
         out.put("createdActivityId", activityId);
         return out;
@@ -403,7 +406,8 @@ public class TrainingPersonnelReviewService {
                 "Training Management: personnel training review closed", null, null, null).getId();
         approvals.complete(assignment, signature);
         jdbc.update("update training_personnel_reviews set status = 'CLOSED', closed_by = ?, closed_at = now(), closed_signature_id = ? where id = ?", actor.getId(), signature, id);
-        audit.logAs(actor, TYPE, "Training review " + r.get("review_no"), id, "TRAINING_PERSONNEL_REVIEW_CLOSED", "OPEN", "CLOSED", owner.getFullName());
+        audit.logAs(actor, TYPE, auditCode(id), id, "TRAINING_PERSONNEL_REVIEW_CLOSED", "OPEN", "CLOSED", owner.getFullName(),
+                List.of(TrainingStore.change("Closed For", null, owner.getFullName())));
         return get(actor, id);
     }
 
@@ -416,7 +420,8 @@ public class TrainingPersonnelReviewService {
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         jdbc.update("update training_personnel_reviews set status = 'CANCELLED', cancel_reason = ? where id = ?", request.reason().trim(), id);
         approvals.cancelOpen(TYPE, id, "Review cancelled");
-        audit.logAs(actor, TYPE, "Training review " + r.get("review_no"), id, "TRAINING_PERSONNEL_REVIEW_CANCELLED", "OPEN", "CANCELLED", request.reason().trim());
+        audit.logAs(actor, TYPE, auditCode(id), id, "TRAINING_PERSONNEL_REVIEW_CANCELLED", "OPEN", "CANCELLED", request.reason().trim(),
+                List.of(TrainingStore.change("Reason for Cancelling", null, request.reason().trim())));
         return get(actor, id);
     }
 
@@ -470,4 +475,14 @@ public class TrainingPersonnelReviewService {
     }
 
     private static String blank(String v) { return v == null || v.isBlank() ? null : v.trim(); }
+
+    /** What the Audit Trail names a review by: the employee code of the person it concerns (AUDIT-OBJECT-REGISTRY-2026-11-17). */
+    private String auditCode(UUID id) {
+        return jdbc.queryForList("select coalesce(nullif(u.employee_code, ''), u.full_name) from training_personnel_reviews r join app_users u on u.id = r.person_user_id where r.id=?", String.class, id).stream().findFirst().orElse("Training review");
+    }
+
+    /** The change of a review entry, and the note the person wrote when there is one. */
+    private static List<com.eqms.dto.audittrail.AuditTrailChangeResponse> noteChanges(com.eqms.dto.audittrail.AuditTrailChangeResponse main, String note) {
+        return note == null ? List.of(main) : List.of(main, TrainingStore.change("Note", null, note));
+    }
 }

@@ -44,6 +44,8 @@ public class ReportPlatformService {
     private final AuditTrailService auditTrail;
     private com.eqms.service.report.ReportTemplateService templates;
     private com.eqms.service.report.ReportArtifactPublisher publisher;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ObjectNumberService numbers;
     private com.eqms.service.report.ReportWordService words;
     private com.eqms.service.report.ReportRunLeaseService runLeases;
     private VerifiedDownloadService verifiedDownloads;
@@ -123,7 +125,8 @@ public class ReportPlatformService {
         jdbc.update("update report_definitions set display_name=coalesce(?,display_name), description=coalesce(?,description), category=coalesce(?,category), classification=coalesce(?,classification), active=coalesce(?,active), retention_policy_id=case when ? then cast(? as uuid) else retention_policy_id end, updated_at=now(), definition_version=definition_version+1 where code=?",update.get("displayName"),update.get("description"),update.get("category"),update.get("classification"),update.get("active"),replaceRetentionPolicy,retentionPolicyId,code);
         Map<String,Object> after=configurationDetail(actor,code);
         jdbc.update("insert into report_definition_versions(definition_code,version,snapshot,reason,changed_by_user_id) values(?,?,cast(? as jsonb),?,?)",code,after.get("definitionVersion"),objectMapper.valueToTree(after).toString(),reason,actor.getId());
-        auditTrail.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), "REPORT_CONFIGURATION_UPDATED", null, null, "Report definition configuration changed: " + reason);
+        auditTrail.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), "REPORT_CONFIGURATION_UPDATED", null, null, "Report definition configuration changed: " + reason,
+                com.eqms.util.AuditChanges.reason("Reason for Change", reason));
     }
     public void updateFields(UserAccount actor, String code, Map<String,Object> request) {
         requireVersionedTemplateEndpoint(code);
@@ -134,7 +137,8 @@ public class ReportPlatformService {
         jdbc.update("update report_definitions set definition_version=definition_version+1, updated_at=now() where code=?",code);
         Map<String,Object> after=configurationDetail(actor,code);
         jdbc.update("insert into report_definition_versions(definition_code,version,snapshot,reason,changed_by_user_id) values(?,?,cast(? as jsonb),?,?)",code,after.get("definitionVersion"),objectMapper.valueToTree(after).toString(),reason,actor.getId());
-        auditTrail.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), "REPORT_FIELDS_UPDATED", null, null, "Report field defaults changed: " + reason);
+        auditTrail.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), "REPORT_FIELDS_UPDATED", null, null, "Report field defaults changed: " + reason,
+                com.eqms.util.AuditChanges.reason("Reason for Change", reason));
     }
     public List<Map<String,Object>> configurationHistory(UserAccount actor, String code) {
         templates.require(actor,"reports.definition.view","settings.configuration.view");
@@ -146,7 +150,7 @@ public class ReportPlatformService {
         require(actor, "reports.schedule.view", "report.module.view");
         boolean manageAll = permissions.hasPermission(actor, "reports.schedule.manage");
         String scope = manageAll ? "" : "where s.creator_user_id=? ";
-        return jdbc.queryForList("select s.id, s.name, s.definition_code as \"definitionCode\", s.cron_expression as \"cronExpression\", s.requested_format as format, s.status, s.active, s.next_run_at as \"nextRunAt\", s.last_run_at as \"lastRunAt\", s.creator_user_id as \"creatorUserId\", s.owner_user_id as \"ownerUserId\", ou.full_name as \"ownerName\" from report_schedules s left join app_users ou on ou.id = s.owner_user_id " + scope + "order by s.next_run_at nulls last, s.created_at desc", manageAll ? new Object[]{} : new Object[]{actor.getId()});
+        return jdbc.queryForList("select s.id, s.schedule_number as \"scheduleNumber\", s.name, s.definition_code as \"definitionCode\", s.cron_expression as \"cronExpression\", s.requested_format as format, s.status, s.active, s.next_run_at as \"nextRunAt\", s.last_run_at as \"lastRunAt\", s.creator_user_id as \"creatorUserId\", s.owner_user_id as \"ownerUserId\", ou.full_name as \"ownerName\" from report_schedules s left join app_users ou on ou.id = s.owner_user_id " + scope + "order by s.next_run_at nulls last, s.created_at desc", manageAll ? new Object[]{} : new Object[]{actor.getId()});
     }
 
     /** Delivery log for Report Administration (REPORT-NOTIFICATION-CHANNEL-2026-10-14): every notice attempt, newest first, paged on the server. */
@@ -266,15 +270,17 @@ public class ReportPlatformService {
         }
         Instant next = nextOccurrence(cron); if (next == null) throw new IllegalArgumentException("Cron expression has no future occurrence");
         UUID id = UUID.randomUUID(); JsonNode snapshot = objectMapper.valueToTree(Map.of("creatorId", actor.getId().toString(), "definitionVersion", definition.get("definition_version"), "capturedAt", Instant.now().toString()));
-        jdbc.update("insert into report_schedules(id,definition_code,creator_user_id,owner_user_id,name,cron_expression,requested_format,parameters,selected_fields,authorization_snapshot,next_run_at) values(?,?,?,?,?,?,?,cast(? as jsonb),cast(? as jsonb),cast(? as jsonb),?)", id, request.definitionCode(), actor.getId(), actor.getId(),request.name().trim(), request.cronExpression().trim(), format, safeJson(request.parameters()).toString(), accepted.path("fields").toString(), snapshot.toString(), java.sql.Timestamp.from(next));
+        String scheduleNumber = numbers == null ? null : numbers.allocate(ObjectNumberService.SCHEDULED_REPORT);
+        jdbc.update("insert into report_schedules(id,definition_code,creator_user_id,owner_user_id,name,cron_expression,requested_format,parameters,selected_fields,authorization_snapshot,next_run_at,schedule_number) values(?,?,?,?,?,?,?,cast(? as jsonb),cast(? as jsonb),cast(? as jsonb),?,?)", id, request.definitionCode(), actor.getId(), actor.getId(),request.name().trim(), request.cronExpression().trim(), format, safeJson(request.parameters()).toString(), accepted.path("fields").toString(), snapshot.toString(), java.sql.Timestamp.from(next), scheduleNumber);
         for (UUID recipient : recipients) jdbc.update("insert into report_schedule_recipients(schedule_id,user_id) values(?,?)", id, recipient);
-        auditTrail.logAs(actor, "REPORT_SCHEDULE", request.name().trim(), id, "REPORT_SCHEDULE_CREATED", null, "ACTIVE", "Scheduled report created for " + request.definitionCode());
+        auditTrail.logAs(actor, "REPORT_SCHEDULE", scheduleNumber != null ? scheduleNumber : request.name().trim(), id, "REPORT_SCHEDULE_CREATED", null, "ACTIVE", "Scheduled report \"" + request.name().trim() + "\" created for " + request.definitionCode(),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Name",null,request.name().trim()), com.eqms.util.AuditChanges.of("Report",null,request.definitionCode())));
         return id;
     }
 
-    /** The name of a schedule as a person knows it; the audit trail names the schedule by it and keeps the identifier in its own column. */
+    /** What the audit trail names a schedule by: its number (its name for a schedule made before numbers existed); the identifier stays in its own column. */
     private String scheduleName(UUID id) {
-        return jdbc.query("select name from report_schedules where id=?", rs -> rs.next() ? rs.getString(1) : "Scheduled report", id);
+        return jdbc.query("select coalesce(schedule_number, name) from report_schedules where id=?", rs -> rs.next() ? rs.getString(1) : "Scheduled report", id);
     }
     public void pauseSchedule(UserAccount actor, UUID id) { updateScheduleStatus(actor, id, false, "PAUSED"); }
     public void resumeSchedule(UserAccount actor, UUID id) {
@@ -284,7 +290,8 @@ public class ReportPlatformService {
         jdbc.update("update report_schedules set active=true,status='ACTIVE',next_run_at=?,updated_at=now() where id=?", java.sql.Timestamp.from(next), id);
         auditTrail.logAs(actor, "REPORT_SCHEDULE", scheduleName(id), id, "REPORT_SCHEDULE_RESUMED", null, "ACTIVE", "Scheduled report resumed");
     }
-    public void deleteSchedule(UserAccount actor, UUID id) { require(actor, "reports.schedule.manage", "report.module.export"); requireScheduleManagement(actor,id); String deletedName=scheduleName(id); jdbc.update("delete from report_schedules where id=?",id); auditTrail.logAs(actor, "REPORT_SCHEDULE", deletedName, id, "REPORT_SCHEDULE_DELETED", null, null, "Scheduled report deleted"); }
+    public void deleteSchedule(UserAccount actor, UUID id) { require(actor, "reports.schedule.manage", "report.module.export"); requireScheduleManagement(actor,id); String deletedName=scheduleName(id); jdbc.update("delete from report_schedules where id=?",id); auditTrail.logAs(actor, "REPORT_SCHEDULE", deletedName, id, "REPORT_SCHEDULE_DELETED", null, null, "Scheduled report deleted",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Schedule",deletedName,null))); }
     private void updateScheduleStatus(UserAccount actor, UUID id, boolean active, String status) { require(actor, "reports.schedule.manage", "report.module.export"); requireScheduleManagement(actor,id); jdbc.update("update report_schedules set active=?,status=?,updated_at=now() where id=?",active,status,id); auditTrail.logAs(actor, "REPORT_SCHEDULE", scheduleName(id), id, "REPORT_SCHEDULE_" + status, null, status, "Scheduled report status changed"); }
     // Mirrors the ownership scoping already enforced in runDetail()/download(): the "manage" require()
     // above accepts the broad legacy report.module.export permission too, so without this check any
@@ -377,10 +384,11 @@ public class ReportPlatformService {
         jdbc.update("insert into report_run_events(run_id,event_type,detail) values(?, 'QUEUED', cast(? as jsonb))", resolved,
                 objectMapper.valueToTree(runSignature == null ? Map.of("definition", request.definitionCode(), "format", request.format(), "full", full)
                         : Map.of("definition", request.definitionCode(), "format", request.format(), "full", full, "signatureRef", runSignature.getSignatureId())).toString());
-        auditTrail.logAs(actor, "REPORT_RUN", request.definitionCode(), resolved, "REPORT_RUN_QUEUED", null, "QUEUED", "Report run requested; definition version " + definition.get("definition_version")
+        auditTrail.logAs(actor, "REPORT_RUN", runCode(resolved, request.definitionCode()), resolved, "REPORT_RUN_QUEUED", null, "QUEUED", "Report run requested; definition version " + definition.get("definition_version")
                 + (runSignature == null ? "" : "; signed (" + runReason + ") [signature " + runSignature.getSignatureId() + "]")
                 + (full ? "; Full run (no filter required), " + totalRows + " rows" : "; " + totalRows + " rows")
-                + sensitiveNote(templates.sensitiveColumns(templateSnapshot.path("definition").path("sourceCode").asText(), fields)));
+                + sensitiveNote(templates.sensitiveColumns(templateSnapshot.path("definition").path("sourceCode").asText(), fields)),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Report",null,request.definitionCode()), com.eqms.util.AuditChanges.of("Definition Version",null,definition.get("definition_version")), com.eqms.util.AuditChanges.of("Rows",null,totalRows), com.eqms.util.AuditChanges.of("Full Run",null,full ? "Yes" : "No")));
         return resolved;
     }
 
@@ -577,7 +585,8 @@ public class ReportPlatformService {
         if(name.length()>200) name=name.substring(0,200);
         String filename=String.valueOf(artifact.get("generated_filename"));
         auditTrail.logAs(actor,"REPORT_ARTIFACT",filename,artifactId,match?"REPORT_ARTIFACT_VERIFIED":"REPORT_ARTIFACT_VERIFY_MISMATCH",null,null,
-                (match?"The file held by the user is the stored file. ":"The file held by the user is NOT the stored file. ")+"Checked file: "+name+" ("+uploadedSize+" bytes, SHA-256 "+uploadedSha+"); stored SHA-256 "+stored+".");
+                (match?"The file held by the user is the stored file. ":"The file held by the user is NOT the stored file. ")+"Checked file: "+name+" ("+uploadedSize+" bytes, SHA-256 "+uploadedSha+"); stored SHA-256 "+stored+".",
+                java.util.List.of(com.eqms.util.AuditChanges.of("Checked File",null,name), com.eqms.util.AuditChanges.of("Result",null,match ? "Matches the stored file" : "Does NOT match the stored file")));
         jdbc.update("insert into report_run_events(run_id,event_type,reason_code,detail) values(?,?,?,jsonb_build_object('artifactId',cast(? as text),'uploadedSha256',cast(? as text)))",
                 runId,match?"FILE_VERIFIED":"FILE_VERIFY_MISMATCH",match?null:"REPORT_FILE_MODIFIED",artifactId.toString(),uploadedSha);
         com.eqms.service.EntityChangeBroadcaster.changed("REPORT_RUN",runId,null);
@@ -612,7 +621,7 @@ public class ReportPlatformService {
         jdbc.update("update report_runs set status='QUEUED',reason_code=null,error_message=null,next_attempt_at=now(),lease_until=null where id=?", runId);
         jdbc.update("insert into report_run_events(run_id,event_type,detail) values(?,'RETRY_REQUESTED',cast(? as jsonb))",runId,objectMapper.valueToTree(Map.of("requestedBy",actor.getId().toString())).toString());
         com.eqms.service.EntityChangeBroadcaster.changed("REPORT_RUN", runId, null);
-        auditTrail.logAs(actor, "REPORT_RUN", runId.toString(), runId, "REPORT_RUN_RETRY_REQUESTED", String.valueOf(run.get("status")), "QUEUED", "Retry requested");
+        auditTrail.logAs(actor, "REPORT_RUN", runCode(runId, runId.toString()), runId, "REPORT_RUN_RETRY_REQUESTED", String.valueOf(run.get("status")), "QUEUED", "Retry requested");
     }
 
     private void reauthorizeArtifactScope(UserAccount actor, String definitionCode, String rawSnapshot) {
@@ -680,6 +689,12 @@ public class ReportPlatformService {
     }
 
     /** The number of a run as a person reads and quotes it (RUN-000123); the identifier of the run is an internal key and is never printed in a file. */
+    /** What the Audit Trail calls a run: its own number (RUN-000176), never the code of its template, which every run of that template shares. */
+    private String runCode(UUID runId, String fallback) {
+        String number = jdbc.query("select run_number from report_runs where id=?", rs -> rs.next() ? runLabel(rs.getObject(1)) : null, runId);
+        return number == null || number.isEmpty() ? fallback : number;
+    }
+
     public static String runLabel(Object runNumber) {
         return runNumber instanceof Number number ? String.format("RUN-%06d", number.longValue()) : "";
     }
@@ -884,7 +899,8 @@ public class ReportPlatformService {
         if (signature != null) event.put("signatureRef", signature.getSignatureId());
         jdbc.update("insert into report_run_events(run_id,event_type,detail) values(?, ?, cast(? as jsonb))", runId, legalHold ? "LEGAL_HOLD_APPLIED" : "LEGAL_HOLD_RELEASED", objectMapper.valueToTree(event).toString());
         String auditReason = reason.trim() + (signature == null ? "" : " [signature " + signature.getSignatureId() + "]");
-        auditTrail.logAs(actor, "REPORT_ARTIFACT", artifactId.toString(), artifactId, legalHold ? "REPORT_LEGAL_HOLD_APPLIED" : "REPORT_LEGAL_HOLD_RELEASED", null, null, auditReason);
+        auditTrail.logAs(actor, "REPORT_ARTIFACT", artifactId.toString(), artifactId, legalHold ? "REPORT_LEGAL_HOLD_APPLIED" : "REPORT_LEGAL_HOLD_RELEASED", null, null, auditReason,
+                com.eqms.util.AuditChanges.with("Reason", auditReason, com.eqms.util.AuditChanges.of("Legal Hold",legalHold ? "No" : "Yes",legalHold ? "Yes" : "No")));
     }
 
     /** Runs schedules using the creator's current authorization; changed or revoked authorization suspends the schedule. */
@@ -916,7 +932,7 @@ public class ReportPlatformService {
             jdbc.update("update report_runs set report_title=?,schedule_id=? where id=?",reportTitle,scheduleId,runId);
             // REPORT-FIELD-CATALOG-2026-11-15: a scheduled run that exports columns describing a person is written to the Audit Trail with those columns, as an on-demand run is.
             List<String> sensitive = templates.sensitiveColumns(String.valueOf(definition.get("source_code")), snapshot.path("fields"));
-            if (!sensitive.isEmpty()) auditTrail.logAs(creator, "REPORT_RUN", String.valueOf(schedule.get("definition_code")), runId, "REPORT_RUN_QUEUED", null, "QUEUED",
+            if (!sensitive.isEmpty()) auditTrail.logAs(creator, "REPORT_RUN", runCode(runId, String.valueOf(schedule.get("definition_code"))), runId, "REPORT_RUN_QUEUED", null, "QUEUED",
                     "Scheduled report run" + sensitiveNote(sensitive));
             jdbc.update("update report_schedules set last_run_at=now(),next_run_at=?,updated_at=now() where id=?", java.sql.Timestamp.from(next), scheduleId);
         } catch (SecurityException | IllegalArgumentException configurationFailure) {
@@ -941,11 +957,12 @@ public class ReportPlatformService {
         if (ownerUserId == null || reason == null || reason.isBlank() || reason.length() > 1000) throw new IllegalArgumentException("REPORT_SCHEDULE_INVALID");
         UserAccount owner = users.findById(ownerUserId).orElseThrow(() -> new IllegalArgumentException("REPORT_SCHEDULE_OWNER_INVALID"));
         if (owner.getStatus() != UserStatus.Active) throw new IllegalArgumentException("REPORT_SCHEDULE_OWNER_INVALID");
-        Map<String,Object> row = jdbc.queryForMap("select name, owner_user_id from report_schedules where id=? for update", id);
+        Map<String,Object> row = jdbc.queryForMap("select coalesce(schedule_number, name) as name, owner_user_id from report_schedules where id=? for update", id);
         String previousOwner = String.valueOf(row.get("owner_user_id"));
         if (previousOwner.equals(ownerUserId.toString())) throw new IllegalArgumentException("REPORT_SCHEDULE_OWNER_UNCHANGED");
         jdbc.update("update report_schedules set owner_user_id=?,updated_at=now() where id=?", ownerUserId, id);
-        auditTrail.logAs(actor, "REPORT_SCHEDULE", String.valueOf(row.get("name")), id, "REPORT_SCHEDULE_OWNER_CHANGED", previousOwner, ownerUserId.toString(), reason.trim());
+        auditTrail.logAs(actor, "REPORT_SCHEDULE", String.valueOf(row.get("name")), id, "REPORT_SCHEDULE_OWNER_CHANGED", previousOwner, ownerUserId.toString(), reason.trim(),
+                com.eqms.util.AuditChanges.reason("Reason", reason));
     }
     private RenderedReport renderRows(String definition, UserAccount requester, List<String> requestedFields, int maxRows) {
         if (!"DOCUMENT_STATUS".equals(definition)) throw new IllegalArgumentException("No renderer registered for " + definition);

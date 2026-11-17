@@ -35,6 +35,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { ExpandedDocumentNameFormatRow } from "./ExpandedDocumentNameFormatRow";
 import type { DocumentComponentItem, DocumentNameFormatItem } from "./documentNameFormatTypes";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 
 /**
  * List/filter table for Document Name Formats. New/Edit navigate to the dedicated
@@ -86,9 +87,7 @@ export const DocumentNameFormatsTab: React.FC = () => {
     },
   });
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter, modifiedFromDate, modifiedToDate, setCurrentPage]);
+  useResetPageOnChange(setCurrentPage, [statusFilter, modifiedFromDate, modifiedToDate]);
 
   const handleConfirmToggleStatus = async () => {
     const item = selectedItem;

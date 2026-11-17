@@ -243,34 +243,112 @@ public final class ControlledCopyScanCodeService {
 
     /** Reads the code on EVERY page of a scanned PDF. A page never throws: a page that cannot be read is NOT_FOUND. */
     public static List<PageScan> decodePages(byte[] content) throws IOException {
-        List<PageScan> scans = new ArrayList<>();
+        return decodePages(content, null);
+    }
+
+    /** Workers that read pages at the same time; shared by every upload, so a busy server queues the work instead of starting a thread per page. */
+    private static final int PAGE_READERS = Math.max(2, Math.min(4, Runtime.getRuntime().availableProcessors()));
+    private static final java.util.concurrent.ExecutorService PAGE_READER_POOL = java.util.concurrent.Executors.newFixedThreadPool(PAGE_READERS, task -> {
+        Thread thread = new Thread(task, "scan-page-reader");
+        thread.setDaemon(true);
+        return thread;
+    });
+    /** Fewer pages than this are read one after another: starting workers would cost more than it saves. */
+    private static final int PARALLEL_FROM_PAGES = 4;
+
+    /**
+     * Same as {@link #decodePages(byte[])}, and {@code onPageDone} (pages read so far, pages in all) is called as pages are finished, from whichever
+     * thread read them, so a progress bar can follow the real work. Pages are read in parallel, each worker with its own copy of the document
+     * (a PDFBox document is not safe to render from two threads); the result is in page order, as when read one by one.
+     */
+    public static List<PageScan> decodePages(byte[] content, java.util.function.BiConsumer<Integer, Integer> onPageDone) throws IOException {
+        int count;
         try (PDDocument document = Loader.loadPDF(content)) {
-            int count = Math.min(document.getNumberOfPages(), MAX_SCAN_PAGES);
-            PDFRenderer renderer = new PDFRenderer(document);
-            for (int index = 0; index < count; index++) {
-                List<String> values;
-                try {
-                    values = decodePdfPage(document, renderer, index);
-                } catch (IOException | RuntimeException ex) {
-                    values = List.of();
+            count = Math.min(document.getNumberOfPages(), MAX_SCAN_PAGES);
+        }
+        PageScan[] pages = new PageScan[count];
+        java.util.concurrent.atomic.AtomicInteger done = new java.util.concurrent.atomic.AtomicInteger();
+        if (count < PARALLEL_FROM_PAGES) {
+            readPages(content, 0, count, pages, done, count, onPageDone);
+        } else {
+            int chunks = Math.min(PAGE_READERS, count);
+            List<java.util.concurrent.Future<?>> futures = new ArrayList<>();
+            for (int chunk = 0; chunk < chunks; chunk++) {
+                // interleaved split would reload nothing extra either, but contiguous chunks keep each worker's rendering cache warm
+                int from = (int) ((long) count * chunk / chunks);
+                int to = (int) ((long) count * (chunk + 1) / chunks);
+                futures.add(PAGE_READER_POOL.submit(() -> {
+                    readPages(content, from, to, pages, done, count, onPageDone);
+                    return null;
+                }));
+            }
+            try {
+                for (java.util.concurrent.Future<?> future : futures) {
+                    future.get();
                 }
-                if (values.isEmpty()) {
-                    scans.add(new PageScan(index, STATUS_NOT_FOUND, null, null));
-                    continue;
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                futures.forEach(future -> future.cancel(true));
+                throw new IOException("Reading the pages was interrupted", ex);
+            } catch (java.util.concurrent.ExecutionException ex) {
+                futures.forEach(future -> future.cancel(true));
+                if (ex.getCause() instanceof IOException io) {
+                    throw io;
                 }
-                Set<String> distinct = new LinkedHashSet<>(values);
-                if (distinct.size() > 1) {
-                    scans.add(new PageScan(index, STATUS_MULTIPLE, String.join(" | ", distinct), null));
-                    continue;
-                }
-                String raw = distinct.iterator().next();
-                Optional<PageCode> code = parsePageCode(raw);
-                scans.add(code.isPresent()
-                        ? new PageScan(index, STATUS_DECODED, raw, code.get())
-                        : new PageScan(index, STATUS_FOREIGN, raw, null));
+                throw new IOException("Reading the pages failed", ex.getCause());
             }
         }
-        return scans;
+        return new ArrayList<>(java.util.Arrays.asList(pages));
+    }
+
+    private static void readPages(byte[] content, int from, int to, PageScan[] pages, java.util.concurrent.atomic.AtomicInteger done, int total,
+                                  java.util.function.BiConsumer<Integer, Integer> onPageDone) throws IOException {
+        if (from >= to) {
+            return;
+        }
+        try (PDDocument document = Loader.loadPDF(content)) {
+            PDFRenderer renderer = new PDFRenderer(document);
+            for (int index = from; index < to; index++) {
+                pages[index] = readPage(document, renderer, index);
+                int finished = done.incrementAndGet();
+                if (onPageDone != null) {
+                    onPageDone.accept(finished, total);
+                }
+            }
+        }
+    }
+
+    private static PageScan readPage(PDDocument document, PDFRenderer renderer, int index) {
+        List<String> values;
+        try {
+            values = decodePdfPage(document, renderer, index);
+        } catch (IOException | RuntimeException ex) {
+            values = List.of();
+        }
+        if (values.isEmpty()) {
+            return new PageScan(index, STATUS_NOT_FOUND, null, null);
+        }
+        Set<String> distinct = new LinkedHashSet<>(values);
+        if (distinct.size() > 1) {
+            return new PageScan(index, STATUS_MULTIPLE, String.join(" | ", distinct), null);
+        }
+        String raw = distinct.iterator().next();
+        Optional<PageCode> code = parsePageCode(raw);
+        return code.isPresent()
+                ? new PageScan(index, STATUS_DECODED, raw, code.get())
+                : new PageScan(index, STATUS_FOREIGN, raw, null);
+    }
+
+    /**
+     * What {@link #decode(byte[])} says of a scanned PDF, taken from the pages already read (its first page), so a scan is not rendered a second time.
+     * No pages is an unreadable file, as it is for decode.
+     */
+    public static DecodeResult firstPageResult(List<PageScan> pages) {
+        if (pages == null || pages.isEmpty()) {
+            return DecodeResult.of(STATUS_UNREADABLE_FILE);
+        }
+        PageScan first = pages.getFirst();
+        return new DecodeResult(first.status(), first.rawValue(), first.code() == null ? null : first.code().token());
     }
 
     private static DecodeResult classify(List<String> values) {

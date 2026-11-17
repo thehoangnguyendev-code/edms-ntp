@@ -252,7 +252,7 @@ class TrainingActivityLockRulesTest {
         service.postponeSession(actor, sessionId, new TrainingActivityService.PostponeRequest(LocalDate.of(2026, 11, 12), "Trainer is ill", true));
 
         verify(jdbc).update(contains("update training_activities set due_date=?"), eq(LocalDate.of(2026, 11, 30)), eq(activityId));
-        verify(store).auditActivity(any(), any(), eq("TRAINING_DUE_DATE_MOVED"), eq("2026-10-31"), eq("2026-11-30"), eq("Trainer is ill"));
+        verify(store).auditActivity(any(), any(), eq("TRAINING_DUE_DATE_MOVED"), eq("2026-10-31"), eq("2026-11-30"), eq("Trainer is ill"), any());
     }
 
     @Test

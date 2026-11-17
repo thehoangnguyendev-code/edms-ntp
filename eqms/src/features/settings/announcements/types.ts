@@ -5,6 +5,8 @@ export type AnnouncementState = "ACTIVE" | "SCHEDULED" | "EXPIRED" | "DISABLED";
 /** An announcement in the administration screens. Times are ISO instants (UTC) from the server. */
 export interface Announcement {
   id: string;
+  /** The Announcement Number (Object Numbering). */
+  announcementNumber?: string | null;
   title: string;
   message: string;
   severity: AnnouncementSeverity;
@@ -51,7 +53,7 @@ export interface AnnouncementListParams {
   endsTo?: string;
   page?: number;
   limit?: number;
-  sortBy?: "title" | "severity" | "state" | "startsAt" | "endsAt" | "updatedAt" | "updatedBy" | "createdBy";
+  sortBy?: "announcementNumber" | "title" | "severity" | "state" | "startsAt" | "endsAt" | "updatedAt" | "updatedBy" | "createdBy";
   sortDirection?: "asc" | "desc";
 }
 

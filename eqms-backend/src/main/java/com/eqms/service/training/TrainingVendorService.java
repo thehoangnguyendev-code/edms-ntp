@@ -151,7 +151,8 @@ public class TrainingVendorService {
         requireNameFree(name, null);
         UUID id = UUID.randomUUID();
         jdbc.update("insert into training_approved_providers(id, name, reference, valid_until, status, created_by) values (?,?,?,?, 'DRAFT', ?)", id, name, blankToNull(request.reference()), request.validUntil(), actor.getId());
-        audit.logAs(actor, TYPE, name, id, "TRAINING_VENDOR_CREATED", null, "DRAFT", blankToNull(request.reference()));
+        audit.logAs(actor, TYPE, name, id, "TRAINING_VENDOR_CREATED", null, "DRAFT", blankToNull(request.reference()),
+                java.util.List.of(TrainingStore.change("Reference", null, blankToNull(request.reference()))));
         return get(actor, id);
     }
 
@@ -164,7 +165,8 @@ public class TrainingVendorService {
         String name = clean(request);
         requireNameFree(name, id);
         jdbc.update("update training_approved_providers set name = ?, reference = ?, valid_until = ? where id = ?", name, blankToNull(request.reference()), request.validUntil(), id);
-        audit.logAs(actor, TYPE, name, id, "TRAINING_VENDOR_UPDATED", "DRAFT", "DRAFT", blankToNull(request.reference()));
+        audit.logAs(actor, TYPE, name, id, "TRAINING_VENDOR_UPDATED", "DRAFT", "DRAFT", blankToNull(request.reference()),
+                java.util.List.of(com.eqms.util.AuditChanges.of("Reference",null,blankToNull(request.reference()))));
         return get(actor, id);
     }
 
@@ -195,7 +197,8 @@ public class TrainingVendorService {
         UUID signature = signatures.createEntitySignature(TYPE, id, String.valueOf(v.get("name")), actor, request.signatureToken(), "TRAINING_PROVIDER_DEACTIVATED", request.reason().trim(), null, null, null).getId();
         jdbc.update("update training_approved_providers set status = 'INACTIVE', deactivated_by = ?, deactivated_signature_id = ?, deactivated_at = now(), deactivate_reason = ? where id = ?",
                 actor.getId(), signature, request.reason().trim(), id);
-        audit.logAs(actor, TYPE, String.valueOf(v.get("name")), id, "TRAINING_PROVIDER_DEACTIVATED", "ACTIVE", "INACTIVE", request.reason().trim());
+        audit.logAs(actor, TYPE, String.valueOf(v.get("name")), id, "TRAINING_PROVIDER_DEACTIVATED", "ACTIVE", "INACTIVE", request.reason().trim(),
+                java.util.List.of(TrainingStore.change("Reason for Deactivating", null, request.reason().trim())));
         return get(actor, id);
     }
 
@@ -212,7 +215,8 @@ public class TrainingVendorService {
         UUID signature = signatures.createEntitySignature(TYPE, id, String.valueOf(v.get("name")), actor, request.signatureToken(), "TRAINING_VENDOR_ACTIVATED", request.reason().trim(), null, null, null).getId();
         jdbc.update("update training_approved_providers set status = 'ACTIVE', valid_until = ?, approved_by = ?, approved_signature_id = ?, approved_at = now(), deactivated_by = null, deactivated_signature_id = null, "
                 + "deactivated_at = null, deactivate_reason = null where id = ?", until, actor.getId(), signature, id);
-        audit.logAs(actor, TYPE, String.valueOf(v.get("name")), id, "TRAINING_VENDOR_ACTIVATED", "INACTIVE", "ACTIVE", request.reason().trim());
+        audit.logAs(actor, TYPE, String.valueOf(v.get("name")), id, "TRAINING_VENDOR_ACTIVATED", "INACTIVE", "ACTIVE", request.reason().trim(),
+                java.util.List.of(TrainingStore.change("Reason for Activating", null, request.reason().trim())));
         return get(actor, id);
     }
 

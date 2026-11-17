@@ -1,7 +1,7 @@
 import type { AnnouncementState } from "./types";
 
 /** The sortable columns; the server accepts exactly these and falls back to the start time for anything else. */
-export type AnnouncementSortKey = "title" | "severity" | "state" | "startsAt" | "endsAt" | "updatedAt" | "updatedBy" | "createdBy";
+export type AnnouncementSortKey = "announcementNumber" | "title" | "severity" | "state" | "startsAt" | "endsAt" | "updatedAt" | "updatedBy" | "createdBy";
 
 export type SeverityFilter = "ALL" | "INFO" | "WARNING" | "CRITICAL";
 export type StateFilter = "ALL" | AnnouncementState;

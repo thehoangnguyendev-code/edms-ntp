@@ -196,6 +196,12 @@ export const ObjectAccessRuleFormView: React.FC = () => {
         contentClassName="p-4 md:p-5"
       >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {initial?.ruleNumber && (
+            <div className="lg:col-span-2">
+              <label className={labelClass}>Object Access Rule Number</label>
+              <input className={cn(inputClass, "font-mono")} value={initial.ruleNumber} readOnly aria-readonly="true" />
+            </div>
+          )}
           <div className="lg:col-span-2">
             <label className={labelClass}>
               Name <span className="text-red-500">*</span>

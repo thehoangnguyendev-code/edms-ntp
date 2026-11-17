@@ -53,7 +53,8 @@ export const ExecutedRecordsView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const [searchQuery, setSearchQuery] = useState("");
+  // Opened from another screen with ?search=<record number> (the recall screen links each filed scan this way).
+  const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(window.location.search).get("search") ?? "");
   const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const [receivedFrom, setReceivedFrom] = useState("");
   const [receivedTo, setReceivedTo] = useState("");

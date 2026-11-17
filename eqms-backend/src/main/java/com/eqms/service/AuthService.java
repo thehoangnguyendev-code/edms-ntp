@@ -757,14 +757,8 @@ public class AuthService {
         }
         String resetLink = baseUrl + "/reset-password?token=" + rawToken;
 
-        runAfterCommit(() -> emailService.sendEmail(
-                user.getEmail(),
-                "Password Reset Link",
-                buildCommonEmailVariables(user, Map.of(
-                        "resetLink", resetLink,
-                        "resetPasswordUrl", resetLink
-                ))
-        ));
+        runAfterCommit(() -> notificationDispatcher.dispatchIndependently(
+                NotificationMandatoryEvents.PASSWORD_RESET_LINK, List.of(user), Map.of("resetLink", resetLink)));
     }
 
     @Transactional
@@ -871,14 +865,9 @@ public class AuthService {
         factor.setEnabled(false);
         mfaFactorRepository.save(factor);
 
-        runAfterCommit(() -> emailService.sendEmail(
-                user.getEmail(),
-                "MFA OTP Login Code",
-                buildCommonEmailVariables(user, Map.of(
-                        "otpCode", activationCode,
-                        "expiresIn", String.valueOf(loginChallengeTtlMinutes)
-                ))
-        ));
+        runAfterCommit(() -> notificationDispatcher.dispatchIndependently(
+                NotificationMandatoryEvents.MFA_LOGIN_CODE, List.of(user),
+                Map.of("otpCode", activationCode, "expiresIn", String.valueOf(loginChallengeTtlMinutes))));
         auditService.log("mfa_setup_started", user, auditDetails("method", method), null, null);
         trailService.logAs(
                 user,
@@ -1021,14 +1010,9 @@ public class AuthService {
         challenge.setOtpExpiresAt(Instant.now().plusSeconds(loginChallengeTtlMinutes * 60));
         auditService.log("login_otp_resent", challenge.getUser(), auditDetails("method", "email"), null, null);
 
-        runAfterCommit(() -> emailService.sendEmail(
-                challenge.getUser().getEmail(),
-                "MFA OTP Login Code",
-                buildCommonEmailVariables(challenge.getUser(), Map.of(
-                        "otpCode", rawOtp,
-                        "expiresIn", String.valueOf(loginChallengeTtlMinutes)
-                ))
-        ));
+        runAfterCommit(() -> notificationDispatcher.dispatchIndependently(
+                NotificationMandatoryEvents.MFA_LOGIN_CODE, List.of(challenge.getUser()),
+                Map.of("otpCode", rawOtp, "expiresIn", String.valueOf(loginChallengeTtlMinutes))));
 
         return new SendEmailOtpResponse(loginChallengeTtlMinutes * 60, 60);
     }

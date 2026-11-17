@@ -48,6 +48,11 @@ public class AlertService {
     }
 
     public Map<String, Object> page(String state, String severity, String search, java.time.Instant from, java.time.Instant to, String sortBy, boolean ascending, int page, int limit, List<String> people) {
+        return page(state, severity, search, from, to, sortBy, ascending, page, limit, people, List.of());
+    }
+
+    /** As above, and only the alerts with these identifiers when some are given (the backend resolves an alert number to its identifier). */
+    public Map<String, Object> page(String state, String severity, String search, java.time.Instant from, java.time.Instant to, String sortBy, boolean ascending, int page, int limit, List<String> people, List<java.util.UUID> ids) {
         int safeLimit = Math.min(Math.max(limit, 1), 100);
         int safePage = Math.max(page, 1);
         String s = state == null || state.isBlank() ? "OPEN" : state.trim().toUpperCase(Locale.ROOT);
@@ -68,6 +73,10 @@ public class AlertService {
                     .date("a.at").date("a.acknowledged_at")
                     .people(people, "a.acknowledged_by")
                     .appendTo(where, args);
+        }
+        if (ids != null && !ids.isEmpty()) {
+            where.append(" and a.id in (").append(String.join(",", java.util.Collections.nCopies(ids.size(), "?"))).append(")");
+            args.addAll(ids);
         }
         if (from != null) {
             where.append(" and a.at >= ?");

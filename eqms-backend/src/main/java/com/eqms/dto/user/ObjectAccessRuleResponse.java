@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record ObjectAccessRuleResponse(
     UUID id,
+    String ruleNumber,
     String name,
     String description,
     UUID accessProfileId,
