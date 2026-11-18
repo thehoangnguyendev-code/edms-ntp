@@ -57,7 +57,7 @@ export const NotificationDock: React.FC = () => {
               loaded={loaded}
               onItemOpened={() => undefined}
               onViewAll={() => navigate(ROUTES.NOTIFICATIONS)}
-              onOpenSettings={() => navigate(`${ROUTES.SETTINGS.CONFIGURATION}?tab=notification`)}
+              onOpenSettings={() => navigate(ROUTES.SETTINGS.CONFIGURATION_NOTIFICATIONS)}
               onRequestMarkAllRead={() => setIsConfirmOpen(true)}
               pin={{ pinned: true, onToggle: unpin }}
               headingRef={headingRef}

@@ -44,7 +44,7 @@ public class ImageWatermarkController {
     @PostMapping(value = "/config-preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<byte[]> configPreview(@RequestParam String target, @RequestParam String settings, @RequestParam(value = "file", required = false) MultipartFile file) throws IOException {
         UserAccount user = currentUser.requireCurrentUser();
-        if (!permissions.hasPermission(user, "settings.configuration.manage")) throw new AccessDeniedException("Configuration permission required");
+        if (!permissions.hasPermission(user, "settings.config_image_watermark.manage")) throw new AccessDeniedException("Configuration permission required");
         ImageWatermarkService.Target kind = ImageWatermarkService.Target.fromKey(target);
         JsonNode draft = objectMapper.readTree(settings);
         byte[] picture = file == null || file.isEmpty() ? watermark.sample(kind) : bytesOf(file);

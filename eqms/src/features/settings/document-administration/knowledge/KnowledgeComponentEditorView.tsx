@@ -1,3 +1,4 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
@@ -72,9 +73,11 @@ export const KnowledgeComponentEditorView: React.FC = () => {
     return Boolean(component) && (name !== component!.name || description !== (component!.description ?? "") || active !== component!.active);
   }, [isNew, name, sourceField, description, active, component]);
 
+  // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the draft that came with the person back to the hierarchy is kept.
+  const { go, modal: leaveModal } = useLeaveGuard(dirty, "Knowledge Category Component", "the previous page");
   const goBack = () => {
-    if (navState?.returnTo) navigate(navState.returnTo, { state: { draft: navState.draft } });
-    else navigate(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_COMPONENTS);
+    if (navState?.returnTo) go(navState.returnTo, { state: { draft: navState.draft } });
+    else go(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_COMPONENTS);
   };
 
   const sourceLabel = sources.find((s) => s.value === sourceField)?.label;
@@ -109,7 +112,7 @@ export const KnowledgeComponentEditorView: React.FC = () => {
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
         title={isNew ? "New Knowledge Category Component" : "Edit Knowledge Category Component"}
-        breadcrumbItems={isNew ? knowledgeComponentCreate(navigate) : knowledgeComponentEdit(navigate, component?.name)}
+        breadcrumbItems={isNew ? knowledgeComponentCreate(go) : knowledgeComponentEdit(go, component?.name)}
         actions={
           <>
             <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={goBack}>Back</Button>
@@ -178,6 +181,7 @@ export const KnowledgeComponentEditorView: React.FC = () => {
           </div>
         </div>
       </FormSection>
+      {leaveModal}
     </div>
   );
 };

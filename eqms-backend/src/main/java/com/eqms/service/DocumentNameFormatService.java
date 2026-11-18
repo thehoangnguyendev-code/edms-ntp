@@ -86,8 +86,7 @@ public class DocumentNameFormatService {
     private void requireView() {
         UserAccount actor = currentUserService.requireCurrentUser();
         if (!permissionEvaluationService.hasAnyPermission(actor,
-                "documents.admin.name_formats.view", "documents.admin.name_formats.manage",
-                "settings.configuration.view", "settings.configuration.manage")) {
+                "documents.admin.name_formats.view", "documents.admin.name_formats.manage")) {
             throw new AccessDeniedException("Document Name Formats view permission required");
         }
     }
@@ -95,7 +94,7 @@ public class DocumentNameFormatService {
     private void requireManage() {
         UserAccount actor = currentUserService.requireCurrentUser();
         if (!permissionEvaluationService.hasAnyPermission(actor,
-                "documents.admin.name_formats.manage", "settings.configuration.manage")) {
+                "documents.admin.name_formats.manage")) {
             throw new AccessDeniedException("Document Name Formats management permission required");
         }
     }

@@ -45,7 +45,17 @@ public final class AuditObjectRegistry {
         entry("Backup Storage & Encryption", 'B', "BACKUPTARGET");
         entry("Backup Storage & Encryption", 'C', "BACKUPMANUALCOPY");
         entry("Business Units", 'B', "BUSINESSUNIT");
-        entry("Configuration", 'B', "ADMINISTRATIVENETWORKPOLICY", "DASHBOARDROLELAYOUT", "STORAGEUSAGEPOLICY", "SYSTEMCONFIGURATION");
+        // Configuration is a menu group; each of its pages is a function menu (CONFIGURATION-PAGES-SPLIT-2026-11-17). A save is written under the page of the settings it changed.
+        // The records written before the split (SYSTEMCONFIGURATION, all pages together) keep the name of the group.
+        entry("Configuration", 'B', "SYSTEMCONFIGURATION");
+        entry("General", 'B', "SYSTEMCONFIGURATIONGENERAL", "DASHBOARDROLELAYOUT");
+        entry("Navigation Labels", 'B', "SYSTEMCONFIGURATIONNAVIGATIONLABELS");
+        entry("Security", 'B', "SYSTEMCONFIGURATIONSECURITY", "ADMINISTRATIVENETWORKPOLICY");
+        entry("Notifications", 'B', "SYSTEMCONFIGURATIONNOTIFICATIONS");
+        entry("Integrations", 'B', "SYSTEMCONFIGURATIONINTEGRATIONS", "STORAGEUSAGEPOLICY");
+        entry("Preview File", 'B', "SYSTEMCONFIGURATIONPREVIEWFILE");
+        entry("Image Watermark", 'B', "SYSTEMCONFIGURATIONIMAGEWATERMARK");
+        entry("Features", 'B', "SYSTEMCONFIGURATIONFEATURES");
         entry("Controlled Copies", 'A', "CONTROLLEDCOPY", "CONTROLLEDCOPYDISTRIBUTIONBATCH", "CONTROLLEDCOPYRECALLBATCH", "CONTROLLEDCOPYRECORD");
         entry("Controlled Copies", 'C', "CONTROLLEDCOPYDISTRIBUTIONJOB", "CONTROLLEDCOPYEVIDENCE");
         entry("Controlled Copies Policy", 'B', "CONTROLLEDCOPYEXPIRYLIMIT", "CONTROLLEDCOPYPLACEHOLDERFIELD", "CONTROLLEDCOPYPOLICY");

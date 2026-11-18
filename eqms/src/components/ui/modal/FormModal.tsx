@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useId, useRef } from 'react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { NavigationGuardModal } from './NavigationGuardModal';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,6 +26,11 @@ export interface FormModalProps {
   /** Buttons placed in the footer, on the right, just before the cancel and confirm buttons. */
   footerExtra?: React.ReactNode;
   className?: string;
+  /**
+   * True while the form in the dialog holds changes that were not saved. Closing it by the X, the backdrop, Esc or Cancel then asks "Discard unsaved changes?" first.
+   * The confirm button (Save) is not a close and is not asked. Leave it out for a dialog that is only a question or a confirmation.
+   */
+  dirty?: boolean;
 }
 
 const sizeToClass: Record<NonNullable<FormModalProps['size']>, string> = {
@@ -54,17 +60,32 @@ export const FormModal: React.FC<FormModalProps> = ({
   footerExtra,
   size = 'xl',
   className,
+  dirty = false,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
   const descriptionId = useId();
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+
+  // Every way of closing without saving goes through here.
+  const requestClose = useCallback(() => {
+    if (dirty) setConfirmingDiscard(true);
+    else onClose();
+  }, [dirty, onClose]);
+
+  // A dialog that closes (after Save, or from outside) must not come back with the question still open.
+  useEffect(() => {
+    if (!isOpen) setConfirmingDiscard(false);
+  }, [isOpen]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      // While the question is open it owns Esc and Tab.
+      if (confirmingDiscard) return;
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        requestClose();
         return;
       }
 
@@ -96,7 +117,7 @@ export const FormModal: React.FC<FormModalProps> = ({
         first.focus();
       }
     },
-    [onClose]
+    [confirmingDiscard, requestClose]
   );
 
   // Manage Keyboard Events
@@ -152,7 +173,7 @@ export const FormModal: React.FC<FormModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            onClick={onClose}
+            onClick={requestClose}
             className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
           />
 
@@ -191,7 +212,7 @@ export const FormModal: React.FC<FormModalProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={requestClose}
                   className="flex-shrink-0 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
                   aria-label="Close"
                 >
@@ -215,14 +236,14 @@ export const FormModal: React.FC<FormModalProps> = ({
                 <div className="flex justify-end gap-2 sm:gap-3">
                   {footerExtra}
                   {showCancel && (
-                    <Button size="sm" variant="outline" onClick={onClose} disabled={isLoading}>
+                    <Button size="sm" variant="outline" onClick={requestClose} disabled={isLoading}>
                       {cancelText}
                     </Button>
                   )}
                   <Button
                     size="sm"
                     variant={confirmVariant}
-                    onClick={onConfirm || onClose}
+                    onClick={onConfirm || requestClose}
                     disabled={isLoading || confirmDisabled}
                   >
                     {isLoading ? <ButtonLoading text="Processing..." light={confirmVariant === 'default' || confirmVariant === 'destructive'} /> : confirmText}
@@ -237,5 +258,21 @@ export const FormModal: React.FC<FormModalProps> = ({
     document.body
   );
 
-  return portalContent;
+  return (
+    <>
+      {portalContent}
+      {dirty && (
+        <NavigationGuardModal
+          isOpen={isOpen && confirmingDiscard}
+          mode="discard"
+          currentPageTitle={title}
+          onClose={() => setConfirmingDiscard(false)}
+          onConfirm={() => {
+            setConfirmingDiscard(false);
+            onClose();
+          }}
+        />
+      )}
+    </>
+  );
 };

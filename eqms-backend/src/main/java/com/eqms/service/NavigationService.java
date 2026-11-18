@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.ConfigurationAuditPage;
 import com.eqms.dto.navigation.NavigationItemResponse;
 import com.eqms.entity.UserAccount;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -204,7 +205,7 @@ public class NavigationService {
             reportChildren.add(new NavigationItemResponse("report-scheduled", "Scheduled Reports", null, "/report/scheduled", false, null));
             // Making a report template and approving it are the work of the module, not an administration setting. Like Document Revisions in
             // Document Control: the templates, every revision, and the ones waiting for the approval this person may give.
-            if (hasAnyPermission(normalizedPermissions, "reports.definition.view", "settings.configuration.view")) {
+            if (hasPermission(normalizedPermissions, "reports.definition.view")) {
                 List<NavigationItemResponse> templateChildren = new ArrayList<>();
                 templateChildren.add(new NavigationItemResponse("report-template-management", "Report Templates", null, "/report/template-management", false, null));
                 templateChildren.add(new NavigationItemResponse("report-template-revisions-all", "All Revisions", null, "/report/template-revisions", false, null));
@@ -256,6 +257,7 @@ public class NavigationService {
             userAdminChildren.add(new NavigationItemResponse("sec-user-management", "User Management", null, "/settings/users", false, null));
             userAdminChildren.add(new NavigationItemResponse("sec-time-limited-roles", "Time-Limited User", null, "/settings/users/time-limited", false, null));
             userAdminChildren.add(new NavigationItemResponse("sec-logged-in-users", "Logged in Users", null, "/settings/users/logged-in", false, null));
+            userAdminChildren.add(new NavigationItemResponse("sec-access-explorer", "Access Explorer", null, "/settings/users/access-explorer", false, null));
             securityChildren.add(new NavigationItemResponse("sec-user-administration", "User Administration", "IconUsers", null, false, userAdminChildren));
         }
         if (hasPermission(normalizedPermissions, "security.access_profiles.view")) {
@@ -340,22 +342,51 @@ public class NavigationService {
 
         if (systemConfigurationService.isFeatureEnabled("feat-system-admin")) {
             List<NavigationItemResponse> sysAdminChildren = new ArrayList<>();
-            if (hasPermission(normalizedPermissions, "settings.configuration.view")) {
-                sysAdminChildren.add(new NavigationItemResponse("config", "Configuration", "IconDeviceDesktopCog", "/settings/configuration", false, null));
+            // A group: each page of Configuration used to be a tab of one screen (?tab=...) and is now its own page and menu entry, in the order the tabs had. Each page shows to the people who hold the View
+            // permission of that page (V806); the group shows when at least one page does.
+            List<NavigationItemResponse> configurationChildren = new ArrayList<>();
+            if (hasPermission(normalizedPermissions, ConfigurationAuditPage.GENERAL.viewPermission())) {
+                configurationChildren.add(new NavigationItemResponse("config-general", "General", null, "/settings/configuration/general", false, null));
+            }
+            if (hasPermission(normalizedPermissions, ConfigurationAuditPage.NAVIGATION_LABELS.viewPermission())) {
+                configurationChildren.add(new NavigationItemResponse("config-navigation-labels", "Navigation Labels", null, "/settings/configuration/navigation-labels", false, null));
+            }
+            if (hasPermission(normalizedPermissions, ConfigurationAuditPage.SECURITY.viewPermission())) {
+                configurationChildren.add(new NavigationItemResponse("config-security", "Security", null, "/settings/configuration/security", false, null));
+            }
+            if (hasPermission(normalizedPermissions, ConfigurationAuditPage.NOTIFICATIONS.viewPermission())) {
+                configurationChildren.add(new NavigationItemResponse("config-notifications", "Notifications", null, "/settings/configuration/notifications", false, null));
+            }
+            if (hasPermission(normalizedPermissions, ConfigurationAuditPage.INTEGRATIONS.viewPermission())) {
+                configurationChildren.add(new NavigationItemResponse("config-integrations", "Integrations", null, "/settings/configuration/integrations", false, null));
+            }
+            if (hasPermission(normalizedPermissions, ConfigurationAuditPage.PREVIEW_FILE.viewPermission())) {
+                configurationChildren.add(new NavigationItemResponse("config-preview-file", "Preview File", null, "/settings/configuration/preview-file", false, null));
+            }
+            if (hasPermission(normalizedPermissions, ConfigurationAuditPage.IMAGE_WATERMARK.viewPermission())) {
+                configurationChildren.add(new NavigationItemResponse("config-image-watermark", "Image Watermark", null, "/settings/configuration/image-watermark", false, null));
+            }
+            if (hasPermission(normalizedPermissions, ConfigurationAuditPage.FEATURES.viewPermission())) {
+                configurationChildren.add(new NavigationItemResponse("config-features", "Features", null, "/settings/configuration/features", false, null));
+            }
+            if (!configurationChildren.isEmpty()) {
+                sysAdminChildren.add(new NavigationItemResponse("config", "Configuration", "IconDeviceDesktopCog", null, false, configurationChildren));
+            }
+            if (hasPermission(normalizedPermissions, "settings.electronic_signature.view")) {
                 sysAdminChildren.add(new NavigationItemResponse("electronic-signature-policies", "E-Sign Config", "PenTool", "/settings/electronic-signature", false, null));
             }
-            if (hasAnyPermission(normalizedPermissions, "settings.object_numbering.view", "settings.object_numbering.manage", "settings.configuration.view")) {
+            if (hasAnyPermission(normalizedPermissions, "settings.object_numbering.view", "settings.object_numbering.manage")) {
                 sysAdminChildren.add(new NavigationItemResponse("object-numbering", "Object Numbering", null, "/settings/object-numbering", false, null));
             }
             if (hasAnyPermission(normalizedPermissions, "settings.notification_policy.view", "settings.notification_policy.manage",
-                    "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view")) {
+                    "settings.email_template.view", "settings.email_template.manage")) {
                 sysAdminChildren.add(new NavigationItemResponse("notification-settings", "Notifications Administration", "Bell", "/settings/notifications", false, null));
             }
 
             // "Document Administration" -- moved here from the Document Control module (was nested
             // under doc-control until this move). Each screen keeps its own, independent
             // documents.admin.<screen>.view permission -- deliberately NOT gated behind
-            // settings.configuration.view too, so a Document-Administration-only Access Profile
+            // a permission of System Administration too, so a Document-Administration-only Access Profile
             // (holding none of the System Administration permissions) still sees this group.
             List<NavigationItemResponse> docAdminChildren = new ArrayList<>();
             if (hasAnyPermission(normalizedPermissions, "documents.admin.properties.view", "documents.admin.properties.manage")) {
@@ -439,10 +470,10 @@ public class NavigationService {
             if (hasAnyPermission(normalizedPermissions, "reports.types.view", "reports.types.manage")) {
                 reportAdminChildren.add(new NavigationItemResponse("report-admin-types", "Report Types", null, "/settings/report-types", false, null));
             }
-            if (hasAnyPermission(normalizedPermissions, "reports.definition.view", "settings.configuration.view")) {
+            if (hasPermission(normalizedPermissions, "reports.definition.view")) {
                 reportAdminChildren.add(new NavigationItemResponse("report-admin-name-formats", "Report Name Formats", null, "/settings/report-name-formats", false, null));
             }
-            if (hasAnyPermission(normalizedPermissions, "reports.definition.view", "settings.configuration.view")) {
+            if (hasPermission(normalizedPermissions, "reports.definition.view")) {
             }
             if (!reportAdminChildren.isEmpty()) {
                 sysAdminChildren.add(new NavigationItemResponse("report-administration", "Report Administration", "IconChartBar", null, false, reportAdminChildren));
@@ -459,7 +490,7 @@ public class NavigationService {
         }
 
         if (systemConfigurationService.isFeatureEnabled("feat-system-admin")
-                && hasPermission(normalizedPermissions, "settings.configuration.view")) {
+                && hasPermission(normalizedPermissions, "settings.system_info.view")) {
             menu.add(new NavigationItemResponse("system-information", "System Information", "IconAlertSquareRounded", "/settings/system-info", false, null));
         }
 

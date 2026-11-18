@@ -27,9 +27,9 @@ const DEFAULT_TEXT = "Electronic Quality Management Software";
 const input = () => screen.getByLabelText("Header Title (Dashboard)") as HTMLInputElement;
 
 describe("GeneralTab > Branding > Header Title", () => {
-  it("sits in the Branding section and shows the built-in text as the placeholder when nothing is set", () => {
+  it("sits in the Branding tab and shows the built-in text as the placeholder when nothing is set", () => {
     render(<GeneralTab config={baseConfig} onChange={vi.fn()} />);
-    const branding = screen.getByRole("heading", { name: "Branding" }).closest(".rounded-xl");
+    const branding = screen.getByRole("tabpanel");
     expect(branding).toContainElement(input());
     expect(input().value).toBe("");
     expect(input().placeholder).toBe(DEFAULT_TEXT);

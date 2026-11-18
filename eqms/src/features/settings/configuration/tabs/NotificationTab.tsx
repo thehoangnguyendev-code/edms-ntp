@@ -1,6 +1,5 @@
 ﻿import React, { useState } from 'react';
 import { DeliveryFailuresTable } from './DeliveryFailuresTable';
-import { FormSection } from '@/components/ui/form/FormSection';
 
 import { NotificationConfig } from '../types';
 import { FormField, Input } from '@/components/ui/form/ResponsiveForm';
@@ -8,17 +7,40 @@ import { Checkbox } from '@/components/ui/checkbox/Checkbox';
 import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
 import { InlineLoading } from '@/components/ui/loading/Loading';
-import { Eye, EyeOff, Bell } from 'lucide-react';
-import gmailLogo from '@/assets/images/logo-app/gmail.svg';
+import { Eye, EyeOff, Bell, Mail } from 'lucide-react';
 import { settingsApi } from '@/services/api';
 import type { SmtpConnectionTestPayload } from '@/services/api/settings';
+import { ConfigTabs, HISTORY_TAB, changedTabs, revertFields } from './ConfigTabs';
+import { ConfigHistory } from './ConfigHistory';
+import type { NotificationTabId } from './pageTabs';
+
+const TABS = [
+  { id: 'channels-delivery', label: 'Channels & Delivery', icon: Bell },
+  { id: 'email', label: 'Email (SMTP)', icon: Mail },
+  HISTORY_TAB,
+] as const;
+
+const FIELDS: Record<NotificationTabId, ReadonlyArray<string>> = {
+  'channels-delivery': ['enableInAppNotifications', 'inAppRetentionDays'],
+  email: ['enableEmailNotifications', 'publicAppUrl', 'emailConfig'],
+  history: [],
+};
 
 interface NotificationTabProps {
   config: NotificationConfig;
   onChange: (config: NotificationConfig) => void;
+  /** The tab that is open. When the page keeps it (in the address), it is given here with onTabChange; otherwise the tab keeps its own. */
+  activeTab?: NotificationTabId;
+  onTabChange?: (tab: NotificationTabId) => void;
+  /** What was last saved, to mark the tabs that hold a change that is not saved yet. */
+  savedConfig?: NotificationConfig | null;
 }
 
-export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChange }) => {
+export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChange, activeTab: activeTabProp, onTabChange, savedConfig }) => {
+  const [ownTab, setOwnTab] = useState<NotificationTabId>('channels-delivery');
+  const activeTab = activeTabProp ?? ownTab;
+  const selectTab = (tab: NotificationTabId) => { setOwnTab(tab); onTabChange?.(tab); };
+  const changed = React.useMemo(() => changedTabs<NotificationTabId>(config, savedConfig, FIELDS), [config, savedConfig]);
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
   const [testingSmtp, setTestingSmtp] = useState(false);
   const { showToast } = useToast();
@@ -91,42 +113,51 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
   };
 
   return (
-    <div className="p-4 md:p-5 space-y-4">
-      {/* Notification Channels */}
-      <FormSection title="Notification Channels" icon={<Bell className="h-4 w-4" />}>
-        <div className="space-y-3">
+    <ConfigTabs
+      tabs={TABS}
+      activeTab={activeTab}
+      onChange={selectTab}
+      changed={changed}
+      onReset={savedConfig ? (tab) => onChange(revertFields(config, savedConfig, FIELDS[tab])) : undefined}
+      ariaLabel="Notification sections"
+      idPrefix="notifications"
+    >
+      {activeTab === 'channels-delivery' && (
+        <div className="space-y-6">
           <div>
+            <h3 className="mb-3 text-sm font-semibold text-slate-900">In-App Notifications</h3>
             <Checkbox id="enableInAppNotifications" label="Enable In-App Notifications" checked={config.enableInAppNotifications} onChange={(checked) => handleChange('enableInAppNotifications', checked)} />
             <p className="text-xs text-slate-500 ml-7">Display notifications within the application interface</p>
+            <div className="mt-4">
+              <FormField label="Keep read notifications for (days)" hint="A notification that was read this many days ago is deleted every night. 0 keeps them for ever; otherwise 30 to 3650. Notifications that were never read are never deleted.">
+                <Input
+                  id="inAppRetentionDays"
+                  inputMode="numeric"
+                  value={config.inAppRetentionDays === undefined ? '' : String(config.inAppRetentionDays)}
+                  placeholder="180"
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 4);
+                    handleChange('inAppRetentionDays', digits === '' ? undefined : Number(digits));
+                  }}
+                />
+              </FormField>
+            </div>
           </div>
-          <div className="border-t border-slate-100 pt-4">
-            <FormField label="Keep read notifications for (days)" hint="A notification that was read this many days ago is deleted every night. 0 keeps them for ever; otherwise 30 to 3650. Notifications that were never read are never deleted.">
-              <Input
-                id="inAppRetentionDays"
-                inputMode="numeric"
-                value={config.inAppRetentionDays === undefined ? '' : String(config.inAppRetentionDays)}
-                placeholder="180"
-                onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, '').slice(0, 4);
-                  handleChange('inAppRetentionDays', digits === '' ? undefined : Number(digits));
-                }}
-              />
-            </FormField>
+
+          <div className="border-t border-slate-200 pt-6">
+            <h3 className="mb-3 text-sm font-semibold text-slate-900">Delivery Failures</h3>
+            <DeliveryFailuresTable />
           </div>
         </div>
-      </FormSection>
+      )}
 
-      <FormSection title="Delivery Failures" icon={<Bell className="h-4 w-4" />}>
-        <DeliveryFailuresTable />
-      </FormSection>
-
-      {/* Email Configuration */}
-      <FormSection title="Email Notifications (SMTP)" icon={<img src={gmailLogo} alt="Gmail" className="h-4 w-4 object-contain brightness-110" />}>
+      {activeTab === 'email' && (
         <div className="space-y-4">
+          <h3 className="text-sm font-semibold text-slate-900">Email Notifications (SMTP)</h3>
           <Checkbox id="enableEmailNotifications" label="Enable Email Notifications" checked={config.enableEmailNotifications} onChange={(checked) => handleChange('enableEmailNotifications', checked)} />
 
           {config.enableEmailNotifications && (
-            <div className="ml-7 p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-4">
+            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-4">
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Public App URL</label>
                 <input type="url" value={config.publicAppUrl || ''} onChange={(e) => handleChange('publicAppUrl', e.target.value)} className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500" placeholder="http://localhost:3000" />
@@ -181,7 +212,9 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
             </div>
           )}
         </div>
-      </FormSection>
-    </div>
+      )}
+
+      {activeTab === 'history' && <ConfigHistory page="notifications" />}
+    </ConfigTabs>
   );
 };

@@ -1,6 +1,7 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -54,7 +55,6 @@ const limitCaps = (raw: TrainingRequirementDetail["capabilities"], mode: Require
 /** One training requirement: the lines (a month and a topic or document), the three signatures, and what was done after approval. */
 export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: RequirementMode }) {
   const { requirementId = "" } = useParams();
-  const navigate = useNavigate();
   const goBack = useTrainingBack("/training-management/requirements");
   const { showToast } = useToast();
   const [req, setReq] = useState<TrainingRequirementDetail>();
@@ -95,7 +95,9 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
   };
 
   const title = MODE_TITLE[mode];
-  const crumbs = trainingBreadcrumbs(navigate, "requirements", title);
+  // Leaving with lines that were not saved asks first (Back, the breadcrumb, a link, the sidebar, a reload).
+  const { go, confirmLeave, modal: leaveModal } = useLeaveGuard(dirty, title, "the previous page");
+  const crumbs = trainingBreadcrumbs(go, "requirements", title);
   const tabs: TabItem[] = [{ id: "overview", label: "General Information" }, { id: "lines", label: "Lines", count: req?.lines.length }, { id: "signatures", label: "Signatures" }, { id: "audit", label: "Audit Trail" }];
 
   const lineColumns: DataTableColumn<TrainingRequirementLine>[] = useMemo(() => {
@@ -112,7 +114,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
         </div>
       ) },
       { id: "title", header: "Training Topic or SOP", cell: (l) => <div className="max-w-80 whitespace-normal">{l.code ? `${l.code} — ` : ""}{l.title}</div> },
-      { id: "activity", header: "Training Number", cell: (l) => (l.activityId ? <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/activities/${l.activityId}`)}>{l.trainingNumber}</button> : "—") },
+      { id: "activity", header: "Training Number", cell: (l) => (l.activityId ? <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => go(`/training-management/activities/${l.activityId}`)}>{l.trainingNumber}</button> : "—") },
       { id: "status", header: "Status", cell: (l) => <LineStatus line={l} /> },
       { id: "qa", header: "QA", cell: (l) => (l.qaSignedAt ? <div className="max-w-60 whitespace-normal">{l.qaSignedByName} ({day(l.qaSignedAt)}){l.qaComment ? `: ${l.qaComment}` : ""}</div> : "—") },
       {
@@ -166,7 +168,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
       <TrainingDetailLayout
         title={title}
         breadcrumbItems={crumbs}
-        onBack={goBack}
+        onBack={() => confirmLeave(goBack)}
         workflow={req.workflow}
         tabs={tabs}
         activeTab={tab}
@@ -231,6 +233,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
       </FormModal>
       <ESignatureModal isOpen={!!sign} onClose={() => setSign(undefined)} onConfirm={async (d: { signatureToken: string }) => { if (sign) { const ok = await run(() => sign.run(d.signatureToken), sign.title); if (ok) setSign(undefined); } }}
         actionTitle={sign?.title} changes={sign?.changes} meaningDisplayName={sign?.name} meaningCode={sign?.code} targetDetails={{ code: req.requestNo, title: `Training requirement ${req.year}`, revision: "" }} />
+      {leaveModal}
     </>
   );
 }

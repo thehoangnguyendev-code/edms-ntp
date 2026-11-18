@@ -6,6 +6,7 @@ import { LoadingFallback } from './LoadingFallback';
 import { navigateBack } from '../navigation/backNavigation';
 import { ProtectedRoute } from '@/middleware/ProtectedRoute';
 import { LegacyReportTemplateRedirect } from './ReportTemplateRedirects';
+import { ConfigurationIndexRedirect } from '@/features/settings/configuration/ConfigurationIndexRedirect';
 
 // ==================== LAZY LOADED ====================
 const ProfileView = lazy(() => import('@/features/settings').then(m => ({ default: m.ProfileView })));
@@ -14,6 +15,7 @@ const UserManagementView = lazy(() => import('@/features/settings').then(m => ({
 const AddUserView = lazy(() => import('@/features/settings').then(m => ({ default: m.AddUserView })));
 const UserProfileView = lazy(() => import('@/features/settings').then(m => ({ default: m.UserProfileView })));
 const LoggedInUsersView = lazy(() => import('@/features/settings').then(m => ({ default: m.LoggedInUsersView })));
+const AccessExplorerView = lazy(() => import('@/features/settings').then(m => ({ default: m.AccessExplorerView })));
 const TimeLimitedUserListView = lazy(() => import('@/features/settings').then(m => ({ default: m.TimeLimitedUserListView })));
 const TimeLimitedUserCreateView = lazy(() => import('@/features/settings').then(m => ({ default: m.TimeLimitedUserCreateView })));
 const TimeLimitedUserDetailView = lazy(() => import('@/features/settings').then(m => ({ default: m.TimeLimitedUserDetailView })));
@@ -96,7 +98,16 @@ export function settingsRoutes(navigate: NavigateFunction) {
           <ProtectedRoute
             requiredPermissions={[
               "settings.user.view",
-              "settings.configuration.view",
+              "settings.config_general.view",
+              "settings.config_navigation_labels.view",
+              "settings.config_security.view",
+              "settings.config_notifications.view",
+              "settings.config_integrations.view",
+              "settings.config_preview_file.view",
+              "settings.config_image_watermark.view",
+              "settings.config_features.view",
+              "settings.electronic_signature.view",
+              "settings.system_info.view",
               "settings.business_unit.view",
               "settings.department.view",
               "settings.position.view",
@@ -116,6 +127,7 @@ export function settingsRoutes(navigate: NavigateFunction) {
           <Route index element={<ProtectedRoute requiredPermissions={["settings.user.view"]}><Suspense fallback={<LoadingFallback />}><UserManagementView /></Suspense></ProtectedRoute>} />
           <Route path="add" element={<ProtectedRoute requiredPermissions={["settings.user.create"]}><Suspense fallback={<LoadingFallback />}><AddUserView /></Suspense></ProtectedRoute>} />
           <Route path="profile/:userId" element={<ProtectedRoute requiredPermissions={["settings.user.view"]}><Suspense fallback={<LoadingFallback />}><UserProfileView /></Suspense></ProtectedRoute>} />
+          <Route path="access-explorer" element={<ProtectedRoute requiredPermissions={["settings.user.view"]}><Suspense fallback={<LoadingFallback />}><AccessExplorerView /></Suspense></ProtectedRoute>} />
           <Route path="logged-in" element={<ProtectedRoute requiredPermissions={["settings.user.view"]}><Suspense fallback={<LoadingFallback />}><LoggedInUsersView /></Suspense></ProtectedRoute>} />
           <Route path="time-limited">
             <Route index element={<ProtectedRoute requiredPermissions={["settings.user.view"]}><Suspense fallback={<LoadingFallback />}><TimeLimitedUserListView /></Suspense></ProtectedRoute>} />
@@ -124,7 +136,7 @@ export function settingsRoutes(navigate: NavigateFunction) {
             <Route path=":id/edit" element={<ProtectedRoute requiredPermissions={["settings.user.edit"]}><Suspense fallback={<LoadingFallback />}><TimeLimitedUserEditView /></Suspense></ProtectedRoute>} />
           </Route>
         </Route>
-        <Route path="system-info" element={<ProtectedRoute requiredPermissions={["settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><SystemInformationView /></Suspense></ProtectedRoute>} />
+        <Route path="system-info" element={<ProtectedRoute requiredPermissions={["settings.system_info.view"]}><Suspense fallback={<LoadingFallback />}><SystemInformationView /></Suspense></ProtectedRoute>} />
         <Route path="dictionaries">
           <Route index element={<Navigate to="business-units" replace />} />
           <Route path="business-units" element={<ProtectedRoute requiredPermissions={["settings.business_unit.view", "settings.business_unit.manage"]}><Suspense fallback={<LoadingFallback />}><DictionariesView /></Suspense></ProtectedRoute>} />
@@ -142,10 +154,21 @@ export function settingsRoutes(navigate: NavigateFunction) {
             <Route path=":id/edit" element={<ProtectedRoute requiredPermissions={["settings.education.school.manage"]}><Suspense fallback={<LoadingFallback />}><EducationSchoolEditorView /></Suspense></ProtectedRoute>} />
           </Route>
         </Route>
-        <Route path="configuration" element={<ProtectedRoute requiredPermissions={["settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ConfigurationView /></Suspense></ProtectedRoute>} />
+        {/* Configuration is a group: each page is its own address (it used to be one screen with tabs, ?tab=...). The bare address and an old ?tab= link lead to the page they meant. */}
+        <Route path="configuration">
+          <Route index element={<ConfigurationIndexRedirect />} />
+          <Route path="general" element={<ProtectedRoute requiredPermissions={["settings.config_general.view"]}><Suspense fallback={<LoadingFallback />}><ConfigurationView /></Suspense></ProtectedRoute>} />
+          <Route path="navigation-labels" element={<ProtectedRoute requiredPermissions={["settings.config_navigation_labels.view"]}><Suspense fallback={<LoadingFallback />}><ConfigurationView /></Suspense></ProtectedRoute>} />
+          <Route path="security" element={<ProtectedRoute requiredPermissions={["settings.config_security.view"]}><Suspense fallback={<LoadingFallback />}><ConfigurationView /></Suspense></ProtectedRoute>} />
+          <Route path="notifications" element={<ProtectedRoute requiredPermissions={["settings.config_notifications.view"]}><Suspense fallback={<LoadingFallback />}><ConfigurationView /></Suspense></ProtectedRoute>} />
+          <Route path="integrations" element={<ProtectedRoute requiredPermissions={["settings.config_integrations.view"]}><Suspense fallback={<LoadingFallback />}><ConfigurationView /></Suspense></ProtectedRoute>} />
+          <Route path="preview-file" element={<ProtectedRoute requiredPermissions={["settings.config_preview_file.view"]}><Suspense fallback={<LoadingFallback />}><ConfigurationView /></Suspense></ProtectedRoute>} />
+          <Route path="image-watermark" element={<ProtectedRoute requiredPermissions={["settings.config_image_watermark.view"]}><Suspense fallback={<LoadingFallback />}><ConfigurationView /></Suspense></ProtectedRoute>} />
+          <Route path="features" element={<ProtectedRoute requiredPermissions={["settings.config_features.view"]}><Suspense fallback={<LoadingFallback />}><ConfigurationView /></Suspense></ProtectedRoute>} />
+        </Route>
         {/* Report templates are made and approved in Reports; the old addresses lead there. */}
         <Route path="report-configuration" element={<LegacyReportTemplateRedirect page="list" />} />
-        <Route path="report-name-formats" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "reports.name_format.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportNameFormatsView /></Suspense></ProtectedRoute>} />
+        <Route path="report-name-formats" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "reports.name_format.manage"]}><Suspense fallback={<LoadingFallback />}><ReportNameFormatsView /></Suspense></ProtectedRoute>} />
         <Route path="report-types" element={<ProtectedRoute requiredPermissions={["reports.types.view", "reports.types.manage"]}><Suspense fallback={<LoadingFallback />}><ReportTypesView /></Suspense></ProtectedRoute>} />
         <Route path="report-types/:code" element={<ProtectedRoute requiredPermissions={["reports.types.view", "reports.types.manage"]}><Suspense fallback={<LoadingFallback />}><ReportTypeDetailView /></Suspense></ProtectedRoute>} />
         <Route path="report-appearance" element={<ProtectedRoute requiredPermissions={["reports.appearance.view", "reports.appearance.manage"]}><Suspense fallback={<LoadingFallback />}><ReportAppearanceListView /></Suspense></ProtectedRoute>} />
@@ -153,19 +176,19 @@ export function settingsRoutes(navigate: NavigateFunction) {
         <Route path="report-appearance/:id" element={<ProtectedRoute requiredPermissions={["reports.appearance.view", "reports.appearance.manage"]}><Suspense fallback={<LoadingFallback />}><ReportAppearanceView /></Suspense></ProtectedRoute>} />
         <Route path="report-properties" element={<ProtectedRoute requiredPermissions={["reports.properties.view", "reports.properties.manage"]}><Suspense fallback={<LoadingFallback />}><ReportPropertiesView /></Suspense></ProtectedRoute>} />
         <Route path="report-name-formats/new" element={<ProtectedRoute requiredPermissions={["reports.name_format.manage"]}><Suspense fallback={<LoadingFallback />}><ReportNameFormatEditView /></Suspense></ProtectedRoute>} />
-        <Route path="report-name-formats/:id" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "reports.name_format.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportNameFormatEditView /></Suspense></ProtectedRoute>} />
+        <Route path="report-name-formats/:id" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "reports.name_format.manage"]}><Suspense fallback={<LoadingFallback />}><ReportNameFormatEditView /></Suspense></ProtectedRoute>} />
         <Route path="report-configuration/:code/revisions/:revision" element={<LegacyReportTemplateRedirect page="revision" />} />
         <Route path="report-configuration/:code/details" element={<LegacyReportTemplateRedirect page="details" />} />
         <Route path="report-configuration/:code" element={<LegacyReportTemplateRedirect page="edit" />} />
-        <Route path="object-numbering" element={<ProtectedRoute requiredPermissions={["settings.object_numbering.view", "settings.object_numbering.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ObjectNumberingView /></Suspense></ProtectedRoute>} />
-        <Route path="electronic-signature" element={<ProtectedRoute requiredPermissions={["settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ElectronicSignatureSettingsView /></Suspense></ProtectedRoute>} />
+        <Route path="object-numbering" element={<ProtectedRoute requiredPermissions={["settings.object_numbering.view", "settings.object_numbering.manage"]}><Suspense fallback={<LoadingFallback />}><ObjectNumberingView /></Suspense></ProtectedRoute>} />
+        <Route path="electronic-signature" element={<ProtectedRoute requiredPermissions={["settings.electronic_signature.view"]}><Suspense fallback={<LoadingFallback />}><ElectronicSignatureSettingsView /></Suspense></ProtectedRoute>} />
         <Route path="notifications">
-          <Route index element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage", "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><NotificationsView /></Suspense></ProtectedRoute>} />
-          <Route path="events/:eventCode" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><NotificationEventView channel="IN_APP" /></Suspense></ProtectedRoute>} />
-          <Route path="events/:eventCode/email" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><NotificationEventView channel="EMAIL" /></Suspense></ProtectedRoute>} />
-          <Route path="emails/:id" element={<ProtectedRoute requiredPermissions={["settings.email_template.view", "settings.email_template.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><EmailMessageEditView /></Suspense></ProtectedRoute>} />
-          <Route path="in-app-design" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><InAppDesignView /></Suspense></ProtectedRoute>} />
-          <Route path="email-design" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage", "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><EmailDesignView /></Suspense></ProtectedRoute>} />
+          <Route index element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage", "settings.email_template.view", "settings.email_template.manage"]}><Suspense fallback={<LoadingFallback />}><NotificationsView /></Suspense></ProtectedRoute>} />
+          <Route path="events/:eventCode" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage"]}><Suspense fallback={<LoadingFallback />}><NotificationEventView channel="IN_APP" /></Suspense></ProtectedRoute>} />
+          <Route path="events/:eventCode/email" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage"]}><Suspense fallback={<LoadingFallback />}><NotificationEventView channel="EMAIL" /></Suspense></ProtectedRoute>} />
+          <Route path="emails/:id" element={<ProtectedRoute requiredPermissions={["settings.email_template.view", "settings.email_template.manage"]}><Suspense fallback={<LoadingFallback />}><EmailMessageEditView /></Suspense></ProtectedRoute>} />
+          <Route path="in-app-design" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage"]}><Suspense fallback={<LoadingFallback />}><InAppDesignView /></Suspense></ProtectedRoute>} />
+          <Route path="email-design" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage", "settings.email_template.view", "settings.email_template.manage"]}><Suspense fallback={<LoadingFallback />}><EmailDesignView /></Suspense></ProtectedRoute>} />
         </Route>
         {/* the old addresses keep working: a bookmark or a link in a mail opens the new screen */}
         <Route path="email-templates/*" element={<Navigate to="/settings/notifications?tab=email" replace />} />

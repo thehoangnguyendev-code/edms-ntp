@@ -21,7 +21,7 @@ import { IconFileTypePdf } from "@tabler/icons-react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { useToast } from "@/components/ui/toast/Toast";
 import { controlledCopiesPolicy as controlledCopiesPolicyBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs/settings";
-import { useNavigateWithLoading } from "@/hooks/useNavigateWithLoading";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { controlledCopyPolicyApi } from "@/services/api";
 import { dictionaryApi } from "@/services/api/dictionary";
 import type {
@@ -385,7 +385,6 @@ const sortExpiryLimits = (limits: ControlledCopyExpiryLimit[]) =>
   );
 
 export const ControlledCopiesPolicyView: React.FC = () => {
-  const { navigateTo } = useNavigateWithLoading();
   const { showToast } = useToast();
   const { requestSignature, signatureModal } = useSecurityESign();
   const { hasPermissionAlias } = usePermissions();
@@ -530,9 +529,16 @@ export const ControlledCopiesPolicyView: React.FC = () => {
     setExpiryLimits((prev) => prev.filter((l) => l !== limit));
   };
 
+  const isDirty =
+    original !== null &&
+    (JSON.stringify(policy) !== JSON.stringify(original.policy) ||
+      JSON.stringify(expiryLimits) !== JSON.stringify(original.expiryLimits));
+  // Leaving with a change that was not saved asks first (the breadcrumb, the sidebar, a reload).
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, "Controlled Copies Policy", "another page");
+
   const breadcrumbItems = useMemo(
-    () => controlledCopiesPolicyBreadcrumbs(navigateTo),
-    [navigateTo],
+    () => controlledCopiesPolicyBreadcrumbs(go),
+    [go],
   );
 
   useEffect(() => {
@@ -872,11 +878,6 @@ export const ControlledCopiesPolicyView: React.FC = () => {
   ) => setPolicy((p) => ({ ...p, delivery: { ...p.delivery, [key]: value } }));
 
   if (loading) return <FullPageLoading />;
-
-  const isDirty =
-    original !== null &&
-    (JSON.stringify(policy) !== JSON.stringify(original.policy) ||
-      JSON.stringify(expiryLimits) !== JSON.stringify(original.expiryLimits));
 
   const selectedDurationUnit =
     DURATION_UNIT_OPTIONS.find((u) => u.value === limitForm.durationUnit) ||
@@ -1639,6 +1640,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
       </FormModal>
 
       {signatureModal}
+      {leaveModal}
     </div>
   );
 };

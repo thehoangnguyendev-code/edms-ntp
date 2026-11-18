@@ -1,21 +1,33 @@
 import React from 'react';
-import { FileText } from 'lucide-react';
 import onlyOfficeLogo from '@/assets/images/logo-app/onlyoffice.webp';
 import EmbedPDF from '@/assets/images/logo-app/PDF_file_icon.svg.webp'
-import { FormSection } from '@/components/ui/form/FormSection';
 import { Select } from '@/components/ui/select/Select';
 import { Button } from '@/components/ui/button/Button';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
 import { WatermarkTraceabilityEditor } from './WatermarkTraceabilityEditor';
 import { DocumentConfig, PdfPreviewConfig, OnlyOfficeStorageConfig, OnlyOfficeViewerConfig } from '../types';
-import { IconFileTypePdf } from '@tabler/icons-react';
+import { ConfigTabs, HISTORY_TAB } from './ConfigTabs';
+import { ConfigHistory } from './ConfigHistory';
+import type { PreviewTabId } from './pageTabs';
 
 interface PreviewFileTabProps {
   onlyOfficeConfig: OnlyOfficeStorageConfig;
   onOnlyOfficeChange: (config: OnlyOfficeStorageConfig) => void;
   documentsConfig: DocumentConfig;
   onDocumentsChange: (config: DocumentConfig) => void;
+  /** The tab that is open. When the page keeps it (in the address), it is given here with onTabChange; otherwise the tab keeps its own. */
+  activeTab?: PreviewTabId;
+  onTabChange?: (tab: PreviewTabId) => void;
+  /** What was last saved, to mark the tabs that hold a change that is not saved yet. */
+  savedOnlyOffice?: OnlyOfficeStorageConfig | null;
+  savedDocuments?: DocumentConfig | null;
 }
+
+const TABS = [
+  { id: 'onlyoffice-preview', label: 'OnlyOffice Preview', icon: () => <img src={onlyOfficeLogo} alt="" className="h-4 w-4 object-contain" /> },
+  { id: 'pdf-preview', label: 'PDF Preview', icon: () => <img src={EmbedPDF} alt="" className="h-4 w-4 object-contain" /> },
+  HISTORY_TAB,
+] as const;
 
 /** Community Edition options supported by OnlyOffice Document Server. */
 const VIEWER_OPTIONS: Array<{ key: 'showPluginsTab' | 'showRightMenu' | 'showFileName'; label: string; hint: string; defaultValue: boolean }> = [
@@ -76,19 +88,55 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
   onOnlyOfficeChange,
   documentsConfig,
   onDocumentsChange,
+  activeTab: activeTabProp,
+  onTabChange,
+  savedOnlyOffice,
+  savedDocuments,
 }) => {
+  const [ownTab, setOwnTab] = React.useState<PreviewTabId>('onlyoffice-preview');
+  const activeTab = activeTabProp ?? ownTab;
+  const selectTab = (tab: PreviewTabId) => { setOwnTab(tab); onTabChange?.(tab); };
+  const changed = React.useMemo(() => {
+    const set = new Set<PreviewTabId>();
+    if (savedOnlyOffice) {
+      if (JSON.stringify(onlyOfficeConfig.viewer ?? null) !== JSON.stringify(savedOnlyOffice.viewer ?? null)) set.add('onlyoffice-preview');
+    }
+    if (savedDocuments) {
+      const d = documentsConfig as unknown as Record<string, unknown>;
+      const v = savedDocuments as unknown as Record<string, unknown>;
+      if (['enableWatermark', 'allowDownload', 'pdfPreview'].some((key) => JSON.stringify(d[key] ?? null) !== JSON.stringify(v[key] ?? null))) set.add('pdf-preview');
+    }
+    return set;
+  }, [onlyOfficeConfig.viewer, savedOnlyOffice, documentsConfig, savedDocuments]);
   const setViewer = (patch: Partial<OnlyOfficeViewerConfig>) =>
     onOnlyOfficeChange({ ...onlyOfficeConfig, viewer: { ...(onlyOfficeConfig.viewer ?? {}), ...patch } });
   const setPdf = (patch: PdfPreviewConfig) =>
     onDocumentsChange({ ...documentsConfig, pdfPreview: { ...(documentsConfig.pdfPreview ?? {}), ...patch } });
   return (
-  <div className="p-4 md:p-5 space-y-4">
-    <FormSection
-      title="OnlyOffice Preview"
-      icon={<img src={onlyOfficeLogo} alt="OnlyOffice" className="h-4 w-4 object-contain" />}
-    >
-      <div className="rounded-xl border border-slate-200 p-4">
-        <h3 className="text-sm font-semibold text-slate-800">Viewer</h3>
+  <ConfigTabs
+    tabs={TABS}
+    activeTab={activeTab}
+    onChange={selectTab}
+    changed={changed}
+    onReset={(tab) => {
+      if (tab === 'onlyoffice-preview' && savedOnlyOffice) {
+        const { viewer, ...rest } = onlyOfficeConfig as OnlyOfficeStorageConfig & { viewer?: OnlyOfficeViewerConfig };
+        onOnlyOfficeChange({ ...rest, ...(savedOnlyOffice.viewer === undefined ? {} : { viewer: JSON.parse(JSON.stringify(savedOnlyOffice.viewer)) }) } as OnlyOfficeStorageConfig);
+        void viewer;
+      } else if (tab === 'pdf-preview' && savedDocuments) {
+        const next = { ...documentsConfig } as unknown as Record<string, unknown>;
+        const saved = savedDocuments as unknown as Record<string, unknown>;
+        ['enableWatermark', 'allowDownload', 'pdfPreview'].forEach((key) => { if (key in saved) next[key] = JSON.parse(JSON.stringify(saved[key])); else delete next[key]; });
+        onDocumentsChange(next as unknown as DocumentConfig);
+      }
+    }}
+    ariaLabel="Preview file sections"
+    idPrefix="preview-file"
+  >
+    {activeTab === 'onlyoffice-preview' && (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900">Viewer</h3>
         <p className="mt-0.5 text-xs text-slate-500">What the read-only OnlyOffice viewer shows around the document.</p>
         <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
           {VIEWER_OPTIONS.map((option) => (
@@ -110,8 +158,8 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
         </div>
       </div>
 
-      <div className="mt-5 rounded-xl border border-slate-200 p-4">
-        <h3 className="text-sm font-semibold text-slate-800">Review and Approval Stages</h3>
+      <div className="border-t border-slate-200 pt-6">
+        <h3 className="text-sm font-semibold text-slate-900">Review and Approval Stages</h3>
         <p className="mt-0.5 text-xs text-slate-500">How the assigned person opens the Word file in OnlyOffice. Drafts are edited by the author; every other stage is read-only.</p>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
@@ -137,8 +185,8 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
         </div>
       </div>
 
-      <div className="mt-5 rounded-xl border border-slate-200 p-4">
-        <h3 className="text-sm font-semibold text-slate-800">Copies out of the editor</h3>
+      <div className="border-t border-slate-200 pt-6">
+        <h3 className="text-sm font-semibold text-slate-900">Copies out of the editor</h3>
         <p className="mt-0.5 text-xs text-slate-500">For a person who edits, reviews or comments on a Word file in OnlyOffice. The read-only viewer never allows download or print.</p>
         <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
           <div>
@@ -153,7 +201,7 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
         <p className="mt-3 text-xs text-slate-500">This stops the buttons and the shortcut, not a photograph or a screenshot of the screen: keep the watermark for that. Applies to files opened after it is saved.</p>
       </div>
 
-      <div className="mt-5">
+      <div className="border-t border-slate-200 pt-6">
         <WatermarkTraceabilityEditor
           idPrefix="onlyoffice-viewer-watermark"
           enabled={!!onlyOfficeConfig.viewer?.watermarkEnabled}
@@ -165,12 +213,10 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
           sampleNote="Example values. The viewer is filled in when the file is opened."
         />
       </div>
-    </FormSection>
+    </div>
+    )}
 
-    <FormSection
-      title="PDF Preview"
-      icon={<img src={EmbedPDF} alt="EmbedPDF" className="h-4 w-4 object-contain" />}
-    >
+    {activeTab === 'pdf-preview' && (
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <WatermarkTraceabilityEditor
@@ -213,7 +259,7 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
               </div>
             ))}
           </div>
-          <div className="mt-4 border-t border-slate-100 pt-4 sm:w-56">
+          <div className="mt-4 grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
             <Select label="Initial zoom" value={documentsConfig.pdfPreview?.defaultZoom ?? 'page-fit'} onChange={(value) => setPdf({ defaultZoom: value as PdfPreviewConfig['defaultZoom'] })} enableSearch={false} options={[{ label: 'Fit page', value: 'page-fit' }, { label: 'Fit width', value: 'page-width' }, { label: 'Actual size (100%)', value: 'actual-size' }]} />
           </div>
         </section>
@@ -234,6 +280,9 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
         ))}
         </div>
       </div>
-    </FormSection>
-  </div>  );
+    )}
+
+    {activeTab === 'history' && <ConfigHistory page="preview-file" />}
+  </ConfigTabs>
+  );
 };

@@ -1,3 +1,4 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
@@ -78,7 +79,6 @@ export function ReportTemplateEditor() {
   // A permission of the person: used to load the lists a template is written from, and to author a new template (there is no template yet to ask about).
   const canAuthor = hasAnyPermission([
     "reports.definition.manage",
-    "settings.configuration.manage",
   ]);
   const [tab, setTab] = useState("general");
   const [sources, setSources] = useState<ReportSource[]>([]);
@@ -304,6 +304,8 @@ export function ReportTemplateEditor() {
     });
   const lifecycle = stored?.lifecycleStatus ?? "DRAFT";
   const dirty = !!baseline && !!value && JSON.stringify(baseline) !== JSON.stringify(value);
+  // Leaving with a change that was not saved asks first (the breadcrumb, the sidebar, a reload); the moves that follow a Save or a step of the revision are not leaves.
+  const { go, modal: leaveModal } = useLeaveGuard(dirty, "Report Template", "another page");
   /** The same steps in the page header and in the footer bar, so they are in reach at the top and the bottom of a long form. */
   const actionButtons = (
     <>
@@ -346,12 +348,12 @@ export function ReportTemplateEditor() {
   const canApprove = !create && stored != null && lifecycle === "PENDING_APPROVAL" && can("approve");
   const title = create ? "Create Report Template" : !stored || !capabilitiesLoaded ? "Revision Details" : canApprove ? "Approve Revision" : editable && lifecycle === "DRAFT" ? "Edit Revision" : "Revision Details";
   const from = (location.state as { from?: string } | null)?.from;
-  const parent = reportRevisionParent(from, navigate, !create && lifecycle === "PENDING_APPROVAL" ? ROUTES.REPORT.TEMPLATE_REVISIONS_PENDING : ROUTES.REPORT.TEMPLATE_MANAGEMENT);
+  const parent = reportRevisionParent(from, go, !create && lifecycle === "PENDING_APPROVAL" ? ROUTES.REPORT.TEMPLATE_REVISIONS_PENDING : ROUTES.REPORT.TEMPLATE_MANAGEMENT);
   return (
     <div className="flex min-w-0 flex-col gap-5">
       <PageHeader
         title={title}
-        breadcrumbItems={reportBreadcrumbs(navigate, title, false, parent)}
+        breadcrumbItems={reportBreadcrumbs(go, title, false, parent)}
         actions={
           <>
             <Button
@@ -844,6 +846,7 @@ export function ReportTemplateEditor() {
           </>
         )
       )}
+      {leaveModal}
     </div>
   );
 }

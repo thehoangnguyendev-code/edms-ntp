@@ -24,7 +24,7 @@ public class AdministrativeNetworkPolicyController {
     }
     private UserAccount requireManager() {
         var user = current.requireCurrentUser();
-        if (!permissions.hasPermission(user, "settings.configuration.manage")) throw new AccessDeniedException("Permission required");
+        if (!permissions.hasPermission(user, "settings.config_security.manage")) throw new AccessDeniedException("Permission required");
         return user;
     }
     @GetMapping
@@ -56,7 +56,7 @@ public class AdministrativeNetworkPolicyController {
             JOIN permission_sets ps ON ps.id=aps.permission_set_id AND ps.active=true
             JOIN permission_set_items psi ON psi.permission_set_id=ps.id
             JOIN permissions p ON p.id=psi.permission_id
-            WHERE ua.user_id=u.id AND lower(trim(p.code))='settings.configuration.manage')
+            WHERE ua.user_id=u.id AND lower(trim(p.code))='settings.config_security.manage')
             ORDER BY u.full_name,u.id LIMIT 30
             """, (rs,row) -> new UserOption(rs.getObject(1,UUID.class),rs.getString(2)), search, search, search);
     }

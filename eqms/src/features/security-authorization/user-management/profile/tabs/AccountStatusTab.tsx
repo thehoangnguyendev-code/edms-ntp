@@ -33,11 +33,13 @@ interface ExistingModeProps {
   canTerminate?: boolean;
   canReinstate?: boolean;
   canUnlock?: boolean;
+  canResetMfa?: boolean;
   onResetPassword?: () => void;
   onSuspend?: () => void;
   onTerminate?: () => void;
   onReinstate?: () => void;
   onUnlock?: () => void;
+  onResetMfa?: () => void;
 }
 
 interface CreateModeProps {
@@ -101,11 +103,13 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
     canTerminate = false,
     canReinstate = false,
     canUnlock = false,
+    canResetMfa = false,
     onResetPassword,
     onSuspend,
     onTerminate,
     onReinstate,
     onUnlock,
+    onResetMfa,
   } = props;
   const actions = buildAccountActions({
     user,
@@ -114,7 +118,9 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
     canTerminate,
     canReinstate,
     canUnlock,
+    canResetMfa,
     onResetPassword,
+    onResetMfa,
     onSuspend,
     onTerminate,
     onReinstate,
@@ -125,7 +131,10 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
     <div>
       <FieldGroup title="Account">
         <InfoField label="Account Created" value={formatDate(user.createdDate)} />
-        <InfoField label="Last Login" value={user.lastLogin !== "Never" ? user.lastLogin : "Never logged in"} />
+        <InfoField
+          label="Last Login"
+          value={`${user.lastLogin !== "Never" ? user.lastLogin : "Never logged in"}${user.inactive ? ` — Inactive: ${user.inactiveDays} days without a sign-in` : ""}`}
+        />
         {isEditingProfile && canEdit ? (
           <div className="md:col-span-2">
             <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Home Page</label>

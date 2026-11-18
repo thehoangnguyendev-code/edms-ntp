@@ -1,6 +1,7 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
@@ -62,7 +63,6 @@ type Dialog =
 /** One version of a department matrix: rows are topics or documents, columns are Work Positions. A version is edited only as a draft; after approval it never changes. */
 export function TrainingMatrixVersionPage() {
   const { versionId = "" } = useParams();
-  const navigate = useNavigate();
   const { showToast } = useToast();
   const [version, setVersion] = useState<TrainingMatrixVersion>();
   const [rows, setRows] = useState<TrainingMatrixRow[]>([]);
@@ -180,7 +180,9 @@ export function TrainingMatrixVersionPage() {
   }, [departmentOfVersion, version?.version]);
 
   const title = "Training Matrix Details";
-  const crumbs = trainingBreadcrumbs(navigate, "matrices", title);
+  // Leaving with changes that were not saved asks first (Back, the breadcrumb, a link, the sidebar, a reload).
+  const { go, confirmLeave, modal: leaveModal } = useLeaveGuard(dirty, title, "the previous page");
+  const crumbs = trainingBreadcrumbs(go, "matrices", title);
   const positions = useMemo(() => version?.positions ?? [], [version]);
 
   if (!version) {
@@ -335,7 +337,7 @@ export function TrainingMatrixVersionPage() {
       <TrainingDetailLayout
         title={title}
         breadcrumbItems={crumbs}
-        onBack={goBack}
+        onBack={() => confirmLeave(goBack)}
         workflow={version.workflow}
         tabs={tabs}
         activeTab={tab}
@@ -356,7 +358,7 @@ export function TrainingMatrixVersionPage() {
         {waiting > 0 && (
           <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
             {waiting} new or revised document{waiting === 1 ? "" : "s"} of this department {waiting === 1 ? "waits" : "wait"} for the matrix to be assessed or updated.{" "}
-            <button type="button" className="font-medium underline" onClick={() => navigate("/training-management/document-impact-assessment")}>Open Document Impact Assessment</button>
+            <button type="button" className="font-medium underline" onClick={() => go("/training-management/document-impact-assessment")}>Open Document Impact Assessment</button>
           </p>
         )}
         {tab === "general" && (
@@ -432,7 +434,7 @@ export function TrainingMatrixVersionPage() {
               <div className="flex flex-wrap gap-2">
                 {hasPermission("training.admin.manage") && (
                   <>
-                    <Button size="sm" variant="outline-emerald" onClick={() => navigate(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.JOB_ROLES)}>Manage Work Positions</Button>
+                    <Button size="sm" variant="outline-emerald" onClick={() => go(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.JOB_ROLES)}>Manage Work Positions</Button>
                     {!dirty && version.rows.some((r) => r.locked) && (
                       <Button size="sm" variant="outline-emerald" onClick={() => setDialog("applyLocked")}>Apply Locked Rows to All Departments</Button>
                     )}
@@ -585,7 +587,7 @@ export function TrainingMatrixVersionPage() {
           void run(
             () => trainingMatrixApi.upgrade(version.matrixId),
             "Revision upgraded",
-            (v) => navigate(`/training-management/matrix/${v.id}`),
+            (v) => go(`/training-management/matrix/${v.id}`),
           )
         }
       >
@@ -631,6 +633,7 @@ export function TrainingMatrixVersionPage() {
           revision: String(version.versionNo),
         }}
       />
+      {leaveModal}
     </>
   );
 }

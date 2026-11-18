@@ -7,6 +7,21 @@ export const DEFAULT_FOOTER_LEFT = '© {year} Ngoc Thien Pharma. All rights rese
 
 export const DEFAULT_SYSTEM_HEADER_TITLE = 'Electronic Quality Management Software';
 
+/** One slide of the right-hand panel of the Split sign-in screen. The image is a data URL (PNG, JPEG or WebP). */
+export interface LoginCarouselSlide {
+  title: string;
+  subtitle: string;
+  image: string;
+}
+
+export interface LoginCarouselConfig {
+  /** Seconds each slide stays (3 to 30). */
+  intervalSeconds?: number;
+  slides: LoginCarouselSlide[];
+}
+
+export const LOGIN_CAROUSEL_LIMITS = { maxSlides: 6, minSeconds: 3, maxSeconds: 30, defaultSeconds: 6, maxTitle: 80, maxSubtitle: 200 } as const;
+
 export interface PublicBranding {
   compactDesktopFilters?: boolean;
   alternatingRecordColors?: boolean;
@@ -29,6 +44,8 @@ export interface PublicBranding {
   toastShadow?: number;
   /** The sign-in screen: CLASSIC (default) or SPLIT (card with a blue product panel). Chosen by the administrator, the same for every user. */
   loginLayout?: 'CLASSIC' | 'SPLIT';
+  /** The pictures and texts of the right-hand panel of the Split sign-in screen; null or missing: the product preview is drawn. */
+  loginCarousel?: LoginCarouselConfig | null;
   /** How the materials of a training are drawn: TABLE (default) or TILES. Chosen by the administrator. */
   trainingMaterialsLayout?: 'TABLE' | 'TILES';
   /** How the Audit Trail tab of a record is drawn (the Audit Trail module itself is always a table), and the look of the timeline. */

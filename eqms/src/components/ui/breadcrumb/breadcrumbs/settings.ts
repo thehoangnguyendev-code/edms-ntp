@@ -118,6 +118,11 @@ export const loggedInUsers = (navigate?: NavigateFn): BreadcrumbItem[] => [
   { label: "Logged in Users", isActive: true },
 ];
 
+export const accessExplorer = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...userAdministrationBase(navigate),
+  { label: "Access Explorer", isActive: true },
+];
+
 export const rolePermissions = (navigate?: NavigateFn): BreadcrumbItem[] => [
   ...securityAuthorizationBase(navigate),
   { label: "Access Profiles", isActive: true },
@@ -227,15 +232,16 @@ export const dictionaries = (
   ];
 };
 
+/** System Administration > Configuration (a menu group, not a page) > the page, whose label is its menu text. */
 export const configuration = (
   navigate?: NavigateFn,
-  activeTabLabel?: string
+  pageLabel?: string
 ): BreadcrumbItem[] => {
-  if (activeTabLabel) {
+  if (pageLabel) {
     return [
       ...systemAdminBase(navigate),
-      { label: "Configuration", onClick: () => navigate?.(ROUTES.SETTINGS.CONFIGURATION) },
-      { label: activeTabLabel, isActive: true },
+      { label: "Configuration" },
+      { label: pageLabel, isActive: true },
     ];
   }
   return [

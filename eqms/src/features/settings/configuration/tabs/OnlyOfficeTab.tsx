@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { FormSection } from '@/components/ui/form/FormSection';
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { Server, Eye, EyeOff } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
@@ -7,13 +6,11 @@ import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
 import { settingsApi } from '@/services/api/settings';
 import { OnlyOfficeStorageConfig } from '../types';
-import onlyOfficeLogo from '@/assets/images/logo-app/onlyoffice.webp';
 
 interface OnlyOfficeTabProps {
   onlyOfficeConfig: OnlyOfficeStorageConfig;
   onOnlyOfficeChange: (config: OnlyOfficeStorageConfig) => void;
   onOnlyOfficeValidationChange?: (isValid: boolean) => void;
-  embedded?: boolean;
 }
 
 
@@ -28,7 +25,6 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
   onlyOfficeConfig,
   onOnlyOfficeChange,
   onOnlyOfficeValidationChange,
-  embedded = false,
 }) => {
   const { showToast } = useToast();
   const [isTesting, setIsTesting] = useState(false);
@@ -105,8 +101,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
   const renderFieldError = (key: string) => (errors[key] ? <p className="text-xs text-red-600 mt-1">{errors[key]}</p> : null);
 
   return (
-    <div className={embedded ? 'px-4 pb-4 md:px-5 md:pb-5' : 'p-4 md:p-5 space-y-4'}>
-      <FormSection title="OnlyOffice Server" icon={<img src={onlyOfficeLogo} alt="OnlyOffice" className="h-4 w-4 object-contain" />}>
+    <div>
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -182,7 +177,6 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
           </div>
 
         </div>
-      </FormSection>
     </div>
   );
 };

@@ -13,7 +13,7 @@ describe('PDF annotation policy editor', () => {
       enableWatermark: true,
       pdfPreview: { defaultZoom: 'page-width', showInsertTools: true },
     } as DocumentConfig;
-    render(<PreviewFileTab documentsConfig={documentsConfig} onDocumentsChange={onDocumentsChange}
+    render(<PreviewFileTab activeTab="pdf-preview" documentsConfig={documentsConfig} onDocumentsChange={onDocumentsChange}
       onlyOfficeConfig={{} as OnlyOfficeStorageConfig} onOnlyOfficeChange={vi.fn()} />);
     const checkbox = screen.getByRole('checkbox', { name: 'Allow annotations and comments' });
     expect(checkbox).not.toBeChecked();
@@ -30,7 +30,7 @@ describe('PDF annotation policy editor', () => {
 describe('watermark angle', () => {
   const documents = (pdfPreview: Record<string, unknown> = {}) => ({ enableWatermark: true, pdfPreview } as unknown as DocumentConfig);
   const renderTab = (config: DocumentConfig, onDocumentsChange = vi.fn()) => render(
-    <PreviewFileTab documentsConfig={config} onDocumentsChange={onDocumentsChange}
+    <PreviewFileTab activeTab="pdf-preview" documentsConfig={config} onDocumentsChange={onDocumentsChange}
       onlyOfficeConfig={{} as OnlyOfficeStorageConfig} onOnlyOfficeChange={vi.fn()} />);
 
   it('starts at the 45 degrees the watermark has always had, with the sample turned the same way and nothing to reset', () => {
@@ -60,7 +60,7 @@ describe('watermark angle', () => {
     const staged = onDocumentsChange.mock.calls.at(-1)?.[0] as DocumentConfig;
     expect(staged.pdfPreview?.watermarkAngle).toBe(44);
 
-    rerender(<PreviewFileTab documentsConfig={staged} onDocumentsChange={onDocumentsChange}
+    rerender(<PreviewFileTab activeTab="pdf-preview" documentsConfig={staged} onDocumentsChange={onDocumentsChange}
       onlyOfficeConfig={{} as OnlyOfficeStorageConfig} onOnlyOfficeChange={vi.fn()} />);
     expect(screen.getByTestId('watermark-angle-value')).toHaveTextContent('44°');
     expect(screen.getByTestId('watermark-sample-mark')).toHaveStyle({ transform: 'rotate(-44deg)' });
@@ -109,10 +109,13 @@ describe('OnlyOffice Preview: stages and watermark', () => {
 
   it('has its own watermark switch, off by default, and does not open the PDF watermark with it', () => {
     renderTab();
-    const switches = screen.getAllByRole('checkbox', { name: 'Enable watermarking' });
-    expect(switches).toHaveLength(2); // the OnlyOffice viewer, then the PDF preview
-    expect(switches[0]).not.toBeChecked();
-    expect(switches[1]).not.toBeChecked();
+    // the OnlyOffice viewer is on the first tab, the PDF preview on the second
+    expect(screen.getAllByRole('checkbox', { name: 'Enable watermarking' })).toHaveLength(1);
+    expect(screen.getByRole('checkbox', { name: 'Enable watermarking' })).not.toBeChecked();
+    expect(screen.queryByTestId('watermark-sample-mark')).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'PDF Preview' }));
+    expect(screen.getAllByRole('checkbox', { name: 'Enable watermarking' })).toHaveLength(1);
+    expect(screen.getByRole('checkbox', { name: 'Enable watermarking' })).not.toBeChecked();
     expect(screen.queryByTestId('watermark-sample-mark')).toBeNull();
   });
 
@@ -120,7 +123,7 @@ describe('OnlyOffice Preview: stages and watermark', () => {
     const onOnlyOffice = vi.fn();
     renderTab({ showFileName: true }, onOnlyOffice);
     const switches = screen.getAllByRole('checkbox', { name: 'Enable watermarking' });
-    expect(switches).toHaveLength(2); // the OnlyOffice viewer and the PDF preview
+    expect(switches).toHaveLength(1); // the OnlyOffice viewer; the PDF preview has its own tab
     fireEvent.click(switches[0]);
     expect(onOnlyOffice).toHaveBeenCalledWith(expect.objectContaining({ viewer: { showFileName: true, watermarkEnabled: true } }));
   });
@@ -150,6 +153,7 @@ describe('OnlyOffice Preview: stages and watermark', () => {
     expect(onOnlyOffice).toHaveBeenCalledWith(expect.objectContaining({ viewer: expect.objectContaining({ watermarkText: 'VIEWER TEXT 2' }) }));
     expect(onDocuments).not.toHaveBeenCalled();
 
+    fireEvent.click(screen.getByRole('tab', { name: 'PDF Preview' }));
     fireEvent.change(screen.getByDisplayValue('PDF TEXT'), { target: { value: 'PDF TEXT 2' } });
     expect(onDocuments).toHaveBeenCalledWith(expect.objectContaining({ pdfPreview: expect.objectContaining({ watermarkText: 'PDF TEXT 2' }) }));
   });

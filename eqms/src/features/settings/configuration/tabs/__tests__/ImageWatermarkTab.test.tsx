@@ -28,9 +28,10 @@ describe("ImageWatermarkTab", () => {
 
   it("starts as the earlier behaviour: evidence stamped with the system logo at the top left, specimen signatures not stamped", async () => {
     render(<ImageWatermarkTab config={general()} onChange={vi.fn()} />);
-    expect(screen.getAllByRole("checkbox", { name: /Add a watermark to every picture/ })[0]).toBeChecked();
-    expect(screen.getAllByRole("checkbox", { name: /Add a watermark to every picture/ })[1]).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Add a watermark to every picture/ })).toBeChecked();
     await waitFor(() => expect(api.configPreview).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("tab", { name: "Specimen Signature" }));
+    expect(screen.getByRole("checkbox", { name: /Add a watermark to every picture/ })).not.toBeChecked();
     expect(lastDraft("controlledCopyEvidence")).toMatchObject({ enabled: true, position: "TOP_LEFT", sizePercent: 20, opacityPercent: 100, showUploadedBy: false });
     expect(lastDraft("specimenSignature")).toBeUndefined();
   });
@@ -77,7 +78,7 @@ describe("ImageWatermarkTab", () => {
   });
 
   it("has the time zone on the specimen signature too, and every offset the server accepts", async () => {
-    render(<ImageWatermarkTab config={general({ specimenSignature: { enabled: true, showUploadedAt: true } })} onChange={vi.fn()} />);
+    render(<ImageWatermarkTab activeTab="specimen-signature" config={general({ specimenSignature: { enabled: true, showUploadedAt: true } })} onChange={vi.fn()} />);
     const zone = await screen.findByRole("combobox", { name: "Upload Time Zone" });
     fireEvent.click(zone);
     const labels = (await screen.findAllByRole("option")).map((option) => option.textContent);
@@ -95,14 +96,14 @@ describe("ImageWatermarkTab", () => {
   });
 
   it("asks for the custom logo before it can preview one", async () => {
-    render(<ImageWatermarkTab config={general({ specimenSignature: { enabled: true, logoSource: "CUSTOM" } })} onChange={vi.fn()} />);
+    render(<ImageWatermarkTab activeTab="specimen-signature" config={general({ specimenSignature: { enabled: true, logoSource: "CUSTOM" } })} onChange={vi.fn()} />);
     expect(await screen.findByText(/Upload the custom logo to see the preview/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Upload Logo" })).toBeInTheDocument();
   });
 
   it("refuses a logo that is not a PNG or JPEG and one that is too large", async () => {
     const onChange = vi.fn();
-    render(<ImageWatermarkTab config={general({ specimenSignature: { enabled: true, logoSource: "CUSTOM" } })} onChange={onChange} />);
+    render(<ImageWatermarkTab activeTab="specimen-signature" config={general({ specimenSignature: { enabled: true, logoSource: "CUSTOM" } })} onChange={onChange} />);
     const input = await screen.findByLabelText("Upload Specimen Signature watermark logo");
     fireEvent.change(input, { target: { files: [new File(["<svg/>"], "logo.svg", { type: "image/svg+xml" })] } });
     expect(await screen.findByText("Use a PNG or JPEG picture.")).toBeInTheDocument();

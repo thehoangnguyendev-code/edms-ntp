@@ -177,7 +177,9 @@ Các permission dưới đây không có trạng thái vòng đời Document/Rev
 
 | Permission code | Chức năng | Trạng thái |
 |---|---|---|
-| `settings.configuration.view` / `settings.configuration.edit` / `settings.configuration.manage` | Xem, sửa hoặc quản lý system configuration | Không áp dụng |
+| `settings.config_<page>.view` / `settings.config_<page>.manage` (8 pages: `general`, `navigation_labels`, `security`, `notifications`, `integrations`, `preview_file`, `image_watermark`, `features`) | Mở / thay đổi từng trang của Configuration (V806, 2026-11-18). Thay cho cặp `settings.configuration.view` / `.manage` đã xóa hẳn. | Không áp dụng |
+| `settings.electronic_signature.view` / `.manage` | Mở / thay đổi màn E-Sign Config (V806) | Không áp dụng |
+| `settings.system_info.view` | Mở màn System Information (V806) | Không áp dụng |
 | `settings.dictionary.view` / `settings.dictionary.manage` | Xem hoặc quản lý data dictionary | Không áp dụng |
 | `settings.publishing_template.view` / `settings.publishing_template.manage` | Xem hoặc quản lý publishing template | Không áp dụng |
 | `settings.controlled_copy_policy.view` / `settings.controlled_copy_policy.manage` | Xem hoặc quản lý Controlled Copy Policy (view/download/print/expiry/recall) | Không áp dụng |

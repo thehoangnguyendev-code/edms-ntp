@@ -1,3 +1,4 @@
+import { useLeaveGuard } from '@/hooks/useLeaveGuard';
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -87,6 +88,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
     // Check if there are any meaningful changes (profile diff or password)
     const hasChanges =
         hasProfileChanges || hasPasswordChanges;
+    // Leaving with changes that were not saved asks first (Back, the breadcrumb, the sidebar, a reload).
+    const { go, confirmLeave, modal: leaveModal } = useLeaveGuard(hasChanges, 'Personal Information', 'the previous page');
 
     const loadProfile = async () => {
         try {
@@ -296,7 +299,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
         setHasAvatarChanged(false);
     };
 
-    const handleBack = () => {
+    const handleBack = () => confirmLeave(() => {
         setIsNavigating(true);
         setTimeout(() => {
             if (onBack) {
@@ -306,7 +309,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
             }
             setIsNavigating(false);
         }, 600);
-    };
+    });
 
     if (isLoadingProfile) {
         return <FullPageLoading text="Loading user profile..." />;
@@ -320,7 +323,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                     const displayName = authUser?.fullName || authUser?.username;
                     return displayName ? `${base} - ${displayName}` : base;
                 })()}
-                breadcrumbItems={personalInformation(navigate)}
+                breadcrumbItems={personalInformation(go)}
                 actions={
                     <div className="flex items-center gap-2 md:gap-3 flex-wrap">
                         <Button
@@ -407,6 +410,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                 </Button>
             </div>
             {isNavigating && <FullPageLoading text="Loading..." />}
+            {leaveModal}
         </div>
     );
 };

@@ -62,14 +62,14 @@ public class InAppDesignController {
 
     private void requireView() {
         var user = currentUserService.requireCurrentUser();
-        if (!permissions.hasAnyPermission(user, "settings.notification_policy.view", "settings.notification_policy.manage", "settings.configuration.view")) {
+        if (!permissions.hasAnyPermission(user, "settings.notification_policy.view", "settings.notification_policy.manage")) {
             throw new AccessDeniedException("Current user is not allowed to view the in-app notification design");
         }
     }
 
     private void requireManage() {
         var user = currentUserService.requireCurrentUser();
-        if (!permissions.hasAnyPermission(user, "settings.notification_policy.manage", "settings.configuration.manage")) {
+        if (!permissions.hasAnyPermission(user, "settings.notification_policy.manage")) {
             throw new AccessDeniedException("Current user is not allowed to change the in-app notification design");
         }
     }

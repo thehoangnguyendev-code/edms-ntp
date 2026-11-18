@@ -29,7 +29,7 @@ class AdministrativeNetworkPolicyServiceTest {
     @Test void rejectsInactiveEmergencyAccount() {
         var id = UUID.randomUUID();
         var emergency = mock(UserAccount.class);
-        when(permissions.hasPermission(actor, "settings.configuration.manage")).thenReturn(true);
+        when(permissions.hasPermission(actor, "settings.config_security.manage")).thenReturn(true);
         when(users.findById(id)).thenReturn(Optional.of(emergency));
         when(emergency.getStatus()).thenReturn(UserStatus.Suspended);
         var policy = new AdministrativeNetworkPolicyService.Settings(true, List.of("10.0.0.0/8"), List.of(), id);
@@ -41,8 +41,8 @@ class AdministrativeNetworkPolicyServiceTest {
         var id = UUID.randomUUID();
         var emergency = mock(UserAccount.class);
         when(actor.getId()).thenReturn(UUID.randomUUID());
-        when(permissions.hasPermission(actor, "settings.configuration.manage")).thenReturn(true);
-        when(permissions.hasPermission(emergency, "settings.configuration.manage")).thenReturn(true);
+        when(permissions.hasPermission(actor, "settings.config_security.manage")).thenReturn(true);
+        when(permissions.hasPermission(emergency, "settings.config_security.manage")).thenReturn(true);
         when(users.findById(id)).thenReturn(Optional.of(emergency));
         when(emergency.getStatus()).thenReturn(UserStatus.Active);
         var policy = new AdministrativeNetworkPolicyService.Settings(true, List.of("10.0.0.0/8"), List.of(), id);

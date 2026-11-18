@@ -90,8 +90,7 @@ public class DocumentTypeAdminService {
     private void requireView() {
         UserAccount actor = currentUserService.requireCurrentUser();
         if (!permissionEvaluationService.hasAnyPermission(actor,
-                "documents.admin.document_types.view", "documents.admin.document_types.manage",
-                "settings.configuration.view", "settings.configuration.manage")) {
+                "documents.admin.document_types.view", "documents.admin.document_types.manage")) {
             throw new AccessDeniedException("Document Types view permission required");
         }
     }
@@ -99,7 +98,7 @@ public class DocumentTypeAdminService {
     private void requireManage() {
         UserAccount actor = currentUserService.requireCurrentUser();
         if (!permissionEvaluationService.hasAnyPermission(actor,
-                "documents.admin.document_types.manage", "settings.configuration.manage")) {
+                "documents.admin.document_types.manage")) {
             throw new AccessDeniedException("Document Types management permission required");
         }
     }

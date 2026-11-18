@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChartConfiguration } from 'chart.js';
-import { FormSection } from '@/components/ui/form/FormSection';
 import { ChartCanvas } from '@/components/ui/chart';
 import { api } from '@/services/api/client';
 import { Button } from '@/components/ui/button/Button';
@@ -117,7 +116,9 @@ export function StorageUsagePanel() {
   const growth = snapshots ? growthOf(snapshots) : null;
   const history = useMemo(() => (snapshots && snapshots.length > 1 ? historyConfiguration(snapshots) : null), [snapshots]);
   const daysLeft = growth && budgetBytes && latest && growth.perDay > 0 && latest.totalBytes < budgetBytes ? Math.floor((budgetBytes - latest.totalBytes) / growth.perDay) : null;
-  return <FormSection title="MinIO Storage Usage" description="Object versions in the configured buckets; local and NAS files are not included.">
+  return <div>
+    <h3 className="text-sm font-semibold text-slate-900">MinIO Storage Usage</h3>
+    <p className="mb-3 mt-0.5 text-xs text-slate-500">Object versions in the configured buckets; local and NAS files are not included.</p>
     {failed ? <p role="alert" className="text-sm text-red-600">Unable to load storage measurements.</p>
       : !snapshots ? <p className="text-sm text-slate-500">Loading storage measurements…</p>
       : <div className="space-y-5">
@@ -159,5 +160,5 @@ export function StorageUsagePanel() {
           <div className="h-52 w-full"><ChartCanvas config={history} ariaLabel="Object-version size over the last 90 days" /></div>
         </div>}</>}
       </div>}
-  </FormSection>;
+  </div>;
 }

@@ -40,7 +40,7 @@ class UncontrolledCopyPolicyDraftSaveTest {
     }
     private void allow() {
         when(currentUserService.requireCurrentUser()).thenReturn(actor);
-        when(permissionEvaluationService.hasAnyPermission(actor, "documents.admin.uncontrolled_copies_policy.manage", "settings.configuration.manage")).thenReturn(true);
+        when(permissionEvaluationService.hasAnyPermission(actor, "documents.admin.uncontrolled_copies_policy.manage")).thenReturn(true);
     }
 
     @Test void oneSignatureAndAuditContainPolicyAndRuleChanges() {

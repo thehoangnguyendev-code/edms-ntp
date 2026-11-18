@@ -11,6 +11,7 @@ import {
   FilterDrawer,
 } from "@/components/ui/filter/FilterDrawer";
 import { FormModal } from "@/components/ui/modal/FormModal";
+import { useOpenedFormDirty } from "@/hooks/useFormDirty";
 import { Button } from "@/components/ui/button/Button";
 import { Select } from "@/components/ui/select/Select";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
@@ -770,6 +771,7 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
     }
   }, [item, isOpen]);
 
+  const dirty = useOpenedFormDirty(formData, isOpen);
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
@@ -783,6 +785,7 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
   return (
     <FormModal
       isOpen={isOpen}
+      dirty={dirty}
       onClose={onClose}
       onConfirm={handleSubmit}
       title={`${isEdit ? "Edit" : "Add New"} Sub-Type`}

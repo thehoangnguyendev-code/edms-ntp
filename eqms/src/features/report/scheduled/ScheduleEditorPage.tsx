@@ -1,3 +1,5 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useFormDirty } from "@/hooks/useFormDirty";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button/Button";
@@ -77,7 +79,10 @@ export function ScheduleEditorPage() {
   const patch = (p: Partial<ReportScheduleDetail>) => setDraft((v) => ({ ...v, ...p }));
   const template = catalog.find((t) => t.code === draft.definitionCode);
   const title = create ? "New Report Schedule" : "Edit Report Schedule";
-  const back = () => navigate("/report/scheduled");
+  // Back and the breadcrumb ask first when there is a change that was not saved (also the sidebar and a reload); the move after a successful Save is not a leave.
+  const { isDirty } = useFormDirty({ draft, reason }, !loading);
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, title, "the list");
+  const back = () => go("/report/scheduled");
   const canSave = canManage && !!draft.name.trim() && !!draft.definitionCode && (create || !!reason.trim());
 
   const save = async () => {
@@ -87,7 +92,7 @@ export function ScheduleEditorPage() {
       if (draft.id) await reportsApi.updateSchedule(draft.id, draft.version, draft, reason);
       else await reportsApi.createSchedule(draft);
       showToast({ type: "success", title: "Scheduled report saved", message: "Changes apply to future occurrences." });
-      back();
+      navigate("/report/scheduled");
     } catch (e) {
       setError(reportError(e));
     } finally {
@@ -122,7 +127,7 @@ export function ScheduleEditorPage() {
     <div className="space-y-4 md:space-y-6">
       <PageHeader
         title={title}
-        breadcrumbItems={reportBreadcrumbs(navigate, title, false, { label: "Scheduled Reports", onClick: back })}
+        breadcrumbItems={reportBreadcrumbs(go, title, false, { label: "Scheduled Reports", onClick: back })}
         actions={actions}
       />
       {error && (
@@ -278,6 +283,7 @@ export function ScheduleEditorPage() {
           </div>
         </>
       )}
+      {leaveModal}
     </div>
   );
 }

@@ -3,12 +3,14 @@ import { IconCamera, IconSignature } from "@tabler/icons-react";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
-import { FormSection } from "@/components/ui/form/FormSection";
 import { Select } from "@/components/ui/select/Select";
 import { Slider } from "@/components/ui/slider/Slider";
 import { cn } from "@/components/ui/utils";
 import { imageWatermarkApi, type ImageWatermarkPosition, type ImageWatermarkTarget } from "@/services/api/imageWatermark";
 import type { GeneralConfig, ImageWatermarkSettings } from "../types";
+import { ConfigTabs, HISTORY_TAB } from "./ConfigTabs";
+import { ConfigHistory } from "./ConfigHistory";
+import type { WatermarkTabId } from "./pageTabs";
 
 /** The settings of a purpose that was never set up: evidence keeps the earlier behaviour (the system logo at the top left), a specimen signature is not stamped. */
 export const WATERMARK_DEFAULTS: Record<ImageWatermarkTarget, Required<Omit<ImageWatermarkSettings, "logoData">>> = {
@@ -57,13 +59,12 @@ interface CardProps {
   target: ImageWatermarkTarget;
   title: string;
   description: string;
-  icon: React.ReactNode;
   value?: ImageWatermarkSettings;
   onChange: (value: ImageWatermarkSettings) => void;
 }
 
 /** One purpose: its settings on the left, and on the right the picture as the server would stamp it with them, before they are saved. */
-export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, description, icon, value, onChange }) => {
+export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, description, value, onChange }) => {
   const settings = resolved(target, value);
   const set = (patch: ImageWatermarkSettings) => onChange({ ...(value ?? {}), ...patch });
   const logoInput = useRef<HTMLInputElement>(null);
@@ -130,7 +131,8 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
   };
 
   return (
-    <FormSection title={title} icon={icon}>
+    <div>
+      <h3 className="mb-3 text-sm font-semibold text-slate-900">{title}</h3>
       <div className="space-y-4">
         <div>
           <Checkbox id={`watermark-${target}-enabled`} label="Add a watermark to every picture uploaded here" checked={settings.enabled} onChange={(enabled) => set({ enabled })} />
@@ -175,7 +177,8 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
                 </div>
                 <p className="mt-1.5 text-xs text-slate-500">The server writes the name of the signed-in user and its own clock, so neither can be changed by the person who uploads.</p>
                 {settings.showUploadedAt && (
-                  <div className="mt-3 sm:max-w-xs">
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
                     <Select
                       label="Upload Time Zone"
                       value={settings.utcOffset}
@@ -184,6 +187,7 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
                       options={UTC_OFFSETS}
                     />
                     <p className="mt-1 text-xs text-slate-500">Printed with the time, for example 02/11/2026 11:20:43 ({UTC_OFFSETS.find((zone) => zone.value === settings.utcOffset)?.label ?? "UTC+7"}).</p>
+                    </div>
                   </div>
                 )}
                 {(settings.showUploadedBy || settings.showUploadedAt) && (
@@ -193,7 +197,7 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
                 )}
               </div>
 
-              <div className="sm:max-w-xs">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Select
                   label="Position"
                   value={settings.position}
@@ -242,37 +246,84 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
           </div>
         )}
       </div>
-    </FormSection>
+    </div>
   );
+};
+
+const TABS = [
+  { id: "controlled-copy", label: "Controlled Copy Destruction Evidence", icon: IconCamera },
+  { id: "specimen-signature", label: "Specimen Signature", icon: IconSignature },
+  HISTORY_TAB,
+] as const;
+
+const TARGET_OF_TAB: Record<Exclude<WatermarkTabId, "history">, ImageWatermarkTarget> = {
+  "controlled-copy": "controlledCopyEvidence",
+  "specimen-signature": "specimenSignature",
 };
 
 interface TabProps {
   config: GeneralConfig;
   onChange: (config: GeneralConfig) => void;
+  /** The tab that is open. When the page keeps it (in the address), it is given here with onTabChange; otherwise the tab keeps its own. */
+  activeTab?: WatermarkTabId;
+  onTabChange?: (tab: WatermarkTabId) => void;
+  /** What was last saved, to mark the tabs that hold a change that is not saved yet. */
+  savedConfig?: GeneralConfig | null;
 }
 
 /** Settings > Configuration > Image Watermark: the stamp the server puts on a picture when it comes in as evidence of a destroyed copy or as a specimen signature. */
-export const ImageWatermarkTab: React.FC<TabProps> = ({ config, onChange }) => {
+export const ImageWatermarkTab: React.FC<TabProps> = ({ config, onChange, activeTab: activeTabProp, onTabChange, savedConfig }) => {
+  const [ownTab, setOwnTab] = useState<WatermarkTabId>("controlled-copy");
+  const activeTab = activeTabProp ?? ownTab;
+  const selectTab = (tab: WatermarkTabId) => { setOwnTab(tab); onTabChange?.(tab); };
   const watermark = config.imageWatermark ?? {};
+  const changed = React.useMemo(() => {
+    const set = new Set<WatermarkTabId>();
+    if (!savedConfig) return set;
+    (Object.keys(TARGET_OF_TAB) as Array<keyof typeof TARGET_OF_TAB>).forEach((tab) => {
+      const target = TARGET_OF_TAB[tab];
+      if (JSON.stringify(watermark[target] ?? null) !== JSON.stringify(savedConfig.imageWatermark?.[target] ?? null)) set.add(tab);
+    });
+    return set;
+  }, [watermark, savedConfig]);
   const setTarget = (target: ImageWatermarkTarget, value: ImageWatermarkSettings) => onChange({ ...config, imageWatermark: { ...watermark, [target]: value } });
+  const revert = (tab: keyof typeof TARGET_OF_TAB) => {
+    const target = TARGET_OF_TAB[tab];
+    const savedValue = savedConfig?.imageWatermark?.[target];
+    const next = { ...watermark } as Record<string, unknown>;
+    if (savedValue === undefined) delete next[target];
+    else next[target] = JSON.parse(JSON.stringify(savedValue));
+    onChange({ ...config, imageWatermark: next as typeof watermark });
+  };
   return (
-    <div className="space-y-4 p-4 md:p-5">
-      <ImageWatermarkCard
-        target="controlledCopyEvidence"
-        title="Controlled Copy Destruction Evidence"
-        icon={<IconCamera className="h-4 w-4" />}
-        description="Evidence photos of a damaged controlled copy. Stamped from the moment this was set up with the system logo at the top left."
-        value={watermark.controlledCopyEvidence}
-        onChange={(value) => setTarget("controlledCopyEvidence", value)}
-      />
-      <ImageWatermarkCard
-        target="specimenSignature"
-        title="Specimen Signature"
-        icon={<IconSignature className="h-4 w-4" />}
-        description="The two pictures of a specimen signature. They are compared by their strokes, so keep the stamp small and faint, in a corner; the original stays available."
-        value={watermark.specimenSignature}
-        onChange={(value) => setTarget("specimenSignature", value)}
-      />
-    </div>
+    <ConfigTabs
+      tabs={TABS}
+      activeTab={activeTab}
+      onChange={selectTab}
+      changed={changed}
+      onReset={savedConfig ? (tab) => { if (tab !== "history") revert(tab); } : undefined}
+      ariaLabel="Image watermark sections"
+      idPrefix="image-watermark"
+    >
+      {activeTab === "controlled-copy" && (
+        <ImageWatermarkCard
+          target="controlledCopyEvidence"
+          title="Controlled Copy Destruction Evidence"
+          description="Evidence photos of a damaged controlled copy. Stamped from the moment this was set up with the system logo at the top left."
+          value={watermark.controlledCopyEvidence}
+          onChange={(value) => setTarget("controlledCopyEvidence", value)}
+        />
+      )}
+      {activeTab === "specimen-signature" && (
+        <ImageWatermarkCard
+          target="specimenSignature"
+          title="Specimen Signature"
+          description="The two pictures of a specimen signature. They are compared by their strokes, so keep the stamp small and faint, in a corner; the original stays available."
+          value={watermark.specimenSignature}
+          onChange={(value) => setTarget("specimenSignature", value)}
+        />
+      )}
+      {activeTab === "history" && <ConfigHistory page="image-watermark" />}
+    </ConfigTabs>
   );
 };

@@ -100,7 +100,7 @@ public class ReportTemplateService {
     }
 
     private Map<String,Object> filteredCatalog(UserAccount actor,String search,int page,String sortBy,String direction,Map<String,String> filters,boolean admin) {
-        if(admin) require(actor,"reports.definition.view","settings.configuration.view");
+        if(admin) require(actor,"reports.definition.view");
         else require(actor,"reports.catalog.view","report.module.view");
         String order=switch(sortBy==null?"displayName":sortBy) {
             case "displayName"->"d.display_name"; case "code"->"d.code"; case "category"->"d.category";
@@ -271,7 +271,7 @@ public class ReportTemplateService {
     }
 
     public Map<String, Object> adminDetail(UserAccount actor, String code) {
-        require(actor, "reports.definition.view", "settings.configuration.view");
+        require(actor, "reports.definition.view");
         var live = definition(code);
         return withRevisionInfo(overlay(live, revisions == null ? null : revisions.open(code)));
     }
@@ -279,7 +279,7 @@ public class ReportTemplateService {
     /** One revision of a template with its content; the revision of a template that was never approved is read from the live rows. */
     public Map<String, Object> revisionDetail(UserAccount actor, String code, int revision) {
         if (revisions == null) throw new IllegalStateException("REPORT_REVISIONS_UNAVAILABLE");
-        require(actor, "reports.definition.view", "settings.configuration.view");
+        require(actor, "reports.definition.view");
         return revisions.detail(actor, code, revision, definition(code));
     }
 
@@ -290,7 +290,7 @@ public class ReportTemplateService {
 
     public Map<String, Object> revisionListAll(UserAccount actor, String scope, String status, String gmp, String source, String search, String updatedFrom, String updatedTo, String sortBy, String sortDirection, int page, int limit) {
         if (revisions == null) throw new IllegalStateException("REPORT_REVISIONS_UNAVAILABLE");
-        require(actor, "reports.definition.view", "settings.configuration.view");
+        require(actor, "reports.definition.view");
         var result = revisions.listAll(actor, scope, status, gmp, source, search, updatedFrom, updatedTo, sortBy, sortDirection, page, limit);
         // The row menu opens with its items decided, as in the list of templates: what this person may do with the template of each revision comes with the list
         // (one read of the permissions for the page, one decision per template). The screen maps a revision's status and these answers to its menu entries.
@@ -326,7 +326,7 @@ public class ReportTemplateService {
      * them: a profile is "assigned" when it has one of the scopes PERSONAL, DEPARTMENT, BUSINESS_UNIT or SYSTEM.
      */
     public Map<String, Object> searchRoles(UserAccount actor, RoleSearch request) {
-        require(actor, "reports.definition.view", "reports.definition.manage", "settings.configuration.view", "settings.configuration.manage");
+        require(actor, "reports.definition.view", "reports.definition.manage");
         RoleSearch query = request == null ? new RoleSearch(null, null, null, null, null, null, null, null) : request;
         List<RoleAssignment> assignments = query.assignments() == null ? List.of() : query.assignments();
         if (assignments.size() > 200) throw new IllegalArgumentException("REPORT_SCOPE_INVALID");
@@ -368,12 +368,12 @@ public class ReportTemplateService {
     }
 
     public List<Map<String, Object>> roles(UserAccount actor) {
-        require(actor, "reports.definition.manage", "settings.configuration.manage");
+        require(actor, "reports.definition.manage");
         return jdbc.queryForList("select id,name,code from roles where is_active=true order by name,id");
     }
 
     public List<Map<String, Object>> sources(UserAccount actor) {
-        require(actor, "reports.definition.manage", "settings.configuration.manage");
+        require(actor, "reports.definition.manage");
         return providers.values().stream().filter(provider -> types == null || (types.isEnabled(provider.code()) && types.mayUse(actor, provider.code()))).map(provider -> {
             Map<String, Object> source = new LinkedHashMap<>();
             source.put("code", provider.code()); source.put("name", provider.name()); source.put("category", provider.category()); source.put("description", provider.description());
@@ -409,7 +409,7 @@ public class ReportTemplateService {
     /** A new template. Its number is issued by the system from the numbering rule; the caller cannot choose it (REPORT-TEMPLATE-NUMBER-2026-10-14). */
     @Transactional
     public Map<String, Object> create(UserAccount actor, TemplateWrite request) {
-        require(actor, "reports.definition.manage", "settings.configuration.manage");
+        require(actor, "reports.definition.manage");
         request = withDescriptionAsReason(request);
         // A new template is named by the one active Report Name Format; the author does not choose a rule (REPORT-NAME-FORMAT-ACTIVE-2026-10-15).
         request = withNameFormat(request, activeNameFormatId());
@@ -423,7 +423,7 @@ public class ReportTemplateService {
 
     @Transactional
     public Map<String, Object> save(UserAccount actor, String code, TemplateWrite request, boolean create) {
-        require(actor, "reports.definition.manage", "settings.configuration.manage");
+        require(actor, "reports.definition.manage");
         request = withDescriptionAsReason(request);
         // An existing template keeps the format that named it; a request cannot move it to another rule.
         if (!create && request != null) request = withNameFormat(request, storedNameFormatId(code));
@@ -590,7 +590,7 @@ public class ReportTemplateService {
                 request.signatureToken(), request.gmpUse(), request.nameFormatId(), request.nameValues());
     }
 
-    private static final Set<String> MANAGE = Set.of("reports.definition.manage", "settings.configuration.manage");
+    private static final Set<String> MANAGE = Set.of("reports.definition.manage");
 
     /**
      * What the current user may do to this template now, one decision per action: the permission the action needs (ticked in a Permission Set), the state of the
@@ -605,7 +605,7 @@ public class ReportTemplateService {
     }
 
     private ResourceCapabilitiesResponse capabilitiesOf(UserAccount actor, Set<String> held, String code) {
-        if (Stream.of("reports.catalog.view", "report.module.view", "reports.definition.view", "settings.configuration.view").noneMatch(held::contains)) throw new SecurityException("REPORT_SCOPE_DENIED");
+        if (Stream.of("reports.catalog.view", "report.module.view", "reports.definition.view").noneMatch(held::contains)) throw new SecurityException("REPORT_SCOPE_DENIED");
         var rows = jdbc.queryForList("select active, deleted_at, gmp_use, approval_status from report_definitions where code=?", code);
         if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "REPORT_TEMPLATE_NOT_FOUND");
         var row = rows.getFirst();
@@ -620,7 +620,7 @@ public class ReportTemplateService {
         boolean mine = open != null && (me.equals(String.valueOf(open.get("last_changed_by_user_id"))) || me.equals(String.valueOf(open.get("submitted_by_user_id"))));
         Map<String, ResourceActionCapabilityResponse> actions = new LinkedHashMap<>();
         actions.put("viewAuditTrail", decide(held, List.of("audit.view", "audittrail.module.view"), true, null, false));
-        actions.put("viewRevisions", decide(held, List.of("reports.definition.view", "settings.configuration.view"), true, null, false));
+        actions.put("viewRevisions", decide(held, List.of("reports.definition.view"), true, null, false));
         actions.put("edit", decide(held, MANAGE, !deleted && (!hasEffective || open != null), deleted ? "REPORT_TEMPLATE_DELETED" : "REPORT_UPGRADE_REQUIRED", false));
         actions.put("submitForApproval", decide(held, MANAGE, !deleted && open != null && "DRAFT".equals(openStatus) && active,
                 deleted ? "REPORT_TEMPLATE_DELETED" : !active ? "REPORT_TEMPLATE_DISABLED" : "REPORT_TEMPLATE_NOT_DRAFT", false));
@@ -996,7 +996,7 @@ public class ReportTemplateService {
 
     @Transactional
     public void delete(UserAccount actor,String code,Integer version,String reason) {
-        require(actor,"reports.definition.manage","settings.configuration.manage");
+        require(actor,"reports.definition.manage");
         if(reason==null||reason.isBlank()||reason.length()>1000)throw new IllegalArgumentException("REPORT_CHANGE_REASON_REQUIRED");
         var before=jdbc.queryForList("select definition_version,deleted_at,gmp_use from report_definitions where code=? and source_code is not null for update",code);
         if(before.isEmpty())throw new ResponseStatusException(HttpStatus.NOT_FOUND,"REPORT_TEMPLATE_NOT_FOUND");

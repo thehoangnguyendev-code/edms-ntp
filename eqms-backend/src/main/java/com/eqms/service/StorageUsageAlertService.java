@@ -17,7 +17,7 @@ import java.util.List;
  */
 @Service
 public class StorageUsageAlertService {
-    static final String CONFIGURATION_PERMISSION = "settings.configuration.manage";
+    static final String CONFIGURATION_PERMISSION = "settings.config_integrations.manage";
     private static final Logger log = LoggerFactory.getLogger(StorageUsageAlertService.class);
 
     private final JdbcTemplate jdbc;
@@ -59,11 +59,11 @@ public class StorageUsageAlertService {
                     .toList();
             long percent = BigInteger.valueOf(usedBytes).multiply(BigInteger.valueOf(100)).divide(BigInteger.valueOf(policy.budgetBytes())).longValue();
             String title = "Storage is near its limit";
-            String message = "The object storage uses " + percent + "% of the budget set in Configuration (the warning is at " + policy.warningPercent()
+            String message = "The object storage uses " + percent + "% of the budget set in Configuration > Integrations (the warning is at " + policy.warningPercent()
                     + "%). Review the usage by module and file type, or raise the budget.";
             for (UserAccount administrator : administrators) {
                 dispatcher.dispatchIndependently(OperationalNotificationEvents.STORAGE_USAGE_WARNING, List.of(administrator),
-                        NotificationDispatcher.noticeVariables(title, message, "/settings/configuration"));
+                        NotificationDispatcher.noticeVariables(title, message, "/settings/configuration/integrations"));
             }
             jdbc.update("UPDATE storage_usage_scan_state SET warning_notified=true WHERE id=true");
             return administrators.size();

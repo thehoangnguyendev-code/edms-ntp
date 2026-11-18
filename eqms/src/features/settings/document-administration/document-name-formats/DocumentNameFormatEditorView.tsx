@@ -1,3 +1,4 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowDown, ArrowLeft, ArrowUp, FileSignature, Plus, Trash2 } from "lucide-react";
@@ -159,7 +160,8 @@ export const DocumentNameFormatEditorView: React.FC = () => {
     return () => clearTimeout(timer);
   }, [selected, separator, isLoading, descriptionTouched]);
 
-  const goBack = () => navigate(ROUTES.DOCUMENTS.ADMIN.NAME_FORMATS);
+  // Back asks first when there is a change that was not saved; the move after a successful Save is not a leave.
+  const goBack = () => go(ROUTES.DOCUMENTS.ADMIN.NAME_FORMATS);
 
   // Navigates to the dedicated "New Document Component" page, carrying the current in-progress
   // edit as router state so it can be restored on return (see the draft-hydration effect above)
@@ -218,6 +220,8 @@ export const DocumentNameFormatEditorView: React.FC = () => {
     ? (isEdit ? true : Boolean(name.trim() || selected.length > 0 || description.trim()))
     : snapshotOf({ name, separator, description, isActive, ids: selected.map((c) => c.componentId) }) !== baseline;
   const canSubmit = name.trim().length > 0 && selected.length > 0 && isDirty && !isSaving;
+  // an edit that is still loading has nothing of the person's yet
+  const { go, modal: leaveModal } = useLeaveGuard(baseline === null ? !isEdit && isDirty : isDirty, "Document Name Format", "the list");
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -237,7 +241,7 @@ export const DocumentNameFormatEditorView: React.FC = () => {
         title: isEdit ? "Document Name Format Updated" : "Document Name Format Created",
         message: `"${saved.name}" has been ${isEdit ? "updated" : "created"} successfully. Example: ${saved.previewExample || "-"}`,
       });
-      goBack();
+      navigate(ROUTES.DOCUMENTS.ADMIN.NAME_FORMATS);
     } catch (error) {
       showToast({
         type: "error",
@@ -253,7 +257,7 @@ export const DocumentNameFormatEditorView: React.FC = () => {
     <div className="h-full flex flex-col gap-6">
       <PageHeader
         title={isEdit ? "Edit Document Name Format" : "New Document Name Format"}
-        breadcrumbItems={isEdit ? documentNameFormatEdit(navigate, name || undefined) : documentNameFormatCreate(navigate)}
+        breadcrumbItems={isEdit ? documentNameFormatEdit(go, name || undefined) : documentNameFormatCreate(go)}
         actions={
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline-emerald" onClick={goBack} className="whitespace-nowrap">
@@ -410,6 +414,7 @@ export const DocumentNameFormatEditorView: React.FC = () => {
           </FormSection>
         </div>
       )}
+      {leaveModal}
     </div>
   );
 };

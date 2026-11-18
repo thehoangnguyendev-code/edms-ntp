@@ -40,6 +40,25 @@ public class AccessReviewItem {
     @Column(name = "is_super_admin", nullable = false)
     private boolean superAdmin;
 
+    /** Facts captured with the snapshot (V803). Null on a campaign made before they existed. */
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
+
+    @Column(name = "inactive_days")
+    private Integer inactiveDays;
+
+    @Column(name = "inactive_flag")
+    private Boolean inactiveFlag;
+
+    @Column(name = "mfa_state", length = 30)
+    private String mfaState;
+
+    @Column(name = "time_limited_until")
+    private Instant timeLimitedUntil;
+
+    @Column(name = "open_sod_violations")
+    private Integer openSodViolations;
+
     @Column(nullable = false, length = 30)
     private String decision = "PENDING";
 
@@ -71,6 +90,18 @@ public class AccessReviewItem {
     public void setPermissionCount(int permissionCount) { this.permissionCount = permissionCount; }
     public boolean isSuperAdmin() { return superAdmin; }
     public void setSuperAdmin(boolean superAdmin) { this.superAdmin = superAdmin; }
+    public Instant getLastLoginAt() { return lastLoginAt; }
+    public void setLastLoginAt(Instant lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+    public Integer getInactiveDays() { return inactiveDays; }
+    public void setInactiveDays(Integer inactiveDays) { this.inactiveDays = inactiveDays; }
+    public Boolean getInactiveFlag() { return inactiveFlag; }
+    public void setInactiveFlag(Boolean inactiveFlag) { this.inactiveFlag = inactiveFlag; }
+    public String getMfaState() { return mfaState; }
+    public void setMfaState(String mfaState) { this.mfaState = mfaState; }
+    public Instant getTimeLimitedUntil() { return timeLimitedUntil; }
+    public void setTimeLimitedUntil(Instant timeLimitedUntil) { this.timeLimitedUntil = timeLimitedUntil; }
+    public Integer getOpenSodViolations() { return openSodViolations; }
+    public void setOpenSodViolations(Integer openSodViolations) { this.openSodViolations = openSodViolations; }
     public String getDecision() { return decision; }
     public void setDecision(String decision) { this.decision = decision; }
     public String getDecisionNote() { return decisionNote; }

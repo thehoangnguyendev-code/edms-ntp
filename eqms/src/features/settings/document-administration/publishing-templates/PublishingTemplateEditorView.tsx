@@ -43,6 +43,8 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/components/ui/utils";
 import { ROUTES } from "@/app/routes.constants";
 import { useNavigateWithLoading } from "@/hooks/useNavigateWithLoading";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useFormDirty } from "@/hooks/useFormDirty";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
@@ -281,11 +283,13 @@ export const PublishingTemplateEditorView: React.FC = () => {
     );
   }, [locationState?.from, locationState?.returnTo, locationState?.workspaceReturnPath]);
   const handleBack = () => {
-    if (locationState?.workspaceReturnPath || locationState?.returnTo || locationState?.from) {
-      navigateTo(returnToPath);
-      return;
-    }
-    navigateBack(navigate, null, ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES);
+    confirmLeave(() => {
+      if (locationState?.workspaceReturnPath || locationState?.returnTo || locationState?.from) {
+        navigateTo(returnToPath);
+        return;
+      }
+      navigateBack(navigate, null, ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES);
+    });
   };
   const [template, setTemplate] = useState<PublishingTemplateResponse | null>(
     null,
@@ -293,6 +297,14 @@ export const PublishingTemplateEditorView: React.FC = () => {
   const [form, setForm] = useState<TemplateFormState>(FORM_DEFAULTS);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  // Only the four fields above wait for the Save button; uploads, deletes and placeholder styles are saved by their own actions.
+  const formDirty = useFormDirty(form, !isLoading);
+  const { confirmLeave, modal: leaveModal } = useLeaveGuard(
+    formDirty.isDirty,
+    isEditMode ? "Edit Publishing Template" : "New Publishing Template",
+    "Publishing Templates",
+  );
+  const leaveTo = (path: string) => confirmLeave(() => navigateTo(path));
   const [deleteTarget, setDeleteTarget] =
     useState<PublishingTemplateResponse | null>(null);
   const [activeSlot, setActiveSlot] = useState<string>("cover:PORTRAIT");
@@ -1008,6 +1020,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
           ? await publishingTemplatesApi.updateTemplate(template.id, payload)
           : await publishingTemplatesApi.createTemplate(payload);
       setTemplate(saved);
+      formDirty.markSaved();
       showToast({
         type: "success",
         title: "Saved",
@@ -1071,6 +1084,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         status: duplicated.status || "INACTIVE",
         publishingMode: normalizePublishingMode(duplicated.publishingMode),
       });
+      formDirty.markSaved();
       showToast({
         type: "success",
         title: "Duplicated",
@@ -1481,6 +1495,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         type="warning"
       />
 
+      {leaveModal}
+
       {/* Placeholder Style Modal */}
       {createPortal(
         <AnimatePresence mode="wait">
@@ -1760,8 +1776,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         }
         breadcrumbItems={
           isEditMode
-            ? publishingTemplateEdit(navigateTo)
-            : publishingTemplateCreate(navigateTo)
+            ? publishingTemplateEdit(leaveTo)
+            : publishingTemplateCreate(leaveTo)
         }
         actions={
           <>

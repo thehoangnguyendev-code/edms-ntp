@@ -16,6 +16,7 @@ import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import type { BusinessUnitItem, DepartmentItem } from "../types";
 import { usePortalDropdown } from "@/hooks";
 import { FormModal } from "@/components/ui/modal/FormModal";
+import { useOpenedFormDirty } from "@/hooks/useFormDirty";
 import { Button } from "@/components/ui/button/Button";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import {IconFilter2, IconPencilMinus, IconToggleLeft, IconToggleRight} from "@tabler/icons-react";
@@ -704,6 +705,7 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
     }
   }, [item, isOpen]);
 
+  const dirty = useOpenedFormDirty(formData, isOpen);
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
@@ -719,6 +721,7 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
   return (
     <FormModal
       isOpen={isOpen}
+      dirty={dirty}
       onClose={onClose}
       onConfirm={handleSubmit}
       title={`${isEdit ? "Edit" : "New"} Business Unit`}

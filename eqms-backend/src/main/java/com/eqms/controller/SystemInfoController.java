@@ -32,7 +32,7 @@ public class SystemInfoController {
     @GetMapping("/info")
     public ResponseEntity<SystemInfoResponse> getSystemInfo() {
         if (!permissionEvaluationService.hasPermission(
-                currentUserService.requireCurrentUser(), "settings.configuration.view")) {
+                currentUserService.requireCurrentUser(), "settings.system_info.view")) {
             throw new AccessDeniedException("Settings configuration view permission required");
         }
         return ResponseEntity.ok(systemInfoService.getSystemInfo());

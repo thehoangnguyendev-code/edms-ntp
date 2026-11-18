@@ -1,3 +1,4 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import React, { useEffect, useMemo, useState } from "react";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
@@ -131,6 +132,8 @@ export const AccessProfileDetailView: React.FC = () => {
   const assignmentsDirty = Object.values(changes).some((d) => d.added.length > 0 || d.removed.length > 0);
   const managedDirty = Boolean(managedDraft?.dirty);
   const hasChanges = generalDirty || assignmentsDirty || managedDirty;
+  // Leaving with changes that were not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after a delete is not a leave.
+  const { go, modal: leaveModal } = useLeaveGuard(hasChanges, "Access Profile Details", "the list");
 
   const resetEdits = () => {
     if (profile) {
@@ -321,13 +324,13 @@ export const AccessProfileDetailView: React.FC = () => {
     <div className="space-y-5 w-full flex-1 flex flex-col">
       <PageHeader
         title={title}
-        breadcrumbItems={accessProfileDetailBreadcrumb(navigate, mode, profile?.name ?? undefined)}
+        breadcrumbItems={accessProfileDetailBreadcrumb(go, mode, profile?.name ?? undefined)}
         actions={
           <>
             <Button
               variant="outline-emerald"
               size="sm"
-              onClick={() => navigateBack(navigate, location.state as never, ROUTES.SECURITY.ACCESS_PROFILES)}
+              onClick={() => navigateBack(go, location.state as never, ROUTES.SECURITY.ACCESS_PROFILES)}
             >
               Back
             </Button>
@@ -549,6 +552,7 @@ export const AccessProfileDetailView: React.FC = () => {
         showCancel
       />
       {signatureModal}
+      {leaveModal}
     </div>
   );
 };

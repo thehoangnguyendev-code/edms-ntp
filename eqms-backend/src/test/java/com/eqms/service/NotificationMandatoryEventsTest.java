@@ -104,9 +104,9 @@ class NotificationMandatoryEventsTest {
     }
 
     @Test
-    void theAccountEmailsAreTheFiveThatCarryASecretOrCannotBeDoneWithout() {
+    void theAccountEmailsAreTheSixThatCarryASecretOrCannotBeDoneWithout() {
         assertThat(NotificationMandatoryEvents.all()).containsExactlyInAnyOrder(
-                "security.mfa_login_code", "security.password_reset_link", "security.account_unlocked", "security.account_password_reset", "security.mfa_requirement_removed");
+                "security.mfa_login_code", "security.password_reset_link", "security.account_unlocked", "security.account_password_reset", "security.mfa_requirement_removed", "security.account_mfa_reset");
         assertThat(NotificationMandatoryEvents.isMandatory("document.approved")).isFalse();
         assertThat(NotificationMandatoryEvents.isMandatory(null)).isFalse();
     }

@@ -105,7 +105,7 @@ public class UncontrolledCopyPolicyService {
     public UncontrolledCopyPolicyResponse savePolicy(UncontrolledCopyPolicyRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         boolean allowed = permissionEvaluationService.hasAnyPermission(currentUser,
-                "documents.admin.uncontrolled_copies_policy.manage", "settings.configuration.manage");
+                "documents.admin.uncontrolled_copies_policy.manage");
         if (!allowed) {
             throw new AccessDeniedException("Current user is not allowed to manage the uncontrolled copy policy");
         }

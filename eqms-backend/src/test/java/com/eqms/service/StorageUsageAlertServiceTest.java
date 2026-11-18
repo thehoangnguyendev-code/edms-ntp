@@ -49,13 +49,13 @@ class StorageUsageAlertServiceTest {
         var suspended = user(UserStatus.Suspended);
         var ordinary = user(UserStatus.Active);
         when(users.findAll()).thenReturn(List.of(admin, suspended, ordinary));
-        when(permissions.hasPermission(admin, "settings.configuration.manage")).thenReturn(true);
-        when(permissions.hasPermission(suspended, "settings.configuration.manage")).thenReturn(true);
+        when(permissions.hasPermission(admin, "settings.config_integrations.manage")).thenReturn(true);
+        when(permissions.hasPermission(suspended, "settings.config_integrations.manage")).thenReturn(true);
 
         assertEquals(1, service.afterSuccessfulScan(85));
 
         verify(notifications).dispatchIndependently(eq("system.storage_usage_warning"), eq(List.of(admin)), argThat(v -> "Storage is near its limit".equals(v.get("title"))
-                && "/settings/configuration".equals(v.get("actionUrl")) && v.get("message").contains("85%")));
+                && "/settings/configuration/integrations".equals(v.get("actionUrl")) && v.get("message").contains("85%")));
         verify(notifications, times(1)).dispatchIndependently(any(), any(), any());
         verify(jdbc).update(contains("warning_notified=true"));
     }

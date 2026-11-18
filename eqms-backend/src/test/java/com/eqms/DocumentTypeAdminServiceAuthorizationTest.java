@@ -63,7 +63,7 @@ class DocumentTypeAdminServiceAuthorizationTest {
     }
 
     private void denyManage() {
-        when(permissionEvaluationService.hasAnyPermission(actor, "documents.admin.document_types.manage", "settings.configuration.manage"))
+        when(permissionEvaluationService.hasAnyPermission(actor, "documents.admin.document_types.manage"))
                 .thenReturn(false);
     }
 

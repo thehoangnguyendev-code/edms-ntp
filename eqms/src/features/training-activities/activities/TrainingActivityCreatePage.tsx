@@ -1,3 +1,5 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useFormDirty } from "@/hooks/useFormDirty";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -75,6 +77,12 @@ export function TrainingActivityCreatePage() {
   const [session, setSession] = useState<SessionDraft | null>(null);
   const [people, setPeople] = useState<ParticipantsDraft | null>(null);
   const [staged, setStaged] = useState<StagedMaterial[]>([]);
+  // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after the activity is created is not a leave.
+  // The session and the people are filled by their own editors, so each is compared from the first time it has a value.
+  const basicsDirty = useFormDirty({ form, materials: staged.length }).isDirty;
+  const sessionDirty = useFormDirty(session, session !== null).isDirty;
+  const peopleDirty = useFormDirty(people, people !== null).isDirty;
+  const { go, confirmLeave, modal: leaveModal } = useLeaveGuard(basicsDirty || sessionDirty || peopleDirty, "New Training Activity", "the previous page");
   const { trainingMaterialsLayout } = useBranding();
   const { user } = useAuth();
 
@@ -194,11 +202,11 @@ export function TrainingActivityCreatePage() {
     <TrainingDetailLayout
       title="New Training Activity"
       breadcrumbItems={trainingBreadcrumbs(
-        navigate,
+        go,
         "activities",
         "New Training Activity",
       )}
-      onBack={goBack}
+      onBack={() => confirmLeave(goBack)}
       workflow={workflow}
       tabs={tabs}
       activeTab={tab}
@@ -335,6 +343,7 @@ export function TrainingActivityCreatePage() {
           the exam and the people who review and approve.
         </div>
       )}
+      {leaveModal}
     </TrainingDetailLayout>
   );
 }

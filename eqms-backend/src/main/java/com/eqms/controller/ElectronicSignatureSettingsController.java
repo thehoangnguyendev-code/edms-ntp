@@ -111,8 +111,8 @@ public class ElectronicSignatureSettingsController {
 
     private void requireAdminView() {
         var user = currentUserService.requireCurrentUser();
-        boolean allowed = permissionEvaluationService.hasPermission(user, "settings.configuration.view")
-                || permissionEvaluationService.hasPermission(user, "settings.configuration.manage");
+        boolean allowed = permissionEvaluationService.hasPermission(user, "settings.electronic_signature.view")
+                || permissionEvaluationService.hasPermission(user, "settings.electronic_signature.manage");
         if (!allowed) {
             throw new AccessDeniedException("Current user is not allowed to configure electronic signatures");
         }
@@ -120,7 +120,7 @@ public class ElectronicSignatureSettingsController {
 
     private void requireAdminManage() {
         var user = currentUserService.requireCurrentUser();
-        boolean allowed = permissionEvaluationService.hasPermission(user, "settings.configuration.manage");
+        boolean allowed = permissionEvaluationService.hasPermission(user, "settings.electronic_signature.manage");
         if (!allowed) throw new AccessDeniedException("Current user is not allowed to configure electronic signatures");
     }
 }

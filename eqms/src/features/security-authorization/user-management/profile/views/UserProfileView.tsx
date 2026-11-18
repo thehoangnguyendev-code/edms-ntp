@@ -16,6 +16,8 @@ import { userProfile as userProfileBreadcrumb } from "@/components/ui/breadcrumb
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { ResetPasswordModal } from "../components/ResetPasswordModal";
+import { ResetMfaModal } from "../components/ResetMfaModal";
+import { passwordUserTokens } from "../components/passwordUserTokens";
 import { UnlockAccountModal } from "../components/UnlockAccountModal";
 import { UserProfileSummary } from "../components/UserProfileSummary";
 import { ProfileTabLayout, profileTabItems } from "../components/ProfileTabLayout";
@@ -80,6 +82,7 @@ export const UserProfileView: React.FC = () => {
   } = useUserProfile(userId);
 
   const [resetPasswordModal, setResetPasswordModal] = useState(false);
+  const [resetMfaModal, setResetMfaModal] = useState(false);
   const [suspendModal, setSuspendModal] = useState(false);
   const [terminateModal, setTerminateModal] = useState(false);
   const [reinstateModal, setReinstateModal] = useState(false);
@@ -341,6 +344,8 @@ export const UserProfileView: React.FC = () => {
               canTerminate={canPerform("terminate")}
               canReinstate={canPerform("reinstate")}
               canUnlock={canPerform("unlock")}
+              canResetMfa={canPerform("resetMfa")}
+              onResetMfa={() => setResetMfaModal(true)}
               onResetPassword={() => setResetPasswordModal(true)}
               onSuspend={() => setSuspendModal(true)}
               onTerminate={() => setTerminateModal(true)}
@@ -359,11 +364,20 @@ export const UserProfileView: React.FC = () => {
           )}
       </ProfileTabLayout>
 
+      <ResetMfaModal
+        isOpen={resetMfaModal}
+        onClose={() => setResetMfaModal(false)}
+        userId={user.id}
+        userName={user.fullName}
+        onSuccess={() => void loadCapabilities()}
+      />
+
       <ResetPasswordModal
         isOpen={resetPasswordModal}
         onClose={() => setResetPasswordModal(false)}
         userId={user.id}
         userName={user.fullName}
+        userTokens={passwordUserTokens(user)}
       />
 
       <SuspendModal

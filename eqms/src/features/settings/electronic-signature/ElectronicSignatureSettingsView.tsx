@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { MousePointerClick } from "lucide-react";
-import { useNavigateWithLoading } from "@/hooks/useNavigateWithLoading";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { electronicSignatureSettings as electronicSignatureSettingsBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { FormSection } from "@/components/ui/form/FormSection";
@@ -28,12 +28,11 @@ const defaultSettings: ElectronicSignatureSettings = {
  * format and the time zone are fixed (one format, the zone of the site) and are not part of this screen.
  */
 export const ElectronicSignatureSettingsView: React.FC = () => {
-  const { navigateTo } = useNavigateWithLoading();
   const { showToast } = useToast();
   const { requestSignature, signatureModal } = useSecurityESign();
   const { hasPermissionAlias } = usePermissions();
   const canManageConfiguration = hasPermissionAlias(
-    "settings.configuration.manage",
+    "settings.electronic_signature.manage",
   );
   const [settings, setSettings] =
     useState<ElectronicSignatureSettings>(defaultSettings);
@@ -41,10 +40,13 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
     useState<ElectronicSignatureSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const isDirty = JSON.stringify(settings) !== JSON.stringify(savedSettings);
+  // Leaving with a change that was not saved asks first (the breadcrumb, the sidebar, a reload).
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, "E-Sign Config", "another page");
 
   const breadcrumbItems = useMemo(
-    () => electronicSignatureSettingsBreadcrumbs(navigateTo),
-    [navigateTo],
+    () => electronicSignatureSettingsBreadcrumbs(go),
+    [go],
   );
 
   useEffect(() => {
@@ -124,8 +126,6 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
     return <FullPageLoading text="Loading E-Sign Config..." />;
   }
 
-  const isDirty = JSON.stringify(settings) !== JSON.stringify(savedSettings);
-
   return (
     <div className="flex flex-col gap-4 md:gap-5">
       <PageHeader
@@ -157,6 +157,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
         </div>
       </div>
       {signatureModal}
+      {leaveModal}
     </div>
   );
 };

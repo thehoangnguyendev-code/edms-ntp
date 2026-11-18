@@ -13,6 +13,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { NavItem } from "@/types";
 import { NAV_CONFIG, QUALITY_NAV_CONFIG, findNodeByPath, ICON_MAP } from "@/app/constants";
 import { isTransactionalRoute, ROUTES } from "@/app/routes.constants";
+import { hasUnsavedScreen } from "@/hooks/useReportUnsavedChanges";
 import { documentApi, navigationApi } from "@/services/api";
 import { invalidateNavigationCache } from "@/services/api/navigation";
 import { cn } from "@/components/ui/utils";
@@ -683,7 +684,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
         }
 
         // Heuristic: warn when leaving transactional screens (review/new/edit/approval/etc.)
-        const shouldWarn = isTransactionalRoute(currentPath);
+        const shouldWarn = isTransactionalRoute(currentPath) || hasUnsavedScreen();
 
         if (shouldWarn) {
           setPendingNavId(item.id);
@@ -1067,7 +1068,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
           return;
         }
 
-        if (isTransactionalRoute(currentPath)) {
+        if (isTransactionalRoute(currentPath) || hasUnsavedScreen()) {
           setPendingNavId(item.id);
           setPendingNavLabel(item.label);
           setPendingPageTitle(getCurrentPageTitle());

@@ -68,15 +68,6 @@ export const DeliveryFailuresTable: React.FC = () => {
     { id: 'errorMessage', header: 'Error', cell: (r) => <span className="block max-w-72 truncate" title={r.errorMessage ?? ''}>{r.errorMessage || '—'}</span> },
     { id: 'createdAt', header: 'First Failed On', sort: sorted('createdAt'), cell: (r) => displayDateTime(r.createdAt) },
     { id: 'lastAttemptAt', header: 'Last Attempt On', sort: sorted('lastAttemptAt'), cell: (r) => displayDateTime(r.lastAttemptAt) },
-    {
-      id: 'action',
-      header: 'Action',
-      cell: (r) => (
-        <Button size="sm" variant="ghost" onClick={() => void retry(r)} disabled={retryingId === r.id || r.status === 'RESOLVED' || r.attempts >= MAX_ATTEMPTS} className="gap-1 text-emerald-700">
-          <RotateCcw className="h-3.5 w-3.5" />Retry
-        </Button>
-      ),
-    },
   ];
   const { layout, control } = useCustomColumnLayout('notification.failures', columns);
 
@@ -109,6 +100,15 @@ export const DeliveryFailuresTable: React.FC = () => {
 
           columns={columns}
           columnLayout={layout}
+          // the Action column stays at the right edge while the table scrolls sideways, its header centred over the buttons
+          action={{
+            header: 'Action',
+            cell: (r) => (
+              <Button size="sm" variant="ghost" onClick={() => void retry(r)} disabled={retryingId === r.id || r.status === 'RESOLVED' || r.attempts >= MAX_ATTEMPTS} className="gap-1 text-emerald-700">
+                <RotateCcw className="h-3.5 w-3.5" />Retry
+              </Button>
+            ),
+          }}
           emptyState={<TableEmptyState title="No Delivery Failures" description="No failed notification delivery matches the search or the filters." />}
           pagination={table.totalItems > 0 ? (
             <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} />

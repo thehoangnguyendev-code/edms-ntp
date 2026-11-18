@@ -58,6 +58,10 @@ const ITEM_COLUMNS: { key: string; label: string; sortable: boolean }[] = [
   { key: "userStatus", label: "Status", sortable: true },
   { key: "accessProfiles", label: "Access Profiles", sortable: true },
   { key: "permissionCount", label: "Permissions", sortable: true },
+  { key: "lastSignIn", label: "Last Sign-in", sortable: false },
+  { key: "mfa", label: "MFA", sortable: false },
+  { key: "timeLimited", label: "Time-limited Until", sortable: false },
+  { key: "sod", label: "SoD Conflicts", sortable: false },
   { key: "flags", label: "Flags", sortable: false },
   { key: "decision", label: "Decision", sortable: true },
   { key: "decidedAt", label: "Decided", sortable: true },
@@ -394,14 +398,64 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
       cell: (item) => (item.superAdmin ? "All (super admin)" : item.permissionCount),
     },
     {
+      id: "lastSignIn",
+      header: "Last Sign-in",
+      label: "Last Sign-in",
+      cellClassName: "text-slate-700",
+      cell: (item) =>
+        item.inactiveDays == null ? (
+          <span className="text-slate-400" title="This campaign was made before this fact was captured">Not captured</span>
+        ) : (
+          <>
+            <div>{item.lastLoginAt ? formatDateTime(item.lastLoginAt) : "Never signed in"}</div>
+            <div className={cn("text-xs", item.inactive ? "font-medium text-amber-700" : "text-slate-500")}>{item.inactiveDays} days without sign-in</div>
+          </>
+        ),
+    },
+    {
+      id: "mfa",
+      header: "MFA",
+      label: "MFA",
+      cell: (item) =>
+        item.mfaState ? (
+          <Badge size="sm" color={item.mfaState === "ENROLLED" ? "emerald" : item.mfaState === "REQUIRED_NOT_ENROLLED" ? "red" : "slate"}>{item.mfaStateLabel ?? item.mfaState}</Badge>
+        ) : (
+          <span className="text-slate-400">Not captured</span>
+        ),
+    },
+    {
+      id: "timeLimited",
+      header: "Time-limited Until",
+      label: "Time-limited Until",
+      cellClassName: "text-slate-700",
+      cell: (item) => (item.timeLimitedUntil ? formatDateTime(item.timeLimitedUntil) : <span className="text-slate-400">—</span>),
+    },
+    {
+      id: "sod",
+      header: "SoD Conflicts",
+      label: "SoD Conflicts",
+      cellClassName: "text-slate-700",
+      cell: (item) =>
+        item.superAdmin ? (
+          <span className="text-slate-400" title="Holds every permission">All</span>
+        ) : item.openSodViolations == null ? (
+          <span className="text-slate-400">Not captured</span>
+        ) : item.openSodViolations > 0 ? (
+          <Badge size="sm" color="red">{item.openSodViolations}</Badge>
+        ) : (
+          <span className="text-slate-400">0</span>
+        ),
+    },
+    {
       id: "flags",
       header: "Flags",
       label: "Flags",
       cell: (item) => (
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           {item.superAdmin && <Badge color="purple" size="sm">Super Admin</Badge>}
           {!item.superAdmin && item.permissionCount === 0 && <Badge color="slate" size="sm">No Permissions</Badge>}
-          {!item.superAdmin && item.permissionCount !== 0 && <span className="text-slate-400">—</span>}
+          {item.inactive && <Badge color="amber" size="sm">Inactive</Badge>}
+          {!item.superAdmin && item.permissionCount !== 0 && !item.inactive && <span className="text-slate-400">—</span>}
         </div>
       ),
     },

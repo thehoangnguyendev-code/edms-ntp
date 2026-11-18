@@ -31,7 +31,7 @@ class StorageUsageControllerTest {
         var service = mock(StorageUsageSnapshotService.class);
         var user = mock(UserAccount.class);
         when(current.requireCurrentUser()).thenReturn(user);
-        when(permissions.hasPermission(user, "settings.configuration.manage")).thenReturn(true);
+        when(permissions.hasPermission(user, "settings.config_integrations.manage")).thenReturn(true);
         when(service.history()).thenReturn(List.of());
         assertEquals(List.of(), new StorageUsageController(service, current, permissions, mock(StorageUsagePolicyService.class)).history());
     }
@@ -43,7 +43,7 @@ class StorageUsageControllerTest {
         var policies = mock(StorageUsagePolicyService.class);
         var user = mock(UserAccount.class);
         when(current.requireCurrentUser()).thenReturn(user);
-        when(permissions.hasPermission(user, "settings.configuration.manage")).thenReturn(true);
+        when(permissions.hasPermission(user, "settings.config_integrations.manage")).thenReturn(true);
         when(policies.get()).thenReturn(new StorageUsagePolicyService.Policy(Long.MAX_VALUE, 80));
         var empty = new ObjectMapper().createObjectNode();
         when(service.history()).thenReturn(List.of(new StorageUsageSnapshotService.Snapshot(Instant.now(), Long.MAX_VALUE, 1, empty, empty)));

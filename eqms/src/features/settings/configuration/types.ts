@@ -67,6 +67,8 @@ export interface AppearanceSettings {
   compactDesktopFilters?: boolean;
   /** The sign-in screen every user sees: the classic one (default) or a card with a blue product panel beside the form. */
   loginLayout?: 'CLASSIC' | 'SPLIT';
+  /** Pictures, titles, subtitles and the speed of the right-hand panel of the Split sign-in screen. */
+  loginCarousel?: import('@/services/api/branding').LoginCarouselConfig | null;
   /** How the materials of a training are drawn on every Training screen: a table (default) or tiles. */
   trainingMaterialsLayout?: 'TABLE' | 'TILES';
   /** The Audit Trail tab of a record (document, revision, copy, training ...): a table (default) or a vertical timeline. Not the Audit Trail module. */
@@ -180,6 +182,8 @@ export interface SecurityConfig {
   forcePasswordChangeOnFirstLogin: boolean;
   enableAccountLockout: boolean;
   maxLoginAttempts: number;
+  /** Days without a sign-in after which an account is flagged as inactive in Access Review (0 switches the flag off; 90 when not set). Flag only: nobody is suspended by it. */
+  inactiveAccountDays?: number;
 }
 
 export interface ESignatureSettings {

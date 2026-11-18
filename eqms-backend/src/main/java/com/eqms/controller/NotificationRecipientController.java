@@ -34,7 +34,7 @@ public class NotificationRecipientController {
 
     private void requireView() {
         var user = currentUserService.requireCurrentUser();
-        if (!permissions.hasAnyPermission(user, "settings.notification_policy.view", "settings.notification_policy.manage", "settings.configuration.view")) {
+        if (!permissions.hasAnyPermission(user, "settings.notification_policy.view", "settings.notification_policy.manage")) {
             throw new AccessDeniedException("Current user is not allowed to view notifications");
         }
     }

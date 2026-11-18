@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { FilterAccordionItem, FilterDrawer } from "@/components/ui/filter/FilterDrawer";
 import { FormModal } from "@/components/ui/modal/FormModal";
+import { useOpenedFormDirty } from "@/hooks/useFormDirty";
 import { Button } from "@/components/ui/button/Button";
 import { Select } from "@/components/ui/select/Select";
 import { TablePagination } from "@/components/ui/table/TablePagination";
@@ -633,6 +634,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
   const defaultIconText = formData.shortCode.toUpperCase().replace(/[^A-Z0-9_/-]/g, "").slice(0, 6);
   const iconText = formData.iconLabel || defaultIconText;
 
+  const dirty = useOpenedFormDirty(formData, isOpen);
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
@@ -651,6 +653,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
   return (
     <FormModal
       isOpen={isOpen}
+      dirty={dirty}
       onClose={onClose}
       onConfirm={handleSubmit}
       title={`${isEdit ? "Edit" : "New"} Document Type`}

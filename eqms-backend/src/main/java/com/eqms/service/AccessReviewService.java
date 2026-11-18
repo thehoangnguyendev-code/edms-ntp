@@ -45,6 +45,13 @@ public class AccessReviewService {
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private ObjectNumberService numbers;
+    // The facts added to the snapshot (V803) come from these; a service built without them (a unit test) leaves those facts empty instead of guessing them.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private SodConstraintService sodConstraintService;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private SystemConfigurationService systemConfigurationService;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.eqms.repository.TimeLimitedUserGrantRepository timeLimitedGrantRepo;
     private final AccessReviewCampaignRepository campaignRepo;
     private final AccessReviewItemRepository itemRepo;
     private final UserAccountRepository userRepo;
@@ -213,6 +220,13 @@ public class AccessReviewService {
         campaign = campaignRepo.save(campaign);
 
         // Snapshot all users' access state at campaign creation time
+        int inactiveDays = systemConfigurationService == null ? 0 : systemConfigurationService.inactiveAccountDays();
+        boolean mfaRequiredGlobally = systemConfigurationService != null && systemConfigurationService.isMfaRequiredGlobally();
+        java.util.Map<UUID, Instant> activeTimeLimited = new java.util.HashMap<>();
+        if (timeLimitedGrantRepo != null) {
+            timeLimitedGrantRepo.findByStatus(com.eqms.entity.TimeLimitedUserGrant.STATUS_ACTIVE)
+                    .forEach(g -> activeTimeLimited.merge(g.getUser().getId(), g.getEndAt(), (a, b) -> a.isAfter(b) ? a : b));
+        }
         int count = 0;
         for (UserAccount user : userRepo.findAll()) {
             AccessReviewItem item = new AccessReviewItem();
@@ -231,6 +245,7 @@ public class AccessReviewService {
             var effective = effectivePermissionService.getEffectivePermissionResult(user);
             item.setPermissionCount(effective.systemSuperAdmin() ? -1 : effective.permissionCodes().size());
             item.setSuperAdmin(effective.systemSuperAdmin());
+            captureFacts(item, user, effective, inactiveDays, mfaRequiredGlobally, activeTimeLimited);
             itemRepo.save(item);
             count++;
         }
@@ -419,13 +434,46 @@ public class AccessReviewService {
         return codes.stream().map(code -> new CodeLabelResponse(code, displayLabel(code))).toList();
     }
 
+    /**
+     * The facts that help the reviewer decide, taken at the moment of the snapshot. Inactive means no sign-in for the number of days set in Security (the day the account was
+     * created counts when the person never signed in); with the setting at 0 nobody is flagged. A person with every permission (super admin) has no count of SoD rules: they are
+     * flagged as super admin instead.
+     */
+    void captureFacts(AccessReviewItem item, UserAccount user, EffectivePermissionService.EffectivePermissionResult effective, int inactiveDaysThreshold, boolean mfaRequiredGlobally, java.util.Map<UUID, Instant> activeTimeLimited) {
+        Instant now = Instant.now();
+        item.setLastLoginAt(user.getLastLoginAt());
+        Instant since = user.getLastLoginAt() != null ? user.getLastLoginAt() : user.getCreatedAt();
+        if (since != null) {
+            int days = (int) java.time.Duration.between(since, now).toDays();
+            item.setInactiveDays(Math.max(days, 0));
+            item.setInactiveFlag(inactiveDaysThreshold > 0 && days >= inactiveDaysThreshold);
+        }
+        boolean required = mfaRequiredGlobally || user.isMfaRequiredByAdmin();
+        item.setMfaState(user.isMfaEnabled() ? "ENROLLED" : required ? "REQUIRED_NOT_ENROLLED" : "NOT_ENROLLED");
+        item.setTimeLimitedUntil(activeTimeLimited.get(user.getId()));
+        if (sodConstraintService != null && !effective.systemSuperAdmin()) {
+            item.setOpenSodViolations(sodConstraintService.countActiveViolations(effective.permissionCodes()));
+        }
+    }
+
     private ItemResponse toItemResponse(AccessReviewItem i, java.util.Map<UUID, String> deciderNames) {
         return new ItemResponse(
                 i.getId(), i.getUserId(), i.getEmployeeCode(), i.getUsername(), i.getFullName(),
                 i.getUserStatus(), displayLabel(i.getUserStatus()), i.getAccessProfiles(),
                 i.getPermissionCount(), i.isSuperAdmin(),
+                i.getLastLoginAt(), i.getInactiveDays(), i.getInactiveFlag(), i.getMfaState(), mfaLabel(i.getMfaState()), i.getTimeLimitedUntil(), i.getOpenSodViolations(),
                 i.getDecision(), displayLabel(i.getDecision()), i.getDecisionNote(), i.getDecidedAt(),
                 i.getDecidedBy() == null ? null : deciderNames.get(i.getDecidedBy()));
+    }
+
+    private static String mfaLabel(String state) {
+        if (state == null) return null;
+        return switch (state) {
+            case "ENROLLED" -> "Enrolled";
+            case "REQUIRED_NOT_ENROLLED" -> "Required, not enrolled";
+            case "NOT_ENROLLED" -> "Not enrolled";
+            default -> state;
+        };
     }
 
     private String displayLabel(String code) {

@@ -1,3 +1,5 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useFormDirty } from "@/hooks/useFormDirty";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -124,6 +126,10 @@ export function TrainingJobCreatePage() {
     return role ? positionTitle(role) : id;
   };
   const [positionQuery, setPositionQuery] = useState("");
+
+  // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after the job assignment is created is not a leave.
+  const { isDirty } = useFormDirty({ personId, positionIds, mode, replaces, changeReason, required });
+  const { go, confirmLeave, modal: leaveModal } = useLeaveGuard(isDirty, "New Job Assignment", "the previous page");
   const debouncedPositionQuery = useDebounce(positionQuery, SEARCH_DEBOUNCE_MS);
   const selectedPositions = useMemo(
     () =>
@@ -234,13 +240,13 @@ export function TrainingJobCreatePage() {
       <PageHeader
         title="New Job Assignment"
         breadcrumbItems={trainingBreadcrumbs(
-          navigate,
+          go,
           "jobs",
           "New Job Assignment",
         )}
         actions={
           <Button
-            onClick={goBack}
+            onClick={() => confirmLeave(goBack)}
             size="sm"
             variant="outline-emerald"
             className="whitespace-nowrap"
@@ -416,7 +422,7 @@ export function TrainingJobCreatePage() {
 
       <div className="flex flex-wrap items-center gap-2 md:gap-3">
         <Button
-          onClick={goBack}
+          onClick={() => confirmLeave(goBack)}
           size="sm"
           variant="outline-emerald"
           className="whitespace-nowrap"
@@ -460,6 +466,7 @@ export function TrainingJobCreatePage() {
           </Button>
         )}
       </div>
+      {leaveModal}
     </div>
   );
 }

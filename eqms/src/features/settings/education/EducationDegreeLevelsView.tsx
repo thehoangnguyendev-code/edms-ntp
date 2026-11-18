@@ -23,6 +23,7 @@ import { educationDegreeLevels as educationDegreeLevelsBreadcrumb } from "@/comp
 import type { EducationDegreeLevelItem } from "./types";
 import { usePortalDropdown } from "@/hooks";
 import { FormModal } from "@/components/ui/modal/FormModal";
+import { useOpenedFormDirty } from "@/hooks/useFormDirty";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { IconFilter2, IconPencilMinus, IconToggleLeft, IconToggleRight } from "@tabler/icons-react";
 import { educationApi } from "@/services/api";
@@ -394,6 +395,7 @@ const DegreeLevelModal: React.FC<DegreeLevelModalProps> = ({ isOpen, onClose, it
     else setFormData({ name: "", displayOrder: 0, isActive: true });
   }, [item, isOpen]);
 
+  const dirty = useOpenedFormDirty(formData, isOpen);
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
@@ -407,7 +409,7 @@ const DegreeLevelModal: React.FC<DegreeLevelModalProps> = ({ isOpen, onClose, it
   };
 
   return (
-    <FormModal isOpen={isOpen} onClose={onClose} onConfirm={handleSubmit} title={`${isEdit ? "Edit" : "New"} Degree Level`} isLoading={isSaving} size="lg">
+    <FormModal isOpen={isOpen} onClose={onClose} dirty={dirty} onConfirm={handleSubmit} title={`${isEdit ? "Edit" : "New"} Degree Level`} isLoading={isSaving} size="lg">
       <div className="space-y-4">
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Name<span className="text-red-500 ml-1">*</span></label>

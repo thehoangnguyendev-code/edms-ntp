@@ -18,7 +18,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks";
 import { emailDesign as breadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
-import { useLeaveGuard } from './useLeaveGuard';
+import { useLeaveGuard } from '@/hooks/useLeaveGuard';
 import { CHANGED_BY_OTHERS_TEXT, CHANGED_BY_OTHERS_TITLE, isChangedByOthers } from './changedByOthers';
 import { ROUTES } from "@/app/routes.constants";
 import { formatDateTime } from "@/utils/format";
@@ -87,8 +87,7 @@ export const EmailDesignView: React.FC = () => {
   const { hasPermissionAlias } = usePermissions();
   const canManage =
     hasPermissionAlias("settings.notification_policy.manage") ||
-    hasPermissionAlias("settings.email_template.manage") ||
-    hasPermissionAlias("settings.configuration.manage");
+    hasPermissionAlias("settings.email_template.manage");
   const [design, setDesign] = useState<EmailDesign | null>(null);
   const [form, setForm] = useState<EmailDesignInput | null>(null);
   const [error, setError] = useState("");

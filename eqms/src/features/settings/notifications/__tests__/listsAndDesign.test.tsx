@@ -189,7 +189,7 @@ describe("Email message that is also a notification", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit Email Notification" }));
     expect(await screen.findByRole("dialog")).toBeTruthy();                                   // it asks first
     expect((screen.getByRole("textbox", { name: "Email subject" }) as HTMLInputElement).value).toBe("Changed {{documentNumber}}");   // and nothing is lost
-    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Discard Changes" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Leave Anyway" }));
     expect(await screen.findByText("the event email editor")).toBeTruthy();
   });
 });

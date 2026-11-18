@@ -1,3 +1,5 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useFormDirty } from "@/hooks/useFormDirty";
 import React, { useEffect, useMemo, useState } from "react";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
@@ -45,6 +47,10 @@ export const PermissionSetFormView: React.FC = () => {
   const [selectedCodes, setSelectedCodes] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
+  // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after a successful Save is not a leave.
+  const { isDirty } = useFormDirty({ name, code, description, active, permissions: [...selectedCodes].sort() }, !(isEdit && loadingSource));
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isEdit ? "Edit Shared Permission Set" : "New Shared Permission Set", "the previous page");
+
   useEffect(() => {
     if (!isEdit || !id) return;
     setLoadingSource(true);
@@ -62,7 +68,7 @@ export const PermissionSetFormView: React.FC = () => {
       .finally(() => setLoadingSource(false));
   }, [id, isEdit, showToast]);
 
-  const handleBack = () => navigateBack(navigate, location.state, ROUTES.SECURITY.PERMISSION_SETS);
+  const handleBack = () => navigateBack(go, location.state, ROUTES.SECURITY.PERMISSION_SETS);
 
   const handleToggle = (permCode: string, checked: boolean) => {
     setSelectedCodes((prev) => {
@@ -110,13 +116,13 @@ export const PermissionSetFormView: React.FC = () => {
   };
 
   const breadcrumbItems = useMemo(() => {
-    const base = permissionSetsBreadcrumb(navigate).slice(0, -1);
+    const base = permissionSetsBreadcrumb(go).slice(0, -1);
     return [
       ...base,
-      { label: "Shared Permission Sets", onClick: () => navigate(ROUTES.SECURITY.PERMISSION_SETS) },
+      { label: "Shared Permission Sets", onClick: () => go(ROUTES.SECURITY.PERMISSION_SETS) },
       { label: isEdit ? "Edit Shared Permission Set" : "New Shared Permission Set", isActive: true },
     ];
-  }, [navigate, isEdit, source]);
+  }, [go, isEdit, source]);
 
   if (isEdit && loadingSource) {
     return <FullPageLoading text="Loading permission set..." />;
@@ -218,6 +224,7 @@ export const PermissionSetFormView: React.FC = () => {
           isLoading={catalogLoading}
         />
       </FormSection>
+      {leaveModal}
     </div>
   );
 };

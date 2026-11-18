@@ -42,7 +42,7 @@ class ReportAppearanceServiceTest {
 
     @Test
     void theAppearancePermissionsAreTheOnlyWayInAndSeeingIsNotChanging() {
-        for (String code : List.of("reports.properties.view", "reports.properties.manage", "reports.definition.manage", "settings.configuration.manage")) {
+        for (String code : List.of("reports.properties.view", "reports.properties.manage", "reports.definition.manage", "settings.config_general.manage")) {
             assertThatThrownBy(() -> service.list(actor(code), new ReportAppearanceService.Filters(null, null), null, null, 1, 10)).isInstanceOf(SecurityException.class);
         }
         UserAccount viewer = actor("reports.appearance.view");

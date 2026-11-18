@@ -98,18 +98,18 @@ public class ReportPlatformService {
     }
 
     public List<Map<String,Object>> configuration(UserAccount actor) {
-        require(actor,"reports.definition.view","settings.configuration.view");
+        require(actor,"reports.definition.view");
         return jdbc.queryForList("select d.code, d.display_name as \"displayName\", d.description, d.category, d.classification, d.active, d.definition_version as \"definitionVersion\", d.allowed_formats as \"allowedFormats\", d.limits, d.access_policy as \"accessPolicy\", d.delivery_policy as \"deliveryPolicy\", d.retention_policy_id as \"retentionPolicyId\", rp.name as \"retentionPolicyName\", rp.retention_days as \"retentionDays\", d.updated_at as \"updatedAt\" from report_definitions d left join retention_policies rp on rp.id=d.retention_policy_id order by d.category, d.display_name");
     }
     public Map<String,Object> configurationDetail(UserAccount actor, String code) {
-        require(actor,"reports.definition.view","settings.configuration.view");
+        require(actor,"reports.definition.view");
         Map<String,Object> result=new LinkedHashMap<>(jdbc.queryForMap("select d.code, d.display_name as \"displayName\", d.description, d.category, d.classification, d.active, d.definition_version as \"definitionVersion\", d.allowed_formats as \"allowedFormats\", d.limits, d.access_policy as \"accessPolicy\", d.delivery_policy as \"deliveryPolicy\", d.retention_policy_id as \"retentionPolicyId\", rp.name as \"retentionPolicyName\", rp.retention_days as \"retentionDays\" from report_definitions d left join retention_policies rp on rp.id=d.retention_policy_id where d.code=?",code));
         result.put("fields",jdbc.queryForList("select field_code as code, display_name as name, field_type as type, allowed, default_selected as \"defaultSelected\", required, display_order as \"order\" from report_definition_fields where definition_code=? order by display_order",code));
         return result;
     }
     public void updateConfiguration(UserAccount actor, String code, Map<String,Object> update) {
         requireVersionedTemplateEndpoint(code);
-        require(actor,"reports.definition.manage","settings.configuration.manage");
+        require(actor,"reports.definition.manage");
         String reason=String.valueOf(update.getOrDefault("reason","")).trim(); if(reason.isEmpty()) throw new IllegalArgumentException("A reason is required for report configuration changes");
         // REPORT-FILE-RETENTION-PERMANENT-2026-10-14: report files are kept permanently, so no retention period can be attached.
         if (update.get("retentionPolicyId") != null && !String.valueOf(update.get("retentionPolicyId")).isBlank())
@@ -130,7 +130,7 @@ public class ReportPlatformService {
     }
     public void updateFields(UserAccount actor, String code, Map<String,Object> request) {
         requireVersionedTemplateEndpoint(code);
-        require(actor,"reports.definition.manage","settings.configuration.manage");
+        require(actor,"reports.definition.manage");
         String reason=String.valueOf(request.getOrDefault("reason","")).trim(); if(reason.isEmpty()) throw new IllegalArgumentException("A reason is required for report field changes");
         Object raw=request.get("fields"); if (!(raw instanceof List<?> fields)) throw new IllegalArgumentException("fields is required");
         for (Object item: fields) { if (!(item instanceof Map<?,?> map)) throw new IllegalArgumentException("Invalid field payload"); String field=String.valueOf(map.get("code")); Object rawOrder=map.get("order"); int order=rawOrder instanceof Number number ? number.intValue() : 0; boolean allowed=Boolean.TRUE.equals(map.get("allowed")); boolean required=Boolean.TRUE.equals(map.get("required")); boolean selected=required || Boolean.TRUE.equals(map.get("defaultSelected")); int updated=jdbc.update("update report_definition_fields set allowed=?, default_selected=?, required=?, display_order=? where definition_code=? and field_code=?",allowed,selected,required,order,code,field); if(updated!=1) throw new IllegalArgumentException("REPORT_FIELD_NOT_ALLOWED"); }
@@ -141,8 +141,8 @@ public class ReportPlatformService {
                 com.eqms.util.AuditChanges.reason("Reason for Change", reason));
     }
     public List<Map<String,Object>> configurationHistory(UserAccount actor, String code) {
-        templates.require(actor,"reports.definition.view","settings.configuration.view");
-        require(actor,"reports.definition.view","settings.configuration.view");
+        templates.require(actor,"reports.definition.view");
+        require(actor,"reports.definition.view");
         return jdbc.queryForList("select version, reason, changed_by_user_id as \"changedByUserId\", created_at as \"createdAt\" from report_definition_versions where definition_code=? order by version desc", code);
     }
 
@@ -661,6 +661,7 @@ public class ReportPlatformService {
         if (illegal != null && illegal > 0) throw new IllegalArgumentException("REPORT_FIELD_NOT_ALLOWED");
     }
     private boolean hasArtifactDownloadPermission(UserAccount user) { return permissions.hasPermission(user, "reports.artifact.download") || permissions.hasPermission(user, "report.module.export"); }
+    private void require(UserAccount actor, String code) { if (!permissions.hasPermission(actor, code)) throw new SecurityException("REPORT_SCOPE_DENIED"); }
     private void require(UserAccount actor, String modern, String legacy) { if (!permissions.hasPermission(actor, modern) && !permissions.hasPermission(actor, legacy)) throw new SecurityException("REPORT_SCOPE_DENIED"); }
 
     /** Parses a stored JSON array. An empty array when there is nothing readable or the value is not an array. */

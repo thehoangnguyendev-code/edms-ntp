@@ -1,6 +1,6 @@
 import React from "react";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
-import { useNavigate } from "react-router-dom";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { Archive, CalendarClock, FileDigit } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { FormSection } from "@/components/ui/form/FormSection";
@@ -65,7 +65,6 @@ const NumberField: React.FC<{
  * Changes in the header, a confirmation that says the change is recorded in the Audit Trail). The server holds and checks every value.
  */
 export const ReportPropertiesView: React.FC = () => {
-  const navigate = useNavigate();
   const { showToast } = useToast();
   const { hasAnyPermission } = usePermissions();
   const canManage = hasAnyPermission(["reports.properties.manage"]);
@@ -95,6 +94,8 @@ export const ReportPropertiesView: React.FC = () => {
   }, [load]);
 
   const isDirty = JSON.stringify(properties) !== JSON.stringify(original);
+  // Leaving with a change that was not saved asks first (the breadcrumb, the links to other pages, the sidebar, a reload).
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, "Report Properties", "another page");
   const patch = (next: Partial<ReportProperties>) => setProperties((prev) => (prev ? { ...prev, ...next } : prev));
   const prefixValid = !!properties && /^[A-Z][A-Z0-9]{1,9}$/.test(properties.templateNumberPrefix);
 
@@ -134,7 +135,7 @@ export const ReportPropertiesView: React.FC = () => {
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
         title={title}
-        breadcrumbItems={reportBreadcrumbs(navigate, title, true)}
+        breadcrumbItems={reportBreadcrumbs(go, title, true)}
         actions={
           canManage && properties ? (
             <Button size="sm" variant="outline-emerald" disabled={!isDirty || !prefixValid || saving} onClick={() => setShowSaveModal(true)}>
@@ -207,7 +208,7 @@ export const ReportPropertiesView: React.FC = () => {
                 <p className="text-xs text-slate-500">
                   Only one format is active at a time; enabling another disables the one that was active. A template keeps the name it has when the active format changes. Manage the
                   formats under{" "}
-                  <button type="button" onClick={() => navigate("/settings/report-name-formats")} className="font-medium text-emerald-700 underline underline-offset-2">
+                  <button type="button" onClick={() => go("/settings/report-name-formats")} className="font-medium text-emerald-700 underline underline-offset-2">
                     Report Name Formats
                   </button>
                   .
@@ -256,7 +257,7 @@ export const ReportPropertiesView: React.FC = () => {
                 <p className="text-sm text-slate-700">Report files are kept permanently. No file expires by age.</p>
                 <p className="text-xs text-slate-500">
                   A legal hold still blocks any removal. Holds are placed and released on each run's page; the files held now are listed under{" "}
-                  <button type="button" onClick={() => navigate(ROUTES.REPORT.LEGAL_HOLDS)} className="font-medium text-emerald-700 underline underline-offset-2">
+                  <button type="button" onClick={() => go(ROUTES.REPORT.LEGAL_HOLDS)} className="font-medium text-emerald-700 underline underline-offset-2">
                     Legal Hold Register
                   </button>
                   .
@@ -297,7 +298,7 @@ export const ReportPropertiesView: React.FC = () => {
             <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-800">
               Who may write, approve, upgrade or disable a report template, and who may run reports, is decided by permissions. Assign them to the Access Profiles that need
               them at{" "}
-              <button type="button" onClick={() => navigate(ROUTES.SECURITY.ACCESS_PROFILES)} className="font-medium underline underline-offset-2 hover:text-sky-900">
+              <button type="button" onClick={() => go(ROUTES.SECURITY.ACCESS_PROFILES)} className="font-medium underline underline-offset-2 hover:text-sky-900">
                 Security &amp; Authorization &gt; Access Profiles
               </button>
               .
@@ -317,6 +318,7 @@ export const ReportPropertiesView: React.FC = () => {
         cancelText="Cancel"
         isLoading={saving}
       />
+      {leaveModal}
     </div>
   );
 };

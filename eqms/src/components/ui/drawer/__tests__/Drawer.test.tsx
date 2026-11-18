@@ -3,6 +3,9 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Drawer, type DrawerHandle } from '../Drawer';
 
+// The drawer leaves with a 0.35 to 0.5 second animation driven by the browser's frame clock; on a busy machine (the whole suite running in parallel) that can outlast the default 1 second of waitFor.
+const EXIT_WAIT = { timeout: 4000 }; // below the 5 second limit of a test
+
 beforeEach(() => { document.body.style.overflow = 'auto'; window.innerWidth = 1280; });
 afterEach(() => { cleanup(); document.body.style.overflow = ''; });
 
@@ -33,7 +36,7 @@ describe('Shared Training-style Drawer', () => {
     expect(document.body.style.overflow).toBe('hidden');
     expect(screen.getByRole('dialog')).toHaveFocus();
     fireEvent.keyDown(document, { key: 'Escape' }); fireEvent.keyDown(document, { key: 'Escape' });
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument(), EXIT_WAIT);
     expect(onClose).toHaveBeenCalledTimes(1); expect(onExited).toHaveBeenCalledTimes(1);
     expect(document.body.style.overflow).toBe('auto'); expect(trigger).toHaveFocus(); trigger.remove();
   });
@@ -42,7 +45,7 @@ describe('Shared Training-style Drawer', () => {
     const onClose = vi.fn(), onExited = vi.fn();
     const { rerender } = render(<Drawer open title="Details" onClose={onClose} onExited={onExited}>Content</Drawer>);
     rerender(<Drawer open={false} title="Details" onClose={onClose} onExited={onExited}>Content</Drawer>);
-    await waitFor(() => expect(onExited).toHaveBeenCalledOnce());
+    await waitFor(() => expect(onExited).toHaveBeenCalledOnce(), EXIT_WAIT);
     expect(onClose).not.toHaveBeenCalled();
     rerender(<Drawer open title="Details" onClose={onClose}>Content</Drawer>);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -66,7 +69,7 @@ describe('Shared Training-style Drawer', () => {
         footer={<button onClick={() => ref.current?.close()}>Close footer</button>}>Content</Drawer> : null;
     };
     render(<Consumer />); fireEvent.click(screen.getByText('Close footer'));
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()); expect(closed).toHaveBeenCalledOnce();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument(), EXIT_WAIT); expect(closed).toHaveBeenCalledOnce();
   });
 
   it('uses a mobile bottom sheet and supports keyboard resizing', () => {
@@ -83,7 +86,7 @@ describe('Shared Training-style Drawer', () => {
     const firstClose = vi.fn(), secondClose = vi.fn();
     render(<><Drawer title="First" onClose={firstClose}>First body</Drawer><Drawer title="Second" onClose={secondClose}>Second body</Drawer></>);
     fireEvent.keyDown(document, { key: 'Escape' });
-    await waitFor(() => expect(secondClose).toHaveBeenCalledOnce()); expect(firstClose).not.toHaveBeenCalled();
+    await waitFor(() => expect(secondClose).toHaveBeenCalledOnce(), EXIT_WAIT); expect(firstClose).not.toHaveBeenCalled();
     expect(document.body.style.overflow).toBe('hidden'); expect(screen.getByRole('dialog', { name: 'First' })).toBeInTheDocument();
   });
 
@@ -91,7 +94,7 @@ describe('Shared Training-style Drawer', () => {
     const onClose = vi.fn();
     const { unmount } = render(<Drawer title="Details" onClose={onClose}>Content</Drawer>);
     fireEvent.click(document.querySelector('[data-drawer-overlay] > [aria-hidden="true"]')!);
-    await waitFor(() => expect(onClose).toHaveBeenCalledOnce()); unmount();
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce(), EXIT_WAIT); unmount();
     expect(document.body.style.overflow).toBe('auto');
   });
 });

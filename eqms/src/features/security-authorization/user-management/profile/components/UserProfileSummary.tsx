@@ -39,6 +39,7 @@ export const UserProfileSummary: React.FC<{ user: User; avatar: React.ReactNode 
             </Badge>
             {user.employmentType && <Badge color="slate" size="sm">{user.employmentType}</Badge>}
             {user.accountLocked && <Badge color="red" size="sm" showDot>Locked</Badge>}
+            {user.inactive && <Badge color="amber" size="sm" title={`No sign-in for ${user.inactiveDays} days`}>Inactive</Badge>}
           </div>
         </div>
       </div>

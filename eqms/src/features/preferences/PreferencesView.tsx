@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Globe, BellRing, ShieldCheck } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { useLeaveGuard } from '@/hooks/useLeaveGuard';
 import { Button } from '@/components/ui/button/Button';
 import { TabNav, TabItem } from '@/components/ui/tabs/TabNav';
 import { PageHeader } from '@/components/ui/page/PageHeader';
@@ -14,7 +15,6 @@ import { SecuritySettingsTab } from "./components/SecuritySettingsTab";
 import { PreferenceTabId } from "./types";
 
 export const PreferencesView: React.FC = () => {
-    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const getTabFromSearchParams = (): PreferenceTabId => {
         const tab = searchParams.get('tab');
@@ -28,6 +28,8 @@ export const PreferencesView: React.FC = () => {
     const [saveHandler, setSaveHandler] = useState<null | (() => Promise<void>)>(null);
     const [resetHandler, setResetHandler] = useState<null | (() => void)>(null);
     const [isDirty, setIsDirty] = useState(false);
+    // Leaving with changes that were not saved asks first (the breadcrumb, the sidebar, a reload); so does changing the tab, which drops the changes of the tab that is left.
+    const { go, confirmLeave, modal: leaveModal } = useLeaveGuard(isDirty, 'Preferences', 'another page');
   // Wrap setSaveHandler so React doesn't treat the passed function as a state updater.
   const registerSaveHandler = useCallback((handler: (() => Promise<void>) | null) => {
     setSaveHandler(() => handler);
@@ -89,7 +91,7 @@ export const PreferencesView: React.FC = () => {
             {/* Header */}
             <PageHeader
                 title="Preferences"
-                breadcrumbItems={breadcrumbs.preferences(navigate, TABS.find(t => t.id === activeTab)?.label)}
+                breadcrumbItems={breadcrumbs.preferences(go, TABS.find(t => t.id === activeTab)?.label)}
                 actions={
                     <>
                         <Button
@@ -124,11 +126,11 @@ export const PreferencesView: React.FC = () => {
                 <TabNav
                     tabs={TABS}
                     activeTab={activeTab}
-                    onChange={(id) => {
+                    onChange={(id) => confirmLeave(() => {
                         const nextTab = id as PreferenceTabId;
                         setActiveTab(nextTab);
                         setSearchParams(nextTab === 'localization' ? {} : { tab: nextTab }, { replace: true });
-                    }}
+                    })}
                     ariaLabel="Preference sections"
                 />
                 <AnimatePresence mode="wait" initial={false}>
@@ -146,6 +148,7 @@ export const PreferencesView: React.FC = () => {
             </div>
 
             {isSaving && <FullPageLoading text="Saving changes..." />}
+            {leaveModal}
         </div>
     );
 };

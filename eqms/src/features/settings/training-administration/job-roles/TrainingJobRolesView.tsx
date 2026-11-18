@@ -17,6 +17,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useFormDirty } from "@/hooks/useFormDirty";
 import { dictionaryApi } from "@/services/api/dictionary";
 import { trainingError, trainingJobRoleApi, type TrainingJobRole } from "@/services/api/trainingActivities";
 import { Input, Textarea } from "@/features/training-activities/shared/TrainingFields";
@@ -45,6 +46,7 @@ export function TrainingJobRolesView() {
   const [titlePositionId, setTitlePositionId] = useState("");
   const [error, setError] = useState("");
   const [form, setForm] = useState<Form>();
+  const formDirty = useFormDirty(form ?? null, form !== undefined);
   const [viewing, setViewing] = useState<TrainingJobRole>();
   const [needs, setNeeds] = useState<Awaited<ReturnType<typeof trainingJobRoleApi.requirements>>>();
   useEffect(() => {
@@ -125,7 +127,7 @@ export function TrainingJobRolesView() {
       </ReportListToolbar>
       {rowMenu.node}
 
-      <FormModal isOpen={!!form} onClose={() => setForm(undefined)} onConfirm={() => void save()} title={form?.id ? "Edit Work Position" : "New Work Position"} confirmText="Save" isLoading={saving} confirmDisabled={!valid} size="2xl"
+      <FormModal isOpen={!!form} onClose={() => setForm(undefined)} onConfirm={() => void save()} title={form?.id ? "Edit Work Position" : "New Work Position"} confirmText="Save" isLoading={saving} confirmDisabled={!valid} dirty={formDirty.isDirty} size="2xl"
         description="A Work Position is a duty under a department, for example QC - Microbiology. The code and the department cannot be changed after it is created.">
         {form && (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

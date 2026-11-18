@@ -1,5 +1,8 @@
 import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { useBranding } from "@/components/branding/BrandLogo";
+import { LoginCarousel } from "./LoginCarousel";
+import type { LoginCarouselConfig } from "@/services/api/branding";
 
 /**
  * The "Split" sign-in screen: a rounded card on a light page, the form on the left and a blue product
@@ -15,11 +18,11 @@ export const SPLIT_UI = {
   subtitle: "mt-3 text-center text-[15px] leading-6 text-[#6b7280]",
   label: "mb-2 block text-[13px] font-medium text-[#111111]",
   input:
-    "h-[46px] w-full rounded-[10px] border border-[#e4e4e7] bg-white px-3.5 text-[15px] text-[#111111] shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-colors placeholder:text-[#9ca3af] hover:border-[#c7c7d1] focus:border-[#4340f5] focus:outline-none focus:ring-2 focus:ring-[#4340f5]/20 disabled:opacity-60",
+    "h-[46px] w-full rounded-[10px] border border-[#e4e4e7] bg-white px-3.5 text-[15px] text-[#111111] shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-colors placeholder:text-[#9ca3af] hover:border-[#c7c7d1] focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20 disabled:opacity-60",
   inputError: "border-red-300 hover:border-red-300 focus:border-red-500 focus:ring-red-500/20",
-  link: "text-[14px] font-medium text-[#2b2bd9] transition-colors hover:text-[#1f1fb5] focus:outline-none focus-visible:underline",
+  link: "text-[14px] font-medium text-emerald-800 transition-colors hover:text-emerald-950 focus:outline-none focus-visible:underline",
   button:
-    "mt-7 h-[46px] w-full rounded-[10px] bg-[linear-gradient(180deg,#5250f7_0%,#3f3cf0_100%)] text-[15px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_1px_2px_rgba(67,64,245,0.35)] transition-[filter] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4340f5]/40 focus-visible:ring-offset-2 disabled:opacity-60",
+    "mt-7 h-[46px] w-full rounded-[10px] bg-emerald-900 text-[15px] font-medium text-white transition-colors hover:bg-emerald-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700/40 focus-visible:ring-offset-2 disabled:opacity-60",
   footer: "mt-8 flex items-center justify-between gap-4 text-[13px] text-[#8a8f98] sm:text-[15px]",
   eye: "absolute inset-y-0 right-1.5 my-auto flex size-10 items-center justify-center rounded-lg text-[#9ca3af] transition-colors hover:text-[#6b7280] focus:outline-none focus:text-[#374151]",
 } as const;
@@ -115,6 +118,36 @@ const DashboardPreview: React.FC = () => (
 export const SPLIT_HEADLINE = "Keep your quality processes under control.";
 export const SPLIT_TAGLINE = "Sign in to access your eQMS and manage your quality.";
 
+/**
+ * The blue panel at the right of the Split screen: the slides the administrator configured, or, when there are none, the headline and a picture of the product.
+ * The screen and the preview in Configuration draw the same panel, so what the administrator sees there is what the sign-in screen shows.
+ */
+export const SplitPanel: React.FC<{ carousel?: LoginCarouselConfig | null; headline?: string; tagline?: string }> = ({ carousel, headline = SPLIT_HEADLINE, tagline = SPLIT_TAGLINE }) => {
+  const slides = carousel?.slides?.filter((slide) => slide.image) ?? [];
+  return (
+        <div className="relative h-full overflow-hidden rounded-[28px] bg-[#4340f5]">
+          {slides.length > 0 && carousel ? (
+            <LoginCarousel carousel={{ ...carousel, slides }} />
+          ) : (
+          <>
+            <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+              <div className="absolute -top-10 left-[12%] h-[420px] w-[120px] rotate-12 rounded-[40px] bg-white/[0.04]" />
+              <div className="absolute right-[6%] top-[8%] h-[380px] w-[200px] rounded-[48px] bg-black/[0.06]" />
+              <div className="absolute -bottom-24 -left-16 h-[300px] w-[300px] rounded-full bg-black/[0.07]" />
+              <div className="absolute bottom-[4%] right-[8%] h-[200px] w-[260px] rounded-[40px] border border-dashed border-white/15" />
+            </div>
+            {/* The preview keeps its size from 1440px; on narrower windows it shrinks (zoom) so the floating card is not cut by the panel. */}
+            <div className="relative z-10 px-[40px] pt-[150px] xl:px-[48px] min-[1440px]:px-[75px] min-[1440px]:pt-[170px]">
+              <h2 className="max-w-[470px] text-[28px] font-medium leading-[1.3] text-white xl:text-[32px] min-[1440px]:text-[36px]">{headline}</h2>
+              <p className="mt-5 max-w-[470px] text-[15px] leading-6 text-white/85">{tagline}</p>
+              <div className="mt-10 [zoom:.62] xl:[zoom:.8] min-[1440px]:[zoom:1]"><DashboardPreview /></div>
+            </div>
+          </>
+          )}
+        </div>
+  );
+};
+
 interface LoginSplitLayoutProps {
   /** The logo at the top-left. Screens built on AuthLayout draw their own logo block (class auth-brand), which is lifted to the same corner. */
   logo?: React.ReactNode;
@@ -127,6 +160,7 @@ interface LoginSplitLayoutProps {
 
 export const LoginSplitLayout: React.FC<LoginSplitLayoutProps> = ({ logo, children, footerLeft, footerRight, headline = SPLIT_HEADLINE, tagline = SPLIT_TAGLINE }) => {
   const reduced = useReducedMotion();
+  const carousel = useBranding().loginCarousel;
   return (
     <div className={SPLIT_UI.page} role="main" data-auth-layout data-login-layout="SPLIT">
       <motion.div
@@ -147,20 +181,7 @@ export const LoginSplitLayout: React.FC<LoginSplitLayoutProps> = ({ logo, childr
           </div>
 
           <div className="relative hidden overflow-hidden lg:block lg:py-[22px] lg:pr-[22px]">
-            <div className="relative h-full overflow-hidden rounded-[28px] bg-[#4340f5]">
-              <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-                <div className="absolute -top-10 left-[12%] h-[420px] w-[120px] rotate-12 rounded-[40px] bg-white/[0.04]" />
-                <div className="absolute right-[6%] top-[8%] h-[380px] w-[200px] rounded-[48px] bg-black/[0.06]" />
-                <div className="absolute -bottom-24 -left-16 h-[300px] w-[300px] rounded-full bg-black/[0.07]" />
-                <div className="absolute bottom-[4%] right-[8%] h-[200px] w-[260px] rounded-[40px] border border-dashed border-white/15" />
-              </div>
-              {/* The preview keeps its size from 1440px; on narrower windows it shrinks (zoom) so the floating card is not cut by the panel. */}
-              <div className="relative z-10 px-[40px] pt-[150px] xl:px-[48px] min-[1440px]:px-[75px] min-[1440px]:pt-[170px]">
-                <h2 className="max-w-[470px] text-[28px] font-medium leading-[1.3] text-white xl:text-[32px] min-[1440px]:text-[36px]">{headline}</h2>
-                <p className="mt-5 max-w-[470px] text-[15px] leading-6 text-white/85">{tagline}</p>
-                <div className="mt-10 [zoom:.62] xl:[zoom:.8] min-[1440px]:[zoom:1]"><DashboardPreview /></div>
-              </div>
-            </div>
+            <SplitPanel carousel={carousel} headline={headline} tagline={tagline} />
           </div>
         </div>
       </motion.div>

@@ -1,3 +1,4 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
@@ -219,7 +220,10 @@ export function TrainingAssessmentDetailPage({
   // while it is true (a new test, not set by hand) adding or taking out a question shares the total again, equally
   const [autoTotal, setAutoTotal] = useState(true);
   const [wantedTotal, setWantedTotal] = useState(DEFAULT_TOTAL_SCORE);
-  const [dirty, setDirty] = useState(isNew);
+  // `dirty` is what Save needs (a new test starts so); `edited` is what the person has changed, which is what leaving without saving would lose.
+  const [dirty, setDirtyState] = useState(isNew);
+  const [edited, setEdited] = useState(false);
+  const setDirty = useCallback((value: boolean) => { setDirtyState(value); setEdited(value); }, []);
   const [busy, setBusy] = useState(false);
   const [asking, setAsking] = useState<"delete" | "return">();
   const [reason, setReason] = useState("");
@@ -278,7 +282,9 @@ export function TrainingAssessmentDetailPage({
   const title = isNew
     ? "New Training Assessment"
     : "Training Assessment Details";
-  const crumbs = trainingBreadcrumbs(navigate, "assessments", title);
+  // Leaving with changes that were not saved asks first (Back, the breadcrumb, the sidebar, a reload); the moves after a Save or a delete are not leaves.
+  const { go, confirmLeave, modal: leaveModal } = useLeaveGuard(edited, title, "the previous page");
+  const crumbs = trainingBreadcrumbs(go, "assessments", title);
 
   if (!isNew && !detail) {
     return (
@@ -869,7 +875,7 @@ export function TrainingAssessmentDetailPage({
       <TrainingDetailLayout
         title={title}
         breadcrumbItems={crumbs}
-        onBack={goBack}
+        onBack={() => confirmLeave(goBack)}
         workflow={detail ? detail.workflow : newWorkflow}
         tabs={tabs}
         activeTab={tab}
@@ -1174,6 +1180,7 @@ export function TrainingAssessmentDetailPage({
           revision: detail?.revisionNumber ?? "",
         }}
       />
+      {leaveModal}
     </>
   );
 }

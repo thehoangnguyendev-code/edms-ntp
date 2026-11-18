@@ -1,3 +1,5 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useFormDirty } from "@/hooks/useFormDirty";
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Copy, Shield, FilePlus } from "lucide-react";
@@ -62,7 +64,11 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
     };
   }, [id, showToast]);
 
-  const handleBack = () => navigateBack(navigate, location.state, ROUTES.SECURITY.WORKFLOW_AUTHORIZATION);
+  // Back and the breadcrumb ask first when a reason was typed and not saved (also the sidebar and a reload); the move after a successful Save is not a leave.
+  const { isDirty } = useFormDirty(changeReason, !loading);
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, "Duplicate Workflow Authorization Policy", "the previous page");
+  const handleBack = () => navigateBack(go, location.state, ROUTES.SECURITY.WORKFLOW_AUTHORIZATION);
+  const leaveAfterSave = () => navigateBack(navigate, location.state, ROUTES.SECURITY.WORKFLOW_AUTHORIZATION);
 
   const handleSave = async () => {
     if (!policy?.id) return;
@@ -75,7 +81,7 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
         signatureToken: sig.signatureToken,
       });
       showToast({ type: "success", title: "Policy Duplicated", message: "Policy duplicated as inactive." });
-      handleBack();
+      leaveAfterSave();
     } catch (err) {
       const { message } = extractApiError(err);
       showToast({ type: "error", title: "Save Failed", message });
@@ -103,7 +109,7 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
       <div className="space-y-4 md:space-y-6">
         <PageHeader
           title="Duplicate Policy"
-          breadcrumbItems={lifecyclePoliciesSubPage(navigate, "Transition Policies", "Duplicate Policy")}
+          breadcrumbItems={lifecyclePoliciesSubPage(go, "Transition Policies", "Duplicate Policy")}
           actions={<Button variant="outline-emerald" size="sm" onClick={handleBack}>Back</Button>}
         />
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 flex flex-col items-center text-center gap-3">
@@ -120,7 +126,7 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
       {signatureModal}
       <PageHeader
         title="Duplicate Policy"
-        breadcrumbItems={lifecyclePoliciesSubPage(navigate, "Transition Policies", "Duplicate Policy")}
+        breadcrumbItems={lifecyclePoliciesSubPage(go, "Transition Policies", "Duplicate Policy")}
         actions={
           <>
             <Button variant="outline-emerald" size="sm" onClick={handleBack} className="whitespace-nowrap">
@@ -178,6 +184,7 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
           />
         </div>
       </FormSection>
+      {leaveModal}
     </div>
   );
 };

@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.ConfigurationAuditPage;
 import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.audittrail.AuditTrailChangeResponse;
@@ -108,7 +109,7 @@ public class AuditTrailService {
             Map.entry("TRAINING", java.util.Set.of("TRAINING")),
             Map.entry("CONTROLLEDCOPY", java.util.Set.of("CONTROLLEDCOPY")),
             Map.entry("CONTROLLEDCOPYDISTRIBUTIONBATCH", java.util.Set.of("CONTROLLEDCOPYDISTRIBUTIONBATCH")),
-            Map.entry("SETTINGS", java.util.Set.of("SETTINGS", "SYSTEMCONFIGURATION", "SYSTEM"))
+            Map.entry("SETTINGS", java.util.Set.of("SETTINGS", "SYSTEMCONFIGURATION", "SYSTEMCONFIGURATIONGENERAL", "SYSTEMCONFIGURATIONNAVIGATIONLABELS", "SYSTEMCONFIGURATIONSECURITY", "SYSTEMCONFIGURATIONNOTIFICATIONS", "SYSTEMCONFIGURATIONINTEGRATIONS", "SYSTEMCONFIGURATIONPREVIEWFILE", "SYSTEMCONFIGURATIONIMAGEWATERMARK", "SYSTEMCONFIGURATIONFEATURES", "SYSTEM"))
     );
 
     /**
@@ -779,6 +780,18 @@ public class AuditTrailService {
             }
             case "BACKUP RESTORE" -> {
                 requireScreenPermission(actor, "Restore request", "backup.module.view");
+                return;
+            }
+            case "SYSTEM CONFIGURATION GENERAL", "SYSTEM CONFIGURATION NAVIGATION LABELS", "SYSTEM CONFIGURATION SECURITY", "SYSTEM CONFIGURATION NOTIFICATIONS",
+                 "SYSTEM CONFIGURATION INTEGRATIONS", "SYSTEM CONFIGURATION PREVIEW FILE", "SYSTEM CONFIGURATION IMAGE WATERMARK", "SYSTEM CONFIGURATION FEATURES" -> {
+                // The History tab of a page of Configuration is part of that page: whoever may open the page may read its history (the rule of every other Audit Trail tab; V806 gave each page its own permissions).
+                for (ConfigurationAuditPage configurationPage : ConfigurationAuditPage.values()) {
+                    if (normalized.equals("SYSTEM CONFIGURATION " + configurationPage.name().replace('_', ' '))) {
+                        requireScreenPermission(actor, "Configuration", configurationPage.viewPermission(), configurationPage.managePermission());
+                        return;
+                    }
+                }
+                requireScreenPermission(actor, "Configuration", "settings.config_general.view");
                 return;
             }
             case "DOCUMENT", "REVISION" -> {
@@ -2253,7 +2266,7 @@ public class AuditTrailService {
             case "TRAINING" -> "Training";
             case "CONTROLLEDCOPY" -> "Controlled Copy";
             case "CONTROLLEDCOPYDISTRIBUTIONBATCH" -> "Controlled Copy Distribution Batch";
-            case "SETTINGS", "SYSTEMCONFIGURATION", "SYSTEM" -> "Settings";
+            case "SETTINGS", "SYSTEMCONFIGURATION", "SYSTEMCONFIGURATIONGENERAL", "SYSTEMCONFIGURATIONNAVIGATIONLABELS", "SYSTEMCONFIGURATIONSECURITY", "SYSTEMCONFIGURATIONNOTIFICATIONS", "SYSTEMCONFIGURATIONINTEGRATIONS", "SYSTEMCONFIGURATIONPREVIEWFILE", "SYSTEMCONFIGURATIONIMAGEWATERMARK", "SYSTEMCONFIGURATIONFEATURES", "SYSTEM" -> "Settings";
             case "SESSION", "AUTH", "AUTHENTICATION" -> "System";
             case "SYSTEMANNOUNCEMENT" -> "System Announcement";
             default -> entityType;
@@ -2325,6 +2338,7 @@ public class AuditTrailService {
             case "USER_REINSTATED" -> "Reinstate User";
             case "USER_PASSWORD_RESET" -> "Reset Password";
             case "USER_UNLOCKED" -> "Unlock User";
+            case "USER_MFA_RESET" -> "Reset MFA";
             case "USER_FORCE_LOGOUT" -> "Force Logout";
             case "USER_ROLE_UPDATED" -> "Update User Role";
             case "USER_EDUCATION_ADDED" -> "Add Education";

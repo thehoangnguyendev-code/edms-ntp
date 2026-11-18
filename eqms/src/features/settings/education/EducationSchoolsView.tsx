@@ -24,6 +24,7 @@ import type { SchoolItem, SchoolType, SchoolOwnership } from "./types";
 import { SCHOOL_TYPE_OPTIONS, SCHOOL_OWNERSHIP_OPTIONS } from "./types";
 import { usePortalDropdown } from "@/hooks";
 import { FormModal } from "@/components/ui/modal/FormModal";
+import { useOpenedFormDirty } from "@/hooks/useFormDirty";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { IconFilter2, IconPencilMinus, IconToggleLeft, IconToggleRight } from "@tabler/icons-react";
 import { educationApi } from "@/services/api";
@@ -567,6 +568,7 @@ const SchoolModal: React.FC<SchoolModalProps> = ({ isOpen, onClose, item, isEdit
   const addSourceUrl = () =>
     setFormData((prev) => ({ ...prev, governingBodySourceUrls: [...prev.governingBodySourceUrls, ""] }));
 
+  const dirty = useOpenedFormDirty(formData, isOpen);
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
@@ -611,7 +613,7 @@ const SchoolModal: React.FC<SchoolModalProps> = ({ isOpen, onClose, item, isEdit
   const sectionTitleClass = "text-xs font-semibold text-slate-500 uppercase tracking-wider pt-2 first:pt-0";
 
   return (
-    <FormModal isOpen={isOpen} onClose={onClose} onConfirm={handleSubmit} title={`${isEdit ? "Edit" : "New"} School`} isLoading={isSaving} size="lg">
+    <FormModal isOpen={isOpen} onClose={onClose} dirty={dirty} onConfirm={handleSubmit} title={`${isEdit ? "Edit" : "New"} School`} isLoading={isSaving} size="lg">
       <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
         <p className={sectionTitleClass}>Basic Information</p>
         <div>

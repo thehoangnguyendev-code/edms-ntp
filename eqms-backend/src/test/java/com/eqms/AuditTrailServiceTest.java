@@ -238,6 +238,21 @@ class AuditTrailServiceTest {
     }
 
     @Test
+    void configurationPage_historyFollowsThatPageOfConfiguration_notTheGlobalAuditPermission() {
+        for (String type : new String[] {"SYSTEM_CONFIGURATION_GENERAL", "SYSTEM_CONFIGURATION_SECURITY", "SYSTEM_CONFIGURATION_NOTIFICATIONS", "SYSTEM_CONFIGURATION_INTEGRATIONS",
+                "SYSTEM_CONFIGURATION_PREVIEW_FILE", "SYSTEM_CONFIGURATION_IMAGE_WATERMARK", "SYSTEM_CONFIGURATION_NAVIGATION_LABELS", "SYSTEM_CONFIGURATION_FEATURES"}) {
+            assertThatThrownBy(() -> service.getByEntity(type, entityId)).as(type).isInstanceOf(AccessDeniedException.class);
+        }
+        // V806: the History tab of a page belongs to that page - the View permission of Security opens the history of Security and of no other page
+        when(permissionEvaluationService.hasAnyPermission(user, "settings.config_security.view", "settings.config_security.manage")).thenReturn(true);
+
+        service.getByEntity("SYSTEM_CONFIGURATION_SECURITY", entityId);
+        assertThatThrownBy(() -> service.getByEntity("SYSTEM_CONFIGURATION_GENERAL", entityId)).isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> service.getByEntity("SYSTEM_CONFIGURATION_INTEGRATIONS", entityId)).isInstanceOf(AccessDeniedException.class);
+        verify(permissionEvaluationService, never()).hasAnyPermission(eq(user), eq("audit.view"), any(String.class), any(String.class));
+    }
+
+    @Test
     void permissionSet_auditTabFollowsThePermissionSetScreen() {
         assertThatThrownBy(() -> service.getByEntity("PERMISSION_SET", entityId)).isInstanceOf(AccessDeniedException.class);
         when(permissionEvaluationService.hasAnyPermission(user, "security.permission_sets.view", "security.permission_sets.update")).thenReturn(true);

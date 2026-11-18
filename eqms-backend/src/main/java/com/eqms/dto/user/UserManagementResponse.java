@@ -69,6 +69,10 @@ public record UserManagementResponse(
         boolean mfaRequiredByAdmin,
         /** What the signed-in user may do with this account, for the row menu of the list. Sent with the list so the menu opens with its items already
          *  decided; null where the response is not a list row (the detail screens ask GET /users/{id}/capabilities). */
-        UserActionCapabilitiesResponse capabilities
+        UserActionCapabilitiesResponse capabilities,
+        /** Days since the last sign-in (since the account was created when the person never signed in); null for an account that is not Active. */
+        Integer inactiveDays,
+        /** True when an Active account has been without a sign-in for the number of days set in Security (a flag only: nothing is suspended by it). */
+        boolean inactive
 ) {
 }

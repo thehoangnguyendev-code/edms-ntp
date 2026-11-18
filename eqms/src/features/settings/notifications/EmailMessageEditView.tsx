@@ -34,7 +34,7 @@ import {
   EmailPreviewFrame,
 } from "./components/EmailPreviewFrame";
 import { sameHtml } from "./sameHtml";
-import { useLeaveGuard } from "./useLeaveGuard";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import {
   CHANGED_BY_OTHERS_TEXT,
   CHANGED_BY_OTHERS_TITLE,
@@ -87,8 +87,7 @@ export const EmailMessageEditView: React.FC = () => {
   const { showToast } = useToast();
   const { hasPermissionAlias } = usePermissions();
   const canManage =
-    hasPermissionAlias("settings.email_template.manage") ||
-    hasPermissionAlias("settings.configuration.manage");
+    hasPermissionAlias("settings.email_template.manage");
 
   const [template, setTemplate] = useState<EmailTemplate | null>(null);
   const [error, setError] = useState("");

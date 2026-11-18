@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
 import { api } from "@/services/api/client";
-import { FormSection } from "@/components/ui/form/FormSection";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { Button } from "@/components/ui/button/Button";
 import { useToast } from "@/components/ui/toast/Toast";
 import { networkAccessPayload, type NetworkAccessDraft } from "../useNetworkAccessDraft";
-import { IconNetwork } from "@tabler/icons-react";
 
 type User = { id: string; fullName: string };
 type AddressCheck = {
@@ -75,10 +73,8 @@ export function NetworkAccessPanel({ value, onChange, failed }: NetworkAccessPan
   const inputClass =
     "mt-1.5 h-48 resize-none overflow-y-auto w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500";
   return (
-    <FormSection
-      title="Administrative Network Access"
-      icon={<IconNetwork className="h-4 w-4" />}
-    >
+    <div>
+      <h3 className="mb-3 text-sm font-semibold text-slate-900">Administrative Network Access</h3>
       {failed ? (
         <p role="alert" className="text-sm text-red-600">
           Unable to load network policy.
@@ -112,6 +108,7 @@ export function NetworkAccessPanel({ value, onChange, failed }: NetworkAccessPan
               />
             </label>
           </div>
+          <div className="grid gap-4 md:grid-cols-2">
           <div>
             <Select
               label="Emergency Account"
@@ -128,6 +125,7 @@ export function NetworkAccessPanel({ value, onChange, failed }: NetworkAccessPan
               requires authentication and permissions. Replace it before removing
               its access or deactivating it.
             </p>
+          </div>
           </div>
           <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
             <p className="text-sm font-medium text-slate-800">
@@ -167,6 +165,6 @@ export function NetworkAccessPanel({ value, onChange, failed }: NetworkAccessPan
           </p>
         </div>
       )}
-    </FormSection>
+    </div>
   );
 }

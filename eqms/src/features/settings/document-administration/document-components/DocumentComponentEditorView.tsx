@@ -1,3 +1,5 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useFormDirty } from "@/hooks/useFormDirty";
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
@@ -81,15 +83,21 @@ export const DocumentComponentEditorView: React.FC = () => {
       .finally(() => setIsLoading(false));
   }, [id, isEdit]);
 
+  // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after a successful Save is not a leave.
+  const { isDirty } = useFormDirty({ name, shortDescription, freeText, isActive }, !isLoading);
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isEdit ? "Edit Document Component" : "New Document Component", "the previous page");
+
   // Plain Back (nothing just created): hand the untouched draft straight back so the Format
   // editor restores exactly what it had.
   const goBack = () => {
     if (navState?.returnTo) {
-      navigate(navState.returnTo, { state: { draft: navState.draft } });
+      go(navState.returnTo, { state: { draft: navState.draft } });
       return;
     }
-    navigate(ROUTES.DOCUMENTS.ADMIN.DOCUMENT_COMPONENTS);
+    go(ROUTES.DOCUMENTS.ADMIN.DOCUMENT_COMPONENTS);
   };
+  // The move that follows a successful Save is not a leave.
+  const goBackAfterSave = () => navigate(ROUTES.DOCUMENTS.ADMIN.DOCUMENT_COMPONENTS);
 
   const canSubmit =
     !isSaving && (isSystemDefined || (name.trim().length > 0 && freeText.trim().length > 0));
@@ -115,7 +123,7 @@ export const DocumentComponentEditorView: React.FC = () => {
         });
         return;
       }
-      goBack();
+      goBackAfterSave();
     } catch (error) {
       showToast({
         type: "error",
@@ -133,7 +141,7 @@ export const DocumentComponentEditorView: React.FC = () => {
     <div className="h-full flex flex-col gap-6">
       <PageHeader
         title={isEdit ? "Edit Document Component" : "New Document Component"}
-        breadcrumbItems={isEdit ? documentComponentEdit(navigate, name || undefined) : documentComponentCreate(navigate)}
+        breadcrumbItems={isEdit ? documentComponentEdit(go, name || undefined) : documentComponentCreate(go)}
         actions={
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline-emerald" onClick={goBack} className="whitespace-nowrap">
@@ -271,6 +279,7 @@ export const DocumentComponentEditorView: React.FC = () => {
           </FormSection>
         </div>
       )}
+      {leaveModal}
     </div>
   );
 };

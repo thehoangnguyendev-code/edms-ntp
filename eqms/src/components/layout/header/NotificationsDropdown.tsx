@@ -818,7 +818,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
     setIsNavigatingSettings(true);
     onClose();
     setTimeout(() => {
-      navigate(`${ROUTES.SETTINGS.CONFIGURATION}?tab=notification`);
+      navigate(ROUTES.SETTINGS.CONFIGURATION_NOTIFICATIONS);
       setTimeout(() => {
         setIsNavigatingSettings(false);
       }, 800);

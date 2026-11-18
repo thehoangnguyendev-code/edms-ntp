@@ -1,6 +1,4 @@
 import React from 'react';
-import { IconTimeline } from '@tabler/icons-react';
-import { FormSection } from '@/components/ui/form/FormSection';
 import { Radio } from '@/components/ui/radio/Radio';
 import type { GeneralConfig } from '../types';
 
@@ -84,10 +82,11 @@ export const AuditTabViewSection: React.FC<AuditTabViewSectionProps> = ({ config
   const view = config.appearance?.auditTabView ?? 'TABLE';
   const style = config.appearance?.auditTabTimelineStyle ?? 'COMPACT';
   return (
-    <FormSection title="Audit Trail Tabs" icon={<IconTimeline className="h-4 w-4" />}>
-      <div className="space-y-5">
+    <div className="border-t border-slate-200 pt-6">
+      <h3 className="mb-3 text-sm font-semibold text-slate-900">Audit Trail Tabs</h3>
+      <div className="space-y-6">
         <div>
-          <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">View</p>
+          <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">View</p>
           <div role="radiogroup" aria-label="Audit Trail tab view" className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <Radio variant="card" name="audit-tab-view" value="TABLE" checked={view === 'TABLE'} onChange={() => onChange('auditTabView', 'TABLE')}
               label="Table" description="Columns with sort and pagination, as it is today." />
@@ -99,8 +98,8 @@ export const AuditTabViewSection: React.FC<AuditTabViewSectionProps> = ({ config
           </p>
         </div>
         {view === 'TIMELINE' && (
-          <div className="border-t border-slate-100 pt-4">
-            <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Timeline look</p>
+          <div>
+            <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">Timeline look</p>
             <div role="radiogroup" aria-label="Timeline look" className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {STYLES.map((option) => (
                 <Radio key={option.value} variant="card" name="audit-tab-timeline-style" value={option.value} checked={style === option.value}
@@ -111,6 +110,6 @@ export const AuditTabViewSection: React.FC<AuditTabViewSectionProps> = ({ config
           </div>
         )}
       </div>
-    </FormSection>
+    </div>
   );
 };

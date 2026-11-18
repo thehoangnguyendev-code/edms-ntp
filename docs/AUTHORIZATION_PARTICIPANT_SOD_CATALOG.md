@@ -50,3 +50,18 @@ No UI or API may silently bypass a row above. A business exception requires an
 approved policy change, documented reason, e-signature where the security change
 requires it, and a composite audit event. The exception must be added to this
 catalog before it can be enabled in a migrated action.
+
+## Proposed, not approved for build: Delegate (time-limited substitute)
+
+Chosen in principle by the owner on 2026-11-18 (Decision Log SECURITY-AUTHORIZATION-REVIEW-2026-11-18, D7: "time-limited delegation for one kind of task"). Per the rule at the top of this
+file, nothing is built until BA/QA/Compliance approve this row and the actions it lists in the Global Action Catalog.
+
+| Item | Proposal |
+|---|---|
+| Who delegates | A person who holds an assignment (Reviewer or Approver of a revision, a training approver) while they are away. They choose the substitute, the kind of task and the dates. |
+| Who is eligible as substitute | An active person who already holds the base permission of that kind of task, is in scope of the record, and passes every SoD rule for the task as if the assignment were theirs. A person who is Author or Co-author of the revision is refused. |
+| What the substitute may do | Only that kind of task, only on tasks assigned to the delegator, only between the dates. Nothing else of the delegator's access passes to them. |
+| Signature | Under the substitute's own name and password. The audit record says "acting for" the delegator, with the delegation as its reference. |
+| End | Automatic at the end date; the delegator, an administrator or the substitute can end it earlier with a reason. A task already acted on stays valid. |
+| Audit | Creating, changing and ending a delegation, and every action taken under it, are audit records in the same transaction as the change. |
+| Open for approval | Whether the delegator or the substitute is the participant of record in the revision history; whether delegation is allowed for approval and not only for review; the longest duration; whether a delegation made by an administrator needs a second signature. |

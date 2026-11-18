@@ -97,7 +97,7 @@ public class ObjectNumberService {
 
     /** Every format with an example, for the administration screen. */
     public List<Map<String, Object>> list(UserAccount actor) {
-        require(actor, "settings.object_numbering.view", "settings.object_numbering.manage", "settings.configuration.view");
+        require(actor, "settings.object_numbering.view", "settings.object_numbering.manage");
         List<Map<String, Object>> out = new ArrayList<>();
         for (Format f : jdbc.query("select kind, module_name, label, prefix, separator, include_year, digits, version from object_number_formats order by module_name, label",
                 (rs, n) -> new Format(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5), rs.getBoolean(6), rs.getInt(7), rs.getInt(8)))) {
@@ -124,7 +124,7 @@ public class ObjectNumberService {
 
     /** The example of a format as it would be written, before it is saved. */
     public Map<String, Object> preview(UserAccount actor, String kind, FormatWrite request) {
-        require(actor, "settings.object_numbering.view", "settings.object_numbering.manage", "settings.configuration.view");
+        require(actor, "settings.object_numbering.view", "settings.object_numbering.manage");
         Format current = format(kind);
         Format candidate = candidate(current, request);
         return Map.of("example", compose(candidate, currentYear(), 1), "next", compose(candidate, currentYear(), nextValue(candidate)));
@@ -139,7 +139,7 @@ public class ObjectNumberService {
     @Transactional
     public Map<String, Object> update(UserAccount actor, String kind, FormatWrite request) {
         // whoever may change the system configuration may change the numbering, as for the appearance of reports; the permission of its own is for a narrower role
-        require(actor, "settings.object_numbering.manage", "settings.configuration.manage");
+        require(actor, "settings.object_numbering.manage");
         if (request == null || request.reason() == null || request.reason().isBlank() || request.reason().length() > MAX_REASON) throw new IllegalArgumentException("OBJECT_NUMBER_REASON_REQUIRED");
         List<Map<String, Object>> locked = jdbc.queryForList("select version from object_number_formats where kind = ? for update", kind);
         if (locked.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "OBJECT_NUMBER_KIND_NOT_FOUND");

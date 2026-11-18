@@ -145,7 +145,7 @@ describe("Edit a notification", () => {
     // the question is asked and the screen stays where it is
     expect(await screen.findByRole("dialog")).toBeTruthy();
     expect((screen.getByRole("textbox", { name: "In-app title" }) as HTMLInputElement).value).toBe("Changed");
-    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stay on page" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect((screen.getByRole("textbox", { name: "In-app title" }) as HTMLInputElement).value).toBe("Changed");
   });

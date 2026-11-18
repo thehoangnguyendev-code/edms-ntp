@@ -113,7 +113,7 @@ public class ControlledCopyPlaceholderFieldService {
     private UserAccount requireManageAccess() {
         UserAccount user = currentUserService.requireCurrentUser();
         boolean allowed = permissionEvaluationService.hasAnyPermission(user,
-                "documents.admin.controlled_copies_policy.manage", "settings.configuration.manage");
+                "documents.admin.controlled_copies_policy.manage");
         if (!allowed) {
             throw new AccessDeniedException("Access denied");
         }

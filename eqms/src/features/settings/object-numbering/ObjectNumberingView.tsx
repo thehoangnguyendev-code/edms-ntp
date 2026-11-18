@@ -42,7 +42,7 @@ const SET_ELSEWHERE: { label: string; where: string; path: string; permissions: 
     label: "Report template names",
     where: "Report Administration > Report Name Formats",
     path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.NAME_FORMATS,
-    permissions: ["reports.definition.view", "reports.name_format.manage", "settings.configuration.view"],
+    permissions: ["reports.definition.view", "reports.name_format.manage"],
   },
 ];
 
@@ -56,7 +56,7 @@ export const ObjectNumberingView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { hasAnyPermission } = usePermissions();
-  const canManage = hasAnyPermission(["settings.object_numbering.manage", "settings.configuration.manage"]);
+  const canManage = hasAnyPermission(["settings.object_numbering.manage"]);
   const { openId: openDropdownId, position: dropdownPosition, getRef: getButtonRef, toggle: handleDropdownToggle, close: closeDropdown } = usePortalDropdown();
 
   const [rows, setRows] = useState<ObjectNumberFormat[] | null>(null);
@@ -236,6 +236,10 @@ export const ObjectNumberingView: React.FC = () => {
         confirmText="Save"
         isLoading={saving}
         size="lg"
+        dirty={
+          editing !== null &&
+          (prefix !== editing.prefix || separator !== editing.separator || includeYear !== editing.includeYear || digits !== editing.digits || reason.trim() !== "")
+        }
       >
         <div className="grid grid-cols-1 gap-4">
           <div>

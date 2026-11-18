@@ -1,3 +1,4 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from "lucide-react";
@@ -149,7 +150,9 @@ export function ReportNameFormatEditView() {
   const isDirty = baseline === null ? Boolean(code.trim() || name.trim() || description.trim()) : snapshotOf({ code, name, separator, description, parts }) !== baseline;
   const canSubmit = !problem && isDirty && !saving;
 
-  const goBack = () => navigate("/settings/report-name-formats");
+  // Back and the breadcrumb ask first when there is a change that was not saved (also the sidebar and a reload); the move after a successful Save is not a leave.
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, "Report Name Format", "the list");
+  const goBack = () => go("/settings/report-name-formats");
 
   const save = async (reason: string) => {
     setSaving(true);
@@ -174,7 +177,7 @@ export function ReportNameFormatEditView() {
         title: create ? "Report Name Format Created" : "Report Name Format Updated",
         message: `"${name.trim()}" has been ${create ? "created" : "updated"} successfully. Example: ${example(parts, separator)}`,
       });
-      goBack();
+      navigate("/settings/report-name-formats");
     } catch (e) {
       showToast({ type: "error", title: create ? "Create Failed" : "Update Failed", message: reportError(e) });
     } finally {
@@ -188,7 +191,7 @@ export function ReportNameFormatEditView() {
     <div className="h-full flex flex-col gap-6">
       <PageHeader
         title={title}
-        breadcrumbItems={reportBreadcrumbs(navigate, title, true, { label: "Report Name Formats", onClick: goBack })}
+        breadcrumbItems={reportBreadcrumbs(go, title, true, { label: "Report Name Formats", onClick: goBack })}
         actions={
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline-emerald" onClick={goBack} className="whitespace-nowrap">
@@ -434,6 +437,7 @@ export function ReportNameFormatEditView() {
           <Textarea rows={3} maxLength={1000} value={saveReason?.reason ?? ""} onChange={(event) => setSaveReason((current) => current && { ...current, reason: event.target.value })} />
         </FormField>
       </FormModal>
+      {leaveModal}
     </div>
   );
 }

@@ -132,12 +132,12 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
 
   return (
     <div
-      className="border-t border-slate-100 pt-4"
+      className="border-t border-slate-200 pt-6"
       data-testid="app-shortcut-section"
     >
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">
+      <h3 className="mb-3 text-sm font-semibold text-slate-900">
         Mobile App Shortcut (Home Screen)
-      </p>
+      </h3>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-4">
           <div>

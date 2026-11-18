@@ -51,7 +51,6 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
   // Authoring a new template is a permission of the person; what may be done to a given template comes from the server (see the row menu).
   const canManage = hasAnyPermission([
     "reports.definition.manage",
-    "settings.configuration.manage",
   ]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);

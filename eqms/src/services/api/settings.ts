@@ -577,6 +577,23 @@ export const settingsApi = {
     return response.data;
   },
 
+  /** GET /security/access-explorer/permissions?search= -- the permissions of the catalogue for the Access Explorer picker. */
+  searchAccessExplorerPermissions: async (search: string) => {
+    const response = await api.get<AccessExplorerPermission[]>("/security/access-explorer/permissions", { params: { search: search || undefined } });
+    return response.data;
+  },
+
+  /** GET /security/access-explorer/holders?code= -- who holds a permission, and through which access profile and permission set. */
+  getAccessExplorerHolders: async (code: string, activeOnly: boolean) => {
+    const response = await api.get<AccessExplorerHolders>("/security/access-explorer/holders", { params: { code, activeOnly } });
+    return response.data;
+  },
+
+  /** POST /settings/users/:id/reset-mfa -- removes the authenticator of another person (lost device); needs a reason and an electronic signature. */
+  resetUserMfa: async (id: string, payload: { reason: string; signatureToken: string }) => {
+    await api.post(`${ENDPOINT}/${id}/reset-mfa`, payload);
+  },
+
   /** POST /settings/users/:id/unlock -- also issues + emails a new temporary password. */
   unlockUser: async (id: string, payload: SecuritySignaturePayload) => {
     const response = await api.post<{ temporaryPassword: string; user: User }>(
@@ -1317,6 +1334,35 @@ export interface AccessReviewCampaignSummary {
   updatedAt: string;
 }
 
+export interface AccessExplorerPermission {
+  code: string;
+  name: string;
+  moduleKey?: string | null;
+  category?: string | null;
+  description?: string | null;
+}
+
+export interface AccessExplorerHolder {
+  userId: string;
+  employeeCode?: string | null;
+  username: string;
+  fullName?: string | null;
+  department?: string | null;
+  status?: string | null;
+  viaProfiles: string[];
+  viaPermissionSets: string[];
+  lastLoginAt?: string | null;
+  timeLimitedUntil?: string | null;
+}
+
+export interface AccessExplorerHolders {
+  permission: AccessExplorerPermission;
+  permissionSets: Array<{ id: string; code: string; name: string; profiles: Array<{ id: string; code: string; name: string; active: boolean; holderCount: number }> }>;
+  holders: AccessExplorerHolder[];
+  holderCount: number;
+  activeHolderCount: number;
+}
+
 export interface AccessReviewItem {
   id: string;
   userId?: string | null;
@@ -1328,6 +1374,14 @@ export interface AccessReviewItem {
   accessProfiles?: string | null;
   permissionCount: number;
   superAdmin: boolean;
+  /** Facts taken with the snapshot of the campaign; all empty on a campaign made before they existed. */
+  lastLoginAt?: string | null;
+  inactiveDays?: number | null;
+  inactive?: boolean | null;
+  mfaState?: 'ENROLLED' | 'REQUIRED_NOT_ENROLLED' | 'NOT_ENROLLED' | null;
+  mfaStateLabel?: string | null;
+  timeLimitedUntil?: string | null;
+  openSodViolations?: number | null;
   decision: 'PENDING' | 'CONFIRMED' | 'REVOKE_REQUESTED' | 'MODIFY_REQUESTED';
   decisionLabel: string;
   decisionNote?: string | null;

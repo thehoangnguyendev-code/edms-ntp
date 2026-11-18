@@ -1,3 +1,4 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { CalendarClock, UserRound } from "lucide-react";
@@ -54,6 +55,8 @@ export const TimeLimitedUserEditView: React.FC = () => {
   const endAt = toTimeLimitedUserIsoInstant(endDisplay);
   const isDirty = useMemo(() => Boolean(grant) && (startAt !== grant.startAt || endAt !== grant.endAt || notifyEmailOnExpiry !== grant.notifyEmailOnExpiry || reason.trim() !== (grant.reason ?? "")), [endAt, grant, notifyEmailOnExpiry, reason, startAt]);
   const canSave = Boolean(grant && grant.status === "ACTIVE" && startAt && endAt && startAt <= endAt && isDirty && !saving);
+  // Leaving with a change that was not saved asks first (Cancel, the breadcrumb, the sidebar, a reload); the move after a successful Save is not a leave.
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, "Edit Time-Limited User", "the previous page");
 
   const confirmUpdate = async (signature: { username: string; password: string; reason: string }) => {
     // Keep a stable non-null snapshot through awaits; React state may change while the signature
@@ -94,10 +97,10 @@ export const TimeLimitedUserEditView: React.FC = () => {
     <div className="flex h-full flex-col gap-6">
       <PageHeader
         title="Edit Time-Limited User"
-        breadcrumbItems={editTimeLimitedUser(navigate, grant.id)}
+        breadcrumbItems={editTimeLimitedUser(go, grant.id)}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => navigate(detailUrl)}>Cancel</Button>
+            <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => go(detailUrl)}>Cancel</Button>
             <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" disabled={!canSave} onClick={() => setSignOpen(true)}>{saving ? "Saving..." : "Save"}</Button>
           </div>
         }
@@ -160,6 +163,7 @@ export const TimeLimitedUserEditView: React.FC = () => {
         meaningDisplayName="Time-Limited User Grant Update"
         meaningCode="TIME_LIMITED_USER_GRANT"
       />
+      {leaveModal}
     </div>
   );
 };

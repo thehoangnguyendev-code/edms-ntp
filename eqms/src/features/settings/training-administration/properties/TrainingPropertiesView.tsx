@@ -1,6 +1,7 @@
 import React from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { Archive, BellRing, CalendarClock, FileText, GraduationCap, NotebookPen, RotateCcw, Send, Timer, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -82,7 +83,6 @@ export const fileNameProblem = (f: { pattern: string; variables: { name: string 
 
 /** Settings are version-checked and changes are recorded in the Audit Trail. */
 export const TrainingPropertiesView: React.FC = () => {
-  const navigate = useNavigate();
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
   const canManage = hasPermission("training.settings.manage");
@@ -123,6 +123,8 @@ export const TrainingPropertiesView: React.FC = () => {
   }, [load]);
 
   const isDirty = JSON.stringify(settings) !== JSON.stringify(original);
+  // Leaving with a change that was not saved asks first (the breadcrumb, the sidebar, a reload).
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, "Training Properties", "another page");
   const hasFileNameProblem = Boolean(settings?.downloadFileNames.some((f) => fileNameProblem(f)));
   // A change made by someone else refreshes the values, but never over what the person is typing.
   const unsaved = React.useRef(false);
@@ -445,7 +447,7 @@ export const TrainingPropertiesView: React.FC = () => {
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
         title="Training Properties"
-        breadcrumbItems={trainingProperties(navigate)}
+        breadcrumbItems={trainingProperties(go)}
         actions={
           settingTab && canManage && settings ? (
             <Button size="sm" variant="outline-emerald" disabled={!isDirty || saving || hasFileNameProblem} onClick={() => setShowSaveModal(true)}>
@@ -496,6 +498,7 @@ export const TrainingPropertiesView: React.FC = () => {
         cancelText="Cancel"
         isLoading={saving}
       />
+      {leaveModal}
     </div>
   );
 };

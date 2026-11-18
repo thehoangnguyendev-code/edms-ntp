@@ -425,6 +425,6 @@ public class ReportTemplateRevisionService {
     private void requireView(UserAccount actor) {
         if (actor == null || actor.getId() == null || actor.getStatus() != UserStatus.Active) throw new SecurityException("REPORT_SCOPE_DENIED");
         Set<String> actual = permissions.getEffectivePermissionCodes(actor);
-        if (Arrays.stream(new String[] {"reports.definition.view", "settings.configuration.view"}).noneMatch(actual::contains)) throw new SecurityException("REPORT_SCOPE_DENIED");
+        if (Arrays.stream(new String[] {"reports.definition.view"}).noneMatch(actual::contains)) throw new SecurityException("REPORT_SCOPE_DENIED");
     }
 }

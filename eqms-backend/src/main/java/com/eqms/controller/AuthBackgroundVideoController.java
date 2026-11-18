@@ -28,7 +28,7 @@ public class AuthBackgroundVideoController {
         this.store = store; this.transcoder = transcoder; this.currentUser = currentUser; this.permissions = permissions; this.configurations = configurations;
     }
     private void requireManage() {
-        if (!permissions.hasPermission(currentUser.requireCurrentUser(), "settings.configuration.manage")) throw new AccessDeniedException("Configuration permission required");
+        if (!permissions.hasPermission(currentUser.requireCurrentUser(), "settings.config_general.manage")) throw new AccessDeniedException("Configuration permission required");
     }
     @PostMapping(value = "/settings/system/auth-background-video", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Map<String, String> upload(@RequestParam("video") MultipartFile video) throws IOException {

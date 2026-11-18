@@ -17,7 +17,7 @@ class ReportLayoutApiTest {
         var templates=mock(ReportTemplateService.class);var users=mock(CurrentUserService.class);var words=mock(ReportWordService.class);var actor=new UserAccount();when(users.requireCurrentUser()).thenReturn(actor);
         var controller=new ReportLayoutController(templates,users);controller.configureWords(words);
         var mvc=MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ReportAccessExceptionHandler(),new GlobalExceptionHandler()).build();
-        doThrow(new SecurityException("denied")).when(templates).require(actor,"reports.definition.manage","reports.appearance.manage","settings.configuration.manage");
+        doThrow(new SecurityException("denied")).when(templates).require(actor,"reports.definition.manage","reports.appearance.manage");
         mvc.perform(multipart("/reports/templates/layout/components/header").file(new org.springframework.mock.web.MockMultipartFile("file","test.docx","application/octet-stream",new byte[]{1}))).andExpect(status().isForbidden());
         verifyNoInteractions(words);
         reset(templates);
@@ -29,7 +29,7 @@ class ReportLayoutApiTest {
     }
     @Test void layoutPreviewCannotBypassConfigurationPermission() throws Exception {
         var templates=mock(ReportTemplateService.class);var users=mock(CurrentUserService.class);var actor=new UserAccount();
-        when(users.requireCurrentUser()).thenReturn(actor);doThrow(new SecurityException("private roles")).when(templates).require(actor,"reports.definition.manage","reports.appearance.manage","settings.configuration.manage");
+        when(users.requireCurrentUser()).thenReturn(actor);doThrow(new SecurityException("private roles")).when(templates).require(actor,"reports.definition.manage","reports.appearance.manage");
         var mvc=MockMvcBuilders.standaloneSetup(new ReportLayoutController(templates,users)).setControllerAdvice(new ReportAccessExceptionHandler(),new GlobalExceptionHandler()).build();
         mvc.perform(post("/reports/templates/layout/preview").contentType("application/json").content(new ObjectMapper().writeValueAsString(Map.of("title","TEST","layout",ReportLayout.defaults()))))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("REPORT_SCOPE_DENIED"));
@@ -43,7 +43,7 @@ class ReportLayoutApiTest {
         var bad=new ReportLayout(true,"{{password}}","",true,true,"","",true,false,"",false,"");
         mvc.perform(post("/reports/templates/layout/preview").contentType("application/json").content(json.writeValueAsString(Map.of("title","TEST","layout",bad))))
                 .andExpect(status().isBadRequest());
-        verify(templates,times(2)).require(actor,"reports.definition.manage","reports.appearance.manage","settings.configuration.manage");verifyNoMoreInteractions(templates);
+        verify(templates,times(2)).require(actor,"reports.definition.manage","reports.appearance.manage");verifyNoMoreInteractions(templates);
     }
     /** The appearances have their own controller: a person without the permission gets "forbidden", not a server error (REPORT-APPEARANCE-PERMISSION-2026-11-14). */
     @Test void theAppearanceScreenAnswersForbiddenWithoutItsPermission() throws Exception {

@@ -1,5 +1,4 @@
 ﻿import React, { useState } from 'react';
-import { FormSection } from '@/components/ui/form/FormSection';
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { IntegrationConfig } from '../types';
 import { useEffect } from 'react';
@@ -13,7 +12,6 @@ import {
   Cloud,
 } from 'lucide-react';
 import { settingsApi, type StorageTestPayload } from '@/services/api/settings';
-import { IconServer2 } from '@tabler/icons-react';
 import { Switch } from '@/components/ui/switch/Switch';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -155,12 +153,8 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
   }, []);
 
   return (
-    <div className="p-4 md:p-5 space-y-4">
-
-
-
-      {/* Cloud Storage */}
-      <FormSection title="Storage Integration" icon={<IconServer2 className="h-4 w-4" />}>
+    <div>
+      <h3 className="mb-3 text-sm font-semibold text-slate-900">Storage Integration</h3>
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
@@ -456,9 +450,6 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
             </Button>
           </div>
         </div>
-      </FormSection>
-
-
     </div>
   );
 };

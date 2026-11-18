@@ -120,15 +120,14 @@ public class UncontrolledCopyPolicyController {
     private void requireAccess() {
         var user = currentUserService.requireCurrentUser();
         boolean allowed = permissionEvaluationService.hasAnyPermission(user,
-                "documents.admin.uncontrolled_copies_policy.view", "documents.admin.uncontrolled_copies_policy.manage",
-                "settings.configuration.view", "settings.configuration.manage");
+                "documents.admin.uncontrolled_copies_policy.view", "documents.admin.uncontrolled_copies_policy.manage");
         if (!allowed) throw new AccessDeniedException("Access denied");
     }
 
     private void requireManageAccess() {
         var user = currentUserService.requireCurrentUser();
         boolean allowed = permissionEvaluationService.hasAnyPermission(user,
-                "documents.admin.uncontrolled_copies_policy.manage", "settings.configuration.manage");
+                "documents.admin.uncontrolled_copies_policy.manage");
         if (!allowed) throw new AccessDeniedException("Access denied");
     }
 }

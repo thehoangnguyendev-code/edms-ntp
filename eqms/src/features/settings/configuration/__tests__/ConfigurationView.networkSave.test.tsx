@@ -11,9 +11,7 @@ vi.mock('@/components/ui/toast/Toast', () => ({ useToast: () => ({ showToast: mo
 vi.mock('@/components/ui/page/PageHeader', () => ({ PageHeader: ({ actions }: any) => <header>{actions}</header> }));
 vi.mock('@/components/ui/modal/AlertModal', () => ({ AlertModal: ({ isOpen, onConfirm }: any) => isOpen ? <button onClick={onConfirm}>Confirm Save</button> : null }));
 vi.mock('@/components/ui/modal/NavigationGuardModal', () => ({ NavigationGuardModal: ({ isOpen, onConfirm }: any) => isOpen ? <button onClick={onConfirm}>Confirm Reset</button> : null }));
-vi.mock('@/components/ui/tabs/TabNav', () => ({ TabNav: ({ onChange }: any) => <nav><button onClick={() => onChange('security')}>Security</button><button onClick={() => onChange('navigation')}>Navigation</button></nav> }));
-vi.mock('../tabs/SecurityTab', () => ({ SecurityTab: ({ config, onChange }: any) => <input aria-label="Minimum Password Length" value={config.passwordMinLength} onChange={event => onChange({ ...config, passwordMinLength: Number(event.target.value) })} /> }));
-vi.mock('../tabs/NavigationLabelsTab', () => ({ NavigationLabelsTab: () => <p>Navigation settings</p> }));
+vi.mock('../tabs/SecurityTab', () => ({ SecurityTab: ({ config, onChange, networkPanel }: any) => <><input aria-label="Minimum Password Length" value={config.passwordMinLength} onChange={event => onChange({ ...config, passwordMinLength: Number(event.target.value) })} />{networkPanel}</> }));
 
 import { ConfigurationView } from '../ConfigurationView';
 
@@ -27,7 +25,7 @@ beforeEach(() => {
   mocks.policyPut.mockImplementation((_url, value) => Promise.resolve({ data: value }));
 });
 afterEach(cleanup);
-const mount = () => render(<MemoryRouter initialEntries={['/?tab=security']}><ConfigurationView /></MemoryRouter>);
+const mount = () => render(<MemoryRouter initialEntries={['/settings/configuration/security']}><ConfigurationView /></MemoryRouter>);
 const save = () => {
   fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0]);
   fireEvent.click(screen.getByRole('button', { name: 'Confirm Save' }));
@@ -53,13 +51,9 @@ describe('Configuration shared network save', () => {
     expect(mocks.update).not.toHaveBeenCalled();
   });
 
-  it('preserves the draft between tabs and discards it with the shared Reset', async () => {
+  it('discards the draft with the shared Reset and does not write the network policy', async () => {
     mount();
     fireEvent.change(await screen.findByLabelText(/Allowed networks/), { target: { value: '192.168.1.0/24' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Navigation' }));
-    await screen.findByText('Navigation settings');
-    fireEvent.click(screen.getByRole('button', { name: 'Security' }));
-    expect(await screen.findByLabelText(/Allowed networks/)).toHaveValue('192.168.1.0/24');
     fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Reset' }));
     expect(screen.getByLabelText(/Allowed networks/)).toHaveValue('10.0.0.0/8');

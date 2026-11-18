@@ -114,6 +114,33 @@ class SystemConfigurationServiceBrandingTest {
         }
     }
 
+    private static final String PNG_PIXEL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
+    @Test
+    void theSignInCarouselIsPassedOnWithOnlyItsKnownFieldsAndOnlyValidSlidesAreSaved() throws Exception {
+        assertNull(serviceWithGeneral("{}").getPublicBranding().loginCarousel());
+        assertNull(serviceWithGeneral("{\"appearance\":{\"loginCarousel\":{\"slides\":[]}}}").getPublicBranding().loginCarousel());
+        var shown = serviceWithGeneral("{\"appearance\":{\"loginCarousel\":{\"intervalSeconds\":8,\"secret\":\"x\",\"slides\":[{\"title\":\"A\",\"subtitle\":\"B\",\"image\":\"" + PNG_PIXEL + "\",\"note\":\"hidden\"}]}}}").getPublicBranding().loginCarousel();
+        assertEquals(8, shown.get("intervalSeconds").asInt());
+        assertEquals("A", shown.get("slides").get(0).get("title").asText());
+        assertFalse(shown.has("secret"));
+        assertFalse(shown.get("slides").get(0).has("note"));
+
+        String slide = "{\"title\":\"A\",\"subtitle\":\"B\",\"image\":\"" + PNG_PIXEL + "\"}";
+        for (String ok : new String[] {"null", "{\"intervalSeconds\":3,\"slides\":[" + slide + "]}", "{\"intervalSeconds\":30,\"slides\":[]}"}) {
+            var general = mapper.readTree("{\"appearance\":{\"loginCarousel\":" + ok + "}}");
+            assertDoesNotThrow(() -> SystemConfigurationService.validateLoginCarousel(general), ok);
+        }
+        String seven = String.join(",", java.util.Collections.nCopies(7, slide));
+        for (String bad : new String[] {"[]", "{\"intervalSeconds\":2,\"slides\":[" + slide + "]}", "{\"intervalSeconds\":31,\"slides\":[" + slide + "]}",
+                "{\"slides\":[" + seven + "]}", "{\"slides\":[{\"title\":\"A\"}]}", "{\"slides\":[{\"image\":\"https://x/y.png\"}]}",
+                "{\"slides\":[{\"image\":\"data:image/svg+xml;base64,AAAA\"}]}", "{\"slides\":[{\"title\":\"" + "t".repeat(81) + "\",\"image\":\"" + PNG_PIXEL + "\"}]}",
+                "{\"slides\":[{\"subtitle\":\"" + "s".repeat(201) + "\",\"image\":\"" + PNG_PIXEL + "\"}]}"}) {
+            var general = mapper.readTree("{\"appearance\":{\"loginCarousel\":" + bad + "}}");
+            assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validateLoginCarousel(general), bad);
+        }
+    }
+
     @Test
     void knowledgeFolderNamesAreFullUnlessTheAdministratorChoosesAbbreviationAndOnlyKnownValuesAreSaved() throws Exception {
         assertEquals("FULL", serviceWithGeneral("{}").getPublicBranding().knowledgeFolderNames());

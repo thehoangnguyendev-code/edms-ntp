@@ -244,7 +244,7 @@ class ReportTemplateRevisionActionsTest {
     void upgradeDiscardAndDisableNeedTheirOwnPermissionNotTheGeneralManageOne() {
         stored(template(true, null, 5));
         when(revisions.effective(CODE)).thenReturn(Map.of("revision", 2));
-        var manager = userWith("reports.definition.manage", "settings.configuration.manage");
+        var manager = userWith("reports.definition.manage");
         assertThatThrownBy(() -> service.upgrade(manager, CODE, 5, "x")).isInstanceOf(SecurityException.class);
         assertThatThrownBy(() -> service.discardRevision(manager, CODE, 6, "x")).isInstanceOf(SecurityException.class);
         assertThatThrownBy(() -> service.setEnabled(manager, CODE, false, null)).isInstanceOf(SecurityException.class);

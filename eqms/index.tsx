@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { UnsavedChangesPopGuard } from './src/components/navigation/UnsavedChangesPopGuard';
 import App from './src/app/App';
 import { AppProviders } from './src/contexts';
 import { PwaBranding } from './src/components/branding/PwaBranding';
@@ -33,12 +34,20 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <BrowserRouter>
-    <AppProviders>
-      <PwaBranding />
-      <ReadonlyFocusIndicator />
-      <App />
-    </AppProviders>
-  </BrowserRouter>
-);
+// A data router (not <BrowserRouter>) so that the browser's Back button can be intercepted while a screen holds unsaved changes (useBlocker, UnsavedChangesPopGuard).
+// One splat route holds the whole app; the route tree stays in AppRoutes (<Routes>), unchanged.
+const router = createBrowserRouter([
+  {
+    path: '*',
+    element: (
+      <AppProviders>
+        <PwaBranding />
+        <ReadonlyFocusIndicator />
+        <UnsavedChangesPopGuard />
+        <App />
+      </AppProviders>
+    ),
+  },
+]);
+
+root.render(<RouterProvider router={router} />);

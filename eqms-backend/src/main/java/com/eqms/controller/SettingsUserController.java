@@ -3,6 +3,7 @@ package com.eqms.controller;
 import com.eqms.dto.user.*;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.service.PermissionEvaluationService;
+import com.eqms.util.ConfigurationAuditPage;
 import com.eqms.service.UserManagementService;
 import com.eqms.service.TimeLimitedUserGrantService;
 import com.eqms.service.SystemConfigurationService;
@@ -159,6 +160,14 @@ public class SettingsUserController {
     public ResponseEntity<ResetPasswordResponse> resetPassword(@PathVariable UUID id, @RequestBody(required = false) UserResetPasswordRequest request, HttpServletRequest httpRequest) {
         requireUserResetPassword();
         return ResponseEntity.ok(service.resetPassword(id, request, httpRequest));
+    }
+
+    /** Reset the multi-factor authentication of another person (lost authenticator). Own permission, settings.user.reset_mfa (V805); the reason and the electronic signature are checked by the service. */
+    @PostMapping("/users/{id}/reset-mfa")
+    public ResponseEntity<Void> resetMfa(@PathVariable UUID id, @RequestBody com.eqms.dto.user.ResetMfaRequest request, HttpServletRequest httpRequest) {
+        requireUserResetMfa();
+        service.resetMfa(id, request, httpRequest);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/users/{id}/unlock")
@@ -335,15 +344,21 @@ public class SettingsUserController {
 
     @GetMapping("/system")
     public ResponseEntity<SystemConfigurationResponse> getSystemConfiguration() {
-        requireConfigurationView();
-        return ResponseEntity.ok(systemConfigurationService.getConfiguration());
+        var user = currentUserService.requireCurrentUser();
+        if (!permissionEvaluationService.hasAnyPermission(user, ConfigurationAuditPage.allViewPermissions())
+                && !permissionEvaluationService.hasAnyPermission(user, ConfigurationAuditPage.allManagePermissions())) {
+            throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to view system configuration");
+        }
+        // only the sections of the pages this person may open (V806)
+        return ResponseEntity.ok(systemConfigurationService.getConfiguration(
+                page -> permissionEvaluationService.hasPermission(user, page.viewPermission())));
     }
 
     // Deliberately no permission gate: the Documents section (retention days, watermark,
     // versioning rules, max upload size, ...) is operational policy every document-module user
     // needs client-side -- e.g. to enforce the upload size limit while creating a document. It
     // holds no credentials or security thresholds (those stay behind /system above). Splitting
-    // this out avoids reusing settings.configuration.view (an admin-only Settings permission) to
+    // this out avoids reusing a Configuration View permission (an admin-only Settings permission) to
     // gate a read that ordinary document creation legitimately depends on.
     @GetMapping("/system/documents")
     public ResponseEntity<com.fasterxml.jackson.databind.JsonNode> getDocumentsOperationalConfig() {
@@ -352,14 +367,16 @@ public class SettingsUserController {
 
     @GetMapping("/system/storage-path-preview")
     public ResponseEntity<StoragePathPreviewResponse> getStoragePathPreview() {
-        requireConfigurationView();
+        requirePage(ConfigurationAuditPage.INTEGRATIONS, false);
         return ResponseEntity.ok(systemConfigurationService.getStoragePathPreview());
     }
 
     @PutMapping("/system")
     public ResponseEntity<SystemConfigurationResponse> updateSystemConfiguration(@RequestBody SystemConfigurationRequest request, HttpServletRequest httpRequest) {
-        requireConfigurationEdit();
-        return ResponseEntity.ok(systemConfigurationService.updateConfiguration(request));
+        var user = currentUserService.requireCurrentUser();
+        // each page that this save really changes needs the Manage permission of that page; one that is refused refuses (and rolls back) the whole save (V806)
+        return ResponseEntity.ok(systemConfigurationService.updateConfiguration(request,
+                page -> permissionEvaluationService.hasPermission(user, page.managePermission())));
     }
 
     // Dedicated Document Properties read/write, scoped to only the `documents` config section --
@@ -370,7 +387,7 @@ public class SettingsUserController {
     // Document Properties-only user read/influence unrelated sensitive sections. Fixes a
     // pre-existing mismatch where the Document Properties screen's FE gated itself on
     // documents.admin.manage while the /system endpoint it actually called enforced
-    // settings.configuration.manage.
+    // a Configuration Manage permission.
     @GetMapping("/system/document-properties")
     public ResponseEntity<com.fasterxml.jackson.databind.JsonNode> getDocumentPropertiesConfig() {
         requireDocumentPropertiesView();
@@ -418,7 +435,7 @@ public class SettingsUserController {
 
     @GetMapping("/system/onlyoffice")
     public ResponseEntity<com.eqms.service.OnlyOfficeConfigurationService.OnlyOfficeConfiguration> getOnlyOfficeConfiguration() {
-        requireConfigurationView();
+        requireAnyPage(false, ConfigurationAuditPage.INTEGRATIONS, ConfigurationAuditPage.PREVIEW_FILE);
         return ResponseEntity.ok(onlyOfficeConfigurationService.getConfigurationForResponse());
     }
 
@@ -430,7 +447,7 @@ public class SettingsUserController {
      */
     @PostMapping("/system/onlyoffice/test-connection")
     public ResponseEntity<java.util.Map<String, Object>> testOnlyOfficeConnection() {
-        requireConfigurationEdit();
+        requirePage(ConfigurationAuditPage.INTEGRATIONS, true);
         var config = onlyOfficeConfigurationService.getEffectiveConfiguration();
         if (!config.enabled() || !org.springframework.util.StringUtils.hasText(config.documentServerUrl())) {
             return ResponseEntity.ok(java.util.Map.of("success", false, "message", "OnlyOffice is not enabled or the Document Server URL is not configured."));
@@ -469,7 +486,7 @@ public class SettingsUserController {
     public ResponseEntity<StorageConnectionTestResponse> testStorageConnection(
             @RequestBody com.fasterxml.jackson.databind.JsonNode request
     ) {
-        requireConfigurationEdit();
+        requirePage(ConfigurationAuditPage.INTEGRATIONS, true);
         try {
             fileStorageService.testConnection(request);
             return ResponseEntity.ok(new StorageConnectionTestResponse(true, "Storage connection test successful."));
@@ -484,7 +501,7 @@ public class SettingsUserController {
     public ResponseEntity<SmtpConnectionTestResponse> testSmtpConnection(
             @Valid @RequestBody SmtpConnectionTestRequest request
     ) {
-        requireConfigurationEdit();
+        requireAnyPage(true, ConfigurationAuditPage.INTEGRATIONS, ConfigurationAuditPage.NOTIFICATIONS);
         try {
             emailService.testConnection(request);
             return ResponseEntity.ok(new SmtpConnectionTestResponse(true, "SMTP connection test successful."));
@@ -553,6 +570,13 @@ public class SettingsUserController {
         }
     }
 
+    private void requireUserResetMfa() {
+        var user = currentUserService.requireCurrentUser();
+        if (!permissionEvaluationService.hasPermission(user, "settings.user.reset_mfa")) {
+            throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to reset the multi-factor authentication of another user");
+        }
+    }
+
     private void requireUserResetPassword() {
         var user = currentUserService.requireCurrentUser();
         if (!permissionEvaluationService.hasPermission(user, "settings.user.reset_password")) {
@@ -598,8 +622,7 @@ public class SettingsUserController {
     private void requireDocumentPropertiesView() {
         var user = currentUserService.requireCurrentUser();
         boolean allowed = permissionEvaluationService.hasAnyPermission(user,
-                "documents.admin.properties.view", "documents.admin.properties.manage",
-                "settings.configuration.view", "settings.configuration.manage");
+                "documents.admin.properties.view", "documents.admin.properties.manage");
         if (!allowed) {
             throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to view document properties");
         }
@@ -608,24 +631,27 @@ public class SettingsUserController {
     private void requireDocumentPropertiesManage() {
         var user = currentUserService.requireCurrentUser();
         boolean allowed = permissionEvaluationService.hasAnyPermission(user,
-                "documents.admin.properties.manage", "settings.configuration.manage");
+                "documents.admin.properties.manage");
         if (!allowed) {
             throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to manage document properties");
         }
     }
 
-    private void requireConfigurationView() {
-        var user = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.hasPermission(user, "settings.configuration.view")) {
-            throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to view system configuration");
-        }
+    /** The View (or, for an action, the Manage) permission of one page of Configuration (V806). */
+    private void requirePage(ConfigurationAuditPage page, boolean manage) {
+        requireAnyPage(manage, page);
     }
 
-    private void requireConfigurationEdit() {
+    private void requireAnyPage(boolean manage, ConfigurationAuditPage... pages) {
         var user = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.hasPermission(user, "settings.configuration.manage")) {
-            throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to edit system configuration");
+        for (ConfigurationAuditPage page : pages) {
+            if (permissionEvaluationService.hasPermission(user, manage ? page.managePermission() : page.viewPermission())) {
+                return;
+            }
         }
+        throw new org.springframework.security.access.AccessDeniedException(manage
+                ? "Current user is not allowed to edit system configuration"
+                : "Current user is not allowed to view system configuration");
     }
 
     @PutMapping("/users/{id}/certifications/{certificationId}")

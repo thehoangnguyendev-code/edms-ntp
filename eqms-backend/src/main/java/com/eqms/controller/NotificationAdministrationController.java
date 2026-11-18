@@ -31,7 +31,7 @@ public class NotificationAdministrationController {
     @GetMapping("/message-events")
     public ResponseEntity<java.util.List<com.eqms.service.LegacyMessageEvents.Event>> messageEvents() {
         var user = currentUserService.requireCurrentUser();
-        boolean allowed = permissions.hasAnyPermission(user, "settings.notification_policy.view", "settings.notification_policy.manage", "settings.configuration.view");
+        boolean allowed = permissions.hasAnyPermission(user, "settings.notification_policy.view", "settings.notification_policy.manage");
         if (!allowed) {
             throw new AccessDeniedException("Current user is not allowed to view notifications");
         }
@@ -42,7 +42,7 @@ public class NotificationAdministrationController {
     @GetMapping("/recipient-rules")
     public ResponseEntity<java.util.List<com.eqms.service.NotificationRecipientRules.Rule>> recipientRules() {
         var user = currentUserService.requireCurrentUser();
-        boolean events = permissions.hasAnyPermission(user, "settings.notification_policy.view", "settings.notification_policy.manage", "settings.configuration.view");
+        boolean events = permissions.hasAnyPermission(user, "settings.notification_policy.view", "settings.notification_policy.manage");
         if (!events) {
             throw new AccessDeniedException("Current user is not allowed to view notifications");
         }
@@ -53,8 +53,8 @@ public class NotificationAdministrationController {
     @GetMapping("/placeholders")
     public ResponseEntity<java.util.List<com.eqms.dto.notification.NotificationVariableResponse>> placeholders() {
         var user = currentUserService.requireCurrentUser();
-        boolean events = permissions.hasAnyPermission(user, "settings.notification_policy.view", "settings.notification_policy.manage", "settings.configuration.view");
-        boolean emails = permissions.hasAnyPermission(user, "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view");
+        boolean events = permissions.hasAnyPermission(user, "settings.notification_policy.view", "settings.notification_policy.manage");
+        boolean emails = permissions.hasAnyPermission(user, "settings.email_template.view", "settings.email_template.manage");
         if (!events && !emails) {
             throw new AccessDeniedException("Current user is not allowed to view notifications");
         }
@@ -78,8 +78,8 @@ public class NotificationAdministrationController {
     ) {
         var user = currentUserService.requireCurrentUser();
         // a person sees the kind of notification they may view: events with the notification policy right, emails with the email template right
-        boolean events = permissions.hasAnyPermission(user, "settings.notification_policy.view", "settings.notification_policy.manage", "settings.configuration.view");
-        boolean emails = permissions.hasAnyPermission(user, "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view");
+        boolean events = permissions.hasAnyPermission(user, "settings.notification_policy.view", "settings.notification_policy.manage");
+        boolean emails = permissions.hasAnyPermission(user, "settings.email_template.view", "settings.email_template.manage");
         if (!events && !emails) {
             throw new AccessDeniedException("Current user is not allowed to view notifications");
         }

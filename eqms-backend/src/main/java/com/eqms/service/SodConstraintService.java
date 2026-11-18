@@ -418,6 +418,19 @@ public class SodConstraintService {
     }
 
     /**
+     * How many ACTIVE constraints a holder of exactly these permissions breaks (both permissions of the pair held). Not gated by the SoD view permission: it is
+     * used to fill the snapshot of an Access Review, which has its own permission. Nothing is written.
+     */
+    @Transactional
+    public int countActiveViolations(java.util.Collection<String> permissionCodes) {
+        if (permissionCodes == null || permissionCodes.size() < 2) return 0;
+        Set<String> held = new HashSet<>(permissionCodes);
+        return (int) sodRepository.findActiveConstraintsInvolvingAny(held).stream()
+                .filter(c -> held.contains(c.getPermissionCodeA()) && held.contains(c.getPermissionCodeB()))
+                .count();
+    }
+
+    /**
      * Runtime (action-time) hook: is there an ACTIVE constraint for this permission pair, in either order?
      * Unlike the role-assignment checks above this is not gated by SoD view permission -- it is called by
      * business services at the moment an action happens (e.g. "may the requester decide on their own request?"),

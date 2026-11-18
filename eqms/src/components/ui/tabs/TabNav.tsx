@@ -7,6 +7,11 @@ export interface TabItem {
   description?: string;
   icon?: React.ElementType;
   count?: number;
+  /** A small dot after the label: something on this tab needs attention (for example a change that is not saved yet). */
+  dot?: boolean;
+  dotLabel?: string;
+  /** "danger" draws the dot red (something blocks saving); the default is amber. */
+  dotTone?: "warning" | "danger";
 }
 
 type TabNavVariant = "underline" | "pill" | "simple-underline" | "vertical";
@@ -178,6 +183,11 @@ function useHorizontalIndicator(activeTab: string, enabled: boolean) {
 }
 
 function renderBadge(tab: TabItem, isActive: boolean, config: HorizontalVariantConfig) {
+  if (tab.dot && tab.count === undefined) {
+    return (
+      <span role="img" aria-label={tab.dotLabel ?? "Needs attention"} title={tab.dotLabel} className={cn("h-2 w-2 shrink-0 rounded-full", tab.dotTone === "danger" ? "bg-red-500" : "bg-amber-500")} />
+    );
+  }
   if (tab.count === undefined) {
     return null;
   }

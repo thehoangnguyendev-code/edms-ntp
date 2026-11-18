@@ -39,4 +39,32 @@ class SystemConfigurationAuditChangesTest {
         assertThat(SystemConfigurationService.humanizeAuditPath("appearance.primaryColor")).isEqualTo("Appearance > Primary Color");
         assertThat(SystemConfigurationService.humanizeAuditPath("features[feat-a].enabled")).isEqualTo("Features [feat-a] > Enabled");
     }
+
+    /** CONFIGURATION-PAGES-SPLIT-2026-11-17: the changes of one save are grouped by the page of Configuration that shows them; each group becomes one audit record. */
+    @Test
+    void theChangesOfASaveAreGroupedByThePageThatShowsThem() throws Exception {
+        var byPage = new java.util.EnumMap<com.eqms.util.ConfigurationAuditPage, java.util.List<com.eqms.dto.audittrail.AuditTrailChangeResponse>>(com.eqms.util.ConfigurationAuditPage.class);
+        SystemConfigurationService.addConfigurationChanges(byPage, "General",
+                JSON.readTree("{\"systemDisplayName\":\"A\",\"navigationLabelOverrides\":{\"doc-all\":\"Docs\"},\"backupSettings\":{\"onlyOffice\":{\"documentServerUrl\":\"u1\",\"viewer\":{\"showPluginsTab\":false}}}}"),
+                JSON.readTree("{\"systemDisplayName\":\"B\",\"navigationLabelOverrides\":{\"doc-all\":\"Files\"},\"backupSettings\":{\"onlyOffice\":{\"documentServerUrl\":\"u2\",\"viewer\":{\"showPluginsTab\":true}}}}"));
+        SystemConfigurationService.addConfigurationChanges(byPage, "Security", JSON.readTree("{\"passwordMinLength\":8}"), JSON.readTree("{\"passwordMinLength\":12}"));
+        SystemConfigurationService.addConfigurationChanges(byPage, "Features", JSON.readTree("[]"), JSON.readTree("[]"));
+
+        assertThat(byPage.keySet()).containsExactly(
+                com.eqms.util.ConfigurationAuditPage.GENERAL, com.eqms.util.ConfigurationAuditPage.NAVIGATION_LABELS, com.eqms.util.ConfigurationAuditPage.SECURITY,
+                com.eqms.util.ConfigurationAuditPage.INTEGRATIONS, com.eqms.util.ConfigurationAuditPage.PREVIEW_FILE);
+        assertThat(byPage.get(com.eqms.util.ConfigurationAuditPage.GENERAL)).extracting("field").containsExactly("General > System Display Name");
+        assertThat(byPage.get(com.eqms.util.ConfigurationAuditPage.NAVIGATION_LABELS)).extracting("field").containsExactly("General > Navigation Label Overrides > Doc-all");
+        assertThat(byPage.get(com.eqms.util.ConfigurationAuditPage.SECURITY)).extracting("field").containsExactly("Security > Password Min Length");
+        assertThat(byPage.get(com.eqms.util.ConfigurationAuditPage.INTEGRATIONS)).extracting("field").containsExactly("General > Backup Settings > Only Office > Document Server Url");
+        assertThat(byPage.get(com.eqms.util.ConfigurationAuditPage.PREVIEW_FILE)).extracting("field").containsExactly("General > Backup Settings > Only Office > Viewer > Show Plugins Tab");
+        assertThat(byPage).doesNotContainKey(com.eqms.util.ConfigurationAuditPage.FEATURES);
+    }
+
+    @Test
+    void aSaveThatChangesNothingGivesNoGroup() throws Exception {
+        var byPage = new java.util.EnumMap<com.eqms.util.ConfigurationAuditPage, java.util.List<com.eqms.dto.audittrail.AuditTrailChangeResponse>>(com.eqms.util.ConfigurationAuditPage.class);
+        SystemConfigurationService.addConfigurationChanges(byPage, "Security", JSON.readTree("{\"passwordMinLength\":8}"), JSON.readTree("{\"passwordMinLength\":8}"));
+        assertThat(byPage).isEmpty();
+    }
 }

@@ -180,7 +180,7 @@ class AccessProfileServiceSecurityTest {
         when(userRepo.findById(actor.getId())).thenReturn(Optional.of(target));
         when(appSetRepo.findByAccessProfileId(profileId)).thenReturn(List.of(accessProfilePermissionSet(profileId, criticalSetId)));
         when(permissionSetItemRepo.findAllByPermissionSet_Id(criticalSetId))
-                .thenReturn(List.of(permissionSetItem(criticalPermission("settings.configuration.manage"))));
+                .thenReturn(List.of(permissionSetItem(criticalPermission("settings.config_security.manage"))));
 
         assertThatThrownBy(() -> service.assignUser(profileId, actor.getId(), null))
                 .isInstanceOf(IllegalStateException.class)

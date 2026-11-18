@@ -38,10 +38,10 @@ public class AdministrativeNetworkPolicyService {
                 (rs, row) -> new Settings(rs.getBoolean(1), parse(rs.getString(2)), parse(rs.getString(3)), rs.getObject(4, UUID.class)));
     }
 
-    /** The caller must have settings.configuration.manage and must authenticate the actor. */
+    /** The caller must have settings.config_security.manage and must authenticate the actor. */
     @Transactional
     public Settings save(UserAccount actor, Settings value, String remoteAddress, String forwardedFor) {
-        if (actor == null || !permissions.hasPermission(actor, "settings.configuration.manage"))
+        if (actor == null || !permissions.hasPermission(actor, "settings.config_security.manage"))
             throw new org.springframework.security.access.AccessDeniedException("Permission required");
         if (value == null || value.allowedNetworks() == null || value.trustedProxies() == null
                 || value.allowedNetworks().size() > 100 || value.trustedProxies().size() > 100)
@@ -51,7 +51,7 @@ public class AdministrativeNetworkPolicyService {
         var policy = new AdministrativeNetworkPolicy(value.enabled(), allowed, trusted, value.emergencyUserId());
         if (value.enabled()) {
             UserAccount emergency = users.findById(value.emergencyUserId()).orElseThrow(() -> new IllegalArgumentException("Emergency account not found"));
-            if (emergency.getStatus() != UserStatus.Active || !permissions.hasPermission(emergency, "settings.configuration.manage"))
+            if (emergency.getStatus() != UserStatus.Active || !permissions.hasPermission(emergency, "settings.config_security.manage"))
                 throw new IllegalArgumentException("Emergency account must be active and permitted to manage configuration");
             if (policy.evaluate(true, actor.getId(), true, remoteAddress, forwardedFor) == AdministrativeNetworkPolicy.Decision.DENIED)
                 throw new IllegalArgumentException("Current administrator would be blocked by this policy");

@@ -1,9 +1,9 @@
 import React from "react";
-import { KeyRound, LockOpen, PauseCircle, RotateCcw } from "lucide-react";
+import { KeyRound, LockOpen, PauseCircle, RotateCcw, SmartphoneNfc } from "lucide-react";
 import { IconUserX } from "@tabler/icons-react";
 import type { User } from "../../types";
 
-export type AccountActionKey = "unlock" | "resetPassword" | "suspend" | "reinstate" | "terminate";
+export type AccountActionKey = "unlock" | "resetPassword" | "resetMfa" | "suspend" | "reinstate" | "terminate";
 
 export interface AccountAction {
   key: AccountActionKey;
@@ -19,11 +19,13 @@ export interface AccountActionInput {
   user: Pick<User, "status" | "accountLocked">;
   /** What the current admin may do -- see UserManagementService.getUserCapabilities. */
   canResetPassword?: boolean;
+  canResetMfa?: boolean;
   canSuspend?: boolean;
   canTerminate?: boolean;
   canReinstate?: boolean;
   canUnlock?: boolean;
   onResetPassword?: () => void;
+  onResetMfa?: () => void;
   onSuspend?: () => void;
   onTerminate?: () => void;
   onReinstate?: () => void;
@@ -54,6 +56,15 @@ export function buildAccountActions(input: AccountActionInput): AccountAction[] 
       description: "Issue a new temporary password. The user must change it at the next sign-in.",
       icon: <KeyRound className="h-4 w-4" />,
       onClick: () => input.onResetPassword?.(),
+    });
+  }
+  if (input.canResetMfa) {
+    actions.push({
+      key: "resetMfa",
+      label: "Reset MFA",
+      description: "The user lost the device of their authenticator. They are signed out and set up multi-factor authentication again at the next sign-in. Needs your electronic signature and a reason.",
+      icon: <SmartphoneNfc className="h-4 w-4" />,
+      onClick: () => input.onResetMfa?.(),
     });
   }
   if (input.canSuspend && user.status === "Active") {

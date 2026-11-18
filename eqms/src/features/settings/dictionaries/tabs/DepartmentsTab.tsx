@@ -15,6 +15,7 @@ import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import type { DepartmentItem, BusinessUnit } from "../types";
 import { usePortalDropdown } from "@/hooks";
 import { FormModal } from "@/components/ui/modal/FormModal";
+import { useOpenedFormDirty } from "@/hooks/useFormDirty";
 import { Button } from "@/components/ui/button/Button";
 import {
   FilterDrawer,
@@ -844,6 +845,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
     }));
   };
 
+  const dirty = useOpenedFormDirty(formData, isOpen);
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
@@ -860,6 +862,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
   return (
     <FormModal
       isOpen={isOpen}
+      dirty={dirty}
       onClose={onClose}
       onConfirm={handleSubmit}
       title={`${isEdit ? "Edit" : "New"} Department`}

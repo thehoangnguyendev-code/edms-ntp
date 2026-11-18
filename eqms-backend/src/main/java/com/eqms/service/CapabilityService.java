@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.ConfigurationAuditPage;
 import com.eqms.dto.user.CapabilityResponse;
 import com.eqms.entity.UserAccount;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ public class CapabilityService {
                         "settings.user.edit",
                         "settings.user.delete",
                         "settings.user.reset_password",
+                        "settings.user.reset_mfa",
                         "settings.user.force_logout"),
                 hasAny(user,
                         "security.access_profiles.update",
@@ -41,8 +43,8 @@ public class CapabilityService {
                         "security.workflow_authorization.manage",
                         "security.object_rules.manage",
                         "security.sod.manage"),
-                has(user, "settings.configuration.manage"),
-                hasAny(user, "settings.email_template.manage", "settings.configuration.manage"),
+                hasAny(user, ConfigurationAuditPage.allManagePermissions()),
+                has(user, "settings.email_template.manage"),
                 hasAny(user,
                         "settings.business_unit.manage",
                         "settings.department.manage",
@@ -50,9 +52,8 @@ public class CapabilityService {
                         "settings.storage_location.manage",
                         "settings.retention_policy.manage",
                         "settings.education.degree_level.manage",
-                        "settings.education.school.manage",
-                        "settings.configuration.manage"),
-                has(user, "settings.configuration.view"),
+                        "settings.education.school.manage"),
+                has(user, "settings.system_info.view"),
                 superAdmin
         );
     }

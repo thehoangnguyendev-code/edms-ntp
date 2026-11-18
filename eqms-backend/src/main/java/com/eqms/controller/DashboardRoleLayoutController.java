@@ -27,10 +27,10 @@ public class DashboardRoleLayoutController {
     @GetMapping("/default")
     public JsonNode effective() { return service.effective(require("dashboard.module.view").getId()).orElseGet(mapper::createObjectNode); }
     @GetMapping("/roles")
-    public List<DashboardRoleLayoutService.RoleLayout> list() { require("settings.configuration.manage"); return service.list(); }
+    public List<DashboardRoleLayoutService.RoleLayout> list() { require("settings.config_general.manage"); return service.list(); }
     @GetMapping("/roles/options")
-    public List<DashboardRoleLayoutService.RoleOption> roles() { require("settings.configuration.manage"); return service.roles(); }
+    public List<DashboardRoleLayoutService.RoleOption> roles() { require("settings.config_general.manage"); return service.roles(); }
     public record Update(int priority, JsonNode layout) {}
     @PutMapping("/roles/{roleId}")
-    public void save(@PathVariable UUID roleId, @RequestBody Update update) { service.save(require("settings.configuration.manage"), roleId, update.priority(), update.layout()); }
+    public void save(@PathVariable UUID roleId, @RequestBody Update update) { service.save(require("settings.config_general.manage"), roleId, update.priority(), update.layout()); }
 }

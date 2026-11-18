@@ -103,14 +103,14 @@ public class EmailDesignController {
     private void requireView() {
         var user = currentUserService.requireCurrentUser();
         if (!permissions.hasAnyPermission(user, "settings.notification_policy.view", "settings.notification_policy.manage",
-                "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view")) {
+                "settings.email_template.view", "settings.email_template.manage")) {
             throw new AccessDeniedException("Current user is not allowed to view the email design");
         }
     }
 
     private void requireManage() {
         var user = currentUserService.requireCurrentUser();
-        if (!permissions.hasAnyPermission(user, "settings.notification_policy.manage", "settings.email_template.manage", "settings.configuration.manage")) {
+        if (!permissions.hasAnyPermission(user, "settings.notification_policy.manage", "settings.email_template.manage")) {
             throw new AccessDeniedException("Current user is not allowed to change the email design");
         }
     }

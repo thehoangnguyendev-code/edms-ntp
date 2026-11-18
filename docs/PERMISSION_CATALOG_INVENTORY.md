@@ -201,6 +201,7 @@ These are currently exposed by the UI but are not the final backend workflow act
 - `settings.user.edit` - Edit Users
 - `settings.user.delete` - Delete Users
 - `settings.user.reset_password` - Reset Passwords
+- `settings.user.reset_mfa` - Reset MFA of Users (V805, 2026-11-18; given to every permission set that holds Reset Password)
 - `settings.user.force_logout` - Force Logout Users
 
 ### Legacy Role / Access Profile Administration

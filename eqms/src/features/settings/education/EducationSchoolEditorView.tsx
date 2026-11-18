@@ -10,6 +10,8 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { educationSchoolEditor } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { educationApi } from "@/services/api";
 import type { SchoolPayload } from "./types";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useFormDirty } from "@/hooks/useFormDirty";
 import { useToast } from "@/components/ui/toast";
 import { extractApiMessage } from "../shared/utils";
 import type { SchoolItem, SchoolOwnership, SchoolType } from "./types";
@@ -64,7 +66,10 @@ export const EducationSchoolEditorView: React.FC = () => {
   }, [form.governingBody, governingBodies]);
 
   const update = <K extends keyof SchoolEditorData>(key: K, value: SchoolEditorData[K]) => setForm((current) => ({ ...current, [key]: value }));
-  const goBack = () => navigate("/settings/education/schools");
+  // Back and the breadcrumb ask first when there is a change that was not saved (also the sidebar and a reload); the move after a successful Save is not a leave.
+  const { isDirty } = useFormDirty(form, !loading);
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isEdit ? "Edit School" : "New School", "the list");
+  const goBack = () => go("/settings/education/schools");
 
   const submit = async () => {
     if (!form.name.trim()) return;
@@ -79,7 +84,7 @@ export const EducationSchoolEditorView: React.FC = () => {
     try {
       const saved = isEdit && id ? await educationApi.schools.update(id, payload) : await educationApi.schools.create(payload);
       showToast({ type: "success", title: isEdit ? "School Updated" : "School Created", message: `"${saved.name}" has been saved.` });
-      goBack();
+      navigate("/settings/education/schools");
     } catch (error) {
       showToast({ type: "error", title: "Save Failed", message: extractApiMessage(error, "Unable to save school.") });
     } finally {
@@ -89,7 +94,7 @@ export const EducationSchoolEditorView: React.FC = () => {
 
   return (
     <div className="flex h-full flex-col gap-6">
-      <PageHeader title={isEdit ? "Edit School" : "New School"} breadcrumbItems={educationSchoolEditor(navigate, isEdit ? "edit" : "new")}
+      <PageHeader title={isEdit ? "Edit School" : "New School"} breadcrumbItems={educationSchoolEditor(go, isEdit ? "edit" : "new")}
         actions={<div className="flex items-center gap-2"><Button size="sm" variant="outline-emerald" onClick={goBack}>Back</Button><Button size="sm" variant="outline-emerald" onClick={submit} disabled={saving || !form.name.trim()}>{saving ? "Saving..." : "Save"}</Button></div>} />
       {loading ? (
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm"><SectionLoading text="Loading school..." /></div>
@@ -114,6 +119,7 @@ export const EducationSchoolEditorView: React.FC = () => {
           </FormSection>
         </div></div>
       )}
+      {leaveModal}
     </div>
   );
 };

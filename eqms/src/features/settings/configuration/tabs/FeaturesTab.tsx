@@ -1,5 +1,4 @@
 ﻿import React, { useMemo, useState } from "react";
-import { FormSection } from '@/components/ui/form/FormSection';
 import { ToggleLeft, CheckCircle2, XCircle, AlertTriangle, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
@@ -54,7 +53,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
   const disabledCount = features.length - enabledCount;
 
   return (
-    <div className="p-4 md:p-5 space-y-4">
+    <div className="p-4 md:p-6 space-y-4">
       {/* Stats Grid */}
       <div data-configuration-lead className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-5">
@@ -93,7 +92,8 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
       </div>
 
       {/* Main Features List */}
-      <FormSection title="Module Capabilities" icon={<ToggleLeft className="h-4 w-4" />} contentClassName="divide-y divide-slate-100">
+      <h3 className="pt-2 text-sm font-semibold text-slate-900">Module Capabilities</h3>
+      <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
           {features.length > 0 ? (
             features.filter(f => !f.parentId).map((rootFeature) => {
               const children = features.filter(f => f.parentId === rootFeature.id);
@@ -243,7 +243,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
               <p className="text-sm text-slate-400 italic">No features found in the system.</p>
             </div>
           )}
-      </FormSection>
+      </div>
     </div>
   );
 };

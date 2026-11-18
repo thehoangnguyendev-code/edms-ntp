@@ -55,6 +55,9 @@ export interface User {
   inSession?: boolean;
   online?: boolean;
   lastLogin: string;
+  /** Days without a sign-in and whether that passes the threshold of Configuration > Security (a flag only). Null for an account that is not Active. */
+  inactiveDays?: number | null;
+  inactive?: boolean;
   createdDate: string;
   lastUpdated: string;
   firstName?: string;

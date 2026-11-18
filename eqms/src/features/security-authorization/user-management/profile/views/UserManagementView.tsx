@@ -7,7 +7,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/toast";
-import { Search, Plus, MoreVertical, KeyRound, Download, PauseCircle, RotateCcw, X, ChevronUp, ChevronDown, ChevronRight, Check, UserPen, SquareX, LockOpen } from "lucide-react";
+import { SmartphoneNfc, Search, Plus, MoreVertical, KeyRound, Download, PauseCircle, RotateCcw, X, ChevronUp, ChevronDown, ChevronRight, Check, UserPen, SquareX, LockOpen } from "lucide-react";
 import { IconBan, IconBrandTelegram, IconFilter2, IconMailUp, IconRestore, IconUserX } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { userManagement } from "@/components/ui/breadcrumb/breadcrumbs.config";
@@ -22,6 +22,8 @@ import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { SkeletonTable } from "@/components/ui/loading/Skeleton";
 import { cn } from "@/components/ui/utils";
 import { ResetPasswordModal } from "../components/ResetPasswordModal";
+import { ResetMfaModal } from "../components/ResetMfaModal";
+import { passwordUserTokens } from "../components/passwordUserTokens";
 import { UnlockAccountModal } from "../components/UnlockAccountModal";
 import { SuspendModal } from "../components/SuspendModal";
 import { TerminateModal } from "../components/TerminateModal";
@@ -152,10 +154,12 @@ export const UserManagementView: React.FC = () => {
     setScrollerEl(node);
   };
   const { navigateTo, isNavigating } = useNavigateWithLoading();
+  const [resetMfaModal, setResetMfaModal] = useState({ isOpen: false, userId: "", userName: "" });
   const [resetPasswordModal, setResetPasswordModal] = useState({
     isOpen: false,
     userId: "",
     userName: "",
+    userTokens: [] as string[],
   });
   const [suspendModal, setSuspendModal] = useState({
     isOpen: false,
@@ -232,7 +236,13 @@ export const UserManagementView: React.FC = () => {
       isOpen: true,
       userId: user.id,
       userName: user.fullName,
+      userTokens: passwordUserTokens(user),
     });
+    closeDropdown();
+  };
+
+  const handleResetMfa = (user: User) => {
+    setResetMfaModal({ isOpen: true, userId: user.id, userName: user.fullName });
     closeDropdown();
   };
 
@@ -871,6 +881,11 @@ export const UserManagementView: React.FC = () => {
                                       : user.status}
                                   </Badge>
                                 )}
+                                {col.id === "status" && user.inactive && (
+                                  <Badge size="sm" color="amber" pill className="mt-1 block w-fit px-1.5 text-2xs" title={`No sign-in for ${user.inactiveDays} days. A flag only: the account is not suspended.`}>
+                                    Inactive
+                                  </Badge>
+                                )}
                                 {col.id === "role" && (() => {
                                   const profiles = user.accessProfileNames ?? [];
                                   if (profiles.length === 0) {
@@ -1055,6 +1070,7 @@ export const UserManagementView: React.FC = () => {
         }
         onViewProfile={(id) => navigateTo(USER_MANAGEMENT_ROUTES.PROFILE(id))}
         onResetPassword={handleResetPassword}
+        onResetMfa={handleResetMfa}
         onSuspend={handleSuspend}
         onTerminate={handleTerminate}
         onReinstate={handleReinstate}
@@ -1065,10 +1081,18 @@ export const UserManagementView: React.FC = () => {
       <ResetPasswordModal
         isOpen={resetPasswordModal.isOpen}
         onClose={() =>
-          setResetPasswordModal({ isOpen: false, userId: "", userName: "" })
+          setResetPasswordModal({ isOpen: false, userId: "", userName: "", userTokens: [] })
         }
         userId={resetPasswordModal.userId}
         userName={resetPasswordModal.userName}
+        userTokens={resetPasswordModal.userTokens}
+      />
+
+      <ResetMfaModal
+        isOpen={resetMfaModal.isOpen}
+        onClose={() => setResetMfaModal({ isOpen: false, userId: "", userName: "" })}
+        userId={resetMfaModal.userId}
+        userName={resetMfaModal.userName}
       />
 
       {/* Suspend Modal */}
@@ -1393,6 +1417,7 @@ interface UserActionMenuProps {
   capabilities?: UserActionCapabilitiesResponse;
   onViewProfile: (id: string) => void;
   onResetPassword: (user: User) => void;
+  onResetMfa: (user: User) => void;
   onSuspend: (user: User) => void;
   onTerminate: (user: User) => void;
   onReinstate: (user: User) => void;
@@ -1407,6 +1432,7 @@ const UserActionMenu: React.FC<UserActionMenuProps> = ({
   capabilities,
   onViewProfile,
   onResetPassword,
+  onResetMfa,
   onSuspend,
   onTerminate,
   onReinstate,
@@ -1464,6 +1490,18 @@ const UserActionMenu: React.FC<UserActionMenuProps> = ({
           >
             <KeyRound className="h-4 w-4 flex-shrink-0" />
             <span className="font-medium text-slate-500">Reset Password</span>
+          </button>
+        )}
+        {!isTerminated && can("resetMfa") && (
+          <button
+            onClick={() => {
+              onClose();
+              onResetMfa(user);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
+          >
+            <SmartphoneNfc className="h-4 w-4 flex-shrink-0" />
+            <span className="font-medium text-slate-500">Reset MFA</span>
           </button>
         )}
 

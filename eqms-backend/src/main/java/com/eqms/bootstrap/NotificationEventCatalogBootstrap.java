@@ -279,6 +279,10 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
             com.eqms.service.NotificationMandatoryEvents.MFA_REQUIREMENT_REMOVED, new String[]{
                     "Multifactor authentication is no longer required for your EQMS account",
                     "<p>Hello {{recipientName}},</p><p>An administrator no longer requires multi-factor authentication for your EQMS account. You can keep using it, or switch it off in your profile settings.</p><p>If you did not expect this change, please contact your system administrator.</p>"
+            },
+            com.eqms.service.NotificationMandatoryEvents.ACCOUNT_MFA_RESET, new String[]{
+                    "Your EQMS multi-factor authentication was reset",
+                    "<p>Hello {{recipientName}},</p><p>An administrator has reset the multi-factor authentication of your EQMS account, so that you can set it up again. All your sessions were signed out.</p><p>The next time you sign in you will be asked to set up multi-factor authentication again.</p><p>If you did not ask for this, contact your administrator at once.</p>"
             });
 
     /** Email subject and body (HTML) per event code. Index 0 = subject, 1 = body. English only. */
@@ -573,6 +577,14 @@ new EventSeed(
                         "UPDATE_MFA", "USER_ACCOUNT", "EMAIL", "recipientName,systemName",
                         new String[]{"AFFECTED_USERS"},
                         "MFA no longer required", "An administrator no longer requires multi-factor authentication for your account."
+                ),
+                new EventSeed(
+                        com.eqms.service.NotificationMandatoryEvents.ACCOUNT_MFA_RESET, "MFA Reset By Administrator",
+                        "Sent when an administrator resets the multi-factor authentication of a user (lost device). The user enrols again at the next sign-in. E-mail only and always sent: it is a security notice the person must get.",
+                        "SECURITY", NotificationEventDefinition.PRIORITY_HIGH,
+                        "RESET_MFA", "USER_ACCOUNT", "EMAIL", "recipientName,systemName",
+                        new String[]{"AFFECTED_USERS"},
+                        "MFA reset", "An administrator reset the multi-factor authentication of your account."
                 ),
 
                 // ── System ───────────────────────────────────────────────────────

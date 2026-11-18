@@ -21,8 +21,8 @@ export const PasswordPolicyTester: React.FC<{ config: SecurityConfig }> = ({ con
   }, [password, userInfo, config]);
 
   return (
-    <div className="border-t border-slate-100 pt-4">
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Test a Password</p>
+    <div className="border-t border-slate-200 pt-6">
+      <h3 className="mb-3 text-sm font-semibold text-slate-900">Test a Password</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label htmlFor="password-policy-test" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Password to Check</label>

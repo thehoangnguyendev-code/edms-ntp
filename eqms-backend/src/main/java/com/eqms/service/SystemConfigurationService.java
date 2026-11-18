@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.ConfigurationAuditPage;
 import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.dto.user.SystemConfigurationRequest;
 import com.eqms.dto.user.SystemConfigurationResponse;
@@ -126,6 +127,43 @@ public class SystemConfigurationService {
     }
 
     /**
+     * The configuration as one person may read it (V806): the sections that belong to a page the person may not open are left out (an empty object, or an empty list for Features),
+     * so the Security thresholds, the Integrations and the Notifications settings are not read by someone who holds only the View permission of another page. The General section is
+     * shared by four pages: it is returned whole to the pages that own it, without the OnlyOffice connection unless Integrations or Preview File may be opened, and as the OnlyOffice connection alone to those two pages. Documents is operational policy that every document user reads
+     * from /settings/system/documents, so it is returned as it is. A save sends only the sections that changed, so a section that was left out is never written back.
+     */
+    @Transactional
+    public SystemConfigurationResponse getConfiguration(java.util.function.Predicate<ConfigurationAuditPage> mayViewPage) {
+        SystemConfigurationResponse full = toResponse(requireConfiguration());
+        boolean wholeGeneral = mayViewPage.test(ConfigurationAuditPage.GENERAL) || mayViewPage.test(ConfigurationAuditPage.NAVIGATION_LABELS)
+                || mayViewPage.test(ConfigurationAuditPage.IMAGE_WATERMARK);
+        boolean connection = mayViewPage.test(ConfigurationAuditPage.INTEGRATIONS) || mayViewPage.test(ConfigurationAuditPage.PREVIEW_FILE);
+        JsonNode generalConfig = objectMapper.createObjectNode();
+        if (full.general() instanceof ObjectNode generalObject) {
+            if (wholeGeneral) {
+                ObjectNode copy = generalObject.deepCopy();
+                if (!connection && copy.path("backupSettings").isObject()) {
+                    ((ObjectNode) copy.path("backupSettings")).remove("onlyOffice");
+                }
+                generalConfig = copy;
+            } else if (connection && generalObject.path("backupSettings").path("onlyOffice").isObject()) {
+                // Integrations and Preview File edit the OnlyOffice connection that is stored in the General section: they get that part only. A save merges it into the stored section.
+                ObjectNode only = objectMapper.createObjectNode();
+                only.putObject("backupSettings").set("onlyOffice", generalObject.path("backupSettings").path("onlyOffice").deepCopy());
+                generalConfig = only;
+            }
+        }
+        return new SystemConfigurationResponse(
+                generalConfig,
+                mayViewPage.test(ConfigurationAuditPage.SECURITY) ? full.security() : objectMapper.createObjectNode(),
+                full.documents(),
+                mayViewPage.test(ConfigurationAuditPage.NOTIFICATIONS) ? full.notifications() : objectMapper.createObjectNode(),
+                mayViewPage.test(ConfigurationAuditPage.INTEGRATIONS) ? full.integrations() : objectMapper.createObjectNode(),
+                mayViewPage.test(ConfigurationAuditPage.FEATURES) ? full.features() : objectMapper.createArrayNode()
+        );
+    }
+
+    /**
      * Returns display-safe examples from the persisted configuration. The paths are built by
      * the production path builders, preventing the UI from duplicating storage conventions.
      */
@@ -181,6 +219,17 @@ public class SystemConfigurationService {
     @Transactional
     @CacheEvict(cacheNames = {"public-branding", "public-localization", "public-navigation-labels"}, allEntries = true)
     public SystemConfigurationResponse updateConfiguration(SystemConfigurationRequest request) {
+        return updateConfiguration(request, null);
+    }
+
+    /**
+     * Saves the configuration. When {@code mayManagePage} is given (the Configuration screen), every page of Configuration that the save really changes must pass it, or the whole save is
+     * refused and rolled back (V806: one Manage permission for each page). The pages are those the audit trail uses, so the rule and the record of the change always agree. A caller
+     * that is gated by a permission of its own (Document Properties) passes null.
+     */
+    @Transactional
+    @CacheEvict(cacheNames = {"public-branding", "public-localization", "public-navigation-labels"}, allEntries = true)
+    public SystemConfigurationResponse updateConfiguration(SystemConfigurationRequest request, java.util.function.Predicate<ConfigurationAuditPage> mayManagePage) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         SystemConfiguration config = requireConfiguration();
         JsonNode previousGeneral = config.getGeneralConfig();
@@ -203,6 +252,7 @@ public class SystemConfigurationService {
         validateTrainingMaterialsLayout(nextGeneral);
         validateAuditTabView(nextGeneral);
         validateLoginLayout(nextGeneral);
+        validateLoginCarousel(nextGeneral);
         validateKnowledgeFolderNames(nextGeneral);
         validateSystemHeaderTitle(nextGeneral);
         validateFooter(nextGeneral);
@@ -238,7 +288,8 @@ public class SystemConfigurationService {
                 }
             }
         }
-        List<AuditTrailChangeResponse> changes = buildConfigurationChanges(
+        // One audit record for each page of Configuration that had a change (CONFIGURATION-PAGES-SPLIT-2026-11-17): the page is its own menu, so it is the Object Type.
+        Map<ConfigurationAuditPage, List<AuditTrailChangeResponse>> changesByPage = buildConfigurationChanges(
                 previousGeneral,
                 previousSecurity,
                 previousDocuments,
@@ -247,17 +298,39 @@ public class SystemConfigurationService {
                 previousFeatures,
                 saved
         );
-        auditTrailService.logAs(
+        if (mayManagePage != null) {
+            for (ConfigurationAuditPage changed : changesByPage.keySet()) {
+                if (!mayManagePage.test(changed)) {
+                    // thrown before anything is committed: the transaction rolls the whole save back
+                    throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to change the " + changed.name().toLowerCase(Locale.ROOT).replace('_', ' ') + " page of the configuration");
+                }
+            }
+        }
+        if (changesByPage.isEmpty()) {
+            // nothing that differs (a save of the same values): one record as before, under the kind of the whole configuration
+            auditTrailService.logAs(
+                    currentUser,
+                    "SYSTEM_CONFIGURATION",
+                    "System Configuration",
+                    SYSTEM_CONFIG_AUDIT_ENTITY_ID,
+                    ACTION_SYSTEM_CONFIGURATION_UPDATED,
+                    null,
+                    null,
+                    "Updated system configuration",
+                    List.of(new AuditTrailChangeResponse("System Configuration", summarizeConfigFromSections(previousGeneral, previousSecurity, previousDocuments, previousNotifications, previousIntegrations, previousFeatures), summarizeConfig(saved)))
+            );
+        }
+        changesByPage.forEach((page, pageChanges) -> auditTrailService.logAs(
                 currentUser,
-                "SYSTEM_CONFIGURATION",
+                page.entityType(),
                 "System Configuration",
                 SYSTEM_CONFIG_AUDIT_ENTITY_ID,
                 ACTION_SYSTEM_CONFIGURATION_UPDATED,
                 null,
                 null,
                 "Updated system configuration",
-                changes
-        );
+                pageChanges
+        ));
         // No e-mail or bell notification to the person who just saved: the screen shows its own "Changes saved" message and the Audit Trail records the change.
         publishBrandingInvalidationAfterCommit(previousGeneral, nextGeneral);
         publishOnlyOfficeViewerInvalidationAfterCommit(previousGeneral, nextGeneral);
@@ -403,7 +476,8 @@ public class SystemConfigurationService {
                 optionalHexColor(appearance, "menuIconColor"),
                 auditTabView(appearance),
                 auditTabTimelineStyle(appearance),
-                loginLayout(appearance)
+                loginLayout(appearance),
+                loginCarousel(appearance)
         );
     }
 
@@ -555,6 +629,64 @@ public class SystemConfigurationService {
         JsonNode layout = appearance == null ? null : appearance.get("loginLayout");
         if (layout != null && !layout.isNull() && (!layout.isTextual() || !LOGIN_LAYOUTS.contains(layout.asText()))) {
             throw new IllegalArgumentException("loginLayout must be one of " + LOGIN_LAYOUTS);
+        }
+    }
+
+    static final int LOGIN_CAROUSEL_MAX_SLIDES = 6;
+    static final int LOGIN_CAROUSEL_MIN_SECONDS = 3;
+    static final int LOGIN_CAROUSEL_MAX_SECONDS = 30;
+    static final int LOGIN_CAROUSEL_DEFAULT_SECONDS = 6;
+    static final int LOGIN_CAROUSEL_MAX_TITLE = 80;
+    static final int LOGIN_CAROUSEL_MAX_SUBTITLE = 200;
+    private static final int LOGIN_CAROUSEL_MAX_IMAGE_BYTES = 1048576;
+    private static final java.util.regex.Pattern LOGIN_CAROUSEL_IMAGE = java.util.regex.Pattern.compile("^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$");
+
+    /**
+     * The pictures and texts of the right-hand panel of the Split sign-in screen, as the administrator saved them; null when there are none (the screen then draws
+     * its product preview). Only the known fields are passed on, so nothing else that is stored beside them can reach a screen that nobody has signed in to.
+     */
+    JsonNode loginCarousel(JsonNode appearance) {
+        JsonNode value = appearance == null ? null : appearance.get("loginCarousel");
+        JsonNode slides = value == null ? null : value.get("slides");
+        if (slides == null || !slides.isArray() || slides.isEmpty()) return null;
+        com.fasterxml.jackson.databind.node.ObjectNode safe = new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode();
+        JsonNode seconds = value.get("intervalSeconds");
+        safe.put("intervalSeconds", seconds != null && seconds.isIntegralNumber() && seconds.canConvertToInt() ? seconds.intValue() : LOGIN_CAROUSEL_DEFAULT_SECONDS);
+        com.fasterxml.jackson.databind.node.ArrayNode out = safe.putArray("slides");
+        for (JsonNode slide : slides) {
+            com.fasterxml.jackson.databind.node.ObjectNode item = out.addObject();
+            item.put("title", slide.path("title").asText(""));
+            item.put("subtitle", slide.path("subtitle").asText(""));
+            item.put("image", slide.path("image").asText(""));
+        }
+        return safe;
+    }
+
+    /** 1 to 6 slides, each with a picture (PNG, JPEG or WebP of up to 1 MB), a title and a subtitle; the time between slides is 3 to 30 seconds. */
+    static void validateLoginCarousel(JsonNode general) {
+        JsonNode appearance = general == null ? null : general.get("appearance");
+        JsonNode value = appearance == null ? null : appearance.get("loginCarousel");
+        if (value == null || value.isNull()) return;
+        if (!value.isObject()) throw new IllegalArgumentException("loginCarousel must be an object");
+        JsonNode seconds = value.get("intervalSeconds");
+        if (seconds != null && (!seconds.isIntegralNumber() || !seconds.canConvertToInt() || seconds.intValue() < LOGIN_CAROUSEL_MIN_SECONDS || seconds.intValue() > LOGIN_CAROUSEL_MAX_SECONDS)) {
+            throw new IllegalArgumentException("loginCarousel intervalSeconds must be between " + LOGIN_CAROUSEL_MIN_SECONDS + " and " + LOGIN_CAROUSEL_MAX_SECONDS);
+        }
+        JsonNode slides = value.get("slides");
+        if (slides == null || !slides.isArray() || slides.size() > LOGIN_CAROUSEL_MAX_SLIDES) {
+            throw new IllegalArgumentException("loginCarousel slides must be a list of at most " + LOGIN_CAROUSEL_MAX_SLIDES);
+        }
+        for (JsonNode slide : slides) {
+            if (!slide.isObject()) throw new IllegalArgumentException("loginCarousel slide must be an object");
+            JsonNode title = slide.get("title"), subtitle = slide.get("subtitle"), image = slide.get("image");
+            if (title != null && (!title.isTextual() || title.asText().length() > LOGIN_CAROUSEL_MAX_TITLE)) throw new IllegalArgumentException("loginCarousel title is too long");
+            if (subtitle != null && (!subtitle.isTextual() || subtitle.asText().length() > LOGIN_CAROUSEL_MAX_SUBTITLE)) throw new IllegalArgumentException("loginCarousel subtitle is too long");
+            if (image == null || !image.isTextual() || image.asText().length() > 1400000 || !LOGIN_CAROUSEL_IMAGE.matcher(image.asText()).matches()) throw new IllegalArgumentException("loginCarousel slide has invalid image");
+            try {
+                if (java.util.Base64.getDecoder().decode(image.asText().substring(image.asText().indexOf(',') + 1)).length > LOGIN_CAROUSEL_MAX_IMAGE_BYTES) throw new IllegalArgumentException("loginCarousel image is too large");
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException("loginCarousel slide has invalid image", ex);
+            }
         }
     }
 
@@ -1067,7 +1199,7 @@ public class SystemConfigurationService {
         // Same permission that already gates the broader /configurations/system endpoint, which
         // can set this exact securityConfig field wholesale -- this narrower endpoint used to be
         // gated more strictly (super-admin-only), which was inconsistent, not more secure.
-        if (!permissionEvaluationService.hasPermission(currentUser, "settings.configuration.manage")) {
+        if (!permissionEvaluationService.hasPermission(currentUser, ConfigurationAuditPage.SECURITY.managePermission())) {
             throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to edit system configuration");
         }
         SystemConfiguration config = requireConfiguration();
@@ -1843,6 +1975,7 @@ public class SystemConfigurationService {
         }
         requireIntInRange(securityConfig, "minUniqueChars", 0, 64, "Minimum Unique Characters");
         requireIntInRange(securityConfig, "maxRepeatedChars", 0, 10, "Maximum Repeated Characters");
+        requireIntInRange(securityConfig, "inactiveAccountDays", 0, 3650, "Inactive Account Threshold");
         JsonNode passwordExpiryDaysNode = securityConfig.get("passwordExpiryDays");
         if (securityConfig.path("enablePasswordExpiry").asBoolean(false) || passwordExpiryDaysNode != null) {
             if (passwordExpiryDaysNode == null || passwordExpiryDaysNode.isNull()) {
@@ -1921,7 +2054,8 @@ public class SystemConfigurationService {
                 + "; Features=" + (features == null ? "" : "Configured");
     }
 
-    private List<AuditTrailChangeResponse> buildConfigurationChanges(
+    /** The settings that changed, grouped by the page of Configuration that shows them (empty when nothing differs), in the order of the pages. */
+    private Map<ConfigurationAuditPage, List<AuditTrailChangeResponse>> buildConfigurationChanges(
             JsonNode previousGeneral,
             JsonNode previousSecurity,
             JsonNode previousDocuments,
@@ -1930,21 +2064,18 @@ public class SystemConfigurationService {
             JsonNode previousFeatures,
             SystemConfiguration current
     ) {
-        List<AuditTrailChangeResponse> changes = new ArrayList<>();
+        Map<ConfigurationAuditPage, List<AuditTrailChangeResponse>> changes = new java.util.EnumMap<>(ConfigurationAuditPage.class);
         addConfigurationChanges(changes, "General", sanitizeForAudit(sanitizeGeneralForAudit(previousGeneral)), sanitizeForAudit(sanitizeGeneralForAudit(current.getGeneralConfig())));
         addConfigurationChanges(changes, "Security", sanitizeForAudit(previousSecurity), sanitizeForAudit(current.getSecurityConfig()));
         addConfigurationChanges(changes, "Documents", sanitizeForAudit(previousDocuments), sanitizeForAudit(current.getDocumentsConfig()));
         addConfigurationChanges(changes, "Notifications", sanitizeForAudit(previousNotifications), sanitizeForAudit(current.getNotificationsConfig()));
         addConfigurationChanges(changes, "Integrations", sanitizeForAudit(previousIntegrations), sanitizeForAudit(current.getIntegrationsConfig()));
         addConfigurationChanges(changes, "Features", sanitizeForAudit(previousFeatures), sanitizeForAudit(current.getFeaturesConfig()));
-        if (changes.isEmpty()) {
-            changes.add(new AuditTrailChangeResponse("System Configuration", summarizeConfigFromSections(previousGeneral, previousSecurity, previousDocuments, previousNotifications, previousIntegrations, previousFeatures), summarizeConfig(current)));
-        }
         return changes;
     }
 
-    /** One audit row per setting that really changed (never a whole section), named by its path, e.g. "General > Appearance > Primary Color". */
-    private void addConfigurationChanges(List<AuditTrailChangeResponse> changes, String section, JsonNode previous, JsonNode next) {
+    /** One audit row per setting that really changed (never a whole section), named by its path, e.g. "General > Appearance > Primary Color", under the page that shows it. */
+    static void addConfigurationChanges(Map<ConfigurationAuditPage, List<AuditTrailChangeResponse>> changes, String section, JsonNode previous, JsonNode next) {
         Map<String, String> before = new java.util.LinkedHashMap<>();
         Map<String, String> after = new java.util.LinkedHashMap<>();
         flattenForAudit("", previous, before);
@@ -1955,7 +2086,8 @@ public class SystemConfigurationService {
             String was = before.getOrDefault(path, "");
             String now = after.getOrDefault(path, "");
             if (!was.equals(now)) {
-                changes.add(new AuditTrailChangeResponse(section + " > " + humanizeAuditPath(path), was, now));
+                changes.computeIfAbsent(ConfigurationAuditPage.of(section, path), page -> new ArrayList<>())
+                        .add(new AuditTrailChangeResponse(section + " > " + humanizeAuditPath(path), was, now));
             }
         }
     }
@@ -2116,6 +2248,16 @@ public class SystemConfigurationService {
         JsonNode security = config.getSecurityConfig();
         JsonNode enabled = security == null ? null : security.get("sessionTimeoutEnabled");
         return enabled == null || !enabled.isBoolean() || enabled.booleanValue();
+    }
+
+    /** Days without a sign-in after which an account is flagged as inactive (SECURITY-AUTHORIZATION-REVIEW D5: flagged and reported only, never suspended by the system). 0 switches the flag off; 90 when never set. */
+    public static final int DEFAULT_INACTIVE_ACCOUNT_DAYS = 90;
+
+    @Transactional(readOnly = true)
+    public int inactiveAccountDays() {
+        JsonNode security = requireConfiguration().getSecurityConfig();
+        JsonNode value = security == null ? null : security.get("inactiveAccountDays");
+        return value != null && value.isIntegralNumber() && value.canConvertToInt() && value.intValue() >= 0 ? value.intValue() : DEFAULT_INACTIVE_ACCOUNT_DAYS;
     }
 
     @Transactional(readOnly = true)

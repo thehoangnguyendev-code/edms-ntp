@@ -1,3 +1,4 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowDown, ArrowUp, Info, Layers, Plus, Star, Trash2 } from "lucide-react";
@@ -183,16 +184,19 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
     }
   };
 
+  // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload). Going to make a component keeps the draft in the page state, so it is not a leave.
+  const { go, modal: leaveModal } = useLeaveGuard(dirty, "Knowledge Category Hierarchy", "the list");
+
   if (loading) return <FullPageLoading text="Loading hierarchy..." />;
 
   return (
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
         title={isNew ? "New Knowledge Categories Hierarchy" : "Edit Knowledge Categories Hierarchy"}
-        breadcrumbItems={isNew ? knowledgeCategoryCreate(navigate) : knowledgeCategoryEdit(navigate, hierarchy?.name)}
+        breadcrumbItems={isNew ? knowledgeCategoryCreate(go) : knowledgeCategoryEdit(go, hierarchy?.name)}
         actions={
           <>
-            <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => navigate(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_CATEGORIES)}>
+            <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => go(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_CATEGORIES)}>
               Back
             </Button>
             {canManage && !isNew && hierarchy && !hierarchy.isDefault && (
@@ -313,6 +317,7 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
           )}
         </FormSection>
       )}
+      {leaveModal}
     </div>
   );
 };

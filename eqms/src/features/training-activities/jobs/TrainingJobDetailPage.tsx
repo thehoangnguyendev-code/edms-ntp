@@ -1,9 +1,10 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { PersonTitlePicker } from "./PersonTitlePicker";
 import { TrainingPersonName } from "../shared/TrainingPersonName";
 import { WorkPositionsPreview } from "./WorkPositionsPreview";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -96,7 +97,6 @@ function DutiesTable({ duties }: { duties: TrainingJobDuty[] }) {
 /** One job assignment: the facts, the duties, the matrix check, and the two signatures. */
 export function TrainingJobDetailPage() {
   const { jobId = "" } = useParams();
-  const navigate = useNavigate();
   const goBack = useTrainingBack("/training-management/job-assignments");
   const { showToast } = useToast();
   const [job, setJob] = useState<TrainingJobDetail>();
@@ -165,7 +165,9 @@ export function TrainingJobDetailPage() {
   };
 
   const title = "Job Assignment Details";
-  const crumbs = trainingBreadcrumbs(navigate, "jobs", title);
+  // Leaving with changes that were not saved asks first (Back, the breadcrumb, the sidebar, a reload).
+  const { go, confirmLeave, modal: leaveModal } = useLeaveGuard(dirty, title, "the previous page");
+  const crumbs = trainingBreadcrumbs(go, "jobs", title);
   if (!job) {
     return (
       <div className="flex min-w-0 flex-col gap-4">
@@ -380,7 +382,7 @@ export function TrainingJobDetailPage() {
       <TrainingDetailLayout
         title={title}
         breadcrumbItems={crumbs}
-        onBack={goBack}
+        onBack={() => confirmLeave(goBack)}
         workflow={job.workflow}
         tabs={tabs}
         activeTab={tab}
@@ -681,6 +683,7 @@ export function TrainingJobDetailPage() {
           revision: String(job.issueNo),
         }}
       />
+      {leaveModal}
     </>
   );
 }

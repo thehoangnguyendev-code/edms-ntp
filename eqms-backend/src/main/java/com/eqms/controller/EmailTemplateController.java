@@ -170,7 +170,7 @@ public class EmailTemplateController {
     private void requireViewPermission() {
         var user = currentUserService.requireCurrentUser();
         if (!permissionEvaluationService.hasAnyPermission(user,
-                "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view")) {
+                "settings.email_template.view", "settings.email_template.manage")) {
             throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to view email templates");
         }
     }
@@ -178,7 +178,7 @@ public class EmailTemplateController {
     private void requireEditPermission() {
         var user = currentUserService.requireCurrentUser();
         if (!permissionEvaluationService.hasAnyPermission(user,
-                "settings.email_template.manage", "settings.configuration.manage")) {
+                "settings.email_template.manage")) {
             throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to edit email templates");
         }
     }

@@ -17,7 +17,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 class ReportSecuritySourcesTest {
     static List<ReportMetadataProvider> providers() {
         return List.of(new AuthEventReportMetadataProvider(), new ElectronicSignatureReportMetadataProvider(), new UserAccessReportMetadataProvider(),
-                new AccessReviewReportMetadataProvider(), new KnowledgeShareReportMetadataProvider(), new StorageUsageReportMetadataProvider(), new BackupActivityReportMetadataProvider());
+                new AccessReviewReportMetadataProvider(), new KnowledgeShareReportMetadataProvider(), new StorageUsageReportMetadataProvider(), new BackupActivityReportMetadataProvider(),
+                new PermissionHolderReportMetadataProvider());
     }
 
     private UserAccount actor() {
@@ -189,12 +190,12 @@ class ReportSecuritySourcesTest {
     @Test
     void theTypesAreCodedAndCategorisedAndDistinctFromTheOthers() {
         var codes = providers().stream().map(ReportMetadataProvider::code).toList();
-        assertEquals(List.of("AUTH_EVENTS", "ELECTRONIC_SIGNATURES", "USER_ACCESS", "ACCESS_REVIEW_ITEMS", "KNOWLEDGE_SHARE_LINKS", "STORAGE_USAGE", "BACKUP_ACTIVITY"), codes);
+        assertEquals(List.of("AUTH_EVENTS", "ELECTRONIC_SIGNATURES", "USER_ACCESS", "ACCESS_REVIEW_ITEMS", "KNOWLEDGE_SHARE_LINKS", "STORAGE_USAGE", "BACKUP_ACTIVITY", "PERMISSION_HOLDERS"), codes);
         var all = new ArrayList<>(codes);
         ReportDocumentSourcesTest.providers().forEach(p -> all.add(p.code()));
         all.add("AUDIT_TRAIL");
         assertEquals(all.size(), new HashSet<>(all).size());
-        assertEquals(List.of("Audit", "Audit", "Security", "Security", "Security", "Storage", "Backup and Restore"), providers().stream().map(ReportMetadataProvider::category).toList());
+        assertEquals(List.of("Audit", "Audit", "Security", "Security", "Security", "Storage", "Backup and Restore", "Security"), providers().stream().map(ReportMetadataProvider::category).toList());
     }
 
     @Test

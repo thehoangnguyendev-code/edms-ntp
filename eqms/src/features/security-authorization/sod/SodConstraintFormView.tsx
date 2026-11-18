@@ -1,3 +1,5 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useFormDirty } from "@/hooks/useFormDirty";
 import React, { useEffect, useMemo, useState } from "react";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -164,7 +166,11 @@ export const SodConstraintFormView: React.FC = () => {
     };
   }, [codeA, codeB, initial?.id]);
 
-  const handleBack = () => navigateBack(navigate, location.state, ROUTES.SECURITY.SOD);
+  // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after a successful Save is not a leave.
+  const { isDirty } = useFormDirty({ name, codeA, codeB, severity, regulationRef, active }, !loading);
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isEdit ? "Edit SoD Constraint" : "New SoD Constraint", "the previous page");
+  const handleBack = () => navigateBack(go, location.state, ROUTES.SECURITY.SOD);
+  const leaveAfterSave = () => navigateBack(navigate, location.state, ROUTES.SECURITY.SOD);
 
   const isSystem = Boolean(initial?.system);
 
@@ -200,7 +206,7 @@ export const SodConstraintFormView: React.FC = () => {
         await settingsApi.createSodConstraint(payload, sig);
         showToast({ type: "success", message: "Constraint created" });
       }
-      handleBack();
+      leaveAfterSave();
     } catch (e: any) {
       showToast({ type: "error", message: e?.response?.data?.message ?? "Save failed" });
     } finally {
@@ -229,7 +235,7 @@ export const SodConstraintFormView: React.FC = () => {
       {signatureModal}
       <PageHeader
         title={title}
-        breadcrumbItems={segregationOfDutiesBreadcrumb(navigate, title)}
+        breadcrumbItems={segregationOfDutiesBreadcrumb(go, title)}
         actions={
           <>
             <Button variant="outline-emerald" size="sm" onClick={handleBack} className="whitespace-nowrap">
@@ -416,6 +422,7 @@ export const SodConstraintFormView: React.FC = () => {
           </div>
         </div>
       </FormSection>
+      {leaveModal}
     </div>
   );
 };

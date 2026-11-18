@@ -6,6 +6,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { AccessProfilePermissionSetDrawer } from '@/features/security-authorization/access-profiles/views/tabs/AccessProfilePermissionSetDrawer';
 import { WorkflowRoleDrawer } from '@/features/security-authorization/access-profiles/views/tabs/accessProfileDetailShared';
 
+// The drawer leaves with a 0.35 to 0.5 second animation driven by the browser's frame clock; on a busy machine (the whole suite running in parallel) that can outlast the default 1 second of waitFor.
+const EXIT_WAIT = { timeout: 4000 }; // below the 5 second limit of a test
+
 const api = vi.hoisted(() => ({
   getPermissionSet: vi.fn().mockResolvedValue({ permissionCodes: ['documents.view'] }),
   getPermissionCatalog: vi.fn().mockResolvedValue([{ name: 'Document permissions', permissions: [{ code: 'documents.view', name: 'View documents', module: 'Documents', description: 'View only', lifecycleUsages: [] }] }]),
@@ -34,6 +37,6 @@ describe('Non-filter drawer consumers preserve their content and handlers', () =
     expect(screen.getByRole('dialog', { name: 'Reviewer' })).toBeInTheDocument();
     expect(screen.getByText('Review document')).toBeInTheDocument(); expect(screen.queryByText('Approve document')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^Close$/ }));
-    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce(), EXIT_WAIT);
   });
 });

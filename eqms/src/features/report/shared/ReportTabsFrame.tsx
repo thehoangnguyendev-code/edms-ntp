@@ -7,7 +7,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { reportBreadcrumbs } from "./reportBreadcrumbs";
 
 /** Who may see the registers that follow the reports (the same rule as the routes in QualityRoutes). */
-const REGISTER_PERMISSIONS = ["reports.definition.view", "settings.configuration.view"];
+const REGISTER_PERMISSIONS = ["reports.definition.view"];
 
 interface PairTab {
   id: string;

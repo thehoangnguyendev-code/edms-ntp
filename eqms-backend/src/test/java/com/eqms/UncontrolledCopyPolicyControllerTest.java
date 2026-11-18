@@ -41,7 +41,7 @@ class UncontrolledCopyPolicyControllerTest {
         var actor = new UserAccount();
         when(currentUserService.requireCurrentUser()).thenReturn(actor);
         when(permissionEvaluationService.hasAnyPermission(actor,
-                "documents.admin.uncontrolled_copies_policy.manage", "settings.configuration.manage")).thenReturn(true);
+                "documents.admin.uncontrolled_copies_policy.manage")).thenReturn(true);
         var id = UUID.randomUUID();
         var request = new UncontrolledCopyEligibilityRuleRequest(null, true, false, null);
         controller.updateEligibilityRule(id, request);

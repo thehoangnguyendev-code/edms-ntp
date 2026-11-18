@@ -1,3 +1,5 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useFormDirty } from "@/hooks/useFormDirty";
 import React, { useEffect, useId, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button/Button";
@@ -151,13 +153,16 @@ export const AnnouncementEditorView: React.FC = () => {
     setErrors((previous) => ({ ...previous, [key]: undefined }));
   };
 
-  const back = () => navigate(ROUTES.SETTINGS.ANNOUNCEMENTS);
+  // Back and the breadcrumb ask first when there is a change that was not saved (also the sidebar and a reload); the move after a successful Save is not a leave.
+  const { isDirty } = useFormDirty(values, !loading);
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, creating ? "New Announcement" : "Edit Announcement", "the list");
+  const back = () => go(ROUTES.SETTINGS.ANNOUNCEMENTS);
   const breadcrumbs = useMemo(
     () =>
       creating
-        ? systemAnnouncementCreate(navigate)
-        : systemAnnouncementEdit(navigate),
-    [creating, navigate],
+        ? systemAnnouncementCreate(go)
+        : systemAnnouncementEdit(go),
+    [creating, go],
   );
 
   const save = async () => {
@@ -187,7 +192,7 @@ export const AnnouncementEditorView: React.FC = () => {
           ? "It is shown to users during its period."
           : "It is saved switched off.",
       });
-      back();
+      navigate(ROUTES.SETTINGS.ANNOUNCEMENTS);
     } catch (error) {
       const conflict =
         (error as { response?: { status?: number } })?.response?.status === 409;
@@ -389,6 +394,7 @@ export const AnnouncementEditorView: React.FC = () => {
         footnote={period}
         onClose={() => setPreviewOpen(false)}
       />
+      {leaveModal}
     </div>
   );
 };

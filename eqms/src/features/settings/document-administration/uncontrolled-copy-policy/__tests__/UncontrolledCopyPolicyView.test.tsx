@@ -25,7 +25,7 @@ const mount = () => render(<MemoryRouter initialEntries={["/?tab=eligibility-rul
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.hasPermissionAlias.mockImplementation((code: string) => code === "settings.configuration.manage");
+  mocks.hasPermissionAlias.mockImplementation((code: string) => code === "documents.admin.uncontrolled_copies_policy.manage");
   mocks.getPolicy.mockResolvedValue({ validityHours: 72, allowRedownload: true, marking: {} });
   mocks.listEligibilityRules.mockResolvedValue([rule]);
   mocks.savePolicy.mockResolvedValue({ validityHours: 72, allowRedownload: true, marking: {} });

@@ -37,7 +37,7 @@ const protectedElement = (permission: string, element: React.ReactNode) => (
 );
 
 /** Making a report template is for the people who may see or manage definitions; running one needs only the module. */
-const TEMPLATE_MANAGEMENT_PERMISSIONS = ['reports.definition.view', 'settings.configuration.view'];
+const TEMPLATE_MANAGEMENT_PERMISSIONS = ['reports.definition.view'];
 const managementElement = (element: React.ReactNode) => (
   <ProtectedRoute requiredPermissions={TEMPLATE_MANAGEMENT_PERMISSIONS}>
     <Suspense fallback={<LoadingFallback />}>{element}</Suspense>

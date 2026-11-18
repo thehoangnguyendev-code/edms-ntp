@@ -9,7 +9,7 @@ vi.mock('../PasswordPolicyTester', () => ({ PasswordPolicyTester: () => null }))
 it('defaults existing configurations to enabled and retains minutes when toggled', () => {
   function Example() {
     const [config, setConfig] = useState({ sessionTimeoutMinutes: 45 } as SecurityConfig);
-    return <SecurityTab config={config} onChange={setConfig} />;
+    return <SecurityTab config={config} onChange={setConfig} activeTab="sessions-accounts" />;
   }
   render(<Example />);
   const toggle = screen.getByLabelText('Enable Session Timeout') as HTMLInputElement;

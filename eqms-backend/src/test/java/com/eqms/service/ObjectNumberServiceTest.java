@@ -55,7 +55,7 @@ class ObjectNumberServiceTest {
 
     @Test
     void aPersonWhoMayChangeTheSystemConfigurationMayChangeAFormat() {
-        UserAccount configurer = admin("settings.configuration.manage");
+        UserAccount configurer = admin("settings.object_numbering.manage");
         when(jdbc.queryForList(anyString(), any(Object[].class))).thenReturn(List.of(Map.of("version", 3)));
         // it passes the permission and is stopped only by the stale version
         assertThrows(ResponseStatusException.class, () -> service.update(configurer, "SCHEDULED_REPORT",

@@ -1,3 +1,5 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useFormDirty } from "@/hooks/useFormDirty";
 import React, { useEffect, useMemo, useState } from "react";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import {
@@ -265,7 +267,16 @@ const TransitionPolicyForm: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, mode]);
 
+  // Leaving with a change that was not saved asks first (Cancel, the breadcrumb, the sidebar, a reload); the move after a successful Save is not a leave.
+  const { isDirty } = useFormDirty(form, !loading);
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, mode === "create" ? "New Transition Policy" : "Edit Transition Policy", "the previous page");
   const handleBack = () =>
+    navigateBack(
+      go,
+      location.state,
+      `/security/lifecycle-policies?tab=transitions`,
+    );
+  const leaveAfterSave = () =>
     navigateBack(
       navigate,
       location.state,
@@ -525,7 +536,7 @@ const TransitionPolicyForm: React.FC = () => {
         message: "Policy saved successfully.",
       });
       setShowDiff(false);
-      handleBack();
+      leaveAfterSave();
     } catch (err) {
       const { message } = extractApiError(err);
       showToast({ type: "error", title: "Save Failed", message });
@@ -598,7 +609,7 @@ const TransitionPolicyForm: React.FC = () => {
           message: "Document-type override created.",
         });
       }
-      handleBack();
+      leaveAfterSave();
     } catch (err) {
       const { message } = extractApiError(err);
       showToast({ type: "error", title: "Save Failed", message });
@@ -614,7 +625,7 @@ const TransitionPolicyForm: React.FC = () => {
   };
 
   const breadcrumbItems = lifecyclePoliciesSubPage(
-    navigate,
+    go,
     "Transition Policies",
     titleMap[mode],
   );
@@ -637,6 +648,7 @@ const TransitionPolicyForm: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-4 md:gap-6">
+      {leaveModal}
       {signatureModal}
       <PageHeader
         title={titleMap[mode]}
@@ -1142,7 +1154,16 @@ const CapabilityPolicyForm: React.FC = () => {
     };
   }, [id, showToast]);
 
+  // Leaving with a change that was not saved asks first (Cancel, the breadcrumb, the sidebar, a reload); the move after a successful Save is not a leave.
+  const { isDirty } = useFormDirty({ capabilityCode, statusCode, documentTypeId, actorScope, requiredPermissionCode, priority, active, description, changeReason }, !loading);
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isEdit ? "Edit State Policy" : "New State Policy", "the previous page");
   const handleBack = () =>
+    navigateBack(
+      go,
+      location.state,
+      `/security/lifecycle-policies?tab=capabilities`,
+    );
+  const leaveAfterSave = () =>
     navigateBack(
       navigate,
       location.state,
@@ -1186,7 +1207,7 @@ const CapabilityPolicyForm: React.FC = () => {
         await lifecycleStatePolicyApi.create(payload);
         showToast({ type: "success", message: "State policy created" });
       }
-      handleBack();
+      leaveAfterSave();
     } catch (e: any) {
       showToast({
         type: "error",
@@ -1218,10 +1239,11 @@ const CapabilityPolicyForm: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       {signatureModal}
+      {leaveModal}
       <PageHeader
         title={title}
         breadcrumbItems={lifecyclePoliciesSubPage(
-          navigate,
+          go,
           "State Capabilities",
           title,
         )}

@@ -31,7 +31,7 @@ it("draws every authentication screen in the split design when the administrator
   expect(document.querySelector(".auth-brand")).toBeTruthy();
   expect(screen.getByRole("heading", { name: "Forgot Password" })).toBeTruthy();
   expect(screen.getByPlaceholderText("Enter your email or username").className).toContain("rounded-[10px]");
-  expect(screen.getByRole("button", { name: "Send Reset Link" }).className).toContain("#3f3cf0");
+  expect(screen.getByRole("button", { name: "Send Reset Link" }).className).toContain("bg-emerald-900");
 });
 
 it("keeps the classic design for the same screen when nothing was chosen", () => {
@@ -41,6 +41,23 @@ it("keeps the classic design for the same screen when nothing was chosen", () =>
   expect(document.querySelector('[data-login-layout="SPLIT"]')).toBeNull();
   expect(screen.getByPlaceholderText("Enter your email or username").className).toContain("rounded-xl");
   expect(screen.getByRole("button", { name: "Send Reset Link" }).className).toContain("bg-emerald-900");
+});
+
+it("draws the slides of the administrator in the right-hand panel instead of the product preview", () => {
+  branding.value = { loginLayout: "SPLIT", loginCarousel: { intervalSeconds: 5, slides: [{ title: "Configured title", subtitle: "Configured subtitle", image: "data:image/png;base64,AAAA" }] } };
+  open();
+
+  expect(document.querySelector("[data-login-carousel]")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Configured title" })).toBeTruthy();
+  expect(screen.queryByText("Keep your quality processes under control.")).toBeNull();
+});
+
+it("draws the product preview when the administrator saved no slides", () => {
+  branding.value = { loginLayout: "SPLIT", loginCarousel: null };
+  open();
+
+  expect(document.querySelector("[data-login-carousel]")).toBeNull();
+  expect(screen.getByText("Keep your quality processes under control.")).toBeTruthy();
 });
 
 it("has the same keys in both designs, so a screen can take either set unchanged", () => {

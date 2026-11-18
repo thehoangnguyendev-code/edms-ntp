@@ -27,7 +27,10 @@ const readCachedBranding = (): PublicBranding | null => {
 };
 const writeCachedBranding = (branding: PublicBranding) => {
   try {
-    window.localStorage.setItem(BRANDING_CACHE_KEY, JSON.stringify(branding));
+    // The slides are pictures of up to 1 MB each, which would fill the storage: only the first one is kept, so a returning visitor
+    // starts on the same picture and the others arrive with the next answer of the server.
+    const light = branding.loginCarousel?.slides?.length ? { ...branding, loginCarousel: { ...branding.loginCarousel, slides: branding.loginCarousel.slides.slice(0, 1) } } : branding;
+    window.localStorage.setItem(BRANDING_CACHE_KEY, JSON.stringify(light));
   } catch {
     // Private-browsing / storage-denied -- the flash-avoidance is best-effort only.
   }

@@ -92,9 +92,9 @@ class Sprint10AuthorizationHardcodeRegressionTest {
     // "Document Administration" area — gated by its own documents.admin.controlled_copies_policy.*
     // permission pair (split out of the old catch-all documents.admin.* family).
     private static final String[] CC_VIEW_PERMS =
-            {"documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage", "settings.configuration.view", "settings.configuration.manage"};
+            {"documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage"};
     private static final String[] CC_MANAGE_PERMS =
-            {"documents.admin.controlled_copies_policy.manage", "settings.configuration.manage"};
+            {"documents.admin.controlled_copies_policy.manage"};
 
     @Test
     void controlledCopyPolicy_view_allowedWithViewPermission() {
@@ -152,8 +152,8 @@ class Sprint10AuthorizationHardcodeRegressionTest {
     @Test
     void electronicSignatureSettings_allowedWithManagePermission() {
         when(currentUserService.requireCurrentUser()).thenReturn(permissionHolderUser);
-        when(permissionEvaluationService.hasPermission(permissionHolderUser, "settings.configuration.view")).thenReturn(false);
-        when(permissionEvaluationService.hasPermission(permissionHolderUser, "settings.configuration.manage")).thenReturn(true);
+        when(permissionEvaluationService.hasPermission(permissionHolderUser, "settings.electronic_signature.view")).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(permissionHolderUser, "settings.electronic_signature.manage")).thenReturn(true);
         lenient().when(permissionEvaluationService.isSuperAdmin(permissionHolderUser)).thenReturn(false);
         when(electronicSignatureService.getSettings()).thenReturn(null);
 
@@ -165,8 +165,8 @@ class Sprint10AuthorizationHardcodeRegressionTest {
     @Test
     void electronicSignatureSettings_deniedForSuperAdminFlagWithoutPermission() {
         when(currentUserService.requireCurrentUser()).thenReturn(superAdminUser);
-        when(permissionEvaluationService.hasPermission(superAdminUser, "settings.configuration.view")).thenReturn(false);
-        when(permissionEvaluationService.hasPermission(superAdminUser, "settings.configuration.manage")).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(superAdminUser, "settings.electronic_signature.view")).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(superAdminUser, "settings.electronic_signature.manage")).thenReturn(false);
 
         var controller = new ElectronicSignatureSettingsController(
                 electronicSignatureService, electronicSignaturePdfPreviewService, currentUserService, permissionEvaluationService, null);
@@ -176,8 +176,8 @@ class Sprint10AuthorizationHardcodeRegressionTest {
     @Test
     void electronicSignatureSettings_deniedWhenRoleNameOnlyNoPermissionNoSuperAdmin() {
         when(currentUserService.requireCurrentUser()).thenReturn(nonSuperAdminWithOldRoleName);
-        when(permissionEvaluationService.hasPermission(nonSuperAdminWithOldRoleName, "settings.configuration.view")).thenReturn(false);
-        when(permissionEvaluationService.hasPermission(nonSuperAdminWithOldRoleName, "settings.configuration.manage")).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(nonSuperAdminWithOldRoleName, "settings.electronic_signature.view")).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(nonSuperAdminWithOldRoleName, "settings.electronic_signature.manage")).thenReturn(false);
 
         var controller = new ElectronicSignatureSettingsController(
                 electronicSignatureService, electronicSignaturePdfPreviewService, currentUserService, permissionEvaluationService, null);

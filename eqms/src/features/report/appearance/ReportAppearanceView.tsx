@@ -1,3 +1,4 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import React from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { IconId } from "@tabler/icons-react";
@@ -83,6 +84,8 @@ export const ReportAppearanceView: React.FC = () => {
   };
 
   const isDirty = !!value && !!original && (isNew ? !!value.name.trim() : JSON.stringify(value.appearance) !== JSON.stringify(original.appearance) || value.name !== original.name);
+  // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after a successful create is not a leave.
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isNew ? "Create Appearance" : "Report Appearance Details", "the list");
 
   const save = async () => {
     if (!value) return;
@@ -113,11 +116,11 @@ export const ReportAppearanceView: React.FC = () => {
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
         title={title}
-        breadcrumbItems={reportBreadcrumbs(navigate, title, true, { label: "Report Appearance", onClick: () => navigate("/settings/report-appearance") })}
+        breadcrumbItems={reportBreadcrumbs(go, title, true, { label: "Report Appearance", onClick: () => go("/settings/report-appearance") })}
         actions={
           value ? (
             <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" variant="outline-emerald" onClick={() => navigate("/settings/report-appearance")} className="whitespace-nowrap">
+              <Button size="sm" variant="outline-emerald" onClick={() => go("/settings/report-appearance")} className="whitespace-nowrap">
                 Back
               </Button>
               {canManage && (
@@ -185,6 +188,7 @@ export const ReportAppearanceView: React.FC = () => {
         cancelText="Cancel"
         isLoading={saving}
       />
+      {leaveModal}
     </div>
   );
 };

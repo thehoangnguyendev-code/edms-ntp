@@ -1,11 +1,8 @@
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Shield, Bell, Menu, Cloud, Server, Check, Eye } from 'lucide-react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { configuration } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { Button } from '@/components/ui/button/Button';
-import { TabNav } from '@/components/ui/tabs/TabNav';
 import { useToast } from '@/components/ui/toast/Toast';
 import { Loading } from "@/components/ui/loading/Loading";
 import { AlertModal } from '@/components/ui/modal/AlertModal';
@@ -15,65 +12,22 @@ import { BROWSER_TAB_TITLE_STORAGE_KEY, SECURITY_CONFIG_STORAGE_KEY } from '@/co
 import { settingsApi } from '@/services/api/settings';
 import { useNetworkAccessDraft } from './useNetworkAccessDraft';
 import { usePermissions } from '@/hooks/usePermissions';
-import { IconDragDrop, IconFileIsr, IconPhoto, IconPlugConnected, IconSettings2 } from '@tabler/icons-react';
+import { useReportUnsavedChanges } from '@/hooks/useReportUnsavedChanges';
+import { DEFAULT_CONFIGURATION_PAGE, configurationPageForPath, type ConfigurationPage } from './configurationPages';
+import { generalTabFromParam } from './tabs/generalTabs';
+import { securityTabFromParam } from './tabs/securityTabs';
+import { INTEGRATION_TAB_IDS, NOTIFICATION_TAB_IDS, PREVIEW_TAB_IDS, WATERMARK_TAB_IDS, pageTabFromParam } from './tabs/pageTabs';
 
+const IntegrationsTabs = lazy(() => import('./tabs/IntegrationsTabs').then(m => ({ default: m.IntegrationsTabs })));
 const GeneralTab = lazy(() => import('./tabs/GeneralTab').then(m => ({ default: m.GeneralTab })));
 const DashboardRoleDefaults = lazy(() => import('./tabs/DashboardRoleDefaults').then(m => ({ default: m.DashboardRoleDefaults })));
 const NavigationLabelsTab = lazy(() => import('./tabs/NavigationLabelsTab').then(m => ({ default: m.NavigationLabelsTab })));
 const SecurityTab = lazy(() => import('./tabs/SecurityTab').then(m => ({ default: m.SecurityTab })));
-const OnlyOfficeTab = lazy(() => import('./tabs/OnlyOfficeTab').then(m => ({ default: m.OnlyOfficeTab })));
 const NotificationTab = lazy(() => import('./tabs/NotificationTab').then(m => ({ default: m.NotificationTab })));
-const IntegrationTab = lazy(() => import('./tabs/IntegrationTab').then(m => ({ default: m.IntegrationTab })));
-const StorageUsagePanel = lazy(() => import('./tabs/StorageUsagePanel').then(m => ({ default: m.StorageUsagePanel })));
 const NetworkAccessPanel = lazy(() => import('./tabs/NetworkAccessPanel').then(m => ({ default: m.NetworkAccessPanel })));
 const PreviewFileTab = lazy(() => import('./tabs/PreviewFileTab').then(m => ({ default: m.PreviewFileTab })));
 const FeaturesTab = lazy(() => import('./tabs/FeaturesTab').then(m => ({ default: m.FeaturesTab })));
 const ImageWatermarkTab = lazy(() => import('./tabs/ImageWatermarkTab').then(m => ({ default: m.ImageWatermarkTab })));
-
-type TabId = 'general' | 'navigation' | 'security' | 'notification' | 'integration' | 'preview' | 'watermark' | 'features';
-
-const TABS = [
-  {
-    id: 'general' as TabId,
-    label: 'General',
-    icon: IconSettings2,
-  },
-  {
-    id: 'navigation' as TabId,
-    label: 'Navigation Labels',
-    icon: Menu,
-  },
-  {
-    id: 'security' as TabId,
-    label: 'Security',
-    icon: Shield,
-  },
-  {
-    id: 'notification' as TabId,
-    label: 'Notifications',
-    icon: Bell,
-  },
-  {
-    id: 'integration' as TabId,
-    label: 'Integrations',
-    icon: IconPlugConnected,
-  },
-  {
-    id: 'preview' as TabId,
-    label: 'Preview File',
-    icon: IconFileIsr,
-  },
-  {
-    id: 'watermark' as TabId,
-    label: 'Image Watermark',
-    icon: IconPhoto,
-  },
-  {
-    id: 'features' as TabId,
-    label: 'Features',
-    icon: IconDragDrop,
-  },
-];
 
 const SECURITY_CONFIG_UPDATED_EVENT = "eqms:security-config-updated";
 
@@ -97,26 +51,28 @@ const deepMerge = (target: any, source: any): any => {
   return result;
 };
 
+/**
+ * Configuration is a group of pages, one menu entry each. The page follows the address; the state is keyed by the page, so a page starts from the saved configuration
+ * and leaving it with edits asks first (the sidebar reads the flag set below).
+ */
 export const ConfigurationView: React.FC = () => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { hasPermissionAlias } = usePermissions();
-  const canManageConfiguration = hasPermissionAlias('settings.configuration.manage');
-  const [isMountLoading, setIsMountLoading] = useState(true);
-  const getTabFromSearch = (search: string): TabId => {
-    const tab = new URLSearchParams(search).get('tab');
-    if (tab === 'general' || tab === 'navigation' || tab === 'security' || tab === 'notification' || tab === 'integration' || tab === 'preview' || tab === 'watermark' || tab === 'features') {
-      return tab;
-    }
-    return 'general';
-  };
+  const page = configurationPageForPath(location.pathname) ?? DEFAULT_CONFIGURATION_PAGE;
+  return <ConfigurationPageBody key={page.id} page={page} />;
+};
 
-  const [activeTab, setActiveTab] = useState<TabId>(() => getTabFromSearch(location.search));
+const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { hasPermissionAlias } = usePermissions();
+  const canManageConfiguration = hasPermissionAlias(page.managePermission);
+  const [isMountLoading, setIsMountLoading] = useState(true);
   const [config, setConfig] = useState<SystemConfig | null>(null);
   const [originalConfig, setOriginalConfig] = useState<SystemConfig | null>(null);
   const [isDirty, setIsDirty] = useState(false);
-  const network = useNetworkAccessDraft(canManageConfiguration && activeTab === 'security');
+  const network = useNetworkAccessDraft(canManageConfiguration && page.id === 'security');
   const hasUnsavedChanges = isDirty || network.isDirty;
+  useReportUnsavedChanges(`configuration-${page.id}`, hasUnsavedChanges);
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
   const [isGeneralValid, setIsGeneralValid] = useState(true);
@@ -133,10 +89,6 @@ export const ConfigurationView: React.FC = () => {
     }
     window.localStorage.setItem(BROWSER_TAB_TITLE_STORAGE_KEY, nextTitle);
   };
-
-  useEffect(() => {
-    setActiveTab(getTabFromSearch(location.search));
-  }, [location.search]);
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -165,12 +117,6 @@ export const ConfigurationView: React.FC = () => {
     loadConfig();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleTabClick = (tabId: TabId) => {
-    const params = new URLSearchParams(location.search);
-    params.set('tab', tabId);
-    navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
-  };
 
   const handleConfigChange = <K extends keyof SystemConfig>(section: K, value: SystemConfig[K]) => {
     if (!config) return;
@@ -276,44 +222,72 @@ export const ConfigurationView: React.FC = () => {
   };
 
 
+  const selectTab = (tab: string) => setSearchParams((current) => { const next = new URLSearchParams(current); next.set('tab', tab); return next; }, { replace: true });
+
   const renderTabContent = () => {
     if (!config) return null;
-    switch (activeTab) {
+    switch (page.id) {
       case 'general':
-        return <><GeneralTab config={config.general} onChange={(val) => handleConfigChange('general', val)} onValidationChange={setIsGeneralValid} />{canManageConfiguration && <div className="px-4 pb-5 md:px-5"><DashboardRoleDefaults /></div>}</>;
-      case 'navigation':
+        return (
+          <GeneralTab
+            config={config.general}
+            onChange={(val) => handleConfigChange('general', val)}
+            onValidationChange={setIsGeneralValid}
+            activeTab={generalTabFromParam(searchParams.get('tab'))}
+            onTabChange={selectTab}
+            savedConfig={originalConfig?.general}
+            extra={canManageConfiguration ? <DashboardRoleDefaults /> : null}
+          />
+        );
+      case 'navigation-labels':
         return <NavigationLabelsTab config={config.general} onChange={(val) => handleConfigChange('general', val)} />;
       case 'security':
-        return <><SecurityTab config={config.security} onChange={(val) => handleConfigChange('security', val)} />{canManageConfiguration && <div className="px-4 pb-5 md:px-5"><NetworkAccessPanel value={network.draft} onChange={network.setDraft} failed={network.failed} /></div>}</>;
-      case 'notification':
+        return (
+          <SecurityTab
+            config={config.security}
+            onChange={(val) => handleConfigChange('security', val)}
+            activeTab={securityTabFromParam(searchParams.get('tab'))}
+            onTabChange={selectTab}
+            savedConfig={originalConfig?.security}
+            networkChanged={network.isDirty}
+            onNetworkReset={network.reset}
+            networkPanel={canManageConfiguration ? <NetworkAccessPanel value={network.draft} onChange={network.setDraft} failed={network.failed} /> : null}
+          />
+        );
+      case 'notifications':
         return (
           <NotificationTab
             config={config.notifications}
             onChange={(val) => handleConfigChange('notifications', val)}
+            activeTab={pageTabFromParam(NOTIFICATION_TAB_IDS, searchParams.get('tab'))}
+            onTabChange={selectTab}
+            savedConfig={originalConfig?.notifications}
           />
-        );;
-      case 'integration':
-        return (
-          <div className="space-y-0">
-            <IntegrationTab config={config.integrations} onChange={(val) => handleConfigChange('integrations', val)} />
-            {canManageConfiguration && <div className="px-4 pb-5 md:px-5"><StorageUsagePanel /></div>}
-            <OnlyOfficeTab
-              embedded
-              onlyOfficeConfig={config.general.backupSettings.onlyOffice}
-              onOnlyOfficeChange={(val) =>
-                handleConfigChange('general', {
-                  ...config.general,
-                  backupSettings: {
-                    ...config.general.backupSettings,
-                    onlyOffice: val,
-                  },
-                })
-              }
-              onOnlyOfficeValidationChange={setIsOnlyOfficeValid}
-            />
-          </div>
         );
-      case 'preview':
+      case 'integrations':
+        return (
+          <IntegrationsTabs
+            integrations={config.integrations}
+            onIntegrationsChange={(val) => handleConfigChange('integrations', val)}
+            onlyOffice={config.general.backupSettings.onlyOffice}
+            onOnlyOfficeChange={(val) =>
+              handleConfigChange('general', {
+                ...config.general,
+                backupSettings: {
+                  ...config.general.backupSettings,
+                  onlyOffice: val,
+                },
+              })
+            }
+            onOnlyOfficeValidationChange={setIsOnlyOfficeValid}
+            onlyOfficeValid={isOnlyOfficeValid}
+            saved={originalConfig}
+            canManage={canManageConfiguration}
+            activeTab={pageTabFromParam(INTEGRATION_TAB_IDS, searchParams.get('tab'))}
+            onTabChange={selectTab}
+          />
+        );
+      case 'preview-file':
         return (
           <PreviewFileTab
             onlyOfficeConfig={config.general.backupSettings.onlyOffice}
@@ -325,10 +299,22 @@ export const ConfigurationView: React.FC = () => {
             }
             documentsConfig={config.documents}
             onDocumentsChange={(val) => handleConfigChange('documents', val)}
+            activeTab={pageTabFromParam(PREVIEW_TAB_IDS, searchParams.get('tab'))}
+            onTabChange={selectTab}
+            savedOnlyOffice={originalConfig?.general.backupSettings.onlyOffice}
+            savedDocuments={originalConfig?.documents}
           />
         );
-      case 'watermark':
-        return <ImageWatermarkTab config={config.general} onChange={(val) => handleConfigChange('general', val)} />;
+      case 'image-watermark':
+        return (
+          <ImageWatermarkTab
+            config={config.general}
+            onChange={(val) => handleConfigChange('general', val)}
+            activeTab={pageTabFromParam(WATERMARK_TAB_IDS, searchParams.get('tab'))}
+            onTabChange={selectTab}
+            savedConfig={originalConfig?.general}
+          />
+        );
       case 'features':
         return <FeaturesTab features={config.features} onChange={(val) => handleConfigChange('features', val)} />;
       default:
@@ -340,8 +326,8 @@ export const ConfigurationView: React.FC = () => {
     <div className="space-y-6 w-full flex-1 flex flex-col">
       {/* Header */}
       <PageHeader
-        title="Configuration"
-        breadcrumbItems={configuration(navigate, TABS.find(t => t.id === activeTab)?.label)}
+        title={page.label}
+        breadcrumbItems={configuration(navigate, page.label)}
         actions={
           canManageConfiguration ? (
             <>
@@ -399,29 +385,13 @@ export const ConfigurationView: React.FC = () => {
         secondaryActionLabel="Keep Editing"
       />
 
-      {/* Section tabs + content */}
+      {/* The page */}
       <fieldset disabled={isSaving} className="min-w-0 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <TabNav
-          tabs={TABS}
-          activeTab={activeTab}
-          onChange={(id) => handleTabClick(id as TabId)}
-          ariaLabel="Configuration sections"
-        />
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <Suspense fallback={<Loading text="Loading configuration section..." className="min-h-48 py-12" />}>
-              {isMountLoading
-                ? <Loading text="Loading System Configuration..." className="min-h-48 py-12" />
-                : renderTabContent()}
-            </Suspense>
-          </motion.div>
-        </AnimatePresence>
+        <Suspense fallback={<Loading text="Loading configuration section..." className="min-h-48 py-12" />}>
+          {isMountLoading
+            ? <Loading text="Loading System Configuration..." className="min-h-48 py-12" />
+            : renderTabContent()}
+        </Suspense>
       </fieldset>
     </div>
   );

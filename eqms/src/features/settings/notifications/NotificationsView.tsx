@@ -287,8 +287,7 @@ export const NotificationsView: React.FC = () => {
   const { hasPermissionAlias } = usePermissions();
   const canManage =
     hasPermissionAlias("settings.notification_policy.manage") ||
-    hasPermissionAlias("settings.email_template.manage") ||
-    hasPermissionAlias("settings.configuration.manage");
+    hasPermissionAlias("settings.email_template.manage");
   const requested = params.get("tab");
   const tab: TabId = requested === "in-app" || requested === "email" ? requested : "all";
 

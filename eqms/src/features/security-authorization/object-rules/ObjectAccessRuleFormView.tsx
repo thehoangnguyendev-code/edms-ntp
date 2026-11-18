@@ -1,3 +1,5 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useFormDirty } from "@/hooks/useFormDirty";
 import React, { useEffect, useState } from "react";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -101,7 +103,12 @@ export const ObjectAccessRuleFormView: React.FC = () => {
   const toggleAction = (a: string) =>
     setActions((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]));
 
-  const handleBack = () => navigateBack(navigate, location.state, ROUTES.SECURITY.OBJECT_RULES);
+  // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after a successful Save is not a leave.
+  // The form is ready when the options (which give a new rule its first type) and, for an edit, the rule have come.
+  const { isDirty } = useFormDirty({ name, description, accessProfileId, resourceType, resourceName, actions: [...actions].sort(), effect, priority, active }, !loading && options !== null);
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isEdit ? "Edit Object Access Rule" : "New Object Access Rule", "the previous page");
+  const handleBack = () => navigateBack(go, location.state, ROUTES.SECURITY.OBJECT_RULES);
+  const leaveAfterSave = () => navigateBack(navigate, location.state, ROUTES.SECURITY.OBJECT_RULES);
 
   const nameMissing = !name.trim();
   const actionsMissing = actions.length === 0;
@@ -136,7 +143,7 @@ export const ObjectAccessRuleFormView: React.FC = () => {
         await settingsApi.createObjectAccessRule(payload, sig);
         showToast({ type: "success", message: "Rule created" });
       }
-      handleBack();
+      leaveAfterSave();
     } catch (e: any) {
       showToast({ type: "error", message: e?.response?.data?.message ?? "Save failed" });
     } finally {
@@ -165,7 +172,7 @@ export const ObjectAccessRuleFormView: React.FC = () => {
       {signatureModal}
       <PageHeader
         title={title}
-        breadcrumbItems={objectAccessRulesBreadcrumb(navigate, title)}
+        breadcrumbItems={objectAccessRulesBreadcrumb(go, title)}
         actions={
           <>
             <Button variant="outline-emerald" size="sm" onClick={handleBack} className="whitespace-nowrap">
@@ -359,6 +366,7 @@ export const ObjectAccessRuleFormView: React.FC = () => {
           </div>
         </div>
       </FormSection>
+      {leaveModal}
     </div>
   );
 };

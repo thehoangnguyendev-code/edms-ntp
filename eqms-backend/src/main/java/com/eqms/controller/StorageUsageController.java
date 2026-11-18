@@ -31,7 +31,7 @@ public class StorageUsageController {
 
     private UserAccount requireManager() {
         var user = current.requireCurrentUser();
-        if (!permissions.hasPermission(user, "settings.configuration.manage")) throw new AccessDeniedException("Permission required");
+        if (!permissions.hasPermission(user, "settings.config_integrations.manage")) throw new AccessDeniedException("Permission required");
         return user;
     }
 

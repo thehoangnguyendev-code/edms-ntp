@@ -21,7 +21,7 @@ import { IconFileTypePdf } from "@tabler/icons-react";
 import { useToast } from "@/components/ui/toast/Toast";
 import { cn } from "@/components/ui/utils";
 import { uncontrolledCopiesPolicy as uncontrolledCopiesPolicyBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs/settings";
-import { useNavigateWithLoading } from "@/hooks/useNavigateWithLoading";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce, usePortalDropdown } from "@/hooks";
 import {
@@ -124,11 +124,10 @@ const SwitchRow: React.FC<{
  * Audit Trail entry on the server, including all staged Eligibility Rules changes.
  */
 export const UncontrolledCopyPolicyView: React.FC = () => {
-  const { navigateTo } = useNavigateWithLoading();
   const { showToast } = useToast();
   const { requestSignature, signatureModal } = useSecurityESign();
   const { hasPermissionAlias } = usePermissions();
-  const canManagePolicy = hasPermissionAlias("documents.admin.uncontrolled_copies_policy.manage") || hasPermissionAlias("settings.configuration.manage");
+  const canManagePolicy = hasPermissionAlias("documents.admin.uncontrolled_copies_policy.manage");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [policy, setPolicy] = useState<UncontrolledCopyPolicy>(DEFAULT_POLICY);
@@ -147,7 +146,6 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
     setSearchParams(next, { replace: true });
   };
 
-  const breadcrumbItems = useMemo(() => uncontrolledCopiesPolicyBreadcrumbs(navigateTo), [navigateTo]);
 
   useEffect(() => {
     let active = true;
@@ -392,12 +390,16 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
     })),
   ];
 
-  if (loading) return <FullPageLoading text="Loading Uncontrolled Copies Policy..." />;
-
   const isDirty =
     ruleChanges.length > 0 ||
     (originalPolicy !== null &&
       (JSON.stringify(policy) !== JSON.stringify(originalPolicy.policy) || validityText !== originalPolicy.validityText));
+  // Leaving with a change that was not saved asks first (the breadcrumb, the sidebar, a reload).
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, "Uncontrolled Copies Policy", "another page");
+
+  const breadcrumbItems = useMemo(() => uncontrolledCopiesPolicyBreadcrumbs(go), [go]);
+
+  if (loading) return <FullPageLoading text="Loading Uncontrolled Copies Policy..." />;
 
   return (
     <div className="flex flex-col gap-4 md:gap-5">
@@ -756,6 +758,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
       />
 
       {signatureModal}
+      {leaveModal}
     </div>
   );
 };

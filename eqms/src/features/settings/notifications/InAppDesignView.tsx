@@ -13,7 +13,7 @@ import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { toastShadowCss, useToast } from "@/components/ui/toast/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { inAppDesign as breadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
-import { useLeaveGuard } from "./useLeaveGuard";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import {
   CHANGED_BY_OTHERS_TEXT,
   CHANGED_BY_OTHERS_TITLE,
@@ -65,8 +65,7 @@ export const InAppDesignView: React.FC = () => {
   const { showToast } = useToast();
   const { hasPermissionAlias } = usePermissions();
   const canManage =
-    hasPermissionAlias("settings.notification_policy.manage") ||
-    hasPermissionAlias("settings.configuration.manage");
+    hasPermissionAlias("settings.notification_policy.manage");
   const [design, setDesign] = useState<InAppDesign | null>(null);
   const [form, setForm] = useState<InAppDesignInput | null>(null);
   // the display time is typed: it is text until it is a whole number

@@ -82,7 +82,7 @@ import {
   EmailPreviewFrame,
 } from "./components/EmailPreviewFrame";
 import { sameHtml } from "./sameHtml";
-import { useLeaveGuard } from "./useLeaveGuard";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import {
   CHANGED_BY_OTHERS_TEXT,
   CHANGED_BY_OTHERS_TITLE,
@@ -164,8 +164,7 @@ export const NotificationEventView: React.FC<{
   const { showToast } = useToast();
   const { hasPermissionAlias } = usePermissions();
   const canManage =
-    hasPermissionAlias("settings.notification_policy.manage") ||
-    hasPermissionAlias("settings.configuration.manage");
+    hasPermissionAlias("settings.notification_policy.manage");
 
   const [detail, setDetail] = useState<NotificationPolicyDetail | null>(null);
   const [variables, setVariables] = useState<NotificationVariable[]>([]);

@@ -21,8 +21,10 @@ public final class NotificationMandatoryEvents {
     public static final String ACCOUNT_UNLOCKED = "security.account_unlocked";
     public static final String ACCOUNT_PASSWORD_RESET = "security.account_password_reset";
     public static final String MFA_REQUIREMENT_REMOVED = "security.mfa_requirement_removed";
+    /** An administrator removed the authenticator of the person (lost device); they enrol again at the next sign-in. A security notice the person must always get. */
+    public static final String ACCOUNT_MFA_RESET = "security.account_mfa_reset";
 
-    private static final Set<String> CODES = Set.of(MFA_LOGIN_CODE, PASSWORD_RESET_LINK, ACCOUNT_UNLOCKED, ACCOUNT_PASSWORD_RESET, MFA_REQUIREMENT_REMOVED);
+    private static final Set<String> CODES = Set.of(MFA_LOGIN_CODE, PASSWORD_RESET_LINK, ACCOUNT_UNLOCKED, ACCOUNT_PASSWORD_RESET, MFA_REQUIREMENT_REMOVED, ACCOUNT_MFA_RESET);
 
     private NotificationMandatoryEvents() {
     }

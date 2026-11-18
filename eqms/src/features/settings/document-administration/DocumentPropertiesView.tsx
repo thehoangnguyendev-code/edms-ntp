@@ -1,6 +1,6 @@
 import React from "react";
 import { getApiErrorMessage } from '@/utils/apiError';
-import { useNavigate } from "react-router-dom";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { Archive, BookOpen, CalendarClock, FileDigit, FileSignature, GitBranch, Shield, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { FormSection } from "@/components/ui/form/FormSection";
@@ -169,7 +169,6 @@ const NumberField: React.FC<{
 );
 
 export const DocumentPropertiesView: React.FC = () => {
-  const navigate = useNavigate();
   const { showToast } = useToast();
   const { hasPermissionAlias } = usePermissions();
   const canManage = hasPermissionAlias("documents.admin.properties.manage");
@@ -207,6 +206,8 @@ export const DocumentPropertiesView: React.FC = () => {
   }, [load]);
 
   const isDirty = JSON.stringify(documents) !== JSON.stringify(original);
+  // Leaving with a change that was not saved asks first (the breadcrumb, the links to other pages, the sidebar, a reload).
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, "Document Properties", "another page");
 
   const patch = (next: Partial<DocumentPolicy>) =>
     setDocuments((prev) => (prev ? { ...prev, ...next } : prev));
@@ -232,7 +233,7 @@ export const DocumentPropertiesView: React.FC = () => {
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
         title="Document Properties"
-        breadcrumbItems={documentProperties(navigate)}
+        breadcrumbItems={documentProperties(go)}
         actions={
           canManage && documents ? (
             <Button size="sm" variant="outline-emerald" disabled={!isDirty || saving} onClick={() => setShowSaveModal(true)}>
@@ -313,7 +314,7 @@ export const DocumentPropertiesView: React.FC = () => {
                       separate permissions, independent of this switch. Assign each one to the Access Profiles that need it at{" "}
                       <button
                       type="button"
-                      onClick={() => navigate(ROUTES.SECURITY.ACCESS_PROFILES)}
+                      onClick={() => go(ROUTES.SECURITY.ACCESS_PROFILES)}
                       className="font-medium text-emerald-700 underline underline-offset-2"
                     >
                       Security & Authorization &gt; Access Profiles
@@ -365,7 +366,7 @@ export const DocumentPropertiesView: React.FC = () => {
                   <strong>Share Knowledge Base of Any Department</strong>, assigned to an Access Profile at{" "}
                   <button
                       type="button"
-                      onClick={() => navigate(ROUTES.SECURITY.ACCESS_PROFILES)}
+                      onClick={() => go(ROUTES.SECURITY.ACCESS_PROFILES)}
                       className="font-medium text-emerald-700 underline underline-offset-2"
                     >
                       Security & Authorization &gt; Access Profiles
@@ -619,7 +620,7 @@ export const DocumentPropertiesView: React.FC = () => {
               Want to configure a rule that prevents duplicate Reviewers/Approvers (Segregation of Duties)? See at{" "}
               <button
                 type="button"
-                onClick={() => navigate(ROUTES.SECURITY.SOD)}
+                onClick={() => go(ROUTES.SECURITY.SOD)}
                 className="font-medium underline underline-offset-2 hover:text-sky-900"
               >
                 Security & Authorization &gt; Segregation of Duties
@@ -691,6 +692,7 @@ export const DocumentPropertiesView: React.FC = () => {
         cancelText="Cancel"
         isLoading={saving}
       />
+      {leaveModal}
     </div>
   );
 };

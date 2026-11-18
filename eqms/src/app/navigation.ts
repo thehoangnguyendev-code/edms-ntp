@@ -431,7 +431,7 @@ const SYSTEM_MODULES: NavItem[] = [
       {
         id: "report-template-group",
         label: "Template Management",
-        allowedPermissions: ["reports.definition.view", "settings.configuration.view"],
+        allowedPermissions: ["reports.definition.view"],
         children: [
           { id: "report-template-management", label: "Report Templates", path: ROUTES.REPORT.TEMPLATE_MANAGEMENT },
           { id: "report-template-revisions-all", label: "All Revisions", path: ROUTES.REPORT.TEMPLATE_REVISIONS },
@@ -549,6 +549,12 @@ const SYSTEM_MODULES: NavItem[] = [
             path: ROUTES.SECURITY.LOGGED_IN_USERS,
             allowedPermissions: ["settings.user.view"],
           },
+          {
+            id: "sec-access-explorer",
+            label: "Access Explorer",
+            path: ROUTES.SECURITY.ACCESS_EXPLORER,
+            allowedPermissions: ["settings.user.view"],
+          },
         ],
       },
       {
@@ -632,7 +638,7 @@ const SYSTEM_MODULES: NavItem[] = [
     id: "settings",
     label: "Application Settings",
     icon: IconSettings2,
-    allowedPermissions: ["settings.configuration.view"],
+    allowedPermissions: ["settings.user.view"],
     children: [
       {
         // "Dictionaries" nested group -- server (NavigationService.java) is the real authority
@@ -752,7 +758,7 @@ const SYSTEM_MODULES: NavItem[] = [
     label: "System Administration",
     icon: IconDeviceDesktopCog,
     allowedPermissions: [
-      "settings.configuration.view",
+      "settings.config_general.view",, "settings.config_navigation_labels.view",, "settings.config_security.view",, "settings.config_notifications.view",, "settings.config_integrations.view",, "settings.config_preview_file.view",, "settings.config_image_watermark.view",, "settings.config_features.view", "settings.electronic_signature.view", "settings.system_info.view",
       "settings.notification_policy.view",
       "settings.notification_policy.manage",
       "settings.email_template.view",
@@ -776,22 +782,73 @@ const SYSTEM_MODULES: NavItem[] = [
     ],
     children: [
       {
+        // A group: each page of Configuration used to be a tab of one screen (?tab=...) and is now its own menu entry, in the order the tabs had.
+        // NavigationService.java is the authority; configurationPages.ts lists the same pages (a test keeps them equal).
         id: "config",
         label: "Configuration",
-        path: ROUTES.SETTINGS.CONFIGURATION,
-        allowedPermissions: ["settings.configuration.view"],
+        allowedPermissions: ["settings.config_general.view", "settings.config_navigation_labels.view", "settings.config_security.view", "settings.config_notifications.view", "settings.config_integrations.view", "settings.config_preview_file.view", "settings.config_image_watermark.view", "settings.config_features.view"],
+        children: [
+          {
+            id: "config-general",
+            label: "General",
+            path: ROUTES.SETTINGS.CONFIGURATION_GENERAL,
+            allowedPermissions: ["settings.config_general.view"],
+          },
+          {
+            id: "config-navigation-labels",
+            label: "Navigation Labels",
+            path: ROUTES.SETTINGS.CONFIGURATION_NAVIGATION_LABELS,
+            allowedPermissions: ["settings.config_navigation_labels.view"],
+          },
+          {
+            id: "config-security",
+            label: "Security",
+            path: ROUTES.SETTINGS.CONFIGURATION_SECURITY,
+            allowedPermissions: ["settings.config_security.view"],
+          },
+          {
+            id: "config-notifications",
+            label: "Notifications",
+            path: ROUTES.SETTINGS.CONFIGURATION_NOTIFICATIONS,
+            allowedPermissions: ["settings.config_notifications.view"],
+          },
+          {
+            id: "config-integrations",
+            label: "Integrations",
+            path: ROUTES.SETTINGS.CONFIGURATION_INTEGRATIONS,
+            allowedPermissions: ["settings.config_integrations.view"],
+          },
+          {
+            id: "config-preview-file",
+            label: "Preview File",
+            path: ROUTES.SETTINGS.CONFIGURATION_PREVIEW_FILE,
+            allowedPermissions: ["settings.config_preview_file.view"],
+          },
+          {
+            id: "config-image-watermark",
+            label: "Image Watermark",
+            path: ROUTES.SETTINGS.CONFIGURATION_IMAGE_WATERMARK,
+            allowedPermissions: ["settings.config_image_watermark.view"],
+          },
+          {
+            id: "config-features",
+            label: "Features",
+            path: ROUTES.SETTINGS.CONFIGURATION_FEATURES,
+            allowedPermissions: ["settings.config_features.view"],
+          },
+        ],
       },
       {
         id: "electronic-signature-policies",
         label: "E-Sign Config",
         path: ROUTES.SECURITY.ESIGN_POLICIES,
-        allowedPermissions: ["settings.configuration.view"],
+        allowedPermissions: ["settings.electronic_signature.view"],
       },
       {
         id: "object-numbering",
         label: "Object Numbering",
         path: ROUTES.SECURITY.OBJECT_NUMBERING,
-        allowedPermissions: ["settings.object_numbering.view", "settings.object_numbering.manage", "settings.configuration.view"],
+        allowedPermissions: ["settings.object_numbering.view", "settings.object_numbering.manage"],
       },
       {
         // Its own id: the inbox above is "notifications", and two items with one id lit up this entry (and its unread badge) on the inbox page.
@@ -803,7 +860,6 @@ const SYSTEM_MODULES: NavItem[] = [
           "settings.notification_policy.manage",
           "settings.email_template.view",
           "settings.email_template.manage",
-          "settings.configuration.view",
         ],
       },
       {
@@ -981,7 +1037,6 @@ const SYSTEM_MODULES: NavItem[] = [
         label: "Report Administration",
         allowedPermissions: [
           "reports.definition.view",
-          "settings.configuration.view",
         ],
         children: [
           {
@@ -1015,7 +1070,6 @@ const SYSTEM_MODULES: NavItem[] = [
             allowedPermissions: [
               "reports.definition.view",
               "reports.name_format.manage",
-              "settings.configuration.view",
             ],
           },
         ],
@@ -1072,7 +1126,7 @@ const SYSTEM_MODULES: NavItem[] = [
     label: "System Information",
     icon: IconInfoCircle,
     path: ROUTES.SETTINGS.SYSTEM_INFO,
-    allowedPermissions: ["settings.configuration.view"],
+    allowedPermissions: ["settings.system_info.view"],
   },
 ];
 

@@ -92,7 +92,7 @@ public class ControlledCopyPolicyService {
     public ControlledCopyPolicyResponse savePolicy(ControlledCopyPolicyRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         boolean allowed = permissionEvaluationService.hasAnyPermission(currentUser,
-                "documents.admin.controlled_copies_policy.manage", "settings.configuration.manage");
+                "documents.admin.controlled_copies_policy.manage");
         if (!allowed) {
             throw new AccessDeniedException("Current user is not allowed to manage the controlled copy policy");
         }

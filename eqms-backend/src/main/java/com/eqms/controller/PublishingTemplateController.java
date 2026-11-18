@@ -221,9 +221,7 @@ public class PublishingTemplateController {
         if (!permissionEvaluationService.hasAnyPermission(
                 user,
                 "documents.admin.publishing_templates.view",
-                "documents.admin.publishing_templates.manage",
-                "settings.configuration.view",
-                "settings.configuration.manage"
+                "documents.admin.publishing_templates.manage"
         )) {
             throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to view publishing templates");
         }
@@ -231,7 +229,7 @@ public class PublishingTemplateController {
 
     private void requireEditPermission() {
         var user = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.hasAnyPermission(user, "documents.admin.publishing_templates.manage", "settings.configuration.manage")) {
+        if (!permissionEvaluationService.hasAnyPermission(user, "documents.admin.publishing_templates.manage")) {
             throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to edit publishing templates");
         }
     }

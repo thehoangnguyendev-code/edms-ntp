@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { FilterAccordionItem, FilterDrawer } from "@/components/ui/filter/FilterDrawer";
 import { FormModal } from "@/components/ui/modal/FormModal";
+import { useOpenedFormDirty } from "@/hooks/useFormDirty";
 import { Button } from "@/components/ui/button/Button";
 import { Select } from "@/components/ui/select/Select";
 import { TablePagination } from "@/components/ui/table/TablePagination";
@@ -602,6 +603,7 @@ const StorageLocationModal: React.FC<StorageLocationModalProps> = ({ isOpen, onC
     }
   }, [item, isOpen]);
 
+  const dirty = useOpenedFormDirty(formData, isOpen);
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
@@ -613,7 +615,7 @@ const StorageLocationModal: React.FC<StorageLocationModalProps> = ({ isOpen, onC
   };
 
   return (
-    <FormModal isOpen={isOpen} onClose={onClose} onConfirm={handleSubmit} title={`${isEdit ? "Edit" : "New"} Storage Location`} isLoading={isSaving} size="lg">
+    <FormModal isOpen={isOpen} onClose={onClose} dirty={dirty} onConfirm={handleSubmit} title={`${isEdit ? "Edit" : "New"} Storage Location`} isLoading={isSaving} size="lg">
       <div className="space-y-4">
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">

@@ -5,6 +5,7 @@ export {
   AddUserView,
   UserProfileView,
   LoggedInUsersView,
+  AccessExplorerView,
   TimeLimitedUserListView,
   TimeLimitedUserCreateView,
   TimeLimitedUserDetailView,

@@ -1,3 +1,5 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useFormDirty } from "@/hooks/useFormDirty";
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CalendarClock, FileText, ListChecks, ShieldCheck, Warehouse } from "lucide-react";
@@ -87,6 +89,10 @@ export const NewBackupPolicyView: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
+  // Leaving with a change that was not saved asks first (Cancel, the sidebar, a reload); the move after the version is proposed is not a leave.
+  const { isDirty } = useFormDirty({ choices, documents, dbEnabled, time, filesOwn, filesTime, reason, manual }, choices !== null);
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, "Propose Policy Change", "the policy page");
+
   useEffect(() => {
     let live = true;
     Promise.all([backupRestoreApi.targets(), backupRestoreApi.policies({ status: "ACTIVE", limit: 1 })])
@@ -167,7 +173,7 @@ export const NewBackupPolicyView: React.FC = () => {
 
   const actions = (
     <>
-      <Button variant="outline-emerald" size="sm" onClick={() => navigate(parent.path)} className="whitespace-nowrap touch-manipulation">
+      <Button variant="outline-emerald" size="sm" onClick={() => go(parent.path)} className="whitespace-nowrap touch-manipulation">
         Cancel
       </Button>
       <Button variant="outline-emerald" size="sm" disabled={saving || !choices || !reason.trim() || !timeOk || !manualOk} onClick={() => setConfirming(true)} className="whitespace-nowrap touch-manipulation">
@@ -330,6 +336,7 @@ export const NewBackupPolicyView: React.FC = () => {
         cancelText="Cancel"
         isLoading={saving}
       />
+      {leaveModal}
     </BackupAdminLivePage>
   );
 };

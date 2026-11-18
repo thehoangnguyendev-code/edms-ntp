@@ -1,3 +1,5 @@
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useFormDirty } from "@/hooks/useFormDirty";
 import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { GalleryVerticalEnd, Timer } from "lucide-react";
@@ -42,7 +44,10 @@ export const TimeLimitedUserCreateView: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isSignOpen, setIsSignOpen] = useState(false);
 
-  const goBack = () => navigate(ROUTES.SECURITY.TIME_LIMITED_USERS);
+  // Back and the breadcrumb ask first when there is a change that was not saved (also the sidebar and a reload); the move after a successful Save is not a leave.
+  const { isDirty } = useFormDirty({ selectedUserIds, startDisplay, endDisplay, notifyEmailOnExpiry, reason });
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, "New Time-Limited User", "the list");
+  const goBack = () => go(ROUTES.SECURITY.TIME_LIMITED_USERS);
 
   // Stable across renders (useCallback) -- MultiSelect's debounced-search effect depends on this
   // function by reference, so a function re-created every render re-triggers the search on every
@@ -109,7 +114,7 @@ export const TimeLimitedUserCreateView: React.FC = () => {
     <div className="flex h-full flex-col gap-6">
       <PageHeader
         title="New Time-Limited User"
-        breadcrumbItems={createTimeLimitedUser(navigate)}
+        breadcrumbItems={createTimeLimitedUser(go)}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" variant="outline-emerald" onClick={goBack} className="whitespace-nowrap">
@@ -215,6 +220,7 @@ export const TimeLimitedUserCreateView: React.FC = () => {
         meaningDisplayName="Time-Limited User Grant Creation"
         meaningCode="TIME_LIMITED_USER_GRANT"
       />
+      {leaveModal}
     </div>
   );
 };

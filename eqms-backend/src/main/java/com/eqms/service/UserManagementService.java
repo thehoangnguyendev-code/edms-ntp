@@ -68,6 +68,8 @@ public class UserManagementService {
     private static final String ACTION_USER_TERMINATED = "USER_TERMINATED";
     private static final String ACTION_USER_REINSTATED = "USER_REINSTATED";
     private static final String ACTION_USER_PASSWORD_RESET = "USER_PASSWORD_RESET";
+    private static final String ACTION_USER_MFA_RESET = "USER_MFA_RESET";
+    static final String SELF_RESET_MFA_MESSAGE = "You cannot reset your own multi-factor authentication here. Ask another administrator.";
     private static final String ACTION_USER_UNLOCKED = "USER_UNLOCKED";
     private static final String ACTION_USER_FORCE_LOGOUT = "USER_FORCE_LOGOUT";
     private static final String ACTION_USER_ROLE_UPDATED = "USER_ROLE_UPDATED";
@@ -117,6 +119,12 @@ public class UserManagementService {
 
     @org.springframework.beans.factory.annotation.Autowired
     private EmergencyAccountChangeGuard emergencyAccountChangeGuard;
+
+    // Reset MFA (SECURITY-AUTHORIZATION-REVIEW D4). AuthService owns the sign-in flow and already depends on this service, so these two repositories are used directly.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.eqms.repository.MfaFactorRepository mfaFactorRepository;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.eqms.repository.MfaTrustedDeviceRepository mfaTrustedDeviceRepository;
 
     /**
      * Suspending/terminating a user is deliberately never blocked by their open workflow work
@@ -337,7 +345,7 @@ public class UserManagementService {
                 .stream()
                 .map(user -> toResponse(user, false, activeSessionUserIds.contains(user.getId()), onlineUserIds.contains(user.getId()),
                         accessProfileNamesByUser.getOrDefault(user.getId(), List.of()),
-                        buildCapabilities(user.getId(), isLockedOut(user), java.util.Objects.equals(user.getId(), currentUser.getId()),
+                        buildCapabilities(user.getId(), isLockedOut(user), java.util.Objects.equals(user.getId(), currentUser.getId()), user.isMfaEnabled(),
                                 code -> heldPermissions.computeIfAbsent(code, c -> permissionEvaluationService.hasPermission(currentUser, c)))))
                 .toList();
 
@@ -1087,6 +1095,65 @@ public class UserManagementService {
                 null);
     }
 
+    /**
+     * Another person lost the device of their authenticator (SECURITY-AUTHORIZATION-REVIEW D4, owner 2026-11-18; 21 CFR 11.300(c): loss management with rigorous controls
+     * before a replacement). The administrator signs, with a reason; the authenticator and the trusted devices of the person are switched off, every session is signed out, the
+     * person is told by e-mail and enrols again at the next sign-in. Nothing is checked or changed before the signature is valid, and the person's own account is refused (an
+     * administrator cannot clear their own second factor). Its permission, settings.user.reset_mfa, is checked at the controller and decides the capability.
+     */
+    @Transactional
+    public void resetMfa(UUID id, com.eqms.dto.user.ResetMfaRequest request, HttpServletRequest httpRequest) {
+        UserAccount actor = currentUserService.requireCurrentUser();
+        UserAccount user = requireUser(id);
+        if (java.util.Objects.equals(actor.getId(), user.getId())) {
+            throw new IllegalArgumentException(SELF_RESET_MFA_MESSAGE);
+        }
+        String reason = normalizeRequired(request == null ? null : request.reason(), "Reason");
+        requireValidActionSignature(actor, request.signatureToken());
+        boolean hasFactor = mfaFactorRepository != null && mfaFactorRepository.findAllByUserId(user.getId()).stream().anyMatch(com.eqms.entity.MfaFactor::isEnabled);
+        if (!user.isMfaEnabled() && !hasFactor) {
+            throw new IllegalArgumentException(user.getFullName() + " has no multi-factor authentication set up, so there is nothing to reset.");
+        }
+
+        int devices = 0;
+        if (mfaFactorRepository != null) {
+            mfaFactorRepository.findAllByUserId(user.getId()).forEach(factor -> factor.setEnabled(false));
+        }
+        user.setMfaEnabled(false);
+        if (mfaTrustedDeviceRepository != null) {
+            Instant now = Instant.now();
+            for (var device : mfaTrustedDeviceRepository.findAllByUser_Id(user.getId())) {
+                if (device.getRevokedAt() == null) {
+                    device.setRevokedAt(now);
+                    devices++;
+                }
+            }
+        }
+        revokeAllSessions(user.getId());
+        userRepository.save(user);
+
+        auditService.log("user_mfa_reset", user, auditDetails(
+                "reason", reason,
+                "trustedDevicesRevoked", devices
+        ), clientIp(httpRequest), userAgent(httpRequest));
+        ElectronicSignature esig = electronicSignatureService.createEntitySignature("UserAccount", user.getId(), user.getFullName(), actor, request.signatureToken(), "USER_MFA_RESET", reason, null, "MFA enrolled", "MFA reset");
+        auditTrailService.logAs(
+                actor,
+                "USER",
+                user.getFullName(),
+                user.getId(),
+                ACTION_USER_MFA_RESET,
+                "MFA enrolled",
+                "MFA reset",
+                "Reset multi-factor authentication of user " + user.getUsername() + ": " + reason,
+                List.of(
+                        new AuditTrailChangeResponse("Multi-Factor Authentication", "Enrolled", "Reset (enrols again at the next sign-in)"),
+                        new AuditTrailChangeResponse("Trusted Devices Revoked", null, String.valueOf(devices)),
+                        new AuditTrailChangeResponse("Reason", null, reason)),
+                esig == null ? null : esig.getId());
+        dispatchAfterCommit(NotificationMandatoryEvents.ACCOUNT_MFA_RESET, List.of(user), Map.of());
+    }
+
     public UserPermissionsResponse getPermissions(UUID id) {
         UserAccount user = requireUser(id);
         return new UserPermissionsResponse(
@@ -1102,7 +1169,7 @@ public class UserManagementService {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         UserAccount targetUser = requireUser(id);
         Map<String, Boolean> heldPermissions = new HashMap<>();
-        return buildCapabilities(id, isLockedOut(targetUser), java.util.Objects.equals(targetUser.getId(), currentUser.getId()),
+        return buildCapabilities(id, isLockedOut(targetUser), java.util.Objects.equals(targetUser.getId(), currentUser.getId()), targetUser.isMfaEnabled(),
                 code -> heldPermissions.computeIfAbsent(code, c -> permissionEvaluationService.hasPermission(currentUser, c)));
     }
 
@@ -1111,7 +1178,7 @@ public class UserManagementService {
     }
 
     /** The one place that decides the row actions, for the list and for the single-account endpoint: the permission checks are given as a function so a caller can read each permission once. */
-    private com.eqms.dto.user.UserActionCapabilitiesResponse buildCapabilities(UUID id, boolean isLockedOut, boolean isSelf, java.util.function.Predicate<String> has) {
+    private com.eqms.dto.user.UserActionCapabilitiesResponse buildCapabilities(UUID id, boolean isLockedOut, boolean isSelf, boolean mfaEnrolled, java.util.function.Predicate<String> has) {
         Map<String, com.eqms.dto.user.UserActionCapabilitiesResponse.ActionCapability> actions = new LinkedHashMap<>();
         actions.put("view", userCapability(has, "settings.user.view"));
         // Profile editing is a first-class row action.  The UI consumes this
@@ -1121,6 +1188,8 @@ public class UserManagementService {
         actions.put("edit", userCapability(has, "settings.user.edit"));
         // Resetting revokes every session of the account, so doing it to your own account would end your own session.
         actions.put("resetPassword", userCapability(has, "settings.user.reset_password", !isSelf, SELF_RESET_PASSWORD_MESSAGE));
+        // Credential recovery for someone who lost the device of their authenticator, with a permission of its own (V805); only offered when there is something to reset.
+        actions.put("resetMfa", userCapability(has, "settings.user.reset_mfa", !isSelf && mfaEnrolled, isSelf ? SELF_RESET_MFA_MESSAGE : "This account has no multi-factor authentication set up."));
         actions.put("suspend", userCapability(has, "settings.user.edit"));
         actions.put("terminate", userCapability(has, "settings.user.edit"));
         actions.put("reinstate", userCapability(has, "settings.user.edit"));
@@ -1919,8 +1988,24 @@ public class UserManagementService {
                 DateTimeFormatUtils.formatDate(user.getTerminationDate()),
                 user.getHomePage(),
                 user.isMfaRequiredByAdmin(),
-                capabilities
+                capabilities,
+                daysWithoutSignIn(user),
+                isInactive(user)
         );
+    }
+
+    /** Days since the last sign-in, or since the account was created when the person never signed in; only for an Active account (a suspended or terminated one cannot sign in anyway). */
+    private Integer daysWithoutSignIn(UserAccount user) {
+        if (user.getStatus() != UserStatus.Active) return null;
+        Instant since = user.getLastLoginAt() != null ? user.getLastLoginAt() : user.getCreatedAt();
+        return since == null ? null : (int) Math.max(java.time.Duration.between(since, Instant.now()).toDays(), 0);
+    }
+
+    /** SECURITY-AUTHORIZATION-REVIEW D5: a flag only, with the threshold of Configuration > Security (0 switches it off). */
+    private boolean isInactive(UserAccount user) {
+        Integer days = daysWithoutSignIn(user);
+        int threshold = systemConfigurationService.inactiveAccountDays();
+        return days != null && threshold > 0 && days >= threshold;
     }
 
     private boolean requiresPasswordChange(UserAccount user) {

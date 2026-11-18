@@ -42,7 +42,7 @@ describe("ReportTabsFrame", () => {
   });
 
   it("keeps the title of the entry on the second tab and marks that tab", () => {
-    granted = ["settings.configuration.view"];
+    granted = ["reports.definition.view"];
     renderAt("/report/scheduled/delivery-log", "scheduled");
     expect(screen.getByRole("heading", { name: "Scheduled Reports" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Delivery Log" })).toHaveAttribute("aria-selected", "true");
