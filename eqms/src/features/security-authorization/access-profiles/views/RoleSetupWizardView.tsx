@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, Check, GitBranch, Info, ListChecks, ListTodoIcon, ScanEye, Search, ShieldCheck, Users } from "lucide-react";
+import { GitBranch, Info, ListChecks, ListTodoIcon, Search, ShieldCheck, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { Switch } from "@/components/ui/switch/Switch";
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
+import { flagColor } from "@/utils/status";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
@@ -17,11 +20,9 @@ import { getApiErrorMessage } from "@/utils/apiError";
 import { PermissionSplitExplorer } from "@/features/security-authorization/shared/explorer/PermissionSplitExplorer";
 import { usePermissionCatalog } from "@/features/security-authorization/shared/usePermissionCatalog";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
-import { useScopeOptions } from "@/features/security-authorization/access-profiles/shared/useScopeOptions";
-import { scopeListToString } from "@/features/security-authorization/access-profiles/views/tabs/accessProfileDetailShared";
-import { withKnowledgePermission } from "@/features/security-authorization/access-profiles/shared/documentControlVisibility";
-import { MultiSelect } from "@/components/ui/select/MultiSelect";
-import { Select } from "@/components/ui/select/Select";
+import { applyVisibilityChoice, classifyVisibility, DOCUMENT_CONTROL_VISIBILITY_LABEL, withKnowledgePermission, type DocumentControlVisibilityChoice } from "@/features/security-authorization/access-profiles/shared/documentControlVisibility";
+import { DOCUMENT_CONTROL_MODULE, RecordVisibilityForModule } from "@/features/security-authorization/access-profiles/shared/RecordVisibilityForModule";
+import { MODULE_VISIBILITY, applyModuleVisibility, classifyModuleVisibility, type ModuleVisibilityDef } from "@/features/security-authorization/access-profiles/shared/moduleVisibility";
 import { accessProfiles as accessProfilesBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { ROUTES } from "@/app/routes.constants";
 import { settingsApi } from "@/services/api";
@@ -30,7 +31,13 @@ import type { PermissionSetResponse } from "@/services/api/settings";
 import type { User } from "@/types";
 import { IconArrowsShuffle, IconCircles } from "@tabler/icons-react";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { moduleDisplayName } from "@/utils/moduleDisplay";
+import { WizardUsersStep } from "./WizardUsersStep";
+import { WizardPickerTable, type PickerPage, type PickerQuery } from "./WizardPickerTable";
+import { WizardReviewStep } from "./WizardReviewStep";
 
+/** What the fields that the system fills in say until the profile is created (the last step). */
+const AFTER_CREATION = "Auto-filled after the profile is created";
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 const inputClass =
   "w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400";
@@ -39,7 +46,7 @@ const textareaClass =
 const clearSelectionClass =
   "text-xs font-medium text-rose-600 transition-colors hover:text-rose-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30 rounded";
 
-const STEPS = ["Basic Info", "Permissions", "Workflow Eligibility", "Scope", "Users", "Review & Create"] as const;
+const STEPS = ["Basic Info", "Permissions", "Workflow Eligibility", "Users", "Review & Create"] as const;
 const PERMISSION_MODE_TABS: TabItem[] = [
   { id: "existing", label: "Use existing Permission Sets" },
   { id: "custom", label: "Pick individual permissions" },
@@ -57,6 +64,7 @@ interface WorkflowRoleCatalogEntry {
 
 interface WorkflowRoleCatalogPage {
   data: WorkflowRoleCatalogEntry[];
+  pagination?: { page: number; limit: number; total: number; totalPages: number };
 }
 
 type PermissionMode = "existing" | "custom";
@@ -84,46 +92,27 @@ export const RoleSetupWizardView: React.FC = () => {
 
   // ── Step 2: permissions ───────────────────────────────────────────────────
   const [permissionMode, setPermissionMode] = useState<PermissionMode>("existing");
-  const [existingSets, setExistingSets] = useState<PermissionSetResponse[]>([]);
-  const [setsLoading, setSetsLoading] = useState(true);
-  const [setSearch, setSetSearch] = useState("");
   const [selectedSetIds, setSelectedSetIds] = useState<Set<string>>(new Set());
   const [selectedSetDetails, setSelectedSetDetails] = useState<Map<string, PermissionSetResponse>>(new Map());
   const { permissionGroups, isLoading: catalogLoading } = usePermissionCatalog();
   const [customCodes, setCustomCodes] = useState<Set<string>>(new Set());
+  // Direct permissions added next to the chosen Permission Sets (the record-visibility choice); in "custom" mode the visibility lives in customCodes.
+  const [setModeCodes, setSetModeCodes] = useState<Set<string>>(new Set());
   // Every user must reach the Knowledge Base (the server refuses it without the permission), so a new profile has it unless the administrator unticks it.
   const [includeKnowledge, setIncludeKnowledge] = useState(true);
 
   // ── Step 3: workflow roles ────────────────────────────────────────────────
-  const [workflowRoles, setWorkflowRoles] = useState<WorkflowRoleCatalogEntry[]>([]);
-  const [rolesLoading, setRolesLoading] = useState(true);
-  const [roleSearch, setRoleSearch] = useState("");
   const [selectedRoleCodes, setSelectedRoleCodes] = useState<Set<string>>(new Set());
   const [selectedRoleDetails, setSelectedRoleDetails] = useState<Map<string, WorkflowRoleCatalogEntry>>(new Map());
 
-  // ── Step 4: scope (optional) ──────────────────────────────────────────────
-  const [businessUnits, setBusinessUnits] = useState<string[]>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
-  const { businessUnitOptions, departmentOptions, isLoading: scopeOptionsLoading } = useScopeOptions();
-
-  // ── Step 5: initial users (optional) ──────────────────────────────────────
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [usersLoading, setUsersLoading] = useState(true);
+  // ── Step 4: initial users (optional) ──────────────────────────────────────
   // Listing users needs settings.user.view. Without it the step is informational only: the profile
   // is created unassigned and users are assigned later (the wizard route itself only needs update + assign).
   const { hasPermissionAlias } = usePermissions();
   const canListUsers = hasPermissionAlias("settings.user.view");
-  const [userSearch, setUserSearch] = useState("");
-  const [userBusinessUnitFilter, setUserBusinessUnitFilter] = useState("All");
-  const [userDepartmentFilter, setUserDepartmentFilter] = useState("All");
-  const [userBusinessUnitOptions, setUserBusinessUnitOptions] = useState<{ label: string; value: string }[]>([]);
-  const [userDepartmentOptions, setUserDepartmentOptions] = useState<{ label: string; value: string }[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
   const [selectedUserDetails, setSelectedUserDetails] = useState<Map<string, User>>(new Map());
 
-  const debouncedSetSearch = useDebounce(setSearch, SEARCH_DEBOUNCE_MS);
-  const debouncedRoleSearch = useDebounce(roleSearch, SEARCH_DEBOUNCE_MS);
-  const debouncedUserSearch = useDebounce(userSearch, SEARCH_DEBOUNCE_MS);
 
   useEffect(() => {
     settingsApi
@@ -134,68 +123,17 @@ export const RoleSetupWizardView: React.FC = () => {
       .catch(() => { /* uniqueness still enforced server-side (roles.name unique) */ });
   }, [showToast]);
 
-  useEffect(() => {
-    let active = true;
-    settingsApi.getUserFilters()
-      .then((filters) => {
-        if (!active) return;
-        setUserBusinessUnitOptions(filters.businessUnits.map((item) => ({ label: item.label, value: item.value })));
-        setUserDepartmentOptions(filters.departments.map((item) => ({ label: item.label, value: item.value })));
-      })
-      .catch(() => {
-        if (active) showToast({ type: "error", title: "Load Failed", message: "Failed to load user filter options." });
-      });
-    return () => { active = false; };
-  }, [showToast]);
-
-  useEffect(() => {
-    let active = true;
-    setSetsLoading(true);
-    settingsApi
-      .listPermissionSetsPaged({ page: 1, limit: 100, search: debouncedSetSearch.trim() || undefined, status: "ACTIVE", sortBy: "name", sortDir: "asc" })
-      .then((result) => { if (active) setExistingSets(result.data ?? []); })
-      .catch(() => { if (active) showToast({ type: "error", message: "Failed to load permission sets" }); })
-      .finally(() => { if (active) setSetsLoading(false); });
-    return () => { active = false; };
-  }, [debouncedSetSearch, showToast]);
-
-  useEffect(() => {
-    let active = true;
-    setRolesLoading(true);
-    api
-      .get<WorkflowRoleCatalogPage>("/security/workflow-roles/catalog", {
-        params: { page: 1, limit: 100, search: debouncedRoleSearch.trim() || undefined, status: "ACTIVE", sortBy: "displayOrder", sortDir: "asc" },
-      })
-      .then((result) => { if (active) setWorkflowRoles(result.data.data ?? []); })
-      .catch(() => { if (active) showToast({ type: "error", message: "Failed to load workflow roles" }); })
-      .finally(() => { if (active) setRolesLoading(false); });
-    return () => { active = false; };
-  }, [debouncedRoleSearch, showToast]);
-
-  useEffect(() => {
-    let active = true;
-    if (!canListUsers) {
-      setAllUsers([]);
-      setUsersLoading(false);
-      return () => { active = false; };
-    }
-    setUsersLoading(true);
-    settingsApi
-      .getUsers({
-        page: 1,
-        limit: 100,
-        search: debouncedUserSearch.trim() || undefined,
-        status: "Active",
-        businessUnit: userBusinessUnitFilter === "All" ? undefined : userBusinessUnitFilter,
-        department: userDepartmentFilter === "All" ? undefined : userDepartmentFilter,
-        sortBy: "fullName",
-        sortDirection: "asc",
-      })
-      .then((result) => { if (active) setAllUsers(result.data ?? []); })
-      .catch(() => { if (active) showToast({ type: "error", message: "Failed to load users" }); })
-      .finally(() => { if (active) setUsersLoading(false); });
-    return () => { active = false; };
-  }, [canListUsers, debouncedUserSearch, showToast, userBusinessUnitFilter, userDepartmentFilter]);
+  // The tables of permission sets and workflow roles ask the server for one page at a time (search, sort and pages are the server's).
+  const loadPermissionSets = async ({ page, limit, search, sortBy, sortDir }: PickerQuery): Promise<PickerPage<PermissionSetResponse>> => {
+    const result = await settingsApi.listPermissionSetsPaged({ page, limit, search: search || undefined, status: "ACTIVE", sortBy, sortDir });
+    return { rows: result.data ?? [], total: result.pagination?.total ?? 0, totalPages: result.pagination?.totalPages ?? 1 };
+  };
+  const loadWorkflowRoles = async ({ page, limit, search, sortBy, sortDir }: PickerQuery): Promise<PickerPage<WorkflowRoleCatalogEntry>> => {
+    const result = await api.get<WorkflowRoleCatalogPage>("/security/workflow-roles/catalog", {
+      params: { page, limit, search: search || undefined, status: "ACTIVE", sortBy, sortDir },
+    });
+    return { rows: result.data.data ?? [], total: result.data.pagination?.total ?? 0, totalPages: result.data.pagination?.totalPages ?? 1 };
+  };
 
   const toggleUser = (user: User) => {
     setSelectedUserIds((prev) => {
@@ -242,6 +180,32 @@ export const RoleSetupWizardView: React.FC = () => {
     });
   };
 
+  const toggleManySets = (sets: readonly PermissionSetResponse[], checked: boolean) => {
+    setSelectedSetIds((prev) => {
+      const next = new Set(prev);
+      sets.forEach((set) => (checked ? next.add(set.id) : next.delete(set.id)));
+      return next;
+    });
+    setSelectedSetDetails((prev) => {
+      const next = new Map(prev);
+      sets.forEach((set) => (checked ? next.set(set.id, set) : next.delete(set.id)));
+      return next;
+    });
+  };
+
+  const toggleManyRoles = (roles: readonly WorkflowRoleCatalogEntry[], checked: boolean) => {
+    setSelectedRoleCodes((prev) => {
+      const next = new Set(prev);
+      roles.forEach((role) => (checked ? next.add(role.code) : next.delete(role.code)));
+      return next;
+    });
+    setSelectedRoleDetails((prev) => {
+      const next = new Map(prev);
+      roles.forEach((role) => (checked ? next.set(role.code, role) : next.delete(role.code)));
+      return next;
+    });
+  };
+
   const toggleRole = (role: WorkflowRoleCatalogEntry) => {
     setSelectedRoleCodes((prev) => {
       const next = new Set(prev);
@@ -266,6 +230,75 @@ export const RoleSetupWizardView: React.FC = () => {
     });
   };
 
+  // Record visibility: what the chosen sets already grant cannot be lowered here; the picker edits the direct permissions of the current mode.
+  const lockedVisibilityCodes = useMemo(
+    () => new Set(permissionMode === "existing" ? [...selectedSetDetails.values()].flatMap((set) => set.permissionCodes ?? []) : []),
+    [permissionMode, selectedSetDetails],
+  );
+  const directVisibilityCodes = permissionMode === "custom" ? customCodes : setModeCodes;
+  const effectiveVisibilityCodes = useMemo(
+    () => new Set([...lockedVisibilityCodes, ...directVisibilityCodes]),
+    [lockedVisibilityCodes, directVisibilityCodes],
+  );
+  const chooseVisibility = (choice: DocumentControlVisibilityChoice) => {
+    const next = applyVisibilityChoice(directVisibilityCodes, lockedVisibilityCodes, choice);
+    if (permissionMode === "custom") setCustomCodes(next);
+    else setSetModeCodes(next);
+  };
+  const chooseModuleVisibility = (def: ModuleVisibilityDef, choice: string) => {
+    const next = applyModuleVisibility(def, directVisibilityCodes, lockedVisibilityCodes, choice);
+    if (permissionMode === "custom") setCustomCodes(next);
+    else setSetModeCodes(next);
+  };
+  // The choice of a module is shown only once the profile holds a permission of that module: under its chip in the permission picker (custom mode), or under the
+  // list of sets for the modules the chosen sets and direct permissions already touch (existing-sets mode, which has no picker).
+  const modulesWithRecordVisibility = useMemo(() => {
+    const held = new Set(effectiveVisibilityCodes);
+    const names = new Set<string>();
+    for (const group of permissionGroups) {
+      for (const permission of group.permissions) {
+        if (held.has(permission.id)) names.add(moduleDisplayName(permission.module));
+      }
+    }
+    return [DOCUMENT_CONTROL_MODULE, ...MODULE_VISIBILITY.map((def) => def.moduleName)].filter((name) => names.has(name));
+  }, [effectiveVisibilityCodes, permissionGroups]);
+  const recordVisibilityOf = (moduleName: string) => (
+    <RecordVisibilityForModule
+      moduleName={moduleName}
+      selectedCodes={effectiveVisibilityCodes}
+      lockedCodes={lockedVisibilityCodes}
+      onChooseDocumentControl={chooseVisibility}
+      onChooseModule={chooseModuleVisibility}
+    />
+  );
+  const toggleManyUsers = (users: readonly User[], checked: boolean) => {
+    setSelectedUserIds((prev) => {
+      const next = new Set(prev);
+      users.forEach((user) => (checked ? next.add(user.id) : next.delete(user.id)));
+      return next;
+    });
+    setSelectedUserDetails((prev) => {
+      const next = new Map(prev);
+      users.forEach((user) => (checked ? next.set(user.id, user) : next.delete(user.id)));
+      return next;
+    });
+  };
+  // What the review step says about who sees which records: one line for each module that has the choice and that the profile holds a permission of.
+  const reviewVisibility = modulesWithRecordVisibility.map((moduleName) => {
+    if (moduleName === DOCUMENT_CONTROL_MODULE) return { module: moduleName, level: DOCUMENT_CONTROL_VISIBILITY_LABEL[classifyVisibility(effectiveVisibilityCodes)] };
+    const def = MODULE_VISIBILITY.find((candidate) => candidate.moduleName === moduleName);
+    const value = def ? classifyModuleVisibility(def, effectiveVisibilityCodes) : null;
+    return { module: moduleName, level: def?.levels.find((level) => level.value === value)?.label ?? "No access to these records" };
+  });
+  // The review counts distinct permissions (one that two sets both grant counts once), by the module the catalogue puts it in.
+  const reviewPermissionsByModule: Record<string, number> = {};
+  for (const group of permissionGroups) {
+    for (const permission of group.permissions) {
+      if (!effectiveVisibilityCodes.has(permission.id)) continue;
+      const moduleName = moduleDisplayName(permission.module);
+      reviewPermissionsByModule[moduleName] = (reviewPermissionsByModule[moduleName] ?? 0) + 1;
+    }
+  }
   const selectedSetSummaries = [...selectedSetDetails.values()];
   const selectedRoleSummaries = [...selectedRoleDetails.values()];
   const selectedUserSummaries = [...selectedUserDetails.values()];
@@ -282,10 +315,8 @@ export const RoleSetupWizardView: React.FC = () => {
           name: name.trim(),
           description: description.trim() || undefined,
           active: true,
-          businessUnitScope: scopeListToString(businessUnits),
-          departmentScope: scopeListToString(departments),
           permissionCodes: withKnowledgePermission(
-            permissionMode === "custom" ? customCodes : [],
+            permissionMode === "custom" ? customCodes : setModeCodes,
             permissionMode === "existing" ? [...selectedSetDetails.values()].flatMap((set) => set.permissionCodes ?? []) : [],
             includeKnowledge,
           ),
@@ -346,10 +377,20 @@ export const RoleSetupWizardView: React.FC = () => {
       {/* ── Step 1: Basic Info ── */}
       {step === 0 && (
         <FormSection title="Basic Information" icon={<Info className="h-4 w-4" />} contentClassName="p-4 md:p-5">
-          <div className="space-y-4 max-w-2xl">
+          {/* The same fields as the Access Profile Details page; what the system fills in after the profile is created is shown as a placeholder. */}
+          <div className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-2">
+            <div>
+              <label className={labelClass}>Created By</label>
+              <input className={cn(inputClass, CONTROL_STATE_CLASSES.readonly)} disabled placeholder={AFTER_CREATION} />
+            </div>
+            <div>
+              <label className={labelClass}>Created Time</label>
+              <input className={cn(inputClass, CONTROL_STATE_CLASSES.readonly)} disabled placeholder={AFTER_CREATION} />
+            </div>
+
             <div>
               <label className={labelClass}>
-                Access Profile Name <span className="text-red-500">*</span>
+                Profile Name <span className="text-red-500">*</span>
               </label>
               <input
                 className={cn(inputClass, nameTaken && "border-red-300 focus:ring-red-500 focus:border-red-500")}
@@ -369,10 +410,29 @@ export const RoleSetupWizardView: React.FC = () => {
               )}
             </div>
             <div>
+              <label className={labelClass}>Code (Immutable)</label>
+              <input className={cn(inputClass, CONTROL_STATE_CLASSES.readonly)} disabled placeholder={AFTER_CREATION} />
+            </div>
+
+            <div>
+              <label className={labelClass}>Type</label>
+              <div className="flex h-9 items-center">
+                <Badge color="teal" size="sm">Custom</Badge>
+              </div>
+            </div>
+            <div>
+              <label className={labelClass}>Status</label>
+              <div className="flex h-9 items-center gap-2.5">
+                <Switch checked onChange={() => {}} disabled size="sm" />
+                <Badge size="sm" color={flagColor(true)}>Active</Badge>
+              </div>
+            </div>
+
+            <div className="md:col-span-2">
               <label className={labelClass}>Description</label>
               <textarea
                 className={textareaClass}
-                rows={2}
+                rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="What responsibilities and access does this profile provide?"
@@ -409,60 +469,32 @@ export const RoleSetupWizardView: React.FC = () => {
 
           {permissionMode === "existing" ? (
             <div className="space-y-3">
-              <div className="max-w-md">
-                <label className={labelClass}>Search</label>
-                <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                <input
-                  className={inputClass + " pl-9"}
-                  value={setSearch}
-                  onChange={(e) => setSetSearch(e.target.value)}
-                  placeholder="Search permission sets…"
-                />
+              <WizardPickerTable<PermissionSetResponse>
+                load={loadPermissionSets}
+                getId={(set) => set.id}
+                defaultSort={{ key: "name", direction: "asc" }}
+                selectedIds={selectedSetIds}
+                onToggle={toggleSet}
+                onToggleMany={toggleManySets}
+                onClear={() => { setSelectedSetIds(new Set()); setSelectedSetDetails(new Map()); }}
+                searchPlaceholder="Search permission sets by name, code, description…"
+                noun="permission set"
+                requiredHint="Select at least one permission set"
+                emptyTitle="No permission sets found"
+                columns={({ sortOf, offset }) => [
+                  { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-14", cellClassName: "w-14 text-xs tabular-nums text-slate-500", cell: (_set, index) => offset + index + 1 },
+                  { id: "name", header: "Permission Set", label: "Permission Set", sort: sortOf("name"), cellClassName: "font-medium text-slate-900", cell: (set) => set.name },
+                  { id: "type", header: "Type", label: "Type", sort: sortOf("type"), cell: (set) => <Badge color={set.system ? "blue" : "teal"} size="sm">{set.system ? "System" : "Custom"}</Badge> },
+                  { id: "permissionCount", header: "Permissions", label: "Permissions", sort: sortOf("permissionCount"), cellClassName: "tabular-nums", cell: (set) => set.permissionCount },
+                  { id: "description", header: "Description", label: "Description", cellClassName: "min-w-[20rem] max-w-[34rem] !whitespace-normal text-xs text-slate-600", cell: (set) => set.description || "—" },
+                ]}
+              />
+              {modulesWithRecordVisibility.map((moduleName) => (
+                <div key={moduleName}>
+                  <p className="mb-1.5 text-xs font-medium text-slate-600">{moduleName}</p>
+                  {recordVisibilityOf(moduleName)}
                 </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <Badge color="emerald" size="sm">{selectedSetIds.size} selected</Badge>
-                {selectedSetIds.size > 0 && (
-                  <button type="button" className={clearSelectionClass} onClick={() => { setSelectedSetIds(new Set()); setSelectedSetDetails(new Map()); }}>
-                    Clear all
-                  </button>
-                )}
-                {selectedSetIds.size === 0 && (
-                  <span className="text-xs text-red-500">Select at least one permission set</span>
-                )}
-              </div>
-              {setsLoading ? (
-                <SectionLoading minHeight="120px" />
-              ) : (
-                <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
-                  {existingSets.length === 0 && (
-                    <p className="p-4 text-sm text-slate-400">No permission sets match your search.</p>
-                  )}
-                  {existingSets.map((ps) => (
-                    <label
-                      key={ps.id}
-                      className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer"
-                    >
-                      <Checkbox
-                        id={`wizard-ps-${ps.id}`}
-                        checked={selectedSetIds.has(ps.id)}
-                        onChange={() => toggleSet(ps)}
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs sm:text-sm font-medium text-slate-800">{ps.name}</span>
-                          <Badge color={ps.system ? "blue" : "teal"} size="xs">{ps.system ? "System" : "Custom"}</Badge>
-                          <span className="text-2xs text-slate-400">{ps.permissionCount} permissions</span>
-                        </span>
-                        {ps.description && (
-                          <span className="block text-xs text-slate-500 mt-0.5">{ps.description}</span>
-                        )}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              )}
+              ))}
             </div>
           ) : (
             <div className="space-y-3">
@@ -487,6 +519,7 @@ export const RoleSetupWizardView: React.FC = () => {
                 selectedCodes={customCodes}
                 onToggle={handleCustomToggle}
                 isLoading={catalogLoading}
+                moduleExtras={recordVisibilityOf}
               />
             </div>
           )}
@@ -501,255 +534,61 @@ export const RoleSetupWizardView: React.FC = () => {
           description="Select the workflow capacities that users with this Access Profile may be considered for. A capacity never grants action rights by itself: the user still needs the configured permission and must be assigned to that document/revision."
           contentClassName="p-4 md:p-5"
         >
-          <div className="space-y-3">
-            <div className="max-w-md">
-              <label className={labelClass}>Search</label>
-              <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-              <input
-                className={inputClass + " pl-9"}
-                value={roleSearch}
-                onChange={(e) => setRoleSearch(e.target.value)}
-                placeholder="Search workflow roles..."
-              />
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <Badge color="emerald" size="sm">{selectedRoleCodes.size} selected</Badge>
-              {selectedRoleCodes.size > 0 && (
-                <button type="button" className={clearSelectionClass} onClick={() => { setSelectedRoleCodes(new Set()); setSelectedRoleDetails(new Map()); }}>
-                  Clear all
-                </button>
-              )}
-            </div>
-          {rolesLoading ? (
-            <SectionLoading minHeight="120px" />
-          ) : workflowRoles.length === 0 ? (
-            <p className="text-sm text-slate-400">No workflow roles are defined yet. Review the Workflow Role Catalog under Security &amp; Authorization → Advanced.</p>
-          ) : (
-            <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 max-w-3xl max-h-[420px] overflow-y-auto">
-              {workflowRoles.map((role) => (
-                <label
-                  key={role.code}
-                  className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer"
-                >
-                  <Checkbox
-                    id={`wizard-role-${role.code}`}
-                    checked={selectedRoleCodes.has(role.code)}
-                    onChange={() => toggleRole(role)}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs sm:text-sm font-medium text-slate-800">{role.label}</span>
-                      <span className="text-2xs  text-slate-400">{role.code}</span>
-                      <Badge color="slate" size="xs">{role.moduleKey}</Badge>
-                    </span>
-                    {role.description && (
-                      <span className="block text-xs text-slate-500 mt-0.5">{role.description}</span>
-                    )}
-                  </span>
-                </label>
-              ))}
-            </div>
-          )}
-          </div>
+          <WizardPickerTable<WorkflowRoleCatalogEntry>
+            load={loadWorkflowRoles}
+            getId={(role) => role.code}
+            defaultSort={{ key: "displayOrder", direction: "asc" }}
+            selectedIds={selectedRoleCodes}
+            onToggle={toggleRole}
+            onToggleMany={toggleManyRoles}
+            onClear={() => { setSelectedRoleCodes(new Set()); setSelectedRoleDetails(new Map()); }}
+            searchPlaceholder="Search workflow roles by name, code, module…"
+            noun="workflow role"
+            noneSelectedHint="Optional — leave empty if users with this profile are not to be considered for any workflow capacity."
+            emptyTitle="No workflow roles found"
+            columns={({ sortOf, offset }) => [
+              { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-14", cellClassName: "w-14 text-xs tabular-nums text-slate-500", cell: (_role, index) => offset + index + 1 },
+              { id: "label", header: "Workflow Role", label: "Workflow Role", sort: sortOf("label"), cellClassName: "font-medium text-slate-900", cell: (role) => role.label },
+              { id: "code", header: "Code", label: "Code", sort: sortOf("code"), cellClassName: "font-mono text-2xs text-slate-600 md:text-xs", cell: (role) => role.code },
+              { id: "moduleKey", header: "Module", label: "Module", sort: sortOf("moduleKey"), cell: (role) => <Badge color="slate" size="sm">{moduleDisplayName(role.moduleKey)}</Badge> },
+              { id: "description", header: "Description", label: "Description", cellClassName: "min-w-[18rem] max-w-[32rem] !whitespace-normal text-xs text-slate-600", cell: (role) => role.description || "—" },
+            ]}
+          />
         </FormSection>
       )}
 
-      {/* ── Step 4: Scope ── */}
+      {/* ── Step 4: Users (optional) ── */}
       {step === 3 && (
-        <FormSection
-          title="Scope (optional)"
-          icon={<Building2 className="h-4 w-4" />}
-          headerRight={businessUnits.length > 0 || departments.length > 0 ? (
-            <button type="button" className={clearSelectionClass} onClick={() => { setBusinessUnits([]); setDepartments([]); }}>
-              Clear all
-            </button>
-          ) : undefined}
-          description="Leave empty to apply system-wide. Fill in to note which Business Units / Departments this Access Profile is meant for — fine-grained object filtering is configured separately under Object Access Rules."
-          contentClassName="p-4 md:p-5"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
-            <MultiSelect
-              label="Business Unit Scope"
-              value={businessUnits}
-              onChange={(values) => setBusinessUnits(values.map(String))}
-              options={businessUnitOptions}
-              placeholder="All"
-              isLoading={scopeOptionsLoading}
-            />
-            <MultiSelect
-              label="Department Scope"
-              value={departments}
-              onChange={(values) => setDepartments(values.map(String))}
-              options={departmentOptions}
-              placeholder="All"
-              isLoading={scopeOptionsLoading}
-            />
-          </div>
-        </FormSection>
-      )}
-
-      {/* ── Step 5: Users (optional) ── */}
-      {step === 4 && (
         <FormSection
           title="Who should receive this Access Profile?"
           icon={<Users className="h-4 w-4" />}
           description="Optional — assignments are created together with the Access Profile under the same signature. You can always assign more users later. Segregation-of-Duties conflicts are checked per user and block the whole creation."
           contentClassName="p-4 md:p-5"
         >
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div>
-                <label className={labelClass}>Search</label>
-                <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-              <input
-                className={inputClass + " pl-9"}
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                placeholder="Search users…"
-              />
-                </div>
-              </div>
-              <Select
-                label="Business Unit"
-                value={userBusinessUnitFilter}
-                onChange={(value) => {
-                  setUserBusinessUnitFilter(String(value));
-                  setUserDepartmentFilter("All");
-                }}
-                options={[{ label: "All", value: "All" }, ...userBusinessUnitOptions]}
-              />
-              <Select
-                label="Department"
-                value={userDepartmentFilter}
-                onChange={(value) => setUserDepartmentFilter(String(value))}
-                options={[{ label: "All", value: "All" }, ...userDepartmentOptions]}
-              />
-            </div>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <Badge color="emerald" size="sm">{selectedUserIds.size} selected</Badge>
-              {selectedUserIds.size > 0 && (
-                <button type="button" className={clearSelectionClass} onClick={() => { setSelectedUserIds(new Set()); setSelectedUserDetails(new Map()); }}>
-                  Clear all
-                </button>
-              )}
-              {selectedUserIds.size === 0 && (
-                  <span className="text-xs text-slate-500">No users selected — the Access Profile will be created unassigned.</span>
-              )}
-            </div>
-            {usersLoading ? (
-              <SectionLoading minHeight="120px" />
-            ) : (
-              <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
-                {allUsers.length === 0 && (
-                  <p className="p-4 text-sm text-slate-400">
-                    {canListUsers
-                      ? "No users match your search."
-                      : "You do not have permission to list users. The Access Profile will be created unassigned; assign users later from the profile's Assigned Users tab."}
-                  </p>
-                )}
-                {allUsers.map((u) => (
-                  <label
-                    key={u.id}
-                    className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer"
-                  >
-                    <Checkbox
-                      id={`wizard-user-${u.id}`}
-                      checked={selectedUserIds.has(u.id)}
-                      onChange={() => toggleUser(u)}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm font-medium text-slate-800">
-                        {u.fullName}
-                        <span className=" text-2xs font-medium text-slate-500">{u.employeeCode}</span>
-                      </span>
-                      <span className="mt-1 grid grid-cols-1 gap-x-4 gap-y-0.5 text-xs text-slate-500 sm:grid-cols-3">
-                        <span><span className="text-slate-400">Department:</span> {u.department || "—"}</span>
-                        <span><span className="text-slate-400">Business Unit:</span> {u.businessUnit || "—"}</span>
-                        <span className="truncate"><span className="text-slate-400">Email:</span> {u.email}</span>
-                      </span>
-                      <span className="hidden">
-                        {[u.department, u.email].filter(Boolean).join(" · ")}
-                      </span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
+          <WizardUsersStep
+            canListUsers={canListUsers}
+            selectedIds={selectedUserIds}
+            onToggle={toggleUser}
+            onToggleMany={toggleManyUsers}
+            onClear={() => { setSelectedUserIds(new Set()); setSelectedUserDetails(new Map()); }}
+          />
         </FormSection>
       )}
 
-      {/* ── Step 6: Review ── */}
-      {step === 5 && (
-        <FormSection
-          title="Review & Create"
-          icon={<ScanEye className="h-4 w-4" />}
-          description="Nothing has been saved yet — everything below is created in one batch after you sign."
-          contentClassName="p-4 md:p-5"
-        >
-          <dl className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 lg:col-span-2">
-              <dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Access Profile name</dt>
-              <dd className="text-sm font-medium text-slate-800 mt-0.5">{name.trim()}</dd>
-              {description.trim() && <dd className="text-xs text-slate-500 mt-0.5">{description.trim()}</dd>}
-            </div>
-            <div className="rounded-xl border border-slate-200 p-4">
-              <dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Permissions</dt>
-              <dd className="mt-1 flex flex-wrap gap-1.5">
-                {permissionMode === "existing" ? (
-                  selectedSetSummaries.map((ps) => (
-                    <Badge key={ps.id} color="emerald" size="sm">{ps.name} ({ps.permissionCount})</Badge>
-                  ))
-                ) : (
-                  <Badge color="emerald" size="sm">New set “{name.trim()} Permissions” — {customCodes.size} permissions</Badge>
-                )}
-              </dd>
-            </div>
-            <div className="rounded-xl border border-slate-200 p-4">
-              <dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Workflow roles</dt>
-              <dd className="mt-1 flex flex-wrap gap-1.5">
-                {selectedRoleSummaries.length === 0 ? (
-                  <span className="text-sm text-slate-500">None — users with this profile will not be considered by the participant picker through a workflow capacity.</span>
-                ) : (
-                  selectedRoleSummaries.map((r) => <Badge key={r.code} color="blue" size="sm">{r.label}</Badge>)
-                )}
-              </dd>
-            </div>
-            <div className="rounded-xl border border-slate-200 p-4">
-              <dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Scope</dt>
-              <dd className="text-sm text-slate-700 mt-0.5">
-                {businessUnits.length > 0 || departments.length > 0
-                  ? [
-                      businessUnits.length > 0 && `Business Units: ${businessUnits.join(", ")}`,
-                      departments.length > 0 && `Departments: ${departments.join(", ")}`,
-                    ].filter(Boolean).join(" · ")
-                  : "System-wide"}
-              </dd>
-            </div>
-            <div className="rounded-xl border border-slate-200 p-4">
-              <dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Initial users</dt>
-              <dd className="mt-1 flex flex-wrap gap-1.5">
-                {selectedUserIds.size === 0 ? (
-                  <span className="text-sm text-slate-500">None — assign users later from the profile's Assigned Users tab.</span>
-                ) : (
-                  selectedUserSummaries.map((u) => (
-                    <Badge key={u.id} color="slate" size="sm">{u.fullName}</Badge>
-                  ))
-                )}
-              </dd>
-            </div>
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs sm:text-sm text-emerald-800 flex items-start gap-2 lg:col-span-2">
-              <Check className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>
-                Everything above is created in <strong>one atomic operation</strong> under a single electronic
-                signature — if any step fails (e.g. a Segregation-of-Duties conflict), nothing is created.
-              </span>
-            </div>
-          </dl>
-        </FormSection>
+      {/* ── Step 5: Review ── */}
+      {step === 4 && (
+        <WizardReviewStep
+          name={name.trim()}
+          description={description.trim()}
+          permissionMode={permissionMode}
+          sets={selectedSetSummaries.map((set) => ({ id: set.id, name: set.name, count: set.permissionCount }))}
+          permissionTotal={effectiveVisibilityCodes.size}
+          permissionsByModule={reviewPermissionsByModule}
+          visibility={reviewVisibility}
+          roles={selectedRoleSummaries.map((role) => ({ code: role.code, label: role.label, module: role.moduleKey }))}
+          users={selectedUserSummaries.map((user) => ({ id: user.id, fullName: user.fullName, employeeCode: user.employeeCode, department: user.department, avatar: user.avatar }))}
+          onEdit={setStep}
+        />
       )}
 
       {/* ── Footer navigation ── */}

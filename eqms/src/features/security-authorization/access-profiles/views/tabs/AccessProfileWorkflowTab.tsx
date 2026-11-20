@@ -12,9 +12,13 @@ import { api } from "@/services/api/client";
 import { WorkflowRoleDrawer, type WorkflowRolePreview } from "./accessProfileDetailShared";
 import type { AssignDiff } from "../AccessProfileDetailView";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { moduleDisplayName } from "@/utils/moduleDisplay";
 
 type SortKey = "label" | "code" | "module" | "users";
-type WorkflowRoleRow = WorkflowRolePreview & { moduleKey?: string | null; totalUsers?: number };
+type WorkflowRoleRow = WorkflowRolePreview & { moduleKey?: string | null; totalUsers?: number; assignedProfiles?: { id: string; assignedUsers: number }[] };
+
+/** The users that hold the role through THIS Access Profile (not the role's total across the system, which the header's Assigned Users would contradict). */
+const usersOfProfile = (row: WorkflowRoleRow, profileId: string) => row.assignedProfiles?.find((profile) => profile.id === profileId)?.assignedUsers ?? 0;
 
 /** Uses the persistent workflow-role catalog and workflow policies; no frontend role list exists. */
 export const WorkflowTab: React.FC<{
@@ -60,7 +64,7 @@ export const WorkflowTab: React.FC<{
     let active = true;
     setListLoading(true);
     api.get<{ data: WorkflowRoleRow[]; pagination: { total: number; totalPages: number } }>("/security/workflow-roles/paged", {
-      params: { page, limit, search: searchTerm || undefined, sortBy: sort.key, sortDir: sort.direction, accessProfileId: canAssign ? undefined : profileId },
+      params: { page, limit, search: searchTerm || undefined, sortBy: sort.key, sortDir: sort.direction, accessProfileId: canAssign ? undefined : profileId, countForProfileId: profileId },
     })
       .then((response) => {
         if (!active) return;
@@ -100,8 +104,8 @@ export const WorkflowTab: React.FC<{
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: "text-center text-slate-500", cell: (_row, index) => (page - 1) * limit + index + 1 },
     { id: "label", header: "Role", label: "Role", sort: sortOf("label"), cellClassName: "font-medium text-slate-900", cell: (row) => row.label },
     { id: "code", header: "Code", label: "Code", sort: sortOf("code"), cell: (row) => <code className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">{row.code}</code> },
-    { id: "module", header: "Module", label: "Module", sort: sortOf("module"), cellClassName: "text-slate-600", cell: (row) => row.moduleKey || "-" },
-    { id: "users", header: "Users", label: "Users", sort: sortOf("users"), cellClassName: "text-slate-600", cell: (row) => row.totalUsers ?? 0 },
+    { id: "module", header: "Module", label: "Module", sort: sortOf("module"), cellClassName: "text-slate-600", cell: (row) => (row.moduleKey ? moduleDisplayName(row.moduleKey) : "-") },
+    { id: "users", header: "Users", label: "Users", sort: sortOf("users"), cellClassName: "text-slate-600", cell: (row) => usersOfProfile(row, profileId) },
     { id: "description", header: "Description", label: "Description", cellClassName: "max-w-md truncate text-slate-600", cell: (row) => row.description || "-" },
   ];
   const action: DataTableAction<WorkflowRoleRow> = {
@@ -119,7 +123,7 @@ export const WorkflowTab: React.FC<{
   };
 
   return <div className="space-y-4">
-    {canAssign && <WarningBanner variant="info" description={<>Workflow eligibility determines which workflow steps users assigned this Access Profile can participate in. The catalog and allowed actions are configured in Workflow Authorization. Changes are applied when you click <b>Save</b>.</>} />}
+    {canAssign && <WarningBanner variant="info" description={<>Workflow eligibility determines which workflow steps users assigned this Access Profile can participate in. The catalog and allowed actions are configured in Workflow Authorization. Roles exist for Document Control and Training Management; the actions of the other modules (such as Reports and Security Review) follow permissions alone, which are set on the Permissions tab. Changes are applied when you click <b>Save</b>.</>} />}
     {!canAssign && deniedReason && <WarningBanner variant="warning" description={deniedReason} />}
     <div className="relative">
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />

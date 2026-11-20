@@ -5,8 +5,7 @@ const storedUser = { id: "u1", username: "admin", fullName: "Admin", permissions
 
 vi.mock("@/utils/security", () => ({
   secureStorage: { getItem: vi.fn(() => JSON.stringify(storedUser)), setItem: vi.fn(), removeItem: vi.fn() },
-  tokenUtils: {},
-  auditLog: { log: vi.fn() },
+  clientDiagnostics: { log: vi.fn() },
   csrfToken: { generate: () => "csrf", store: vi.fn() },
 }));
 vi.mock("@/services/authTokenStore", () => ({ authTokenStore: { get: () => "token", set: vi.fn(), clear: vi.fn() } }));

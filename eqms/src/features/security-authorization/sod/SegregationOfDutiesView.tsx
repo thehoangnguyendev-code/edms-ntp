@@ -25,12 +25,14 @@ import { TabNav } from "@/components/ui/tabs/TabNav";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
 import { usePortalDropdown, useTableDragScroll, useDebounce } from "@/hooks";
 import { cn } from "@/components/ui/utils";
-import { settingsApi } from "@/services/api";
+import { settingsApi, separationRulesApi } from "@/services/api";
 import type { SodConstraintResponse } from "@/services/api/settings";
 import { segregationOfDuties as segregationOfDutiesBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { DocumentWorkflowRulesPanel } from "./DocumentWorkflowRulesPanel";
+import { SeparationRulesPanel, separationRuleSentence } from "./SeparationRulesPanel";
+import { useSeparationRules } from "./useSeparationRules";
 import { ROUTES } from "@/app/routes.constants";
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
@@ -52,10 +54,13 @@ const STATUS_OPTIONS: SelectOption[] = [
   { label: "Inactive", value: "INACTIVE" },
 ];
 
-const SOD_TABS: TabItem[] = [
+const BASE_TABS: TabItem[] = [
   { id: "constraints", label: "Permission Conflict Rules" },
   { id: "document-rules", label: "Document Revision Integrity" },
 ];
+
+// The Separation Rules of every other module get one tab each (id "sep:<module key>"), named like the module in the menu.
+const SEPARATION_TAB_PREFIX = "sep:";
 
 export const SegregationOfDutiesView: React.FC = () => {
   const navigate = useNavigate();
@@ -64,7 +69,26 @@ export const SegregationOfDutiesView: React.FC = () => {
   const canViewSod = hasPermissionAlias("security.sod.view");
   const canManageSod = hasPermissionAlias("security.sod.manage");
   const canManageDocumentWorkflowRules = hasPermissionAlias("security.sod.manage");
-  const [activeTab, setActiveTab] = useState<"constraints" | "document-rules">("constraints");
+  // The Separation Rules switch policies, which Workflow Authorization owns: its manage permission decides.
+  const canManageSeparationRules = hasPermissionAlias("security.workflow_authorization.manage");
+  const [separationModules, setSeparationModules] = useState<TabItem[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    separationRulesApi
+      .list()
+      .then((all) => {
+        if (cancelled) return;
+        const names = new Map<string, string>();
+        all.forEach((r) => names.set(r.moduleKey, r.moduleLabel));
+        setSeparationModules([...names].map(([key, label]) => ({ id: `${SEPARATION_TAB_PREFIX}${key}`, label })).sort((a, b) => a.label.localeCompare(b.label)));
+      })
+      .catch(() => undefined); // no permission to see them: the tabs simply do not appear
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const SOD_TABS: TabItem[] = [...BASE_TABS, ...separationModules];
+  const [activeTab, setActiveTab] = useState<string>("constraints");
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
   const { requestSignature, signatureModal } = useSecurityESign();
@@ -84,6 +108,41 @@ export const SegregationOfDutiesView: React.FC = () => {
     saveAdministration,
   } = useDocumentAdministration();
   const [showDocRulesResetModal, setShowDocRulesResetModal] = useState(false);
+
+  // Separation Rules tab of one module: same Edit / Cancel / Reset / Save as Document Revision Integrity, one reason and one signature for all the ticks.
+  const isSeparationTab = activeTab.startsWith(SEPARATION_TAB_PREFIX);
+  const separationModuleKey = isSeparationTab ? activeTab.slice(SEPARATION_TAB_PREFIX.length) : null;
+  const separationModuleLabel = SOD_TABS.find((tab) => tab.id === activeTab)?.label ?? "";
+  const separation = useSeparationRules(separationModuleKey);
+  const [isEditingSeparation, setIsEditingSeparation] = useState(false);
+  const [showSeparationResetModal, setShowSeparationResetModal] = useState(false);
+  const [showSeparationESignModal, setShowSeparationESignModal] = useState(false);
+  useEffect(() => setIsEditingSeparation(false), [activeTab]);
+  const handleCancelSeparationEdit = () => {
+    if (separation.isDirty) setShowSeparationResetModal(true);
+    else setIsEditingSeparation(false);
+  };
+  const handleSeparationReset = () => {
+    separation.reset();
+    setShowSeparationResetModal(false);
+    setIsEditingSeparation(false);
+  };
+  const handleSeparationSave = async (data: { reason: string; signatureToken: string }) => {
+    try {
+      await separation.save(data.reason, data.signatureToken);
+      setShowSeparationESignModal(false);
+      setIsEditingSeparation(false);
+      showToast({ type: "success", message: `${separationModuleLabel} separation rules updated.` });
+    } catch (error: any) {
+      showToast({ type: "error", message: error?.response?.data?.error?.message ?? error?.response?.data?.message ?? "Unable to update the separation rules." });
+    }
+  };
+  const separationSignatureChanges = separation.changed.map((rule) => ({
+    action: `${separationRuleSentence(rule)} (${rule.workflowLabel})`,
+    oldValue: rule.enabled ? "Rule on" : "Rule off",
+    newValue: separation.draft[rule.id] ? "Rule on" : "Rule off",
+    category: "metadata" as const,
+  }));
   const [showDocRulesESignModal, setShowDocRulesESignModal] = useState(false);
   const handleCancelDocRulesEdit = () => {
     if (isDocRulesDirty) setShowDocRulesResetModal(true);
@@ -360,6 +419,30 @@ export const SegregationOfDutiesView: React.FC = () => {
                 New Constraint
               </Button>
             ) : undefined
+          ) : isSeparationTab ? (
+            !isEditingSeparation ? (
+              <Button
+                size="sm"
+                className="whitespace-nowrap gap-2"
+                onClick={() => canManageSeparationRules && setIsEditingSeparation(true)}
+                disabled={!canManageSeparationRules || separation.isLoading || separation.rules.length === 0}
+              >
+                <IconPencilMinus className="h-4 w-4" />
+                Edit {separationModuleLabel} Rules
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={handleCancelSeparationEdit}>
+                  Cancel
+                </Button>
+                <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setShowSeparationResetModal(true)} disabled={!separation.isDirty}>
+                  Reset
+                </Button>
+                <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setShowSeparationESignModal(true)} disabled={!separation.isDirty}>
+                  Save
+                </Button>
+              </div>
+            )
           ) : !isEditingDocRules ? (
             <Button
               size="sm"
@@ -402,12 +485,23 @@ export const SegregationOfDutiesView: React.FC = () => {
         <TabNav
           tabs={SOD_TABS}
           activeTab={activeTab}
-          onChange={(id) => setActiveTab(id as "constraints" | "document-rules")}
+          onChange={(id) => setActiveTab(id)}
           variant="underline"
         />
 
         <div className="p-4 md:p-5 flex-1 flex flex-col">
-      {activeTab === "document-rules" ? (
+      {isSeparationTab ? (
+        <SeparationRulesPanel
+          moduleLabel={separationModuleLabel}
+          isLoading={separation.isLoading}
+          failed={separation.failed}
+          isEditing={isEditingSeparation}
+          canManage={canManageSeparationRules}
+          rules={separation.rules}
+          draft={separation.draft}
+          onToggle={separation.toggle}
+        />
+      ) : activeTab === "document-rules" ? (
         <DocumentWorkflowRulesPanel
           isLoading={isDocRulesLoading}
           isEditing={isEditingDocRules}
@@ -669,6 +763,26 @@ export const SegregationOfDutiesView: React.FC = () => {
             All unsaved changes to document revision integrity rules will be lost.
           </div>
         }
+      />
+
+      <NavigationGuardModal
+        isOpen={showSeparationResetModal}
+        onClose={() => setShowSeparationResetModal(false)}
+        onConfirm={handleSeparationReset}
+        mode="discard"
+        currentPageTitle={`${separationModuleLabel} Separation Rules`}
+        title="Discard Unsaved Changes?"
+        primaryActionLabel="Discard changes"
+        secondaryActionLabel="Keep editing"
+        description={<div className="text-sm text-slate-600">All unsaved changes to these separation rules will be lost.</div>}
+      />
+
+      <ESignatureModal
+        isOpen={showSeparationESignModal}
+        onClose={() => setShowSeparationESignModal(false)}
+        onConfirm={handleSeparationSave}
+        actionTitle={`Update ${separationModuleLabel} Separation Rules`}
+        changes={separationSignatureChanges}
       />
 
       <ESignatureModal

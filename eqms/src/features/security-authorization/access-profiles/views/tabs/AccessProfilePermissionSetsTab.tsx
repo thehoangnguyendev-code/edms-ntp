@@ -14,11 +14,13 @@ import { ROUTES } from "@/app/routes.constants";
 import { settingsApi, type PermissionSetSummary, type PermissionSetResponse } from "@/services/api/settings";
 import type { AssignDiff } from "../AccessProfileDetailView";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { moduleDisplayName } from "@/utils/moduleDisplay";
 
 type SortKey = "name" | "type" | "permissionCount" | "moduleCount";
 
+/** The modules a set touches, by the name of their menu (never the key the server stores), once each. */
 const summarizeModules = (modules: string[] | undefined) => {
-  const list = modules ?? [];
+  const list = [...new Set((modules ?? []).map((key) => moduleDisplayName(key)))];
   if (list.length === 0) return "-";
   if (list.length <= 2) return list.join(" · ");
   return `${list.slice(0, 2).join(" · ")} · +${list.length - 2} more`;
@@ -129,9 +131,15 @@ export const PermissionSetsTab: React.FC<{
 
   const columns: DataTableColumn<PermissionSetResponse>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: "text-center text-slate-500", cell: (_row, index) => (page - 1) * limit + index + 1 },
-    { id: "name", header: "Name", label: "Name", sort: sortOf("name"), cellClassName: "font-medium text-slate-900", cell: (row) => row.name },
+    { id: "name", header: "Name", label: "Name", sort: sortOf("name"), cellClassName: "font-medium text-slate-900", cell: (row) => (
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        {row.name}
+        {row.code.startsWith("ROLE_") && <Badge semantic="info" size="xs" title="The direct permissions of another Access Profile, attached to this one">Another profile's permissions</Badge>}
+      </span>
+    ) },
     { id: "code", header: "Code", label: "Code", cell: (row) => <code className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">{row.code}</code> },
     { id: "type", header: "Type", label: "Type", sort: sortOf("type"), cell: (row) => <Badge color={row.system ? "blue" : "slate"} size="sm">{row.system ? "System" : "Custom"}</Badge> },
+    { id: "status", header: "Status", label: "Status", cell: (row) => <Badge semantic={row.active ? "success" : "neutral"} size="sm">{row.active ? "Active" : "Inactive"}</Badge> },
     { id: "permissionCount", header: "Permissions", label: "Permissions", sort: sortOf("permissionCount"), cellClassName: "text-slate-600", cell: (row) => row.permissionCount },
     { id: "modules", header: "Modules", label: "Modules", sort: sortOf("moduleCount"), cellClassName: "text-slate-600", cell: (row) => summarizeModules(row.modules) },
     { id: "description", header: "Description", label: "Description", cellClassName: "max-w-md truncate text-slate-600", cell: (row) => row.description || "-" },

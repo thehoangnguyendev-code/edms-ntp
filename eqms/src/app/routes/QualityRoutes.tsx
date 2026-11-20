@@ -20,7 +20,6 @@ const ReportTemplateRunPage = lazy(() => import('@/features/report/templates/Rep
 const ScheduleEditorPage = lazy(() => import('@/features/report/scheduled/ScheduleEditorPage').then(m => ({ default: m.ScheduleEditorPage })));
 const ReportRunDetailPage = lazy(() => import('@/features/report/history/ReportRunDetailPage').then(m => ({ default: m.ReportRunDetailPage })));
 const ScheduledReportsView = lazy(() => import('@/features/report').then(m => ({ default: m.ScheduledReportsView })));
-const BackupOverviewView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupOverviewView })));
 const BackupsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupsView })));
 const BackupSchedulesView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupSchedulesView })));
 const ProductionRestoresView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.ProductionRestoresView })));
@@ -71,8 +70,9 @@ export function qualityRoutes() {
       <Route path="report/scheduled/new" element={protectedElement("report.module.view", <ScheduleEditorPage />)} />
       <Route path="report/scheduled/:id" element={protectedElement("report.module.view", <ScheduleEditorPage />)} />
       <Route path="report/*" element={<Navigate to="/report/templates" replace />} />
-      <Route path="backup-restore" element={<Navigate to="/backup-restore/overview" replace />} />
-      <Route path="backup-restore/overview" element={protectedElement("backup.module.view", <BackupOverviewView />)} />
+      <Route path="backup-restore" element={<Navigate to="/backup-restore/backups" replace />} />
+      {/* The status overview is now a set of cards on the Dashboard; a saved link lands there. */}
+      <Route path="backup-restore/overview" element={<Navigate to="/dashboard" replace />} />
       <Route path="backup-restore/backups" element={protectedElement("backup.module.view", <BackupsView />)} />
       {/* The approval flow was removed (SDS-BR-003): every old address leads to the one Restore screen. */}
       <Route path="backup-restore/restores" element={<Navigate to="/backup-restore/production-restores" replace />} />
@@ -80,7 +80,7 @@ export function qualityRoutes() {
       <Route path="backup-restore/restores/history" element={<Navigate to="/backup-restore/production-restores" replace />} />
       <Route path="backup-restore/restores/verification-reports" element={<Navigate to="/backup-restore/production-restores" replace />} />
       <Route path="backup-restore/restores/inspections" element={<Navigate to="/backup-restore/production-restores" replace />} />
-      <Route path="backup-restore/dr-drills" element={<Navigate to="/backup-restore/overview" replace />} />
+      <Route path="backup-restore/dr-drills" element={<Navigate to="/dashboard" replace />} />
       <Route path="backup-restore/backups/exports" element={<Navigate to="/backup-restore/backups" replace />} />
       <Route path="backup-restore/backups/verifications" element={<Navigate to="/backup-restore/backups" replace />} />
       <Route path="backup-restore/restores/:requestId" element={<Navigate to="/backup-restore/production-restores" replace />} />
@@ -90,7 +90,7 @@ export function qualityRoutes() {
       <Route path="backup-restore/backups/schedules" element={protectedElement("backup.module.view", <BackupSchedulesView />)} />
       <Route path="backup-restore/alerts" element={<Navigate to="/settings/administration/backup/alerts" replace />} />
       <Route path="backup-restore/backups/:backupId" element={protectedElement("backup.module.view", <BackupDetailView />)} />
-      <Route path="backup-restore/*" element={<Navigate to="/backup-restore/overview" replace />} />
+      <Route path="backup-restore/*" element={<Navigate to="/backup-restore/backups" replace />} />
       <Route path="audit-trail" element={protectedElement("audittrail.module.view", <AuditTrailView />)} />
       <Route path="audit-trail/:recordId" element={protectedElement("audittrail.module.view", <AuditTrailDetailView />)} />
       <Route path="audit-trail/reviews" element={protectedElement("audit.review.view", <AuditTrailReviewView />)} />

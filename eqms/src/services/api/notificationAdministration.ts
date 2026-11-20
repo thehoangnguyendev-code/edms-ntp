@@ -28,6 +28,8 @@ export interface NotificationAdministrationParams {
   channel?: AdministrationChannel;
   status?: string;
   module?: string;
+  /** LOW, MEDIUM, HIGH or CRITICAL (notifications of events; email messages have none). */
+  priority?: string;
   type?: string;
   /** SENT or NEVER_SENT (email messages). */
   usage?: string;

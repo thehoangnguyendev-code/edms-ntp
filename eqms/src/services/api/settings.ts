@@ -25,8 +25,6 @@ export interface PermissionSetAssignedAccessProfile {
   id: string;
   name: string;
   code: string;
-  businessUnitScope: string | null;
-  departmentScope: string | null;
   active: boolean;
   userCount: number;
 }
@@ -80,7 +78,7 @@ export interface UserActionCapabilitiesResponse {
 }
 
 /** Machine codes from the server; a screen translates them for display only. */
-export type DocumentControlVisibility = 'VIEW_EVERYTHING' | 'INCOMPLETE' | 'NAMED_IN_FLOW';
+export type DocumentControlVisibility = 'VIEW_EVERYTHING' | 'DEPARTMENT' | 'INCOMPLETE' | 'NAMED_IN_FLOW';
 
 export interface UserAuthorizationSummary {
   userId: string;
@@ -90,51 +88,9 @@ export interface UserAuthorizationSummary {
     code: string;
     name: string;
     active: boolean;
-    businessUnitScope: string | null;
-    departmentScope: string | null;
     workflowRoles: string[];
     permissionSets: { id: string; code: string; name: string; active: boolean; permissionCount: number }[];
   }[];
-}
-
-export interface ObjectAccessRuleResponse {
-  id: string;
-  /** The Object Access Rule Number (Object Numbering). */
-  ruleNumber?: string | null;
-  name: string;
-  description: string | null;
-  accessProfileId: string | null;
-  accessProfileName: string | null;
-  resourceType: 'DOCUMENT_CATEGORY' | 'DOCUMENT_TYPE' | 'DOCUMENT_STATUS' | 'DEPARTMENT' | 'BUSINESS_UNIT';
-  resourceId: string | null;
-  resourceName: string | null;
-  actions: string[];
-  effect: 'ALLOW' | 'DENY';
-  priority: number;
-  active: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-export interface ObjectAccessRuleOptionsResponse {
-  resourceTypes: string[];
-  actions: string[];
-  effects: string[];
-  /** Selectable resource names per resource type — pickers instead of typed names. */
-  resourceValues?: Record<string, string[]>;
-  accessProfiles: { id: string; name: string; code: string }[];
-}
-
-export interface ObjectAccessRulePayload {
-  name: string;
-  description?: string;
-  accessProfileId?: string | null;
-  resourceType: string;
-  resourceId?: string | null;
-  resourceName?: string | null;
-  actions: string[];
-  effect: 'ALLOW' | 'DENY';
-  priority: number;
-  active: boolean;
 }
 
 export interface SodConstraintResponse {
@@ -264,8 +220,6 @@ export interface AccessProfileResponse {
   system: boolean;
   /** A DEV/UAT/test profile; shown as a "Test" badge only. */
   testData?: boolean;
-  businessUnitScope: string | null;
-  departmentScope: string | null;
   permissionSetCount: number;
   workflowRoleCount: number;
   assignedUserCount: number;
@@ -284,8 +238,6 @@ export interface AccessProfilePayload {
   description?: string | null;
   type?: 'SYSTEM' | 'CUSTOM';
   active: boolean;
-  businessUnitScope?: string | null;
-  departmentScope?: string | null;
 }
 
 export interface PermissionSetSummary {
@@ -316,8 +268,6 @@ export interface AccessProfileDetailResponse {
   active: boolean;
   system: boolean;
   testData?: boolean;
-  businessUnitScope: string | null;
-  departmentScope: string | null;
   permissionSets: PermissionSetSummary[];
   workflowRoles: string[];
   documentControlVisibility?: DocumentControlVisibility;
@@ -451,6 +401,28 @@ export interface SmtpConnectionTestPayload {
   useSSL: boolean;
 }
 
+/** One thing a connection test looked at; NOT_CHECKED means the test could not tell, which is not a failure. */
+export interface IntegrationCheckStep {
+  key: string;
+  label: string;
+  status: 'OK' | 'FAILED' | 'NOT_CHECKED';
+  detail: string;
+}
+
+/** The last "Test connection" of an integration, kept by the server. */
+export interface IntegrationCheck {
+  integration: 'STORAGE' | 'ONLYOFFICE';
+  success: boolean;
+  message: string;
+  /** What was tested, in words and without any secret (for example "MinIO · http://minio:9000 · bucket"). */
+  subject: string;
+  steps: IntegrationCheckStep[];
+  checkedAt: string;
+  checkedBy: string | null;
+}
+
+export type IntegrationChecks = Partial<Record<IntegrationCheck['integration'], IntegrationCheck>>;
+
 export type StorageTestPayload =
   | { provider: 'local'; basePath?: string }
   | {
@@ -577,15 +549,25 @@ export const settingsApi = {
     return response.data;
   },
 
-  /** GET /security/access-explorer/permissions?search= -- the permissions of the catalogue for the Access Explorer picker. */
-  searchAccessExplorerPermissions: async (search: string) => {
-    const response = await api.get<AccessExplorerPermission[]>("/security/access-explorer/permissions", { params: { search: search || undefined } });
+  /** GET /security/access-explorer/permissions -- one page of the permission list, with how many sets, profiles and people hold each. Searched, filtered and sorted on the server. */
+  listAccessExplorerPermissions: async (params: AccessExplorerListParams) => {
+    const response = await api.get<AccessExplorerPermissionPage>("/security/access-explorer/permissions", {
+      params: { search: params.search || undefined, module: params.module || undefined, held: params.held || undefined, sortBy: params.sortBy, sortDir: params.sortDir, page: params.page, size: params.size },
+    });
+    return response.data;
+  },
+
+  /** GET /security/access-explorer/modules -- the module keys that have permissions (the chips of the picker). */
+  getAccessExplorerModules: async () => {
+    const response = await api.get<string[]>("/security/access-explorer/modules");
     return response.data;
   },
 
   /** GET /security/access-explorer/holders?code= -- who holds a permission, and through which access profile and permission set. */
-  getAccessExplorerHolders: async (code: string, activeOnly: boolean) => {
-    const response = await api.get<AccessExplorerHolders>("/security/access-explorer/holders", { params: { code, activeOnly } });
+  getAccessExplorerHolders: async (code: string, params: { activeOnly: boolean; search?: string; page: number; size: number }) => {
+    const response = await api.get<AccessExplorerHolders>("/security/access-explorer/holders", {
+      params: { code, activeOnly: params.activeOnly, search: params.search || undefined, page: params.page, size: params.size },
+    });
     return response.data;
   },
 
@@ -656,14 +638,6 @@ export const settingsApi = {
     const response = await api.get<{ data: LoggedInSession[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>(
       `${ENDPOINT}/sessions`,
       { params, signal }
-    );
-    return response.data;
-  },
-
-  /** GET /settings/users/:id/permissions */
-  getUserPermissions: async (id: string) => {
-    const response = await api.get<{ userId: string; role: string; permissions: string[] }>(
-      `${ENDPOINT}/${id}/permissions`
     );
     return response.data;
   },
@@ -854,12 +828,12 @@ export const settingsApi = {
   },
 
   testOnlyOfficeConnection: async () => {
-    const response = await api.post<{ success: boolean; message: string }>('/settings/system/onlyoffice/test-connection');
+    const response = await api.post<{ success: boolean; message: string; steps?: IntegrationCheckStep[] }>('/settings/system/onlyoffice/test-connection');
     return response.data;
   },
 
-  getOnlyOfficeConfiguration: async () => {
-    const response = await api.get('/settings/system/onlyoffice');
+  getIntegrationChecks: async () => {
+    const response = await api.get<IntegrationChecks>('/settings/system/integrations/checks');
     return response.data;
   },
 
@@ -895,12 +869,6 @@ export const settingsApi = {
 
     pendingGetSecurityConfigurationRequests.set(cacheKey, request);
     return request;
-  },
-
-  /** PUT /configurations/security */
-  updateSecurityConfiguration: async (payload: { sessionTimeoutMinutes: number }) => {
-    const response = await api.put<{ sessionTimeoutMinutes: number; sessionTimeoutEnabled: boolean }>('/configurations/security', payload);
-    return response.data;
   },
 
   /** GET /settings/users/:id/education */
@@ -969,20 +937,6 @@ export const settingsApi = {
     return response.data as Blob;
   },
 
-  // ─── Export ───────────────────────────────────────────────────────────────────
-
-  /** GET /settings/users/export — XLSX blob */
-  exportUsers: async (params?: GetUsersParams) => {
-    const query = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([k, v]) => {
-        if (v !== undefined && v !== '') query.set(k, String(v));
-      });
-    }
-    const response = await api.get<Blob>(`${ENDPOINT}/export?${query}`, { responseType: 'blob' });
-    return response.data;
-  },
-
   // ─── Permission Sets ──────────────────────────────────────────────────────
 
   listPermissionSetsPaged: async (params: {
@@ -1014,10 +968,6 @@ export const settingsApi = {
     const r = await api.get<PermissionSetAssignedAccessProfile[]>(`/security/permission-sets/${id}/access-profiles`);
     return r.data;
   },
-  getPermissionSetCapabilities: async (id: string): Promise<PermissionSetCapabilitiesResponse> => {
-    const r = await api.get<PermissionSetCapabilitiesResponse>(`/security/permission-sets/${id}/capabilities`);
-    return r.data;
-  },
   createPermissionSet: async (payload: PermissionSetPayload, sig?: SecuritySignaturePayload): Promise<PermissionSetResponse> => {
     const r = await api.post<PermissionSetResponse>('/security/permission-sets', { ...payload, ...sig });
     return r.data;
@@ -1028,43 +978,6 @@ export const settingsApi = {
   },
   deletePermissionSet: async (id: string, sig?: SecuritySignaturePayload): Promise<void> => {
     await api.delete(`/security/permission-sets/${id}`, { data: sig });
-  },
-
-  // ─── Object Access Rules ──────────────────────────────────────────────────
-
-  getObjectAccessRuleOptions: async (): Promise<ObjectAccessRuleOptionsResponse> => {
-    const r = await api.get<ObjectAccessRuleOptionsResponse>('/security/object-access-rules/options');
-    return r.data;
-  },
-
-  listObjectAccessRulesPaged: async (params: {
-    page?: number; limit?: number; search?: string; resourceType?: string;
-    effect?: string; status?: string;
-    createdFrom?: string; createdTo?: string; updatedFrom?: string; updatedTo?: string;
-    sortBy?: string; sortDir?: string;
-  }): Promise<PaginatedResponse<ObjectAccessRuleResponse>> => {
-    const r = await api.get<PaginatedResponse<ObjectAccessRuleResponse>>('/security/object-access-rules/paged', { params });
-    return r.data;
-  },
-
-  listObjectAccessRules: async (): Promise<ObjectAccessRuleResponse[]> => {
-    const r = await api.get<ObjectAccessRuleResponse[]>('/security/object-access-rules');
-    return r.data;
-  },
-  getObjectAccessRule: async (id: string): Promise<ObjectAccessRuleResponse> => {
-    const r = await api.get<ObjectAccessRuleResponse>(`/security/object-access-rules/${id}`);
-    return r.data;
-  },
-  createObjectAccessRule: async (payload: ObjectAccessRulePayload, sig?: SecuritySignaturePayload): Promise<ObjectAccessRuleResponse> => {
-    const r = await api.post<ObjectAccessRuleResponse>('/security/object-access-rules', { ...payload, ...sig });
-    return r.data;
-  },
-  updateObjectAccessRule: async (id: string, payload: ObjectAccessRulePayload, sig?: SecuritySignaturePayload): Promise<ObjectAccessRuleResponse> => {
-    const r = await api.put<ObjectAccessRuleResponse>(`/security/object-access-rules/${id}`, { ...payload, ...sig });
-    return r.data;
-  },
-  deleteObjectAccessRule: async (id: string, sig?: SecuritySignaturePayload): Promise<void> => {
-    await api.delete(`/security/object-access-rules/${id}`, { data: sig });
   },
 
   // ─── SoD Constraints ─────────────────────────────────────────────────────
@@ -1084,17 +997,8 @@ export const settingsApi = {
     return r.data;
   },
 
-  listSodConstraints: async (): Promise<SodConstraintResponse[]> => {
-    const r = await api.get<SodConstraintResponse[]>('/security/sod-constraints');
-    return r.data;
-  },
-
   getSodConstraint: async (id: string): Promise<SodConstraintResponse> => {
     const r = await api.get<SodConstraintResponse>(`/security/sod-constraints/${id}`);
-    return r.data;
-  },
-  getSodViolations: async (): Promise<SodViolationResponse[]> => {
-    const r = await api.get<SodViolationResponse[]>('/security/sod-constraints/violations');
     return r.data;
   },
   /** "Scan Now" on the SoD Violation Review screen -- runs the scan and records it in history. */
@@ -1146,10 +1050,6 @@ export const settingsApi = {
     const r = await api.get<AccessProfileResponse[]>('/security/access-profiles/all');
     return r.data;
   },
-  getAccessProfile: async (id: string): Promise<AccessProfileDetailResponse> => {
-    const r = await api.get<AccessProfileDetailResponse>(`/security/access-profiles/${id}`);
-    return r.data;
-  },
   getAccessProfileEditorSummary: async (id: string) => {
     const r = await api.get<{ profile: AccessProfileDetailResponse; assignedUserIds: string[] }>(`/security/access-profiles/${id}/editor-summary`);
     return r.data;
@@ -1166,7 +1066,6 @@ export const settingsApi = {
   createAccessProfileFull: async (
     payload: {
       name: string; description?: string; active: boolean;
-      businessUnitScope?: string | null; departmentScope?: string | null;
       permissionCodes: string[]; permissionSetIds: string[];
       workflowRoles: string[]; userIds: string[];
     },
@@ -1174,10 +1073,6 @@ export const settingsApi = {
   ): Promise<AccessProfileDetailResponse> => {
     const r = await api.post<AccessProfileDetailResponse>('/security/access-profiles/full', { ...payload, ...sig });
     return r.data;
-  },
-  /** Replace the role's individually-picked permissions (its auto-managed ROLE_<code> set). */
-  setAccessProfileManagedPermissions: async (id: string, codes: string[], sig?: SecuritySignaturePayload): Promise<void> => {
-    await api.post(`/security/access-profiles/${id}/managed-permissions`, { codes, ...sig });
   },
   /**
    * Aggregate "save role configuration" — one request, one transaction, one e-signature.
@@ -1187,7 +1082,7 @@ export const settingsApi = {
     id: string,
     payload: {
       expectedUpdatedAt?: string;
-      general?: { name: string; description: string | null; active: boolean; businessUnitScope: string | null; departmentScope: string | null };
+      general?: { name: string; description: string | null; active: boolean };
       managedPermissionCodes?: string[];
       sharedPermissionSetIds?: string[];
       workflowRoles?: string[];
@@ -1211,28 +1106,6 @@ export const settingsApi = {
   },
   toggleAccessProfileStatus: async (id: string, sig?: SecuritySignaturePayload): Promise<AccessProfileDetailResponse> => {
     const r = await api.put<AccessProfileDetailResponse>(`/security/access-profiles/${id}/toggle-status`, sig ?? {});
-    return r.data;
-  },
-  setAccessProfilePermissionSets: async (id: string, permissionSetIds: string[], sig?: SecuritySignaturePayload): Promise<void> => {
-    await api.put(`/security/access-profiles/${id}/permission-sets`, { permissionSetIds, ...sig });
-  },
-  addAccessProfilePermissionSet: async (id: string, psId: string, sig?: SecuritySignaturePayload): Promise<void> => {
-    await api.post(`/security/access-profiles/${id}/permission-sets/${psId}`, sig ?? {});
-  },
-  removeAccessProfilePermissionSet: async (id: string, psId: string, sig?: SecuritySignaturePayload): Promise<void> => {
-    await api.delete(`/security/access-profiles/${id}/permission-sets/${psId}`, { data: sig });
-  },
-  setAccessProfileWorkflowRoles: async (id: string, roles: string[], sig?: SecuritySignaturePayload): Promise<void> => {
-    await api.put(`/security/access-profiles/${id}/workflow-roles`, { roles, ...sig });
-  },
-  addAccessProfileWorkflowRole: async (id: string, role: string, sig?: SecuritySignaturePayload): Promise<void> => {
-    await api.post(`/security/access-profiles/${id}/workflow-roles/${role}`, sig ?? {});
-  },
-  removeAccessProfileWorkflowRole: async (id: string, role: string, sig?: SecuritySignaturePayload): Promise<void> => {
-    await api.delete(`/security/access-profiles/${id}/workflow-roles/${role}`, { data: sig });
-  },
-  getAccessProfileUsers: async (id: string): Promise<AssignedUserSummary[]> => {
-    const r = await api.get<AssignedUserSummary[]>(`/security/access-profiles/${id}/users`);
     return r.data;
   },
   getAccessProfileUsersPage: async (id: string, page: number, limit: number, query?: { search?: string; sortBy?: string; sortDir?: "asc" | "desc" }) => {
@@ -1262,14 +1135,6 @@ export const settingsApi = {
     return r.data;
   },
 
-  listAccessReviews: async (): Promise<AccessReviewCampaignSummary[]> => {
-    const r = await api.get<AccessReviewCampaignSummary[]>('/security/access-reviews');
-    return r.data;
-  },
-  getAccessReview: async (id: string): Promise<AccessReviewCampaignDetail> => {
-    const r = await api.get<AccessReviewCampaignDetail>(`/security/access-reviews/${id}`);
-    return r.data;
-  },
   getAccessReviewSummary: async (id: string): Promise<AccessReviewCampaignSummary> => {
     const r = await api.get<AccessReviewCampaignSummary>(`/security/access-reviews/${id}/summary`);
     return r.data;
@@ -1301,10 +1166,6 @@ export const settingsApi = {
 
   getAccessProfileMigrationReport: async (): Promise<AccessProfileMigrationReport> => {
     const r = await api.get<AccessProfileMigrationReport>('/security/access-profiles/migration-report');
-    return r.data;
-  },
-  getUserAuthorizationSummary: async (id: string): Promise<UserAuthorizationSummary> => {
-    const r = await api.get<UserAuthorizationSummary>(`/settings/users/${id}/authorization-summary`);
     return r.data;
   },
   queryUserAuthorizationSummary: async (id: string, params: { search?: string; page: number; limit: number }) => {
@@ -1342,6 +1203,31 @@ export interface AccessExplorerPermission {
   description?: string | null;
 }
 
+export interface AccessExplorerPermissionRow extends AccessExplorerPermission {
+  permissionSetCount: number;
+  accessProfileCount: number;
+  holderCount: number;
+  activeHolderCount: number;
+}
+
+export interface AccessExplorerPermissionPage {
+  content: AccessExplorerPermissionRow[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+}
+
+export interface AccessExplorerListParams {
+  search?: string;
+  module?: string;
+  held?: string;
+  sortBy?: string;
+  sortDir?: string;
+  page: number;
+  size: number;
+}
+
 export interface AccessExplorerHolder {
   userId: string;
   employeeCode?: string | null;
@@ -1361,6 +1247,9 @@ export interface AccessExplorerHolders {
   holders: AccessExplorerHolder[];
   holderCount: number;
   activeHolderCount: number;
+  /** People matching the search and the "only active" switch, before paging; {@code holders} is one page of them. */
+  holderTotal: number;
+  totalPages: number;
 }
 
 export interface AccessReviewItem {

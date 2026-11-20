@@ -7,7 +7,9 @@ import { settingsApi } from "@/services/api/settings";
 import type { PermissionSetResponse } from "@/services/api/settings";
 import { PermissionSplitExplorer } from "@/features/security-authorization/shared/explorer/PermissionSplitExplorer";
 import { usePermissionCatalog } from "@/features/security-authorization/shared/usePermissionCatalog";
-import { DOCUMENT_CONTROL_VIEW_ALL_CODES, missingViewAllCodes } from "../../shared/documentControlVisibility";
+import { DOCUMENT_CONTROL_VIEW_ALL_CODES, applyVisibilityChoice, type DocumentControlVisibilityChoice } from "../../shared/documentControlVisibility";
+import { RecordVisibilityForModule } from "../../shared/RecordVisibilityForModule";
+import { applyModuleVisibility, type ModuleVisibilityDef } from "../../shared/moduleVisibility";
 
 /**
  * Module-accurate permission matrix for a role. Shows the UNION of everything the
@@ -112,9 +114,6 @@ export const AccessProfilePermissionsTab: React.FC<{
     return missing;
   }, [viewCodes, selectedCodes]);
 
-  // The three view-all permissions make one bundle ("View everything"): holding only some of them lets a person see all of one kind and only their own of another.
-  const incompleteViewAll = useMemo(() => missingViewAllCodes(selectedCodes), [selectedCodes]);
-
   const handleToggle = (code: string, checked: boolean) => {
     if (lockedCodes.has(code)) return;
     setDirectCodes((prev) => {
@@ -145,6 +144,15 @@ export const AccessProfilePermissionsTab: React.FC<{
     });
   };
 
+  // The visibility picker writes the same direct permissions the explorer below ticks; shared-set permissions stay as they are.
+  const commitDirect = (next: Set<string>) => {
+    setDirectCodes(next);
+    const dirty = next.size !== originalDirect.size || [...next].some((c) => !originalDirect.has(c));
+    onManagedChange?.([...next], dirty);
+  };
+  const handleChooseVisibility = (choice: DocumentControlVisibilityChoice) => commitDirect(applyVisibilityChoice(directCodes, lockedCodes, choice));
+  const handleChooseModuleVisibility = (def: ModuleVisibilityDef, choice: string) => commitDirect(applyModuleVisibility(def, directCodes, lockedCodes, choice));
+
   if (loading) return <SectionLoading />;
 
   return (
@@ -164,17 +172,6 @@ export const AccessProfilePermissionsTab: React.FC<{
         <WarningBanner
           variant="warning"
           description={deniedReason || "You can review this Access Profile's permissions, but cannot change them."}
-        />
-      )}
-      {incompleteViewAll.length > 0 && (
-        <WarningBanner
-          variant="warning"
-          description={
-            <>
-              This profile grants only part of <b>View everything</b> in Document Control. Missing: {incompleteViewAll.join(", ")}.
-              Without them its people see everything of one kind and only what has their name for the others.
-            </>
-          }
         />
       )}
       {modulesMissingViewPermission.length > 0 && (
@@ -215,6 +212,17 @@ export const AccessProfilePermissionsTab: React.FC<{
         isLoading={catalogLoading}
         lockedCodes={lockedCodes}
         lockedNotes={lockedNotes}
+        moduleExtras={(moduleName) => (
+          <RecordVisibilityForModule
+            moduleName={moduleName}
+            selectedCodes={selectedCodes}
+            lockedCodes={lockedCodes}
+            lockedNotes={lockedNotes}
+            disabled={!canEdit}
+            onChooseDocumentControl={handleChooseVisibility}
+            onChooseModule={handleChooseModuleVisibility}
+          />
+        )}
       />
     </div>
   );

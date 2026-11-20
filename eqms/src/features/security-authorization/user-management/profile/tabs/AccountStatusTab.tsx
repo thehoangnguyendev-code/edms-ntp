@@ -2,6 +2,7 @@ import React from "react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Select } from "@/components/ui/select/Select";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
+import { FieldHint } from "@/components/ui/form/FieldHint";
 import { formatDate } from "@/utils/format";
 import { InfoField, FieldGroup } from "../components/ProfileSectionCard";
 import { AccountActionList } from "../components/AccountActionList";
@@ -72,19 +73,19 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
               value={status}
               onChange={(value) => onStatusChange(value as string)}
               options={statusOptions}
-              className="w-full sm:max-w-xs"
+              className="w-full"
             />
             {statusError && <p className="text-xs text-red-600 mt-1.5">{statusError}</p>}
           </div>
           <div>
             <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Home Page</label>
-            <p className="text-xs text-slate-500 mb-2">Where this user lands immediately after logging in.</p>
+            <p className="text-xs text-slate-500 mb-2">Where this user lands after signing in.</p>
             <Select
               label=""
               value={homePage || "DASHBOARD"}
               onChange={(value) => onHomePageChange(value as string)}
               options={HOME_PAGE_OPTIONS}
-              className="w-full sm:max-w-xs"
+              className="w-full"
             />
           </div>
         </FieldGroup>
@@ -138,13 +139,13 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
         {isEditingProfile && canEdit ? (
           <div className="md:col-span-2">
             <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Home Page</label>
-            <p className="text-xs text-slate-500 mb-2">Where this user lands immediately after logging in.</p>
+            <FieldHint className="mb-2">Where this user lands after signing in.</FieldHint>
             <Select
               label=""
               value={draft.homePage || "DASHBOARD"}
               onChange={(value) => onDraftChange("homePage", value as string)}
               options={HOME_PAGE_OPTIONS}
-              className="w-full sm:max-w-xs"
+              className="w-full md:w-1/2"
             />
           </div>
         ) : (

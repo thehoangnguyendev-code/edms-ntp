@@ -12,10 +12,8 @@ const RoleSetupWizardView = lazy(() => import('@/features/security-authorization
 const LifecyclePoliciesView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.LifecyclePoliciesView })));
 const AuthorizationDiagnosticsView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.AuthorizationDiagnosticsView })));
 const LifecyclePolicyFormView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.LifecyclePolicyFormView })));
+const TransitionPolicyDetailView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.TransitionPolicyDetailView })));
 const WorkflowPolicyDuplicateView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.WorkflowPolicyDuplicateView })));
-const WorkflowRolesView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.WorkflowRolesView })));
-const ObjectAccessRulesView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.ObjectAccessRulesView })));
-const ObjectAccessRuleFormView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.ObjectAccessRuleFormView })));
 const SegregationOfDutiesView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.SegregationOfDutiesView })));
 const SodViolationReviewView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.SodViolationReviewView })));
 const SodConstraintFormView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.SodConstraintFormView })));
@@ -45,7 +43,6 @@ export function securityRoutes() {
             "security.access_profiles.view",
             "security.permission_sets.view",
             "security.workflow_authorization.view",
-            "security.object_rules.view",
             "security.sod.view",
             "security.access_review.view",
           ]}
@@ -74,7 +71,7 @@ export function securityRoutes() {
         <Route path="policy-resolver" element={<PolicyResolverRedirect />} />
         <Route path="transitions" element={<Navigate to="/security/lifecycle-policies?tab=transitions" replace />} />
         <Route path="capabilities" element={<Navigate to="/security/lifecycle-policies?tab=capabilities" replace />} />
-        <Route path="roles" element={<Navigate to="/security/advanced/workflow-roles" replace />} />
+        <Route path="roles" element={<Navigate to="/security/lifecycle-policies?tab=roles" replace />} />
         <Route path="state-policies">
           <Route index element={<Navigate to="/security/lifecycle-policies?tab=capabilities" replace />} />
           <Route path="new" element={<SecurityGuard permission="security.workflow_authorization.manage"><Suspense fallback={<LoadingFallback />}><LifecyclePolicyFormView /></Suspense></SecurityGuard>} />
@@ -83,17 +80,16 @@ export function securityRoutes() {
         <Route path="new" element={<SecurityGuard permission="security.workflow_authorization.manage"><Suspense fallback={<LoadingFallback />}><LifecyclePolicyFormView /></Suspense></SecurityGuard>} />
         <Route path=":id/edit" element={<SecurityGuard permission="security.workflow_authorization.manage"><Suspense fallback={<LoadingFallback />}><LifecyclePolicyFormView /></Suspense></SecurityGuard>} />
         <Route path=":id/duplicate" element={<SecurityGuard permission="security.workflow_authorization.manage"><Suspense fallback={<LoadingFallback />}><WorkflowPolicyDuplicateView /></Suspense></SecurityGuard>} />
-        <Route path=":id" element={<Navigate to="/security/lifecycle-policies?tab=transitions" replace />} />
+        {/* Transition Policy Details: read-only, its own page (Edit is ":id/edit") */}
+        <Route path=":id" element={<SecurityGuard permission="security.workflow_authorization.view"><Suspense fallback={<LoadingFallback />}><TransitionPolicyDetailView /></Suspense></SecurityGuard>} />
       </Route>
       {/* Backward-compat redirect: old bookmarks/shared links to the pre-merge path */}
       <Route path="workflow-authorization/*" element={<Navigate to="/security/lifecycle-policies?tab=transitions" replace />} />
       <Route path="authorization-diagnostics" element={<SecurityGuard permission="security.workflow_authorization.view"><Suspense fallback={<LoadingFallback />}><AuthorizationDiagnosticsView /></Suspense></SecurityGuard>} />
-      <Route path="advanced/workflow-roles" element={<SecurityGuard permission="security.workflow_authorization.view"><Suspense fallback={<LoadingFallback />}><WorkflowRolesView /></Suspense></SecurityGuard>} />
-      <Route path="object-rules">
-        <Route index element={<SecurityGuard permission="security.object_rules.view"><Suspense fallback={<LoadingFallback />}><ObjectAccessRulesView /></Suspense></SecurityGuard>} />
-        <Route path="new" element={<SecurityGuard permission="security.object_rules.manage"><Suspense fallback={<LoadingFallback />}><ObjectAccessRuleFormView /></Suspense></SecurityGuard>} />
-        <Route path=":id/edit" element={<SecurityGuard permission="security.object_rules.manage"><Suspense fallback={<LoadingFallback />}><ObjectAccessRuleFormView /></Suspense></SecurityGuard>} />
-      </Route>
+      {/* the Workflow Role Catalog is a tab of Workflow Authorization now; old bookmarks keep working */}
+      <Route path="advanced/workflow-roles" element={<Navigate to="/security/lifecycle-policies?tab=roles" replace />} />
+      {/* the Object Access Rules were removed (VISIBILITY-TIERS-2026-11-20): who sees what is chosen on the Access Profile; an old bookmark goes to the profiles */}
+      <Route path="object-rules/*" element={<Navigate to="/security/access-profiles" replace />} />
       <Route path="sod">
         <Route index element={<SecurityGuard permission="security.sod.view"><Suspense fallback={<LoadingFallback />}><SegregationOfDutiesView /></Suspense></SecurityGuard>} />
         <Route path="new" element={<SecurityGuard permission="security.sod.manage"><Suspense fallback={<LoadingFallback />}><SodConstraintFormView /></Suspense></SecurityGuard>} />

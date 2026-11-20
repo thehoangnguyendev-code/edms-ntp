@@ -26,6 +26,8 @@ export interface WorkflowActionPolicyRelation {
   relationDisplayName: string;
   resolverCode: string;
   priority: number;
+  /** true: the actor must NOT hold this relation on the resource (a different person); false/absent: required */
+  forbidden?: boolean;
 }
 
 export interface WorkflowActionPolicy {
@@ -172,4 +174,3 @@ export interface WorkflowActionPolicyOptions {
   actorCodeOptions?: Record<string, ActorCodeOption[]>;
 }
 
-export type PolicyEditorMode = "create" | "edit" | "duplicate" | "override";

@@ -356,7 +356,7 @@ export const PermissionSetDetailView: React.FC = () => {
                 <TableMarkup.Root className="w-full min-w-[720px] text-sm">
                   <TableMarkup.Head className="sticky top-0 z-10 border-b-2 border-slate-200 bg-slate-50">
                     <TableMarkup.Row>
-                      {["No.", "Access Profile", "Business Unit", "Department", "Users", "Status"].map((h) => (
+                      {["No.", "Access Profile", "Users", "Status"].map((h) => (
                         <TableMarkup.HeaderCell key={h} className="whitespace-nowrap px-4 py-3 text-left text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
                           {h}
                         </TableMarkup.HeaderCell>
@@ -390,8 +390,6 @@ export const PermissionSetDetailView: React.FC = () => {
                             {profile.name}
                           </button>
                         </TableMarkup.Cell>
-                        <TableMarkup.Cell className="px-4 py-3 text-slate-700">{profile.businessUnitScope || "—"}</TableMarkup.Cell>
-                        <TableMarkup.Cell className="px-4 py-3 text-slate-700">{profile.departmentScope || "—"}</TableMarkup.Cell>
                         <TableMarkup.Cell className="px-4 py-3 text-slate-700">{profile.userCount}</TableMarkup.Cell>
                         <TableMarkup.Cell className="px-4 py-3">
                           <Badge color={flagColor(profile.active)} size="xs" >

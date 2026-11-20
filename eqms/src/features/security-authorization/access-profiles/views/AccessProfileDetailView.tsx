@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { ShieldCheck, Users, KeyRound, Building2, Factory } from "lucide-react";
+import { ShieldCheck, Users, KeyRound } from "lucide-react";
 import { IconArrowsShuffle } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -26,19 +26,16 @@ import { GeneralTab } from "./tabs/AccessProfileGeneralTab";
 import { PermissionSetsTab } from "./tabs/AccessProfilePermissionSetsTab";
 import { AccessProfilePermissionsTab } from "./tabs/AccessProfilePermissionsTab";
 import { WorkflowTab } from "./tabs/AccessProfileWorkflowTab";
-import { AccessProfileEffectiveAccessTab } from "./tabs/AccessProfileEffectiveAccessTab";
 import { AccessProfileAssignedUsersTab } from "./tabs/AccessProfileAssignedUsersTab";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
-import { parseScopeCount } from "./tabs/accessProfileDetailShared";
 import { DOCUMENT_CONTROL_VISIBILITY_COLOR, DOCUMENT_CONTROL_VISIBILITY_LABEL } from "../shared/documentControlVisibility";
 import { AccessProfilePermissionSetDrawer } from "./tabs/AccessProfilePermissionSetDrawer";
 import { accessProfileDetail as accessProfileDetailBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 
-type TabId = "general" | "permissions" | "permission-sets" | "workflow" | "effective-access" | "users" | "audit";
+type TabId = "general" | "permissions" | "permission-sets" | "workflow" | "users" | "audit";
 
 const TABS: TabItem[] = [
   { id: "general", label: "General" },
-  { id: "effective-access", label: "Effective Access" },
   { id: "users", label: "Assigned Users" },
   { id: "permissions", label: "Permissions" },
   { id: "permission-sets", label: "Shared Permission Sets (Advanced)" },
@@ -69,6 +66,8 @@ export const AccessProfileDetailView: React.FC = () => {
   const [assignedUserIds, setAssignedUserIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  // The name error shows only after a Save found it empty, and clears as soon as a name is typed.
+  const [submitted, setSubmitted] = useState(false);
   const [isEditing, setIsEditing] = useState(isEditRoute);
   const [deleteModal, setDeleteModal] = useState(false);
   const [drawerPs, setDrawerPs] = useState<PermissionSetSummary | null>(null);
@@ -86,8 +85,6 @@ export const AccessProfileDetailView: React.FC = () => {
   const [draft, setDraft] = useState({
     name: "",
     description: "",
-    businessUnitScope: "",
-    departmentScope: "",
     active: true,
   });
 
@@ -104,8 +101,6 @@ export const AccessProfileDetailView: React.FC = () => {
         setDraft({
           name: p.name,
           description: p.description ?? "",
-          businessUnitScope: p.businessUnitScope ?? "",
-          departmentScope: p.departmentScope ?? "",
           active: p.active,
         });
       })
@@ -125,8 +120,6 @@ export const AccessProfileDetailView: React.FC = () => {
   const generalDirty = profile
     ? draft.name !== profile.name
       || draft.description !== (profile.description ?? "")
-      || draft.businessUnitScope !== (profile.businessUnitScope ?? "")
-      || draft.departmentScope !== (profile.departmentScope ?? "")
       || draft.active !== profile.active
     : false;
   const assignmentsDirty = Object.values(changes).some((d) => d.added.length > 0 || d.removed.length > 0);
@@ -140,8 +133,6 @@ export const AccessProfileDetailView: React.FC = () => {
       setDraft({
         name: profile.name,
         description: profile.description ?? "",
-        businessUnitScope: profile.businessUnitScope ?? "",
-        departmentScope: profile.departmentScope ?? "",
         active: profile.active,
       });
     }
@@ -170,9 +161,11 @@ export const AccessProfileDetailView: React.FC = () => {
     return items;
   }, [changes, generalDirty, managedDirty, managedDraft, assignedUserIds]);
 
+  const nameError = submitted && !draft.name.trim() ? "Enter a name for this access profile." : "";
+
   const performSave = async () => {
     if (!draft.name.trim()) {
-      showToast({ type: "error", title: "Validation failed", message: "Name is required" });
+      setSubmitted(true);
       return;
     }
     const sig = await requestSignature("Update Access Profile", "Access Profile Change");
@@ -183,8 +176,6 @@ export const AccessProfileDetailView: React.FC = () => {
         name: draft.name.trim(),
         description: draft.description.trim() || null,
         active: draft.active,
-        businessUnitScope: draft.businessUnitScope.trim() || null,
-        departmentScope: draft.departmentScope.trim() || null,
       };
       // Compose the full desired state from current profile + tab diffs, and send it
       // as ONE aggregate request: one transaction, one signature, one audit event.
@@ -237,7 +228,10 @@ export const AccessProfileDetailView: React.FC = () => {
 
   const handleSave = () => {
     if (!draft.name.trim()) {
-      showToast({ type: "error", title: "Validation failed", message: "Name is required" });
+      setSubmitted(true);
+      // the name lives on the General tab: go there so the hint is in view
+      setActiveTab("general");
+      window.setTimeout(() => document.getElementById("profile-field-name")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
       return;
     }
     if (impactItems.length > 0) {
@@ -260,8 +254,6 @@ export const AccessProfileDetailView: React.FC = () => {
       setDraft({
         name: p.profile.name,
         description: p.profile.description ?? "",
-        businessUnitScope: p.profile.businessUnitScope ?? "",
-        departmentScope: p.profile.departmentScope ?? "",
         active: p.profile.active,
       });
       setChanges(EMPTY_CHANGES);
@@ -307,16 +299,15 @@ export const AccessProfileDetailView: React.FC = () => {
   const tabDeniedReason = (action: string) =>
     !isEditing ? undefined : reason(action);
 
-  const dashboardStats = useMemo(() => {
+  // Each figure is also the way to where it is managed: the tab that lists it.
+  const dashboardStats = useMemo<{ icon: React.ReactNode; value: number | "All"; label: string; tab: TabId }[]>(() => {
     if (!profile) return [];
     return [
-      { icon: <KeyRound className="h-4 w-4 text-emerald-600" />, value: profile.permissionSets.length, label: "Permission Sets" },
-      { icon: <IconArrowsShuffle className="h-4 w-4 text-emerald-600" />, value: profile.workflowRoles.length, label: "Workflow Eligibility" },
-      { icon: <Users className="h-4 w-4 text-emerald-600" />, value: assignedUserIds.length, label: "Assigned Users" },
-      { icon: <Building2 className="h-4 w-4 text-emerald-600" />, value: parseScopeCount(profile.businessUnitScope), label: "Business Units" },
-      { icon: <Factory className="h-4 w-4 text-emerald-600" />, value: parseScopeCount(profile.departmentScope), label: "Departments" },
+      { icon: <KeyRound className="h-4 w-4" />, value: profile.permissionSets.filter((set) => set.code !== `ROLE_${profile.code}`).length, label: "Permission Sets", tab: "permission-sets" },
+      { icon: <IconArrowsShuffle className="h-4 w-4" />, value: profile.workflowRoles.length, label: "Workflow Eligibility", tab: "workflow" },
+      { icon: <Users className="h-4 w-4" />, value: assignedUserIds.length, label: "Assigned Users", tab: "users" },
     ];
-  }, [profile]);
+  }, [profile, assignedUserIds.length]);
 
   if (loading) return <FullPageLoading text="Loading…" />;
 
@@ -393,44 +384,50 @@ export const AccessProfileDetailView: React.FC = () => {
       />
 
       {profile && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-5 bg-gradient-to-r from-emerald-50 via-white to-slate-50">
-            <div className="flex flex-col lg:flex-row lg:items-start gap-4">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
-                <div className="min-w-0 space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg font-semibold text-slate-900 truncate">{profile.name}</h2>
-                    <Badge color={profile.type === "SYSTEM" ? "blue" : "teal"} size="sm">
-                      {profile.type === "SYSTEM" ? "System" : "Custom"}
-                    </Badge>
-                    <Badge color={flagColor(profile.active)} size="sm" >
-                      {profile.active ? "Active" : "Inactive"}
-                    </Badge>
-                    {profile.documentControlVisibility ? (
-                      <Badge color={DOCUMENT_CONTROL_VISIBILITY_COLOR[profile.documentControlVisibility]} size="sm">
-                        {`Document Control: ${DOCUMENT_CONTROL_VISIBILITY_LABEL[profile.documentControlVisibility]}`}
-                      </Badge>
-                    ) : null}
-                  </div>
-                </div>
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" aria-label="Access Profile summary">
+          <div className="flex items-start gap-3 p-4 md:gap-4 md:p-5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600" aria-hidden="true">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+                <h2 className="min-w-0 break-words text-lg font-semibold leading-tight text-slate-900 md:text-xl">{profile.name}</h2>
+                <Badge color={profile.type === "SYSTEM" ? "blue" : "teal"} size="sm">
+                  {profile.type === "SYSTEM" ? "System" : "Custom"}
+                </Badge>
+                <Badge color={flagColor(profile.active)} size="sm">
+                  {profile.active ? "Active" : "Inactive"}
+                </Badge>
+                {profile.documentControlVisibility ? (
+                  <Badge color={DOCUMENT_CONTROL_VISIBILITY_COLOR[profile.documentControlVisibility]} size="sm">
+                    {`Document Control: ${DOCUMENT_CONTROL_VISIBILITY_LABEL[profile.documentControlVisibility]}`}
+                  </Badge>
+                ) : null}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 w-full lg:w-auto">
-                {dashboardStats.map(({ icon, value, label }) => (
-                  <div
-                    key={label}
-                    className="min-w-[112px] rounded-xl border border-slate-200 bg-white/90 px-3 py-2.5 flex flex-col items-center shadow-sm"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      {icon}
-                      <span className="text-base font-bold text-slate-800">{value}</span>
-                    </div>
-                    <span className="text-2xs text-slate-500 mt-0.5 whitespace-nowrap">{label}</span>
-                  </div>
-                ))}
-              </div>
+              {profile.code && <p className="mt-1 font-mono text-xs text-slate-500">{profile.code}</p>}
+              {profile.description && <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-relaxed text-slate-600">{profile.description}</p>}
             </div>
           </div>
-        </div>
+          <div className="grid grid-cols-2 gap-px border-t border-slate-200 bg-slate-200 lg:grid-cols-3">
+            {dashboardStats.map(({ icon, value, label, tab }, index) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                title={`Open ${TABS.find((item) => item.id === tab)?.label ?? label}`}
+                className={`group flex items-center gap-3 bg-white px-4 py-3 text-left${index === dashboardStats.length - 1 && dashboardStats.length % 2 === 1 ? " col-span-2 lg:col-span-1" : ""} transition-colors hover:bg-slate-50 focus:outline-none focus-visible:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500`}
+              >
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${value === 0 ? "bg-slate-100 text-slate-400" : "bg-emerald-50 text-emerald-600"}`}>
+                  {icon}
+                </span>
+                <span className="min-w-0">
+                  <span className={`block text-xl font-semibold leading-none tabular-nums ${value === 0 ? "text-slate-400" : "text-slate-900"}`}>{value}</span>
+                  <span className="mt-1 block text-xs leading-tight text-slate-500">{label}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
       )}
 
       {isEditing && profile?.system && (
@@ -455,7 +452,7 @@ export const AccessProfileDetailView: React.FC = () => {
         />
         <div className="p-4 md:p-5">
           {activeTab === "general" && profile && (
-            <GeneralTab profile={profile} isEditing={isEditing} draft={draft} onChange={updateDraft} />
+            <GeneralTab profile={profile} isEditing={isEditing} draft={draft} onChange={updateDraft} nameError={nameError} />
           )}
           {activeTab === "permissions" && id && profile && (
             <AccessProfilePermissionsTab
@@ -485,9 +482,6 @@ export const AccessProfileDetailView: React.FC = () => {
               deniedReason={tabDeniedReason("assignWorkflowRoles")}
               onChangesChange={(diff) => handleTabChanges("workflowRoles", diff)}
             />
-          )}
-          {activeTab === "effective-access" && profile && (
-            <AccessProfileEffectiveAccessTab profile={profile} isEditing={isEditing} />
           )}
           {activeTab === "users" && id && (
             <AccessProfileAssignedUsersTab

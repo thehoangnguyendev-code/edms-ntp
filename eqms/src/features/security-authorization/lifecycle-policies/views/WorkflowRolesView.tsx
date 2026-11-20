@@ -5,7 +5,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Check, ChevronDown, ChevronUp, LockKeyhole, MoreVertical, Plus, Search, Shield, X } from "lucide-react";
 import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
-import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { flagColor } from "@/utils/status";
@@ -25,13 +24,13 @@ import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { cn } from "@/components/ui/utils";
 import { useToast } from "@/components/ui/toast/Toast";
 import { api } from "@/services/api/client";
-import { workflowRoleCatalog as workflowRoleCatalogBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce, usePortalDropdown, useTableDragScroll } from "@/hooks";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { moduleDisplayName } from "@/utils/moduleDisplay";
 
 interface WorkflowRoleCatalogEntry {
   id: string;
@@ -79,6 +78,16 @@ const emptyForm: WorkflowRoleFormState = {
   isSystem: false,
 };
 
+/** The one vocabulary of modules (the server refuses any other): what a free text used to allow had three spellings of Document Control. */
+const WORKFLOW_ROLE_MODULES: SelectOption[] = [
+  { label: moduleDisplayName("documents"), value: "documents" },
+  { label: moduleDisplayName("training"), value: "training" },
+  { label: moduleDisplayName("reports"), value: "reports" },
+  { label: moduleDisplayName("backup"), value: "backup" },
+  { label: moduleDisplayName("security"), value: "security" },
+  { label: moduleDisplayName("audit-trail"), value: "audit-trail" },
+];
+
 const typeOptions: SelectOption[] = [
   { label: "All", value: "ALL" },
   { label: "System", value: "SYSTEM" },
@@ -91,7 +100,12 @@ const statusOptions: SelectOption[] = [
 ];
 
 /** Advanced, database-backed catalog of workflow participant types. */
-export const WorkflowRolesView: React.FC = () => {
+export interface WorkflowRolesViewHandle {
+  /** Opens the form of a new custom role (the button lives in the page header of Workflow Authorization, where this view is the Workflow Roles tab). */
+  openNew: () => void;
+}
+
+export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_props, ref) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
@@ -151,6 +165,9 @@ export const WorkflowRolesView: React.FC = () => {
   useEffect(() => {
     if (search !== debouncedSearch) return;
     const params = new URLSearchParams();
+    // this list is a tab of Workflow Authorization: the tab named in the address must survive the list's own parameters
+    const tab = searchParams.get("tab");
+    if (tab) params.set("tab", tab);
     if (search) params.set("search", search);
     if (moduleFilter !== "ALL") params.set("module", moduleFilter);
     if (typeFilter !== "ALL") params.set("type", typeFilter);
@@ -168,7 +185,7 @@ export const WorkflowRolesView: React.FC = () => {
 
   const moduleOptions: SelectOption[] = [
     { label: "All", value: "ALL" },
-    ...modules.map((module) => ({ label: module, value: module })),
+    ...modules.map((module) => ({ label: moduleDisplayName(module), value: module })),
   ];
   const selectedRole = openId
     ? (roles.find((role) => role.id === openId) ?? null)
@@ -376,7 +393,7 @@ export const WorkflowRolesView: React.FC = () => {
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-16", cell: (_role, index) => (pagination.page - 1) * pagination.limit + index + 1 },
     { id: "code", header: "Role Code", label: "Role Code", sort: { direction: sort.field === "code" ? sort.direction : undefined, onSort: () => toggleSort("code") }, cellClassName: "font-medium", cell: (role) => role.code },
     { id: "label", header: "Workflow Role", label: "Workflow Role", sort: { direction: sort.field === "label" ? sort.direction : undefined, onSort: () => toggleSort("label") }, cellClassName: "font-medium text-slate-900", cell: (role) => role.label },
-    { id: "moduleKey", header: "Module", label: "Module", sort: { direction: sort.field === "moduleKey" ? sort.direction : undefined, onSort: () => toggleSort("moduleKey") }, cell: (role) => role.moduleKey },
+    { id: "moduleKey", header: "Module", label: "Module", sort: { direction: sort.field === "moduleKey" ? sort.direction : undefined, onSort: () => toggleSort("moduleKey") }, cell: (role) => moduleDisplayName(role.moduleKey) },
     {
       id: "description",
       header: "Description",
@@ -415,27 +432,12 @@ export const WorkflowRolesView: React.FC = () => {
   };
   const { layout: roleLayout, control: roleControl } = useCustomColumnLayout("workflow-authorization.workflow-roles", roleColumns, roleAction);
 
-  return (
-    <div className="flex w-full flex-1 flex-col space-y-6">
-      <PageHeader
-        title="Workflow Role Catalog"
-        breadcrumbItems={workflowRoleCatalogBreadcrumb(navigate)}
-        actions={
-          canManage ? (
-            <Button
-              variant="default"
-              size="sm"
-              className="whitespace-nowrap gap-2"
-              onClick={() => setForm({ ...emptyForm })}
-            >
-              <Plus className="h-4 w-4" /> New Custom Role
-            </Button>
-          ) : undefined
-        }
-      />
+  React.useImperativeHandle(ref, () => ({ openNew: () => setForm({ ...emptyForm }) }), []);
 
-      <div className="flex w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-1 flex-col p-4 md:p-5">
+  return (
+    <div className="flex w-full flex-1 flex-col">
+      <div className="flex w-full flex-col">
+        <div className="flex flex-1 flex-col">
           <div className="flex w-full flex-col">
             <div className="mb-4 flex w-full flex-col gap-1.5 md:hidden">
               <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">
@@ -770,7 +772,8 @@ export const WorkflowRolesView: React.FC = () => {
       {signatureModal}
     </div>
   );
-};
+});
+WorkflowRolesView.displayName = "WorkflowRolesView";
 
 const MobileFilter: React.FC<{
   label: string;
@@ -922,15 +925,13 @@ const WorkflowRoleForm: React.FC<{
       />
     </FormField>
     <FormField label="Module" required>
-      <input
-        type="text"
+      <Select
         value={form.moduleKey}
         disabled={form.isSystem}
-        onChange={(event) =>
-          setForm({ ...form, moduleKey: event.target.value })
-        }
-        placeholder="document-control"
-        className={inputClass}
+        onChange={(value) => setForm({ ...form, moduleKey: String(value) })}
+        options={WORKFLOW_ROLE_MODULES}
+        enableSearch={false}
+        placeholder="Select module..."
       />
     </FormField>
     <FormField label="Description">

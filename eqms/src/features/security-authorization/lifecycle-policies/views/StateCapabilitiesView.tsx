@@ -309,6 +309,8 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
         State policies control who can <b>view, preview, or download</b> a revision at each lifecycle status —
         separate from workflow action policies which control transitions (submit/review/approve).
         System policies enforce strict participant visibility and can be deactivated but not deleted.
+        <b> Document Control only:</b> these rules apply to revisions. Training, Reports and the other modules have no state capabilities —
+        who can act there is set in Transition Policies and who sees records on the Access Profile.
       </div>
 
       <div className="w-full overflow-hidden flex flex-col">

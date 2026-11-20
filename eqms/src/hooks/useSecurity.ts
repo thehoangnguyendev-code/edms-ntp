@@ -5,7 +5,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { auditLog, SessionManager } from '@/utils/security';
+import { clientDiagnostics, SessionManager } from '@/utils/security';
 
 /**
  * Hook to monitor session timeout
@@ -24,12 +24,12 @@ export const useSessionMonitor = (
       timeoutMinutes,
       warningMinutes,
       () => {
-        auditLog.log('session_timeout');
+        clientDiagnostics.log('session_timeout');
         logout();
       },
       () => {
         setShowWarning(true);
-        auditLog.log('session_warning');
+        clientDiagnostics.log('session_warning');
       }
     );
 
@@ -53,7 +53,7 @@ export const useSessionMonitor = (
     sessionManager.current?.reset();
     setShowWarning(false);
     setRemainingTime(timeoutMinutes * 60);
-    auditLog.log('session_extended');
+    clientDiagnostics.log('session_extended');
   }, [timeoutMinutes]);
 
   return {
@@ -79,7 +79,7 @@ export const useSuspiciousActivityDetector = () => {
     if (attempts >= 3) {
       const alert = `Suspicious activity detected: ${activity}`;
       setAlerts((prev) => [...prev, alert]);
-      auditLog.log('suspicious_activity', { activity, attempts, details });
+      clientDiagnostics.log('suspicious_activity', { activity, attempts, details });
     }
   }, []);
 
@@ -107,7 +107,7 @@ export const useNetworkSecurityMonitor = () => {
     if (window.location.protocol !== 'https:' && import.meta.env.PROD) {
       setIsSecure(false);
       setWarnings((prev) => [...prev, 'Connection is not secure (HTTPS required)']);
-      auditLog.log('insecure_connection');
+      clientDiagnostics.log('insecure_connection');
     }
 
     // Check for mixed content
@@ -115,7 +115,7 @@ export const useNetworkSecurityMonitor = () => {
       for (const entry of list.getEntries()) {
         if (entry.name.startsWith('http:') && window.location.protocol === 'https:') {
           setWarnings((prev) => [...prev, 'Mixed content detected']);
-          auditLog.log('mixed_content_detected', { resource: entry.name });
+          clientDiagnostics.log('mixed_content_detected', { resource: entry.name });
         }
       }
     });
@@ -140,7 +140,7 @@ export const useCSPMonitor = () => {
   useEffect(() => {
     const handleViolation = (e: SecurityPolicyViolationEvent) => {
       setViolations((prev) => [...prev, e]);
-      auditLog.log('csp_violation', {
+      clientDiagnostics.log('csp_violation', {
         blockedURI: e.blockedURI,
         violatedDirective: e.violatedDirective,
         sourceFile: e.sourceFile,
@@ -174,7 +174,7 @@ export const useDevToolsDetector = () => {
 
       if (widthThreshold || heightThreshold) {
         setDevToolsOpen(true);
-        auditLog.log('devtools_detected');
+        clientDiagnostics.log('devtools_detected');
       } else {
         setDevToolsOpen(false);
       }
@@ -214,7 +214,7 @@ export const useClipboardSecurity = () => {
 
     const preventCopy = (e: ClipboardEvent) => {
       e.preventDefault();
-      auditLog.log('copy_prevented', { elementId });
+      clientDiagnostics.log('copy_prevented', { elementId });
     };
 
     element.addEventListener('copy', preventCopy);
@@ -246,7 +246,7 @@ export const useLoginAttemptMonitor = () => {
       setIsLocked(true);
       const unlockTime = new Date(Date.now() + LOCKOUT_DURATION);
       setLockoutTime(unlockTime);
-      auditLog.log('account_locked', {
+      clientDiagnostics.log('account_locked', {
         attempts: newCount,
         unlockTime: unlockTime.toISOString(),
       });
@@ -256,10 +256,10 @@ export const useLoginAttemptMonitor = () => {
         setIsLocked(false);
         setFailedAttempts(0);
         setLockoutTime(null);
-        auditLog.log('account_unlocked');
+        clientDiagnostics.log('account_unlocked');
       }, LOCKOUT_DURATION);
     } else {
-      auditLog.log('failed_login_attempt', { attempts: newCount });
+      clientDiagnostics.log('failed_login_attempt', { attempts: newCount });
     }
   }, [failedAttempts]);
 
@@ -300,7 +300,7 @@ export const usePermissionGuard = (requiredPermissions: string[]) => {
     setHasAccess(hasAllPermissions);
 
     if (!hasAllPermissions) {
-      auditLog.log('permission_denied', {
+      clientDiagnostics.log('permission_denied', {
         userId: user.id,
         required: requiredPermissions,
         actual: userPermissions,
@@ -341,7 +341,7 @@ export const useSingleSessionEnforcement = () => {
     channel.onmessage = (e) => {
       if (e.data.type === 'ping' && e.data.sessionId !== sessionId) {
         setMultipleSessionsDetected(true);
-        auditLog.log('multiple_sessions_detected');
+        clientDiagnostics.log('multiple_sessions_detected');
       }
     };
 

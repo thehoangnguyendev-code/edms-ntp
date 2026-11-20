@@ -13,7 +13,7 @@ import { config } from "@/config";
 import { secureStorage, safeRandomUUID } from "@/utils/security";
 import { authTokenStore } from "@/services/authTokenStore";
 import { ROUTES } from "@/app/routes.constants";
-import { dispatchRouteRedirect, dispatchSessionEnded } from "@/app/navigation/routeRedirect";
+import { dispatchRouteRedirect, dispatchSessionEnded, dispatchSessionReplaced } from "@/app/navigation/routeRedirect";
 
 const API_BASE_URL = config.api.baseURL;
 const SESSION_LOCKED_EVENT = "eqms:session-locked";
@@ -403,6 +403,13 @@ apiClient.interceptors.response.use(
             requestUrl.includes("/auth/mfa/verify") ||
             requestUrl.includes("/auth/mfa/send-email-otp");
 
+          // The same account signed in on another device and this session was ended. Do not refresh or redirect:
+          // a modal tells the person, then signs this browser out.
+          if (responseCode === "SESSION_REVOKED_CONCURRENT_LIMIT") {
+            dispatchSessionReplaced();
+            return Promise.reject(error);
+          }
+
           if (responseCode === "PASSWORD_EXPIRED") {
             dispatchRouteRedirect(ROUTES.FORCE_PASSWORD_CHANGE, true);
             return Promise.reject(error);
@@ -433,8 +440,14 @@ apiClient.interceptors.response.use(
             try {
               await runTokenRefresh();
               return apiClient.request(originalRequest);
-            } catch {
-              // Continue to login redirect below.
+            } catch (refreshError) {
+              // The refresh was refused because the same account signed in on another device: say so instead of a silent redirect.
+              const refreshData = (refreshError as AxiosError)?.response?.data;
+              if (getResponseErrorCode(refreshData) === "SESSION_REVOKED_CONCURRENT_LIMIT") {
+                dispatchSessionReplaced();
+                return Promise.reject(error);
+              }
+              // Otherwise continue to the login redirect below.
             }
           }
 

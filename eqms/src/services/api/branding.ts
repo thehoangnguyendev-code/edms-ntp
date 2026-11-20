@@ -50,6 +50,8 @@ export interface PublicBranding {
   trainingMaterialsLayout?: 'TABLE' | 'TILES';
   /** How the Audit Trail tab of a record is drawn (the Audit Trail module itself is always a table), and the look of the timeline. */
   auditTabView?: 'TABLE' | 'TIMELINE';
+  /** How the Notifications page is drawn: TABS (priority tabs) or TIMELINE; TABS when the administrator set nothing. */
+  notificationInboxLayout?: 'TABS' | 'TIMELINE';
   auditTabTimelineStyle?: 'RAIL' | 'CENTER' | 'COMPACT' | 'SCROLL_LIT';
   /** How the folders of the Knowledge Base are named: FULL (the name, default) or ABBREVIATION. Chosen by the administrator. */
   knowledgeFolderNames?: 'FULL' | 'ABBREVIATION';

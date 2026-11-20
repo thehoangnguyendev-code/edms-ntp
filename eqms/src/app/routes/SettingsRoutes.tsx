@@ -16,6 +16,7 @@ const AddUserView = lazy(() => import('@/features/settings').then(m => ({ defaul
 const UserProfileView = lazy(() => import('@/features/settings').then(m => ({ default: m.UserProfileView })));
 const LoggedInUsersView = lazy(() => import('@/features/settings').then(m => ({ default: m.LoggedInUsersView })));
 const AccessExplorerView = lazy(() => import('@/features/settings').then(m => ({ default: m.AccessExplorerView })));
+const AccessExplorerDetailView = lazy(() => import('@/features/settings').then(m => ({ default: m.AccessExplorerDetailView })));
 const TimeLimitedUserListView = lazy(() => import('@/features/settings').then(m => ({ default: m.TimeLimitedUserListView })));
 const TimeLimitedUserCreateView = lazy(() => import('@/features/settings').then(m => ({ default: m.TimeLimitedUserCreateView })));
 const TimeLimitedUserDetailView = lazy(() => import('@/features/settings').then(m => ({ default: m.TimeLimitedUserDetailView })));
@@ -128,6 +129,7 @@ export function settingsRoutes(navigate: NavigateFunction) {
           <Route path="add" element={<ProtectedRoute requiredPermissions={["settings.user.create"]}><Suspense fallback={<LoadingFallback />}><AddUserView /></Suspense></ProtectedRoute>} />
           <Route path="profile/:userId" element={<ProtectedRoute requiredPermissions={["settings.user.view"]}><Suspense fallback={<LoadingFallback />}><UserProfileView /></Suspense></ProtectedRoute>} />
           <Route path="access-explorer" element={<ProtectedRoute requiredPermissions={["settings.user.view"]}><Suspense fallback={<LoadingFallback />}><AccessExplorerView /></Suspense></ProtectedRoute>} />
+          <Route path="access-explorer/:code" element={<ProtectedRoute requiredPermissions={["settings.user.view"]}><Suspense fallback={<LoadingFallback />}><AccessExplorerDetailView /></Suspense></ProtectedRoute>} />
           <Route path="logged-in" element={<ProtectedRoute requiredPermissions={["settings.user.view"]}><Suspense fallback={<LoadingFallback />}><LoggedInUsersView /></Suspense></ProtectedRoute>} />
           <Route path="time-limited">
             <Route index element={<ProtectedRoute requiredPermissions={["settings.user.view"]}><Suspense fallback={<LoadingFallback />}><TimeLimitedUserListView /></Suspense></ProtectedRoute>} />

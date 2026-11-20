@@ -1,11 +1,12 @@
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Check, ChevronDown, ChevronUp, MoreVertical, Search, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, ClipboardCheck, MoreVertical, Search, X } from "lucide-react";
 import { IconFilter2 } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { FormSection } from "@/components/ui/form/FormSection";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -631,46 +632,72 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
         }
       />
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
-        <div className="p-4 md:p-5">
-          <div className="flex flex-wrap items-center gap-3">
+      <FormSection
+        title={campaign.name}
+        icon={<ClipboardCheck className="h-4 w-4" />}
+        headerRight={<Badge color={statusBadge(campaign.status)} size="sm">{campaign.statusLabel}</Badge>}
+        contentClassName="space-y-4 p-4 md:p-5"
+      >
+        {(campaign.campaignNumber || campaign.description) && (
+          <div className="space-y-2">
             {campaign.campaignNumber && (
-              <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700" title="Access Review Campaign Number">
+              <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700" title="Access Review Campaign Number">
                 {campaign.campaignNumber}
               </span>
             )}
-            <h2 className="text-base md:text-lg font-semibold text-slate-800">{campaign.name}</h2>
-            <Badge color={statusBadge(campaign.status)} size="sm">{campaign.statusLabel}</Badge>
+            {campaign.description && <p className="text-sm text-slate-600">{campaign.description}</p>}
           </div>
-          {campaign.description && (
-            <p className="mt-1 text-xs sm:text-sm text-slate-500">{campaign.description}</p>
-          )}
-          <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-3 lg:grid-cols-4">
-            {[
-              { label: "Total Users", value: campaign.totalItems },
-              {
-                label: "Pending",
-                value: (
-                  <span className={campaign.pendingItems > 0 ? "text-amber-600" : "text-emerald-600"}>
-                    {campaign.pendingItems}
-                  </span>
-                ),
-              },
-              { label: "Review Period Start", value: campaign.reviewPeriodStart ? formatDateUS(campaign.reviewPeriodStart) : "—" },
-              { label: "Review Period End", value: campaign.reviewPeriodEnd ? formatDateUS(campaign.reviewPeriodEnd) : "—" },
-              { label: "Reviewer", value: campaign.reviewerName ?? "—" },
-              { label: "Created", value: campaign.createdAt ? formatDateTime(campaign.createdAt) : "—" },
-              { label: "Last Updated", value: campaign.updatedAt ? formatDateTime(campaign.updatedAt) : "—" },
-              { label: "Signed", value: campaign.signedAt ? formatDateTime(campaign.signedAt) : "—" },
-            ].map((field) => (
-              <div key={field.label} className="min-w-0">
-                <dt className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">{field.label}</dt>
-                <dd className="text-xs sm:text-sm font-semibold text-slate-900 break-words">{field.value}</dd>
+        )}
+
+        {(() => {
+          const reviewed = Math.max(0, campaign.totalItems - campaign.pendingItems);
+          const percent = campaign.totalItems > 0 ? Math.round((reviewed / campaign.totalItems) * 100) : 0;
+          return (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+                <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+                  <p className="text-xl sm:text-2xl font-semibold text-slate-900">{campaign.totalItems}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">Total Users</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+                  <p className="text-xl sm:text-2xl font-semibold text-emerald-700">{reviewed}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">Reviewed</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+                  <p className={cn("text-xl sm:text-2xl font-semibold", campaign.pendingItems > 0 ? "text-amber-600" : "text-emerald-700")}>{campaign.pendingItems}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">Pending</p>
+                </div>
               </div>
-            ))}
-          </dl>
-        </div>
-      </div>
+              <div>
+                <div className="h-2 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label="Review progress">
+                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${percent}%` }} />
+                </div>
+                <p className="mt-1.5 text-xs text-slate-500">{percent}% reviewed</p>
+              </div>
+            </div>
+          );
+        })()}
+
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 border-t border-slate-100 pt-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            { label: "Reviewer", value: campaign.reviewerName ?? "—" },
+            {
+              label: "Review Period",
+              value: campaign.reviewPeriodStart || campaign.reviewPeriodEnd
+                ? `${campaign.reviewPeriodStart ? formatDateUS(campaign.reviewPeriodStart) : "—"} – ${campaign.reviewPeriodEnd ? formatDateUS(campaign.reviewPeriodEnd) : "—"}`
+                : "—",
+            },
+            { label: "Signed", value: campaign.signedAt ? formatDateTime(campaign.signedAt) : "—" },
+            { label: "Created", value: campaign.createdAt ? formatDateTime(campaign.createdAt) : "—" },
+            { label: "Last Updated", value: campaign.updatedAt ? formatDateTime(campaign.updatedAt) : "—" },
+          ].map((field) => (
+            <div key={field.label} className="min-w-0">
+              <dt className="text-xs text-slate-500">{field.label}</dt>
+              <dd className="mt-0.5 break-words text-sm font-medium text-slate-900">{field.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </FormSection>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
         <div className="p-4 md:p-5 flex-1 flex flex-col">

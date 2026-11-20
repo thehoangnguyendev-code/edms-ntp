@@ -30,11 +30,6 @@ export const workflowActionPolicyApi = {
     return response.data;
   },
 
-  getSystemDefaults: async (): Promise<WorkflowActionPolicy[]> => {
-    const response = await api.get<WorkflowActionPolicy[]>('/security/workflow-action-policies/defaults/document-revision');
-    return response.data;
-  },
-
   createPolicy: async (payload: WorkflowActionPolicyCreateRequest): Promise<WorkflowActionPolicy> => {
     const response = await api.post<WorkflowActionPolicy>('/security/workflow-action-policies', payload);
     return response.data;
@@ -111,6 +106,50 @@ export const workflowActionPolicyApi = {
     sig?: { signatureToken?: string; reason?: string },
   ): Promise<WorkflowActionPolicy> => {
     const response = await api.put<WorkflowActionPolicy>(`/authorization/workflow-policies/${id}/relations`, { ...payload, ...sig });
+    return response.data;
+  },
+
+  /** The relations the policy forbids (a different person); the required ones are set by setPolicyRelations. */
+  setForbiddenRelations: async (
+    id: string,
+    payload: { relationDefinitionIds: string[] },
+    sig?: { signatureToken?: string; reason?: string },
+  ): Promise<WorkflowActionPolicy> => {
+    const response = await api.put<WorkflowActionPolicy>(`/authorization/workflow-policies/${id}/forbidden-relations`, { ...payload, ...sig });
+    return response.data;
+  },
+};
+
+/** One "a different person" rule that an administrator can switch on or off (ON while its policy carries an active forbidden relation). */
+export interface SeparationRule {
+  id: string;
+  moduleKey: string;
+  moduleLabel: string;
+  workflowKey: string;
+  workflowLabel: string;
+  objectType: string;
+  actionCode: string;
+  actionLabel: string;
+  fromStatus: string;
+  fromStatusLabel: string | null;
+  relationCode: string;
+  relationLabel: string;
+  description: string | null;
+  enabled: boolean;
+  policyId: string;
+  policyActive: boolean;
+}
+
+export const separationRulesApi = {
+  /** Filtered on the server: free text, one module, ON or OFF. */
+  list: async (params: { search?: string; moduleKey?: string; state?: "ON" | "OFF" } = {}): Promise<SeparationRule[]> => {
+    const response = await api.get<SeparationRule[]>('/authorization/separation-rules', { params });
+    return response.data;
+  },
+
+  /** Saves the ticks of a screen under ONE signature (a signature can be used only once); signed and audited by the server. */
+  setMany: async (changes: { id: string; enabled: boolean }[], sig: { reason: string; signatureToken: string }): Promise<SeparationRule[]> => {
+    const response = await api.put<SeparationRule[]>('/authorization/separation-rules', { changes, ...sig });
     return response.data;
   },
 };

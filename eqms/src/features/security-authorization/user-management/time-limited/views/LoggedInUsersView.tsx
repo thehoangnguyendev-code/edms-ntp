@@ -81,6 +81,10 @@ export const LoggedInUsersView: React.FC = () => {
     fetcher: settingsApi.getLoggedInSessions,
     defaultSortBy: "lastActivityAt",
     defaultSortDirection: "desc",
+    // The server announces a session that starts, ends or locks (only to people who may open this screen); the rows refresh in place.
+    liveTypes: ["USER_SESSION"],
+    // "Online" turns off by the clock after minutes of silence and is never announced, so the rows are also read again every minute while the tab is open.
+    refreshIntervalMs: 60_000,
     extraParams: {
       lastLoginFrom: lastLoginFrom || undefined,
       lastLoginTo: lastLoginTo || undefined,

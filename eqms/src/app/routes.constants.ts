@@ -163,7 +163,6 @@ export const ROUTES = {
   // Backup & Restore
   BACKUP_RESTORE: {
     BASE: '/backup-restore',
-    OVERVIEW: '/backup-restore/overview',
     BACKUPS: '/backup-restore/backups',
     BACKUP_DETAIL: (backupNumber: string) => `/backup-restore/backups/${encodeURIComponent(backupNumber)}`,
     BACKUP_SCHEDULES: '/backup-restore/backups/schedules',
@@ -245,16 +244,16 @@ export const ROUTES = {
     TIME_LIMITED_USERS_EDIT: (id: string) => `/settings/users/time-limited/${id}/edit`,
     LOGGED_IN_USERS: '/settings/users/logged-in',
     ACCESS_EXPLORER: '/settings/users/access-explorer',
+    ACCESS_EXPLORER_DETAIL: (code: string) => `/settings/users/access-explorer/${encodeURIComponent(code)}`,
     ACCESS_PROFILES: '/security/access-profiles',
     ESIGN_POLICIES: '/settings/electronic-signature',
     OBJECT_NUMBERING: '/settings/object-numbering',
     // New pages
     PERMISSION_SETS: '/security/permission-sets',
-    WORKFLOW_ROLE_CATALOG: '/security/advanced/workflow-roles',
+    WORKFLOW_ROLE_CATALOG: '/security/lifecycle-policies?tab=roles',
     WORKFLOW_AUTHORIZATION: '/security/lifecycle-policies',
     POLICY_RESOLVER: '/security/authorization-diagnostics?tab=resolver',
     AUTHORIZATION_DIAGNOSTICS: '/security/authorization-diagnostics',
-    OBJECT_RULES: '/security/object-rules',
     SOD: '/security/sod',
     SOD_VIOLATION_REVIEW: '/security/sod-violation-review',
     ACCESS_REVIEW: '/security/access-review',

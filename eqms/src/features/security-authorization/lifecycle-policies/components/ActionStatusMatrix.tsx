@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
@@ -20,6 +20,7 @@ import type { WorkflowActionPolicy } from "../types";
 
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { moduleDisplayName } from "@/utils/moduleDisplay";
 /**
  * Canonical lifecycle order per object type. Keys must match the raw
  * workflow_action_policies.object_type values (REVISION, CONTROLLED_COPY, …)
@@ -36,13 +37,46 @@ const STATUS_ORDER: Record<string, string[]> = {
     "READY_FOR_PUBLISHING", "EFFECTIVE", "OBSOLETED", "CLOSED_CANCELLED",
   ],
   CONTROLLED_COPY: ["READY_FOR_DISTRIBUTION", "DISTRIBUTED", "OBSOLETED", "CLOSED_CANCELLED"],
+  // Report template review: the only state from which an action starts is Pending Approval
+  REPORT_TEMPLATE: ["DRAFT", "PENDING_APPROVAL", "EFFECTIVE", "OBSOLETE", "DISCARDED"],
+  TRAINING_REQUIREMENT: ["DRAFT", "PENDING_REVIEW", "PENDING_APPROVAL", "APPROVED"],
+  TRAINING_MATRIX_VERSION: ["DRAFT", "PENDING_APPROVAL", "EFFECTIVE", "OBSOLETED"],
+  TRAINING_ACTIVITY: ["PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED", "CANCELLED"],
+  TRAINING_ASSESSMENT: ["DRAFT", "PENDING_APPROVAL", "EFFECTIVE"],
+  TRAINING_JOB_ASSIGNMENT: ["DRAFT", "PENDING_RECEIVER"],
+  TRAINING_PERSONNEL_REVIEW: ["OPEN"],
+  UNCONTROLLED_COPY: ["READY_FOR_DISTRIBUTION", "DISTRIBUTED", "CLOSED_CANCELLED"],
 };
+
+/**
+ * The matrix lists only the objects whose lifecycle is a status stepper on their own screen: the server defines that stepper
+ * (WorkflowProgressService for documents and copies, ReportRevisionWorkflow, TrainingWorkflows), and a status of the object is
+ * the "from" status of a policy. Objects that only have a flag or a job status (a participant, a report run, a review campaign...)
+ * have no stepper and are not shown here; their policies are still edited on the Transition Policies tab.
+ * Keys are the workflow_action_policies.object_type values (the controlled copy batch is shown with the controlled copy).
+ */
+const STEPPER_OBJECT_TYPES: ReadonlySet<string> = new Set([
+  "DOCUMENT", "REVISION", "CONTROLLED_COPY", "UNCONTROLLED_COPY",
+  "REPORT_TEMPLATE",
+  "TRAINING_REQUIREMENT", "TRAINING_MATRIX_VERSION", "TRAINING_ACTIVITY", "TRAINING_ASSESSMENT", "TRAINING_JOB_ASSIGNMENT", "TRAINING_PERSONNEL_REVIEW",
+]);
 
 const OBJECT_TYPE_LABELS: Record<string, string> = {
   DOCUMENT: "Document (Master)",
   REVISION: "Document Revision",
   CONTROLLED_COPY: "Controlled Copy",
+  REPORT_TEMPLATE: "Report Template (review)",
+  TRAINING_REQUIREMENT: "Training Requirement",
+  TRAINING_MATRIX_VERSION: "Training Matrix Version",
+  TRAINING_ACTIVITY: "Training Activity",
+  TRAINING_ASSESSMENT: "Training Assessment",
+  TRAINING_JOB_ASSIGNMENT: "Training Job Assignment",
+  TRAINING_PERSONNEL_REVIEW: "Training Personnel Review",
+  UNCONTROLLED_COPY: "Uncontrolled Copy",
 };
+
+/** The module of a policy as a person knows it (the name of its menu). The policies spell one module in several ways ("DOCUMENT_CONTROL", "documents"). */
+const moduleOf = (policy: { moduleKey?: string | null }) => moduleDisplayName(policy.moduleKey);
 
 const prettify = (code: string) =>
   code.toLowerCase().split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
@@ -65,6 +99,7 @@ export const ActionStatusMatrix: React.FC = () => {
   const [workflowLoadError, setWorkflowLoadError] = useState(false);
   const [statePolicyLoadError, setStatePolicyLoadError] = useState(false);
   const [loadVersion, setLoadVersion] = useState(0);
+  const [moduleName, setModuleName] = useState<string>(moduleDisplayName("DOCUMENT_CONTROL"));
   const [objectType, setObjectType] = useState<string>("REVISION");
   const [actionSearch, setActionSearch] = useState("");
   const debouncedActionSearch = useDebounce(actionSearch, SEARCH_DEBOUNCE_MS);
@@ -106,13 +141,21 @@ export const ActionStatusMatrix: React.FC = () => {
             actors: [{ actorType: sp.actorScope as never, actorTypeLabel: `Scope: ${prettify(sp.actorScope)}` }],
             source: "STATE" as const,
           }));
-        setPolicies([...workflowRows, ...documentRows]);
+        setPolicies([...workflowRows, ...documentRows].filter((policy) => STEPPER_OBJECT_TYPES.has(policy.objectType)));
       })
       .finally(() => setLoading(false));
   }, [loadVersion]);
 
-  const objectTypeOptions = useMemo(() => {
-    const types = [...new Set(policies.map((p) => p.objectType))];
+  const moduleOptions = useMemo(() => {
+    const names = [...new Set(policies.map(moduleOf))];
+    // Document Control first (the original lifecycle), then the others in the order their policies come
+    names.sort((a, b) => Number(b === moduleDisplayName("DOCUMENT_CONTROL")) - Number(a === moduleDisplayName("DOCUMENT_CONTROL")));
+    return names.map((name) => ({ label: name, value: name }));
+  }, [policies]);
+
+  // Object types are those of the chosen module only: each module has its own objects and statuses.
+  const objectTypeOptionsOf = useCallback((module: string) => {
+    const types = [...new Set(policies.filter((p) => moduleOf(p) === module).map((p) => p.objectType))];
     const canonical = Object.keys(STATUS_ORDER);
     types.sort((a, b) => {
       const ia = canonical.indexOf(a); const ib = canonical.indexOf(b);
@@ -123,13 +166,22 @@ export const ActionStatusMatrix: React.FC = () => {
     });
     return types.map((t) => ({ label: OBJECT_TYPE_LABELS[t] ?? prettify(t), value: t }));
   }, [policies]);
+  const objectTypeOptions = useMemo(() => objectTypeOptionsOf(moduleName), [objectTypeOptionsOf, moduleName]);
+
+  // A module that has no policy (after a reload) or an object type that belongs to another module is replaced by the first one that exists.
+  useEffect(() => {
+    if (moduleOptions.length > 0 && !moduleOptions.some((option) => option.value === moduleName)) setModuleName(moduleOptions[0].value);
+  }, [moduleOptions, moduleName]);
+  useEffect(() => {
+    if (objectTypeOptions.length > 0 && !objectTypeOptions.some((option) => option.value === objectType)) setObjectType(objectTypeOptions[0].value);
+  }, [objectTypeOptions, objectType]);
 
   const scoped = useMemo(
-    () => policies.filter((p) => p.objectType === objectType
+    () => policies.filter((p) => moduleOf(p) === moduleName && p.objectType === objectType
       // REQUEST_COPY starts from an Effective Revision; it is an entry condition,
       // not a Controlled Copy lifecycle status and is shown separately below.
       && !(objectType === "CONTROLLED_COPY" && p.actionCode === "REQUEST_COPY")),
-    [policies, objectType],
+    [policies, moduleName, objectType],
   );
 
   const statuses = useMemo(() => {
@@ -170,8 +222,8 @@ export const ActionStatusMatrix: React.FC = () => {
           Which action can start from which status. Each ✓ means the action is allowed from that status;
           click it to see who: a person needs the required permission AND must be the right person
           (for example the named Reviewer, or anyone holding the operator permission). A blank cell means
-          the action cannot start from that status. Document, Revision and Controlled Copy are shown
-          separately because their statuses differ. To change a rule, use the Transition Policies tab.
+          the action cannot start from that status. Only objects that show a status stepper on their screen are
+          listed. Choose the module first, then the object type: each object type has its own statuses, so they are shown one at a time. To change a rule, use the Transition Policies tab.
           </>
         }
       />
@@ -209,7 +261,10 @@ export const ActionStatusMatrix: React.FC = () => {
 
       <ConfiguredDesktopFilters preserveMobile
         search={<input aria-label="Search actions" value={actionSearch} onChange={event => setActionSearch(event.target.value)} placeholder="Search actions..." className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
-        filters={[{ id: 'objectType', label: 'Object Type', value: objectType, options: objectTypeOptions, onChange: setObjectType }]}>
+        filters={[
+          { id: 'module', label: 'Module', value: moduleName, options: moduleOptions, resetOnChange: { objectType: '' }, onChange: setModuleName },
+          { id: 'objectType', label: 'Object Type', value: objectType, options: objectTypeOptions, dependsOn: ['module'], getOptions: (draft) => objectTypeOptionsOf(draft.module ?? moduleName), onChange: setObjectType },
+        ]}>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
         <div className="w-full">
           <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
@@ -234,6 +289,14 @@ export const ActionStatusMatrix: React.FC = () => {
               </button>
             )}
           </div>
+        </div>
+        <div className="w-full">
+          <Select
+            label="Module"
+            value={moduleName}
+            onChange={(v) => { const next = String(v); setModuleName(next); setObjectType(objectTypeOptionsOf(next)[0]?.value ?? ""); }}
+            options={moduleOptions}
+          />
         </div>
         <div className="w-full">
           <Select

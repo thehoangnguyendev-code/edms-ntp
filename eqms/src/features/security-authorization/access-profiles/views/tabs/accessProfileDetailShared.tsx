@@ -11,25 +11,6 @@ export const inputCls =
 export const textareaCls =
   "w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500";
 
-export const parseScopeCount = (scope?: string | null) => {
-  if (!scope || scope.trim().toLowerCase() === "all") return 0;
-  return scope
-    .split(/[,\n;|]/)
-    .map((value) => value.trim())
-    .filter(Boolean).length;
-};
-
-export const scopeStringToList = (scope?: string | null): string[] => {
-  if (!scope || scope.trim().toLowerCase() === "all") return [];
-  return scope
-    .split(/[,\n;|]/)
-    .map((value) => value.trim())
-    .filter(Boolean);
-};
-
-export const scopeListToString = (values: string[]): string | null =>
-  values.length ? values.join(", ") : null;
-
 export interface WorkflowRolePreview {
   code: string;
   label: string;

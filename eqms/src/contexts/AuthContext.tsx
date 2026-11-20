@@ -7,7 +7,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authApi } from '@/services/api';
 import type { User, LoginCredentials, UserStatus } from '@/types';
-import { secureStorage, tokenUtils, auditLog, csrfToken } from '@/utils/security';
+import { secureStorage, clientDiagnostics, csrfToken } from '@/utils/security';
 import { authTokenStore } from '@/services/authTokenStore';
 import { setActiveUserId, clearActiveUserId } from '@/services/activeUser';
 import type { AuthResponse, LoginChallengeResponse, MfaMethod, AuthUser } from '@/services/api/auth';
@@ -145,7 +145,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (import.meta.env.DEV) {
         console.warn('Unable to store CSRF token after login:', error);
       }
-      auditLog.log('csrf_store_failed', { error: String(error) });
+      clientDiagnostics.log('csrf_store_failed', { error: String(error) });
     }
   };
 
@@ -188,7 +188,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const csrf = csrfToken.generate();
             csrfToken.store(csrf);
 
-            auditLog.log('session_restored', { userId: parsedUser.id });
+            clientDiagnostics.log('session_restored', { userId: parsedUser.id });
 
             try {
               if (!authTokenStore.get()) {
@@ -211,7 +211,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           } catch (parseError) {
             // JSON parse error - clear corrupted data
             if (import.meta.env.DEV) console.error('Error parsing stored user:', parseError);
-            auditLog.log('auth_parse_error', { error: String(parseError) });
+            clientDiagnostics.log('auth_parse_error', { error: String(parseError) });
             secureStorage.removeItem('user');
           }
         } else if (authTokenStore.get()) {
@@ -234,7 +234,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (decryptError) {
         // Decryption error - clear potentially corrupted storage
         if (import.meta.env.DEV) console.error('Decryption error:', decryptError);
-        auditLog.log('auth_decrypt_error', { error: String(decryptError) });
+        clientDiagnostics.log('auth_decrypt_error', { error: String(decryptError) });
         secureStorage.removeItem('user');
         authTokenStore.clear();
       } finally {
@@ -251,7 +251,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const result = await authApi.loginWithChallenge(credentials);
 
       if ('mfaRequired' in result && result.mfaRequired) {
-        auditLog.log('login_challenge_created', {
+        clientDiagnostics.log('login_challenge_created', {
           username: credentials.username,
           methods: result.availableMethods,
         });
@@ -265,14 +265,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const appUser = applyAuthenticatedSession(result as AuthResponse);
 
-      auditLog.log('login_success', {
+      clientDiagnostics.log('login_success', {
         userId: appUser.id,
         role: appUser.role,
       });
 
       return { success: true, mfaRequired: false, passwordChangeRequired: Boolean(appUser.requirePasswordChange), user: appUser };
     } catch (error) {
-      auditLog.log('login_failed', { 
+      clientDiagnostics.log('login_failed', { 
         username: credentials.username,
         error: String(error) 
       });
@@ -290,7 +290,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
       const appUser = applyAuthenticatedSession(response);
 
-      auditLog.log('mfa_verify_success', {
+      clientDiagnostics.log('mfa_verify_success', {
         userId: appUser.id,
         method,
         rememberDevice: Boolean(rememberDevice),
@@ -302,7 +302,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         user: appUser,
       };
     } catch (error) {
-      auditLog.log('mfa_verify_failed', {
+      clientDiagnostics.log('mfa_verify_failed', {
         mfaToken,
         method,
         error: String(error),
@@ -328,10 +328,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       await authApi.signOut();
-      auditLog.log('logout_success', { userId: user?.id });
+      clientDiagnostics.log('logout_success', { userId: user?.id });
     } catch (error) {
       if (import.meta.env.DEV) console.error('Logout error:', error);
-      auditLog.log('logout_error', { error: String(error) });
+      clientDiagnostics.log('logout_error', { error: String(error) });
     } finally {
       clearDismissedAnnouncements();
       // Clear all secure storage
@@ -351,7 +351,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const appUser = isFullUser ? (updatedUser as User) : mapAuthUserToUser(updatedUser as AuthUser);
     setUser(appUser);
     secureStorage.setItem('user', JSON.stringify(buildPersistedUserSnapshot(appUser)), true);
-    auditLog.log('user_updated', { userId: appUser.id });
+    clientDiagnostics.log('user_updated', { userId: appUser.id });
   };
 
   const refreshToken = async (): Promise<boolean> => {
@@ -359,10 +359,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await authApi.refreshToken();
       authTokenStore.set(response.accessToken);
       
-      auditLog.log('token_refreshed', { userId: user?.id });
+      clientDiagnostics.log('token_refreshed', { userId: user?.id });
       return true;
     } catch (error) {
-      auditLog.log('token_refresh_failed', { error: String(error) });
+      clientDiagnostics.log('token_refresh_failed', { error: String(error) });
       return false;
     }
   };

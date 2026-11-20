@@ -53,6 +53,12 @@ export interface WorkflowTransitionsViewHandle {
   refresh: () => void;
 }
 
+/** The server sends the warnings of a policy as codes; ENGINE_DECIDES_ALONE says its resource type has no other check, so it is not a defect of the row. */
+const warningCodes = (policy: WorkflowActionPolicy): string[] =>
+  ((policy.warnings ?? []) as unknown[]).map((w) => (typeof w === "string" ? w : String((w as { code?: string }).code ?? "")));
+const decidesAlone = (policy: WorkflowActionPolicy) => warningCodes(policy).includes("ENGINE_DECIDES_ALONE");
+const otherWarnings = (policy: WorkflowActionPolicy) => warningCodes(policy).filter((code) => code !== "ENGINE_DECIDES_ALONE");
+
 export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewHandle, { embedded?: boolean }>(
   ({ embedded = false }, ref) => {
   const navigate = useNavigate();
@@ -296,7 +302,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
         className="whitespace-nowrap gap-2"
       >
         <Shield className="h-4 w-4" />
-        Policy Resolver
+        Engine Diagnostics
       </Button>
       <Button
         variant="outline"
@@ -346,7 +352,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
             <div className="font-semibold text-slate-900">{policy.actionLabel ?? policy.actionCode}</div>
             <div className="text-2xs text-slate-400">{policy.actionCode}</div>
           </div>
-          {(policy.warnings?.length ?? 0) > 0 && <Badge color="amber" size="sm">Warning</Badge>}
+          {otherWarnings(policy).length > 0 && <Badge color="amber" size="sm">Warning</Badge>}
         </div>
       ),
     },
@@ -404,7 +410,9 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
         ) : (
           <ul className="space-y-1 text-left">
             {(policy.relations ?? []).map((r) => (
-              <li key={r.relationCode} className="font-mono text-slate-600 whitespace-nowrap">{r.relationCode}</li>
+              <li key={r.relationCode} className={r.forbidden ? "font-mono text-rose-700 whitespace-nowrap" : "font-mono text-slate-600 whitespace-nowrap"}>
+                {r.forbidden ? `not ${r.relationCode}` : r.relationCode}
+              </li>
             ))}
           </ul>
         ),
@@ -413,7 +421,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
   const policyAction: DataTableAction<PolicyRow> = {
     header: "Action",
     cell: (policy) => {
-      const navigateTo = (path: string) => navigate(path);
+      const navigateTo = (path: string) => navigate(path, { state: { from: `${window.location.pathname}${window.location.search}` } });
       return (
         <>
           <button
@@ -428,12 +436,18 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
             <div className="py-1">
               <DropdownMenuItem
                 icon={<IconInfoCircle className="h-4 w-4" />}
-                onClick={() => { navigateTo(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/${policy.id}/edit`); close(); }}
+                onClick={() => { navigateTo(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/${policy.id}`); close(); }}
               >
-                View / Edit Transition
+                View Details
               </DropdownMenuItem>
               {canManage && (
                 <>
+                  <DropdownMenuItem
+                    icon={<IconPencilMinus className="h-4 w-4" />}
+                    onClick={() => { navigateTo(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/${policy.id}/edit`); close(); }}
+                  >
+                    Edit Transition
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     icon={<IconPencilMinus className="h-4 w-4" />}
                     onClick={() => { navigateTo(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/${policy.id}/edit?mode=override`); close(); }}
@@ -912,7 +926,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
         onConfirm={() => void handleDeactivate()}
         type="warning"
         title="Deactivate Policy"
-        description={`Deactivating this policy may cause the action to be denied when no other active policy matches.\n\nAre you sure you want to deactivate "${deactivateTarget?.actionLabel ?? deactivateTarget?.actionCode}"?`}
+        description={`${deactivateTarget && decidesAlone(deactivateTarget) ? "This policy is the only decision about who may do this action (the old checks in the service were removed). With it inactive nobody can do the action from this state, whatever their permissions." : "Deactivating this policy may cause the action to be denied when no other active policy matches."}\n\nAre you sure you want to deactivate "${deactivateTarget?.actionLabel ?? deactivateTarget?.actionCode}"?`}
         confirmText="Deactivate"
         cancelText="Cancel"
         showCancel

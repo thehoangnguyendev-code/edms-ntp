@@ -1,6 +1,6 @@
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useFormDirty } from "@/hooks/useFormDirty";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, Ban, Shield, Users } from "lucide-react";
@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { FormSection } from "@/components/ui/form/FormSection";
-import { FullPageLoading, InlineLoading } from "@/components/ui/loading/Loading";
+import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { Select, type SelectOptionGroup } from "@/components/ui/select/Select";
 import { Badge } from "@/components/ui/badge/Badge";
 import { useToast } from "@/components/ui/toast/Toast";
@@ -44,11 +44,6 @@ export const SodConstraintFormView: React.FC = () => {
   const { requestSignature, signatureModal } = useSecurityESign();
   const { permissionGroups, isLoading: catalogLoading } = usePermissionCatalog();
 
-  const permissionRows = useMemo(
-    () => permissionGroups.flatMap((group) => group.permissions.map((permission) => ({ ...permission, groupName: group.name }))),
-    [permissionGroups],
-  );
-
   /** One grouped-options list per side, excluding whatever is selected on the OTHER side (a
    *  permission cannot conflict with itself). Reuses the app-wide searchable Select instead of a
    *  bespoke scrollable table. */
@@ -75,6 +70,8 @@ export const SodConstraintFormView: React.FC = () => {
   const [regulationRef, setRegulationRef] = useState("");
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
+  // Errors show only after the first Save; each one clears as soon as its field is valid.
+  const [submitted, setSubmitted] = useState(false);
   // Real duplicate-pair check against existing constraints -- null while checking/no pair
   // selected, undefined once checked and no duplicate found, otherwise the existing constraint.
   const [duplicateConstraint, setDuplicateConstraint] = useState<SodConstraintResponse | null>(null);
@@ -174,17 +171,22 @@ export const SodConstraintFormView: React.FC = () => {
 
   const isSystem = Boolean(initial?.system);
 
+  const errors = {
+    codeA: codeA.trim() ? "" : "Select Permission A.",
+    codeB: !codeB.trim() ? "Select Permission B." : codeA.trim() === codeB.trim() ? "Permission B must be different from Permission A." : "",
+    name: name.trim() ? "" : "Enter a name for this constraint.",
+  };
+  const shown = {
+    codeA: submitted ? errors.codeA : "",
+    codeB: submitted ? errors.codeB : "",
+    name: submitted ? errors.name : "",
+  };
+
   const handleSave = async () => {
-    if (!name.trim()) {
-      showToast({ type: "error", title: "Validation failed", message: "Name is required" });
-      return;
-    }
-    if (!codeA.trim() || !codeB.trim()) {
-      showToast({ type: "error", title: "Validation failed", message: "Both permission codes are required" });
-      return;
-    }
-    if (codeA.trim() === codeB.trim()) {
-      showToast({ type: "error", title: "Validation failed", message: "Permission codes must be different" });
+    setSubmitted(true);
+    const firstInvalid = (["codeA", "codeB", "name"] as const).find((field) => errors[field]);
+    if (firstInvalid) {
+      document.getElementById(`sod-field-${firstInvalid}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     const sig = await requestSignature(isEdit ? "Update SoD Constraint" : "Create SoD Constraint", "SoD Rule Change");
@@ -230,199 +232,232 @@ export const SodConstraintFormView: React.FC = () => {
 
   const title = isEdit ? "Edit SoD Constraint" : "New SoD Constraint";
 
-  return (
+  const pairChosen = Boolean(codeA && codeB && codeA !== codeB);
+  const noOneFlagged = !impact || (impact.violatingAccessProfiles.length === 0 && impact.violatingUserCombinations.length === 0);
+
+  const impactBlock = () => (
+    <div>
+      {checkingImpact ? (
+        <p className="text-sm text-slate-500">Checking who currently holds both permissions...</p>
+      ) : noOneFlagged ? (
+        <p className="text-sm text-slate-500">
+          No active Access Profile or user currently holds both permissions — this rule would not flag anyone today.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {severity === "BLOCK" && (
+            <WarningBanner variant="warning">
+              They keep their access, but no further profile can be assigned to them until the conflict is removed.
+            </WarningBanner>
+          )}
+          {impact && impact.violatingAccessProfiles.length > 0 && (
+            <div>
+              <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">
+                {impact.violatingAccessProfiles.length} Access Profile{impact.violatingAccessProfiles.length === 1 ? "" : "s"} grant both sides
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {impact.violatingAccessProfiles.map((p) => (
+                  <Badge key={p.accessProfileId} color="blue" size="xs">{p.accessProfileName}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {impact && impact.violatingUserCombinations.length > 0 && (
+            <div>
+              <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">
+                {impact.violatingUserCombinations.length} user{impact.violatingUserCombinations.length === 1 ? "" : "s"} hold both via combined profiles
+              </p>
+              <ul className="mt-1.5 divide-y divide-slate-100 rounded-lg border border-slate-200">
+                {impact.violatingUserCombinations.map((c) => (
+                  <li key={c.userId} className="flex items-center gap-3 px-3 py-2">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
+                      {(c.fullName ?? c.username).split(" ").filter(Boolean).slice(-2).map((w) => w[0]).join("").toUpperCase()}
+                    </span>
+                    <span className="min-w-0 flex-1 break-words text-sm font-medium text-slate-900">{c.fullName ?? c.username}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  const nameField = (
+    <div id="sod-field-name" className="min-w-0">
+      <label className={labelClass}>
+        Name <span className="text-red-500">*</span>
+      </label>
+      <input
+        className={cn(inputClass, shown.name && "border-red-500 focus:border-red-500 focus:ring-red-500")}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="e.g. Create vs Approve Revision"
+        disabled={isSystem}
+        aria-invalid={Boolean(shown.name)}
+      />
+      {shown.name && <p role="alert" className="mt-1.5 text-xs text-red-600">{shown.name}</p>}
+    </div>
+  );
+  const regField = (
+    <div className="min-w-0">
+      <label className={labelClass}>Regulation Reference</label>
+      <input
+        className={inputClass}
+        value={regulationRef}
+        onChange={(e) => setRegulationRef(e.target.value)}
+        placeholder="EU-GMP Chapter 4 §4.2 · 21 CFR 211.68(b)"
+        disabled={isSystem}
+      />
+      <p className="mt-1.5 text-xs text-slate-500">Shown to reviewers next to every violation of this rule.</p>
+    </div>
+  );
+  const permField = (label: string, code: string, setCode: (value: string) => void, excludeCode: string, field: "codeA" | "codeB") => (
+    <div id={`sod-field-${field}`} className="min-w-0">
+      <Select
+        label={`${label} *`}
+        value={code}
+        onChange={(v) => setCode(String(v))}
+        groups={buildGroups(excludeCode)}
+        options={[]}
+        placeholder="Search and select a permission..."
+        searchPlaceholder="Search permission..."
+        disabled={isSystem}
+        isLoading={catalogLoading}
+        maxVisibleRows={8}
+      />
+      {shown[field] && <p role="alert" className="mt-1.5 text-xs text-red-600">{shown[field]}</p>}
+    </div>
+  );
+  const activeField = <Checkbox checked={active} onChange={setActive} label="Active" />;
+  const profileCount = impact?.violatingAccessProfiles.length ?? 0;
+  const userCount = impact?.violatingUserCombinations.length ?? 0;
+  const severityCards = (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {(["WARN", "BLOCK"] as const).map((s) => {
+        const selected = severity === s;
+        const tone = s === "WARN" ? "amber" : "red";
+        return (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setSeverity(s)}
+            disabled={isSystem}
+            aria-pressed={selected}
+            className={cn(
+              "rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed",
+              selected
+                ? tone === "amber" ? "border-amber-500 bg-amber-50" : "border-red-500 bg-red-50"
+                : "border-slate-200 bg-white hover:border-slate-300",
+            )}
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+              {s === "WARN" ? <AlertTriangle className="h-4 w-4 text-amber-600" /> : <Ban className="h-4 w-4 text-red-600" />}
+              {s === "WARN" ? "Warn" : "Block"}
+            </span>
+            <span className="mt-1.5 block text-xs leading-5 text-slate-600">
+              {s === "WARN"
+                ? "Allowed, but the person is listed in SoD Violation Review."
+                : "Stops a new assignment that would give one person both permissions."}
+              {pairChosen && !checkingImpact && (profileCount > 0 || userCount > 0) && (
+                <span className="mt-1 block font-medium text-slate-700">
+                  {s === "WARN"
+                    ? `${profileCount} profile${profileCount === 1 ? "" : "s"} and ${userCount} user${userCount === 1 ? "" : "s"} would be listed today.`
+                    : "Those already holding both keep access; nobody new can be given both."}
+                </span>
+              )}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+  const dupNotice =
+    pairChosen && !checkingDuplicate && duplicateConstraint ? (
+      <WarningBanner variant="error">
+        <span className="font-semibold">Duplicate:</span> an active constraint for this exact permission pair already exists —
+        "{duplicateConstraint.name}" ({duplicateConstraint.severity}). Edit that constraint instead of creating a second one.
+      </WarningBanner>
+    ) : null;
+  const saveDisabled = saving || (isSystem && active === initial?.active);
+  const cancelButton = (
+    <Button variant="outline-emerald" size="sm" onClick={handleBack} className="whitespace-nowrap">Cancel</Button>
+  );
+  const saveButton = (
+    <Button variant="outline-emerald" size="sm" onClick={() => void handleSave()} disabled={saveDisabled} className="whitespace-nowrap">
+      {saving ? "Saving…" : "Save"}
+    </Button>
+  );
+  const footerBar = (
+    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-start">
+      {cancelButton}
+      {saveButton}
+    </div>
+  );
+  const shell = (body: React.ReactNode) => (
     <div className="flex flex-col gap-4 md:gap-6">
       {signatureModal}
       <PageHeader
         title={title}
         breadcrumbItems={segregationOfDutiesBreadcrumb(go, title)}
         actions={
-          <>
-            <Button variant="outline-emerald" size="sm" onClick={handleBack} className="whitespace-nowrap">
-              Cancel
-            </Button>
-            <Button size="sm" variant="outline-emerald" onClick={() => void handleSave()} disabled={saving || (isSystem && active === initial?.active)} className="whitespace-nowrap">
-              {saving ? "Saving…" : "Save"}
-            </Button>
-          </>
+          <div className="flex items-center gap-2">
+            {cancelButton}
+            {saveButton}
+          </div>
         }
       />
-
       {isSystem && (
         <WarningBanner variant="info">This is a system-defined constraint. Its definition cannot be modified or deleted; it can only be activated or deactivated.</WarningBanner>
       )}
-
-      <FormSection
-        title="Constraint Identity"
-        icon={<IconInfoCircle className="h-4 w-4" />}
-        contentClassName="p-4 md:p-5"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="min-w-0">
-            <label className={labelClass}>
-              Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              className={inputClass}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Create vs Approve Revision"
-              disabled={isSystem}
-              autoFocus
-            />
-          </div>
-          <div className="min-w-0">
-            <label className={labelClass}>Regulation Reference</label>
-            <input
-              className={inputClass}
-              value={regulationRef}
-              onChange={(e) => setRegulationRef(e.target.value)}
-              placeholder="EU-GMP Chapter 4 §4.2 · 21 CFR 211.68(b)"
-              disabled={isSystem}
-            />
-          </div>
-        </div>
-      </FormSection>
-
-      <FormSection
-        title="Conflicting Permission Pair"
-        icon={<Ban className="h-4 w-4" />}
-        contentClassName="p-4 md:p-5 space-y-4"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Select
-            label="Permission A"
-            value={codeA}
-            onChange={(v) => setCodeA(String(v))}
-            groups={buildGroups(codeB)}
-            options={[]}
-            placeholder="Search and select a permission..."
-            searchPlaceholder="Search permission..."
-            disabled={isSystem}
-            isLoading={catalogLoading}
-            maxVisibleRows={8}
-          />
-          <Select
-            label="Permission B"
-            value={codeB}
-            onChange={(v) => setCodeB(String(v))}
-            groups={buildGroups(codeA)}
-            options={[]}
-            placeholder="Search and select a permission..."
-            searchPlaceholder="Search permission..."
-            disabled={isSystem}
-            isLoading={catalogLoading}
-            maxVisibleRows={8}
-          />
-        </div>
-
-        {codeA && codeB && checkingDuplicate && (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-            Checking for an existing constraint on this pair...
-          </div>
-        )}
-        {codeA && codeB && !checkingDuplicate && duplicateConstraint && (
-          <WarningBanner variant="error">
-            <span className="font-semibold">Duplicate:</span> an active constraint for this exact permission pair
-            already exists — "{duplicateConstraint.name}" ({duplicateConstraint.severity}).
-            Edit that constraint instead of creating a second one for the same pair.
-          </WarningBanner>
-        )}
-        {codeA && codeB && !checkingDuplicate && !duplicateConstraint && (
-          <WarningBanner variant="success">
-            This rule will flag any user or Access Profile holding both{" "}
-            <span className="font-semibold">{permissionRows.find((p) => p.id === codeA)?.label ?? codeA}</span> and{" "}
-            <span className="font-semibold">{permissionRows.find((p) => p.id === codeB)?.label ?? codeB}</span> as a
-            Segregation of Duties {severity === "BLOCK" ? "violation to block" : "warning"}.
-          </WarningBanner>
-        )}
-
-        {codeA && codeB && codeA !== codeB && (
-          <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
-              <Users className="h-4 w-4 text-slate-500" />
-              <span className="text-sm font-semibold text-slate-800">Real-world impact preview</span>
-              {checkingImpact && <InlineLoading size="sm" className="ml-auto" />}
-            </div>
-            <div className="p-4">
-              {checkingImpact ? (
-                <p className="text-sm text-slate-500">Checking who currently holds both permissions...</p>
-              ) : !impact || (impact.violatingAccessProfiles.length === 0 && impact.violatingUserCombinations.length === 0) ? (
-                <p className="text-sm text-slate-500">
-                  No active Access Profile or user currently holds both permissions — this rule would not flag anyone today.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {impact.violatingAccessProfiles.length > 0 && (
-                    <div>
-                      <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">
-                        {impact.violatingAccessProfiles.length} Access Profile{impact.violatingAccessProfiles.length === 1 ? "" : "s"} grant both sides:
-                      </p>
-                      <div className="mt-1.5 flex flex-wrap gap-1">
-                        {impact.violatingAccessProfiles.map((p) => (
-                          <Badge key={p.accessProfileId} color="slate" variant="outline" size="xs">{p.accessProfileName}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {impact.violatingUserCombinations.length > 0 && (
-                    <div>
-                      <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">
-                        {impact.violatingUserCombinations.length} user{impact.violatingUserCombinations.length === 1 ? "" : "s"} hold both via combined profiles:
-                      </p>
-                      <div className="mt-1.5 flex flex-wrap gap-1">
-                        {impact.violatingUserCombinations.map((c) => (
-                          <Badge key={c.userId} color="amber" variant="outline" size="xs">{c.fullName ?? c.username}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </FormSection>
-
-      <FormSection
-        title="Enforcement Settings"
-        icon={<IconSettingsAutomation className="h-4 w-4" />}
-        description="Choose how the system should handle this conflict."
-        contentClassName="p-4 md:p-5"
-      >
-        <div className="flex flex-col gap-4">
-            <div className="max-w-md">
-              <label className={labelClass}>Severity</label>
-              <div className="flex gap-2">
-                {(["WARN", "BLOCK"] as const).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setSeverity(s)}
-                    disabled={isSystem}
-                    className={cn(
-                      "flex flex-1 h-9 items-center justify-center gap-1.5 rounded-lg border text-xs font-semibold transition-colors",
-                      severity === s
-                        ? s === "WARN"
-                          ? "bg-amber-500 border-amber-500 text-white"
-                          : "bg-red-600 border-red-600 text-white"
-                        : "border-slate-200 text-slate-600 hover:border-slate-300",
-                    )}
-                  >
-                    {s === "WARN"
-                      ? <AlertTriangle className="h-3.5 w-3.5" />
-                      : <Ban className="h-3.5 w-3.5" />}
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-          <div className="self-start">
-            <Checkbox checked={active} onChange={setActive} label="Active" />
-          </div>
-        </div>
-      </FormSection>
+      {body}
       {leaveModal}
     </div>
   );
+
+  // Pick the pair, see who it touches, then decide the severity knowing the numbers
+  const statTile = (value: number, label: string) => (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <p className="text-2xl font-semibold text-slate-900">{checkingImpact ? "…" : value}</p>
+      <p className="mt-0.5 text-xs text-slate-500">{label}</p>
+    </div>
+  );
+  const body = (
+    <div className="space-y-4 md:space-y-6">
+      <FormSection title="1. Pick The Two Permissions" icon={<Ban className="h-4 w-4" />} contentClassName="space-y-4 p-4 md:p-5">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {permField("Permission A", codeA, setCodeA, codeB, "codeA")}
+          {permField("Permission B", codeB, setCodeB, codeA, "codeB")}
+        </div>
+        {dupNotice}
+      </FormSection>
+      <FormSection title="2. Who This Touches Today" icon={<Users className="h-4 w-4" />} contentClassName="space-y-4 p-4 md:p-5">
+        {pairChosen ? (
+          <>
+            <div className="grid grid-cols-2 gap-3 md:gap-4">
+              {statTile(profileCount, "Access Profiles grant both")}
+              {statTile(userCount, "Users hold both through combined profiles")}
+            </div>
+            {impactBlock()}
+          </>
+        ) : (
+          <WarningBanner variant="info">Choose two different permissions to see who would conflict today.</WarningBanner>
+        )}
+      </FormSection>
+      <FormSection title="3. Decide What The System Does" icon={<IconSettingsAutomation className="h-4 w-4" />} contentClassName="space-y-4 p-4 md:p-5">
+        {severityCards}
+        {activeField}
+      </FormSection>
+      <FormSection title="4. Name it" icon={<IconInfoCircle className="h-4 w-4" />} contentClassName="p-4 md:p-5">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {nameField}
+          {regField}
+        </div>
+      </FormSection>
+      {footerBar}
+    </div>
+  );
+
+  return shell(body);
 };

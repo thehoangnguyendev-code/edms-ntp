@@ -4,6 +4,7 @@ import { IconFilter2Search } from "@tabler/icons-react";
 import { cn } from "@/components/ui/utils";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import type { Permission, PermissionRiskLevel } from "../../access-profiles/types";
+import { moduleDisplayName } from "@/utils/moduleDisplay";
 
 interface PermissionActionRowProps {
   permission: Permission;
@@ -35,7 +36,7 @@ const RISK_LABEL: Record<PermissionRiskLevel, string> = {
 function buildTooltip(p: Permission): string {
   const lines: string[] = [
     `Code: ${p.id}`,
-    `Module: ${p.module}`,
+    `Module: ${moduleDisplayName(p.module)}`,
     `Resource: ${p.resource}`,
     `Action: ${p.action}`,
     `Risk: ${RISK_LABEL[p.riskLevel]}`,

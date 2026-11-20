@@ -384,7 +384,7 @@ export const AccessProfileListView: React.FC = () => {
       header: "Status",
       label: "Status",
       cell: (profile) => (
-        <Badge color={flagColor(profile.active)} size="sm" showDot>
+        <Badge color={flagColor(profile.active)} size="sm">
           {profile.active ? "Active" : "Inactive"}
         </Badge>
       ),

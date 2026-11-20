@@ -12,7 +12,7 @@ export type RecallOutcome = 'PENDING' | 'RECALLED' | 'SKIPPED';
 /** The server's per-batch upload limit. */
 export const MAX_RECALL_SCANS = 50;
 /** The server's size limit for one scan (25 MB); checked here too so a big file is not uploaded just to be refused. */
-export const MAX_RECALL_FILE_BYTES = 25 * 1024 * 1024;
+export const MAX_RECALL_FILE_BYTES = 50 * 1024 * 1024;
 /** Accepted scan type: PDF only (the company scanner produces PDF). The server decides from the file's own bytes; this guides the picker and the drop zone. */
 export const RECALL_SCAN_ACCEPT = '.pdf,application/pdf';
 
@@ -131,6 +131,12 @@ const multipart = (files: File[]) => {
 
 const MULTIPART = { headers: { 'Content-Type': 'multipart/form-data' } };
 
+/**
+ * The server scans each scan for viruses, stores it and reads its code before it answers, and committing a whole batch recalls every copy in it, so these requests can
+ * take far longer than the 30 s every other request gets. Cutting one off here made the screen say "timeout of 30000ms exceeded" while the server was still working.
+ */
+export const RECALL_LONG_REQUEST_TIMEOUT_MS = 600000;
+
 /** Bytes sent so far for the current request (the request body is a little larger than the file itself). */
 export type UploadProgressHandler = (loadedBytes: number) => void;
 
@@ -144,6 +150,7 @@ export interface RecallUploadStep {
 
 /** The browser names each upload with a random id (X-Upload-Id) so it can ask the server where that upload is. */
 const withProgress = (onProgress?: UploadProgressHandler, uploadId?: string) => ({
+  timeout: RECALL_LONG_REQUEST_TIMEOUT_MS,
   headers: { ...MULTIPART.headers, ...(uploadId ? { 'X-Upload-Id': uploadId } : {}) },
   ...(onProgress ? { onUploadProgress: (event: { loaded: number }) => onProgress(event.loaded) } : {}),
 });
@@ -205,7 +212,7 @@ export const controlledCopyRecallApi = {
 
   /** POST /controlled-copies/recall-batches/:id/commit (one e-signature for the whole reviewed list) */
   commit: async (batchId: string, input: RecallCommitInput): Promise<RecallBatch> => {
-    const response = await api.post<RecallBatch>(`${ENDPOINT}/${batchId}/commit`, input);
+    const response = await api.post<RecallBatch>(`${ENDPOINT}/${batchId}/commit`, input, { timeout: RECALL_LONG_REQUEST_TIMEOUT_MS });
     return response.data;
   },
 

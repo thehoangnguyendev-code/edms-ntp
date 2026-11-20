@@ -225,10 +225,10 @@ export const UserProfileView: React.FC = () => {
                 <>
                   <Button variant="outline-emerald" size="sm" onClick={resetEdit} disabled={!isDraftDirty} className="whitespace-nowrap">Reset</Button>
                   <Button variant="outline-emerald" size="sm" onClick={cancelEdit} className="whitespace-nowrap">Cancel</Button>
-                  <Button variant="default" size="sm" onClick={saveAll} className="whitespace-nowrap">Save</Button>
+                  <Button variant="outline-emerald" size="sm" onClick={saveAll} className="whitespace-nowrap">Save</Button>
                 </>
               ) : (
-                <Button variant="default" size="sm" onClick={startEdit} className="whitespace-nowrap">Edit</Button>
+                <Button variant="outline-emerald" size="sm" onClick={startEdit} className="whitespace-nowrap">Edit Profile</Button>
               )
             )}
           </>

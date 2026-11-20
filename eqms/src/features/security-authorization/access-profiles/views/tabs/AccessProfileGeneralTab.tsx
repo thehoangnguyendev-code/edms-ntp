@@ -6,9 +6,7 @@ import { cn } from "@/components/ui/utils";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import type { AccessProfileDetailResponse } from "@/services/api/settings";
 import { formatDateTime } from "@/utils/format";
-import { inputCls, textareaCls, scopeListToString, scopeStringToList } from "./accessProfileDetailShared";
-import { MultiSelect } from "@/components/ui/select/MultiSelect";
-import { useScopeOptions } from "@/features/security-authorization/access-profiles/shared/useScopeOptions";
+import { inputCls, textareaCls } from "./accessProfileDetailShared";
 
 const labelCls = "text-xs sm:text-sm font-medium text-slate-700";
 const readCls = "flex h-9 w-full items-center rounded-lg border border-slate-200 bg-slate-50/70 px-3";
@@ -23,10 +21,11 @@ const Field: React.FC<{ label: React.ReactNode; className?: string; children: Re
 export const GeneralTab: React.FC<{
   profile: AccessProfileDetailResponse;
   isEditing: boolean;
-  draft: { name: string; description: string; businessUnitScope: string; departmentScope: string; active: boolean };
+  draft: { name: string; description: string; active: boolean };
   onChange: (field: string, value: string | boolean) => void;
-}> = ({ profile, isEditing, draft, onChange }) => {
-  const { businessUnitOptions, departmentOptions, isLoading: scopeOptionsLoading } = useScopeOptions();
+  /** Red hint under the name, shown after a Save that found the name empty. */
+  nameError?: string;
+}> = ({ profile, isEditing, draft, onChange, nameError }) => {
   const active = isEditing ? draft.active : profile.active;
   return (
     <div className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-2">
@@ -43,12 +42,17 @@ export const GeneralTab: React.FC<{
 
       <Field label={<>Profile Name <span className="text-red-500">*</span></>}>
         {isEditing ? (
-          <input
-            className={inputCls}
-            value={draft.name}
-            onChange={e => onChange("name", e.target.value)}
-            placeholder="e.g. Quality Assurance Manager"
-          />
+          <>
+            <input
+              id="profile-field-name"
+              className={cn(inputCls, nameError && "border-red-500 focus:border-red-500 focus:ring-red-500")}
+              value={draft.name}
+              onChange={e => onChange("name", e.target.value)}
+              placeholder="e.g. Quality Assurance Manager"
+              aria-invalid={Boolean(nameError)}
+            />
+            {nameError && <p role="alert" className="mt-1.5 text-xs text-red-600">{nameError}</p>}
+          </>
         ) : (
           <div className={readCls}>
             <p className="truncate text-sm font-medium text-slate-900">{profile.name || "—"}</p>
@@ -78,37 +82,6 @@ export const GeneralTab: React.FC<{
           />
           <Badge size="sm" color={flagColor(active)}>{active ? "Active" : "Inactive"}</Badge>
         </div>
-      </Field>
-
-      <Field label="Business Unit Scope">
-        {isEditing ? (
-          <MultiSelect
-            value={scopeStringToList(draft.businessUnitScope)}
-            onChange={(values) => onChange("businessUnitScope", scopeListToString(values.map(String)) ?? "")}
-            options={businessUnitOptions}
-            placeholder="All"
-            isLoading={scopeOptionsLoading}
-          />
-        ) : (
-          <div className={readCls}>
-            <p className="truncate text-sm text-slate-700">{profile.businessUnitScope || "All"}</p>
-          </div>
-        )}
-      </Field>
-      <Field label="Department Scope">
-        {isEditing ? (
-          <MultiSelect
-            value={scopeStringToList(draft.departmentScope)}
-            onChange={(values) => onChange("departmentScope", scopeListToString(values.map(String)) ?? "")}
-            options={departmentOptions}
-            placeholder="All"
-            isLoading={scopeOptionsLoading}
-          />
-        ) : (
-          <div className={readCls}>
-            <p className="truncate text-sm text-slate-700">{profile.departmentScope || "All"}</p>
-          </div>
-        )}
       </Field>
 
       <Field label="Description" className="md:col-span-2">

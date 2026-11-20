@@ -62,9 +62,10 @@ export interface NotificationPolicyDetail {
   updatedByName: string | null;
   updatedAt: string;
   activeTemplates: NotificationTemplateVersion[];
-  /** The icon (lucide:Name or tabler:Name) and the tone of its colour chosen for the in-app notification; null means the icon of its kind. */
+  /** The icon (lucide:Name or tabler:Name) chosen for the in-app notification; null means the icon of its kind. The colour of the icon follows the priority. */
   icon: string | null;
-  iconTone: string | null;
+  /** The priority of the event in the catalog. `priority` is the one the notification is sent with: an administrator may have changed it. */
+  defaultPriority: string;
 }
 
 /** One placeholder an event offers: the token to copy, what it stands for, and an example of what it becomes. */
@@ -90,6 +91,8 @@ export interface UpdateNotificationPolicyPayload {
   enabledChannels?: string[];
   /** The "Updated" time of the notification as it was when this person opened it; a change saved by someone else since refuses this one. */
   expectedUpdatedAt?: string;
+  /** LOW, MEDIUM or HIGH. Choosing the default of the event puts the notification back to it. */
+  priority?: string;
 }
 
 export interface UpdateNotificationTemplatePayload {
@@ -148,9 +151,9 @@ export const notificationPolicyApi = {
   },
 
   /** Sends the published email, with example values, to one address. */
-  /** Chooses the icon and the colour of the in-app notification; empty values go back to the icon of its kind. */
-  updateAppearance: async (eventCode: string, icon: string | null, iconTone: string | null, expectedUpdatedAt?: string) => {
-    const response = await api.put<NotificationPolicyDetail>(`${event(eventCode)}/appearance`, { icon, iconTone, expectedUpdatedAt });
+  /** Chooses the icon of the in-app notification; an empty value goes back to the icon of its kind. */
+  updateAppearance: async (eventCode: string, icon: string | null, expectedUpdatedAt?: string) => {
+    const response = await api.put<NotificationPolicyDetail>(`${event(eventCode)}/appearance`, { icon, expectedUpdatedAt });
     return response.data;
   },
 

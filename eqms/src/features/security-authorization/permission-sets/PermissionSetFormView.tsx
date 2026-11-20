@@ -46,6 +46,8 @@ export const PermissionSetFormView: React.FC = () => {
   const [active, setActive] = useState(true);
   const [selectedCodes, setSelectedCodes] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  // Errors show only after the first Save; each one clears as soon as its field is valid.
+  const [submitted, setSubmitted] = useState(false);
 
   // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after a successful Save is not a leave.
   const { isDirty } = useFormDirty({ name, code, description, active, permissions: [...selectedCodes].sort() }, !(isEdit && loadingSource));
@@ -79,13 +81,17 @@ export const PermissionSetFormView: React.FC = () => {
     });
   };
 
+  const errors = {
+    name: name.trim() ? "" : "Enter a name for this permission set.",
+    permissions: selectedCodes.size > 0 ? "" : "Select at least one permission.",
+  };
+  const shown = { name: submitted ? errors.name : "", permissions: submitted ? errors.permissions : "" };
+
   const handleSave = async () => {
-    if (!name.trim()) {
-      showToast({ type: "error", title: "Validation failed", message: "Name is required" });
-      return;
-    }
-    if (selectedCodes.size === 0) {
-      showToast({ type: "error", title: "Validation failed", message: "Select at least one permission" });
+    setSubmitted(true);
+    const firstInvalid = (["name", "permissions"] as const).find((field) => errors[field]);
+    if (firstInvalid) {
+      document.getElementById(`ps-field-${firstInvalid}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     const sig = await requestSignature(isEdit ? "Update Permission Set" : "Create Permission Set", "Permission Set Change");
@@ -155,18 +161,19 @@ export const PermissionSetFormView: React.FC = () => {
       <FormSection title="Basic Information" icon={<Info className="h-4 w-4" />} contentClassName="p-4 md:p-5">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+            <div id="ps-field-name">
               <label className={labelClass}>
                 Name <span className="text-red-500">*</span>
               </label>
               <input
-                className={inputClass}
+                className={`${inputClass}${shown.name ? " border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Document Author"
                 disabled={isSystemLocked}
-                autoFocus
+                aria-invalid={Boolean(shown.name)}
               />
+              {shown.name && <p role="alert" className="mt-1.5 text-xs text-red-600">{shown.name}</p>}
             </div>
             <div>
               <label className={labelClass}>Code</label>
@@ -208,13 +215,11 @@ export const PermissionSetFormView: React.FC = () => {
         description="Tick the permissions to include in this set. Grouped by module — search or filter to narrow down."
         contentClassName="p-4 md:p-5"
       >
-        <div className="mb-3 flex items-center gap-2">
+        <div id="ps-field-permissions" className="mb-3 flex items-center gap-2">
           <Badge color="emerald" size="sm">
             {selectedCodes.size} selected
           </Badge>
-          {selectedCodes.size === 0 && (
-            <span className="text-xs text-red-500">Select at least one permission</span>
-          )}
+          {shown.permissions && <span role="alert" className="text-xs text-red-600">{shown.permissions}</span>}
         </div>
         <PermissionSplitExplorer
           groups={permissionGroups}

@@ -17,6 +17,14 @@ export const dispatchSessionEnded = () => {
   window.dispatchEvent(new CustomEvent(SESSION_ENDED_EVENT));
 };
 
+/** The server refused a request because this session ended: the same account signed in on another device. A modal tells the person, then signs this browser out. */
+export const SESSION_REPLACED_EVENT = "eqms:session-replaced";
+
+export const dispatchSessionReplaced = () => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(SESSION_REPLACED_EVENT));
+};
+
 export const dispatchRouteRedirect =(path: string, replace = true) => {
   if (typeof window === "undefined") return;
   window.dispatchEvent(

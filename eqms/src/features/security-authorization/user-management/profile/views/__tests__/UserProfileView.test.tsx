@@ -89,13 +89,13 @@ describe("UserProfileView layout", () => {
     renderView();
     await waitFor(() => expect(mocks.getUserCapabilities).toHaveBeenCalled());
 
-    expect(await screen.findByRole("button", { name: "Edit" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Edit Profile" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "More actions" })).toBeNull();
   });
 
   it("gives Edit as the main button and starts editing; while editing it shows Save and an Editing badge", async () => {
     const { unmount } = renderView();
-    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Profile" }));
     expect(mocks.startEdit).toHaveBeenCalledTimes(1);
     unmount();
 
@@ -103,7 +103,7 @@ describe("UserProfileView layout", () => {
     renderView();
     expect(await screen.findByRole("button", { name: "Save" })).toBeTruthy();
     expect(screen.getByText("Editing")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit Profile" })).toBeNull();
   });
 
   it("keeps the locked-account banner above the layout, with its own Unlock button", async () => {

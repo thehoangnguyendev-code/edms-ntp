@@ -1,12 +1,27 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Check, LayoutGrid, List, Lock, Search, X } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { useDebounce } from "@/hooks/useDebounce";
 import { settingsApi } from "@/services/api/settings";
 import { mapCatalogGroup } from "../usePermissionCatalog";
-import { PermissionResourceGroup } from "./PermissionResourceGroup";
 import type { Permission, PermissionGroup } from "../../access-profiles/types";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { MENU_MODULE_ORDER, moduleDisplayName, moduleOrderFromMenu, sortModulesLikeMenu } from "@/utils/moduleDisplay";
+import { navigationApi } from "@/services/api/navigation";
+import { TabNav, type TabItem } from "@/components/ui/tabs";
+import { PermissionTableView } from "./PermissionTableView";
+
+/** The choice between the cards and the table is a preference of the person, kept in this browser (nothing depends on it, so a refused storage is ignored). */
+const VIEW_STORAGE_KEY = "eqms.permission-explorer.view";
+const VIEW_TABS: TabItem[] = [{ id: "cards", label: "Cards", icon: LayoutGrid }, { id: "table", label: "Table", icon: List }];
+type ExplorerView = "cards" | "table";
+const readView = (): ExplorerView => {
+  try {
+    return window.localStorage.getItem(VIEW_STORAGE_KEY) === "table" ? "table" : "cards";
+  } catch {
+    return "cards";
+  }
+};
 
 interface PermissionSplitExplorerProps {
   groups: PermissionGroup[];
@@ -22,6 +37,11 @@ interface PermissionSplitExplorerProps {
   selectionMode?: "single" | "multiple";
   /** Read-only details: list only the permissions that are selected, without tick boxes or the "Selected" panel. */
   selectedOnly?: boolean;
+  /**
+   * Something shown at the top of the permissions of a module, under the chips (the record-visibility choice of the module). Called with the name of the module
+   * the person has open, and only once the profile holds at least one permission of it; the caller returns nothing for a module that has no such choice.
+   */
+  moduleExtras?: (moduleName: string) => React.ReactNode;
 }
 
 /**
@@ -40,8 +60,19 @@ export const PermissionSplitExplorer: React.FC<
   lockedCodes,
   lockedNotes,
   selectedOnly = false,
+  moduleExtras,
 }) => {
   const [search, setSearch] = useState("");
+  const [view, setView] = useState<ExplorerView>(readView);
+  const chooseView = (next: string) => {
+    const value: ExplorerView = next === "table" ? "table" : "cards";
+    setView(value);
+    try {
+      window.localStorage.setItem(VIEW_STORAGE_KEY, value);
+    } catch {
+      // the choice then lasts only for this page
+    }
+  };
   const [activeModule, setActiveModule] = useState<string | null>(null);
   const [catalogGroups, setCatalogGroups] = useState<PermissionGroup[]>(groups);
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
@@ -50,6 +81,17 @@ export const PermissionSplitExplorer: React.FC<
   useEffect(() => {
     setCatalogGroups(groups);
   }, [groups]);
+
+  // The module chips follow the order of the sidebar menu (services/api/navigation.ts); the built-in order is used until the menu answers or if it cannot.
+  const [menuOrder, setMenuOrder] = useState<readonly string[]>(MENU_MODULE_ORDER);
+  useEffect(() => {
+    let cancelled = false;
+    navigationApi.getNavigation().then((menu) => {
+      const fromMenu = moduleOrderFromMenu(menu);
+      if (!cancelled && fromMenu.length > 0) setMenuOrder(fromMenu);
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,7 +137,8 @@ export const PermissionSplitExplorer: React.FC<
   const moduleMap = useMemo(() => {
     const map = new Map<string, PermissionGroup[]>();
     for (const group of shownGroups) {
-      const module = group.permissions[0]?.module ?? "Other";
+      // One entry per menu a person knows (the server keeps one key per menu since V836; the display name still merges any older spelling).
+      const module = moduleDisplayName(group.permissions[0]?.module);
       map.set(module, [...(map.get(module) ?? []), group]);
     }
     return map;
@@ -103,13 +146,17 @@ export const PermissionSplitExplorer: React.FC<
 
   const visibleModules = useMemo(
     () =>
-      [...moduleMap.entries()]
-        .map(([module, moduleGroups]) => ({
-          module,
-          groups: moduleGroups,
-        }))
-        .filter(({ groups: matchingGroups }) => matchingGroups.length > 0),
-    [moduleMap],
+      sortModulesLikeMenu(
+        [...moduleMap.entries()]
+          .map(([module, moduleGroups]) => ({
+            module,
+            groups: moduleGroups,
+          }))
+          .filter(({ groups: matchingGroups }) => matchingGroups.length > 0),
+        (entry) => entry.module,
+        menuOrder,
+      ),
+    [moduleMap, menuOrder],
   );
 
   useEffect(() => {
@@ -123,13 +170,6 @@ export const PermissionSplitExplorer: React.FC<
     }
   }, [activeModule, visibleModules]);
 
-  const activeModuleGroups = useMemo(
-    () =>
-      visibleModules.find(({ module }) => module === activeModule)?.groups ??
-      [],
-    [activeModule, visibleModules],
-  );
-
   // The right-hand panel is intentionally based on the full catalog, not the
   // current module/filter. Administrators must always be able to see what has
   // already been granted and remove a permission without hunting for its module.
@@ -140,6 +180,88 @@ export const PermissionSplitExplorer: React.FC<
   const clearFilters = () => {
     setSearch("");
   };
+
+  const entries = visibleModules.map(({ module, groups: moduleGroups }) => {
+    const permissions = [...new Map(moduleGroups.flatMap((group) => group.permissions).map((permission) => [permission.id, permission])).values()];
+    return { module, groups: moduleGroups, permissions, selected: permissions.filter((permission) => selectedCodes.has(permission.id)).length };
+  });
+  const activeEntry = entries.find((entry) => entry.module === activeModule) ?? entries[0];
+  const countLabel = (entry: { permissions: Permission[]; selected: number }) =>
+    selectedOnly ? `${entry.permissions.length} granted` : `${entry.selected}/${entry.permissions.length}`;
+  const isLocked = (code: string) => lockedCodes?.has(code) ?? false;
+  const clearEditable = () => selectedPermissions.forEach((permission) => { if (!isLocked(permission.id)) onToggle(permission.id, false); });
+  const scrollBox = "max-h-[min(56vh,34rem)] overflow-y-auto";
+
+  // Module pills across the top, permissions as tap-to-select cards, a count bar at the bottom
+  const body = (
+    <div className="flex flex-col">
+      <div className="flex gap-2 overflow-x-auto border-b border-slate-200 p-3 sm:p-4">
+        {entries.map((entry) => (
+          <button
+            key={entry.module}
+            type="button"
+            onClick={() => setActiveModule(entry.module)}
+            className={cn("inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors", activeEntry?.module === entry.module ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300")}
+          >
+            {entry.module}
+            <span className={cn("rounded-full px-1.5 text-2xs", entry.selected > 0 && !selectedOnly ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500")}>{countLabel(entry)}</span>
+          </button>
+        ))}
+      </div>
+      {moduleExtras && activeEntry && activeEntry.selected > 0 && (
+        <div className="border-b border-slate-200 p-3 sm:p-4">{moduleExtras(activeEntry.module)}</div>
+      )}
+      {view === "table" ? (
+        <div className={scrollBox}>
+          <PermissionTableView
+            permissions={activeEntry?.permissions ?? []}
+            selectedCodes={selectedCodes}
+            onToggle={onToggle}
+            disabled={readOnly || selectedOnly}
+            showTick={!selectedOnly}
+            isLocked={isLocked}
+            lockedNotes={lockedNotes}
+          />
+        </div>
+      ) : (
+      <div className={cn(scrollBox, "grid grid-cols-1 gap-3 p-3 sm:p-4 md:grid-cols-2 xl:grid-cols-3")}>
+        {(activeEntry?.permissions ?? []).map((permission) => {
+          const checked = selectedCodes.has(permission.id);
+          const locked = isLocked(permission.id);
+          return (
+            <button
+              key={permission.id}
+              type="button"
+              disabled={readOnly || locked || selectedOnly}
+              aria-pressed={checked}
+              onClick={() => onToggle(permission.id, !checked)}
+              title={locked ? lockedNotes?.get(permission.id) : permission.id}
+              className={cn("flex min-w-0 items-start gap-3 rounded-xl border p-3 text-left transition-colors disabled:cursor-default", checked ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white hover:border-slate-300")}
+            >
+              <span className={cn("mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border", checked ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 bg-white")}>
+                {checked && <Check className="h-3.5 w-3.5" />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5 text-sm font-medium text-slate-900">
+                  <span className="min-w-0 break-words">{permission.label}</span>
+                  {locked && <Lock className="h-3 w-3 shrink-0 text-slate-400" />}
+                </span>
+                <span className="block break-all text-2xs text-slate-500 sm:text-xs">{permission.id}</span>
+                {permission.description && <span className="mt-1 line-clamp-2 block text-xs text-slate-600">{permission.description}</span>}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      )}
+      {!selectedOnly && (
+        <div className="flex items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-3 py-2.5 sm:px-4">
+          <span className="text-sm font-medium text-slate-700">{selectedPermissions.length} selected</span>
+          {!readOnly && selectedPermissions.length > 0 && <button type="button" onClick={clearEditable} className="text-xs font-medium text-rose-600 hover:text-rose-700">Clear editable</button>}
+        </div>
+      )}
+    </div>
+  );
 
   if (isLoading) {
     return (
@@ -158,7 +280,8 @@ export const PermissionSplitExplorer: React.FC<
         <div>
           <div>
             <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">Search</label>
-            <div className="relative">
+            <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[14rem] flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={search}
@@ -176,6 +299,8 @@ export const PermissionSplitExplorer: React.FC<
                 <X className="h-4 w-4" />
               </button>
             )}
+            </div>
+            <TabNav tabs={VIEW_TABS} activeTab={view} onChange={chooseView} variant="pill" ariaLabel="How the permissions are shown" className="!w-auto" />
             </div>
           </div>
         </div>
@@ -198,122 +323,7 @@ export const PermissionSplitExplorer: React.FC<
           </button>
         </div>
       ) : (
-        <div className="flex min-h-0 flex-col lg:h-[min(56vh,34rem)] lg:flex-row">
-          <aside className="border-b border-slate-200 bg-slate-50/60 lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r">
-            <div className="flex gap-1 overflow-x-auto p-2 lg:h-full lg:block lg:space-y-1 lg:overflow-y-auto lg:p-3">
-              {visibleModules.map(({ module, groups: moduleGroups }) => {
-                const modulePermissions = moduleGroups.flatMap((group) => group.permissions);
-                const uniqueModulePermissions = [
-                  ...new Map(
-                    modulePermissions.map((permission) => [
-                      permission.id,
-                      permission,
-                    ]),
-                  ).values(),
-                ];
-                const selectedCount = uniqueModulePermissions.filter(
-                  (permission) => selectedCodes.has(permission.id),
-                ).length;
-                const isActive = activeModule === module;
-                return (
-                  <button
-                    key={module}
-                    type="button"
-                    onClick={() => setActiveModule(module)}
-                    className={cn(
-                      "min-w-fit rounded-lg border px-3 py-2.5 text-left transition-colors lg:block lg:w-full",
-                      isActive
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                        : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white",
-                    )}
-                  >
-                    <span className="block truncate text-sm font-semibold leading-5">
-                      {module}
-                    </span>
-                    <span
-                      className={cn(
-                        "mt-0.5 block text-xs leading-4",
-                        isActive ? "text-emerald-600" : "text-slate-400",
-                      )}
-                    >
-                      {selectedOnly ? `${uniqueModulePermissions.length} granted` : `${selectedCount}/${uniqueModulePermissions.length} selected`}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </aside>
-
-          <div className="min-w-0 flex-1 overflow-y-auto p-3 sm:p-4">
-            {activeModuleGroups.map((group) => (
-              <PermissionResourceGroup
-                key={group.id}
-                group={group}
-                selectedCodes={selectedCodes}
-                onToggle={onToggle}
-                readOnly={readOnly}
-                hideCheckbox={selectedOnly}
-                showSelectAll={false}
-                hideHeader
-                filteredPermissionIds={null}
-                lockedCodes={lockedCodes}
-                lockedNotes={lockedNotes}
-              />
-            ))}
-          </div>
-
-          {!selectedOnly && (
-          <aside className="border-t border-slate-200 bg-slate-50/40 lg:w-72 lg:shrink-0 lg:border-l lg:border-t-0">
-            <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-2.5 sm:px-4">
-              <span className="text-sm font-semibold text-slate-700">Selected ({selectedPermissions.length})</span>
-              {!readOnly && selectedPermissions.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => selectedPermissions.forEach((permission) => {
-                    if (!lockedCodes?.has(permission.id)) onToggle(permission.id, false);
-                  })}
-                  className="text-xs font-medium text-rose-600 hover:text-rose-700"
-                >
-                  Clear editable
-                </button>
-              )}
-            </div>
-            <div className="max-h-56 space-y-2 overflow-y-auto p-3 lg:h-[calc(100%-46px)] lg:max-h-none">
-              {selectedPermissions.length === 0 ? (
-                <p className="px-2 py-4 text-center text-xs text-slate-400">
-                  Selected permissions will appear here.
-                </p>
-              ) : (
-                selectedPermissions.map((permission) => {
-                  const locked = lockedCodes?.has(permission.id) ?? false;
-                  return (
-                    <div key={permission.id} className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-                      <div className="flex items-start gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium leading-5 text-emerald-800">{permission.label}</p>
-                          <p className="mt-0.5 break-all text-2xs font-medium leading-4 text-emerald-700 sm:text-xs">{permission.id}</p>
-                          <p className="mt-1 text-xs text-slate-600">{permission.module}</p>
-                        </div>
-                        {!readOnly && !locked && (
-                          <button
-                            type="button"
-                            onClick={() => onToggle(permission.id, false)}
-                            className="rounded p-0.5 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-800"
-                            aria-label={`Remove ${permission.label}`}
-                            title="Remove permission"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </aside>
-          )}
-        </div>
+        body
       )}
     </div>
   );

@@ -473,11 +473,6 @@ const SYSTEM_MODULES: NavItem[] = [
     showDividerAfter: true,
     children: [
       {
-        id: "backup-overview",
-        label: "Backup Status Overview",
-        path: ROUTES.BACKUP_RESTORE.OVERVIEW,
-      },
-      {
         id: "backup-group",
         label: "Backup",
         children: [
@@ -517,7 +512,6 @@ const SYSTEM_MODULES: NavItem[] = [
       "security.access_profiles.view",
       "security.permission_sets.view",
       "security.workflow_authorization.view",
-      "security.object_rules.view",
       "security.sod.view",
       "security.access_review.view",
     ],
@@ -593,7 +587,6 @@ const SYSTEM_MODULES: NavItem[] = [
         allowedPermissions: [
           "security.permission_sets.view",
           "security.workflow_authorization.view",
-          "security.object_rules.view",
           "security.sod.view",
           "security.access_profiles.update",
         ],
@@ -603,12 +596,6 @@ const SYSTEM_MODULES: NavItem[] = [
             label: "Shared Permission Sets",
             path: ROUTES.SECURITY.PERMISSION_SETS,
             allowedPermissions: ["security.permission_sets.view"],
-          },
-          {
-            id: "sec-workflow-role-catalog",
-            label: "Workflow Role Catalog",
-            path: ROUTES.SECURITY.WORKFLOW_ROLE_CATALOG,
-            allowedPermissions: ["security.workflow_authorization.view"],
           },
           {
             id: "sec-sod",
@@ -621,12 +608,6 @@ const SYSTEM_MODULES: NavItem[] = [
             label: "Engine Diagnostics",
             path: ROUTES.SECURITY.AUTHORIZATION_DIAGNOSTICS,
             allowedPermissions: ["security.workflow_authorization.view"],
-          },
-          {
-            id: "sec-object-rules",
-            label: "Object Access Rules",
-            path: ROUTES.SECURITY.OBJECT_RULES,
-            allowedPermissions: ["security.object_rules.view"],
           },
         ],
       },
@@ -758,7 +739,16 @@ const SYSTEM_MODULES: NavItem[] = [
     label: "System Administration",
     icon: IconDeviceDesktopCog,
     allowedPermissions: [
-      "settings.config_general.view",, "settings.config_navigation_labels.view",, "settings.config_security.view",, "settings.config_notifications.view",, "settings.config_integrations.view",, "settings.config_preview_file.view",, "settings.config_image_watermark.view",, "settings.config_features.view", "settings.electronic_signature.view", "settings.system_info.view",
+      "settings.config_general.view",
+      "settings.config_navigation_labels.view",
+      "settings.config_security.view",
+      "settings.config_notifications.view",
+      "settings.config_integrations.view",
+      "settings.config_preview_file.view",
+      "settings.config_image_watermark.view",
+      "settings.config_features.view",
+      "settings.electronic_signature.view",
+      "settings.system_info.view",
       "settings.notification_policy.view",
       "settings.notification_policy.manage",
       "settings.email_template.view",

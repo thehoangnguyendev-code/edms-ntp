@@ -34,6 +34,7 @@ import { permissionSets as permissionSetsBreadcrumb } from "@/components/ui/brea
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { moduleSelectOptions } from "@/utils/moduleDisplay";
 
 const STATUS_OPTIONS: SelectOption[] = [
   { label: "All", value: "ALL" },
@@ -191,7 +192,7 @@ export const PermissionSetsView: React.FC = () => {
 
   const moduleOptions: SelectOption[] = [
     { label: "All", value: "ALL" },
-    ...(listOptions.modules ?? []).map((m) => ({ label: m, value: m })),
+    ...moduleSelectOptions(listOptions.modules ?? []),
   ];
   const categoryOptions: SelectOption[] = [
     { label: "All", value: "ALL" },

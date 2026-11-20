@@ -197,63 +197,6 @@ export const secureStorage = {
 };
 
 /**
- * JWT Token utilities
- */
-export const tokenUtils = {
-  /**
-   * Parse JWT token (client-side only for reading payload, not for validation)
-   */
-  parseToken: (token: string): any => {
-    try {
-      // Try JWT format first (header.payload.signature)
-      if (token.includes('.')) {
-        const payload = token.split('.')[1];
-        return JSON.parse(atob(payload));
-      }
-      // Fallback: try direct base64-encoded JSON (demo token format)
-      return JSON.parse(atob(token));
-    } catch (error) {
-      if (import.meta.env.DEV) console.error('Token parse error:', error);
-      return null;
-    }
-  },
-
-  /**
-   * Check if token is expired
-   */
-  isTokenExpired: (token: string): boolean => {
-    // TEMP: Always return false for local dev mock tokens
-    return false;
-    
-    // const payload = tokenUtils.parseToken(token);
-    // if (!payload || !payload.exp) return true;
-
-    // const currentTime = Math.floor(Date.now() / 1000);
-    // return payload.exp < currentTime;
-  },
-
-  /**
-   * Get token expiry time
-   */
-  getTokenExpiry: (token: string): Date | null => {
-    const payload = tokenUtils.parseToken(token);
-    if (!payload || !payload.exp) return null;
-    return new Date(payload.exp * 1000);
-  },
-
-  /**
-   * Check if token needs refresh (expires in < 5 minutes)
-   */
-  needsRefresh: (token: string): boolean => {
-    const expiry = tokenUtils.getTokenExpiry(token);
-    if (!expiry) return true;
-
-    const fiveMinutes = 5 * 60 * 1000;
-    return expiry.getTime() - Date.now() < fiveMinutes;
-  },
-};
-
-/**
  * Content Security Policy helper
  */
 export const cspViolationHandler = (event: SecurityPolicyViolationEvent) => {
@@ -460,24 +403,13 @@ export class SessionManager {
 }
 
 /**
- * Audit log helper
+ * A trace of what this browser did (a session that timed out, a refused copy...), written to the console of a development build only.
+ * It is NOT an audit record and nothing here is stored or sent: the Audit Trail is written by the server (sign-in, MFA, sign-out
+ * and every change are recorded there).
  */
-export const auditLog = {
-  log: (action: string, details?: Record<string, any>): void => {
-    const entry = {
-      timestamp: new Date().toISOString(),
-      action,
-      details,
-      userAgent: navigator.userAgent,
-      url: window.location.href,
-    };
-
-    // In production, send to backend API
-    if (import.meta.env.PROD) {
-      // TODO: Replace with actual API call
-      // api.post('/audit-log', entry);
-    } else {
-      console.log('[AUDIT]', entry);
-    }
+export const clientDiagnostics = {
+  log: (action: string, details?: Record<string, unknown>): void => {
+    if (!import.meta.env.DEV) return;
+    console.debug('[client]', { timestamp: new Date().toISOString(), action, details, url: window.location.href });
   },
 };

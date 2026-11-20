@@ -50,7 +50,6 @@ export interface Notification {
   relatedItem?: NotificationRelatedItem | null;
   metadata?: Record<string, unknown> | null;
   icon?: string | null;
-  iconTone?: string | null;
 }
 
 export interface GetNotificationsParams {

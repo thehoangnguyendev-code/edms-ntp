@@ -34,11 +34,11 @@ export const UserProfileSummary: React.FC<{ user: User; avatar: React.ReactNode 
             <span className="text-slate-500">{user.department}</span>
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-1.5 lg:justify-center">
-            <Badge color={statusColor(user.status)} size="sm" showDot pill title={USER_STATUS_DESCRIPTIONS[user.status]}>
+            <Badge color={statusColor(user.status)} size="sm" pill title={USER_STATUS_DESCRIPTIONS[user.status]}>
               {user.status}
             </Badge>
             {user.employmentType && <Badge color="slate" size="sm">{user.employmentType}</Badge>}
-            {user.accountLocked && <Badge color="red" size="sm" showDot>Locked</Badge>}
+            {user.accountLocked && <Badge color="red" size="sm">Locked</Badge>}
             {user.inactive && <Badge color="amber" size="sm" title={`No sign-in for ${user.inactiveDays} days`}>Inactive</Badge>}
           </div>
         </div>

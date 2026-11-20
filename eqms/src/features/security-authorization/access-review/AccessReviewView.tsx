@@ -133,6 +133,7 @@ export const AccessReviewView: React.FC = () => {
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [campaignName, setCampaignName] = useState("");
+  const [createSubmitted, setCreateSubmitted] = useState(false);
   const [campaignDescription, setCampaignDescription] = useState("");
   const [reviewerUserId, setReviewerUserId] = useState("");
   const [reviewPeriodStart, setReviewPeriodStart] = useState("");
@@ -201,14 +202,13 @@ export const AccessReviewView: React.FC = () => {
     setReviewerUserId("");
     setReviewPeriodStart("");
     setReviewPeriodEnd("");
+    setCreateSubmitted(false);
     setIsCreateModalOpen(true);
   };
 
   const createCampaign = async () => {
-    if (!campaignName.trim()) {
-      showToast({ type: "error", title: "Validation failed", message: "Campaign name is required" });
-      return;
-    }
+    setCreateSubmitted(true);
+    if (!campaignName.trim()) return;
     setCreating(true);
     try {
       const detail = await settingsApi.createAccessReview({
@@ -596,13 +596,20 @@ export const AccessReviewView: React.FC = () => {
         description="Snapshots every user's current access for periodic review (EU-GMP Annex 11)."
         confirmText="Create Campaign"
         isLoading={creating}
-        confirmDisabled={!campaignName.trim()}
         size="lg"
       >
         <div className="space-y-4">
           <div>
             <label className={labelClass}>Name <span className="text-red-500">*</span></label>
-            <input className={inputClass} value={campaignName} onChange={(event) => setCampaignName(event.target.value)} placeholder="Q3 2026 Periodic Access Review" autoFocus />
+            <input
+              className={`${inputClass}${createSubmitted && !campaignName.trim() ? " border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
+              value={campaignName}
+              onChange={(event) => setCampaignName(event.target.value)}
+              placeholder="Q3 2026 Periodic Access Review"
+              aria-invalid={createSubmitted && !campaignName.trim()}
+              autoFocus
+            />
+            {createSubmitted && !campaignName.trim() && <p role="alert" className="mt-1.5 text-xs text-red-600">Enter a name for this campaign.</p>}
           </div>
           <div>
             <label className={labelClass}>Description</label>

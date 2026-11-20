@@ -9,31 +9,35 @@ import { Plus, RefreshCw, Shield } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { WorkflowTransitionsView, type WorkflowTransitionsViewHandle } from "./WorkflowTransitionsView";
 import { StateCapabilitiesView } from "./StateCapabilitiesView";
+import { WorkflowRolesView, type WorkflowRolesViewHandle } from "./WorkflowRolesView";
 import { ActionStatusMatrix } from "../components/ActionStatusMatrix";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 
-type TabId = "matrix" | "transitions" | "capabilities";
+type TabId = "matrix" | "transitions" | "capabilities" | "roles";
 
 const TAB_LABELS: Record<TabId, string> = {
   matrix: "Action Matrix",
   transitions: "Transition Policies",
   capabilities: "State Capabilities",
+  roles: "Workflow Roles",
 };
 
 const TABS: TabItem[] = [
   { id: "matrix", label: TAB_LABELS.matrix },
   { id: "transitions", label: TAB_LABELS.transitions },
   { id: "capabilities", label: TAB_LABELS.capabilities },
+  { id: "roles", label: TAB_LABELS.roles },
 ];
 
 export const LifecyclePoliciesView: React.FC = () => {
   const navigate = useNavigate();
   const { hasPermissionAlias } = usePermissions();
   const transitionViewRef = useRef<WorkflowTransitionsViewHandle>(null);
+  const rolesViewRef = useRef<WorkflowRolesViewHandle>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab: TabId = useMemo(() => {
     const tab = searchParams.get("tab");
-    return tab === "capabilities" || tab === "transitions" ? tab : "matrix";
+    return tab === "capabilities" || tab === "transitions" || tab === "roles" ? tab : "matrix";
   }, [searchParams]);
 
   const handleTabChange = (tab: string) => {
@@ -48,7 +52,14 @@ export const LifecyclePoliciesView: React.FC = () => {
   );
 
   const canManage = hasPermissionAlias("security.workflow_authorization.manage");
-  const pageActions = activeTab === "capabilities" ? (
+  const pageActions = activeTab === "roles" ? (
+    canManage ? (
+      <Button size="sm" className="whitespace-nowrap gap-2" onClick={() => rolesViewRef.current?.openNew()}>
+        <Plus className="h-4 w-4" />
+        New Custom Role
+      </Button>
+    ) : undefined
+  ) : activeTab === "capabilities" ? (
     canManage ? (
     <Button
       size="sm"
@@ -63,7 +74,7 @@ export const LifecyclePoliciesView: React.FC = () => {
     <>
       <Button variant="outline" size="sm" className="whitespace-nowrap gap-2" onClick={() => navigate(ROUTES.SECURITY.POLICY_RESOLVER)}>
         <Shield className="h-4 w-4" />
-        Policy Resolver
+        Engine Diagnostics
       </Button>
       <Button variant="outline" size="sm" className="whitespace-nowrap gap-2" onClick={() => transitionViewRef.current?.refresh()}>
         <RefreshCw className="h-4 w-4" />
@@ -93,7 +104,9 @@ export const LifecyclePoliciesView: React.FC = () => {
               <WarningBanner
                 variant="info"
                 description={
-                  activeTab === "transitions"
+                  activeTab === "roles"
+                    ? "A workflow role is a job a person can be given on a record, such as Reviewer or Approver. An Access Profile lists the roles its holders have, and the policies in the other tabs use them to decide who may act."
+                    : activeTab === "transitions"
                     ? "Advanced: this is the full list of rules behind the Action Matrix, one row per rule. Open it to change a rule or add an exception. To just see who may do what, use the Action Matrix tab."
                     : "Advanced: these rules decide what each status allows (for example whether a record can be edited). Change them only when the lifecycle itself changes. To see who may do what, use the Action Matrix tab."
                 }
@@ -103,6 +116,7 @@ export const LifecyclePoliciesView: React.FC = () => {
           {activeTab === "matrix" && <ActionStatusMatrix />}
           {activeTab === "capabilities" && <StateCapabilitiesView embedded />}
           {activeTab === "transitions" && <WorkflowTransitionsView ref={transitionViewRef} embedded />}
+          {activeTab === "roles" && <WorkflowRolesView ref={rolesViewRef} />}
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useState } from "react";
-import { Check, ChevronDown, ChevronUp, Search, X } from "lucide-react";
+import { Check, Search, X } from "lucide-react";
 import { IconFilter2 } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { flagColor } from "@/utils/status";
@@ -17,8 +17,26 @@ import { useTableDragScroll, useDebounce } from "@/hooks";
 import { cn } from "@/components/ui/utils";
 import { securityApi, type AuthorizationRelationDefinition } from "@/services/api/security";
 import { formatDateTime } from "@/utils/format";
-import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+
+// Display only: the codes stay what the server sends.
+const humanize = (code: string) =>
+  code.toLowerCase().split("_").filter(Boolean).map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
+
+const ConfigChips: React.FC<{ config: Record<string, unknown> | null }> = ({ config }) => {
+  const entries = config ? Object.entries(config) : [];
+  return entries.length > 0 ? (
+    <div className="flex w-full flex-wrap items-center gap-1">
+      {entries.map(([key, value]) => (
+        <span key={key} className="rounded-full bg-slate-100 px-2 py-0.5 text-2xs text-slate-600 break-all">
+          {key}={String(value)}
+        </span>
+      ))}
+    </div>
+  ) : (
+    <span className="text-2xs text-slate-300">—</span>
+  );
+};
 
 const RESOURCE_TYPE_OPTIONS: SelectOption[] = [
   { label: "All", value: "ALL" },
@@ -26,6 +44,26 @@ const RESOURCE_TYPE_OPTIONS: SelectOption[] = [
   { label: "Revision", value: "REVISION" },
   { label: "Controlled Copy", value: "CONTROLLED_COPY" },
   { label: "Controlled Copy Batch", value: "CONTROLLED_COPY_BATCH" },
+  { label: "Report Template (review)", value: "REPORT_TEMPLATE" },
+  { label: "Training Requirement", value: "TRAINING_REQUIREMENT" },
+  { label: "Training Matrix Version", value: "TRAINING_MATRIX_VERSION" },
+  { label: "Training Activity", value: "TRAINING_ACTIVITY" },
+  { label: "Training Participant", value: "TRAINING_PARTICIPANT" },
+  { label: "Training Assessment", value: "TRAINING_ASSESSMENT" },
+  { label: "Training Job Assignment", value: "TRAINING_JOB_ASSIGNMENT" },
+  { label: "Training Personnel Review", value: "TRAINING_PERSONNEL_REVIEW" },
+  { label: "Training Record Export", value: "TRAINING_RECORD_EXPORT" },
+  { label: "Training Record Export Batch", value: "TRAINING_RECORD_EXPORT_BATCH" },
+  { label: "Training Trainer Exception", value: "TRAINING_TRAINER_EXCEPTION" },
+  { label: "Training Suspension", value: "TRAINING_SUSPENSION" },
+  { label: "Training Vendor", value: "TRAINING_VENDOR" },
+  { label: "Training Record", value: "TRAINING_RECORD" },
+  { label: "Report Schedule", value: "REPORT_SCHEDULE" },
+  { label: "Report Run", value: "REPORT_RUN" },
+  { label: "Report File (legal hold)", value: "REPORT_ARTIFACT" },
+  { label: "Access Review Campaign", value: "ACCESS_REVIEW_CAMPAIGN" },
+  { label: "Audit Trail Review Campaign", value: "AUDIT_REVIEW_CAMPAIGN" },
+  { label: "Uncontrolled Copy", value: "UNCONTROLLED_COPY" },
 ];
 
 const STATUS_OPTIONS: SelectOption[] = [
@@ -146,77 +184,75 @@ export const RelationDefinitionsTab: React.FC = () => {
   const isTableLoading = loading && items.length > 0;
 
   type RelationRow = (typeof items)[number];
+  const sortOf = (key: SortKey) => ({
+    direction: sortConfig.key === key ? sortConfig.direction : undefined,
+    onSort: () => handleSort(key),
+  });
   const relationColumns: DataTableColumn<RelationRow>[] = [
-    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-[4%] text-center", cellClassName: "text-center text-slate-500", cell: (_d, idx) => (currentPage - 1) * itemsPerPage + idx + 1 },
+    {
+      id: "no",
+      header: "No.",
+      label: "No.",
+      locked: true,
+      headerClassName: "text-center",
+      cellClassName: "text-center text-slate-500",
+      cell: (_d, idx) => (currentPage - 1) * itemsPerPage + idx + 1,
+    },
+    {
+      id: "relation",
+      header: "Relation",
+      label: "Relation",
+      cell: (d) => <div className="max-w-[240px] whitespace-normal break-words text-sm font-medium text-slate-900">{d.displayName}</div>,
+    },
     {
       id: "code",
       header: "Code",
       label: "Code",
-      headerClassName: "w-[26%]",
-      sort: { direction: sortConfig.key === "code" ? sortConfig.direction : undefined, onSort: () => handleSort("code") },
-      cell: (d) => (
-        <>
-          <div className="break-all text-xs sm:text-sm font-medium text-slate-800">{d.code}</div>
-          <div className="break-words text-2xs text-slate-400">{d.displayName}</div>
-        </>
-      ),
+      sort: sortOf("code"),
+      cell: (d) => <div className="max-w-[220px] whitespace-normal break-all font-mono text-2xs text-slate-600">{d.code}</div>,
     },
     {
-      id: "resourceType",
-      header: "Resource Type",
-      label: "Resource Type",
-      headerClassName: "w-[13%]",
-      sort: { direction: sortConfig.key === "resourceType" ? sortConfig.direction : undefined, onSort: () => handleSort("resourceType") },
-      cell: (d) => <Badge color="purple" size="xs">{d.resourceType}</Badge>,
+      id: "appliesTo",
+      header: "Applies to",
+      label: "Applies to",
+      sort: sortOf("resourceType"),
+      cell: (d) => <Badge color="purple" size="xs">{humanize(d.resourceType)}</Badge>,
     },
     {
-      id: "resolverCode",
+      id: "resolver",
       header: "Resolver",
       label: "Resolver",
-      headerClassName: "w-[15%]",
-      sort: { direction: sortConfig.key === "resolverCode" ? sortConfig.direction : undefined, onSort: () => handleSort("resolverCode") },
-      cellClassName: "text-xs sm:text-sm text-slate-600 break-all",
-      cell: (d) => d.resolverCode,
+      sort: sortOf("resolverCode"),
+      cellClassName: "text-sm text-slate-700",
+      cell: (d) => humanize(d.resolverCode),
     },
     {
       id: "resolverConfig",
       header: "Resolver Config",
       label: "Resolver Config",
-      headerClassName: "w-[25%]",
-      cell: (d) => {
-        const configEntries = d.resolverConfig ? Object.entries(d.resolverConfig) : [];
-        return configEntries.length > 0 ? (
-          <div className="flex w-full flex-wrap items-center gap-1">
-            {configEntries.map(([key, value]) => (
-              <span key={key} className="rounded-full bg-slate-100 px-2 py-0.5 text-2xs text-slate-600 break-all">
-                {key}={String(value)}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <span className="text-2xs text-slate-300">—</span>
-        );
-      },
+      cell: (d) => (
+        <div className="max-w-[240px] whitespace-normal">
+          <ConfigChips config={d.resolverConfig} />
+        </div>
+      ),
     },
     {
-      id: "active",
+      id: "status",
       header: "Status",
       label: "Status",
-      headerClassName: "w-[7%]",
-      sort: { direction: sortConfig.key === "active" ? sortConfig.direction : undefined, onSort: () => handleSort("active") },
+      sort: sortOf("active"),
       cell: (d) => <Badge color={flagColor(d.active)} size="sm">{d.active ? "Active" : "Inactive"}</Badge>,
     },
     {
-      id: "updatedAt",
+      id: "updated",
       header: "Updated",
       label: "Updated",
-      headerClassName: "w-[10%]",
-      sort: { direction: sortConfig.key === "updatedAt" ? sortConfig.direction : undefined, onSort: () => handleSort("updatedAt") },
+      sort: sortOf("updatedAt"),
       cellClassName: "text-xs sm:text-sm text-slate-600",
       cell: (d) => formatDateTime(d.updatedAt),
     },
   ];
-  const { layout: relationLayout, control: relationControl } = useCustomColumnLayout("lifecycle.relation-definitions", relationColumns);
+  const { layout: relationLayout, control: relationControl } = useCustomColumnLayout("lifecycle.relation-definitions.v3", relationColumns);
 
   return (
     <div className="flex flex-col flex-1">

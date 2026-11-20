@@ -12,8 +12,12 @@ import {
   Shield,
   ShieldCheck,
   Fingerprint,
+  Grid3x3,
   Layers3,
+  LayoutTemplate,
+  ListOrdered,
   Plus,
+  TextCursorInput,
   Users,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -21,6 +25,8 @@ import { Button } from "@/components/ui/button/Button";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { Switch } from "@/components/ui/switch/Switch";
 import { FormSection } from "@/components/ui/form/FormSection";
+import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { cn } from "@/components/ui/utils";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
@@ -36,6 +42,7 @@ import {
 import { lifecyclePoliciesSubPage } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { WorkflowPolicyActorSelector } from "../components/WorkflowPolicyActorSelector";
 import { WorkflowPolicyDiffModal } from "../components/WorkflowPolicyDiffModal";
+import { PolicyRuleLayout, type PolicyLayoutMode } from "../components/PolicyRuleLayouts";
 import { extractApiError } from "../workflowPolicyUtils";
 import { PermissionSplitExplorer } from "@/features/security-authorization/shared/explorer/PermissionSplitExplorer";
 import { usePermissionCatalog } from "@/features/security-authorization/shared/usePermissionCatalog";
@@ -51,6 +58,7 @@ import type {
   WorkflowActionPolicyPreviewResponse,
 } from "../types";
 import { IconHierarchy, IconSection } from "@tabler/icons-react";
+import { moduleDisplayName } from "@/utils/moduleDisplay";
 
 const VIEW_PERM = "security.workflow_authorization.view";
 const MANAGE_PERM = "security.workflow_authorization.manage";
@@ -193,6 +201,15 @@ function initTransitionForm(
   };
 }
 
+/** The four ways to fill the same policy in. The choice is the person's habit, so it is remembered in this browser. */
+const POLICY_LAYOUT_TABS: readonly TabItem[] = [
+  { id: "sentence", label: "Sentence", icon: TextCursorInput },
+  { id: "steps", label: "Steps", icon: ListOrdered },
+  { id: "matrix", label: "Matrix", icon: Grid3x3 },
+  { id: "templates", label: "Templates", icon: LayoutTemplate },
+];
+const POLICY_LAYOUT_KEY = "eqms.policy-form.layout";
+
 const readOnlyField = (label: string, value: string) => (
   <div>
     <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
@@ -237,6 +254,10 @@ const TransitionPolicyForm: React.FC = () => {
     useState<WorkflowActionPolicyPreviewResponse | null>(null);
   const [showDiff, setShowDiff] = useState(false);
   const [confirmingSave, setConfirmingSave] = useState(false);
+  const [storedLayout, setStoredLayout] = useLocalStorage<PolicyLayoutMode>(POLICY_LAYOUT_KEY, "sentence");
+  const layout: PolicyLayoutMode = POLICY_LAYOUT_TABS.some((tab) => tab.id === storedLayout) ? storedLayout : "sentence";
+  // Every policy now configured: the layouts say when the one being written meets another.
+  const [existingPolicies, setExistingPolicies] = useState<WorkflowActionPolicy[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -244,11 +265,13 @@ const TransitionPolicyForm: React.FC = () => {
     Promise.all([
       workflowActionPolicyApi.getOptions(),
       id ? workflowActionPolicyApi.getPolicy(id) : Promise.resolve(null),
+      workflowActionPolicyApi.listPolicies().catch(() => [] as WorkflowActionPolicy[]),
     ])
-      .then(([opts, policy]) => {
+      .then(([opts, policy, policies]) => {
         if (cancelled) return;
         setOptions(opts);
         setSourcePolicy(policy);
+        setExistingPolicies(policies);
         setForm(initTransitionForm(mode, policy));
       })
       .catch(() => {
@@ -270,18 +293,10 @@ const TransitionPolicyForm: React.FC = () => {
   // Leaving with a change that was not saved asks first (Cancel, the breadcrumb, the sidebar, a reload); the move after a successful Save is not a leave.
   const { isDirty } = useFormDirty(form, !loading);
   const { go, modal: leaveModal } = useLeaveGuard(isDirty, mode === "create" ? "New Transition Policy" : "Edit Transition Policy", "the previous page");
-  const handleBack = () =>
-    navigateBack(
-      go,
-      location.state,
-      `/security/lifecycle-policies?tab=transitions`,
-    );
-  const leaveAfterSave = () =>
-    navigateBack(
-      navigate,
-      location.state,
-      `/security/lifecycle-policies?tab=transitions`,
-    );
+  // Opened from nowhere (a link, a reload): an edit goes back to the details of the policy, a new policy to the list.
+  const fallbackRoute = id && mode === "edit" ? `/security/lifecycle-policies/${id}` : `/security/lifecycle-policies?tab=transitions`;
+  const handleBack = () => navigateBack(go, location.state, fallbackRoute);
+  const leaveAfterSave = () => navigateBack(navigate, location.state, fallbackRoute);
 
   const setField = <K extends keyof TransitionFormState>(
     key: K,
@@ -327,7 +342,7 @@ const TransitionPolicyForm: React.FC = () => {
 
   const moduleOptions: SelectOption[] = [
     { label: "Select module", value: "" },
-    ...(options?.modules ?? []).map((m) => ({ label: m, value: m })),
+    ...(options?.modules ?? []).map((m) => ({ label: moduleDisplayName(m), value: m })),
   ];
   const workflowOptions: SelectOption[] = [
     { label: "Select workflow", value: "" },
@@ -415,6 +430,9 @@ const TransitionPolicyForm: React.FC = () => {
     return allTypes.filter((t) => action.allowedActorTypes!.includes(t.value));
   }, [form.actionCode, options]);
 
+  // The actors are read at runtime by one step only, REQUEST_COPY of a Controlled Copy; every other policy is decided by the permission, the relations and the state.
+  const actorsRelevant = form.objectType === "CONTROLLED_COPY" && form.actionCode === "REQUEST_COPY";
+
   const invalidActorIndices = useMemo(() => {
     const allowedSet = new Set(allowedActorTypes.map((t) => t.value));
     return form.actors.reduce<number[]>((acc, a, i) => {
@@ -461,7 +479,7 @@ const TransitionPolicyForm: React.FC = () => {
       active: form.active,
       description: form.description || null,
       documentTypeId: form.documentTypeId || null,
-      actors: form.actors,
+      actors: actorsRelevant ? form.actors : [],
       changeReason: form.changeReason || undefined,
     };
   }
@@ -483,11 +501,11 @@ const TransitionPolicyForm: React.FC = () => {
       });
       return false;
     }
-    if (form.actors.length === 0) {
+    if (actorsRelevant && form.actors.length === 0) {
       setActorError("At least one actor is required.");
       return false;
     }
-    if (invalidActorIndices.length > 0) {
+    if (actorsRelevant && invalidActorIndices.length > 0) {
       setActorError(
         "Remove actors that are not allowed for the selected action before saving.",
       );
@@ -619,8 +637,8 @@ const TransitionPolicyForm: React.FC = () => {
   };
 
   const titleMap: Record<TransitionMode, string> = {
-    create: "New Policy",
-    edit: "Edit Policy",
+    create: "New Transition Policy",
+    edit: "Edit Transition Policy",
     override: "Create Document-Type Override",
   };
 
@@ -633,6 +651,109 @@ const TransitionPolicyForm: React.FC = () => {
   if (loading) {
     return <FullPageLoading text="Loading workflow policy..." />;
   }
+
+  const permissionField = (
+    <RequiredPermissionPicker
+      label="Required Permission"
+      required
+      value={form.requiredPermissionCode}
+      onChange={(v) => setField("requiredPermissionCode", v)}
+      options={(options?.permissions ?? []).map((p) => ({
+        label: `${p.name} (${p.code})`,
+        value: p.code,
+      }))}
+    />
+  );
+
+  const actorsField = (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <label className="text-xs font-medium text-slate-700 sm:text-sm">
+          Actors<span className="ml-0.5 font-semibold text-red-500" aria-hidden="true">*</span>
+        </label>
+        <Button
+          type="button"
+          variant="default"
+          size="sm"
+          disabled={allowedActorTypes.length === 0}
+          onClick={() => {
+            const defaultType = allowedActorTypes[0]?.value;
+            if (!defaultType) return;
+            setField("actors", [...form.actors, { actorType: defaultType, actorCode: null }]);
+            setActorError(undefined);
+          }}
+          className="gap-1.5"
+        >
+          <Plus className="h-4 w-4" />
+          Add Actor
+        </Button>
+      </div>
+      {invalidActorIndices.length > 0 && (
+        <WarningBanner
+          variant="error"
+          className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+        >
+          <span>
+            <span className="font-semibold">
+              {invalidActorIndices.length} actor{invalidActorIndices.length > 1 ? "s" : ""} not allowed for the selected action.
+            </span>{" "}
+            Remove them before saving.
+          </span>
+          <button
+            type="button"
+            onClick={removeInvalidActors}
+            className="whitespace-nowrap text-xs font-medium underline hover:text-red-900"
+          >
+            Remove invalid actors
+          </button>
+        </WarningBanner>
+      )}
+      <WorkflowPolicyActorSelector
+        actors={form.actors}
+        onChange={(actors) => {
+          setField("actors", actors);
+          setActorError(undefined);
+        }}
+        allowedActorTypes={allowedActorTypes}
+        actorCodeOptions={options?.actorCodeOptions}
+        invalidIndices={invalidActorIndices}
+        error={actorError}
+      />
+    </div>
+  );
+
+  const optionsSection = (
+    <FormSection title="Options" icon={<Layers3 className="h-4 w-4" />} contentClassName="p-4 md:p-5">
+      <div className="flex flex-col gap-4">
+        {mode === "override" ? (
+          <Select
+            label="Document Type *"
+            value={form.documentTypeId}
+            onChange={(v) => setField("documentTypeId", v)}
+            options={docTypeOptions.filter((o) => o.value !== "")}
+          />
+        ) : (
+          <Select
+            label="Document Type"
+            value={form.documentTypeId}
+            onChange={(v) => setField("documentTypeId", v)}
+            options={docTypeOptions}
+          />
+        )}
+        <LifecyclePolicyCommonFields
+          priority={form.priority}
+          onPriorityChange={(v) => setField("priority", v)}
+          active={form.active}
+          onActiveChange={(v) => setField("active", v)}
+          description={form.description}
+          onDescriptionChange={(v) => setField("description", v)}
+          showChangeReason={mode === "edit"}
+          changeReason={form.changeReason}
+          onChangeReasonChange={(v) => setField("changeReason", v)}
+        />
+      </div>
+    </FormSection>
+  );
 
   if (!canManage) {
     return (
@@ -689,219 +810,44 @@ const TransitionPolicyForm: React.FC = () => {
       {sourcePolicy?.system && mode === "edit" && (
         <WarningBanner variant="warning">
           This is a system policy. Key identity fields cannot be changed.
-          Actors and permission can be reconfigured.
+          The permission and the options can be reconfigured.
         </WarningBanner>
       )}
 
-      <FormSection
-        title="Policy Identity"
-        icon={<IconSection className="h-4 w-4" />}
-        contentClassName="p-4 md:p-5"
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {fieldRO("moduleKey") ? (
-            readOnlyField(
-              "Module",
-              sourcePolicy?.moduleLabel ?? sourcePolicy?.moduleKey ?? "",
-            )
-          ) : (
-            <Select
-              label="Module *"
-              value={form.moduleKey}
-              onChange={(v) => setField("moduleKey", v)}
-              options={moduleOptions}
-            />
-          )}
-          {fieldRO("workflowKey") ? (
-            readOnlyField(
-              "Workflow",
-              sourcePolicy?.workflowLabel ?? sourcePolicy?.workflowKey ?? "",
-            )
-          ) : (
-            <Select
-              label="Workflow *"
-              value={form.workflowKey}
-              onChange={(v) => setField("workflowKey", v)}
-              options={workflowOptions}
-            />
-          )}
-          {fieldRO("objectType") ? (
-            readOnlyField("Object Type", sourcePolicy?.objectType ?? "")
-          ) : (
-            <div>
-              <Select
-                label={`Object Type${!form.workflowKey ? "" : " *"}`}
-                value={form.objectType}
-                onChange={(v) => setField("objectType", v)}
-                options={objectTypeOptions}
-                disabled={!form.workflowKey}
-              />
-              {!form.workflowKey && (
-                <p className="text-2xs text-slate-400 mt-1">
-                  Select a workflow first.
-                </p>
-              )}
-            </div>
-          )}
-          {fieldRO("actionCode") ? (
-            readOnlyField(
-              "Action",
-              sourcePolicy?.actionLabel ?? sourcePolicy?.actionCode ?? "",
-            )
-          ) : (
-            <div>
-              <Select
-                label="Action *"
-                value={form.actionCode}
-                onChange={(v) => setField("actionCode", v)}
-                options={actionOptions}
-                disabled={!form.workflowKey}
-              />
-              {!form.workflowKey && (
-                <p className="text-2xs text-slate-400 mt-1">
-                  Select a workflow first.
-                </p>
-              )}
-            </div>
-          )}
-          {fieldRO("fromStatus") ? (
-            readOnlyField(
-              "From Status",
-              sourcePolicy?.fromStatusLabel ?? sourcePolicy?.fromStatus ?? "",
-            )
-          ) : fromStatusOptions.length > 0 ? (
-            <Select
-              label={`From Status${fromStatusOptions.length === 1 ? " (auto-selected)" : ""} *`}
-              value={form.fromStatus}
-              onChange={(v) => setField("fromStatus", v)}
-              options={[
-                { label: "Select status", value: "" },
-                ...fromStatusOptions,
-              ]}
-            />
-          ) : (
-            <div>
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-                From Status <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={form.fromStatus}
-                onChange={(e) => setField("fromStatus", e.target.value)}
-                placeholder="Select an action first"
-                disabled={!form.actionCode}
-                className="h-9 w-full border border-slate-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 disabled:text-slate-400"
-              />
-              {!form.actionCode && (
-                <p className="text-2xs text-slate-400 mt-1">
-                  Select a workflow action first.
-                </p>
-              )}
-            </div>
-          )}
-          {mode === "override" ? (
-            <Select
-              label="Document Type *"
-              value={form.documentTypeId}
-              onChange={(v) => setField("documentTypeId", v)}
-              options={docTypeOptions.filter((o) => o.value !== "")}
-            />
-          ) : (
-            <Select
-              label="Document Type"
-              value={form.documentTypeId}
-              onChange={(v) => setField("documentTypeId", v)}
-              options={docTypeOptions}
-            />
-          )}
-        </div>
-      </FormSection>
-
-      <FormSection
-        title="Configuration"
-        icon={<Layers3 className="h-4 w-4" />}
-        contentClassName="p-4 md:p-5"
-      >
-        <div className="flex flex-col gap-4">
-          <RequiredPermissionPicker
-            label="Required Permission"
-            required
-            value={form.requiredPermissionCode}
-            onChange={(v) => setField("requiredPermissionCode", v)}
-            options={(options?.permissions ?? []).map((p) => ({
-              label: `${p.name} (${p.code})`,
-              value: p.code,
-            }))}
-          />
-          <LifecyclePolicyCommonFields
-            priority={form.priority}
-            onPriorityChange={(v) => setField("priority", v)}
-            active={form.active}
-            onActiveChange={(v) => setField("active", v)}
-            description={form.description}
-            onDescriptionChange={(v) => setField("description", v)}
-            showChangeReason={mode === "edit"}
-            changeReason={form.changeReason}
-            onChangeReasonChange={(v) => setField("changeReason", v)}
-          />
-        </div>
-      </FormSection>
-
-      <FormSection
-        title="Actors"
-        icon={<Users className="h-4 w-4" />}
-        contentClassName="p-4 md:p-5"
-        headerRight={
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            disabled={allowedActorTypes.length === 0}
-            onClick={() => {
-              const defaultType = allowedActorTypes[0]?.value;
-              if (!defaultType) return;
-              setField("actors", [...form.actors, { actorType: defaultType, actorCode: null }]);
-              setActorError(undefined);
-            }}
-            className="gap-1.5"
-          >
-            <Plus className="h-4 w-4" />
-            Add Actor
-          </Button>
-        }
-      >
-        {invalidActorIndices.length > 0 && (
-          <WarningBanner
-            variant="error"
-            className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
-          >
-            <span>
-              <span className="font-semibold">
-                {invalidActorIndices.length} actor{invalidActorIndices.length > 1 ? "s" : ""} not allowed for the selected action.
-              </span>{" "}
-              Remove them before saving.
-            </span>
-            <button
-              type="button"
-              onClick={removeInvalidActors}
-              className="whitespace-nowrap text-xs font-medium underline hover:text-red-900"
-            >
-              Remove invalid actors
-            </button>
-          </WarningBanner>
-        )}
-        <WorkflowPolicyActorSelector
-          actors={form.actors}
-          onChange={(actors) => {
-            setField("actors", actors);
-            setActorError(undefined);
-          }}
-          allowedActorTypes={allowedActorTypes}
-          actorCodeOptions={options?.actorCodeOptions}
-          invalidIndices={invalidActorIndices}
-          error={actorError}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span className="text-xs font-medium text-slate-500">Fill it in as</span>
+        <TabNav
+          tabs={POLICY_LAYOUT_TABS}
+          activeTab={layout}
+          onChange={(value) => setStoredLayout(value as PolicyLayoutMode)}
+          variant="pill"
+          ariaLabel="How the policy is filled in"
+          className="!w-auto"
         />
-      </FormSection>
+      </div>
+
+      <PolicyRuleLayout
+        layout={layout}
+        props={{
+          mode,
+          form,
+          setField,
+          locked: fieldRO,
+          options,
+          moduleOptions,
+          workflowOptions,
+          objectTypeOptions,
+          actionOptions,
+          fromStatusOptions,
+          allowedActorTypes,
+          existing: existingPolicies,
+          sourcePolicyId: sourcePolicy?.id,
+          permissionField,
+          actorsField,
+          optionsSection,
+          actorsRelevant,
+        }}
+      />
 
       {sourcePolicy?.id && (
         <PolicyRelationsSection
@@ -939,8 +885,12 @@ const PolicyRelationsSection: React.FC<{
     AuthorizationRelationDefinition[]
   >([]);
   const [selectedRelationIds, setSelectedRelationIds] = useState<string[]>(
-    (policy.relations ?? []).map((r) => r.relationDefinitionId),
+    (policy.relations ?? []).filter((r) => !r.forbidden).map((r) => r.relationDefinitionId),
   );
+  const [forbiddenRelationIds, setForbiddenRelationIds] = useState<string[]>(
+    (policy.relations ?? []).filter((r) => r.forbidden).map((r) => r.relationDefinitionId),
+  );
+  const [savingForbidden, setSavingForbidden] = useState(false);
   const [matchRule, setMatchRule] = useState<"ANY" | "ALL">(
     policy.relationMatchRule === "ALL" ? "ALL" : "ANY",
   );
@@ -984,6 +934,25 @@ const PolicyRelationsSection: React.FC<{
     }
   };
 
+  const saveForbidden = async () => {
+    const sig = await requestSignature(
+      "Update Workflow Policy Forbidden Relations",
+      "Workflow Authorization Change",
+    );
+    if (!sig) return;
+    setSavingForbidden(true);
+    try {
+      const updated = await workflowActionPolicyApi.setForbiddenRelations(policy.id, { relationDefinitionIds: forbiddenRelationIds }, sig);
+      onSaved(updated);
+      showToast({ type: "success", message: "Forbidden relations updated." });
+    } catch (err) {
+      const { message } = extractApiError(err);
+      showToast({ type: "error", title: "Save Failed", message });
+    } finally {
+      setSavingForbidden(false);
+    }
+  };
+
   return (
     <FormSection
       title="Relations (New Engine)"
@@ -1016,6 +985,25 @@ const PolicyRelationsSection: React.FC<{
             className="whitespace-nowrap"
           >
             {saving ? "Saving…" : "Save Relations"}
+          </Button>
+        </div>
+        <MultiSelect
+          label="Forbidden relations (a different person)"
+          value={forbiddenRelationIds}
+          onChange={(values) => setForbiddenRelationIds(values.map(String))}
+          options={relationOptions}
+          enableSearch
+        />
+        <p className="text-xs text-slate-500">An actor who holds any of these relations on the record is refused, even with the permission (for example the author of a version cannot approve it).</p>
+        <div>
+          <Button
+            size="sm"
+            variant="outline-emerald"
+            onClick={() => void saveForbidden()}
+            disabled={savingForbidden}
+            className="whitespace-nowrap"
+          >
+            {savingForbidden ? "Saving…" : "Save Forbidden Relations"}
           </Button>
         </div>
       </div>
@@ -1170,13 +1158,19 @@ const CapabilityPolicyForm: React.FC = () => {
       `/security/lifecycle-policies?tab=capabilities`,
     );
 
+  // Errors show only after the first Save; each one clears as soon as its field is valid.
+  const [submitted, setSubmitted] = useState(false);
+  const errors = {
+    capability: capabilityCode ? "" : "Select a capability.",
+    actorScope: actorScope ? "" : "Select an actor scope.",
+  };
+  const shown = { capability: submitted ? errors.capability : "", actorScope: submitted ? errors.actorScope : "" };
+
   const handleSave = async () => {
-    if (!capabilityCode || !actorScope) {
-      showToast({
-        type: "error",
-        title: "Validation failed",
-        message: "Capability and actor scope are required",
-      });
+    setSubmitted(true);
+    const firstInvalid = (["capability", "actorScope"] as const).find((field) => errors[field]);
+    if (firstInvalid) {
+      document.getElementById(`policy-field-${firstInvalid}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     const sig = await requestSignature(
@@ -1283,15 +1277,18 @@ const CapabilityPolicyForm: React.FC = () => {
         contentClassName="p-4 md:p-5"
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Select
-            label="Capability *"
-            value={capabilityCode}
-            onChange={(v) => setCapabilityCode(String(v))}
-            options={(options?.capabilities ?? []).map((c) => ({
-              label: c.replace(/_/g, " "),
-              value: c,
-            }))}
-          />
+          <div id="policy-field-capability" className="min-w-0">
+            <Select
+              label="Capability *"
+              value={capabilityCode}
+              onChange={(v) => setCapabilityCode(String(v))}
+              options={(options?.capabilities ?? []).map((c) => ({
+                label: c.replace(/_/g, " "),
+                value: c,
+              }))}
+            />
+            {shown.capability && <p role="alert" className="mt-1.5 text-xs text-red-600">{shown.capability}</p>}
+          </div>
           <Select
             label="Revision Status"
             value={statusCode}
@@ -1316,22 +1313,25 @@ const CapabilityPolicyForm: React.FC = () => {
               })),
             ]}
           />
-          <Select
-            label="Actor Scope *"
-            value={actorScope}
-            onChange={(v) => setActorScope(String(v))}
-            options={(options?.actorScopes ?? []).map((s) => ({
-              label:
-                s === "ANY"
-                  ? "Any user (with required permission)"
-                  : s === "AUTHOR"
-                    ? "Revision author"
-                    : s === "PARTICIPANT"
-                      ? "Assigned workflow participant"
-                      : s,
-              value: s,
-            }))}
-          />
+          <div id="policy-field-actorScope" className="min-w-0">
+            <Select
+              label="Actor Scope *"
+              value={actorScope}
+              onChange={(v) => setActorScope(String(v))}
+              options={(options?.actorScopes ?? []).map((s) => ({
+                label:
+                  s === "ANY"
+                    ? "Any user (with required permission)"
+                    : s === "AUTHOR"
+                      ? "Revision author"
+                      : s === "PARTICIPANT"
+                        ? "Assigned workflow participant"
+                        : s,
+                value: s,
+              }))}
+            />
+            {shown.actorScope && <p role="alert" className="mt-1.5 text-xs text-red-600">{shown.actorScope}</p>}
+          </div>
         </div>
       </FormSection>
 

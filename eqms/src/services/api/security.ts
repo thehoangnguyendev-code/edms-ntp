@@ -51,41 +51,6 @@ export interface PagedResponse<T> {
   };
 }
 
-export interface EffectiveAccessDiagnosisLayer {
-  layerCode: string;
-  passed: boolean;
-  reasonCode: string | null;
-  message: string | null;
-}
-
-export interface EffectiveAccessDiagnosis {
-  subjectUserId: string;
-  resourceType: string;
-  resourceId: string;
-  actionCode: string;
-  state: string | null;
-  allowed: boolean;
-  reasonCode: string | null;
-  reasonMessage: string | null;
-  requiredPermissionCode: string | null;
-  systemSuperAdmin: boolean;
-  requiresESignature: boolean;
-  layers: EffectiveAccessDiagnosisLayer[];
-}
-
-export interface AuthorizationShadowMismatch {
-  id: string;
-  resourceType: string;
-  resourceId: string;
-  actionCode: string;
-  subjectUserId: string;
-  policyAllowed: boolean;
-  policyReasonCode: string | null;
-  legacyAllowed: boolean;
-  legacyReasonCode: string | null;
-  createdAt: string;
-}
-
 export interface AuthorizationRelationDefinition {
   id: string;
   code: string;
@@ -101,7 +66,9 @@ export interface AuthorizationRelationDefinition {
 export interface AuthorizationEvaluateRequestPayload {
   subjectUserId: string;
   resourceType: string;
-  resourceId: string;
+  resourceId?: string;
+  /** A report template is named by its code; the server makes the id from it. */
+  resourceCode?: string;
   actionCode: string;
 }
 
@@ -115,16 +82,6 @@ export interface AuthorizationEngineDecision {
   matchedPolicyVersion: number | null;
   resourceState: string | null;
   requiredControls: Record<string, unknown>;
-}
-
-export interface ParticipantReconciliationMismatch {
-  discrepancyType: string;
-  resourceId: string;
-  participantType: string;
-  userId: string;
-  sequenceOrder: number;
-  legacyActionStatus: string | null;
-  genericActionStatus: string | null;
 }
 
 /**
@@ -162,20 +119,6 @@ export const securityApi = {
     return response.data;
   },
 
-  /** Security Admin-only, evidence-oriented explanation of a real resource decision. */
-  diagnoseEffectiveAccess: async (payload: {
-    subjectUserId: string;
-    resourceType: string;
-    resourceId: string;
-    actionCode: string;
-  }): Promise<EffectiveAccessDiagnosis> => {
-    const response = await api.post<EffectiveAccessDiagnosis>(
-      "/security/effective-access/diagnose",
-      payload,
-    );
-    return response.data;
-  },
-
   /**
    * POST /authorization/evaluate — admin simulator, runs AuthorizationEngineService without
    * executing any mutation. Gated server-side by security.access_profiles.update.
@@ -186,6 +129,18 @@ export const securityApi = {
     const response = await api.post<AuthorizationEngineDecision>(
       "/authorization/evaluate",
       payload,
+    );
+    return response.data;
+  },
+
+  /** GET /authorization/resource-lookup — finds a record by its number or name, for the Simulator (same gate as evaluate). */
+  lookupAuthorizationResources: async (
+    resourceType: string,
+    search: string,
+  ): Promise<{ id: string; label: string; state: string | null }[]> => {
+    const response = await api.get<{ id: string; label: string; state: string | null }[]>(
+      "/authorization/resource-lookup",
+      { params: { resourceType, search: search || undefined, limit: 20 } },
     );
     return response.data;
   },
@@ -236,62 +191,6 @@ export const securityApi = {
   },
 
   /**
-   * Per-resource-type totals for the Engine Health summary cards. `cutoverComplete` marks
-   * resource types whose legacy evaluator was physically removed (not flag-gated) -- their
-   * totals are a frozen historical snapshot, not evidence of ongoing live monitoring.
-   */
-  getAuthorizationShadowMismatchSummary: async (): Promise<
-    { resourceType: string; total: number; mismatches: number; cutoverComplete: boolean }[]
-  > => {
-    const response = await api.get<
-      { resourceType: string; total: number; mismatches: number; cutoverComplete: boolean }[]
-    >("/security/authorization-shadow-mismatches/summary");
-    return response.data;
-  },
-
-  /** Server-side filter/search/sort/pagination for the Engine Health table. */
-  getAuthorizationShadowMismatchesPaged: async (params: {
-    page: number;
-    limit: number;
-    search?: string;
-    resourceType?: string;
-    mismatchesOnly: boolean;
-    sortBy?: string;
-    sortDir?: string;
-  }): Promise<{
-    data: AuthorizationShadowMismatch[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
-  }> => {
-    const response = await api.get<{
-      data: AuthorizationShadowMismatch[];
-      pagination: {
-        page: number;
-        limit: number;
-        total: number;
-        totalPages: number;
-      };
-    }>("/security/authorization-shadow-mismatches/paged", { params });
-    return response.data;
-  },
-
-  getParticipantReconciliationMismatches: async (
-    limit = 50,
-  ): Promise<ParticipantReconciliationMismatch[]> => {
-    const response = await api.get<ParticipantReconciliationMismatch[]>(
-      "/security/participant-reconciliation",
-      {
-        params: { limit },
-      },
-    );
-    return response.data;
-  },
-
-  /**
    * GET /security/eligible-users?permissionCode=...
    * Returns active users who currently hold the given permission code (via Access Profile
    * or legacy role fallback — resolved server-side). Does not filter by document type or
@@ -306,52 +205,5 @@ export const securityApi = {
     });
     return response.data;
   },
-
-  /**
-   * GET /security/access-profiles/{id}/effective-access?documentTypeId=...
-   * Read-only diagnostic (EffectiveAccessPanel): for every Document Revision workflow action
-   * and Document Master lifecycle capability (Cancel/Obsolete), resolves Allow/Deny per status
-   * by calling the 3 real runtime evaluators server-side. Matches
-   * com.eqms.dto.security.EffectiveAccessResponse on the backend.
-   */
-  getEffectiveAccess: async (
-    accessProfileId: string,
-    documentTypeId?: string,
-    filters?: { search?: string; outcome?: string },
-  ): Promise<EffectiveAccessResponse> => {
-    const response = await api.get<EffectiveAccessResponse>(
-      `/security/access-profiles/${accessProfileId}/effective-access`,
-      { params: { documentTypeId, ...filters } },
-    );
-    return response.data;
-  },
 };
 
-export interface EffectiveAccessRow {
-  moduleKey: string;
-  actionCode: string;
-  actionLabel: string;
-  requiredPermissionCode: string | null;
-  objectType: "DOCUMENT" | "DOCUMENT_REVISION";
-  statusCode: string;
-  statusLabel: string;
-  allowed: boolean;
-  reasonCode:
-    | "MISSING_PERMISSION"
-    | "ACTOR_SCOPE_NOT_SATISFIED"
-    | "OBJECT_ACCESS_DENIED"
-    | "NO_MATCHING_POLICY"
-    | null;
-  message: string | null;
-  objectAccessRuleEvaluated: boolean;
-}
-
-export interface EffectiveAccessResponse {
-  summary?: { total: number; allowed: number; denied: number };
-  accessProfileId: string;
-  accessProfileName: string;
-  documentTypeId: string | null;
-  objectAccessRulesApplicable: boolean;
-  objectAccessRulesNote: string;
-  rows: EffectiveAccessRow[];
-}

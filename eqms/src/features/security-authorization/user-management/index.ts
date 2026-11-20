@@ -15,6 +15,7 @@ export { useUserProfile } from "./profile/hooks/useUserProfile";
 // Time-limited user flow
 export { LoggedInUsersView } from "./time-limited/views/LoggedInUsersView";
 export { AccessExplorerView } from "./time-limited/views/AccessExplorerView";
+export { AccessExplorerDetailView } from "./time-limited/views/AccessExplorerDetailView";
 export { TimeLimitedUserListView } from "./time-limited/views/TimeLimitedUserListView";
 export { TimeLimitedUserCreateView } from "./time-limited/views/TimeLimitedUserCreateView";
 export { TimeLimitedUserDetailView } from "./time-limited/views/TimeLimitedUserDetailView";

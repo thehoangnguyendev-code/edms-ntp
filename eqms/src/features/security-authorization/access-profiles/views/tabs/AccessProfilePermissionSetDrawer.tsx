@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button/Button";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { ROUTES } from "@/app/routes.constants";
 import { settingsApi, type PermissionCatalogGroup, type PermissionLifecycleUsage, type PermissionSetResponse, type PermissionSetSummary } from "@/services/api/settings";
+import { moduleDisplayName } from "@/utils/moduleDisplay";
 
 const formatLifecycleState = (u: PermissionLifecycleUsage) =>
   `${u.objectTypeLabel} · ${u.fromStatusLabel ?? u.fromStatus ?? "Any state"}`;
@@ -115,7 +116,7 @@ export const AccessProfilePermissionSetDrawer: React.FC<PermissionSetDrawerProps
         {Object.entries(groupedPermissions).map(([module, section]) => (
           <div key={module} className="rounded-xl border border-slate-200 bg-slate-50/60 overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200 bg-white">
-              <p className="text-sm font-semibold text-slate-900">{module}</p>
+              <p className="text-sm font-semibold text-slate-900">{moduleDisplayName(module)}</p>
               {section.description ? <p className="text-xs text-slate-500 mt-0.5">{section.description}</p> : null}
             </div>
             <div className="divide-y divide-slate-100">

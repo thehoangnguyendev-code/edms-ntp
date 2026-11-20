@@ -38,7 +38,8 @@ export { controlledCopyPolicyApi } from './controlledCopyPolicy';
 export type { ControlledCopyPolicy } from './controlledCopyPolicy';
 export { uncontrolledCopyApi } from './uncontrolledCopy';
 export { uncontrolledCopyPolicyApi } from './uncontrolledCopyPolicy';
-export { workflowActionPolicyApi } from './workflowActionPolicy';
+export { workflowActionPolicyApi, separationRulesApi } from './workflowActionPolicy';
+export type { SeparationRule } from './workflowActionPolicy';
 
 // Param/filter types for each API module
 export type { GetUsersParams } from './settings';

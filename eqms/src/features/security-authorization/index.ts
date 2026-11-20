@@ -6,10 +6,9 @@ export { StateCapabilitiesView } from './lifecycle-policies/views/StateCapabilit
 export { LifecyclePoliciesView } from './lifecycle-policies/views/LifecyclePoliciesView';
 export { AuthorizationDiagnosticsView } from './lifecycle-policies/views/AuthorizationDiagnosticsView';
 export { LifecyclePolicyFormView } from './lifecycle-policies/views/LifecyclePolicyFormView';
+export { TransitionPolicyDetailView } from './lifecycle-policies/views/TransitionPolicyDetailView';
 export { WorkflowPolicyDuplicateView } from './lifecycle-policies/views/WorkflowPolicyDuplicateView';
 export { WorkflowRolesView } from './lifecycle-policies/views/WorkflowRolesView';
-export { ObjectAccessRulesView } from './object-rules/ObjectAccessRulesView';
-export { ObjectAccessRuleFormView } from './object-rules/ObjectAccessRuleFormView';
 export { SegregationOfDutiesView } from './sod/SegregationOfDutiesView';
 export { SodViolationReviewView } from './sod/SodViolationReviewView';
 export { SodConstraintFormView } from './sod/SodConstraintFormView';

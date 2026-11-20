@@ -13,6 +13,7 @@ import { cn } from "@/components/ui/utils";
 import { settingsApi, type PermissionCatalogFlatItem, type PermissionLifecycleUsage } from "@/services/api/settings";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { moduleDisplayName, moduleSelectOptions } from "@/utils/moduleDisplay";
 
 type SortKey = "code" | "name" | "module" | "groupName";
 
@@ -41,7 +42,7 @@ const thBase =
 /**
  * Server-driven browse of the seeded permission catalog: search/module filter/sort/pagination
  * all resolved by the backend (GET /security/permissions/catalog/paged), matching the pattern
- * used by the other list screens in this feature (PermissionSetsView, ObjectAccessRulesView).
+ * used by the other list screens in this feature (PermissionSetsView).
  * No permission creation here -- new permissions require a migration + code review.
  */
 export const PermissionCatalogTab: React.FC = () => {
@@ -69,7 +70,7 @@ export const PermissionCatalogTab: React.FC = () => {
     settingsApi.getPermissionCatalog().then((groups) => {
       const modules = new Set<string>();
       groups.forEach((g) => g.permissions.forEach((p) => p.module && modules.add(p.module)));
-      setModuleOptions([{ label: "All", value: "ALL" }, ...Array.from(modules).sort().map((m) => ({ label: m, value: m }))]);
+      setModuleOptions([{ label: "All", value: "ALL" }, ...moduleSelectOptions(Array.from(modules))]);
     }).catch(() => setModuleOptions([{ label: "All", value: "ALL" }]));
   }, []);
 
@@ -114,7 +115,7 @@ export const PermissionCatalogTab: React.FC = () => {
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-14 text-center", cellClassName: "text-center text-slate-500", cell: (_p, idx) => (currentPage - 1) * itemsPerPage + idx + 1 },
     { id: "code", header: "Code", label: "Code", sort: { direction: sortConfig.key === "code" ? sortConfig.direction : undefined, onSort: () => handleSort("code") }, cellClassName: "font-medium text-slate-800", cell: (p) => p.code },
     { id: "name", header: "Name", label: "Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (p) => p.name },
-    { id: "module", header: "Module", label: "Module", sort: { direction: sortConfig.key === "module" ? sortConfig.direction : undefined, onSort: () => handleSort("module") }, cell: (p) => <Badge semantic="info" size="sm">{p.module}</Badge> },
+    { id: "module", header: "Module", label: "Module", sort: { direction: sortConfig.key === "module" ? sortConfig.direction : undefined, onSort: () => handleSort("module") }, cell: (p) => <Badge semantic="info" size="sm">{moduleDisplayName(p.module)}</Badge> },
     { id: "groupName", header: "Group", label: "Group", sort: { direction: sortConfig.key === "groupName" ? sortConfig.direction : undefined, onSort: () => handleSort("groupName") }, cell: (p) => p.groupName },
     {
       id: "audit",

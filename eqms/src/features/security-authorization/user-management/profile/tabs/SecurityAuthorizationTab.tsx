@@ -135,7 +135,7 @@ const AccessProfilesSection: React.FC<AccessProfilesSectionProps> = ({
       id: "status",
       header: "Status",
       cell: (row) => (
-        <Badge color={flagColor(row.active)} size="sm" showDot>
+        <Badge color={flagColor(row.active)} size="sm">
           {row.active ? "Active" : "Inactive"}
         </Badge>
       ),
