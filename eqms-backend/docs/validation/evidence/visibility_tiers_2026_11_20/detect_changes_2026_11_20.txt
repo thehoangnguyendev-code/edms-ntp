@@ -1,0 +1,34 @@
+Changes: 311 files, 1276 symbols
+Affected processes: 219
+Risk level: critical
+
+Changed symbols:
+  Symbol GitNexus — Code Intelligence → AGENTS.md
+  Symbol GitNexus — Code Intelligence → CLAUDE.md
+  Symbol CLAUDE.md → eqms/CLAUDE.md
+  Symbol Global Action Catalog — Live Modules → docs/AUTHORIZATION_GLOBAL_ACTION_CATALOG.md
+  Symbol Training, Report and the rest of the 2026-11-18 sweep → docs/AUTHORIZATION_GLOBAL_ACTION_CATALOG.md
+  Symbol Module Authorization Inventory → docs/AUTHORIZATION_MODULE_INVENTORY.md
+  Symbol Authorization Platform — Verification Status → docs/AUTHORIZATION_VERIFICATION_STATUS.md
+  Symbol Permission Catalog Inventory → docs/PERMISSION_CATALOG_INVENTORY.md
+  Symbol Review Decisions Required → docs/PERMISSION_CATALOG_INVENTORY.md
+  Symbol Hướng dẫn sử dụng — Security & Authorization → docs/SECURITY_AUTHORIZATION_USER_GUIDE.md
+  Symbol 2. Roles & Permissions — trung tâm phân quyền → docs/SECURITY_AUTHORIZATION_USER_GUIDE.md
+  Symbol 2.2 Tạo role bằng Wizard (cách chuẩn) → docs/SECURITY_AUTHORIZATION_USER_GUIDE.md
+  Symbol 2.3 Trang chi tiết role — thao tác chung → docs/SECURITY_AUTHORIZATION_USER_GUIDE.md
+  Symbol 2.4 Các tab trong role → docs/SECURITY_AUTHORIZATION_USER_GUIDE.md
+  Symbol 3. Shared Permission Sets — bộ quyền dùng chung (nâng cao) → docs/SECURITY_AUTHORIZATION_USER_GUIDE.md
+... and 1261 more
+
+Affected execution flows:
+  • RelationDefinitionsPaged → GetId (5 steps) — changed: ESignatureSettings
+  • RelationDefinitionsPaged → GetStatus (5 steps) — changed: ESignatureSettings
+  • RelationDefinitionsPaged → UnauthorizedException (4 steps) — changed: ESignatureSettings, ESignatureSettings, UnauthorizedException, ESignatureSettings
+  • RelationDefinitionsPaged → Normalize (4 steps) — changed: ESignatureSettings
+  • Notice → Configured (4 steps) — changed: ESignatureSettings, ESignatureSettings
+  • Notice → Sign (4 steps) — changed: ESignatureSettings, ESignatureSettings
+  • Cancel → Configured (4 steps) — changed: ESignatureSettings, ESignatureSettings
+  • Cancel → Sign (4 steps) — changed: ESignatureSettings, ESignatureSettings
+  • Unlock → Configured (4 steps) — changed: ESignatureSettings, ESignatureSettings
+  • Unlock → Sign (4 steps) — changed: ESignatureSettings, ESignatureSettings
+... and 209 more

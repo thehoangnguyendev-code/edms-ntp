@@ -1,0 +1,34 @@
+Changes: 329 files, 1341 symbols
+Affected processes: 219
+Risk level: critical
+
+Changed symbols:
+  Symbol GitNexus — Code Intelligence → AGENTS.md
+  Symbol CLAUDE.md → CLAUDE.md
+  Symbol GitNexus — Code Intelligence → CLAUDE.md
+  Symbol CLAUDE.md → eqms/CLAUDE.md
+  Symbol Global Action Catalog — Live Modules → docs/AUTHORIZATION_GLOBAL_ACTION_CATALOG.md
+  Symbol Training, Report and the rest of the 2026-11-18 sweep → docs/AUTHORIZATION_GLOBAL_ACTION_CATALOG.md
+  Symbol Authorization Legacy Dependency Register → docs/AUTHORIZATION_LEGACY_DEPENDENCY_REGISTER.md
+  Symbol Module Authorization Inventory → docs/AUTHORIZATION_MODULE_INVENTORY.md
+  Symbol Entry criteria for a Deferred module → docs/AUTHORIZATION_MODULE_INVENTORY.md
+  Symbol Authorization Platform — Verification Status → docs/AUTHORIZATION_VERIFICATION_STATUS.md
+  Symbol Permission Catalog Inventory → docs/PERMISSION_CATALOG_INVENTORY.md
+  Symbol Review Decisions Required → docs/PERMISSION_CATALOG_INVENTORY.md
+  Symbol Hướng dẫn sử dụng — Security & Authorization → docs/SECURITY_AUTHORIZATION_USER_GUIDE.md
+  Symbol 2. Roles & Permissions — trung tâm phân quyền → docs/SECURITY_AUTHORIZATION_USER_GUIDE.md
+  Symbol 2.2 Tạo role bằng Wizard (cách chuẩn) → docs/SECURITY_AUTHORIZATION_USER_GUIDE.md
+... and 1326 more
+
+Affected execution flows:
+  • Notice → Configured (4 steps) — changed: ESignatureSettings, ESignatureSettings
+  • Notice → Sign (4 steps) — changed: ESignatureSettings, ESignatureSettings
+  • Cancel → Configured (4 steps) — changed: ESignatureSettings, ESignatureSettings
+  • Cancel → Sign (4 steps) — changed: ESignatureSettings, ESignatureSettings
+  • Unlock → Configured (4 steps) — changed: ESignatureSettings, ESignatureSettings
+  • Unlock → Sign (4 steps) — changed: ESignatureSettings, ESignatureSettings
+  • Start → UnauthorizedException (7 steps) — changed: ESignatureSettings, ESignatureSettings, UnauthorizedException, ESignatureSettings
+  • RemoveRecipient → UnauthorizedException (7 steps) — changed: ESignatureSettings, UnauthorizedException, ESignatureSettings, ESignatureSettings
+  • Verify → UnauthorizedException (7 steps) — changed: ESignatureSettings, UnauthorizedException, ESignatureSettings, ESignatureSettings
+  • Publish → UnauthorizedException (6 steps) — changed: ESignatureSettings, UnauthorizedException, ESignatureSettings, ESignatureSettings
+... and 209 more

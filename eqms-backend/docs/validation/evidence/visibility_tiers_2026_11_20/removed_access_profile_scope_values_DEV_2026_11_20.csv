@@ -1,0 +1,12 @@
+access_profile_code,name,business_unit_scope,department_scope
+ADMIN_NO_BYPASS,Admin without maintenance bypass,ALL,
+AP_UAT_APPROVER_QUALITY,UAT Approver - Quality,QAU,QA
+AP_UAT_AUTHOR_QUALITY,UAT Author - Quality,QAU,QA
+AP_UAT_COAUTHOR_QUALITY,UAT Co-Author - Quality,QAU,QA
+AP_UAT_CC_RECIPIENT_QUALITY,UAT Controlled Copy Recipient - Quality,QAU,QA
+AP_UAT_DCO_QUALITY,UAT DCO - Quality,QAU,QA
+AP_UAT_DOCUMENT_CONTRIBUTOR_QUALITY,UAT Document Contributor - Quality,QAU,QA
+AP_UAT_DOCUMENT_SECURITY_ADMIN,UAT Document Security Admin,ALL,QA
+AP_UAT_READER_PRODUCTION,UAT Reader - Production,OPER,PROD
+AP_UAT_READER_QUALITY,UAT Reader - Quality,QAU,QA
+AP_UAT_REVIEWER_QUALITY,UAT Reviewer - Quality,QAU,QA

@@ -12,6 +12,10 @@ This catalog records the stable business actions exposed by the current live-mod
 | Documents / `CONTROLLED_COPY_BATCH` | `APPROVE_REQUEST`, `REJECT_REQUEST`, `PREPARE_DISTRIBUTION`, `DISTRIBUTE_BATCH`, `RECALL_BATCH`, `CANCEL_BATCH` | Batch lifecycle transition | Batch lifecycle policy actor | Policy permission plus source document scope | Signature required where capability indicates | Batch audit event; notify requester/recipients on decision and distribution | `WORKFLOW_POLICY_NOT_FOUND`, `OUT_OF_SCOPE`, `ACTOR_NOT_ALLOWED` |
 | Work Management / `WORK_PROJECT` | `VIEW_PROJECT`, `VIEW_ISSUES`, `CREATE_ISSUE`, `UPDATE_ISSUE`, `MANAGE_MEMBERS` | Active project; update must pass issue transition rule | Active project member; admin/member/viewer mapping | Module entitlement plus `work_project_members` | No conversion of project role to Access Profile | Project/issue audit event; notify affected project members where configured | `PROJECT_NOT_ACTIVE`, `NOT_PROJECT_MEMBER`, `INSUFFICIENT_PROJECT_ROLE`, `MISSING_PERMISSION` |
 
+## Training, Report and the rest of the 2026-11-18 sweep
+
+The action rows of Training and Report are in `AUTHORIZATION_ACTION_CATALOG_TRAINING_AS_IS_2026_11_18.md` and `AUTHORIZATION_ACTION_CATALOG_REPORT_AS_IS_2026_11_18.md` (approved by the owner as they are in code). Access Review and Audit Trail Review campaigns (decide item, complete, cancel from In Progress) and Uncontrolled Copy (distribute, cancel from Ready for Distribution) are in the Decision Log entry "Every other module brought onto the Hybrid engine". Their policies are the system rows of V810–V815.
+
 ## Acceptance rule
 
 Every mutation endpoint must call its domain evaluator before persistence. The capability endpoint is UI guidance only. A new action must first be added here with state, actor, scope, SoD, audit/notification recipient and signed-action acceptance criteria approved by BA/QA/Compliance. The exact policy row (including its from/to-state values) remains the machine-readable runtime source; this catalog is the business approval source.

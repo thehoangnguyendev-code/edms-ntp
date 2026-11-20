@@ -34,13 +34,12 @@ Chọn tab **Quality** trong sidebar, rồi mở **Security & Authorization**.
 | Workflow Security | `/security/lifecycle-policies` | Quan sát/cấu hình action theo trạng thái | DCO, QA Manager, Security Administrator | Không |
 | Access Review | `/security/access-review` | Tạo và xử lý chiến dịch review quyền | Security/Compliance Administrator | Không |
 | Advanced > Shared Permission Sets | `/security/permission-sets` | Tạo bộ quyền tái sử dụng | Security Administrator | Có |
-| Advanced > Workflow Role Catalog | `/security/advanced/workflow-roles` | Catalog vai trò workflow có thể gán cho Access Profile | Security Administrator | Có |
-| Advanced > Object Access Rules | `/security/object-rules` | Điều kiện ABAC/scope cho object | Security Administrator | Có |
+| Workflow Authorization > tab Workflow Roles | `/security/lifecycle-policies?tab=roles` (đường cũ `/security/advanced/workflow-roles` tự chuyển tới đây) | Catalog vai trò workflow có thể gán cho Access Profile | Security Administrator | Có |
 | Advanced > Segregation of Duties | `/security/sod` | Ràng buộc xung đột nhiệm vụ | QA Manager, Security Administrator | Có |
 
 ### 2.1 Liên kết giữa các màn hình
 
-`Permission Set` chứa các permission. `Access Profile` gắn một hoặc nhiều Permission Set, có thể gắn Workflow Role, scope Business Unit/Department và user. `Lifecycle Policies` quy định action chỉ hợp lệ ở trạng thái nào và actor nào được thực hiện. `Object Access Rules` và SoD có thể tiếp tục chặn action dù user đã có role.
+`Permission Set` chứa các permission. `Access Profile` gắn một hoặc nhiều Permission Set, có thể gắn Workflow Role và user; mức nhìn thấy bản ghi (chỉ bản ghi có tên / phòng của người đó / tất cả) chọn ngay trên tab Permissions. `Lifecycle Policies` quy định action chỉ hợp lệ ở trạng thái nào và actor nào được thực hiện. `Object Access Rules` và SoD có thể tiếp tục chặn action dù user đã có role.
 
 ## 3. Khái niệm cần hiểu trước khi cấu hình
 
@@ -52,7 +51,7 @@ Chọn tab **Quality** trong sidebar, rồi mở **Security & Authorization**.
 | Workflow Role | Catalog vai trò để dùng trong policy hoặc đủ điều kiện được chọn làm participant; không tự cấp permission. |
 | Workflow Policy | Một action + trạng thái nguồn + required permission + actor được phép + priority. |
 | Actor scope | Điều kiện actor như `AUTHOR`, `DCO`, `ASSIGNED_REVIEWER`, `ASSIGNED_APPROVER`, `OWNER`, `DOCUMENT_VIEWER`. |
-| Object Access Rule | Hạn chế/cho phép theo resource, scope, department hoặc thuộc tính object. |
+| Record visibility | Mức nhìn thấy bản ghi của Access Profile: chỉ bản ghi có tên người đó trong flow, bản ghi của phòng người đó, hoặc tất cả (Document Control); phòng/tất cả phòng (Training); lần chạy của mình/tất cả (Reports). Object Access Rule và scope BU/Department của profile đã gỡ ngày 20/11/2026. |
 | SoD | Chặn kết hợp nhiệm vụ xung đột, ví dụ reviewer và approver của cùng hồ sơ. |
 | Effective Access | Kết quả server tính từ role, permission, workflow role và policy; chỉ để kiểm tra, không phải nơi cấp quyền. |
 
@@ -136,10 +135,7 @@ Role là **Access Profile** trong dữ liệu backend. Tên menu “Roles & Perm
    - Chọn catalog `Document Reviewer` nếu catalog có entry này.
    - Giải thích: Workflow Role làm holder đủ điều kiện xuất hiện khi DCO bấm **Reviewers** để chọn participant; nó không thay thế permission `documents.revision.review`.
    - Không chọn `Document Approver`, DCO hay role không liên quan.
-7. Step **Scope**:
-   - Chọn **Business Unit Scope** = `Quality` và **Department Scope** = `Quality Assurance` khi muốn test giới hạn QA.
-   - Giải thích: scope giới hạn phạm vi role; không tự động thay thế Object Access Rule nhưng là đầu vào quan trọng cho kiểm soát quyền.
-   - Không chọn All Business Units/All Departments cho role test department isolation.
+7. (Bước **Scope** đã bỏ.) Để test cách ly theo phòng, ở bước **Permissions** chọn mức **Records of the person's department** cho Document Control; user phải có Department đúng.
 8. Step **Users**:
    - Nếu user chưa tồn tại, không chọn user; bấm **Next**.
    - Nếu user đã tồn tại, search username, tick người cần gán, và chỉ tick user đã được QA phê duyệt role.
@@ -193,7 +189,7 @@ Luồng này phù hợp khi Security Administrator cần kiểm soát từng th�
    - DCO có `SUBMIT_FOR_REVIEW`, `PUBLISH`, Controlled Copy lifecycle.
    - Reviewer/Approver có permission tương ứng nhưng runtime vẫn cần Assigned Reviewer/Assigned Approver.
    - Approver không có Controlled Copy distribute/recall/destroy.
-6. Nếu note trên panel nói Object Access Rule chưa được evaluate vì chưa chọn document type/object thực, coi kết quả là preliminary; phải test lại trên record Documents thật.
+6. Kết quả trên panel là theo cả Access Profile; thao tác phụ thuộc vai trò trên một revision cụ thể (Reviewer/Approver được gán) hiện là *Needs assignment*, phải test lại trên record Documents thật.
 
 #### 4.2.5 Luồng D - Sửa, Disable/Enable, Duplicate, Delete
 
@@ -263,7 +259,7 @@ Matrix là **màn hình quan sát**, không phải ma trận quyền chung của
 - Global hoặc document-type override.
 - Active/System status.
 
-`+doc-type` nghĩa là có policy override theo Document Type. Kết quả thật có thể vẫn bị Object Access Rule, participant check hoặc SoD chặn.
+`+doc-type` nghĩa là có policy override theo Document Type. Kết quả thật có thể vẫn bị participant check (vai trò trên revision) hoặc SoD chặn.
 
 #### Tab Transitions
 
@@ -277,9 +273,9 @@ Matrix là **màn hình quan sát**, không phải ma trận quyền chung của
 
 Tab này hiển thị State Policies/capability, dùng cho các hành vi như view/preview/download theo trạng thái. Không dùng tab này để thay thế policy chuyển trạng thái Review/Approve/Publish.
 
-### 4.6 Workflow Role Catalog
+### 4.6 Workflow Roles (catalog)
 
-**Truy cập:** `Security & Authorization > Advanced > Workflow Role Catalog`.
+**Truy cập:** `Security & Authorization > Workflow Authorization > tab Workflow Roles` (trước đây là mục Advanced > Workflow Role Catalog; đã gộp vào Workflow Authorization 2026-11-20).
 
 Workflow Role là catalog. Không tự tạo permission và không tự gán trực tiếp user. Để user có Workflow Role, gắn role catalog này vào Access Profile, rồi gán Access Profile cho user.
 
@@ -288,17 +284,16 @@ Workflow Role là catalog. Không tự tạo permission và không tự gán tr�
 3. Lưu theo validation/e-signature của màn hình.
 4. Mở Access Profile cần dùng, tab **Workflow Authorization**, và gắn Workflow Role.
 
-### 4.7 Object Access Rules
+### 4.7 Record visibility trên Access Profile
 
-**Truy cập:** `Security & Authorization > Advanced > Object Access Rules`.
+**Truy cập:** `Security & Authorization > Access Profiles > <profile> > Permissions` (và bước **Permissions** của Wizard).
 
-1. Dùng Search, Resource Type, Effect và các filter trên màn hình để tìm rule hiện có.
-2. Bấm **New Rule**.
-3. Chọn resource, effect, role/scope/điều kiện theo field form.
-4. Lưu, ký nếu yêu cầu và kiểm tra rule xuất hiện trong bảng.
-5. Test lại bằng user cùng department và user khác department.
+1. Chọn mức ở bộ **Document Control: record visibility**: *Only records where the person is named* / *Records of the person's department* / *All records*. Bộ chọn tự tick quyền xem cơ bản của module.
+2. Bộ **Training Management** (phòng của người đó / tất cả phòng) và **Reports** (chỉ lần chạy của mình / tất cả lần chạy) hoạt động tương tự.
+3. Bấm **Save**, ký. Nhãn của profile (Named in flow / My department / View everything) cập nhật ở danh sách và chi tiết.
+4. Test lại bằng user cùng phòng, user khác phòng và user có tên trong flow (xem 8.2).
 
-Không tạo rule Allow rộng hơn rule Deny hoặc scope nghiệp vụ mà không kiểm tra priority/effect ở backend.
+Một mức đến từ Shared Permission Set hiện khóa; muốn hạ mức thì gỡ set khỏi profile. Không còn màn Object Access Rules và phạm vi Business Unit/Department trên profile.
 
 ### 4.8 Segregation of Duties
 
@@ -384,7 +379,7 @@ Không tạo user rồi gán tạm quyền admin/role rộng để test nhanh. V
 | 1 | Business Unit, Department, Position active | Master data/Dictionaries | QA và Production có dữ liệu hợp lệ |
 | 2 | Xác minh Permission Catalog Documents | Shared Permission Sets > New | Có đúng mã permission cần dùng |
 | 3 | Tạo Shared Permission Set | Advanced > Shared Permission Sets | Set active, audit evidence có đủ |
-| 4 | Tạo Workflow Role nếu cần | Advanced > Workflow Role Catalog | Catalog DCO/Reviewer/Approver sẵn sàng |
+| 4 | Tạo Workflow Role nếu cần | Workflow Authorization > tab Workflow Roles | Catalog DCO/Reviewer/Approver sẵn sàng |
 | 5 | Tạo Access Profile | Roles & Permissions > New > Role (Wizard) | Set, scope, workflow role đúng |
 | 6 | Kiểm tra Effective Access | Role detail > Effective Access | Allowed/Not allowed đúng baseline |
 | 7 | Tạo User | User Management > Add User | User có định danh duy nhất |
@@ -485,7 +480,7 @@ Lặp lại cho DCO, Author, Co-Author, Reviewer, Approver, Viewer QA, Viewer Pr
 
 ### Bước 6 - Kiểm tra trước khi workflow
 
-1. Mở **Advanced > Object Access Rules** để xác nhận scope department không cấp nhầm Viewer Production quyền xem document QA.
+1. Mở profile của Viewer Production, tab **Permissions**, xác nhận mức Document Control là *Records of the person's department* hoặc *Only records where the person is named* (không phải *All records*) để không cấp nhầm quyền xem document QA.
 2. Mở **Advanced > Segregation of Duties** và bấm **Scan Now** nếu có quyền/được phép trong UAT.
 3. Đăng xuất/đăng nhập từng user trước test UI, để token/permission cache được làm mới.
 4. Lưu screenshot Effective Access, Assigned Users và kết quả scan SoD vào evidence UAT.
@@ -515,7 +510,7 @@ Sau mỗi action: kiểm tra status banner, tab **Signatures**, tab **Audit Trai
 
 1. Đăng nhập `doc.viewer.dept.a`, tìm document QA Effective. Expected: có thể xem theo role/rule hiện hành.
 2. Test Preview/Download. Expected: chỉ cho phép nếu permission và policy download của record cho phép.
-3. Đăng nhập `doc.viewer.dept.b`, thử mở cùng document. Expected: denied/không hiển thị nếu Object Access Rule và department scope đã cấu hình chặn.
+3. Đăng nhập `doc.viewer.dept.b`, thử mở cùng document. Expected: denied/không hiển thị nếu `doc.viewer.dept.b` không có tên trong flow và mức Document Control của profile không phải *All records* (hoặc khác phòng với tài liệu).
 4. Ghi nhận cả UI behavior và HTTP response/API error nếu browser dev tools/UAT evidence có thể thu thập.
 
 ### 8.3 Controlled Copies
@@ -556,15 +551,15 @@ Sau mỗi action: kiểm tra status banner, tab **Signatures**, tab **Audit Trai
 - [ ] Document Master, Revision, Controlled Copy status được chụp bằng chứng riêng.
 - [ ] Document Approver không distribute/recall/destroy Controlled Copy.
 - [ ] Controlled Copy chỉ dùng 4 lifecycle status chính.
-- [ ] User khác department bị chặn theo Object Access Rules/scope cấu hình.
+- [ ] User khác department (không có tên trong flow) không thấy tài liệu; user cùng phòng có mức *Records of the person's department* thấy tài liệu nhưng không mở được file revision đang duyệt.
 
 ## 11. Điểm cần xác nhận trong môi trường UAT
 
 | Điểm | Bằng chứng code | Cách xác nhận | Rủi ro |
 |---|---|---|---|
 | E-signature áp dụng cho từng endpoint nào | UI gọi `useSecurityESign`; endpoint/service riêng kiểm soát runtime | Thực hiện từng action UAT và kiểm tra modal + Signature/Audit Trail | Cao |
-| Download document phổ thông | Quyền và Object Access cùng tác động; Controlled Copy còn có policy download riêng | Test Viewer A/B, bật/tắt policy download và kiểm tra API | Cao |
-| Rule ưu tiên giữa Object Access Rule custom | Cấu hình ở database/policy engine, phụ thuộc dữ liệu triển khai | Tạo case Allow/Deny có kiểm soát trong UAT sandbox | Cao |
+| Download document phổ thông | Quyền, vai trò trong flow và mức nhìn thấy cùng tác động; Controlled Copy còn có policy download riêng | Test Viewer A/B, bật/tắt policy download và kiểm tra API | Cao |
+| Nhiều Access Profile cho một người | Mức nhìn thấy cao nhất của các profile thắng (hợp các quyền) | Gán hai profile khác mức cho một user thử và đối chiếu danh sách | Trung bình |
 | Workflow Role cần cho danh sách Reviewer/Approver cụ thể | Wizard mô tả role catalog làm user eligible; endpoint chọn participant phải kiểm tra thêm | Thử chọn từng user trong modal Reviewers/Approvers | Trung bình |
 | Controlled Copy external/public portal | Có điều kiện token và policy riêng | Chỉ test bằng approved UAT protocol, không dùng dữ liệu production | Cao |
 

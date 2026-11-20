@@ -38,3 +38,11 @@
 1. Confirm the Backup restore pair stays out (see above).
 2. Read the SoD scan after V802 on DEV; adjust or switch off rows that would block real work.
 3. The Inactive flag in User Management, Reset MFA (D4), Access Explorer (D6): next. Delegation (D7) needs its row in `AUTHORIZATION_PARTICIPANT_SOD_CATALOG.md` approved first.
+
+## Addendum 2026-11-18: Access Explorer screen redesign (list + details)
+
+Screen only; no authorization rule, permission or audit behaviour changed. Owner's request: the same shape as the other administration screens. The list (`/settings/users/access-explorer`) is a table of every permission with how many permission sets, access profiles and people hold it; search, Module and Held By filters (all / held / nobody), sorting and paging are done by the server, with the same FilterDrawer on small screens. A row opens Access Explorer Details (`/settings/users/access-explorer/:code`): header with module, category and four counts, tabs General, People (server search and paging, "Only active accounts"), Granted Through (permission sets and their access profiles); a link to the Permission Holders report stays.
+
+Backend: `GET /security/access-explorer/permissions` now returns a page (`search`, `module`, `held`, `sortBy`, `sortDir`, `page`, `size`; size capped at 100) with the counts from one native query that follows the same chain as the sign-in and the report; `GET /security/access-explorer/holders` takes `search`, `page`, `size` and returns `holderTotal` and `totalPages` (the totals of the permission do not shrink with the search); new `GET /security/access-explorer/modules`. All three stay behind the same `requireView` (`settings.user.view` or `security.access_profiles.view`). The earlier top-50 picker search was removed with its tests.
+
+Tests: `AccessExplorerServiceTest` (8: search by every word, module filter, counts, sort, paging and the page-size cap, held/none, people search and paging, refusal without the view permission), `AccessExplorerView.test.tsx` (7). Checked on DEV at 1440, 1024 and 375 px with no page-level horizontal overflow; DEV shows 7 permissions held by nobody (for example `reports.definition.approve_gmp`), which the Held By filter now surfaces: whether each is intended is a QA decision, not changed here.

@@ -219,7 +219,6 @@ These are currently exposed by the UI but are not the final backend workflow act
 - `security.access_profiles.assign` - Assign Access Profiles
 - `security.workflow_authorization.view` - View Workflow Authorization
 - `security.workflow_authorization.manage` - Manage Workflow Authorization
-- `security.object_rules.view` - View Object Access Rules
 - `security.object_rules.manage` - Manage Object Access Rules
 - `security.sod.view` - View Segregation of Duties
 - `security.sod.manage` - Manage Segregation of Duties
@@ -228,8 +227,6 @@ These are currently exposed by the UI but are not the final backend workflow act
 
 - `settings.configuration.view` - View Configuration
 - `settings.configuration.edit` - Edit Configuration
-- `settings.dictionary.view` - View Data Dictionaries
-- `settings.dictionary.manage` - Manage Data Dictionaries
 - `settings.controlled_copy_policy.view` - View Controlled Copies Policy
 - `settings.controlled_copy_policy.manage` - Manage Controlled Copies Policy
 
@@ -240,3 +237,5 @@ These are currently exposed by the UI but are not the final backend workflow act
 3. Confirm whether System Administrator is deliberately prevented from business approval/publishing actions unless separately assigned an appropriate Access Profile.
 4. Confirm whether generic `settings.role.*` permissions remain as transitional aliases or are retired in favour of `security.access_profiles.*`.
 5. Approve a rule that every new action must be added to this catalog, enforced in the backend, exposed through a record capability API, and covered by authorization tests.
+
+> 2026-11-20: removed from the catalog because nothing read them: `security.object_rules.view` (V829, the Object Access Rules screen was removed), `settings.dictionary.view/manage`, `documents.form.configure/design_efield/fill_eform`, `training.audit.view` (V830).
