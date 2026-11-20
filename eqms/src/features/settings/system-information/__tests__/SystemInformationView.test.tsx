@@ -26,15 +26,37 @@ const renderView = () => render(<BreadcrumbProvider><MemoryRouter><SystemInforma
 beforeEach(() => api.get.mockReset());
 
 describe("SystemInformationView", () => {
-  it("summarises the server and database from what the server reported, with the heap as its real ratio", async () => {
+  it("summarises the versions from what the server reported, with no live gauge or running counter", async () => {
     api.get.mockResolvedValue(info);
     renderView();
 
-    const summary = await screen.findByRole("region", { name: "Server and database summary" });
+    const summary = await screen.findByRole("region", { name: "Version summary" });
     expect(summary).toHaveTextContent("1.4.2");
     expect(summary).toHaveTextContent("v553");
-    expect(summary).toHaveTextContent("1d 1h"); // 90,000,000 ms
-    expect(screen.getByRole("progressbar", { name: "Heap in use" })).toHaveAttribute("aria-valuenow", "50");
+    expect(summary).toHaveTextContent("16.3");
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(screen.queryByText(/Uptime/)).toBeNull();
+  });
+
+  it("shows one topic per tab, the server's facts only, and the start time in the system format", async () => {
+    api.get.mockResolvedValue(info);
+    renderView();
+    await screen.findByRole("region", { name: "Version summary" });
+
+    expect(screen.getByRole("tab", { name: "Application" })).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(screen.getByRole("tab", { name: "Server" }));
+    const panel = screen.getByRole("tabpanel");
+    expect(panel).toHaveTextContent("OpenJDK");
+    expect(panel).toHaveTextContent("1.00 GB"); // the heap ceiling, not the heap in use
+    expect(panel).toHaveTextContent(/01\/10\/2026 \d{2}:\d{2}:\d{2}/);
+    expect(panel).not.toHaveTextContent("512 MB");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Database" }));
+    expect(screen.getByRole("tabpanel")).toHaveTextContent("10 max"); // the pool size, not its active or idle connections
+    expect(screen.getByRole("tabpanel")).not.toHaveTextContent("active");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Technology Stack" }));
+    expect(screen.getByRole("tabpanel")).toHaveTextContent("Spring Boot");
   });
 
   it("says so and offers a retry when the server cannot be read, without inventing figures", async () => {
@@ -42,8 +64,8 @@ describe("SystemInformationView", () => {
     renderView();
 
     expect(await screen.findByText("Unable to load server and database information.")).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Server and database summary" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Version summary" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Try again/ }));
-    expect(await screen.findByRole("region", { name: "Server and database summary" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Version summary" })).toBeInTheDocument();
   });
 });

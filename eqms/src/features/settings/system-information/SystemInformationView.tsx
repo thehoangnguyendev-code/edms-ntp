@@ -1,27 +1,16 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
-import {
-  Boxes,
-  Coffee,
-  Cpu,
-  Database,
-  GitBranch,
-  HardDrive,
-  Layers,
-  Server,
-  ShieldCheck,
-  Terminal,
-  Zap,
-} from "lucide-react";
+import { AppWindow, Coffee, Database, GitBranch, HardDrive, Layers, Route, Server, ShieldCheck, Zap } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Badge } from "@/components/ui/badge/Badge";
+import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { systemInformation } from "@/components/ui/breadcrumb/breadcrumbs.config";
-import { Card, CardHeader, KpiStrip, type KpiCellData } from "@/features/self-service/dashboard/shared/dashboardUi";
+import { Card, KpiStrip, type KpiCellData } from "@/features/self-service/dashboard/shared/dashboardUi";
 import { PanelError, RowsSkeleton } from "@/features/self-service/dashboard/shared/dashboardParts";
 import { cn } from "@/components/ui/utils";
 import { ROUTES } from "@/app/routes.constants";
 import { systemInfoApi, type SystemInfoResponse } from "@/services/api/systemInfo";
+import { formatDateTime } from "@/utils/format";
 import metadata from "../../../../metadata.json";
 import packageJson from "../../../../package.json";
 
@@ -151,35 +140,16 @@ const CATEGORY_ICON: Record<string, React.ComponentType<{ className?: string }>>
 /*  Building blocks                                                   */
 /* ------------------------------------------------------------------ */
 
-const EASE = [0.2, 0.8, 0.3, 1] as const;
-
-/** A dashboard card whose header carries the title and a real value or state as its badge; cards rise in one after another. */
-const InfoCard: React.FC<{ title: string; subtitle?: string; badge?: React.ReactNode; index: number; className?: string; children: React.ReactNode }> = ({
-  title, subtitle, badge, index, className, children,
-}) => {
-  const reduceMotion = useReducedMotion();
-  return (
-    <motion.div
-      className={cn("min-w-0", className)}
-      initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reduceMotion ? 0 : 0.35, delay: reduceMotion ? 0 : index * 0.06, ease: EASE }}
-    >
-      <Card aria-label={title} className="h-full">
-        <CardHeader title={title} subtitle={subtitle} badge={badge} />
-        <div className="px-4 pb-3 pt-2">{children}</div>
-      </Card>
-    </motion.div>
-  );
-};
-
 const Field: React.FC<{ label: string; value: React.ReactNode; mono?: boolean }> = ({ label, value, mono }) => (
-  <div className="flex items-start justify-between gap-4 border-b border-slate-100 py-2.5 last:border-0">
-    <span className="shrink-0 pt-0.5 text-xs font-medium text-slate-500">{label}</span>
-    <span className={cn("break-all text-right text-sm font-medium text-slate-900", mono && "font-mono text-xs text-slate-700")}>
-      {value}
-    </span>
+  <div className="flex flex-col gap-0.5 border-b border-slate-100 py-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+    <dt className="shrink-0 pt-0.5 text-xs font-medium text-slate-500">{label}</dt>
+    <dd className={cn("min-w-0 break-words text-sm font-medium text-slate-900 sm:text-right", mono && "font-mono text-xs text-slate-700")}>{value}</dd>
   </div>
+);
+
+/** Label and value pairs in two columns from `md`, one column below it. */
+const FieldGrid: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <dl className="grid grid-cols-1 gap-x-8 md:grid-cols-2">{children}</dl>
 );
 
 const TechTile: React.FC<{
@@ -207,47 +177,33 @@ const formatBytes = (n: number) => {
   return mb >= 1024 ? `${(mb / 1024).toFixed(2)} GB` : `${Math.round(mb)} MB`;
 };
 
-const formatUptime = (ms: number) => {
-  if (!ms || ms < 0) return "—";
-  const s = Math.floor(ms / 1000);
-  const d = Math.floor(s / 86400);
-  const h = Math.floor((s % 86400) / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  return [d && `${d}d`, h && `${h}h`, `${m}m`].filter(Boolean).join(" ");
-};
-
-/** Heap in use against its ceiling; the bar is that real ratio and fills when it appears. */
-const HeapBar: React.FC<{ used: number; max: number }> = ({ used, max }) => {
-  const reduceMotion = useReducedMotion();
-  if (!max || max < 0) return null;
-  const pct = Math.min(100, Math.round((used / max) * 100));
-  return (
-    <div className="mt-3 border-t border-slate-100 pt-3">
-      <div className="mb-1.5 flex items-center justify-between text-xs">
-        <span className="font-medium text-slate-500">Heap in use</span>
-        <span className="font-medium tabular-nums text-slate-800">{pct}%</span>
-      </div>
-      <div role="progressbar" aria-label="Heap in use" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} className="h-2 overflow-hidden rounded-full bg-slate-100">
-        <motion.div
-          className={cn("h-full rounded-full", pct > 90 ? "bg-red-500" : pct > 75 ? "bg-amber-500" : "bg-gradient-to-r from-emerald-600 to-emerald-400")}
-          initial={reduceMotion ? false : { width: 0 }}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.9, delay: reduceMotion ? 0 : 0.2, ease: EASE }}
-        />
-      </div>
-    </div>
-  );
-};
-
 /* ------------------------------------------------------------------ */
 /*  View                                                              */
 /* ------------------------------------------------------------------ */
 
+type TabId = "application" | "server" | "database" | "stack" | "routing";
+
+const TABS: readonly TabItem[] = [
+  { id: "application", label: "Application", icon: AppWindow },
+  { id: "server", label: "Server", icon: Server },
+  { id: "database", label: "Database", icon: Database },
+  { id: "stack", label: "Technology Stack", icon: Layers },
+  { id: "routing", label: "Routing", icon: Route },
+];
+
+const TAB_PREFIX = "system-info-tab";
+const PANEL_PREFIX = "system-info-panel";
+
+/**
+ * Facts about this system, read only: what runs, in which version, on what. Nothing here watches the system — no live gauge,
+ * no running counter, no threshold colour. The four versions people look up most sit on top; the rest is one topic per tab.
+ */
 export const SystemInformationView: React.FC = () => {
   const navigate = useNavigate();
   const [data, setData] = React.useState<SystemInfoResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
+  const [tab, setTab] = React.useState<TabId>("application");
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -265,17 +221,99 @@ export const SystemInformationView: React.FC = () => {
 
   const server = data?.server;
   const db = data?.database;
+  const ready = !loading && !error && !!server && !!db && !!data;
 
-  // Only facts the server reported; nothing here is estimated.
+  // Only facts the server reported or the build carries; nothing here is estimated.
   const cells = React.useMemo<KpiCellData[]>(() => {
     if (!server || !db) return [];
     return [
-      { title: "Backend version", accent: "#10b981", value: server.version, footValue: server.activeProfiles.length ? server.activeProfiles.join(", ") : "default", footLabel: "active profiles" },
-      { title: "Uptime", accent: "#3b82f6", value: formatUptime(server.uptimeMillis), footValue: server.timeZone, footLabel: "server time zone" },
+      { title: "Application version", accent: "#10b981", value: packageJson.version, footValue: import.meta.env.MODE, footLabel: "runtime mode" },
+      { title: "Backend version", accent: "#3b82f6", value: server.version, footValue: server.activeProfiles.length ? server.activeProfiles.join(", ") : "default", footLabel: "active profiles" },
       { title: "Schema migration", accent: "#8b5cf6", value: `v${db.schemaMigrationVersion}`, footValue: db.appliedMigrations, footLabel: "applied migrations" },
       { title: "Database", accent: "#f59e0b", value: stripRange(db.productVersion).split(" ")[0], footValue: db.product, footLabel: "engine" },
     ];
   }, [server, db]);
+
+  const panel = (() => {
+    if (tab === "application") {
+      return (
+        <>
+          <FieldGrid>
+            <Field label="Application name" value={metadata.name} />
+            <Field label="Frontend version" value={packageJson.version} mono />
+            <Field label="Package name" value={packageJson.name} mono />
+            <Field label="Module type" value={packageJson.type} />
+            <Field label="Runtime mode" value={import.meta.env.MODE} />
+            <Field label="Private package" value={String(packageJson.private)} />
+          </FieldGrid>
+          <div className="py-2.5">
+            <p className="mb-1 text-xs font-medium text-slate-500">Description</p>
+            <p className="text-sm leading-relaxed text-slate-700">{metadata.description}</p>
+          </div>
+        </>
+      );
+    }
+    if (tab === "routing") {
+      return (
+        <FieldGrid>
+          <Field label="System information route" value={ROUTES.SETTINGS.SYSTEM_INFO} mono />
+          <Field label="Settings route keys" value={String(Object.keys(ROUTES.SETTINGS).length)} />
+          <Field label="Top-level route groups" value={String(Object.keys(ROUTES).length)} />
+        </FieldGrid>
+      );
+    }
+    // The server, database and stack tabs need what the server reported.
+    if (loading) return <RowsSkeleton rows={5} />;
+    if (!ready || !server || !db || !data) return <p className="py-2 text-sm text-slate-500">Server information is not available.</p>;
+    if (tab === "server") {
+      return (
+        <FieldGrid>
+          <Field label="Service name" value={server.applicationName} mono />
+          <Field label="Backend version" value={server.version} mono />
+          <Field label="Active profiles" value={server.activeProfiles.length ? server.activeProfiles.join(", ") : "default"} mono />
+          <Field label="Java" value={`${server.javaVersion} · ${server.javaVendor}`} />
+          <Field label="JVM" value={server.jvmName} />
+          <Field label="Operating system" value={`${server.osName} (${server.osArch})`} />
+          <Field label="CPU" value={`${server.availableProcessors} vCPU`} />
+          <Field label="Max heap" value={formatBytes(server.heapMaxBytes)} />
+          <Field label="Time zone" value={server.timeZone} />
+          <Field label="Started at" value={formatDateTime(server.startedAt)} />
+        </FieldGrid>
+      );
+    }
+    if (tab === "database") {
+      return (
+        <FieldGrid>
+          <Field label="Engine" value={`${db.product} ${stripRange(db.productVersion).split(" ")[0]}`} />
+          <Field label="Full version" value={db.productVersion} mono />
+          <Field label="JDBC driver" value={`${db.driverName} ${db.driverVersion}`} />
+          <Field label="Schema migration" value={`v${db.schemaMigrationVersion}`} mono />
+          <Field label="Applied migrations" value={String(db.appliedMigrations)} />
+          <Field label="Connection pool size" value={db.poolMax == null ? "—" : `${db.poolMax} max`} />
+        </FieldGrid>
+      );
+    }
+    return (
+      <div className="space-y-4">
+        <div>
+          <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-slate-500">Frontend</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {FRONTEND_STACK.map(({ id, name, category, version, Mark }) => (
+              <TechTile key={id} name={name} category={category} version={stripRange(version)} Mark={Mark} />
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-slate-500">Backend</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {data.techStack.map((t) => (
+              <TechTile key={t.id} name={t.name} category={t.category} version={t.version} Mark={BACKEND_MARKS[t.id]} FallbackIcon={CATEGORY_ICON[t.category] ?? Layers} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  })();
 
   return (
     <div className="flex w-full flex-1 flex-col space-y-4 md:space-y-6">
@@ -293,103 +331,23 @@ export const SystemInformationView: React.FC = () => {
         </Card>
       )}
 
-      {!loading && !error && server && db && <KpiStrip cells={cells} label="Server and database summary" />}
+      {ready && <KpiStrip cells={cells} label="Version summary" />}
 
-      <InfoCard title="Application" subtitle="This web application" badge={<Badge color="emerald" size="sm">v{packageJson.version}</Badge>} index={0}>
-        <Field label="Application name" value={metadata.name} />
-        <Field label="Package name" value={packageJson.name} mono />
-        <Field label="Frontend version" value={packageJson.version} mono />
-        <Field label="Module type" value={packageJson.type} />
-        <Field label="Runtime mode" value={import.meta.env.MODE} />
-        <Field label="Private package" value={String(packageJson.private)} />
-        <div className="py-2.5">
-          <p className="mb-1 text-xs font-medium text-slate-500">Description</p>
-          <p className="text-sm leading-relaxed text-slate-700">{metadata.description}</p>
+      <Card aria-label="System details">
+        <TabNav
+          tabs={TABS}
+          activeTab={tab}
+          onChange={(id) => setTab(id as TabId)}
+          variant="underline"
+          ariaLabel="System details"
+          tabIdPrefix={TAB_PREFIX}
+          panelIdPrefix={PANEL_PREFIX}
+          className="max-md:[mask-image:linear-gradient(to_right,#000_calc(100%-32px),transparent)]"
+        />
+        <div role="tabpanel" id={`${PANEL_PREFIX}-${tab}`} aria-labelledby={`${TAB_PREFIX}-${tab}`} className="p-4 md:p-5">
+          {panel}
         </div>
-      </InfoCard>
-
-      {!loading && !error && server && db && data && (
-        <>
-          <div className="grid grid-cols-1 gap-4 md:gap-6 xl:grid-cols-2">
-            <InfoCard title="Server Runtime" subtitle={`${server.javaVendor} ${server.javaVersion}`} badge={<Badge color="emerald" size="sm">{server.applicationName}</Badge>} index={1}>
-              <Field label="Service name" value={server.applicationName} mono />
-              <Field label="Backend version" value={server.version} mono />
-              <Field label="Active profiles" value={server.activeProfiles.length ? server.activeProfiles.join(", ") : "default"} mono />
-              <Field label="Java" value={`${server.javaVersion} · ${server.javaVendor}`} />
-              <Field label="JVM" value={server.jvmName} />
-              <Field label="Operating system" value={`${server.osName} (${server.osArch})`} />
-              <Field
-                label="CPU / Heap"
-                value={
-                  <span className="inline-flex items-center gap-1.5">
-                    <Cpu className="h-3.5 w-3.5 text-slate-400" />
-                    {server.availableProcessors} vCPU · {formatBytes(server.heapUsedBytes)} / {formatBytes(server.heapMaxBytes)}
-                  </span>
-                }
-              />
-              <Field label="Time zone" value={server.timeZone} />
-              <Field label="Started at" value={server.startedAt} />
-              <Field label="Uptime" value={formatUptime(server.uptimeMillis)} />
-              <HeapBar used={server.heapUsedBytes} max={server.heapMaxBytes} />
-            </InfoCard>
-
-            <InfoCard title="Database" subtitle={db.driverName} badge={<Badge color="emerald" size="sm">{db.product}</Badge>} index={2}>
-              <Field label="Engine" value={`${db.product} ${stripRange(db.productVersion).split(" ")[0]}`} />
-              <Field label="Full version" value={db.productVersion} mono />
-              <Field label="JDBC driver" value={`${db.driverName} ${db.driverVersion}`} />
-              <Field label="Schema migration" value={`v${db.schemaMigrationVersion}`} mono />
-              <Field label="Applied migrations" value={String(db.appliedMigrations)} />
-              <Field
-                label="Connection pool"
-                value={
-                  db.poolMax == null
-                    ? "—"
-                    : `${db.poolActive ?? "?"} active · ${db.poolIdle ?? "?"} idle · ${db.poolMax} max`
-                }
-              />
-            </InfoCard>
-          </div>
-
-          <InfoCard
-            title="Technology Stack"
-            subtitle="Frontend packages and backend components"
-            badge={<Badge color="slate" size="sm">{FRONTEND_STACK.length + data.techStack.length}</Badge>}
-            index={3}
-          >
-            <div className="space-y-4 py-2">
-              <div>
-                <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-slate-500">Frontend</p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {FRONTEND_STACK.map(({ id, name, category, version, Mark }) => (
-                    <TechTile key={id} name={name} category={category} version={stripRange(version)} Mark={Mark} />
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-slate-500">Backend</p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {data.techStack.map((t) => (
-                    <TechTile
-                      key={t.id}
-                      name={t.name}
-                      category={t.category}
-                      version={t.version}
-                      Mark={BACKEND_MARKS[t.id]}
-                      FallbackIcon={CATEGORY_ICON[t.category] ?? Layers}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </InfoCard>
-        </>
-      )}
-
-      <InfoCard title="Routing" subtitle="Client-side route map" index={4}>
-        <Field label="System information route" value={ROUTES.SETTINGS.SYSTEM_INFO} mono />
-        <Field label="Settings route keys" value={String(Object.keys(ROUTES.SETTINGS).length)} />
-        <Field label="Top-level route groups" value={String(Object.keys(ROUTES).length)} />
-      </InfoCard>
+      </Card>
     </div>
   );
 };
