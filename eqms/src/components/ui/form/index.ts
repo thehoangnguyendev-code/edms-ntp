@@ -11,3 +11,5 @@ export type { FormFieldProps } from './ResponsiveForm';
 export type { FormSectionProps } from './FormSection';
 export type { CollapsibleFormSectionProps } from './CollapsibleFormSection';
 export { SearchInput } from './SearchInput';
+export { FieldHint } from './FieldHint';
+export type { FieldHintProps } from './FieldHint';

@@ -11,10 +11,11 @@
  * - Imports point at this project's `@/components/ui/utils`.
  */
 
-import React from "react";
+import React, { useRef } from "react";
 import { motion, AnimatePresence, Reorder, useDragControls } from "framer-motion";
 import { GripVertical, X } from "lucide-react";
 import { cn } from "@/components/ui/utils";
+import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 
 export interface ReorderItem {
   id: string;
@@ -64,10 +65,19 @@ function Row<T extends ReorderItem>({
   onRemove?: (id: string) => void;
 }) {
   const dragControls = useDragControls();
+  // framer-motion moves the row while it is dragged and slides the others aside. When it is let go, a pale emerald wash fades out over it (GSAP, opacity of a
+  // layer on top of the row), so the eye finds where it landed. It never touches the row's own transform, which framer-motion owns.
+  const rowRef = useRef<HTMLDivElement>(null);
+  const flashRef = useRef<HTMLSpanElement>(null);
+  const { contextSafe } = useGSAP({ scope: rowRef });
+  const showWhereItLanded = contextSafe(() => {
+    if (prefersReducedMotion() || !flashRef.current) return;
+    gsap.fromTo(flashRef.current, { opacity: 1 }, { opacity: 0, duration: 0.9, ease: "power2.out", overwrite: "auto" });
+  });
 
   return (
     // as="div": the default list item would show a bullet inside the drawer.
-    <Reorder.Item as="div" value={item} id={item.id} dragListener={false} dragControls={dragControls} className="relative">
+    <Reorder.Item ref={rowRef} as="div" value={item} id={item.id} dragListener={false} dragControls={dragControls} onDragEnd={showWhereItLanded} className="relative">
       <motion.div
         layout
         initial={{ opacity: 0, y: -6 }}
@@ -112,6 +122,7 @@ function Row<T extends ReorderItem>({
           </button>
         )}
       </motion.div>
+      <span ref={flashRef} data-reorder-landed aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-xl bg-emerald-500/15 opacity-0" />
     </Reorder.Item>
   );
 }

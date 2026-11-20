@@ -194,6 +194,9 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
       const nextFieldErrors: Partial<Record<'username' | 'password' | 'reason', string>> = {};
       if (normalized.includes('current user') || normalized.includes('username')) {
         nextFieldErrors.username = 'Enter the username of the currently signed-in account.';
+      } else if (normalized.includes('attempt') && normalized.includes('remaining')) {
+        // A wrong password counts toward the account lockout; the person is told how many tries are left, so the server's words are shown as they are.
+        nextFieldErrors.password = message;
       } else if (normalized.includes('invalid signature credentials') || normalized.includes('password') || normalized.includes('credential')) {
         nextFieldErrors.password = 'Electronic signature authentication failed. Please verify your username and password and try again.';
       } else if (normalized.includes('reason')) {

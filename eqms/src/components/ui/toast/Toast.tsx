@@ -21,13 +21,11 @@ export interface Toast {
   message: string;
   title?: string;
   duration?: number; // ms
-  /** A toast that shows a notification of the bell carries the icon and the colours of that notification (the ones chosen in Edit Notification), so that the toast and the list look the same. */
+  /** A toast that shows a notification of the bell carries the icon of that notification and the colour of its priority (Low green, Medium yellow, High red), so that the toast and the list look the same. */
   icon?: React.ComponentType<{ className?: string }>;
-  /** The background and text colour classes of that icon (for example "bg-purple-50 text-purple-600"). */
+  /** The background and text colour classes of that icon (for example "bg-amber-50 text-amber-600"). */
   iconClassName?: string;
-  /** The same as styles, for a colour that is not a class (one chosen with the colour picker). */
-  iconStyle?: React.CSSProperties;
-  /** A colour (six-digit hex) and a place for this toast alone, instead of the ones of the system: for the preview of a setting that is not saved yet. */
+  /** A colour (six-digit hex) for this toast alone, instead of the one of the system: the border and the time bar take it. A notification toast gives the colour of its priority. */
   color?: string;
   position?: "center" | "top-center" | "bottom-center" | "top-right" | "top-left" | "bottom-right" | "bottom-left";
   /** The strength of the shadow (0 to 100) for this toast alone, as the colour and the position above. */
@@ -257,7 +255,7 @@ const ToastItem: React.FC<{ toast: Toast; color?: string; shadow?: number; onRem
             toast.iconClassName,
           )}
           // without the colours of a notification icon, the tile is the toast colour: a light tint behind the icon in the colour itself
-          style={toast.iconStyle ?? (toast.iconClassName ? undefined : { backgroundColor: `${hex}1A`, color: hex })}
+          style={toast.iconClassName ? undefined : { backgroundColor: `${hex}1A`, color: hex }}
         >
           <Icon className="h-4 w-4" />
         </div>

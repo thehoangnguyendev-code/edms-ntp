@@ -18,6 +18,8 @@ interface AlertModalProps {
   confirmText?: string;
   cancelText?: string;
   isLoading?: boolean;
+  /** Keeps the confirm button off until something that must be acknowledged first (for example a checkbox in `description`) is done. Cancel is never blocked. */
+  confirmDisabled?: boolean;
   showCancel?: boolean;
 }
 
@@ -31,6 +33,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
   confirmText,
   cancelText = 'Cancel',
   isLoading = false,
+  confirmDisabled = false,
   showCancel,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -224,7 +227,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
                 size="sm"
                 onClick={onConfirm || onClose}
                 className={getConfirmButtonClass()}
-                disabled={isLoading}
+                disabled={isLoading || confirmDisabled}
               >
                 {isLoading ? (
                   <ButtonLoading

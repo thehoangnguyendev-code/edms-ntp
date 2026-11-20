@@ -50,6 +50,26 @@ describe("Electronic signature credentials", () => {
     expect(confirm).not.toHaveBeenCalled();
   });
 
+  it("tells the signer how many tries are left before the account is locked, in the server's own words", async () => {
+    const message = "Password is incorrect. You have 2 signing attempts remaining before your account is locked.";
+    mocks.verify.mockRejectedValue({ response: { data: { message } } });
+    const confirm = vi.fn();
+    render(<ESignatureModal isOpen onClose={vi.fn()} onConfirm={confirm} />);
+    fill("admin", "wrong");
+    fireEvent.click(screen.getByRole("button", { name: "Sign & Confirm" }));
+    await screen.findByText(message);
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("shows the lockout itself when the wrong password was the one that locked the account", async () => {
+    const message = "Account is locked after too many failed signing attempts. Please contact an administrator.";
+    mocks.verify.mockRejectedValue({ response: { data: { message } } });
+    render(<ESignatureModal isOpen onClose={vi.fn()} onConfirm={vi.fn()} />);
+    fill("admin", "wrong");
+    fireEvent.click(screen.getByRole("button", { name: "Sign & Confirm" }));
+    await screen.findByText(message);
+  });
+
   it("clears credentials when closed and reopened", async () => {
     const props = { onClose: vi.fn(), onConfirm: vi.fn() };
     const view = render(<ESignatureModal isOpen {...props} />);

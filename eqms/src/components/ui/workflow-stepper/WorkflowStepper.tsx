@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { motion } from "framer-motion";
+import { useStepperMotion } from "./useStepperMotion";
 
 export interface WorkflowStepperProps {
   steps: readonly string[] | string[];
@@ -29,6 +30,8 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
   numbered = false,
 }) => {
   const isTerminalStatus = isTerminal;
+  const rootRef = useRef<HTMLDivElement>(null);
+  useStepperMotion(rootRef, currentStepIndex);
 
   const terminalProgressIndex =
     isTerminalStatus
@@ -47,9 +50,9 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
   ]);
 
   return (
-    <div className={cn("bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden", className)}>
+    <div ref={rootRef} className={cn("bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden", className)}>
       {/* Mobile View (Compact circles) */}
-      <div className="flex sm:hidden items-center justify-start gap-0 px-2 py-4 bg-slate-50/50 border-b border-slate-100 overflow-x-auto">
+      <div data-stepper-view="mobile" className="flex sm:hidden items-center justify-start gap-0 px-2 py-4 bg-slate-50/50 border-b border-slate-100 overflow-x-auto">
         <div className="flex items-center justify-start min-w-max mx-auto">
           {steps.map((step, index) => {
             const isTerminalProgressStep =
@@ -70,6 +73,7 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
             return (
               <React.Fragment key={step}>
                 <div 
+                  data-step
                   className={cn(
                     "flex flex-col items-center gap-1.5 select-none w-[64px] flex-shrink-0",
                     onStepClick && "cursor-pointer"
@@ -115,7 +119,7 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
                       />
                     )}
                     {(isCompleted || isTerminalProgressStep) && !hasStripe && !numbered ? (
-                      <Check className="h-3.5 w-3.5" />
+                      <Check data-step-check data-step-index={index} className="h-3.5 w-3.5" />
                     ) : icons?.[index] ? (
                       React.createElement(icons[index], { className: "h-3.5 w-3.5" })
                     ) : (
@@ -139,8 +143,10 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
                 </div>
                 {!isLast && (
                   <div
+                    data-step-connector
+                    data-step-index={index}
                     className={cn(
-                      "w-4 h-0.5 flex-shrink-0 transition-all self-start mt-3.5 rounded-full",
+                      "w-4 h-0.5 flex-shrink-0 transition-all self-start mt-3.5 rounded-full origin-left",
                       isCompleted ? "bg-emerald-500" : "bg-slate-200",
                     )}
                   />
@@ -152,7 +158,7 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
       </div>
 
       {/* Desktop View (Arrow shapes) */}
-      <div className="hidden sm:block overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
+      <div data-stepper-view="desktop" className="hidden sm:block overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
         <div className="flex items-stretch min-w-full">
           {steps.map((step, index) => {
             const isTerminalProgressStep =
@@ -174,6 +180,7 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
             return (
               <div
                 key={step}
+                data-step
                 className={cn(
                   "relative flex-1 flex items-center justify-center min-w-[140px]",
                   onStepClick && "cursor-pointer"
@@ -181,15 +188,9 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
                 style={{ minHeight: "56px" }}
                 onClick={() => onStepClick?.(index)}
               >
+                {/* The arrow: the shape and the base colour. The colour of a finished or current step is a fill inside it, so GSAP can sweep it in without touching the shape. */}
                 <div
-                  className={cn(
-                    "absolute inset-0 transition-all",
-                    isCurrent
-                      ? "bg-emerald-600"
-                      : isCompleted || isTerminalProgressStep
-                        ? "bg-emerald-100"
-                        : "bg-slate-100",
-                  )}
+                  className="absolute inset-0 bg-slate-100"
                   style={{
                     clipPath: isFirst
                       ? "polygon(0% 0%, calc(100% - 20px) 0%, 100% 50%, calc(100% - 20px) 100%, 0% 100%)"
@@ -200,10 +201,18 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
                       ? "repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 10px, #e2e8f0 10px, #e2e8f0 20px)"
                       : undefined,
                   }}
-                />
+                >
+                  {!(hasStripe || isTerminalGap) && (isCurrent || isCompleted || isTerminalProgressStep) && (
+                    <div
+                      data-step-fill
+                      data-step-index={index}
+                      className={cn("absolute inset-0 origin-left transition-colors duration-300", isCurrent ? "bg-emerald-600" : "bg-emerald-100")}
+                    />
+                  )}
+                </div>
                 <div className="relative z-10 flex items-center justify-center gap-1.5 px-4 w-full max-w-full">
                   {(isCompleted || isTerminalProgressStep) && !hasStripe && !numbered ? (
-                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <Check data-step-check data-step-index={index} className="h-4 w-4 text-emerald-600 shrink-0" />
                   ) : icons?.[index] ? (
                     React.createElement(icons[index], {
                       className: cn(

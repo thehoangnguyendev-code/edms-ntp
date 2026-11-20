@@ -24,7 +24,7 @@ vi.mock("react-router-dom", async () => ({ ...(await vi.importActual<typeof impo
 
 const notification = (id: string, over: Record<string, unknown> = {}) => ({
   id, type: "training.step_assigned", title: "Training: your action is needed", description: "Approve the content.", priority: "high",
-  actionUrl: "/training-management/activities/1", icon: null, iconTone: "purple", ...over,
+  actionUrl: "/training-management/activities/1", icon: null, ...over,
 });
 
 const arrive = async (first: unknown, second: unknown) => {
@@ -43,11 +43,12 @@ describe("the toast of a new notification", () => {
   });
   afterEach(cleanup);
 
-  it("carries the notification's own icon colours and a warning for a high priority", async () => {
+  it("colours the icon by the priority of the notification and warns for a high priority", async () => {
     await arrive(notification("n1"), notification("n2"));
     const toast = mocks.showToast.mock.calls[0][0];
     expect(toast).toMatchObject({ type: "warning", title: "Training: your action is needed", message: "Approve the content." });
-    expect(toast.iconClassName).toContain("purple");   // the tone chosen for the notification
+    expect(toast.color).toBe("#DC2626");   // the border and the time bar of the toast are the red of High
+    expect(toast.iconClassName).toContain("red");   // High is red; nobody chooses the colour of an icon any more
     expect(toast.icon).toBeTruthy();
   });
 

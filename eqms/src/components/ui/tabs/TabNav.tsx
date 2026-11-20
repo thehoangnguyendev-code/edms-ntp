@@ -1,5 +1,7 @@
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/components/ui/utils";
+import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
+import { useCountBump } from "@/hooks/useCountBump";
 
 export interface TabItem {
   id: string;
@@ -104,6 +106,7 @@ function useHorizontalIndicator(activeTab: string, enabled: boolean) {
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRefs = useRef(new Map<string, HTMLButtonElement>());
   const hasMeasuredRef = useRef(false);
+  const indicatorRef = useRef<HTMLDivElement>(null);
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle | null>(null);
   const [animateIndicator, setAnimateIndicator] = useState(false);
 
@@ -174,12 +177,41 @@ function useHorizontalIndicator(activeTab: string, enabled: boolean) {
     return () => resizeObserver.disconnect();
   }, [activeTab, enabled]);
 
+  // The indicator's position is written here and not through the style prop: GSAP stretches it from where it is to the measured target.
+  // The edge that leads the move arrives first and the other edge catches up, so the bar stretches and then shrinks. The first measure and
+  // "reduce motion" place it at once. The tween always ends on the exact measured numbers.
+  useGSAP(() => {
+    const element = indicatorRef.current;
+    if (!element || !indicatorStyle) return;
+    const targetLeft = indicatorStyle.left;
+    const targetRight = indicatorStyle.left + indicatorStyle.width;
+    gsap.killTweensOf(element);
+    if (!animateIndicator || prefersReducedMotion()) {
+      gsap.set(element, { left: targetLeft, width: indicatorStyle.width });
+      return;
+    }
+    const edges = { left: element.offsetLeft, right: element.offsetLeft + element.offsetWidth };
+    const apply = () => { element.style.left = `${edges.left}px`; element.style.width = `${Math.max(edges.right - edges.left, 0)}px`; };
+    const movingRight = targetLeft >= edges.left;
+    const lead = { duration: 0.22, ease: "power3.out", onUpdate: apply };
+    const trail = { duration: 0.34, delay: 0.03, ease: "power3.out", onUpdate: apply };
+    gsap.to(edges, { right: targetRight, ...(movingRight ? lead : trail) });
+    gsap.to(edges, { left: targetLeft, ...(movingRight ? trail : lead), onComplete: () => gsap.set(element, { left: targetLeft, width: indicatorStyle.width }) });
+  }, { dependencies: [indicatorStyle, animateIndicator] });
+
   return {
-    animateIndicator,
     containerRef,
+    indicatorRef,
     indicatorStyle,
     setButtonRef,
   };
+}
+
+/** The number on a tab: it pops once when the count goes up. */
+function TabCount({ value, className }: { value: number; className: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useCountBump(ref, value);
+  return <span ref={ref} data-tab-count className={className}>{value}</span>;
 }
 
 function renderBadge(tab: TabItem, isActive: boolean, config: HorizontalVariantConfig) {
@@ -193,14 +225,13 @@ function renderBadge(tab: TabItem, isActive: boolean, config: HorizontalVariantC
   }
 
   return (
-    <span
+    <TabCount
+      value={tab.count}
       className={cn(
         config.badgeClassName,
         isActive ? config.activeBadgeClassName : config.inactiveBadgeClassName
       )}
-    >
-      {tab.count}
-    </span>
+    />
   );
 }
 
@@ -217,10 +248,23 @@ function HorizontalTabs({
 }: Omit<TabNavProps, "variant" | "layoutId"> & { variant: HorizontalVariant }) {
   const config = HORIZONTAL_VARIANTS[variant];
   const safeTabs = tabs.filter(Boolean) as TabItem[];
-  const { animateIndicator, containerRef, indicatorStyle, setButtonRef } = useHorizontalIndicator(
+  const { containerRef, indicatorRef, indicatorStyle, setButtonRef } = useHorizontalIndicator(
     activeTab,
     safeTabs.length > 0
   );
+
+  // The tab that was just chosen lifts its icon and label a couple of pixels (the count keeps its own pop, the fallback underline stays put).
+  const shownTab = useRef<string | null>(null);
+  useGSAP(() => {
+    const before = shownTab.current;
+    shownTab.current = activeTab;
+    if (before === null || before === activeTab || prefersReducedMotion()) return;
+    const active = containerRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+    if (!active) return;
+    const parts = Array.from(active.children).filter((child): child is HTMLElement => child instanceof HTMLElement && !child.hasAttribute("data-tab-count") && !child.classList.contains("absolute"));
+    if (parts.length === 0) return;
+    gsap.fromTo(parts, { y: 2, opacity: 0.55 }, { y: 0, opacity: 1, duration: 0.26, ease: "power2.out", clearProps: "opacity,transform" });
+  }, { scope: containerRef, dependencies: [activeTab] });
 
   return (
     <div className={cn(config.rootClassName, className)}>
@@ -279,14 +323,8 @@ function HorizontalTabs({
         {indicatorStyle && (
           <div
             aria-hidden="true"
+            ref={indicatorRef}
             className={config.indicatorClassName}
-            style={{
-              left: indicatorStyle.left,
-              width: indicatorStyle.width,
-              transition: animateIndicator
-                ? "left 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1)"
-                : "none",
-            }}
           />
         )}
       </div>
@@ -353,16 +391,15 @@ function VerticalTabs({
                 )}
               </div>
               {tab.count !== undefined && (
-                <span
+                <TabCount
+                  value={tab.count}
                   className={cn(
                     "inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 ml-auto text-2xs font-bold rounded-full",
                     isActive
                       ? "bg-emerald-200/50 text-emerald-800"
                       : "bg-slate-200 text-slate-500"
                   )}
-                >
-                  {tab.count}
-                </span>
+                />
               )}
             </div>
           </button>

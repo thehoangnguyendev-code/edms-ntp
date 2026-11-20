@@ -5,7 +5,7 @@ import { useToast } from '@/components/ui/toast';
 import { notificationApi } from '@/services/api/notifications';
 import { subscribeNotificationRealtime } from '@/features/notifications/notificationRealtime';
 import { normalizeNotificationType, openNotificationActionUrl } from '@/features/notifications/adapters';
-import { getNotificationTypeIcon, getNotificationTypeIconStyles } from '@/features/notifications/notificationMeta';
+import { getNotificationTypeIcon, getNotificationIconStyles, getNotificationPriorityHex } from '@/features/notifications/notificationMeta';
 
 /**
  * Delivers a toast for every new notification while an authenticated EQMS page is open
@@ -37,7 +37,7 @@ export const BrowserNotificationBridge = () => {
         if (!active || !latest) return;
         if (showAlert && newestId.current && newestId.current !== latest.id) {
           const kind = normalizeNotificationType(latest.type);
-          const styles = getNotificationTypeIconStyles(kind, latest.iconTone);
+          const styles = getNotificationIconStyles(latest.priority);
           const priority = (latest.priority ?? '').toLowerCase();
           const actionUrl = latest.actionUrl;
           showToast({
@@ -46,7 +46,7 @@ export const BrowserNotificationBridge = () => {
             message: latest.description,
             icon: getNotificationTypeIcon(kind, latest.icon),
             iconClassName: `${styles.bg} ${styles.text}`,
-            iconStyle: styles.tileStyle ? { ...styles.tileStyle, ...styles.iconStyle } : undefined,
+            color: getNotificationPriorityHex(latest.priority),
             onOpen: actionUrl
               ? () => {
                   void notificationApi.markAsRead(latest.id).catch(() => undefined);

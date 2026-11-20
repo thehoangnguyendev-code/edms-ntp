@@ -9,11 +9,12 @@ import { Footer } from '@/components/layout/footer/Footer';
 import { NotificationDockProvider } from '@/components/layout/header/NotificationDockContext';
 import { NotificationDock } from '@/components/layout/header/NotificationDock';
 import { NetworkStatusMonitor } from '@/components/layout/NetworkStatusMonitor';
+import { ServiceStatusMonitor } from '@/components/layout/ServiceStatusMonitor';
 import { ScrollToTop } from '@/components/ui/scroll-to-top/ScrollToTop';
 import { useResponsiveSidebar } from './useResponsiveSidebar';
 import { useNavigation } from './useNavigation';
 import { resetViewportZoom, isIOSSafari } from '@/utils/viewport';
-import { SessionTimeoutModal } from '@/features/auth/components';
+import { SessionReplacedModal, SessionTimeoutModal } from '@/features/auth/components';
 import { useAuth } from '@/contexts/AuthContext';
 import { authApi } from '@/services/api/auth';
 import { settingsApi } from '@/services/api/settings';
@@ -366,12 +367,14 @@ const MainLayoutContent: React.FC = () => {
   return (
     <div className="fixed inset-0 flex h-full w-full font-sans text-slate-900 overflow-hidden bg-white">
       <NetworkStatusMonitor />
+      <ServiceStatusMonitor />
 
       <SessionTimeoutModal
         isAuthenticated={isAuthenticated}
         username={user?.username}
         logout={logout}
       />
+      <SessionReplacedModal isAuthenticated={isAuthenticated} />
 
       <Sidebar
         isCollapsed={isSidebarCollapsed}

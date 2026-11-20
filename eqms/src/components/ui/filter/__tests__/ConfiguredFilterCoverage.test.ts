@@ -15,7 +15,6 @@ const screens = [
   "src/features/settings/dictionaries/tabs/DepartmentsTab.tsx",
   "src/features/settings/dictionaries/tabs/BusinessUnitsTab.tsx",
   "src/features/security-authorization/access-review/AccessReviewView.tsx",
-  "src/features/security-authorization/object-rules/ObjectAccessRulesView.tsx",
   "src/features/security-authorization/access-profiles/views/AccessProfileListView.tsx",
   "src/features/security-authorization/lifecycle-policies/views/WorkflowRolesView.tsx",
   "src/features/security-authorization/lifecycle-policies/views/StateCapabilitiesView.tsx",

@@ -78,11 +78,8 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
     setIsNotificationsOpen(false);
   }, []);
 
-  const handleProfileClick = useCallback(async () => {
+  const handleProfileClick = useCallback(() => {
     setIsUserMenuOpen(false);
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setIsLoading(false);
     if (onNavigateToProfile) {
       onNavigateToProfile();
     } else {

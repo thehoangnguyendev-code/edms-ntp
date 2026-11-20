@@ -18,6 +18,7 @@ import {
   type CustomizableColumn,
 } from "./useTableColumnPreferences";
 import { useColumnReorderMotion, type ColumnMotionHandle } from "./useColumnReorderMotion";
+import { useRowEntrance } from "./useRowEntrance";
 import { closeMenuRenderGate, menuRenderGateOpen, menuTouchesRow } from "./rowRenderGate";
 
 export type DataTableSortDirection = "asc" | "desc";
@@ -253,9 +254,10 @@ interface DataTableRowProps<T> {
   layoutToken?: number;
 }
 
-function DataTableRow<T>({ row, index, columns, visibleSelection, selection, action, rowClassName, onRowClick, onRowKeyDown, rowTabIndex }: DataTableRowProps<T>) {
+function DataTableRow<T>({ rowKey, row, index, columns, visibleSelection, selection, action, rowClassName, onRowClick, onRowKeyDown, rowTabIndex }: DataTableRowProps<T>) {
   return (
     <TableMarkup.Row
+      data-table-row={String(rowKey)}
       data-record-stripe={index % 2 === 1 ? "true" : "false"}
       onClick={() => onRowClick?.(row, index)}
       onKeyDown={(event) => onRowKeyDown?.(event, row, index)}
@@ -372,6 +374,7 @@ function DataTableBase<T>({
   };
   useStickyPinnedColumns(columnLayout ? scrollerEl : null, columnLayout?.pinnedIds ?? [], "data-table-col");
   useColumnReorderMotion(columnLayout ? scrollerEl : null, columnLayout?.pinnedIds ?? [], columnLayout?.reorderToken, columnLayout?.motion);
+  useRowEntrance(scrollerEl, shownRows.map((row, index) => String(getRowKey(row, index))), !isLoading);
 
   return (
     <div

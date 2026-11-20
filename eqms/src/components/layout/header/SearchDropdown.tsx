@@ -84,14 +84,10 @@ export const SearchDropdown: React.FC<SearchDropdownProps> = ({ className, onClo
         setIsSearchFocused(false);
         searchInputRef.current?.blur();
       }
-      // Search all results with Enter
-      if (e.key === 'Enter' && isSearchFocused && debouncedQuery.trim()) {
-        handleSearchAll();
-      }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isSearchFocused, debouncedQuery]);
+  }, [isSearchFocused]);
 
   // Close search dropdown when clicking outside
   useEffect(() => {
@@ -108,20 +104,6 @@ export const SearchDropdown: React.FC<SearchDropdownProps> = ({ className, onClo
     return () => document.removeEventListener('mousedown', handleClick);
   }, [isSearchFocused]);
 
-  const handleSearchAll = () => {
-    console.log("Search all results for:", debouncedQuery);
-    setIsSearchFocused(false);
-    // TODO: Navigate to search results page or trigger global search
-  };
-
-  const handleRecentItemClick = (item: string) => {
-    console.log("Navigate to:", item);
-    setIsSearchFocused(false);
-    setSearchQuery("");
-    setDebouncedQuery("");
-    // TODO: Navigate to specific document/deviation
-  };
-
   const handleNavItemClick = (path: string) => {
     navigate(path);
     setIsSearchFocused(false);
@@ -129,6 +111,21 @@ export const SearchDropdown: React.FC<SearchDropdownProps> = ({ className, onClo
     setDebouncedQuery("");
     onCloseSidebar?.();
   };
+
+  // Enter opens the first result of the search, as a click on it would.
+  useEffect(() => {
+    if (!isSearchFocused || !debouncedQuery.trim()) return;
+    const handleEnter = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return;
+      const first = filteredNavItems.find((item) => item.path);
+      if (!first) return;
+      e.preventDefault();
+      handleNavItemClick(first.path);
+    };
+    document.addEventListener('keydown', handleEnter);
+    return () => document.removeEventListener('keydown', handleEnter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSearchFocused, debouncedQuery, filteredNavItems]);
 
   return (
     <>

@@ -123,6 +123,12 @@ export const accessExplorer = (navigate?: NavigateFn): BreadcrumbItem[] => [
   { label: "Access Explorer", isActive: true },
 ];
 
+export const accessExplorerDetail = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...userAdministrationBase(navigate),
+  { label: "Access Explorer", onClick: () => navigate?.(ROUTES.SECURITY.ACCESS_EXPLORER) },
+  { label: "Access Explorer Details", isActive: true },
+];
+
 export const rolePermissions = (navigate?: NavigateFn): BreadcrumbItem[] => [
   ...securityAuthorizationBase(navigate),
   { label: "Access Profiles", isActive: true },
@@ -501,11 +507,6 @@ export const permissionSetDetail = (navigate?: NavigateFn): BreadcrumbItem[] => 
   { label: "Shared Permission Set Details", isActive: true },
 ];
 
-export const workflowRoleCatalog = (navigate?: NavigateFn): BreadcrumbItem[] => [
-  ...securityAdvancedBase(navigate),
-  { label: "Workflow Role Catalog", isActive: true },
-];
-
 export const workflowAuthorization = (navigate?: NavigateFn, activeTabLabel?: string): BreadcrumbItem[] =>
   activeTabLabel
     ? [
@@ -551,18 +552,6 @@ export const lifecyclePoliciesSubPage = (
   },
   { label: leafLabel, isActive: true },
 ];
-
-export const objectAccessRules = (navigate?: NavigateFn, activeTabLabel?: string): BreadcrumbItem[] =>
-  activeTabLabel
-    ? [
-        ...securityAdvancedBase(navigate),
-        { label: "Object Access Rules", onClick: () => navigate?.(ROUTES.SECURITY.OBJECT_RULES) },
-        { label: activeTabLabel, isActive: true },
-      ]
-    : [
-        ...securityAdvancedBase(navigate),
-        { label: "Object Access Rules", isActive: true },
-      ];
 
 export const segregationOfDuties = (navigate?: NavigateFn, activeTabLabel?: string): BreadcrumbItem[] =>
   activeTabLabel

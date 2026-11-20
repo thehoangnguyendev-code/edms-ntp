@@ -14,8 +14,9 @@ vi.mock('@/components/layout/header/Header', () => ({
 }));
 vi.mock('@/components/layout/footer/Footer', () => ({ Footer: () => null }));
 vi.mock('@/components/layout/NetworkStatusMonitor', () => ({ NetworkStatusMonitor: () => null }));
+vi.mock('@/components/layout/ServiceStatusMonitor', () => ({ ServiceStatusMonitor: () => null }));
 vi.mock('@/components/layout/header/NotificationDock', () => ({ NotificationDock: () => null }));
-vi.mock('@/features/auth/components', () => ({ SessionTimeoutModal: () => null }));
+vi.mock('@/features/auth/components', () => ({ SessionTimeoutModal: () => null, SessionReplacedModal: () => null }));
 vi.mock('@/components/ui/scroll-to-top/ScrollToTop', () => ({ ScrollToTop: () => null }));
 vi.mock('../useNavigation', () => ({ useNavigation: () => ({ activeId: '', handleNavigate: vi.fn() }) }));
 vi.mock('../useResponsiveSidebar', () => ({

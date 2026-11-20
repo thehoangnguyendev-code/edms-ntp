@@ -7,13 +7,15 @@ import React, {
   useRef,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronRight, ChevronLeft, Star } from "lucide-react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { NavItem } from "@/types";
 import { NAV_CONFIG, QUALITY_NAV_CONFIG, findNodeByPath, ICON_MAP } from "@/app/constants";
 import { isTransactionalRoute, ROUTES } from "@/app/routes.constants";
 import { hasUnsavedScreen } from "@/hooks/useReportUnsavedChanges";
+import { NavCountBadge } from "./NavCountBadge";
+import { FavouriteStar } from "./FavouriteStar";
 import { documentApi, navigationApi } from "@/services/api";
 import { invalidateNavigationCache } from "@/services/api/navigation";
 import { cn } from "@/components/ui/utils";
@@ -893,23 +895,16 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
 
                     {/* Pending/unread count, same pill styling the collapsed flyout uses for the same data.
                         With a mouse it steps aside while the row is hovered, where the favourite star appears. */}
-                    {(() => {
-                      const val = item.count ?? navCounts[item.id];
-                      if (val === undefined || val <= 0) return null;
-                      return (
-                        <span
-                          className={cn(
-                            "ml-auto mr-1.5 text-2xs px-1.5 py-0.5 rounded-full font-semibold min-w-[20px] text-center shrink-0 transition-opacity",
-                            "[@media(hover:hover)]:group-hover/row:opacity-0 [@media(hover:hover)]:group-focus-within/row:opacity-0",
-                            isActive
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-slate-100 text-slate-600 group-hover/navitem:bg-slate-200",
-                          )}
-                        >
-                          {val}
-                        </span>
-                      );
-                    })()}
+                    <NavCountBadge
+                      value={item.count ?? navCounts[item.id]}
+                      className={cn(
+                        "ml-auto mr-1.5 text-2xs px-1.5 py-0.5 rounded-full font-semibold min-w-[20px] text-center shrink-0 transition-opacity",
+                        "[@media(hover:hover)]:group-hover/row:opacity-0 [@media(hover:hover)]:group-focus-within/row:opacity-0",
+                        isActive
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-slate-100 text-slate-600 group-hover/navitem:bg-slate-200",
+                      )}
+                    />
                   </span>
                 </div>
 
@@ -932,11 +927,10 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
               </button>
 
               {!isCollapsed && (
-                <button
-                  type="button"
-                  onClick={() => favorites.toggle(branchIds(item))}
-                  aria-pressed={starred}
-                  aria-label={starred ? `Remove ${item.label} from favourites` : `Add ${item.label} to favourites`}
+                <FavouriteStar
+                  starred={starred}
+                  onToggle={() => favorites.toggle(branchIds(item))}
+                  ariaLabel={starred ? `Remove ${item.label} from favourites` : `Add ${item.label} to favourites`}
                   title={hasChildren ? (starred ? "Remove with everything beneath it" : "Add with everything beneath it") : starred ? "Remove from favourites" : "Add to favourites"}
                   className={cn(
                     "absolute top-1/2 z-20 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md transition-[color,opacity]",
@@ -948,9 +942,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                     !starred && "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:focus-visible:opacity-100",
                     hasChildren && (level === 0 ? "[@media(hover:hover)]:right-12" : "[@media(hover:hover)]:right-[46px]"),
                   )}
-                >
-                  <Star className={cn("h-4 w-4", starred && "fill-amber-400")} />
-                </button>
+                />
               )}
               </div>
 
@@ -1124,22 +1116,15 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 )}
               >
                 <span className="truncate">{item.label}</span>
-                {(() => {
-                  const val = item.count ?? navCounts[item.id];
-                  if (val === undefined || val <= 0) return null;
-                  return (
-                    <span
-                      className={cn(
-                        "ml-auto text-xs px-1.5 py-0.5 rounded-full font-semibold mr-1.5 min-w-[20px] text-center",
-                        isActive
-                          ? "bg-emerald-200 text-emerald-900"
-                          : "bg-slate-100 text-slate-600 group-hover:bg-slate-200"
-                      )}
-                    >
-                      {val}
-                    </span>
-                  );
-                })()}
+                <NavCountBadge
+                  value={item.count ?? navCounts[item.id]}
+                  className={cn(
+                    "ml-auto text-xs px-1.5 py-0.5 rounded-full font-semibold mr-1.5 min-w-[20px] text-center",
+                    isActive
+                      ? "bg-emerald-200 text-emerald-900"
+                      : "bg-slate-100 text-slate-600 group-hover:bg-slate-200"
+                  )}
+                />
               </span>
               {hasChildren && (
                 <div className="rounded-lg flex items-center justify-center h-6 w-6 shrink-0">
@@ -1153,20 +1138,17 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 </div>
               )}
             </button>
-            <button
-              type="button"
-              onClick={() => favorites.toggle(branchIds(item))}
-              aria-pressed={starred}
-              aria-label={starred ? `Remove ${item.label} from favourites` : `Add ${item.label} to favourites`}
+            <FavouriteStar
+              starred={starred}
+              onToggle={() => favorites.toggle(branchIds(item))}
+              ariaLabel={starred ? `Remove ${item.label} from favourites` : `Add ${item.label} to favourites`}
               title={hasChildren ? (starred ? "Remove with everything beneath it" : "Add with everything beneath it") : starred ? "Remove from favourites" : "Add to favourites"}
               className={cn(
                 "absolute right-2 top-1/2 z-20 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md transition-colors",
                 "outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
                 starred ? "text-amber-500" : "text-slate-300 hover:text-amber-500",
               )}
-            >
-              <Star className={cn("h-4 w-4", starred && "fill-amber-400")} />
-            </button>
+            />
             </div>
 
             <AnimatePresence initial={false}>
@@ -1257,15 +1239,10 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                       <span className="text-sm font-semibold text-slate-900 truncate">
                         {hoverMenu.item.label}
                       </span>
-                      {(() => {
-                        const val = hoverMenu.item.count ?? navCounts[hoverMenu.item.id];
-                        if (val === undefined || val <= 0) return null;
-                        return (
-                          <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-600">
-                            {val}
-                          </span>
-                        );
-                      })()}
+                      <NavCountBadge
+                        value={hoverMenu.item.count ?? navCounts[hoverMenu.item.id]}
+                        className="ml-auto text-xs px-1.5 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-600"
+                      />
                     </div>
                   </div>
 

@@ -16,9 +16,10 @@ import { mapNotificationToViewModel, openNotificationActionUrl } from '@/feature
 import { formatNotificationDateTime } from '@/features/notifications/date';
 import { emitNotificationsChanged, subscribeNotificationsChanged } from '@/features/notifications/events';
 import { useNotificationRealtime } from '@/features/notifications/notificationRealtime';
-import { getNotificationTypeIcon, getNotificationTypeIconStyles, getNotificationTypeLabel } from '@/features/notifications/notificationMeta';
+import { getNotificationTypeIcon, getNotificationIconStyles, getNotificationTypeLabel } from '@/features/notifications/notificationMeta';
 import { createEmptyNotificationSummaryCounts, type NotificationSummaryCounts } from '@/features/notifications/types';
 import { useNotificationDock } from './NotificationDockContext';
+import { useNotificationEntrance } from './useNotificationEntrance';
 
 interface NotificationsDropdownProps {
   isOpen: boolean;
@@ -48,8 +49,6 @@ export type DropdownNotification = {
   avatarBg: string;
   avatarColor: string;
   /** The tint of the tile and the colour of the icon when the colour was chosen with the colour picker (the classes above are then empty). */
-  avatarTileStyle?: React.CSSProperties;
-  avatarIconStyle?: React.CSSProperties;
   badge: typeof Bell;
   badgeBg: string;
   title: React.ReactNode;
@@ -138,10 +137,8 @@ const toDropdownNotification = (item: NotificationApiItem): DropdownNotification
     type: viewModel.type,
     ...TYPE_UI_MAP[viewModel.type],
     avatar: getNotificationTypeIcon(viewModel.type, viewModel.icon),
-    avatarBg: getNotificationTypeIconStyles(viewModel.type, viewModel.iconTone).bg,
-    avatarColor: getNotificationTypeIconStyles(viewModel.type, viewModel.iconTone).text,
-    avatarTileStyle: getNotificationTypeIconStyles(viewModel.type, viewModel.iconTone).tileStyle,
-    avatarIconStyle: getNotificationTypeIconStyles(viewModel.type, viewModel.iconTone).iconStyle,
+    avatarBg: getNotificationIconStyles(viewModel.priority).bg,
+    avatarColor: getNotificationIconStyles(viewModel.priority).text,
     title: <span className="font-medium">{viewModel.title || viewModel.description}</span>,
     time: formatNotificationDateTime(viewModel.createdAt),
     actionUrl: viewModel.actionUrl,
@@ -158,7 +155,7 @@ const NotificationItem: React.FC<{
   const AvatarIcon = notification.avatar;
 
   return (
-    <div className="w-full">
+    <div className="w-full" data-notification-id={notification.id}>
       <button
         type="button"
         onClick={() => {
@@ -180,8 +177,8 @@ const NotificationItem: React.FC<{
             "rounded-xl flex items-center justify-center ring-1 ring-inset ring-black/5 transition-transform group-hover:scale-105",
             compact ? "h-10 w-10" : "h-9 w-9",
             notification.avatarBg
-          )} style={notification.avatarTileStyle}>
-            <AvatarIcon className={cn(compact ? "h-4 w-4" : "h-4.5 w-4.5", notification.avatarColor)} style={notification.avatarIconStyle} />
+          )}>
+            <AvatarIcon className={cn(compact ? "h-4 w-4" : "h-4.5 w-4.5", notification.avatarColor)} />
           </div>
         </div>
         <div className="flex-1 min-w-0 space-y-1">
@@ -248,6 +245,7 @@ const MobileNotificationsScreen: React.FC<{
   const [activeTab, setActiveTab] = useState('all');
   const [mobileNotifications, setMobileNotifications] = useState<DropdownNotification[]>([]);
   const [counts, setCounts] = useState<NotificationSummaryCounts>(createEmptyNotificationSummaryCounts());
+  const mobileListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -317,6 +315,8 @@ const MobileNotificationsScreen: React.FC<{
       setMobileNotifications(list.data.map((item) => toDropdownNotification(item)));
     });
   };
+
+  useNotificationEntrance(mobileListRef, filteredNotifications.map((n) => n.id), mobileNotifications.length > 0);
 
   return createPortal(
     <div
@@ -393,7 +393,7 @@ const MobileNotificationsScreen: React.FC<{
             })}
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto overscroll-contain bg-slate-100/60 px-4 py-3 pb-28">
+        <div ref={mobileListRef} className="flex-1 overflow-y-auto overscroll-contain bg-slate-100/60 px-4 py-3 pb-28">
           {filteredNotifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-12 text-center">
               <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
@@ -548,6 +548,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
   const isDock = variant === 'dock';
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const tabs: TabItem[] = [
     { id: 'all', label: 'All', count: counts.all },
@@ -561,6 +562,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     if (activeTab === 'system') return (n.type as any) === 'system';
     return true;
   });
+
+  useNotificationEntrance(scrollRef, visible.map((n) => n.id), loaded);
 
   const pinLabel = pin.disabled ? (pin.disabledReason ?? 'Pin to the side') : pin.pinned ? 'Unpin notifications' : 'Pin notifications to the side';
   const PinIcon = pin.pinned ? PinOff : Pin;
@@ -601,6 +604,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       </div>
 
       <div
+        ref={scrollRef}
         className={cn(
           'overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300 bg-white',
           isDock ? 'flex-1 min-h-0 custom-scrollbar' : 'max-h-[420px] min-h-[300px]',
