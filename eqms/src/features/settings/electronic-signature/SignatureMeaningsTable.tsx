@@ -7,6 +7,7 @@ import { ReportListToolbar, pickerDateToIso, type ReportSelectFilter } from "@/f
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { displayDateTime } from "@/utils/format";
 import { electronicSignatureSettingsApi, type ElectronicSignatureMeaning, type ElectronicSignatureMeaningRow } from "@/services/api/electronicSignatureSettings";
+import { moduleDisplayName } from "@/utils/moduleDisplay";
 
 interface Props {
   /** The meanings as they are being edited, with what has not been saved yet. */
@@ -61,7 +62,7 @@ export const SignatureMeaningsTable: React.FC<Props> = ({ meanings, canEdit, onR
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
     { id: "actionName", header: "Action", sort: sorted("actionName"), cell: (r) => <span className="font-medium text-slate-900">{r.actionName || r.displayName}</span> },
     { id: "code", header: "Code", sort: sorted("code"), cell: (r) => <span className="font-mono text-xs text-slate-600">{r.code}</span> },
-    { id: "module", header: "Module", sort: sorted("module"), cell: (r) => r.module },
+    { id: "module", header: "Module", sort: sorted("module"), cell: (r) => moduleDisplayName(r.module) },
     {
       id: "displayName",
       header: "Meaning",
@@ -82,7 +83,7 @@ export const SignatureMeaningsTable: React.FC<Props> = ({ meanings, canEdit, onR
   const { layout, control } = useCustomColumnLayout("esign.meanings", columns);
 
   const filters: ReportSelectFilter[] = [
-    { id: "module", label: "Module", value: module, options: [{ label: "All modules", value: "" }, ...modules.map((m) => ({ label: m, value: m }))], onChange: (v) => { setModule(v); table.setCurrentPage(1); } },
+    { id: "module", label: "Module", value: module, options: [{ label: "All modules", value: "" }, ...modules.map((m) => ({ label: moduleDisplayName(m), value: m }))], onChange: (v) => { setModule(v); table.setCurrentPage(1); } },
   ];
 
   return (

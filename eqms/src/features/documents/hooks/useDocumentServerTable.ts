@@ -80,15 +80,19 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
   const itemsPerPage = Math.min(readNumber(searchParams, "limit", 10), 50);
   const sortConfig = readSortConfig(searchParams);
 
+  // react-router builds the "previous" of a functional update from the last render, so two calls in one tick (a date range sets its start, then its end)
+  // overwrite each other and only the last survives. The newest params are kept here so each call builds on the one before it.
+  const latestParamsRef = useRef(searchParams);
+  latestParamsRef.current = searchParams;
+
   const updateSearchParams = useCallback((updates: Record<string, string | null | undefined>, replace = true) => {
-    setSearchParams((previous) => {
-      const next = new URLSearchParams(previous);
-      for (const [key, value] of Object.entries(updates)) {
-        if (value === null || value === undefined || value === "") next.delete(key);
-        else next.set(key, value);
-      }
-      return next;
-    }, { replace });
+    const next = new URLSearchParams(latestParamsRef.current);
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null || value === undefined || value === "") next.delete(key);
+      else next.set(key, value);
+    }
+    latestParamsRef.current = next;
+    setSearchParams(next, { replace });
   }, [setSearchParams]);
 
   const updateFilter = useCallback((key: string, value: string) => {

@@ -10,20 +10,6 @@ export type IconComponent = ComponentType<{ className?: string; style?: React.CS
 export type IconLibrary = 'lucide' | 'tabler';
 export type IconLibraries = Record<IconLibrary, Record<string, IconComponent>>;
 
-/** `hex` is the colour of the tone as a six-digit colour (the one of its `text` class), for the colour picker. */
-export const NOTIFICATION_TONES: { key: string; label: string; bg: string; text: string; swatch: string; hex: string }[] = [
-  { key: 'emerald', label: 'Green', bg: 'bg-emerald-50', text: 'text-emerald-600', swatch: 'bg-emerald-500', hex: '#059669' },
-  { key: 'blue', label: 'Blue', bg: 'bg-blue-50', text: 'text-blue-600', swatch: 'bg-blue-500', hex: '#2563EB' },
-  { key: 'cyan', label: 'Cyan', bg: 'bg-cyan-50', text: 'text-cyan-600', swatch: 'bg-cyan-500', hex: '#0891B2' },
-  { key: 'indigo', label: 'Indigo', bg: 'bg-indigo-50', text: 'text-indigo-600', swatch: 'bg-indigo-500', hex: '#4F46E5' },
-  { key: 'purple', label: 'Purple', bg: 'bg-purple-50', text: 'text-purple-600', swatch: 'bg-purple-500', hex: '#9333EA' },
-  { key: 'amber', label: 'Amber', bg: 'bg-amber-50', text: 'text-amber-600', swatch: 'bg-amber-500', hex: '#D97706' },
-  { key: 'red', label: 'Red', bg: 'bg-red-50', text: 'text-red-600', swatch: 'bg-red-500', hex: '#DC2626' },
-  { key: 'slate', label: 'Grey', bg: 'bg-slate-100', text: 'text-slate-600', swatch: 'bg-slate-500', hex: '#475569' },
-];
-
-export const findNotificationTone = (key?: string | null) => NOTIFICATION_TONES.find((tone) => tone.key === key);
-
 const KEY = /^(lucide|tabler):([A-Za-z][A-Za-z0-9]*)$/;
 
 export const parseIconKey = (key?: string | null): { library: IconLibrary; name: string } | null => {

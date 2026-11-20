@@ -185,7 +185,7 @@ export function TrainingActivityCreatePage() {
   const footer = (
     <Button
       size="sm"
-      variant="default"
+      variant="outline-emerald"
       className="whitespace-nowrap"
       loading={busy}
       disabled={

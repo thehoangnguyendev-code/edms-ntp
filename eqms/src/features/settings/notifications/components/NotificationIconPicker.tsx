@@ -1,14 +1,11 @@
 import { formatDateTime } from '@/utils/format';
 import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button/Button';
-import { ColorPickerInput } from '@/components/ui/color-picker/ColorPickerInput';
 import { SearchInput } from '@/components/ui/form/SearchInput';
 import { TabNav, type TabItem } from '@/components/ui/tabs/TabNav';
 import { cn } from '@/components/ui/utils';
 import {
   ChosenIcon,
-  NOTIFICATION_TONES,
-  findNotificationTone,
   iconKey,
   parseIconKey,
   useIconLibraries,
@@ -26,19 +23,16 @@ const LIBRARIES: TabItem[] = [
 const PER_PAGE_OPTIONS = [24, 48, 96];
 
 /**
- * Chooses the icon of an in-app notification from the Lucide or the Tabler library (search by name) and the tone of its colour. The choice is only
- * made here; Publish saves it. "Default" goes back to the icon of the kind of notification.
+ * Chooses the icon of an in-app notification from the Lucide or the Tabler library (search by name). The choice is only made here; Publish saves it.
+ * "Use default" goes back to the icon of the kind of notification. The colour of the icon is not chosen: it follows the priority of the notification.
  */
 export const NotificationIconPicker: React.FC<{
   icon: string | null;
-  tone: string | null;
   /** The icon of the kind of notification, shown when none is chosen. */
   fallback: IconComponent;
-  /** The colours of the kind of notification, shown when no tone is chosen. */
-  fallbackStyles: { bg: string; text: string };
-  onChange: (icon: string | null, tone: string | null) => void;
+  onChange: (icon: string | null) => void;
   disabled?: boolean;
-}> = ({ icon, tone, fallback, fallbackStyles, onChange, disabled }) => {
+}> = ({ icon, fallback, onChange, disabled }) => {
   const libraries = useIconLibraries();
   // the two sets are kept up to date while the picker is open
   const sets = useIconSetStatus(!disabled);
@@ -58,12 +52,6 @@ export const NotificationIconPicker: React.FC<{
 
   const totalPages = Math.max(1, Math.ceil(names.length / perPage));
   const current = Math.min(page, totalPages);
-
-  // the colour as a six-digit colour for the colour picker: the one chosen, the one of a name of the first version, or the one of the kind of notification
-  const HEX = /^#[0-9a-f]{6}$/i;
-  const toneHex = tone && HEX.test(tone) ? tone : (findNotificationTone(tone) ?? NOTIFICATION_TONES.find((t) => t.text === fallbackStyles.text))?.hex ?? '#475569';
-  const toneClasses = tone && HEX.test(tone) ? { bg: '', text: '' } : (findNotificationTone(tone) ?? fallbackStyles);
-  const toneStyles = tone && HEX.test(tone) ? { tile: { backgroundColor: `${tone}1A` }, icon: { color: tone } } : { tile: undefined, icon: undefined };
 
   return (
     <div className="space-y-4">
@@ -111,7 +99,7 @@ export const NotificationIconPicker: React.FC<{
                       aria-selected={selected}
                       aria-label={name}
                       title={name}
-                      onClick={() => onChange(key, tone)}
+                      onClick={() => onChange(key)}
                       className={cn('flex h-11 items-center justify-center rounded-lg border text-slate-600 transition', selected ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50')}
                     >
                       <ChosenIcon icon={key} fallback={fallback} className="h-5 w-5" />
@@ -133,15 +121,10 @@ export const NotificationIconPicker: React.FC<{
         </div>
       ) : null}
 
-      {/* the colour (the colour picker) and the way back to the default; the icon chosen is the one marked in the grid and drawn in the preview */}
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="w-full sm:w-64 [&>div:first-child]:gap-1.5">
-          <ColorPickerInput label="Colour" value={toneHex} disabled={disabled} onChange={(color) => onChange(icon, color)} />
-        </div>
-        <Button size="sm" variant="outline-emerald" className="h-9" disabled={disabled || !(icon || tone)} onClick={() => onChange(null, null)}>
-          Use default
-        </Button>
-      </div>
+      {/* the way back to the default; the icon chosen is the one marked in the grid and drawn in the preview */}
+      <Button size="sm" variant="outline-emerald" className="h-9" disabled={disabled || !icon} onClick={() => onChange(null)}>
+        Use default
+      </Button>
     </div>
   );
 };

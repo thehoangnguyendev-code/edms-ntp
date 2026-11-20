@@ -7,7 +7,6 @@ import { FormSection } from "@/components/ui/form/FormSection";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
-import { Switch } from "@/components/ui/switch/Switch";
 import { Popover } from "@/components/ui/popover/Popover";
 import { Select } from "@/components/ui/select/Select";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
@@ -22,7 +21,6 @@ import { IconApiBook, IconTableSpark } from "@tabler/icons-react";
 
 type RevisionSeed = "0.0.1" | "0.1";
 /** Stable machine values stored by the server -- never the translated labels below. */
-type DocumentVisibilityMode = "PARTICIPANTS_ONLY" | "ALL_WITH_VIEW_PERMISSION";
 /** How the Knowledge Base decides who sees a document: the Effective documents of the user's own Department, or what the Department Heads shared. */
 type KnowledgeVisibilityMode = "OWN_DEPARTMENT" | "OWN_BUSINESS_UNIT" | "ALL" | "SHARING";
 /** How a Document Number / Training Number is given: the system generates it, or the person who creates the document types it. */
@@ -89,13 +87,11 @@ interface DocumentPolicy {
   retainVisibilityForRemovedReviewer?: boolean;
   retainVisibilityForRemovedApprover?: boolean;
   /** Who may see Document Control records. Missing/unknown values behave as PARTICIPANTS_ONLY. */
-  documentVisibilityMode?: DocumentVisibilityMode;
   /** Knowledge Base visibility; a separate setting from Record Visibility. */
   knowledgeVisibilityMode?: KnowledgeVisibilityMode;
   [key: string]: unknown;
 }
 
-const DEFAULT_DOCUMENT_VISIBILITY_MODE: DocumentVisibilityMode = "PARTICIPANTS_ONLY";
 
 const KNOWLEDGE_VISIBILITY_OPTIONS: { value: KnowledgeVisibilityMode; label: string }[] = [
   { value: "OWN_DEPARTMENT", label: "Own Department (a user sees the Effective documents of their Department)" },
@@ -266,65 +262,26 @@ export const DocumentPropertiesView: React.FC = () => {
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {/* 0. Who can see which records -- first, because it changes what every user sees in Document Control */}
           <Group title="Record Visibility">
-            {(() => {
-              const participantsOnly =
-                (documents.documentVisibilityMode ?? DEFAULT_DOCUMENT_VISIBILITY_MODE) === "PARTICIPANTS_ONLY";
-              return (
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">Restrict records to the people involved</p>
-                      <div className="mt-1">
-                        <Details
-                          summary={
-                            participantsOnly ? (
-                              <><strong>On.</strong> A user sees a Document or Revision only when they are its Author, Co-Author, Reviewer or Approver; a copy only when they are its recipient.</>
-                            ) : (
-                              <><strong>Off.</strong> Every user with the base View permission sees every document, revision and copy.</>
-                            )
-                          }
-                        >
-                          {participantsOnly ? (
-                            <p>
-                              The role may be held on the document or on any of its revisions (one person may hold several roles, on the same or on different documents).
-                              Everyone else sees none of them, in lists or by opening a link.
-                            </p>
-                          ) : (
-                            <p>
-                              This covers View Documents, View Controlled Copy Records and View Uncontrolled Copies, in lists and in detail, including drafts and
-                              documents still in review. People outside the flow still need their own permission to preview files or open the Audit Trail.
-                            </p>
-                          )}
-                        </Details>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={participantsOnly}
-                      disabled={!canManage}
-                      aria-label="Restrict records to the people involved"
-                      onChange={(checked) =>
-                        patch({ documentVisibilityMode: checked ? "PARTICIPANTS_ONLY" : "ALL_WITH_VIEW_PERMISSION" })
-                      }
-                    />
-                  </div>
-
-                  <Details summary={<>Holders of the <strong>View All</strong> permissions always see every record of that kind.</>}>
-                    <p>
-                      <strong>View All Document Records</strong>, <strong>View All Controlled Copies</strong> and <strong>View All Uncontrolled Copies</strong> are
-                      separate permissions, independent of this switch. Assign each one to the Access Profiles that need it at{" "}
-                      <button
-                      type="button"
-                      onClick={() => go(ROUTES.SECURITY.ACCESS_PROFILES)}
-                      className="font-medium text-emerald-700 underline underline-offset-2"
-                    >
-                      Security & Authorization &gt; Access Profiles
-                    </button>
-                      . They do not depend on a profile's name, and administration permissions no longer grant them implicitly.
-                    </p>
-                  </Details>
-                </div>
-              );
-            })()}
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-slate-900">Set per Access Profile</p>
+              <Details
+                summary={<>A user sees the records where their name is in the flow; what more they see is chosen on their <strong>Access Profile</strong>.</>}
+              >
+                <p>
+                  Each Access Profile has a <strong>Document Control: record visibility</strong> choice: only the records where the person is named, the records of
+                  the person's department, or all records. A person with several profiles gets the highest level. People outside the flow still need their own
+                  permission to preview files or open the Audit Trail. Change it at{" "}
+                  <button
+                    type="button"
+                    onClick={() => go(ROUTES.SECURITY.ACCESS_PROFILES)}
+                    className="font-medium text-emerald-700 underline underline-offset-2"
+                  >
+                    Security & Authorization &gt; Access Profiles
+                  </button>
+                  .
+                </p>
+              </Details>
+            </div>
           </Group>
 
           {/* Knowledge Base: who sees which Effective document in the Knowledge explorer (separate from Record Visibility) */}
@@ -380,13 +337,7 @@ export const DocumentPropertiesView: React.FC = () => {
 
           {/* Access kept after a role is removed: part of the same visibility rules */}
             <Group title="Retain visibility for removed participants">
-              <Details
-                summary={
-                  (documents.documentVisibilityMode ?? DEFAULT_DOCUMENT_VISIBILITY_MODE) === "ALL_WITH_VIEW_PERMISSION"
-                    ? "Not applicable while everyone with the View permission sees every record."
-                    : "A user removed from a checked role keeps read-only visibility of the Document."
-                }
-              >
+              <Details summary="A user removed from a checked role keeps read-only visibility of the Document.">
                 <p>
                   When a user is removed from one of these roles on a Document (e.g. via "Edit Revision for Upgrade"), they keep read-only visibility of it based on
                   having held that role before. Each role is independent. If none are checked, a removed participant with no other role on the Document loses
@@ -394,8 +345,7 @@ export const DocumentPropertiesView: React.FC = () => {
                 </p>
               </Details>
               {(() => {
-                const retainDisabled = !canManage
-                  || (documents.documentVisibilityMode ?? DEFAULT_DOCUMENT_VISIBILITY_MODE) === "ALL_WITH_VIEW_PERMISSION";
+                const retainDisabled = !canManage;
                 const checkedCount = RETAIN_VISIBILITY_ROLE_FIELDS.filter((field) => !!documents[field]).length;
                 const allChecked = checkedCount === RETAIN_VISIBILITY_ROLE_FIELDS.length;
                 return (

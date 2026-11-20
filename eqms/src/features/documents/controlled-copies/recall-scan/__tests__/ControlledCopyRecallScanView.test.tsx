@@ -192,6 +192,12 @@ describe("Recall by Scan", () => {
     expect(screen.getByText("3 need attention")).toBeInTheDocument();
     // An infected file offers no preview and cannot be matched.
     expect(screen.queryByRole("button", { name: "Preview bad.pdf" })).toBeNull();
+    // ...and says why next to the file name, only for the scan that was refused (the others can be previewed).
+    expect(screen.getAllByText(/No preview: The file was rejected by the virus scanner/).length).toBeGreaterThan(0);
+    // the reason of every scan has a column of its own, apart from the result
+    expect(screen.getByRole("columnheader", { name: /Reason/ })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /Result/ })).toBeInTheDocument();
+    expect(screen.queryByText(/No preview: Controlled copy CC-OLD/)).toBeNull();
     // Nothing can be recalled while a scan still needs attention.
     expect(screen.getByRole("button", { name: /Recall 1 controlled copy/i })).toBeDisabled();
   });
@@ -272,6 +278,31 @@ describe("Recall by Scan", () => {
     expect(await screen.findByText("RCB-2026-00001")).toBeInTheDocument();
   });
 
+  it("does not let a late answer about the first file draw over the second one (the bar went to 100% and showed the old file)", async () => {
+    let answerLate: () => void = () => undefined;
+    let secondStarted: () => void = () => undefined;
+    const first = batchOf([item({ id: "i1", itemNo: 1 })]);
+    mocks.api.createDraft.mockImplementation((files: File[], onProgress?: (loaded: number) => void) => {
+      onProgress?.(files[0].size);
+      return new Promise<RecallBatch>((resolve) => window.setTimeout(() => resolve(first), 700)); // the server answers after the poll has asked
+    });
+    mocks.api.addFiles.mockImplementation(() => new Promise<RecallBatch>(() => { secondStarted(); })); // the second file stays in flight
+    // the answer to the first file's question comes only after the first file is done, with that file's last step
+    mocks.api.getUploadProgress.mockImplementation(() => new Promise((resolve) => { answerLate = () => resolve({ stage: "DONE", message: "Done.", percent: 100 }); }));
+    render(<ControlledCopyRecallScanView />);
+    fireEvent.change(screen.getByTestId("recall-scan-input"), { target: { files: [pdf("a.pdf"), pdf("b.pdf")] } });
+    const started = new Promise<void>((resolve) => { secondStarted = resolve; });
+
+    fireEvent.click(screen.getByRole("button", { name: /Read codes and review/i }));
+    await started;
+    await waitFor(() => expect(screen.getByText(/File 2 of 2 · b\.pdf/)).toBeInTheDocument());
+    answerLate();
+    await new Promise((resolve) => window.setTimeout(resolve, 50));
+
+    expect(screen.getByRole("progressbar", { name: "Upload progress" })).toHaveAttribute("aria-valuenow", "50");
+    expect(screen.queryByText(/File 1 of 2/)).toBeNull();
+  });
+
   it("opens the batch only when the bar is full, not as soon as the server answers", async () => {
     mocks.api.createDraft.mockResolvedValue(batchOf([item({ id: "i1", itemNo: 1 })]));
     render(<ControlledCopyRecallScanView />);
@@ -309,7 +340,7 @@ describe("Recall by Scan", () => {
   it("leaves out a file over the size limit before anything is uploaded", () => {
     render(<ControlledCopyRecallScanView />);
     const big = new File(["x"], "huge.pdf", { type: "application/pdf" });
-    Object.defineProperty(big, "size", { value: 26 * 1024 * 1024 });
+    Object.defineProperty(big, "size", { value: 51 * 1024 * 1024 });
 
     fireEvent.change(screen.getByTestId("recall-scan-input"), { target: { files: [pdf("a.pdf"), big] } });
 
@@ -709,6 +740,57 @@ describe("Recall by Scan", () => {
 
     await waitFor(() => expect(mocks.api.getBatch).toHaveBeenCalledWith("b9"));
     expect(await screen.findByText("RCB-2026-00009")).toBeInTheDocument();
+  });
+
+  it("adds scans to an open draft in a dialog: choose them, read the codes there, and the dialog closes when they are in", async () => {
+    mocks.api.listMyDrafts.mockResolvedValue([{ id: "b9", batchNumber: "RCB-2026-00009", status: "DRAFT", totalItems: 1, createdAt: "2026-10-05T08:00:00Z" }]);
+    const opened = batchOf([item({ id: "i1", itemNo: 1 })], { id: "b9", batchNumber: "RCB-2026-00009" });
+    mocks.api.getBatch.mockResolvedValue(opened);
+    mocks.api.addFiles.mockResolvedValue(batchOf([item({ id: "i1", itemNo: 1 }), item({ id: "i2", itemNo: 2, fileName: "more.pdf" })], { id: "b9", batchNumber: "RCB-2026-00009" }));
+    render(<ControlledCopyRecallScanView />);
+    fireEvent.click(await screen.findByRole("button", { name: "Resume" }));
+    await screen.findByText("RCB-2026-00009");
+
+    // nothing is chosen from the page itself: the button opens the dialog
+    expect(screen.queryByTestId("recall-scan-add-input")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Add More Scans" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Add More Scans")).toBeInTheDocument();
+    expect(within(dialog).getByText(/Choose up to 49 scans/)).toBeInTheDocument();
+    expect(mocks.api.addFiles).not.toHaveBeenCalled();
+
+    const files = [pdf("more.pdf")];
+    fireEvent.change(within(dialog).getByTestId("recall-scan-add-input"), { target: { files } });
+    fireEvent.click(await within(dialog).findByRole("button", { name: /Read codes and review/i }));
+
+    await waitFor(() => expect(mocks.api.addFiles).toHaveBeenCalledWith("b9", files, expect.any(Function), expect.any(String)));
+    // the scan panel is in the dialog while the codes are read
+    expect(within(screen.getByRole("dialog")).getByRole("progressbar", { name: "Upload progress" })).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull(), { timeout: 4000 });
+    expect(await screen.findByText("more.pdf")).toBeInTheDocument();
+  });
+
+  it("does not let the Add More Scans dialog be closed while its files are being sent, and keeps what was not sent when it fails", async () => {
+    mocks.api.listMyDrafts.mockResolvedValue([{ id: "b9", batchNumber: "RCB-2026-00009", status: "DRAFT", totalItems: 1, createdAt: "2026-10-05T08:00:00Z" }]);
+    mocks.api.getBatch.mockResolvedValue(batchOf([item({ id: "i1", itemNo: 1 })], { id: "b9", batchNumber: "RCB-2026-00009" }));
+    let fail: (error: Error) => void = () => undefined;
+    mocks.api.addFiles.mockImplementation(() => new Promise((_resolve, reject) => { fail = reject; }));
+    render(<ControlledCopyRecallScanView />);
+    fireEvent.click(await screen.findByRole("button", { name: "Resume" }));
+    await screen.findByText("RCB-2026-00009");
+    fireEvent.click(screen.getByRole("button", { name: "Add More Scans" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByTestId("recall-scan-add-input"), { target: { files: [pdf("x.pdf")] } });
+    fireEvent.click(await within(dialog).findByRole("button", { name: /Read codes and review/i }));
+    await within(dialog).findByRole("progressbar", { name: "Upload progress" });
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    fail(new Error("scanner down"));
+    await waitFor(() => expect(mocks.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: "error" })));
+    // the dialog stays, with the file that was not sent, so it can be tried again
+    expect(within(screen.getByRole("dialog")).getByText("x.pdf")).toBeInTheDocument();
   });
 
   it("reports an upload the server refuses", async () => {

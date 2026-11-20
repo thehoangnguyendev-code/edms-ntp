@@ -11,6 +11,11 @@ import { SystemConfig } from './types';
 import { BROWSER_TAB_TITLE_STORAGE_KEY, SECURITY_CONFIG_STORAGE_KEY } from '@/config/security';
 import { settingsApi } from '@/services/api/settings';
 import { useNetworkAccessDraft } from './useNetworkAccessDraft';
+import { useStoragePolicyDraft } from './useStoragePolicyDraft';
+import { useIntegrationChecks } from './useIntegrationChecks';
+import { retentionChange, retentionLabel, retentionLockedUntil } from './tabs/storageIntegration';
+import { Checkbox } from '@/components/ui/checkbox/Checkbox';
+import { formatDate } from '@/utils/format';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useReportUnsavedChanges } from '@/hooks/useReportUnsavedChanges';
 import { DEFAULT_CONFIGURATION_PAGE, configurationPageForPath, type ConfigurationPage } from './configurationPages';
@@ -71,7 +76,10 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
   const [originalConfig, setOriginalConfig] = useState<SystemConfig | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const network = useNetworkAccessDraft(canManageConfiguration && page.id === 'security');
-  const hasUnsavedChanges = isDirty || network.isDirty;
+  const storagePolicy = useStoragePolicyDraft(canManageConfiguration && page.id === 'integrations');
+  const integrationChecks = useIntegrationChecks(page.id === 'integrations');
+  const [retentionAcknowledged, setRetentionAcknowledged] = useState(false);
+  const hasUnsavedChanges = isDirty || network.isDirty || storagePolicy.isDirty;
   useReportUnsavedChanges(`configuration-${page.id}`, hasUnsavedChanges);
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
@@ -154,6 +162,7 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
     savingRef.current = true;
     setIsSaving(true);
     let systemSaved = false;
+    let step: 'system' | 'network' | 'storage' = 'system';
     try {
       const delta: any = {};
       if (originalConfig) {
@@ -179,7 +188,11 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
         systemSaved = true;
       }
       // Save the network restriction last: it can immediately limit subsequent requests.
+      step = 'network';
       await network.save();
+      // The storage policy is written after the system settings and, like the network policy, only when it changed.
+      step = 'storage';
+      await storagePolicy.save();
       setShowSaveModal(false);
       showToast({
         type: "success",
@@ -191,7 +204,7 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
       showToast({
         type: "error",
         title: "Save failed",
-        message: `${systemSaved ? 'System configuration was saved, but the network policy was not saved. Your network changes are kept. ' : ''}${extractServerErrorMessage(error)}`,
+        message: `${systemSaved && step === 'network' ? 'System configuration was saved, but the network policy was not saved. Your network changes are kept. ' : ''}${systemSaved && step === 'storage' ? 'System configuration was saved, but the storage policy was not saved. Your storage changes are kept. ' : ''}${extractServerErrorMessage(error)}`,
       });
     } finally {
       savingRef.current = false;
@@ -199,7 +212,11 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
     }
   };
 
+  // A change of the retention is the one thing on this page that cannot be undone, so it is acknowledged before Save.
+  const pendingRetentionChange = page.id === 'integrations' ? retentionChange(originalConfig?.integrations?.storage, config?.integrations?.storage) : null;
+
   const handleSaveClick = () => {
+    setRetentionAcknowledged(false);
     setShowSaveModal(true);
   };
 
@@ -209,6 +226,7 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
 
   const handleResetConfirm = () => {
     network.reset();
+    storagePolicy.reset();
     if (originalConfig) {
       setConfig(JSON.parse(JSON.stringify(originalConfig)));
       setIsDirty(false);
@@ -281,6 +299,8 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
             }
             onOnlyOfficeValidationChange={setIsOnlyOfficeValid}
             onlyOfficeValid={isOnlyOfficeValid}
+            storagePolicy={storagePolicy}
+            checks={integrationChecks}
             saved={originalConfig}
             canManage={canManageConfiguration}
             activeTab={pageTabFromParam(INTEGRATION_TAB_IDS, searchParams.get('tab'))}
@@ -334,7 +354,7 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
               <Button variant="outline-emerald" onClick={handleResetClick} disabled={!hasUnsavedChanges || isSaving} size="sm" className="gap-2">
                 Reset
               </Button>
-              <Button variant="outline-emerald" onClick={handleSaveClick} disabled={!hasUnsavedChanges || !isGeneralValid || !isOnlyOfficeValid || isSaving} size="sm" className="gap-2" loading={isSaving}>
+              <Button variant="outline-emerald" onClick={handleSaveClick} disabled={!hasUnsavedChanges || !isGeneralValid || !isOnlyOfficeValid || !storagePolicy.isValid || isSaving} size="sm" className="gap-2" loading={isSaving}>
                 Save
               </Button>
             </>
@@ -347,6 +367,7 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
         onClose={() => setShowSaveModal(false)}
         onConfirm={saveConfiguration}
         isLoading={isSaving}
+        confirmDisabled={Boolean(pendingRetentionChange) && !retentionAcknowledged}
         type="confirm"
         title="Save System Configuration?"
         description={
@@ -354,6 +375,23 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
             <p className="text-sm text-slate-600">
               You are about to save changes to System Configuration. This action will be recorded in the Audit Trail.
             </p>
+            {pendingRetentionChange && (
+              <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-left">
+                <p className="text-sm font-medium text-amber-900">
+                  Retention of stored records: {retentionLabel(pendingRetentionChange.from)} → {retentionLabel(pendingRetentionChange.to)}
+                </p>
+                <p className="text-xs text-amber-900">
+                  Records stored from now on are locked until {formatDate(retentionLockedUntil(pendingRetentionChange.to))}. Nobody, administrators included, can shorten or delete
+                  them before then. Objects already stored keep the period they were written with. This cannot be undone.
+                </p>
+                <Checkbox
+                  id="confirm-retention-change"
+                  label="I understand this cannot be undone."
+                  checked={retentionAcknowledged}
+                  onChange={setRetentionAcknowledged}
+                />
+              </div>
+            )}
             <p className="text-sm font-medium text-emerald-700">
               Please confirm to proceed.
             </p>

@@ -56,7 +56,7 @@ export function TrainingMyParticipationPage() {
 
       {mine && (
         <>
-          <section className="rounded-xl border border-slate-200 bg-white p-6" aria-label="Training">
+          <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5" aria-label="Training">
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-lg font-semibold text-slate-900">{mine.trainingNumber}</span>
               {confirmed ? <Badge color="emerald">You confirmed the reading</Badge> : mine.canConfirmRead ? <Badge color="amber">Waiting for your signature</Badge> : <Badge color="slate">Not open for your signature</Badge>}
@@ -75,7 +75,7 @@ export function TrainingMyParticipationPage() {
             </dl>
           </section>
 
-          <section className="rounded-xl border border-slate-200 bg-white p-6" aria-label="Material to read">
+          <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5" aria-label="Material to read">
             <h2 className="text-sm font-semibold text-slate-900">Material to read</h2>
             {mine.revisionId && (
               <p className="mt-2 text-sm text-slate-700">

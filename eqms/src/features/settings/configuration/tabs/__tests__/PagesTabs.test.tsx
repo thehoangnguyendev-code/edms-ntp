@@ -12,6 +12,7 @@ import { NotificationTab } from "../NotificationTab";
 import { IntegrationsTabs } from "../IntegrationsTabs";
 import { pageTabFromParam, NOTIFICATION_TAB_IDS, INTEGRATION_TAB_IDS } from "../pageTabs";
 import type { NotificationConfig, IntegrationConfig, GeneralConfig, OnlyOfficeStorageConfig } from "../../types";
+import type { StoragePolicyController } from "../../useStoragePolicyDraft";
 
 afterEach(() => cleanup());
 const open = (name: string) => fireEvent.click(screen.getByRole("tab", { name }));
@@ -48,7 +49,7 @@ describe("Notifications tabs", () => {
 describe("Integrations tabs", () => {
   const integrations = { storage: { provider: "minio" } } as unknown as IntegrationConfig;
   const onlyOffice = { enabled: true } as unknown as OnlyOfficeStorageConfig;
-  const base = { integrations, onIntegrationsChange: vi.fn(), onlyOffice, onOnlyOfficeChange: vi.fn(), onOnlyOfficeValidationChange: vi.fn(), onlyOfficeValid: true, canManage: true, activeTab: "storage" as const, onTabChange: vi.fn() };
+  const base = { integrations, onIntegrationsChange: vi.fn(), onlyOffice, onOnlyOfficeChange: vi.fn(), onOnlyOfficeValidationChange: vi.fn(), onlyOfficeValid: true, canManage: true, storagePolicy: { isDirty: false, isValid: true, reset: vi.fn() } as unknown as StoragePolicyController, checks: { checks: {}, loaded: true, reload: vi.fn() }, activeTab: "storage" as const, onTabChange: vi.fn() };
   const saved = { integrations, general: { backupSettings: { onlyOffice } } as unknown as GeneralConfig };
 
   it("shows one section at a time, and keeps the OnlyOffice form mounted (hidden) so the page still hears whether it is valid", async () => {
@@ -75,6 +76,20 @@ describe("Integrations tabs", () => {
 
     expect(marked()).toEqual(["Storage:Not saved yet", "OnlyOffice:Needs correction"]);
     expect(screen.getByRole("tab", { name: /OnlyOffice/ }).querySelector("[role=img]")?.className).toContain("bg-red-500");
+  });
+
+  it("marks Storage Usage while the budget has a change that is not saved, red while it cannot be saved, and Discard puts it back", () => {
+    const reset = vi.fn();
+    const policy = (isDirty: boolean, isValid: boolean) => ({ isDirty, isValid, reset }) as unknown as StoragePolicyController;
+    const { rerender } = render(<IntegrationsTabs {...base} activeTab="storage-usage" storagePolicy={policy(true, true)} />);
+    expect(marked()).toEqual(["Storage Usage:Not saved yet"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Discard changes in this tab" }));
+    expect(reset).toHaveBeenCalledTimes(1);
+
+    rerender(<IntegrationsTabs {...base} activeTab="storage-usage" storagePolicy={policy(true, false)} />);
+    expect(marked()).toEqual(["Storage Usage:Needs correction"]);
+    expect(screen.getByRole("tab", { name: /Storage Usage/ }).querySelector("[role=img]")?.className).toContain("bg-red-500");
   });
 });
 

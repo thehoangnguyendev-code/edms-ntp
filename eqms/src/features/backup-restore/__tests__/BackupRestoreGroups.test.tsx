@@ -40,5 +40,5 @@ it.each([
 
 it("puts the menu group between the module and the page in the breadcrumb", () => {
   expect(backupRestore(vi.fn(), "Restore Backup", undefined, "Restore").map((item) => item.label)).toEqual(["Dashboard", "Backup & Restore", "Restore", "Restore Backup"]);
-  expect(backupRestore(vi.fn()).map((item) => item.label)).toEqual(["Dashboard", "Backup & Restore", "Backup Status Overview"]);
+  expect(backupRestore(vi.fn()).map((item) => item.label)).toEqual(["Dashboard", "Backup & Restore", "Backup History"]);
 });

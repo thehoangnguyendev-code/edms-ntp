@@ -1,10 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import { ToastProvider } from "@/components/ui/toast/Toast";
 import type { BackupOverview } from "@/services/api/backupRestore";
-import { BackupOverviewView, groupAlerts, toAlerts } from "../views/BackupOverviewView";
+import { useBackupDashboardWidgets } from "../dashboard/BackupDashboardWidgets";
+import { groupAlerts, toAlerts } from "../dashboard/backupAlerts";
+import { LIBRARY_ONLY_WIDGETS } from "@/features/self-service/dashboard/shared/dashboardWidgetCatalog";
 
 const api = vi.hoisted(() => ({ overview: vi.fn(), overviewDaily: vi.fn(), storeScrubs: vi.fn(), manualCopyStatus: vi.fn(), startStoreScrub: vi.fn() }));
 const perms = vi.hoisted(() => ({ granted: new Set<string>() }));
@@ -24,14 +24,21 @@ const healthy: BackupOverview = {
 
 const alert = (id: string, code: string, severity: string, at: string, detail = "detail " + id, ref: string | null = "BK-" + id) => ({ id, at, severity, code, detail, ref });
 
-const renderOverview = () =>
+/** Every backup card, mounted as the dashboard mounts them: the cards of the widget list, each one by itself. */
+const AllCards = ({ only }: { only?: string[] }) => {
+  const widgets = useBackupDashboardWidgets();
+  return (
+    <>
+      {widgets.filter((widget) => !only || only.includes(widget.id)).map((widget) => (
+        <div key={widget.id} data-card={widget.id}>{widget.content}</div>
+      ))}
+    </>
+  );
+};
+const renderOverview = (only?: string[]) =>
   render(
     <ToastProvider>
-      <BreadcrumbProvider>
-        <MemoryRouter>
-          <BackupOverviewView />
-        </MemoryRouter>
-      </BreadcrumbProvider>
+      <AllCards only={only} />
     </ToastProvider>,
   );
 
@@ -48,7 +55,7 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("BackupOverviewView", () => {
+describe("Backup cards on the dashboard", () => {
   it("says all is clear when nothing failed and the ledger is intact", async () => {
     api.overview.mockResolvedValue(healthy);
     renderOverview();
@@ -112,7 +119,7 @@ describe("BackupOverviewView", () => {
   it("says plainly when the agent cannot be reached, and never shows invented figures", async () => {
     api.overview.mockRejectedValue(new Error("network"));
     renderOverview();
-    expect((await screen.findAllByText("Unable to read the backup status")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByRole("button", { name: "Try again" })).length).toBeGreaterThan(0);
     expect(screen.queryByText("All clear")).toBeNull();
   });
 
@@ -150,7 +157,7 @@ describe("BackupOverviewView", () => {
     expect(within(again).queryByRole("button", { name: "Check Now" })).toBeNull();
   });
 
-  it("shows the manual copy as the policy asks for it, and says nothing when it may not be read", async () => {
+  it("shows the manual copy as the policy asks for it, and says so when it cannot be read", async () => {
     api.overview.mockResolvedValue(healthy);
     renderOverview();
     const card = await screen.findByRole("region", { name: "Manual copy" });
@@ -159,7 +166,51 @@ describe("BackupOverviewView", () => {
     api.manualCopyStatus.mockRejectedValue(new Error("forbidden"));
     renderOverview();
     await screen.findByRole("region", { name: "File store check" });
-    await waitFor(() => expect(screen.queryByRole("region", { name: "Manual copy" })).toBeNull());
+    expect(await screen.findByText("The manual copy status could not be read.")).toBeTruthy();
+  });
+});
+
+describe("which cards exist, and how the status is read", () => {
+  it("offers the cards only to a person who may view Backup & Restore", () => {
+    perms.granted = new Set();
+    api.overview.mockResolvedValue(healthy);
+    renderOverview();
+    expect(document.querySelector("[data-card]")).toBeNull();
+    expect(api.overview).not.toHaveBeenCalled();
+  });
+
+  it("starts with four cards on the dashboard and keeps the other five in the library", () => {
+    perms.granted = new Set(["backup.module.view"]);
+    let widgets: ReturnType<typeof useBackupDashboardWidgets> = [];
+    const Probe = () => {
+      widgets = useBackupDashboardWidgets();
+      return null;
+    };
+    render(<Probe />);
+    expect(widgets.filter((w) => w.defaultVisible !== false).map((w) => w.id)).toEqual(["backup-last-success", "backup-failed", "backup-attention", "backup-daily"]);
+    const inLibrary = widgets.filter((w) => w.defaultVisible === false).map((w) => w.id);
+    expect(inLibrary.every((id) => LIBRARY_ONLY_WIDGETS.has(id))).toBe(true); // the role-defaults screen starts from the same list
+  });
+
+  it("asks the agent once however many cards are shown", async () => {
+    api.overview.mockResolvedValue(healthy);
+    renderOverview();
+    await screen.findByRole("region", { name: "Needs attention" });
+    expect(api.overview).toHaveBeenCalledTimes(1);
+    expect(api.overviewDaily).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks for nothing while no card is shown", () => {
+    api.overview.mockResolvedValue(healthy);
+    renderOverview([]);
+    expect(api.overview).not.toHaveBeenCalled();
+  });
+
+  it("shows only the card that was chosen, and the others' data is not drawn", async () => {
+    api.overview.mockResolvedValue(healthy);
+    renderOverview(["backup-ledger"]);
+    expect(await screen.findByText("Intact")).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Needs attention" })).toBeNull();
   });
 });
 

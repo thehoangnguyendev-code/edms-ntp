@@ -51,6 +51,14 @@ const STATUS_OPTIONS = [
   { label: "Inactive", value: "INACTIVE" },
 ];
 
+const PRIORITY_OPTIONS = [
+  { label: "All", value: ALL },
+  { label: "Low", value: "LOW" },
+  { label: "Medium", value: "MEDIUM" },
+  { label: "High", value: "HIGH" },
+  { label: "Critical", value: "CRITICAL" },
+];
+
 const USAGE_OPTIONS = [
   { label: "All", value: ALL },
   { label: "Sent at least once", value: "SENT" },
@@ -90,6 +98,7 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
         channel: fixed ?? (a.filters.channel === ALL ? undefined : (a.filters.channel as AdministrationChannel)),
         status: a.filters.status === ALL ? undefined : a.filters.status,
         module: a.filters.module === ALL ? undefined : a.filters.module,
+        priority: a.filters.priority === ALL ? undefined : a.filters.priority,
         type: a.filters.type === ALL ? undefined : a.filters.type,
         usage: a.filters.usage === ALL ? undefined : a.filters.usage,
         updatedFrom: a.filters.updatedFrom || undefined,
@@ -101,7 +110,7 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
       }),
     {
       sort: "name",
-      filters: { channel: ALL, status: ALL, module: ALL, type: ALL, usage: ALL, updatedFrom: "", updatedTo: "" },
+      filters: { channel: ALL, status: ALL, module: ALL, priority: ALL, type: ALL, usage: ALL, updatedFrom: "", updatedTo: "" },
     },
     "The notifications could not be loaded.",
   );
@@ -204,8 +213,8 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
     },
     {
       id: "updated",
-      header: "Updated",
-      label: "Updated",
+      header: "Last Updated",
+      label: "Last Updated",
       sort: list.sortFor("updatedAt"),
       cell: (row) => <span className="whitespace-nowrap text-slate-600">{row.updatedAt ? formatDateTime(row.updatedAt) : "—"}</span>,
     },
@@ -231,6 +240,7 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
       : select("channel", "Channel", CHANNEL_OPTIONS),
     select("status", "Status", STATUS_OPTIONS),
     ...(fixed === "EMAIL" ? [] : [select("module", "Module", MODULE_OPTIONS)]),
+    select("priority", "Priority", PRIORITY_OPTIONS),
     ...(fixed === "IN_APP" ? [] : [select("type", "Type", typeOptions), select("usage", "Sent", USAGE_OPTIONS)]),
   ];
 

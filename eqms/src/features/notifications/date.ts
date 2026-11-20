@@ -83,3 +83,27 @@ export const formatNotificationRelativeTimeWithClock = (value?: string | null): 
   if (diffDays < 7) return `${diffDays}d ago • ${clock}`;
   return `${formatShortDate(date)} • ${clock}`;
 };
+
+/** The day of a notification as dd/MM/yyyy (the day the person sees it on), or empty when the time cannot be read. */
+export const notificationDayKey = (value?: string | null): string => {
+  const date = parseNotificationDate(value);
+  return date ? `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()}` : '';
+};
+
+export type NotificationDayGroup = 'today' | 'yesterday' | 'earlier';
+
+/** Which heading of the inbox a notification sits under. */
+export const notificationDayGroup = (value?: string | null, now: Date = new Date()): NotificationDayGroup => {
+  const key = notificationDayKey(value);
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const keyOf = (d: Date) => `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  if (key === keyOf(now)) return 'today';
+  if (key === keyOf(yesterday)) return 'yesterday';
+  return 'earlier';
+};
+
+/** The Monday of the week of `now`, as dd/MM/yyyy (the format the server reads for the date filter). */
+export const startOfWeekKey = (now: Date = new Date()): string => {
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+  return `${pad2(monday.getDate())}/${pad2(monday.getMonth() + 1)}/${monday.getFullYear()}`;
+};

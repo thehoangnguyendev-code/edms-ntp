@@ -3,9 +3,8 @@ import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
-import { Select } from "@/components/ui/select/Select";
+import { RadioGroup } from "@/components/ui/radio";
 import { useToast } from "@/components/ui/toast/Toast";
-import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { trainingError, trainingPreparationApi, type TrainingActivityDetail, type TrainingPreparationSession, type TrainingPrepItem } from "@/services/api/trainingActivities";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
 import { DELIVERY_LABEL, useTrainingPaper } from "./TrainingPaperBlock";
@@ -20,7 +19,7 @@ const DELIVERY_OPTIONS = Object.entries(DELIVERY_LABEL).map(([value, label]) => 
 const NO_ACTIVITY = { id: "", sessions: [] } as unknown as TrainingActivityDetail;
 
 /** One line of the checklist: an item of the server, or a paper print of the session (ticked by the print itself). */
-type Row = { key: string; label: string; hint: string; ready: boolean; notNeeded?: boolean; noStatus?: boolean; optional?: boolean; onTick?: (ready: boolean) => void; extra?: ReactNode };
+type Row = { key: string; label: string; hint: string; ready: boolean; notNeeded?: boolean; optional?: boolean; onTick?: (ready: boolean) => void; extra?: ReactNode };
 
 /**
  * What has to be ready before a session (SOP.0003 5.3.6): a checklist the organizer ticks. It warns; it never blocks a session. With `paper`, the delivery of the session and
@@ -68,17 +67,6 @@ export function TrainingPreparationBlock({ activityId, sessionId, canManage, pap
   const session = paper?.activity.sessions.find((s) => s.id === sessionId);
   const mode = session?.deliveryMode ?? "ELECTRONIC";
   if (paper && session) {
-    rows.push({
-      key: "delivery",
-      label: "Delivery of the session",
-      hint: "Electronic, on paper, or both.",
-      ready: false,
-      noStatus: true,
-      extra: canManage && !["COMPLETED", "CANCELLED"].includes(paper.activity.status)
-        ? <div className="mt-2 w-36"><Select value={mode} options={DELIVERY_OPTIONS} aria-label={`Delivery of session ${session.sessionNo}`}
-            onChange={(v) => { if (v === mode) return; if (printing.hasPrint(session.id)) printing.ask({ kind: "mode", session, mode: v }); else void printing.changeMode(session, v); }} /></div>
-        : <div className="mt-1 text-sm text-slate-700">{DELIVERY_LABEL[mode]}</div>,
-    });
     const rules = paper.activity.contentRules;
     if (rules && (rules.testRequired || rules.checklistRequired)) {
       rows.push({
@@ -119,34 +107,56 @@ export function TrainingPreparationBlock({ activityId, sessionId, canManage, pap
     }
   }
 
-  const columns: DataTableColumn<Row>[] = [
-    { id: "ready", header: "Ready", cell: (r) => (r.noStatus ? null : <Checkbox checked={r.ready} disabled={busy || !r.onTick} onChange={(checked) => r.onTick?.(checked)} />) },
-    {
-      id: "item",
-      header: "To prepare",
-      cell: (r) => (
-        <div className="max-w-96 whitespace-normal">
-          <div className="font-medium text-slate-900">{r.label}</div>
-          <div className="text-xs text-slate-500">{r.hint}</div>
-          {r.extra}
-        </div>
-      ),
-    },
-    {
-      id: "status",
-      header: "Status",
-      cell: (r) => (r.noStatus ? null : r.notNeeded ? <Badge color="slate">Not needed</Badge> : r.ready ? <Badge color="emerald">Done</Badge> : r.optional ? <Badge color="slate">Optional</Badge> : <Badge color="amber">Pending</Badge>),
-    },
-  ];
   // The server accepts a tick while the activity is open and the session is planned or held; only then can a line hold the next step.
   const open = !!session && session.status === "PLANNED" && !["COMPLETED", "CANCELLED", "RESERVED"].includes(paper?.activity.status ?? "");
-  const pending = canManage && open ? rows.filter((r) => !r.noStatus && !r.optional && !r.ready && !r.notNeeded).length : 0;
+  const required = rows.filter((r) => !r.optional && !r.notNeeded);
+  const pending = canManage && open ? required.filter((r) => !r.ready).length : 0;
   useEffect(() => { onPending?.(pending); }, [pending, onPending]);
-  if (rows.length === 0) return null;
+  const deliveryEditable = canManage && !!paper && !["COMPLETED", "CANCELLED"].includes(paper.activity.status);
+  if (rows.length === 0 && !(paper && session)) return null;
+  const readyCount = required.filter((r) => r.ready).length;
   return (
     <>
-      <TabBlock>
-        <DataTable rows={rows} getRowKey={(r) => r.key} columns={columns} />
+      <TabBlock title="Checklist" action={<Badge color={required.length > 0 && readyCount === required.length ? "emerald" : "amber"}>{`${readyCount} of ${required.length} ready`}</Badge>}>
+        {paper && session && (
+          <div className="flex flex-col gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:px-5">
+            <div>
+              <div className="text-sm font-medium text-slate-900">Delivery of the session</div>
+              <div className="text-xs text-slate-500">Electronic, on paper, or both.</div>
+            </div>
+            <div role="radiogroup" aria-label={`Delivery of session ${session.sessionNo}`}>
+              <RadioGroup
+                name={`delivery-${session.id}`}
+                layout="horizontal"
+                value={mode}
+                disabled={!deliveryEditable}
+                options={DELIVERY_OPTIONS}
+                onChange={(v) => {
+                  const next = String(v);
+                  if (next === mode) return;
+                  if (printing.hasPrint(session.id)) printing.ask({ kind: "mode", session, mode: next });
+                  else void printing.changeMode(session, next);
+                }}
+              />
+            </div>
+          </div>
+        )}
+        <ul className="divide-y divide-slate-100">
+          {rows.map((r) => {
+            const id = `prep-${r.key}`;
+            return (
+              <li key={r.key} className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50 md:px-5">
+                <Checkbox id={id} aria-label={r.label} checked={r.ready} disabled={busy || !r.onTick} onChange={(checked) => r.onTick?.(checked)} className="min-h-0 pt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <label htmlFor={id} className={`block text-sm font-medium ${r.ready ? "text-slate-500" : "text-slate-900"} ${r.onTick ? "cursor-pointer" : ""}`}>{r.label}</label>
+                  <div className="text-xs text-slate-500">{r.hint}</div>
+                  {r.extra}
+                </div>
+                {r.notNeeded ? <Badge color="slate">Not needed</Badge> : r.optional ? <Badge color="slate">Optional</Badge> : null}
+              </li>
+            );
+          })}
+        </ul>
       </TabBlock>
       {printing.dialog}
     </>

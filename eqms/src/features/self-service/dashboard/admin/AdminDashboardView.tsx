@@ -13,6 +13,9 @@ import { EffectiveByTypePanel } from '../shared/EffectiveByTypePanel';
 import { PendingWorkPanel } from '../shared/PendingWorkPanel';
 import { useDashboardResource } from '../shared/useDashboardResource';
 import { DashboardWidgets } from '../shared/DashboardWidgets';
+import { useModuleDashboardWidgets } from '../shared/moduleDashboardWidgets';
+import { userDashboardWidgets } from '../shared/userDashboardWidgets';
+import { useBackupDashboardWidgets } from '@/features/backup-restore/dashboard/BackupDashboardWidgets';
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 
 const dash = '—';
@@ -20,6 +23,8 @@ const dash = '—';
 export function AdminDashboardView() {
   const navigate = useNavigate();
   const monitoringWidgets = useSystemMonitoringWidgets();
+  const backupWidgets = useBackupDashboardWidgets();
+  const moduleWidgets = useModuleDashboardWidgets();
   const summary = useDashboardResource(() => dashboardApi.getSummary(), []);
   const [taskQuery, setTaskQuery] = useState('');
   const taskSearch = useDebounce(taskQuery, SEARCH_DEBOUNCE_MS);
@@ -83,6 +88,11 @@ export function AdminDashboardView() {
       { id: 'documents-by-status', label: 'Documents by status', width: 'half', content: <DocumentsByStatusPanel stats={stats} /> },
 
       ...monitoringWidgets,
+
+      // Library only: the cards about the administrator's own work, and the backup cards (which show for those who may view Backup & Restore).
+      ...userDashboardWidgets(summary, true),
+      ...backupWidgets,
+      ...moduleWidgets,
 
       { id: 'pending-work', label: 'Pending work', width: 'full', content: <PendingWorkPanel
         query={taskQuery}

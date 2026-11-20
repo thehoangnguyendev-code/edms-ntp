@@ -83,7 +83,7 @@ export const NavigationLabelsTab: React.FC<NavigationLabelsTabProps> = ({ config
   const totalMatches = groups.reduce((sum, [, items]) => sum + items.length, 0);
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="p-4 md:p-5">
       <div className="space-y-4">
         <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-3 text-xs sm:text-sm text-slate-700">
           <p>Set the display name used by the sidebar, matching breadcrumbs and page titles across the system. Routes, permissions, icons and menu hierarchy are not changed.</p>

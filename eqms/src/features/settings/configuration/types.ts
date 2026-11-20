@@ -44,6 +44,8 @@ export interface OnlyOfficeStorageConfig {
   jwtSecretConfigured?: boolean;
   jwtSecretMasked?: string;
   clearJwtSecret?: boolean;
+  /** When the saved secret last changed, set by the server (never by the screen). Missing when it never changed through this screen. */
+  jwtSecretChangedAt?: string;
 }
 
 export interface LocaleSettings {
@@ -73,6 +75,8 @@ export interface AppearanceSettings {
   trainingMaterialsLayout?: 'TABLE' | 'TILES';
   /** The Audit Trail tab of a record (document, revision, copy, training ...): a table (default) or a vertical timeline. Not the Audit Trail module. */
   auditTabView?: 'TABLE' | 'TIMELINE';
+  /** How the Notifications page of every person is drawn: priority tabs or a timeline (TABS when nothing was set). */
+  notificationInboxLayout?: 'TABS' | 'TIMELINE';
   /** The look of the timeline: a rail with cards, a centre spine, a compact log (default) or a date gutter with a line that fills as the panel scrolls. */
   auditTabTimelineStyle?: 'RAIL' | 'CENTER' | 'COMPACT' | 'SCROLL_LIT';
   /** How the folders of the Knowledge Base are named: the full name (default) or its abbreviation. */
@@ -182,6 +186,10 @@ export interface SecurityConfig {
   forcePasswordChangeOnFirstLogin: boolean;
   enableAccountLockout: boolean;
   maxLoginAttempts: number;
+  /** Wrong passwords in a row when signing before the account is locked. Counted apart from the sign-in count; 5 when not set. */
+  maxSignatureAttempts?: number;
+  /** Sessions one account may have at once; the oldest ends when one more signs in. 0 = no limit. */
+  maxConcurrentSessions?: number;
   /** Days without a sign-in after which an account is flagged as inactive in Access Review (0 switches the flag off; 90 when not set). Flag only: nobody is suspended by it. */
   inactiveAccountDays?: number;
 }

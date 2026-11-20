@@ -1,7 +1,7 @@
 import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { Bell } from "lucide-react";
-import { getNotificationTypeIcon, getNotificationTypeIconStyles } from "../notificationMeta";
+import { getNotificationTypeIcon, getNotificationIconStyles } from "../notificationMeta";
 import { parseIconKey, resolveIcon, loadIconLibraries, iconKey } from "../notificationIcons";
 
 afterEach(cleanup);
@@ -30,8 +30,15 @@ describe("the icon of a notification", () => {
     expect(iconKey("tabler", "IconBell")).toBe("tabler:IconBell");
   }, 30000);
 
-  it("takes the colours of the chosen tone, else those of its kind", () => {
-    expect(getNotificationTypeIconStyles("system", "blue")).toEqual({ bg: "bg-blue-50", text: "text-blue-600" });
-    expect(getNotificationTypeIconStyles("approval", "nope")).toEqual({ bg: "bg-emerald-50", text: "text-emerald-600" });
+  it("colours the icon by the priority: Low green, Medium yellow, High and Critical red", () => {
+    expect(getNotificationIconStyles("low")).toEqual({ bg: "bg-emerald-50", text: "text-emerald-600" });
+    expect(getNotificationIconStyles("MEDIUM")).toEqual({ bg: "bg-amber-50", text: "text-amber-600" });
+    expect(getNotificationIconStyles("high")).toEqual({ bg: "bg-red-50", text: "text-red-600" });
+    expect(getNotificationIconStyles("critical")).toEqual({ bg: "bg-red-50", text: "text-red-600" });
+  });
+
+  it("falls back to Medium when the priority is missing or unknown", () => {
+    expect(getNotificationIconStyles(undefined)).toEqual(getNotificationIconStyles("medium"));
+    expect(getNotificationIconStyles("nope")).toEqual(getNotificationIconStyles("medium"));
   });
 });

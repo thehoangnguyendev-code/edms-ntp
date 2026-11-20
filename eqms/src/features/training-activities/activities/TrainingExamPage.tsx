@@ -78,7 +78,7 @@ export function TrainingExamPage() {
       {!mine && !error && <SectionLoading text="Loading…" />}
 
       {mine && done && (
-        <section className="rounded-xl border border-slate-200 bg-white p-6" aria-label="Result">
+        <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5" aria-label="Result">
           <div className="flex flex-wrap items-center gap-3">
             <Badge color={mine.result === "PASSED" ? "emerald" : mine.result === "FAILED" ? "red" : "amber"}>{mine.result === "PASSED" ? "Passed" : mine.result === "FAILED" ? "Not passed" : done.status === "EXPIRED" ? "Time ran out" : "Waiting"}</Badge>
             {done.status === "SUBMITTED" && <span className="text-2xl font-semibold text-slate-900">{done.percent}%</span>}
@@ -93,7 +93,7 @@ export function TrainingExamPage() {
       )}
 
       {mine && !attempt && !done && (
-        <section className="rounded-xl border border-slate-200 bg-white p-6">
+        <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5">
           {mine.canStart ? (
             <>
               <p className="text-sm text-slate-700">You may take the test now. Answer every question, then sign. If there is a time limit the clock starts when you press Start, and the test cannot be taken again unless your trainer releases it.</p>

@@ -1,5 +1,6 @@
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
-import { Fragment, useState } from "react";
+import { Fragment, useRef, useState } from "react";
+import { useBarWipe } from "@/hooks/useBarFill";
 import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 import type { CompletionColumn, CompletionState, CompletionSummary } from "@/services/api/trainingActivities";
 import { STATE_STYLE } from "./CompletionHeatmap";
@@ -28,13 +29,15 @@ function factsOf(column: CompletionColumn, summary: CompletionSummary | undefine
 
 /** Segmented bar of one row: how the people who must be trained on it are spread over the states. Counts are the server's. */
 function RowBar({ facts }: { facts: RowFacts }) {
+  const barRef = useRef<HTMLDivElement>(null);
+  useBarWipe(barRef, BAR_ORDER.map((s) => facts.counts[s] ?? 0).join(","));
   if (facts.required === 0) return <span className="text-xs text-slate-400">Nobody has to be trained</span>;
   const pct = Math.round((facts.qualified / facts.required) * 100);
   const label = BAR_ORDER.filter((s) => facts.counts[s]).map((s) => `${STATE_STYLE[s].label}: ${facts.counts[s]}`).join(", ");
   return (
     <div className="min-w-40">
       <div className="flex items-baseline justify-between gap-2 text-xs"><span className="font-semibold tabular-nums text-slate-800">{facts.qualified} / {facts.required}</span><span className="tabular-nums text-slate-500">{pct}%</span></div>
-      <div role="img" aria-label={label} title={label} className="mt-1 flex h-2.5 w-full gap-px overflow-hidden rounded-full bg-slate-100">
+      <div ref={barRef} role="img" aria-label={label} title={label} className="mt-1 flex h-2.5 w-full gap-px overflow-hidden rounded-full bg-slate-100">
         {BAR_ORDER.filter((s) => facts.counts[s]).map((s) => <span key={s} className={BAR_COLOR[s]} style={{ width: `${(facts.counts[s] / facts.required) * 100}%` }} />)}
       </div>
     </div>

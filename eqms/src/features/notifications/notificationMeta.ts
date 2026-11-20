@@ -1,6 +1,5 @@
-import type { CSSProperties } from "react";
 import type { NotificationType } from "./types";
-import { findNotificationTone, parseIconKey, withChosenIcon } from "./notificationIcons";
+import { parseIconKey, withChosenIcon } from "./notificationIcons";
 import { AlertTriangle, Bell, CheckCircle, FileText, Lock, MessageCircle, Reply, Settings, ThumbsUp, UserPlus, type LucideIcon } from 'lucide-react';
 
 type NotificationTypeMeta = {
@@ -42,19 +41,6 @@ const NOTIFICATION_TYPE_ICONS: Record<NotificationType, LucideIcon> = {
   system: Bell,
 };
 
-const NOTIFICATION_TYPE_ICON_STYLES: Record<NotificationType, { bg: string; text: string }> = {
-  'review-request': { bg: 'bg-blue-50', text: 'text-blue-600' },
-  approval: { bg: 'bg-emerald-50', text: 'text-emerald-600' },
-  'capa-assignment': { bg: 'bg-amber-50', text: 'text-amber-600' },
-  'training-completion': { bg: 'bg-purple-50', text: 'text-purple-600' },
-  'document-update': { bg: 'bg-cyan-50', text: 'text-cyan-600' },
-  'controlled-copy': { bg: 'bg-emerald-50', text: 'text-emerald-600' },
-  'comment-reply': { bg: 'bg-slate-100', text: 'text-slate-600' },
-  'deviation-assignment': { bg: 'bg-red-50', text: 'text-red-600' },
-  'change-control': { bg: 'bg-indigo-50', text: 'text-indigo-600' },
-  system: { bg: 'bg-slate-100', text: 'text-slate-600' },
-};
-
 /** The icon of a notification: the one chosen for it in Edit Notification (Lucide or Tabler), else the icon of its kind. */
 export const getNotificationTypeIcon = (type?: string | null, custom?: string | null): LucideIcon => {
   const normalized = (type ?? 'system').toLowerCase() as NotificationType;
@@ -62,16 +48,21 @@ export const getNotificationTypeIcon = (type?: string | null, custom?: string | 
   return (parseIconKey(custom) ? withChosenIcon(custom as string, base as never) : base) as LucideIcon;
 };
 
-const HEX_TONE = /^#[0-9a-f]{6}$/i;
-
 /**
- * The colours of that icon: the tone chosen for it, else the tone of its kind. A tone is a name of the first version (the classes `bg` and `text`) or a six-digit colour
- * chosen with the colour picker: the colour then comes as styles, a light tint for the tile and the colour itself for the icon, and `bg` and `text` are empty.
+ * The colours of the icon tile of an in-app notification follow its priority, so that a person reads the importance at a glance: Low green, Medium yellow,
+ * High and Critical red. An administrator sets the priority of a notification in Edit Notification; the colour is not chosen separately.
  */
-export const getNotificationTypeIconStyles = (type?: string | null, tone?: string | null): { bg: string; text: string; tileStyle?: CSSProperties; iconStyle?: CSSProperties } => {
-  if (tone && HEX_TONE.test(tone)) return { bg: '', text: '', tileStyle: { backgroundColor: `${tone}1A` }, iconStyle: { color: tone } };
-  const chosen = findNotificationTone(tone);
-  if (chosen) return { bg: chosen.bg, text: chosen.text };
-  const normalized = (type ?? 'system').toLowerCase() as NotificationType;
-  return NOTIFICATION_TYPE_ICON_STYLES[normalized] ?? NOTIFICATION_TYPE_ICON_STYLES.system;
+const PRIORITY_ICON_STYLES: Record<string, { bg: string; text: string }> = {
+  low: { bg: 'bg-emerald-50', text: 'text-emerald-600' },
+  medium: { bg: 'bg-amber-50', text: 'text-amber-600' },
+  high: { bg: 'bg-red-50', text: 'text-red-600' },
+  critical: { bg: 'bg-red-50', text: 'text-red-600' },
 };
+
+export const getNotificationIconStyles = (priority?: string | null): { bg: string; text: string } =>
+  PRIORITY_ICON_STYLES[(priority ?? 'medium').toLowerCase()] ?? PRIORITY_ICON_STYLES.medium;
+
+/** The colour of a priority as a six-digit colour, for what is drawn with a colour value and not a class (the border and the time bar of a toast). Same hues as the icon tile. */
+const PRIORITY_HEX: Record<string, string> = { low: '#059669', medium: '#D97706', high: '#DC2626', critical: '#DC2626' };
+
+export const getNotificationPriorityHex = (priority?: string | null): string => PRIORITY_HEX[(priority ?? 'medium').toLowerCase()] ?? PRIORITY_HEX.medium;

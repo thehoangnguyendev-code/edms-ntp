@@ -12,12 +12,6 @@ const AuditTrailTab = lazy(() =>
  */
 export const ConfigHistory: React.FC<{ page: ConfigurationHistoryPage }> = ({ page }) => (
   <div className="space-y-3">
-    <div>
-      <h3 className="text-sm font-semibold text-slate-900">History</h3>
-      <p className="mt-0.5 text-xs text-slate-500">
-        Every save that changed a setting of this page, with the old and the new value of each setting. Open a record for its full list.
-      </p>
-    </div>
     <Suspense fallback={<SectionLoading />}>
       <AuditTrailTab entityId={CONFIGURATION_AUDIT_ENTITY_ID} entityType={CONFIGURATION_HISTORY_TYPE[page]} emptyMessage="No setting of this page has been changed and saved yet." />
     </Suspense>

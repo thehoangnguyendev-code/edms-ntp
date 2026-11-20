@@ -37,6 +37,12 @@ interface UseDictionaryServerTableOptions<T> {
   persistKey?: string;
   /** Refreshes the rows by itself, without a loading flash, when the server announces that one of these entity types changed. */
   liveTypes?: ChangedEntityType[];
+  /**
+   * Also refreshes the rows on a slow timer, silently, for what changes with the clock and is never announced (for example an "Online"
+   * flag that turns off after minutes of silence). The timer runs only while the tab is visible and the browser is online, and when
+   * the tab comes back after being hidden for longer than the interval. Left out, there is no timer.
+   */
+  refreshIntervalMs?: number;
 }
 
 const TABLE_PARAMS = ["search", "page", "limit", "sortBy", "sortDirection"];
@@ -51,6 +57,7 @@ export function useDictionaryServerTable<T>({
   initialItemsPerPage = 10,
   persistKey,
   liveTypes,
+  refreshIntervalMs,
 }: UseDictionaryServerTableOptions<T>) {
   const { showToast } = useToast();
   const { user } = useAuth() as { user?: { id?: string } | null };
@@ -109,11 +116,34 @@ export function useDictionaryServerTable<T>({
   // A change announced by the server refreshes the rows in place: no loading state, the table does not flash.
   useEntityChanged(liveTypes ?? [], () => { silentRef.current = true; setRefreshToken((prev) => prev + 1); }, { enabled: Boolean(liveTypes?.length), debounceMs: 800 });
 
+  // The slow timer. It only asks the server again; what the person may see is decided by the same authorised call as every load.
+  useEffect(() => {
+    if (!refreshIntervalMs || refreshIntervalMs <= 0) return;
+    let lastAt = Date.now();
+    const refresh = () => {
+      if (document.visibilityState === "hidden" || !navigator.onLine) return;
+      lastAt = Date.now();
+      silentRef.current = true;
+      setRefreshToken((prev) => prev + 1);
+    };
+    const timer = window.setInterval(refresh, refreshIntervalMs);
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && Date.now() - lastAt >= refreshIntervalMs) refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [refreshIntervalMs]);
+
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
-      if (silentRef.current) silentRef.current = false; else setIsLoading(true);
+      // A refresh the person did not ask for (a server announcement, the timer) keeps what is on screen if it fails: no empty table, no toast.
+      const silent = silentRef.current;
+      if (silent) silentRef.current = false; else setIsLoading(true);
       try {
         const response = await fetcher({
           ...extraParams,
@@ -138,6 +168,7 @@ export function useDictionaryServerTable<T>({
         if (import.meta.env.DEV) {
           console.error("Failed to load dictionary table data", error);
         }
+        if (silent) return;
         setItems([]);
         setTotalItems(0);
         setTotalPages(1);

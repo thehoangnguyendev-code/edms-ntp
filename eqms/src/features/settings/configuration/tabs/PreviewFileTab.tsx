@@ -4,6 +4,7 @@ import EmbedPDF from '@/assets/images/logo-app/PDF_file_icon.svg.webp'
 import { Select } from '@/components/ui/select/Select';
 import { Button } from '@/components/ui/button/Button';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
+import { FieldHint } from '@/components/ui/form/FieldHint';
 import { WatermarkTraceabilityEditor } from './WatermarkTraceabilityEditor';
 import { DocumentConfig, PdfPreviewConfig, OnlyOfficeStorageConfig, OnlyOfficeViewerConfig } from '../types';
 import { ConfigTabs, HISTORY_TAB } from './ConfigTabs';
@@ -241,7 +242,7 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
             checked={!!documentsConfig.allowDownload}
             onChange={(checked) => onDocumentsChange({ ...documentsConfig, allowDownload: checked })}
           />
-          <p className="ml-7 mt-0.5 text-xs text-slate-500">When disabled, EmbedPDF hides export and print actions.</p>
+          <FieldHint indent className="mt-0.5">When off, the PDF viewer hides export and print.</FieldHint>
         </section>
 
         <section className="rounded-xl border border-slate-200 p-4">

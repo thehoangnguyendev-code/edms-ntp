@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -11,6 +11,12 @@ import { reportTemplatesApi, reportError, type ReportTemplate } from "@/services
 export function ReportTemplateRunPage() {
   const { code = "" } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // ?filter.<code>=<value> starts the wizard with that filter filled in
+  const initialFilters: Record<string, string> = {};
+  searchParams.forEach((value, key) => {
+    if (key.startsWith("filter.") && value) initialFilters[key.slice("filter.".length)] = value;
+  });
   const [template, setTemplate] = useState<ReportTemplate>();
   const [error, setError] = useState("");
 
@@ -30,7 +36,7 @@ export function ReportTemplateRunPage() {
     };
   }, [code]);
 
-  if (template) return <ReportTemplateRun template={template} onBack={() => navigate("/report/templates")} />;
+  if (template) return <ReportTemplateRun template={template} initialFilters={initialFilters} onBack={() => navigate("/report/templates")} />;
   return (
     <div className="space-y-4 md:space-y-6">
       <PageHeader

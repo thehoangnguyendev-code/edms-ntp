@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowRight, Check, CheckCircle2, Circle, Eye, FileUp, Loader2, ScanLine, Trash2, Undo2, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Eye, Loader2, Trash2, Undo2 } from "lucide-react";
 import { ROUTES } from "@/app/routes.constants";
 import { Badge } from "@/components/ui/badge/Badge";
 import { flagColor } from "@/utils/status";
@@ -15,6 +15,9 @@ import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { useToast } from "@/components/ui/toast/Toast";
 import { cn } from "@/components/ui/utils";
 import { controlledCopyRecallScan as recallScanBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs.config";
+import { type RecallQueueState, type RecallQueuedFile, type RecallScanProgress } from "./RecallScanPanel";
+import { RecallUploadArea } from "./RecallUploadArea";
+import { formatBytes } from "./recallFormat";
 import { ScanPreviewModal } from "@/features/documents/shared/components/ScanPreviewModal";
 import { useRetainedValue } from "@/features/documents/shared/useRetainedValue";
 import { useDebounce, useNavigateWithLoading, useTableDragScroll } from "@/hooks";
@@ -24,7 +27,6 @@ import {
   controlledCopyRecallApi,
   MAX_RECALL_FILE_BYTES,
   MAX_RECALL_SCANS,
-  RECALL_SCAN_ACCEPT,
   type RecallBatch,
   type RecallBatchSummary,
   type RecallCopyLookup,
@@ -49,12 +51,6 @@ const QR_LABEL: Record<RecallQrStatus, string> = {
   NOT_ATTEMPTED: "Not read",
 };
 
-const formatBytes = (bytes: number) => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
-
 const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
 
 /** The picker works in dd/MM/yyyy; the request and the state keep an ISO date (yyyy-MM-dd). */
@@ -72,13 +68,6 @@ const todayIso = () => {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 };
-
-type QueueState = "waiting" | "active" | "done" | "failed";
-interface QueuedFile {
-  name: string;
-  size: number;
-  state: QueueState;
-}
 
 /** A badge that filters the table to the scans it counts; pressing it again shows every scan. */
 const GroupBadge: React.FC<{
@@ -102,14 +91,19 @@ const GroupBadge: React.FC<{
 );
 
 /** The Result column and the card on small screens: the state of a scan, in words a person can read in full. */
-const ResultCell: React.FC<{ item: RecallItem; isCommitted: boolean; onOpenRecord: (recordNumber: string) => void }> = ({ item, isCommitted, onOpenRecord }) => {
+/** Why a scan has the result it has, in words (the server's message), or null when there is nothing to add. */
+const reasonOf = (item: RecallItem, isCommitted: boolean): string | null =>
+  (isCommitted ? item.outcomeMessage : !item.excluded ? item.matchMessage : null) || null;
+
+/** {@code reason}: also write the reason under the badge (the card on small screens); the table has a column of its own for it. */
+const ResultCell: React.FC<{ item: RecallItem; isCommitted: boolean; onOpenRecord: (recordNumber: string) => void; reason?: boolean }> = ({ item, isCommitted, onOpenRecord, reason = true }) => {
   if (isCommitted) {
     return (
       <div>
         <Badge color={flagColor(item.outcome === "RECALLED")} size="sm">
           {item.outcome === "RECALLED" ? "Recalled" : "Not recalled"}
         </Badge>
-        {item.outcomeMessage && <p className="mt-1 text-2xs text-slate-500 whitespace-normal break-words">{item.outcomeMessage}</p>}
+        {reason && item.outcomeMessage && <p className="mt-1 text-2xs text-slate-500 whitespace-normal break-words">{item.outcomeMessage}</p>}
         {item.executedRecordNumber && (
           <button
             type="button"
@@ -139,7 +133,7 @@ const ResultCell: React.FC<{ item: RecallItem; isCommitted: boolean; onOpenRecor
       ) : (
         <Badge color="red" size="sm">Blocked</Badge>
       )}
-      {!item.excluded && item.matchMessage && (
+      {reason && !item.excluded && item.matchMessage && (
         <p className="mt-1 text-2xs text-slate-600 whitespace-normal break-words" title={item.matchMessage}>
           {item.matchMessage}
         </p>
@@ -163,21 +157,11 @@ export const ControlledCopyRecallScanView: React.FC = () => {
   const [drafts, setDrafts] = useState<RecallBatchSummary[]>([]);
   const [selected, setSelected] = useState<File[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<{
-    index: number;
-    count: number;
-    fileName: string;
-    percent: number;
-    /** The whole file has been sent; the server is working on it. */
-    processing: boolean;
-    /** What the server is doing now (from the server, not guessed). */
-    step?: string;
-  } | null>(null);
-  const [queue, setQueue] = useState<QueuedFile[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<RecallScanProgress | null>(null);
+  const [queue, setQueue] = useState<RecallQueuedFile[]>([]);
   const cancelUpload = useRef(false);
-  const [dragging, setDragging] = useState(false);
-  const fileInput = useRef<HTMLInputElement>(null);
-  const addInput = useRef<HTMLInputElement>(null);
+  /** The Add More Scans dialog, for a draft that is already open. */
+  const [addOpen, setAddOpen] = useState(false);
 
   // Search, group and sort of the scans are done by the server. With the default query (nothing typed, no group, upload order)
   // the batch response already holds every scan in that order, so nothing more is fetched.
@@ -277,7 +261,6 @@ export const ControlledCopyRecallScanView: React.FC = () => {
   });
   const rows = isDefaultQuery ? (batch?.items ?? []) : (queriedItems ?? batch?.items ?? []);
 
-  const selectedBytes = selected.reduce((sum, file) => sum + file.size, 0);
   const isDraft = batch?.status === "DRAFT";
   const isCommitted = batch?.status === "COMMITTED";
   const remainingSlots = MAX_RECALL_SCANS - (batch?.totalItems ?? 0);
@@ -314,7 +297,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
   };
 
   const handleSelect = (incoming: FileList | File[] | null) => {
-    const room = MAX_RECALL_SCANS - selected.length;
+    const room = (batch ? remainingSlots : MAX_RECALL_SCANS) - selected.length;
     const added = acceptFiles(incoming, Math.max(room, 0));
     setSelected((current) => [...current, ...added]);
   };
@@ -335,7 +318,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
     let sentFiles = 0;
     cancelUpload.current = false;
     setQueue(files.map((file) => ({ name: file.name, size: file.size, state: "waiting" })));
-    const mark = (index: number, state: QueueState) => setQueue((items) => items.map((item, position) => (position === index ? { ...item, state } : item)));
+    const mark = (index: number, state: RecallQueueState) => setQueue((items) => items.map((item, position) => (position === index ? { ...item, state } : item)));
     setBusy("Uploading...");
     try {
       for (let index = 0; index < files.length; index += 1) {
@@ -348,7 +331,10 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         let sentFraction = 0;
         let serverStep: RecallUploadStep | null = null;
         let sent = false;
+        // a late answer to the progress question of THIS file must not draw after the file is done: by then the next file has the bar (and doneBytes already counts this one)
+        let live = true;
         const render = () => {
+          if (!live) return;
           const serverFraction = serverStep ? serverStep.percent / 100 : 0;
           const fileFraction = sent ? SEND_SHARE + (1 - SEND_SHARE) * serverFraction : SEND_SHARE * sentFraction;
           setUploadProgress({
@@ -356,6 +342,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
             count: files.length,
             fileName: file.name,
             percent: Math.min(100, Math.round(((doneBytes + file.size * fileFraction) / totalBytes) * 100)),
+            filePercent: Math.min(100, Math.round(fileFraction * 100)),
             processing: sent,
             step: serverStep?.message,
           });
@@ -398,6 +385,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
           );
           return false;
         } finally {
+          live = false;
           window.clearInterval(poll);
         }
         mark(index, "done");
@@ -411,8 +399,8 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         showToast({ type: "info", title: "Upload stopped", message: `${plural(files.length - sentFiles, "file")} not sent.` });
         return false;
       }
-      setUploadProgress({ index: files.length, count: files.length, fileName: files[files.length - 1].name, percent: 100, processing: true, step: "Done." });
-      await new Promise((resolve) => window.setTimeout(resolve, 600)); // the bar is seen full before the screen changes
+      setUploadProgress({ index: files.length, count: files.length, fileName: files[files.length - 1].name, percent: 100, filePercent: 100, processing: true, step: "Done.", finished: true });
+      await new Promise((resolve) => window.setTimeout(resolve, 900)); // the sheet is seen read, with its check, before the screen changes
       if (!startFrom) setBatch(current);
       return true;
     } finally {
@@ -429,14 +417,17 @@ export const ControlledCopyRecallScanView: React.FC = () => {
     await uploadSequentially([...selected], null, (done) => setSelected((current) => current.filter((file) => file !== done)));
   };
 
-  const addMore = async (incoming: FileList | null) => {
-    if (!batch) return;
-    const files = acceptFiles(incoming, Math.max(remainingSlots, 0));
-    try {
-      if (files.length > 0) await uploadSequentially(files, batch);
-    } finally {
-      if (addInput.current) addInput.current.value = "";
-    }
+  /** Sends the files chosen in the Add More Scans dialog to the open draft; the dialog closes when every code is read, and stays open with what was not sent if it stops. */
+  const addUpload = async () => {
+    if (!batch || selected.length === 0) return;
+    const sent = await uploadSequentially([...selected], batch, (done) => setSelected((current) => current.filter((file) => file !== done)));
+    if (sent) setAddOpen(false);
+  };
+
+  const closeAdd = () => {
+    if (uploadProgress) return; // the files are being sent: stop them with "Stop After This File", the dialog is not left in the middle of it
+    setAddOpen(false);
+    setSelected([]);
   };
 
   const resume = async (id: string) => {
@@ -576,6 +567,12 @@ export const ControlledCopyRecallScanView: React.FC = () => {
               )}
               <span className="truncate font-medium text-slate-800">{item.fileName}</span>
             </div>
+            {/* A scan the server refused at upload (not a PDF, too many pages, a virus...) was never stored, so it has no preview: say why here, where the person looks for the eye. */}
+            {!item.previewAvailable && item.matchMessage && (
+              <p className="mt-0.5 whitespace-normal break-words text-2xs text-red-600" title={item.matchMessage}>
+                No preview: {item.matchMessage}
+              </p>
+            )}
             {item.sourcePages && (
               <p className="mt-0.5 truncate text-2xs text-slate-500" title={item.sourcePages}>
                 {item.pageNumbers
@@ -606,6 +603,24 @@ export const ControlledCopyRecallScanView: React.FC = () => {
           ) : (
             <Badge color={item.qrStatus === "DECODED" ? "emerald" : "amber"} size="sm">{QR_LABEL[item.qrStatus] ?? item.qrStatus}</Badge>
           ),
+      },
+      {
+        id: "result",
+        header: "Result",
+        label: "Result",
+        sort: sortOf("result"),
+        cell: (item) => <ResultCell item={item} isCommitted={isCommitted} onOpenRecord={openRecord} reason={false} />,
+      },
+      {
+        id: "reason",
+        header: "Reason",
+        label: "Reason",
+        headerClassName: "min-w-[18rem]",
+        cellClassName: "!whitespace-normal",
+        cell: (item) => {
+          const reason = reasonOf(item, isCommitted);
+          return reason ? <p className="text-xs text-slate-600 break-words" title={reason}>{reason}</p> : <span className="text-slate-400">—</span>;
+        },
       },
       {
         id: "copy",
@@ -646,15 +661,6 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         sort: sortOf("recipient"),
         cellClassName: "text-slate-700 whitespace-nowrap",
         cell: (item) => item.copy?.recipientName ?? "—",
-      },
-      {
-        id: "result",
-        header: "Result",
-        label: "Result",
-        sort: sortOf("result"),
-        headerClassName: "min-w-[16rem]",
-        cellClassName: "!whitespace-normal",
-        cell: (item) => <ResultCell item={item} isCommitted={isCommitted} onOpenRecord={openRecord} />,
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -743,65 +749,10 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         }
       />
 
-      {uploadProgress ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 md:p-4" role="status">
-          <div className="flex items-center justify-between gap-3">
-            <span className="flex min-w-0 items-center gap-2">
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-              <span className="truncate">
-                File {uploadProgress.index} of {uploadProgress.count} · {uploadProgress.fileName}
-              </span>
-            </span>
-            <span className="shrink-0 font-semibold tabular-nums">{uploadProgress.percent}%</span>
-          </div>
-          <div
-            className="mt-2 h-2 overflow-hidden rounded-full bg-emerald-100"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={uploadProgress.percent}
-            aria-label="Upload progress"
-          >
-            <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-300 ease-out" style={{ width: `${uploadProgress.percent}%` }} />
-          </div>
-          <div className="mt-1.5 flex items-center justify-between gap-3">
-            <p className="text-2xs text-emerald-700">
-              {uploadProgress.processing ? uploadProgress.step ?? "Processing the file..." : "Uploading one file at a time. Keep this page open."}
-            </p>
-            {queue.length > 1 && uploadProgress.percent < 100 && (
-              <Button size="sm" variant="outline" className="shrink-0 bg-white" onClick={() => {
-                  cancelUpload.current = true;
-                }}>
-                Stop After This File
-              </Button>
-            )}
-          </div>
-          {queue.length > 1 && (
-            <ul className="mt-2 max-h-40 divide-y divide-emerald-100 overflow-auto rounded-lg border border-emerald-100 bg-white" aria-label="Files in this upload">
-              {queue.map((file, position) => (
-                <li key={`${file.name}-${position}`} className="flex items-center gap-2 px-2.5 py-1.5 text-slate-700">
-                  {file.state === "done" ? (
-                    <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-label="Uploaded" />
-                  ) : file.state === "active" ? (
-                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-emerald-600" aria-label="Uploading" />
-                  ) : file.state === "failed" ? (
-                    <X className="h-3.5 w-3.5 shrink-0 text-red-600" aria-label="Failed" />
-                  ) : (
-                    <Circle className="h-3.5 w-3.5 shrink-0 text-slate-300" aria-label="Waiting" />
-                  )}
-                  <span className="min-w-0 flex-1 truncate">{file.name}</span>
-                  <span className="shrink-0 text-slate-400">{formatBytes(file.size)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+      {busy && !uploadProgress && (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800" role="status">
+          <Loader2 className="h-4 w-4 animate-spin" /> {busy}
         </div>
-      ) : (
-        busy && (
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800" role="status">
-            <Loader2 className="h-4 w-4 animate-spin" /> {busy}
-          </div>
-        )
       )}
 
       {!batch && (
@@ -838,94 +789,18 @@ export const ControlledCopyRecallScanView: React.FC = () => {
             </div>
           )}
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-              <ScanLine className="h-4 w-4 text-emerald-600" /> Upload scans of returned paper copies
-            </h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Choose up to {MAX_RECALL_SCANS} scans (PDF only, {formatBytes(MAX_RECALL_FILE_BYTES)} each), one file per paper copy. Each file is checked for viruses, its QR
-              code is read and matched to a controlled copy. Nothing is recalled until you have reviewed the list and signed.
-            </p>
-
-            <div
-              onClick={() => !busy && fileInput.current?.click()}
-              onDragOver={(event) => {
-                event.preventDefault();
-                setDragging(true);
-              }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={(event) => {
-                event.preventDefault();
-                setDragging(false);
-                handleSelect(event.dataTransfer.files);
-              }}
-              className={cn(
-                "mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors",
-                dragging ? "border-emerald-400 bg-emerald-50" : "border-slate-300 bg-slate-50 hover:border-emerald-300",
-              )}
-            >
-              <FileUp className="h-6 w-6 text-slate-400" />
-              <p className="text-sm text-slate-600">Drop the scans here, or</p>
-              <Button
-                size="sm"
-                variant="outline-emerald"
-                disabled={Boolean(busy) || selected.length >= MAX_RECALL_SCANS}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  fileInput.current?.click();
-                }}
-              >
-                Choose Files
-              </Button>
-              <input
-                ref={fileInput}
-                type="file"
-                multiple
-                accept={RECALL_SCAN_ACCEPT}
-                className="hidden"
-                data-testid="recall-scan-input"
-                onClick={(event) => event.stopPropagation()}
-                onChange={(event) => {
-                  handleSelect(event.target.files);
-                  event.target.value = "";
-                }}
-              />
-            </div>
-
-            {selected.length > 0 && (
-              <div className="mt-4">
-                <p className="text-xs font-medium text-slate-700">
-                  {selected.length} of {MAX_RECALL_SCANS} files chosen · {formatBytes(selectedBytes)}
-                </p>
-                <ul className="mt-2 max-h-56 divide-y divide-slate-100 overflow-auto rounded-lg border border-slate-200">
-                  {selected.map((file, index) => (
-                    <li key={`${file.name}-${index}`} className="flex items-center justify-between gap-3 px-3 py-1.5 text-xs">
-                      <span className="truncate text-slate-800">{file.name}</span>
-                      <span className="flex shrink-0 items-center gap-2 text-slate-500">
-                        {formatBytes(file.size)}
-                        <button
-                          type="button"
-                          aria-label={`Remove ${file.name}`}
-                          className="text-slate-400 hover:text-red-600"
-                          onClick={() => setSelected((current) => current.filter((_, i) => i !== index))}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-3 flex justify-end gap-2">
-                  <Button size="sm" variant="outline" disabled={Boolean(busy)} onClick={() => setSelected([])}>
-                    Clear
-                  </Button>
-                  <Button size="sm" variant="outline-emerald" disabled={Boolean(busy)} onClick={upload}>
-                    Read Codes and Review
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+          <RecallUploadArea
+            selected={selected}
+            maxFiles={MAX_RECALL_SCANS}
+            busy={Boolean(busy)}
+            progress={uploadProgress}
+            queue={queue}
+            onSelect={handleSelect}
+            onRemove={(index) => setSelected((current) => current.filter((_, i) => i !== index))}
+            onClear={() => setSelected([])}
+            onUpload={upload}
+            onStop={() => { cancelUpload.current = true; }}
+          />
         </div>
       )}
 
@@ -1099,18 +974,9 @@ export const ControlledCopyRecallScanView: React.FC = () => {
             {isDraft ? (
               <>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline-emerald" disabled={Boolean(busy) || remainingSlots <= 0} onClick={() => addInput.current?.click()}>
+                  <Button size="sm" variant="outline-emerald" disabled={Boolean(busy) || remainingSlots <= 0} onClick={() => setAddOpen(true)}>
                     Add More Scans
                   </Button>
-                  <input
-                    ref={addInput}
-                    type="file"
-                    multiple
-                    accept={RECALL_SCAN_ACCEPT}
-                    className="hidden"
-                    data-testid="recall-scan-add-input"
-                    onChange={(event) => addMore(event.target.files)}
-                  />
                   <Button size="sm" variant="outline" className="text-red-600" disabled={Boolean(busy)} onClick={() => setDiscardTarget({ id: batch.id, number: batch.batchNumber })}>
                     Discard Draft
                   </Button>
@@ -1153,6 +1019,30 @@ export const ControlledCopyRecallScanView: React.FC = () => {
           loadFile={() => controlledCopyRecallApi.fetchItemFile(shownBatch.id, shownItem.id)}
         />
       )}
+
+      {/* Add scans to the draft that is open: choose them here, and the scan panel shows the codes being read, without leaving the page */}
+      <FormModal
+        isOpen={Boolean(batch) && addOpen}
+        onClose={closeAdd}
+        title="Add More Scans"
+        size="2xl"
+        showFooter={false}
+      >
+        <RecallUploadArea
+          inDialog
+          selected={selected}
+          maxFiles={Math.max(remainingSlots, 0)}
+          busy={Boolean(busy)}
+          progress={uploadProgress}
+          queue={queue}
+          inputTestId="recall-scan-add-input"
+          onSelect={handleSelect}
+          onRemove={(index) => setSelected((current) => current.filter((_, i) => i !== index))}
+          onClear={() => setSelected([])}
+          onUpload={addUpload}
+          onStop={() => { cancelUpload.current = true; }}
+        />
+      </FormModal>
 
       {/* Identify a copy by number when its code could not be read */}
       <FormModal

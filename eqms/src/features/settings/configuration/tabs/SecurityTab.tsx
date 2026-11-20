@@ -1,14 +1,15 @@
 ﻿import React from 'react';
 import { SecurityConfig } from '../types';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
-import { IconKey, IconNetwork, IconShieldLock } from '@tabler/icons-react';
+import { FieldHint } from '@/components/ui/form/FieldHint';
+import { IconKey, IconNetwork, IconPasswordUser, IconShieldLock } from '@tabler/icons-react';
 import { PasswordPolicyTester } from './PasswordPolicyTester';
 import { ConfigTabs, HISTORY_TAB, changedTabs, revertFields } from './ConfigTabs';
 import { ConfigHistory } from './ConfigHistory';
 import type { SecurityTabId } from './securityTabs';
 
 const ALL_TABS = [
-  { id: 'password-rules', label: 'Password Rules', icon: IconKey },
+  { id: 'password-rules', label: 'Password Rules', icon: IconPasswordUser },
   { id: 'sessions-accounts', label: 'Sessions & Accounts', icon: IconShieldLock },
   { id: 'network-access', label: 'Network Access', icon: IconNetwork },
   HISTORY_TAB,
@@ -16,7 +17,7 @@ const ALL_TABS = [
 
 const FIELDS: Record<SecurityTabId, ReadonlyArray<string>> = {
   'password-rules': ['passwordMinLength', 'requireUppercase', 'requireLowercase', 'requireSpecialChars', 'requireNumbers', 'disallowWhitespace', 'disallowSequentialChars', 'disallowCommonPasswords', 'disallowUserInfo', 'minUniqueChars', 'maxRepeatedChars', 'enablePasswordExpiry', 'passwordExpiryDays', 'preventPasswordReuse', 'passwordHistoryCount', 'forcePasswordChangeOnFirstLogin'],
-  'sessions-accounts': ['sessionTimeoutEnabled', 'sessionTimeoutMinutes', 'enable2FA', 'enableAccountLockout', 'maxLoginAttempts', 'inactiveAccountDays'],
+  'sessions-accounts': ['sessionTimeoutEnabled', 'sessionTimeoutMinutes', 'enable2FA', 'maxConcurrentSessions', 'enableAccountLockout', 'maxLoginAttempts', 'maxSignatureAttempts', 'inactiveAccountDays'],
   // the network policy is not part of the security configuration: the page tells whether it changed
   'network-access': [],
   history: [],
@@ -156,7 +157,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
           <div className={groupClass}>
             <h3 className={headingClass}>Password Expiration</h3>
             <Checkbox id="enablePasswordExpiry" label="Enable Password Expiration" checked={config.enablePasswordExpiry} onChange={(checked) => handleChange('enablePasswordExpiry', checked)} />
-            <p className="ml-7 text-xs text-slate-500">Force users to change their password periodically</p>
+            <FieldHint indent>Ask users to change their password regularly.</FieldHint>
             {config.enablePasswordExpiry && (
               <div className="ml-7 mt-3">
                 <label className={labelClass}>Password Expiry Period (Days)</label>
@@ -168,7 +169,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
                   min={30}
                   max={365}
                 />
-                <p className="mt-1 text-xs text-slate-500">Users must change password every {config.passwordExpiryDays} days</p>
+                <FieldHint className="mt-1">Users must change their password every {config.passwordExpiryDays} days.</FieldHint>
               </div>
             )}
           </div>
@@ -176,7 +177,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
           <div className={groupClass}>
             <h3 className={headingClass}>Password History</h3>
             <Checkbox id="preventPasswordReuse" label="Prevent Password Reuse" checked={config.preventPasswordReuse} onChange={(checked) => handleChange('preventPasswordReuse', checked)} />
-            <p className="ml-7 text-xs text-slate-500">Prevent users from reusing recent passwords</p>
+            <FieldHint indent>Stop users from reusing recent passwords.</FieldHint>
             {config.preventPasswordReuse && (
               <div className="ml-7 mt-3">
                 <label className={labelClass}>Password History Count</label>
@@ -188,7 +189,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
                   min={3}
                   max={24}
                 />
-                <p className="mt-1 text-xs text-slate-500">Remember last {config.passwordHistoryCount} passwords and prevent reuse</p>
+                <FieldHint className="mt-1">The last {config.passwordHistoryCount} passwords cannot be used again.</FieldHint>
               </div>
             )}
           </div>
@@ -201,9 +202,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
               checked={config.forcePasswordChangeOnFirstLogin ?? true}
               onChange={(checked) => handleChange('forcePasswordChangeOnFirstLogin', checked)}
             />
-            <p className="ml-7 text-xs text-slate-500">
-              New accounts created by an administrator must replace their temporary password when signing in for the first time.
-            </p>
+            <FieldHint indent>A new account must replace its temporary password at the first sign-in.</FieldHint>
           </div>
 
           <PasswordPolicyTester config={config} />
@@ -215,7 +214,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
           <div>
             <h3 className={headingClass}>Session Timeout</h3>
             <Checkbox id="sessionTimeoutEnabled" label="Enable Session Timeout" checked={config.sessionTimeoutEnabled ?? true} onChange={(checked) => handleChange('sessionTimeoutEnabled', checked)} />
-            <p className="ml-7 text-xs text-slate-500">Lock inactive sessions for all users. A locked session is unlocked with the same steps as signing in: the password, then the verification code when the account uses a second factor. A wrong password or code counts toward Account Lockout and is recorded in the Audit Trail.</p>
+            <FieldHint indent>Locks idle sessions. The user unlocks with their password, and a verification code if they use one. Wrong entries count toward Account Lockout.</FieldHint>
             {(config.sessionTimeoutEnabled ?? true) && (
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
@@ -236,21 +235,31 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
           </div>
 
           <div className={groupClass}>
+            <h3 className={headingClass}>Concurrent Sessions</h3>
+            <label className={labelClass}>Maximum Concurrent Sessions</label>
+            <input
+              type="number"
+              value={config.maxConcurrentSessions ?? 0}
+              onChange={(e) => handleIntegerChange('maxConcurrentSessions', e.target.value, 0, 10)}
+              className={`${inputClass} md:w-1/2`}
+              min={0}
+              max={10}
+            />
+            <FieldHint className="mt-1">How many devices one account can use at the same time. When it signs in on one more, the oldest session ends and shows a notice. 1 means one device only. 0 means no limit.</FieldHint>
+          </div>
+
+          <div className={groupClass}>
             <h3 className={headingClass}>Two-Factor Authentication</h3>
             <Checkbox id="enable2FA" label="Enforce Two-Factor Authentication (2FA)" checked={config.enable2FA} onChange={(checked) => handleChange('enable2FA', checked)} />
-            <p className="ml-7 text-xs text-slate-500">
-              All users must set up 2FA (authenticator app or email). To require it for specific
-              users before enabling it company-wide, use "Require Multifactor Authentication" on
-              that user's Security &amp; Authorization tab in Settings &gt; Users -- a per-user
-              requirement only adds to this setting, never exempts a user from it.
-            </p>
+            <FieldHint indent>Every user must set up 2FA (authenticator app or e-mail). To start with some users only, use Require Multifactor Authentication on their Security &amp; Authorization tab in Users.</FieldHint>
           </div>
 
           <div className={groupClass}>
             <h3 className={headingClass}>Account Lockout</h3>
             <Checkbox id="enableAccountLockout" label="Enable Account Lockout" checked={config.enableAccountLockout} onChange={(checked) => handleChange('enableAccountLockout', checked)} />
-            <p className="ml-7 text-xs text-slate-500">Lock user accounts after multiple failed login attempts</p>
+            <FieldHint indent>Locks an account after repeated wrong passwords or codes. Sign-in and signing are counted separately, each with its own limit.</FieldHint>
             {config.enableAccountLockout && (
+              <>
               <div className="ml-7 mt-3">
                 <label className={labelClass}>Maximum Login Attempts</label>
                 <input
@@ -261,10 +270,21 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
                   min={3}
                   max={10}
                 />
-                <p className="mt-1 text-xs text-slate-500">
-                  Account will be locked after {config.maxLoginAttempts} consecutive failed login attempts. An administrator or a verified password reset can restore access.
-                </p>
+                <FieldHint className="mt-1">Locked after {config.maxLoginAttempts} wrong passwords or codes in a row at sign-in or when unlocking a session. A correct sign-in resets the count. An administrator or a password reset restores access.</FieldHint>
               </div>
+              <div className="ml-7 mt-3">
+                <label className={labelClass}>Maximum Signature Attempts</label>
+                <input
+                  type="number"
+                  value={config.maxSignatureAttempts ?? 5}
+                  onChange={(e) => handleIntegerChange('maxSignatureAttempts', e.target.value, 3, 10)}
+                  className={`${inputClass} md:w-1/2`}
+                  min={3}
+                  max={10}
+                />
+                <FieldHint className="mt-1">Counted apart from sign-in. Locked after {config.maxSignatureAttempts ?? 5} wrong passwords in a row when signing. A correct signature resets the count.</FieldHint>
+              </div>
+              </>
             )}
           </div>
 
@@ -279,9 +299,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
               min={0}
               max={3650}
             />
-            <p className="mt-1 text-xs text-slate-500">
-              An account that has not signed in for this many days (counted from its creation when it never did) is marked Inactive in Access Review, so the reviewer can decide to keep or withdraw its access. It is only a flag: the system never suspends an account by itself. 0 switches the flag off.
-            </p>
+            <FieldHint className="mt-1">Accounts with no sign-in for this many days are marked Inactive in Access Review (a new account counts from its creation). Nothing is suspended automatically. 0 turns it off.</FieldHint>
           </div>
         </div>
       )}

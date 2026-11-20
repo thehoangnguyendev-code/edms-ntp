@@ -31,4 +31,17 @@ describe("document table request lifecycle", () => {
     expect(initialSignal.aborted).toBe(true);
     unmount();
   });
+
+  it("keeps both ends of a date range set in the same tick", async () => {
+    const { result, unmount } = renderHook(() => useDocumentServerTable({ viewType: "all", currentUser: null }), { wrapper });
+    await act(async () => {});
+    act(() => {
+      result.current.setCreatedFromDate("01/01/2025");
+      result.current.setCreatedToDate("04/01/2025");
+    });
+    await act(async () => {});
+    expect(result.current.createdFromDate).toBe("01/01/2025");
+    expect(result.current.createdToDate).toBe("04/01/2025");
+    unmount();
+  });
 });

@@ -21,10 +21,12 @@ export interface DeliveryForm {
   escalate: boolean;
   escalateMinutes: string;
   escalationRules: RecipientRule[];
+  /** LOW, MEDIUM or HIGH (or CRITICAL when that is the default of the event): how important the notification is. */
+  priority: string;
 }
 
 export const EMPTY_DELIVERY: DeliveryForm = {
-  enabled: true, channels: [], rules: [], digest: 'IMMEDIATE', quietStart: '', quietEnd: '', escalate: false, escalateMinutes: '', escalationRules: [],
+  enabled: true, channels: [], rules: [], digest: 'IMMEDIATE', quietStart: '', quietEnd: '', escalate: false, escalateMinutes: '', escalationRules: [], priority: 'MEDIUM',
 };
 
 const channelsOf = (value: string | null | undefined) => (value ?? '').split(',').map((c) => c.trim().toUpperCase()).filter(Boolean);
@@ -39,6 +41,7 @@ export const deliveryOf = (detail: NotificationPolicyDetail): DeliveryForm => ({
   escalate: detail.escalationEnabled,
   escalateMinutes: detail.escalationAfterMinutes == null ? '' : String(detail.escalationAfterMinutes),
   escalationRules: detail.escalationRecipientRules ?? [],
+  priority: detail.priority,
 });
 
 const sameList = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -52,6 +55,7 @@ export const deliveryChanges = (saved: DeliveryForm, form: DeliveryForm): Update
   if (!sameList(saved.channels, form.channels)) changes.enabledChannels = form.channels;
   if (!sameList(saved.rules, form.rules)) changes.recipientRules = form.rules;
   if (saved.digest !== form.digest) changes.digestMode = form.digest;
+  if (saved.priority !== form.priority) changes.priority = form.priority;
   if (saved.quietStart !== form.quietStart || saved.quietEnd !== form.quietEnd) {
     changes.quietHoursStart = form.quietStart;
     changes.quietHoursEnd = form.quietEnd;

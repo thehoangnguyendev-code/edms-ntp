@@ -53,7 +53,7 @@ export function DashboardWidgetTile({ item, editing, disabled, sorting, resizeVe
           </fieldset>
         </motion.div>
         <motion.div layout={!sorting && !reduced ? 'position' : false} layoutDependency={resizeVersion} transition={resizeMotion}
-          className={styles.content} inert={editing || undefined}>{children}</motion.div>
+          data-dashboard-widget-body className={styles.content} inert={editing || undefined}>{children}</motion.div>
       </div>
     </motion.div>
   </div>;

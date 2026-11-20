@@ -138,9 +138,12 @@ const withRequiredMark = (name: string, required: boolean) => (required ? <>{nam
 export function ReportTemplateRun({
   template,
   onBack,
+  initialFilters,
 }: {
   template: ReportTemplate;
   onBack: () => void;
+  /** Filters to start with (a screen that sends the person here, such as Access Explorer, fills them in). */
+  initialFilters?: Record<string, string>;
 }) {
   const navigate = useNavigate();
   const [stage, setStage] = useState(0);
@@ -156,7 +159,7 @@ export function ReportTemplateRun({
             template.layout?.charts?.some((c) => c.field === field.code)),
       )
       .map((field) => field.code),
-    filters: {},
+    filters: { ...(initialFilters ?? {}) },
     sortBy: template.fields.find((field) => field.allowed)?.code ?? "",
     direction: "asc",
   });

@@ -1,4 +1,5 @@
 import type { BadgeColor } from '@/components/ui/badge/Badge';
+import { moduleDisplayName } from '@/utils/moduleDisplay';
 
 /** A module is written "DOCUMENT_CONTROL" by most events and "Document Control" by a few; both read the same. */
 export const moduleKey = (module: string) => module.trim().toUpperCase().replace(/ /g, '_');
@@ -10,13 +11,13 @@ const MODULE_LABEL: Record<string, string> = {
   REPORTS: 'Reports',
   AUDIT_TRAIL: 'Audit Trail',
   BACKUP_RESTORE: 'Backup & Restore',
-  SECURITY: 'Security',
+  SECURITY: 'Security & Authorization',
   ACCESS_REVIEW: 'Access Review',
   KNOWLEDGE: 'Knowledge Base',
   SYSTEM: 'System',
 };
 
-export const moduleLabel = (module: string) => MODULE_LABEL[moduleKey(module)] ?? module;
+export const moduleLabel = (module: string) => MODULE_LABEL[moduleKey(module)] ?? moduleDisplayName(module);
 
 export const MODULE_OPTIONS = [
   { label: 'All', value: 'All' },
@@ -24,13 +25,16 @@ export const MODULE_OPTIONS = [
 ];
 
 export const PRIORITY_COLOR: Record<string, BadgeColor> = {
-  LOW: 'slate',
-  MEDIUM: 'blue',
-  HIGH: 'amber',
+  LOW: 'emerald',
+  MEDIUM: 'amber',
+  HIGH: 'red',
   CRITICAL: 'red',
 };
 
-export const priorityLabel = (priority: string) => priority.charAt(0) + priority.slice(1).toLowerCase();
+export const priorityLabel = (priority: string) => priority.charAt(0).toUpperCase() + priority.slice(1).toLowerCase();
+
+/** The priorities an administrator can give a notification. Critical is only ever the default of an event the catalog marks critical. */
+export const PRIORITY_CHOICES = ['LOW', 'MEDIUM', 'HIGH'] as const;
 
 /** "IN_APP,EMAIL" as a list. */
 export const channelList = (csv: string | null | undefined) =>

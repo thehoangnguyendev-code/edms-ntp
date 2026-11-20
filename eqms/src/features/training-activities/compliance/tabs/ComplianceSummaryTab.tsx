@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useBarWipe } from "@/hooks/useBarFill";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { IconAlertTriangle, IconCalendarDue, IconClipboardCheck, IconUserOff, IconUsers } from "@tabler/icons-react";
 import { Select } from "@/components/ui/select/Select";
@@ -43,6 +44,8 @@ function CoverageCard({ summary }: { summary: TrainingComplianceSummary }) {
     { key: "missing", label: "Not trained", value: summary.missing, tone: "red" },
   ];
   const total = parts.reduce((sum, p) => sum + p.value, 0);
+  const barRef = useRef<HTMLDivElement>(null);
+  useBarWipe(barRef, parts.map((p) => p.value).join(","));
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -55,6 +58,7 @@ function CoverageCard({ summary }: { summary: TrainingComplianceSummary }) {
         </div>
       </div>
       <div
+        ref={barRef}
         className="mt-4 flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-slate-100"
         role="img"
         aria-label={parts.map((p) => `${p.label}: ${p.value}`).join(", ")}

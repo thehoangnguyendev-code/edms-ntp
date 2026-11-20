@@ -38,7 +38,9 @@ import {
   type NotificationTemplateVersion,
   type NotificationVariable,
 } from "@/services/api/notificationPolicy";
+import { Select } from "@/components/ui/select";
 import {
+  PRIORITY_CHOICES,
   PRIORITY_COLOR,
   channelList,
   moduleLabel,
@@ -56,7 +58,8 @@ import { VariablePalette } from "./components/VariablePalette";
 import { NotificationIconPicker } from "./components/NotificationIconPicker";
 import {
   getNotificationTypeIcon,
-  getNotificationTypeIconStyles,
+  getNotificationIconStyles,
+  getNotificationPriorityHex,
 } from "@/features/notifications/notificationMeta";
 import {
   ChosenIcon,
@@ -100,7 +103,6 @@ type Field = "title" | "summary" | "subject" | "body" | "label";
 
 interface Appearance {
   icon: string | null;
-  tone: string | null;
 }
 
 interface Form {
@@ -178,15 +180,9 @@ export const NotificationEventView: React.FC<{
   const [error, setError] = useState("");
   const [form, setForm] = useState<Form>(EMPTY);
   const [saved, setSaved] = useState<Form>(EMPTY);
-  // the icon and the tone of its colour: chosen here, saved with Publish (they are not wording)
-  const [appearance, setAppearance] = useState<Appearance>({
-    icon: null,
-    tone: null,
-  });
-  const [savedAppearance, setSavedAppearance] = useState<Appearance>({
-    icon: null,
-    tone: null,
-  });
+  // the icon: chosen here, saved with Publish (it is not wording). Its colour follows the priority.
+  const [appearance, setAppearance] = useState<Appearance>({ icon: null });
+  const [savedAppearance, setSavedAppearance] = useState<Appearance>({ icon: null });
   const [saving, setSaving] = useState(false);
   // another administrator saved this notification after it was opened here: the change was refused and the screen offers to reload
   const [changedByOthers, setChangedByOthers] = useState(false);
@@ -246,7 +242,7 @@ export const NotificationEventView: React.FC<{
       const delivered = deliveryOf(d);
       setDelivery(delivered);
       setSavedDelivery(delivered);
-      const look = { icon: d.icon ?? null, tone: d.iconTone ?? null };
+      const look = { icon: d.icon ?? null };
       setAppearance(look);
       setSavedAppearance(look);
       setError("");
@@ -268,6 +264,8 @@ export const NotificationEventView: React.FC<{
   const supported = channelList(detail?.supportedChannels);
   const hasEmail = isEmail && supported.includes("EMAIL");
   const readOnly = !canManage;
+  /** The priority of the event in the catalog: what a notification goes back to, and the only case in which Critical is offered. */
+  const defaultPriority = (detail?.defaultPriority ?? detail?.priority ?? "MEDIUM").toUpperCase();
   const set = (key: keyof Form) => (value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -281,8 +279,7 @@ export const NotificationEventView: React.FC<{
       form.label !== saved.label);
   const dirtyAppearance =
     !isEmail &&
-    (appearance.icon !== savedAppearance.icon ||
-      appearance.tone !== savedAppearance.tone);
+    appearance.icon !== savedAppearance.icon;
   const dirtyDelivery = deliveryDirty(savedDelivery, delivery);
   const dirty = dirtyInApp || dirtyEmail || dirtyAppearance || dirtyDelivery;
   const { go, modal: leaveModal } = useLeaveGuard(
@@ -402,12 +399,7 @@ export const NotificationEventView: React.FC<{
         });
       }
       if (dirtyAppearance) {
-        await notificationPolicyApi.updateAppearance(
-          eventCode,
-          appearance.icon,
-          appearance.tone,
-          once(),
-        );
+        await notificationPolicyApi.updateAppearance(eventCode, appearance.icon, once());
       }
       showToast({
         type: "success",
@@ -432,8 +424,8 @@ export const NotificationEventView: React.FC<{
   // the toast of this notification as the reader will get it: the wording being edited (with sample values), its icon and colour, and the duration and
   // position the administrator chose in Configuration (the toast provider applies them)
   const showToastSample = () => {
-    const styles = getNotificationTypeIconStyles(eventCode, appearance.tone);
-    const priority = (detail?.priority ?? "").toLowerCase();
+    const priority = delivery.priority.toLowerCase();
+    const styles = getNotificationIconStyles(priority);
     showToast({
       type: priority === "high" || priority === "critical" ? "warning" : "info",
       title: fill(form.title, samples) || "Title",
@@ -442,9 +434,7 @@ export const NotificationEventView: React.FC<{
         resolveIcon(iconLibraries, appearance.icon) ??
         getNotificationTypeIcon(eventCode),
       iconClassName: `${styles.bg} ${styles.text}`,
-      iconStyle: styles.tileStyle
-        ? { ...styles.tileStyle, ...styles.iconStyle }
-        : undefined,
+      color: getNotificationPriorityHex(priority),
     });
   };
 
@@ -540,10 +530,8 @@ export const NotificationEventView: React.FC<{
       : channelIsOn
         ? "Active"
         : "Inactive";
-  const previewStyles = getNotificationTypeIconStyles(
-    eventCode,
-    appearance.tone,
-  );
+  // the colour of the icon follows the priority being chosen, so the preview changes as soon as the priority does
+  const previewStyles = getNotificationIconStyles(delivery.priority);
   const title = isEmail
     ? canManage
       ? "Edit Email Notification"
@@ -689,14 +677,9 @@ export const NotificationEventView: React.FC<{
                     title="Notification Information"
                     icon={<IconInfoCircle className="h-4 w-4" />}
                     headerRight={
-                      <>
-                        <Badge
-                          color={PRIORITY_COLOR[detail.priority] ?? "slate"}
-                          size="sm"
-                        >
-                          {priorityLabel(detail.priority)}
-                        </Badge>
-                      </>
+                      <Badge color={PRIORITY_COLOR[detail.priority] ?? "slate"} size="sm">
+                        {priorityLabel(detail.priority)}
+                      </Badge>
                     }
                   >
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -712,10 +695,22 @@ export const NotificationEventView: React.FC<{
                       <FormField label="Status">
                         <ReadOnlyField value={channelStatus} />
                       </FormField>
-                      <FormField label="Updated">
+                      <FormField label="Last Updated">
                         <ReadOnlyField
                           value={formatDateTime(detail.updatedAt)}
                         />
+                      </FormField>
+                      <FormField label="Priority">
+                        {readOnly ? (
+                          <ReadOnlyField value={priorityLabel(detail.priority)} />
+                        ) : (
+                          <Select
+                            value={delivery.priority}
+                            onChange={(priority: string) => setDelivery({ ...delivery, priority })}
+                            options={[...PRIORITY_CHOICES, ...(defaultPriority === "CRITICAL" ? (["CRITICAL"] as const) : [])].map((value) => ({ value, label: priorityLabel(value) }))}
+                            aria-label="Priority"
+                          />
+                        )}
                       </FormField>
                       {detail.description ? (
                         <FormField
@@ -729,6 +724,15 @@ export const NotificationEventView: React.FC<{
                         </FormField>
                       ) : null}
                     </div>
+                    {!readOnly ? (
+                      <p className="mt-3 text-xs text-slate-500">
+                        Priority: how important this notification is. People see it on the Notifications page and can filter by it.
+                        {delivery.priority === defaultPriority
+                          ? ` It is the default (${priorityLabel(defaultPriority)}).`
+                          : ` The default is ${priorityLabel(defaultPriority)}; choose it to go back.`}{" "}
+                        A change applies to notifications sent from now on.
+                      </p>
+                    ) : null}
                   </FormSection>
 
                   {!isEmail ? (
@@ -857,13 +861,11 @@ export const NotificationEventView: React.FC<{
                         <div className="mx-auto flex w-full max-w-md items-start gap-3 overflow-hidden rounded-xl border border-slate-200 bg-white p-3">
                           <span
                             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${previewStyles.bg} ${previewStyles.text}`}
-                            style={previewStyles.tileStyle}
                           >
                             <ChosenIcon
                               icon={appearance.icon}
                               fallback={getNotificationTypeIcon(eventCode)}
                               className="h-4 w-4"
-                              style={previewStyles.iconStyle}
                             />
                           </span>
                           <div className="min-w-0 flex-1">
@@ -905,13 +907,8 @@ export const NotificationEventView: React.FC<{
                     >
                       <NotificationIconPicker
                         icon={appearance.icon}
-                        tone={appearance.tone}
                         fallback={getNotificationTypeIcon(eventCode)}
-                        fallbackStyles={getNotificationTypeIconStyles(
-                          eventCode,
-                          null,
-                        )}
-                        onChange={(icon, tone) => setAppearance({ icon, tone })}
+                        onChange={(icon) => setAppearance({ icon })}
                         disabled={readOnly}
                       />
                     </FormSection>

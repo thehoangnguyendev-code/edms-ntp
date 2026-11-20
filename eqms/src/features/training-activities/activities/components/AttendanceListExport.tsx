@@ -76,12 +76,14 @@ export function AttendanceListExport({ activityId, trainingNumber }: { activityI
           title="Training Attendance List (APD.0117)"
           description={madeAt ? `${trainingNumber}. Made from what is recorded on ${madeAt}.` : trainingNumber}
           confirmText="Download PDF"
-          cancelText="Close"
+          // Close is drawn with the other buttons below (not by the window) so that the two downloads stand next to each other: Refresh, Close, Download Word, Download PDF
+          showCancel={false}
           isLoading={busy === "pdf"}
           confirmDisabled={!!busy || !url}
           footerExtra={(
             <>
               <Button size="sm" variant="outline" loading={busy === "load"} disabled={!!busy && busy !== "load"} onClick={() => void load()}>Refresh</Button>
+              <Button size="sm" variant="outline" disabled={busy === "pdf"} onClick={close}>Close</Button>
               <Button size="sm" variant="outline" loading={busy === "docx"} disabled={!!busy} onClick={() => void download("docx")}>Download Word</Button>
             </>
           )}

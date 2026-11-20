@@ -1,4 +1,4 @@
-import { DASHBOARD_WIDGETS as WIDGETS, expandDashboardWidgets } from '@/features/self-service/dashboard/shared/dashboardWidgetCatalog';
+import { DASHBOARD_WIDGETS as WIDGETS, LIBRARY_ONLY_WIDGETS, expandDashboardWidgets } from '@/features/self-service/dashboard/shared/dashboardWidgetCatalog';
 import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '@/services/api/client';
@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/toast/Toast';
 type Item = { id: string; label: string; visible: boolean; width: 'half' | 'full' };
 type Role = { id: string; name: string };
 type RoleLayout = { roleId: string; priority: number; layout: { widgets: Omit<Item, 'label'>[] } };
-const initial = (): Item[] => WIDGETS.map(([id, label, width]) => ({ id, label, width, visible: true }));
+const initial = (): Item[] => WIDGETS.map(([id, label, width]) => ({ id, label, width, visible: !LIBRARY_ONLY_WIDGETS.has(id) }));
 
 export function DashboardRoleDefaults() {
   const [roles, setRoles] = useState<Role[]>([]), [saved, setSaved] = useState<RoleLayout[]>([]);

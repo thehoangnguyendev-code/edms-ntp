@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { SlidersHorizontal, Check, X, RotateCcw } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { SlidersHorizontal, Check, X, RotateCcw, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button/Button";
-import { Checkbox } from "@/components/ui/checkbox/Checkbox";
-import { Drawer } from "@/components/ui/drawer/Drawer";
+import { DashboardWidgetLibrary } from "./DashboardWidgetLibrary";
 import { DashboardWidgetTile } from "./DashboardWidgetTile";
+import { useDashboardEntrance } from "./useDashboardEntrance";
 import { DragDropProvider } from "@dnd-kit/react";
 import { Feedback } from "@dnd-kit/dom";
 import { LayoutGroup, useReducedMotion } from "framer-motion";
@@ -22,23 +22,26 @@ import {
   type DashboardLayoutPreference,
 } from "@/services/api/userUiPreferences";
 
-type Widget = {
+export type DashboardWidget = {
   id: string;
   label: string;
   width: "half" | "full";
   content: ReactNode;
+  /** false: the card is in the widget library and appears on the dashboard only once a person adds it. */
+  defaultVisible?: boolean;
 };
+type Widget = DashboardWidget;
 type Setting = DashboardWidgetSetting;
 
 /** Only caller-provided, authorized widgets can be rendered; a stored ID cannot grant data access. */
 export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
   const defaults = useMemo(
     () =>
-      widgets.map(({ id, label, width }) => ({
+      widgets.map(({ id, label, width, defaultVisible }) => ({
         id,
         label,
         width,
-        visible: true,
+        visible: defaultVisible !== false,
       })),
     [widgets],
   );
@@ -50,6 +53,8 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
   const [dragging, setDragging] = useState<string | null>(null);
   const [resizeVersion, setResizeVersion] = useState(0);
   const reduced = useReducedMotion();
+  const gridRef = useRef<HTMLDivElement>(null);
+  useDashboardEntrance(gridRef);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
   useEffect(() => {
@@ -106,6 +111,12 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
     setDraft((items) =>
       items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
     );
+  /** A card added from the library goes to the end of the dashboard, where it is seen. */
+  const addFromLibrary = (id: string) =>
+    setDraft((items) => {
+      const card = items.find((item) => item.id === id);
+      return card ? [...items.filter((item) => item.id !== id), { ...card, visible: true }] : items;
+    });
   const move = (id: string, delta: number) =>
     setDraft((items) => {
       const visible = items.filter((item) => item.visible),
@@ -180,7 +191,7 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
                 Customize Dashboard
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
-                Drag a card to move it. Choose Half or Full to resize.
+                Drag a card to move it. Choose Half or Full to resize. Add more cards from the Widget Library.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -190,8 +201,8 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
                 disabled={saving || !!dragging}
                 onClick={() => setOpen(true)}
               >
-                <SlidersHorizontal className="mr-1.5 h-4 w-4" />
-                Widgets
+                <LayoutGrid className="mr-1.5 h-4 w-4" />
+                Widget Library
               </Button>
               <Button
                 variant="ghost"
@@ -226,20 +237,36 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
             </div>
           </>
         ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={loading}
-            className="gap-2"
-            onClick={() => {
-              setDraft(ordered.map((item) => ({ ...item })));
-              setEditing(true);
-              setOpen(false);
-            }}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            Customize Dashboard
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loading}
+              className="gap-2"
+              onClick={() => {
+                setDraft(ordered.map((item) => ({ ...item })));
+                setEditing(true);
+                setOpen(true);
+              }}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Add Widgets
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loading}
+              className="gap-2"
+              onClick={() => {
+                setDraft(ordered.map((item) => ({ ...item })));
+                setEditing(true);
+                setOpen(false);
+              }}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Customize Dashboard
+            </Button>
+          </div>
         )}
       </div>
       <DragDropProvider
@@ -261,7 +288,7 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
         }}
       >
         <LayoutGroup>
-          <div className={styles.grid} aria-label="Dashboard widgets">
+          <div ref={gridRef} className={styles.grid} aria-label="Dashboard widgets">
             {layout
               .filter((item) => item.visible)
               .map((item, index) => (
@@ -289,39 +316,17 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
       </DragDropProvider>
       {!layout.some((item) => item.visible) && (
         <div className="rounded-xl border border-dashed border-slate-200 px-4 py-12 text-center text-sm text-slate-500">
-          All widgets are hidden. Open Widgets to show a card.
+          No card is on the dashboard. Open the Widget Library to add one.
         </div>
       )}
       {open && (
-        <Drawer
-          title="Dashboard Widgets"
-          subtitle="Choose which cards appear on your dashboard."
-          subtitlePlacement="below"
+        <DashboardWidgetLibrary
+          items={draft}
+          disabled={saving}
+          onAdd={addFromLibrary}
+          onRemove={(id) => update(id, { visible: false })}
           onClose={() => setOpen(false)}
-          footer={
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setOpen(false)}
-              size="sm"
-            >
-              Done
-            </Button>
-          }
-        >
-          <div className="divide-y divide-slate-100">
-            {draft.map((item) => (
-              <div key={item.id} className="py-4 first:pt-0">
-                <Checkbox
-                  label={item.label}
-                  checked={item.visible}
-                  disabled={saving}
-                  onChange={(visible) => update(item.id, { visible })}
-                />
-              </div>
-            ))}
-          </div>
-        </Drawer>
+        />
       )}
       <span role="status" className="sr-only">
         {dragging

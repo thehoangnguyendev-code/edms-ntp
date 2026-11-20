@@ -1,45 +1,25 @@
-﻿import React, { useState } from 'react';
-import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
-import { IntegrationConfig } from '../types';
-import { useEffect } from 'react';
-import { Select } from '@/components/ui/select/Select';
-import { Checkbox } from '@/components/ui/checkbox/Checkbox';
+﻿import React, { useEffect, useState } from 'react';
+import { IconAlertTriangle, IconChevronDown, IconDatabase, IconEye, IconEyeOff, IconNetwork, IconPlugConnected, IconServer } from '@tabler/icons-react';
+import { CONTROL_STATE_CLASSES } from '@/components/ui/controlState';
+import { Badge } from '@/components/ui/badge/Badge';
 import { Button } from '@/components/ui/button/Button';
+import { Collapsible } from '@/components/ui/collapsible';
 import { useToast } from '@/components/ui/toast/Toast';
-import {
-  Eye,
-  EyeOff,
-  Cloud,
-} from 'lucide-react';
-import { settingsApi, type StorageTestPayload } from '@/services/api/settings';
-import { Switch } from '@/components/ui/switch/Switch';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Types & Constants
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface FolderItem {
-  id: string;
-  name: string;
-  path: string;
-  webUrl: string;
-}
+import { settingsApi } from '@/services/api/settings';
+import type { IntegrationConfig } from '../types';
+import type { IntegrationChecksController } from '../useIntegrationChecks';
+import { IntegrationSectionCard } from './IntegrationSectionCard';
+import { IntegrationStatusCard } from './IntegrationStatusCard';
+import { RetentionControl } from './RetentionControl';
+import { StorageLayoutTable } from './StorageLayoutTable';
+import { StorageProviderCards } from './StorageProviderCards';
+import { buildNasUncPath, buildStorageTestPayload, canTestStorage, retentionYearsOf, storageSubject } from './storageIntegration';
 
 type StoragePathPreview = Awaited<ReturnType<typeof settingsApi.getStoragePathPreview>>;
+type Storage = IntegrationConfig['storage'];
 
-/** The longest retention the object storage accepts; the settings call it Permanent. */
-const MAX_RETENTION_YEARS = 100;
-/** Years offered when Permanent is switched off. */
-const DEFAULT_FIXED_RETENTION_YEARS = 5;
-
-const buildNasUncPath = (host?: string, shareName?: string) => {
-  const cleanedHost = (host || '').trim().replace(/^\\\\+/, '').replace(/^smb:\/\//i, '').replace(/[\\/]+$/, '');
-  const cleanedShare = (shareName || '').trim().replace(/^[\\/]+/, '').replace(/[\\/]+$/, '');
-  if (!cleanedHost || !cleanedShare) {
-    return '';
-  }
-  return `\\\\${cleanedHost}\\${cleanedShare}`;
-};
+const INPUT_CLASS = 'w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500';
+const LABEL_CLASS = 'block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize';
 
 const getErrorMessage = (error: unknown): string => {
   if (error && typeof error === 'object') {
@@ -55,89 +35,59 @@ const getErrorMessage = (error: unknown): string => {
   return 'Storage connection test failed.';
 };
 
-const buildStorageTestPayload = (storage: IntegrationConfig['storage']): StorageTestPayload => {
-  switch (storage.provider) {
-    case 'nas':
-      return {
-        provider: 'nas',
-        nasHost: storage.nasHost,
-        nasShareName: storage.nasShareName,
-        nasDomain: storage.nasDomain,
-        nasPath: storage.nasPath?.trim() || buildNasUncPath(storage.nasHost, storage.nasShareName),
-        nasUsername: storage.nasUsername,
-        nasPassword: storage.nasPassword,
-      };
-    case 'minio':
-      return {
-        provider: 'minio',
-        minioEndpoint: storage.minioEndpoint || '',
-        minioBucket: storage.minioBucket || '',
-        minioAccessKeyId: storage.minioAccessKeyId || '',
-        minioSecretAccessKey: storage.minioSecretAccessKey || '',
-        minioRetentionYears: storage.minioRetentionYears || MAX_RETENTION_YEARS,
-      };
-    default:
-      return { provider: 'local' };
-  }
+const SecretInput: React.FC<{ id: string; value: string; placeholder: string; label: string; onChange: (value: string) => void }> = ({ id, value, placeholder, label, onChange }) => {
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="relative">
+      <input id={id} type={shown ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)} className={`${INPUT_CLASS} pr-10`} placeholder={placeholder} />
+      <button
+        type="button"
+        onClick={() => setShown(!shown)}
+        aria-label={shown ? `Hide ${label}` : `Show ${label}`}
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 transition-colors hover:text-slate-600"
+      >
+        {shown ? <IconEyeOff className="h-4 w-4" /> : <IconEye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
 };
 
 interface IntegrationTabProps {
   config: IntegrationConfig;
   onChange: (config: IntegrationConfig) => void;
+  /** What was last saved: the retention control says when its value differs from it. */
+  savedStorage?: Storage;
+  /** The last "Test connection" result of each integration, kept by the server. */
+  checks: IntegrationChecksController;
 }
 
-
-
-
-export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange }) => {
+export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange, savedStorage, checks }) => {
   const { showToast } = useToast();
-  const [showMinioSecretAccessKey, setShowMinioSecretAccessKey] = useState(false);
-  const [showNasPassword, setShowNasPassword] = useState(false);
   const [testingStorage, setTestingStorage] = useState(false);
+  const [endpointHelpOpen, setEndpointHelpOpen] = useState(false);
   const [storagePathPreview, setStoragePathPreview] = useState<StoragePathPreview | null>(null);
+  const { storage } = config;
 
   const handleTestStorageConnection = async () => {
     setTestingStorage(true);
     try {
-      const response = await settingsApi.testStorageConnection(buildStorageTestPayload(config.storage));
+      const response = await settingsApi.testStorageConnection(buildStorageTestPayload(storage));
       if (response.success) {
-        showToast({
-          type: 'success',
-          title: 'Success',
-          message: response.message || 'Storage connection test successful.',
-        });
+        showToast({ type: 'success', title: 'Success', message: response.message || 'Storage connection test successful.' });
       } else {
-        showToast({
-          type: 'error',
-          title: 'Error',
-          message: response.message || 'Storage connection test failed.',
-        });
+        showToast({ type: 'error', title: 'Error', message: response.message || 'Storage connection test failed.' });
       }
     } catch (error) {
-      const errorMsg = getErrorMessage(error);
-      showToast({
-        type: 'error',
-        title: 'Connection Failed',
-        message: errorMsg,
-      });
+      showToast({ type: 'error', title: 'Connection Failed', message: getErrorMessage(error) });
     } finally {
       setTestingStorage(false);
+      // the server keeps what this test found (success or failure), so the card shows it after the toast is gone
+      void checks.reload();
     }
   };
 
-  const handleStorageChange = (key: keyof IntegrationConfig['storage'], value: any) => {
-    onChange({
-      ...config,
-      storage: { ...config.storage, [key]: value },
-    });
-  };
-
-  const applyMinioEndpointPreset = (value: string) => {
-    handleStorageChange('minioEndpoint', value);
-  };
-
-  const handleChange = (key: keyof IntegrationConfig, value: any) => {
-    onChange({ ...config, [key]: value });
+  const handleStorageChange = (key: keyof Storage, value: Storage[keyof Storage]) => {
+    onChange({ ...config, storage: { ...storage, [key]: value } });
   };
 
   useEffect(() => {
@@ -152,304 +102,164 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
     return () => { cancelled = true; };
   }, []);
 
-  return (
-    <div>
-      <h3 className="mb-3 text-sm font-semibold text-slate-900">Storage Integration</h3>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Select
-              label="Storage Provider"
-              value={config.storage.provider}
-              onChange={(val) => handleStorageChange('provider', val as any)}
-              options={[
-                { label: 'MinIO (recommended)', value: 'minio' },
-                { label: 'Network Attached Storage (NAS)', value: 'nas' },
-                { label: 'Local Server (not backed up)', value: 'local' },
-              ]}
-            />
-          </div>
-          {config.storage.provider === 'local' && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-              Files are written to a folder on the application server. That folder is not part of the backup, so a lost disk loses them. Use MinIO or a NAS for real records.
-            </div>
-          )}
-          {config.storage.provider === 'minio' && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    MinIO Endpoint
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.minioEndpoint || ''}
-                    onChange={(e) => handleStorageChange('minioEndpoint', e.target.value)}
-                    className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="http://localhost:9000"
-                  />
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline-emerald"
-                      size="sm"
-                      className="h-8 px-3 text-xs"
-                      onClick={() => applyMinioEndpointPreset('http://localhost:9000')}
-                    >
-                      Use localhost:9000
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline-emerald"
-                      size="sm"
-                      className="h-8 px-3 text-xs"
-                      onClick={() => applyMinioEndpointPreset('http://minio:9000')}
-                    >
-                      Use minio:9000
-                    </Button>
-                  </div>
-                  <p className="mt-2 text-xs text-slate-500 space-y-1">
-                    <span className="block">
-                      This is the MinIO S3 API endpoint that the backend will use when testing and saving the configuration.
-                    </span>
-                    <span className="block">
-                      Use <span className="font-medium text-slate-700">http://localhost:9000</span> when the backend runs locally on your machine.
-                    </span>
-                    <span className="block">
-                      Use <span className="font-medium text-slate-700">http://minio:9000</span> when the backend runs inside Docker Compose and connects to the MinIO container over the internal Docker network.
-                    </span>
-                    <span className="block">
-                      Do not use port <span className="font-medium text-slate-700">9001</span>; that is the MinIO Console, not the S3 API.
-                    </span>
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Bucket Name
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.minioBucket || ''}
-                    onChange={(e) => handleStorageChange('minioBucket', e.target.value)}
-                    className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="eqms-gmp-revisions"
-                  />
-                  <p className="mt-1 text-xs text-slate-500">
-                    A dedicated bucket. The system enables Versioning and Object Lock Compliance.
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Access Key ID
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.minioAccessKeyId || ''}
-                    onChange={(e) => handleStorageChange('minioAccessKeyId', e.target.value)}
-                    className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="eqms-minio"
-                  />
-                  <p className="mt-1 text-xs text-slate-500">
-                    MinIO service-account access key with bucket configuration and object read/write permissions.
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Secret Access Key
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showMinioSecretAccessKey ? 'text' : 'password'}
-                      value={config.storage.minioSecretAccessKey || ''}
-                      onChange={(e) => handleStorageChange('minioSecretAccessKey', e.target.value)}
-                      className="w-full h-9 px-3 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="eqms-minio-secret"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowMinioSecretAccessKey(!showMinioSecretAccessKey)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showMinioSecretAccessKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Retention Period
-                  </label>
-                  <div className="flex h-9 items-center gap-3">
-                    <Switch
-                      size="sm"
-                      checked={(config.storage.minioRetentionYears ?? MAX_RETENTION_YEARS) >= MAX_RETENTION_YEARS}
-                      onChange={(permanent) =>
-                        handleStorageChange('minioRetentionYears', permanent ? MAX_RETENTION_YEARS : DEFAULT_FIXED_RETENTION_YEARS)
-                      }
-                    />
-                    <span className="text-xs sm:text-sm text-slate-700">Permanent</span>
-                    {(config.storage.minioRetentionYears ?? MAX_RETENTION_YEARS) < MAX_RETENTION_YEARS && (
-                      <input
-                        type="number"
-                        min={1}
-                        max={MAX_RETENTION_YEARS - 1}
-                        value={config.storage.minioRetentionYears ?? DEFAULT_FIXED_RETENTION_YEARS}
-                        onChange={(e) =>
-                          handleStorageChange(
-                            'minioRetentionYears',
-                            Math.min(Math.max(Number(e.target.value || DEFAULT_FIXED_RETENTION_YEARS), 1), MAX_RETENTION_YEARS - 1),
-                          )
-                        }
-                        className="h-9 w-24 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                        aria-label="Retention period in years"
-                      />
-                    )}
-                  </div>
-                  <p className="mt-1 text-xs text-slate-500">
-                    WORM retention in Compliance Mode. Permanent is the longest period the storage allows ({MAX_RETENTION_YEARS} years).
-                    Retained objects cannot be shortened or deleted by anyone, administrators included, before it ends. A change
-                    applies to objects stored after it; objects already stored keep the period they were written with.
-                  </p>
-                </div>
-              </div>
-              <div className="pt-2 border-t border-slate-200 space-y-4">
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-900">Storage Layout</h4>
-                  <p className="mt-1 text-xs text-slate-500">
-                    The folder structure is fixed by the system and cannot be changed here. Every file is stored under one of the
-                    registered data domains below, which keeps backup, restore and reconciliation reliable. A folder appears when
-                    the first file is stored in it.
-                  </p>
-                </div>
-                <div className="rounded-lg border border-sky-200 bg-sky-50 px-3.5 py-3">
-                  <p className="text-xs font-semibold text-sky-900">Object-key examples</p>
-                  <p className="mt-1 text-xs leading-relaxed text-sky-800">
-                    Generated by the server with the production path builder. Records are written to the locked records bucket;
-                    templates to the templates bucket.
-                  </p>
-                  <dl className="mt-3 grid grid-cols-1 gap-x-5 gap-y-2 lg:grid-cols-2">
-                    {[
-                      ['Documents', storagePathPreview?.documents],
-                      ['Controlled Copies', storagePathPreview?.controlledCopies],
-                      ['Templates', storagePathPreview?.templates],
-                      ['Training (reserved)', storagePathPreview?.training],
-                      ['Audit evidence (reserved)', storagePathPreview?.auditEvidence],
-                    ].map(([label, path]) => (
-                      <div key={label} className="min-w-0">
-                        <dt className="text-2xs font-semibold uppercase tracking-wide text-sky-700">{label}</dt>
-                        <dd className="mt-0.5 break-all font-mono text-2xs text-slate-700">{path || 'Loading server-generated path…'}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </div>
-              </div>
-            </div>
-          )}
-          {config.storage.provider === 'nas' && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    NAS Host / IP
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.nasHost || ''}
-                    onChange={(e) => handleStorageChange('nasHost', e.target.value)}
-                    className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                    placeholder="ProjectT7 or 10.0.80.254"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Shared Folder Name
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.nasShareName || ''}
-                    onChange={(e) => handleStorageChange('nasShareName', e.target.value)}
-                    className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                    placeholder="ShareT7 or Documents"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Domain / Workgroup (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.nasDomain || ''}
-                    onChange={(e) => handleStorageChange('nasDomain', e.target.value)}
-                    className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                    placeholder="WORKGROUP or DOMAIN"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Username
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.nasUsername || ''}
-                    onChange={(e) => handleStorageChange('nasUsername', e.target.value)}
-                    className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                    placeholder="nas_user"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showNasPassword ? 'text' : 'password'}
-                      value={config.storage.nasPassword || ''}
-                      onChange={(e) => handleStorageChange('nasPassword', e.target.value)}
-                      className="w-full h-9 px-3 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="••••••••"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNasPassword(!showNasPassword)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showNasPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Resolved SMB Path
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.nasPath || buildNasUncPath(config.storage.nasHost, config.storage.nasShareName)}
-                    readOnly
-                    className={CONTROL_STATE_CLASSES.readonlyField}
-                    placeholder="\\\\ProjectT7\\ShareT7"
-                  />
-                  <p className="mt-1 text-xs text-slate-500">
-                    Use the exact Synology shared folder name. The backend connects to this SMB path directly.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-          <div className="flex justify-end pt-2">
-            <Button
-              variant="outline-emerald"
-              size="sm"
-              loading={testingStorage}
-              loadingText="Testing..."
-              onClick={handleTestStorageConnection}
-              className="gap-2 shadow-sm"
-              disabled={
-                (config.storage.provider === 'nas' && !((config.storage.nasPath || buildNasUncPath(config.storage.nasHost, config.storage.nasShareName)).trim()))
-                || (config.storage.provider === 'minio' && (!config.storage.minioEndpoint?.trim() || !config.storage.minioBucket?.trim() || !config.storage.minioAccessKeyId?.trim() || !config.storage.minioSecretAccessKey?.trim()))
-              }
+  const provider = storage.provider;
+  const header = provider === 'minio'
+    ? { icon: <IconDatabase className="h-5 w-5" />, title: `MinIO · ${storage.minioBucket?.trim() || 'no bucket yet'}`, subtitle: storage.minioEndpoint?.trim() || 'No endpoint yet' }
+    : provider === 'nas'
+      ? { icon: <IconNetwork className="h-5 w-5" />, title: 'Network Attached Storage', subtitle: (storage.nasPath || buildNasUncPath(storage.nasHost, storage.nasShareName)) || 'No shared folder yet' }
+      : { icon: <IconServer className="h-5 w-5" />, title: 'Local Server', subtitle: 'A folder on the application server' };
+
+  const endpointHelp = (
+    <div className="mt-2 space-y-1 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+      <p>This is the MinIO S3 API endpoint that the backend will use when testing and saving the configuration.</p>
+      <p>Use <span className="font-medium text-slate-700">http://localhost:9000</span> when the backend runs locally on your machine.</p>
+      <p>Use <span className="font-medium text-slate-700">http://minio:9000</span> when the backend runs inside Docker Compose and connects to the MinIO container over the internal Docker network.</p>
+      <p>Do not use port <span className="font-medium text-slate-700">9001</span>; that is the MinIO Console, not the S3 API.</p>
+    </div>
+  );
+
+  const minioFields = (
+    <>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label className={LABEL_CLASS} htmlFor="storage-minio-endpoint">MinIO Endpoint</label>
+          <input id="storage-minio-endpoint" type="text" value={storage.minioEndpoint || ''} onChange={(e) => handleStorageChange('minioEndpoint', e.target.value)} className={INPUT_CLASS} placeholder="http://localhost:9000" />
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-slate-500">Quick fill</span>
+            <Button type="button" variant="outline-emerald" size="xs" className="whitespace-nowrap" onClick={() => handleStorageChange('minioEndpoint', 'http://localhost:9000')}>localhost:9000</Button>
+            <Button type="button" variant="outline-emerald" size="xs" className="whitespace-nowrap" onClick={() => handleStorageChange('minioEndpoint', 'http://minio:9000')}>minio:9000</Button>
+            <button
+              type="button"
+              onClick={() => setEndpointHelpOpen(!endpointHelpOpen)}
+              aria-expanded={endpointHelpOpen}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800"
             >
-              Test Storage Connect
-            </Button>
+              Which endpoint?
+              <IconChevronDown className={`h-3.5 w-3.5 transition-transform ${endpointHelpOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+          <Collapsible open={endpointHelpOpen}>{endpointHelp}</Collapsible>
+        </div>
+        <div>
+          <label className={LABEL_CLASS} htmlFor="storage-minio-bucket">Bucket Name</label>
+          <input id="storage-minio-bucket" type="text" value={storage.minioBucket || ''} onChange={(e) => handleStorageChange('minioBucket', e.target.value)} className={INPUT_CLASS} placeholder="eqms-gmp-revisions" />
+          <p className="mt-1 text-xs text-slate-500">A dedicated bucket. The system enables Versioning and Object Lock Compliance.</p>
+        </div>
+      </div>
+      <div className="border-t border-slate-100 pt-4">
+        <p className="mb-3 text-2xs font-semibold uppercase tracking-wide text-slate-500 md:text-xs">Credentials</p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <label className={LABEL_CLASS} htmlFor="storage-minio-access-key">Access Key ID</label>
+            <input id="storage-minio-access-key" type="text" value={storage.minioAccessKeyId || ''} onChange={(e) => handleStorageChange('minioAccessKeyId', e.target.value)} className={INPUT_CLASS} placeholder="eqms-minio" />
+            <p className="mt-1 text-xs text-slate-500">MinIO service-account access key with bucket configuration and object read/write permissions.</p>
+          </div>
+          <div>
+            <label className={LABEL_CLASS} htmlFor="storage-minio-secret">Secret Access Key</label>
+            <SecretInput id="storage-minio-secret" value={storage.minioSecretAccessKey || ''} placeholder="eqms-minio-secret" label="secret access key" onChange={(value) => handleStorageChange('minioSecretAccessKey', value)} />
           </div>
         </div>
+      </div>
+    </>
+  );
+
+  const nasFields = (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="md:col-span-2">
+        <label className={LABEL_CLASS} htmlFor="storage-nas-host">NAS Host / IP</label>
+        <input id="storage-nas-host" type="text" value={storage.nasHost || ''} onChange={(e) => handleStorageChange('nasHost', e.target.value)} className={INPUT_CLASS} placeholder="ProjectT7 or 10.0.80.254" />
+      </div>
+      <div className="md:col-span-2">
+        <label className={LABEL_CLASS} htmlFor="storage-nas-share">Shared Folder Name</label>
+        <input id="storage-nas-share" type="text" value={storage.nasShareName || ''} onChange={(e) => handleStorageChange('nasShareName', e.target.value)} className={INPUT_CLASS} placeholder="ShareT7 or Documents" />
+      </div>
+      <div>
+        <label className={LABEL_CLASS} htmlFor="storage-nas-domain">Domain / Workgroup (optional)</label>
+        <input id="storage-nas-domain" type="text" value={storage.nasDomain || ''} onChange={(e) => handleStorageChange('nasDomain', e.target.value)} className={INPUT_CLASS} placeholder="WORKGROUP or DOMAIN" />
+      </div>
+      <div>
+        <label className={LABEL_CLASS} htmlFor="storage-nas-user">Username</label>
+        <input id="storage-nas-user" type="text" value={storage.nasUsername || ''} onChange={(e) => handleStorageChange('nasUsername', e.target.value)} className={INPUT_CLASS} placeholder="nas_user" />
+      </div>
+      <div>
+        <label className={LABEL_CLASS} htmlFor="storage-nas-password">Password</label>
+        <SecretInput id="storage-nas-password" value={storage.nasPassword || ''} placeholder="••••••••" label="password" onChange={(value) => handleStorageChange('nasPassword', value)} />
+      </div>
+      <div className="md:col-span-2">
+        <label className={LABEL_CLASS} htmlFor="storage-nas-path">Resolved SMB Path</label>
+        <input
+          id="storage-nas-path"
+          type="text"
+          value={storage.nasPath || buildNasUncPath(storage.nasHost, storage.nasShareName)}
+          readOnly
+          className={CONTROL_STATE_CLASSES.readonlyField}
+          placeholder="\\\\ProjectT7\\ShareT7"
+        />
+        <p className="mt-1 text-xs text-slate-500">Use the exact Synology shared folder name. The backend connects to this SMB path directly.</p>
+      </div>
+    </div>
+  );
+
+  const localNote = (
+    <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+      <IconAlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+      <p>Files are written to a folder on the application server. That folder is not part of the backup, so a lost disk loses them. Use MinIO or a NAS for real records.</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4 md:space-y-6">
+      <IntegrationStatusCard
+        icon={header.icon}
+        title={header.title}
+        subtitle={header.subtitle}
+        badge={provider === 'local' ? <Badge semantic="warning">Not backed up</Badge> : undefined}
+        action={
+          <Button
+            variant="outline-emerald"
+            size="sm"
+            loading={testingStorage}
+            loadingText="Testing..."
+            onClick={handleTestStorageConnection}
+            className="gap-1.5"
+            disabled={!canTestStorage(storage)}
+            title={canTestStorage(storage) ? undefined : 'Fill in the connection fields first'}
+          >
+            <IconPlugConnected className="h-4 w-4" />
+            Test connection
+          </Button>
+        }
+        check={checks.checks.STORAGE}
+        currentSubject={storageSubject(storage)}
+        emptyText="No connection test has been run yet."
+      />
+
+      <IntegrationSectionCard title="Connection" description="Where the files are stored and how the system signs in.">
+        <StorageProviderCards value={provider} onChange={(value) => handleStorageChange('provider', value)} />
+        {provider === 'minio' && minioFields}
+        {provider === 'nas' && nasFields}
+        {provider === 'local' && localNote}
+      </IntegrationSectionCard>
+
+      {provider === 'minio' && (
+        <IntegrationSectionCard title="Retention" description="How long stored records are locked.">
+          <RetentionControl
+            years={retentionYearsOf(storage)}
+            savedYears={retentionYearsOf(savedStorage ?? storage)}
+            onChange={(years) => handleStorageChange('minioRetentionYears', years)}
+          />
+        </IntegrationSectionCard>
+      )}
+
+      {provider === 'minio' && (
+        <IntegrationSectionCard title="Layout" description="How files are arranged in the buckets.">
+          <p className="text-xs text-slate-500">
+            The folder structure is fixed by the system and cannot be changed here. Every file is stored under one of the registered data domains below, which keeps backup,
+            restore and reconciliation reliable. A folder appears when the first file is stored in it. The keys are generated by the server with the production path builder.
+          </p>
+          <StorageLayoutTable preview={storagePathPreview} />
+        </IntegrationSectionCard>
+      )}
     </div>
   );
 };

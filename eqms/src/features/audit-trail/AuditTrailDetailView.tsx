@@ -341,12 +341,12 @@ export const AuditTrailDetailView: React.FC<{
                 </div>
                 <div className="hidden shrink-0 flex-wrap justify-end gap-1.5 sm:flex">
                   <Badge color="slate" size="sm">{moduleLabel || "General"}</Badge>
-                  {isSigned && <Badge color="emerald" size="sm" showDot>Signed</Badge>}
+                  {isSigned && <Badge color="emerald" size="sm">Signed</Badge>}
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5 sm:hidden">
                 <Badge color="slate" size="sm">{moduleLabel || "General"}</Badge>
-                {isSigned && <Badge color="emerald" size="sm" showDot>Signed</Badge>}
+                {isSigned && <Badge color="emerald" size="sm">Signed</Badge>}
               </div>
               <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 sm:text-sm">
                 <span className="tabular-nums">{formatDateTime(r.timestamp) || "-"}</span>
@@ -451,7 +451,7 @@ export const AuditTrailDetailView: React.FC<{
                         return (
                           <TableMarkup.Row key={i}>
                             <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 md:px-5">
-                              <Badge color={isGranted ? "emerald" : "red"} size="sm" showDot>{isGranted ? "Granted" : "Revoked"}</Badge>
+                              <Badge color={isGranted ? "emerald" : "red"} size="sm">{isGranted ? "Granted" : "Revoked"}</Badge>
                             </TableMarkup.Cell>
                             <TableMarkup.Cell className="px-4 py-3 text-xs font-medium text-slate-900 sm:text-sm md:pr-5">
                               {formatAuditChangeValue(change.field, change.newValue ?? change.oldValue)}

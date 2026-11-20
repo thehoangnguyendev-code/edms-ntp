@@ -2,6 +2,7 @@ import { LayoutGrid, LogIn, Palette, PanelLeft, SlidersHorizontal } from 'lucide
 import type { TabItem } from '@/components/ui/tabs';
 import type { GeneralConfig } from '../types';
 import { HISTORY_TAB } from './ConfigTabs';
+import { IconBlocks, IconLogin2 } from '@tabler/icons-react';
 
 /** The tabs of the General page, in order. The id is what the address carries (?tab=...). */
 export const GENERAL_TAB_IDS = ['branding', 'sign-in', 'appearance', 'module-display', 'system', 'history'] as const;
@@ -10,9 +11,9 @@ export const DEFAULT_GENERAL_TAB: GeneralTabId = 'branding';
 
 export const GENERAL_TABS: ReadonlyArray<TabItem & { id: GeneralTabId }> = [
   { id: 'branding', label: 'Branding', icon: Palette },
-  { id: 'sign-in', label: 'Sign-in Screen', icon: LogIn },
+  { id: 'sign-in', label: 'Sign-in Screen', icon: IconLogin2 },
   { id: 'appearance', label: 'Appearance', icon: PanelLeft },
-  { id: 'module-display', label: 'Module Display', icon: LayoutGrid },
+  { id: 'module-display', label: 'Module Display', icon: IconBlocks },
   { id: 'system', label: 'System', icon: SlidersHorizontal },
   HISTORY_TAB,
 ];
@@ -39,7 +40,7 @@ const FIELDS: Record<GeneralTabId, TabFields> = {
   },
   'module-display': {
     top: [],
-    appearance: ['trainingMaterialsLayout', 'knowledgeFolderNames', 'knowledgeSidebarFolderNames', 'knowledgeOpenInNewTab', 'auditTabView', 'auditTabTimelineStyle'],
+    appearance: ['trainingMaterialsLayout', 'knowledgeFolderNames', 'knowledgeSidebarFolderNames', 'knowledgeOpenInNewTab', 'notificationInboxLayout', 'auditTabView', 'auditTabTimelineStyle'],
   },
   system: { top: ['adminEmail', 'locale', 'maintenanceMode'], appearance: [] },
   history: { top: [], appearance: [] },

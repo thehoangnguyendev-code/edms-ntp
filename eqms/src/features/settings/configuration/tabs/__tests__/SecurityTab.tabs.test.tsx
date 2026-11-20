@@ -73,6 +73,25 @@ describe('Security tabs', () => {
     const marked = screen.getAllByRole('tab').filter((t) => t.querySelector('[aria-label="Not saved yet"]')).map((t) => t.textContent);
     expect(marked).toEqual(['Password Rules', 'Sessions & Accounts', 'Network Access']);
   });
+
+  it('has a limit for wrong passwords when signing, apart from the limit at sign-in, and marks the tab when only it changes', () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<SecurityTab config={config} onChange={onChange} activeTab="sessions-accounts" />);
+    expect(screen.getByText('Maximum Login Attempts')).toBeTruthy();
+    expect(screen.getByText('Maximum Signature Attempts')).toBeTruthy();
+    const loginLimit = screen.getByText('Maximum Login Attempts').parentElement!.querySelector('input') as HTMLInputElement;
+    const signatureLimit = screen.getByText('Maximum Signature Attempts').parentElement!.querySelector('input') as HTMLInputElement;
+    expect(loginLimit.value).toBe('5');
+    expect(signatureLimit.value).toBe('5'); // an older configuration without the setting shows the default
+
+    fireEvent.change(signatureLimit, { target: { value: '4' } });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ maxSignatureAttempts: 4, maxLoginAttempts: 5 }));
+
+    const draft = { ...config, maxSignatureAttempts: 4 } as SecurityConfig;
+    rerender(<SecurityTab config={draft} savedConfig={config} onChange={vi.fn()} activeTab="sessions-accounts" />);
+    const marked = screen.getAllByRole('tab').filter((tab) => tab.querySelector('[aria-label="Not saved yet"]')).map((tab) => tab.textContent);
+    expect(marked).toEqual(['Sessions & Accounts']);
+  });
 });
 
 describe('tab helpers', () => {

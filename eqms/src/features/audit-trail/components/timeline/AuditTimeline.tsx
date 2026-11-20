@@ -28,6 +28,7 @@ import { Avatar as ProfileAvatar } from "@/components/ui/avatar";
 import type { AuditActionKind } from "../../utils/actionKind";
 import type { AuditTrailRecord } from "../../types";
 import { groupByDay, type AuditTimelineItem, type AuditTimelineStyle } from "./auditTimelineModel";
+import { formatAuditModuleLabel } from "../../utils/actionBadge";
 import "./auditTimeline.css";
 
 /** The room the page keeps under the panel (its footer and the footer of the panel), and the least and the most the panel is high, in pixels. */
@@ -187,7 +188,7 @@ const CompactMark: React.FC<MarkProps> = ({ item, onOpenDetails, onExport }) => 
           </span>
           {item.record.module && (
             <span>
-              <b>Module</b> {item.record.module}
+              <b>Module</b> {formatAuditModuleLabel(item.record.module)}
             </span>
           )}
           {item.detail && (

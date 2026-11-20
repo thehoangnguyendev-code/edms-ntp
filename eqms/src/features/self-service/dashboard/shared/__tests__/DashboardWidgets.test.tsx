@@ -22,18 +22,19 @@ const edit = async () => {
 const order = () => Array.from(document.querySelectorAll<HTMLElement>('[data-dashboard-widget]')).map(item => item.dataset.dashboardWidget);
 beforeEach(() => { Object.defineProperty(document, 'getAnimations', { configurable: true, value: () => [] }); Object.defineProperty(Element.prototype, 'getAnimations', { configurable: true, value: () => [] }); vi.clearAllMocks(); preferences.get.mockResolvedValue({ widgets: [] }); preferences.save.mockResolvedValue(undefined); });
 
-it('previews width on the card, keeps the drawer visibility-only and saves only authorized preferences', async () => {
+it('previews width on the card, keeps the library about presence only and saves only authorized preferences', async () => {
   preferences.get.mockResolvedValue({ widgets: [{ id: 'admin-kpis', visible: true, width: 'full' }] });
   render(<DashboardWidgets widgets={widgets} />);
   await edit();
   expect(screen.queryByRole('dialog')).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Widgets' }));
-  expect(within(screen.getByRole('dialog')).queryByRole('tablist')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Widget Library' }));
+  expect(within(screen.getByRole('dialog')).queryByRole('tablist', { name: /Width of/ })).toBeNull(); // a card's size is chosen on the card
   fireEvent.click(screen.getByRole('button', { name: 'Done' }));
   fireEvent.click(within(screen.getByRole('tablist', { name: 'Width of My documents' })).getByRole('tab', { name: 'Full' }));
   expect(document.querySelector('[data-dashboard-widget="my-documents"]')).toHaveAttribute('data-widget-width', 'full');
-  fireEvent.click(screen.getByRole('button', { name: 'Widgets' }));
-  fireEvent.click(screen.getByLabelText('My documents'));
+  fireEvent.click(screen.getByRole('button', { name: 'Widget Library' }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Document Control/ }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove My documents' }));
   expect(document.querySelector('[data-dashboard-widget="my-documents"]')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Done' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save Layout' }));
@@ -90,4 +91,58 @@ it('keeps touch scrolling available on card content while the grip owns dragging
   act(() => screen.getByText('Allowed content').dispatchEvent(event));
   expect(event.defaultPrevented).toBe(false);
   expect(screen.getByRole('button', { name: 'Save Layout' })).toBeEnabled();
+});
+
+const withLibrary = [
+  ...widgets,
+  { id: 'backup-ledger', label: 'Backup ledger', width: 'half' as const, defaultVisible: false, content: <p>Ledger content</p> },
+];
+
+it('keeps a library card off the dashboard until it is added, then puts it last and saves it as shown', async () => {
+  render(<DashboardWidgets widgets={withLibrary} />); await edit();
+  expect(order()).toEqual(['my-documents', 'pending-work']);
+  fireEvent.click(screen.getByRole('button', { name: 'Widget Library' }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Backup & Restore/ }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Add Backup ledger' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+  expect(order()).toEqual(['my-documents', 'pending-work', 'backup-ledger']);
+  fireEvent.click(screen.getByRole('button', { name: 'Save Layout' }));
+  await waitFor(() => expect(preferences.save).toHaveBeenCalledWith('dashboard-layout', { widgets: expect.arrayContaining([{ id: 'backup-ledger', visible: true, width: 'half' }]) }));
+});
+
+it('does not bring a library card back for a person whose saved layout predates it', async () => {
+  preferences.get.mockResolvedValue({ widgets: [{ id: 'my-documents', visible: true, width: 'half' }, { id: 'pending-work', visible: true, width: 'half' }] });
+  render(<DashboardWidgets widgets={withLibrary} />);
+  await waitFor(() => expect(order()).toEqual(['my-documents', 'pending-work']));
+  expect(screen.queryByText('Ledger content')).toBeNull();
+});
+
+it('lists the cards under their module, closed until the module is opened, and a search opens the modules it finds', async () => {
+  render(<DashboardWidgets widgets={withLibrary} />); await edit();
+  fireEvent.click(screen.getByRole('button', { name: 'Widget Library' }));
+  const dialog = within(screen.getByRole('dialog'));
+  const documents = dialog.getByRole('button', { name: /Document Control/ });
+  const backup = dialog.getByRole('button', { name: /Backup & Restore/ });
+  expect(documents).toHaveTextContent('2 of 2 added'); // my-documents and pending-work are on the dashboard
+  expect(backup).toHaveTextContent('0 of 1 added');
+  expect(backup).toHaveAttribute('aria-expanded', 'false');
+  expect(dialog.queryByText('Backup ledger')).toBeNull();
+  fireEvent.click(backup);
+  expect(backup).toHaveAttribute('aria-expanded', 'true');
+  expect(await dialog.findByText('Backup ledger')).toBeInTheDocument();
+  fireEvent.click(backup);
+  await waitFor(() => expect(dialog.queryByText('Backup ledger')).toBeNull());
+  fireEvent.change(dialog.getByLabelText('Search cards'), { target: { value: 'ledger' } });
+  expect(await dialog.findByText('Backup ledger')).toBeInTheDocument(); // opened by the search
+  expect(dialog.queryByRole('button', { name: /Document Control/ })).toBeNull(); // a module with no match is not listed
+  fireEvent.change(dialog.getByLabelText('Search cards'), { target: { value: 'zzz' } });
+  expect(dialog.getByText('No card matches.')).toBeInTheDocument();
+});
+
+it('opens the library straight from the page, in edit mode', async () => {
+  render(<DashboardWidgets widgets={withLibrary} />);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Add Widgets' })).not.toBeDisabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Add Widgets' }));
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Save Layout' })).toBeInTheDocument();
 });

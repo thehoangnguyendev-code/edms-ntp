@@ -101,6 +101,14 @@ describe("Notifications Administration: three tabs, a list to open and edit, nev
     expect(screen.queryByRole("button", { name: /new|create|duplicate|delete/i })).toBeNull();
   });
 
+  it("filters by priority and asks the server for it", async () => {
+    renderAt("/settings/notifications");
+    await screen.findByText("Controlled Copy Recalled");
+    fireEvent.click((await screen.findAllByRole("combobox", { name: "Priority" }))[0]);
+    fireEvent.click(await screen.findByRole("option", { name: "High" }));
+    await waitFor(() => expect(administration.list).toHaveBeenLastCalledWith(expect.objectContaining({ priority: "HIGH", page: 1 })));
+  });
+
   it("limits the second tab to in-app notifications and the third to email, and the Channel filter cannot be changed", async () => {
     renderAt("/settings/notifications?tab=in-app");
     await screen.findByText("Controlled Copy Recalled");

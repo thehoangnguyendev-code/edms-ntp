@@ -16,6 +16,7 @@ import { objectNumbering } from "@/components/ui/breadcrumb/breadcrumbs/settings
 import { ROUTES } from "@/app/routes.constants";
 import { reportError } from "@/services/api/reportTemplates";
 import { objectNumberingApi, type ObjectNumberFormat } from "@/services/api/objectNumbering";
+import { moduleDisplayName } from "@/utils/moduleDisplay";
 
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 const inputClass =
@@ -145,7 +146,7 @@ export const ObjectNumberingView: React.FC = () => {
   const columns: DataTableColumn<ObjectNumberFormat>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => index + 1 },
     { id: "label", header: "Number", label: "Number", cell: (row) => <span className="font-medium text-slate-900">{row.label}</span> },
-    { id: "module", header: "Module", label: "Module", cellClassName: "text-slate-600", cell: (row) => row.module },
+    { id: "module", header: "Module", label: "Module", cellClassName: "text-slate-600", cell: (row) => moduleDisplayName(row.module) },
     {
       id: "format",
       header: "Format",

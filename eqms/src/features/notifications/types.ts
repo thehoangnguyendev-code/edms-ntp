@@ -24,6 +24,8 @@ export interface NotificationSummaryCounts {
   personal: number;
   system: number;
   byType: Record<string, number>;
+  /** How many notifications there are at each priority (low, medium, high, critical), read ones included. */
+  byPriority: Record<string, number>;
 }
 
 export interface NotificationSummaryApiResponse {
@@ -32,6 +34,7 @@ export interface NotificationSummaryApiResponse {
   personal?: number;
   system?: number;
   byType?: Record<string, number> | null;
+  byPriority?: Record<string, number> | null;
 }
 
 export const createEmptyNotificationSummaryCounts = (): NotificationSummaryCounts => ({
@@ -40,6 +43,7 @@ export const createEmptyNotificationSummaryCounts = (): NotificationSummaryCount
   personal: 0,
   system: 0,
   byType: {},
+  byPriority: {},
 });
 
 export const normalizeNotificationSummaryCounts = (
@@ -50,6 +54,7 @@ export const normalizeNotificationSummaryCounts = (
   personal: summary?.personal ?? 0,
   system: summary?.system ?? 0,
   byType: summary?.byType ?? {},
+  byPriority: summary?.byPriority ?? {},
 });
 
 export interface Notification {
@@ -75,9 +80,8 @@ export interface Notification {
   };
   metadata?: Record<string, unknown>;
   actionUrl?: string;
-  /** The icon (lucide:Name or tabler:Name) and the tone chosen for this kind of notification in Edit Notification; none means the icon of its kind. */
+  /** The icon (lucide:Name or tabler:Name) chosen for this kind of notification in Edit Notification; none means the icon of its kind. */
   icon?: string;
-  iconTone?: string;
 }
 
 export type NotificationFilterTab = 'all' | 'for-me' | 'system';

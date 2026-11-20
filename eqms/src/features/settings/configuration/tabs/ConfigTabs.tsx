@@ -49,7 +49,7 @@ export function ConfigTabs<T extends string>({ tabs, activeTab, onChange, change
         tabIdPrefix={`${idPrefix}-tab`}
         panelIdPrefix={`${idPrefix}-panel`}
       />
-      <div role="tabpanel" id={`${idPrefix}-panel-${activeTab}`} aria-labelledby={`${idPrefix}-tab-${activeTab}`} className="p-4 md:p-6">
+      <div role="tabpanel" id={`${idPrefix}-panel-${activeTab}`} aria-labelledby={`${idPrefix}-tab-${activeTab}`} className="p-4 md:p-5">
         {canReset && (
           <div role="status" className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 sm:text-sm">
             <span>This tab has changes that are not saved yet.</span>

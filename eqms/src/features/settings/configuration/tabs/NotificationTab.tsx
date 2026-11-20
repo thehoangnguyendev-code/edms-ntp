@@ -4,6 +4,7 @@ import { DeliveryFailuresTable } from './DeliveryFailuresTable';
 import { NotificationConfig } from '../types';
 import { FormField, Input } from '@/components/ui/form/ResponsiveForm';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
+import { FieldHint } from '@/components/ui/form/FieldHint';
 import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
 import { InlineLoading } from '@/components/ui/loading/Loading';
@@ -13,9 +14,10 @@ import type { SmtpConnectionTestPayload } from '@/services/api/settings';
 import { ConfigTabs, HISTORY_TAB, changedTabs, revertFields } from './ConfigTabs';
 import { ConfigHistory } from './ConfigHistory';
 import type { NotificationTabId } from './pageTabs';
+import { IconBellShare } from '@tabler/icons-react';
 
 const TABS = [
-  { id: 'channels-delivery', label: 'Channels & Delivery', icon: Bell },
+  { id: 'channels-delivery', label: 'Channels & Delivery', icon: IconBellShare },
   { id: 'email', label: 'Email (SMTP)', icon: Mail },
   HISTORY_TAB,
 ] as const;
@@ -127,7 +129,7 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
           <div>
             <h3 className="mb-3 text-sm font-semibold text-slate-900">In-App Notifications</h3>
             <Checkbox id="enableInAppNotifications" label="Enable In-App Notifications" checked={config.enableInAppNotifications} onChange={(checked) => handleChange('enableInAppNotifications', checked)} />
-            <p className="text-xs text-slate-500 ml-7">Display notifications within the application interface</p>
+            <FieldHint indent>Show notifications inside the application.</FieldHint>
             <div className="mt-4">
               <FormField label="Keep read notifications for (days)" hint="A notification that was read this many days ago is deleted every night. 0 keeps them for ever; otherwise 30 to 3650. Notifications that were never read are never deleted.">
                 <Input

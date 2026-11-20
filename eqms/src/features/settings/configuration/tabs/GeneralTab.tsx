@@ -2,6 +2,7 @@
 import { GeneralConfig } from '../types';
 import { Select } from '@/components/ui/select/Select';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
+import { FieldHint } from '@/components/ui/form/FieldHint';
 import { ImageIcon, PanelTop } from 'lucide-react';
 import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
@@ -10,6 +11,7 @@ import { DEFAULT_FOOTER_LEFT, DEFAULT_SYSTEM_HEADER_TITLE, type LoginCarouselCon
 import { Switch } from '@/components/ui/switch';
 import { AppShortcutSection } from './AppShortcutSection';
 import { AuditTabViewSection } from './AuditTabViewSection';
+import { NotificationInboxLayoutSection } from './NotificationInboxLayoutSection';
 import { ColorPickerInput } from '@/components/ui/color-picker/ColorPickerInput';
 import { DEFAULT_ALTERNATING_RECORD_COLOR } from '@/config/record-stripes';
 import { PageBackgroundEditor } from './PageBackgroundEditor';
@@ -350,23 +352,21 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                 checked={config.appearance?.showSidebarUserProfile??false}
                 onChange={(checked) => handleAppearanceChange('showSidebarUserProfile',checked)}
               />
-              <p className="ml-7 mt-1 text-xs text-slate-500">
-                Shows the current user&apos;s avatar, name and position. In collapsed mode, only the avatar is shown.
-              </p>
+              <FieldHint indent className="mt-1">Shows the user&apos;s avatar, name and position. Collapsed sidebar: avatar only.</FieldHint>
             </div>
             <div className="border-t border-slate-200 pt-6">
               <h3 className="mb-3 text-sm font-semibold text-slate-900">Desktop Filters</h3>
               <Checkbox id="compactDesktopFilters" label="Use compact desktop filters"
                 checked={config.appearance?.compactDesktopFilters??false}
                 onChange={(checked) => handleAppearanceChange('compactDesktopFilters',checked)} />
-              <p className="ml-7 mt-1 text-xs text-slate-500">Show Search and a Filter button. Select a field on the left, edit values on the right, then click Apply. Mobile filters are unchanged. Applies after Save.</p>
+              <FieldHint indent className="mt-1">Shows a Search box and a Filter button. Pick a field, set its values, then click Apply. Desktop only. Applies after Save.</FieldHint>
             </div>
             <div className="border-t border-slate-200 pt-6">
               <h3 className="mb-3 text-sm font-semibold text-slate-900">Record Lists</h3>
               <Checkbox id="alternatingRecordColors" label="Use alternating record colors"
                 checked={config.appearance?.alternatingRecordColors ?? false}
                 onChange={(checked) => handleAppearanceChange('alternatingRecordColors', checked)} />
-              <p className="ml-7 mt-1 text-xs text-slate-500">Apply a subtle background to alternating records after saving. Status and selection colors take priority.</p>
+              <FieldHint indent className="mt-1">Shades every other record. Status and selection colours stay on top. Applies after Save.</FieldHint>
               <div className="ml-7 mt-3 max-w-xs">
                 <ColorPickerInput label="Alternating row color" value={config.appearance?.alternatingRecordColor ?? DEFAULT_ALTERNATING_RECORD_COLOR}
                   onChange={(value) => handleAppearanceChange('alternatingRecordColor', value)} disabled={!config.appearance?.alternatingRecordColors} />
@@ -375,7 +375,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                 <Checkbox id="tableColumnDividers" label="Show vertical column dividers"
                   checked={config.appearance?.tableColumnDividers ?? false}
                   onChange={(checked) => handleAppearanceChange('tableColumnDividers', checked)} />
-                <p className="ml-7 mt-1 text-xs text-slate-500">Draw a vertical line between the columns of every table, besides the horizontal line between records. Applies after Save.</p>
+                <FieldHint indent className="mt-1">Adds a vertical line between table columns. Applies after Save.</FieldHint>
               </div>
             </div>
             <div className="border-t border-slate-200 pt-6">
@@ -433,9 +433,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                   ]}
                 />
               </div>
-              <p className="mt-1 text-xs text-slate-500">
-                How the materials of a training are shown on the New, planning and conduct screens. Table keeps a list with the actions on each row; Tiles shows a drop zone and a card for each material. Takes effect for every signed-in user right after you save.
-              </p>
+              <FieldHint className="mt-1">How training materials are shown. Table is a list with actions on each row; Tiles is a drop zone with a card per material. Applies to everyone after Save.</FieldHint>
             </div>
             <div className="border-t border-slate-200 pt-6">
               <h3 className="mb-3 text-sm font-semibold text-slate-900">Knowledge Base</h3>
@@ -468,10 +466,11 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                   checked={config.appearance?.knowledgeOpenInNewTab ?? true}
                   onChange={(checked) => handleAppearanceChange('knowledgeOpenInNewTab', checked)}
                 />
-                <p className="ml-7 mt-1 text-xs text-slate-500">Off: the Knowledge Base replaces the page you are on.</p>
+                <FieldHint indent className="mt-1">Off: the Knowledge Base replaces the current page.</FieldHint>
               </div>
             </div>
           </div>
+            <NotificationInboxLayoutSection config={config} onChange={(key, value) => handleAppearanceChange(key, value)} />
             <AuditTabViewSection config={config} onChange={(key, value) => handleAppearanceChange(key, value)} />
             {extra ? <div className="border-t border-slate-200 pt-6">{extra}</div> : null}
           </div>
@@ -555,9 +554,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                     checked={config.maintenanceMode}
                     onChange={(checked) => handleChange('maintenanceMode',checked)}
                   />
-                  <p className="text-xs text-slate-500 ml-7">
-                    When enabled, only administrators can access the system. Regular users will see a maintenance notice.
-                  </p>
+                  <FieldHint indent>Only administrators can get in. Other users see a maintenance notice.</FieldHint>
                 </div>
               </div>
             </div>

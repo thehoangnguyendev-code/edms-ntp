@@ -56,7 +56,7 @@ function RateBar({ rate }: { rate: WorkspaceRate }) {
         </span>
       </div>
       <div
-        className="mt-1 h-2 overflow-hidden rounded-full bg-slate-200"
+        className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
@@ -185,11 +185,8 @@ export function TrainingSessionWorkspaceShell({
         }
       />
 
-      <section
-        className="overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-4 shadow-sm md:p-6"
-        aria-label="Session"
-      >
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-8">
+      <section className="rounded-xl border border-slate-200 bg-white" aria-label="Session">
+        <div className="grid gap-5 p-4 md:p-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8">
           <div className="min-w-0">
             <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{trainingNumber}</div>
             <h2 className="mt-1 text-lg font-semibold leading-snug text-slate-900 md:text-xl">{heading}</h2>
@@ -200,14 +197,14 @@ export function TrainingSessionWorkspaceShell({
                 </Badge>
               ))}
             </div>
-            <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 xl:grid-cols-4">
+            <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-slate-100 pt-5 sm:grid-cols-3 xl:grid-cols-4">
               {facts.map((f) => {
                 const FactIcon = f.icon;
                 return (
                   <div key={f.label} className="flex min-w-0 items-start gap-2.5">
                     <FactIcon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
                     <div className="min-w-0">
-                      <dt className="text-2xs font-semibold uppercase tracking-wide text-slate-500">{f.label}</dt>
+                      <dt className="text-xs text-slate-500">{f.label}</dt>
                       <dd className="break-words text-sm font-medium text-slate-900" title={`${f.label}: ${f.value}`}>
                         {f.value || "—"}
                       </dd>
@@ -218,7 +215,7 @@ export function TrainingSessionWorkspaceShell({
             </dl>
           </div>
 
-          <aside className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4" aria-label="Figures of the session">
+          <aside className="flex flex-col gap-4 rounded-lg bg-slate-50 p-4" aria-label="Figures of the session">
             <div>
               <div className="flex items-baseline justify-between text-xs">
                 <span className="font-semibold text-slate-800">Progress</span>
@@ -227,25 +224,22 @@ export function TrainingSessionWorkspaceShell({
                 </span>
               </div>
               <div
-                className="mt-1.5 h-2 overflow-hidden rounded-full bg-emerald-100"
+                className="mt-2 flex gap-1"
                 role="progressbar"
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={percent}
                 aria-label="Progress of the session"
               >
-                <motion.div
-                  className="h-full rounded-full bg-emerald-500"
-                  initial={false}
-                  animate={{ width: `${percent}%` }}
-                  transition={{ type: "spring", stiffness: 120, damping: 20 }}
-                />
+                {steps.map((s, i) => (
+                  <span key={s.id} className={cn("h-2 flex-1 rounded-full transition-colors duration-300", i < doneCount ? "bg-emerald-500" : "bg-slate-200")} />
+                ))}
               </div>
             </div>
             {rates.map((r) => (
               <RateBar key={r.label} rate={r} />
             ))}
-            <ul className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+            <ul className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-3">
               {stats.map((s) => {
                 const StatIcon = s.icon;
                 return (
@@ -322,7 +316,7 @@ export function TrainingSessionWorkspaceShell({
           {index > 0 && (
             <Button
               size="sm"
-              variant="outline"
+              variant="outline-emerald"
               onClick={() => onStep(steps[index - 1].id)}
             >
               Back: {steps[index - 1].label}

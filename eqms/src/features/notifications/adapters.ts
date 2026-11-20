@@ -92,7 +92,6 @@ export const mapNotificationToViewModel = (item: NotificationApiItem): Notificat
     metadata: item.metadata ?? undefined,
     actionUrl: item.actionUrl ?? undefined,
     icon: item.icon ?? undefined,
-    iconTone: item.iconTone ?? undefined,
   };
 };
 

@@ -491,6 +491,78 @@ export function useSystemMonitoringWidgets() {
         />
       ),
     },
+    {
+      id: "open-access-reviews",
+      label: "Open access reviews",
+      width: "half" as const,
+      defaultVisible: false, // library only
+      content: (
+        <>
+          <KpiStrip
+            label="Open access reviews"
+            className="!grid-cols-1"
+            cells={[
+              {
+                title: "Open access reviews",
+                accent: "#10b981",
+                value: data ? data.compliance.openAccessReviews : dash,
+                footValue: data ? data.compliance.openAuditTrailReviews : dash,
+                footLabel: "Open audit trail reviews",
+              },
+            ]}
+          />
+          {error && !data && <PanelError message="Open access reviews could not be loaded." onRetry={reload} />}
+        </>
+      ),
+    },
+    {
+      id: "open-audit-trail-reviews",
+      label: "Open audit trail reviews",
+      width: "half" as const,
+      defaultVisible: false, // library only
+      content: (
+        <>
+          <KpiStrip
+            label="Open audit trail reviews"
+            className="!grid-cols-1"
+            cells={[
+              {
+                title: "Open audit trail reviews",
+                accent: "#059669",
+                value: data ? data.compliance.openAuditTrailReviews : dash,
+                footValue: data ? data.compliance.openAccessReviews : dash,
+                footLabel: "Open access reviews",
+              },
+            ]}
+          />
+          {error && !data && <PanelError message="Open audit trail reviews could not be loaded." onRetry={reload} />}
+        </>
+      ),
+    },
+    {
+      id: "open-controlled-copy-discrepancies",
+      label: "Open controlled copy discrepancies",
+      width: "half" as const,
+      defaultVisible: false, // library only
+      content: (
+        <>
+          <KpiStrip
+            label="Open controlled copy discrepancies"
+            className="!grid-cols-1"
+            cells={[
+              {
+                title: "Open controlled copy discrepancies",
+                accent: "#f59e0b",
+                value: data ? data.compliance.openControlledCopyDiscrepancies : dash,
+                footValue: data ? data.compliance.openAccessReviews : dash,
+                footLabel: "Open access reviews",
+              },
+            ]}
+          />
+          {error && !data && <PanelError message="Open controlled copy discrepancies could not be loaded." onRetry={reload} />}
+        </>
+      ),
+    },
   ];
 }
 

@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/toast/Toast';
 import { FormSection } from '@/components/ui/form/FormSection';
 import { LocalListTable, type LocalColumn } from '@/features/backup-restore/components/LocalListTable';
 import type { NotificationVariable } from '@/services/api/notificationPolicy';
+import { moduleDisplayName } from '@/utils/moduleDisplay';
 
 interface VariablePaletteProps {
   /** The placeholders this notification offers: the ones its wording may use. */
@@ -76,7 +77,7 @@ export const VariablePalette: React.FC<VariablePaletteProps> = ({ variables, onI
         </span>
       ),
     },
-    { id: 'module', header: 'Module', sortValue: (r) => r.variable.module || 'Other', cell: (r) => r.variable.module || 'Other' },
+    { id: 'module', header: 'Module', sortValue: (r) => r.variable.module || 'Other', cell: (r) => (r.variable.module ? moduleDisplayName(r.variable.module) : 'Other') },
     {
       id: 'offered',
       header: 'This Notification',

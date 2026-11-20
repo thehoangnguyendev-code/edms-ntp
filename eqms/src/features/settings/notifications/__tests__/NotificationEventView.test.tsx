@@ -338,6 +338,35 @@ describe("Edit a notification", () => {
     await waitFor(() => expect(api.updatePolicy).toHaveBeenCalledWith("controlled_copy.recalled", { recipientRules: [{ type: "COPY_HOLDER" }, { type: "ROLE", value: "QC Analyst" }], expectedUpdatedAt: "2026-11-12T01:00:00Z" }));
   });
 
+  it("lets the priority be chosen from Low, Medium and High, and saves only the priority", async () => {
+    api.getDetail.mockResolvedValue(detail({ priority: "MEDIUM", defaultPriority: "MEDIUM" }));
+    await open();
+    fireEvent.click(await screen.findByRole("combobox", { name: "Priority" }));
+    for (const name of ["Low", "Medium", "High"]) expect(await screen.findByRole("option", { name })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "Critical" })).toBeNull();
+    fireEvent.click(screen.getByRole("option", { name: "High" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    await waitFor(() => expect(api.updatePolicy).toHaveBeenCalledWith("controlled_copy.recalled", { priority: "HIGH", expectedUpdatedAt: "2026-11-12T01:00:00Z" }));
+    expect(api.updateTemplate).not.toHaveBeenCalled();
+  });
+
+  it("says what the default is and goes back to it when it is chosen again", async () => {
+    api.getDetail.mockResolvedValue(detail({ priority: "HIGH", defaultPriority: "MEDIUM" }));
+    await open();
+    expect(await screen.findByText(/The default is Medium; choose it to go back/)).toBeTruthy();
+    fireEvent.click(await screen.findByRole("combobox", { name: "Priority" }));
+    fireEvent.click(screen.getByRole("option", { name: "Medium" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    await waitFor(() => expect(api.updatePolicy).toHaveBeenCalledWith("controlled_copy.recalled", { priority: "MEDIUM", expectedUpdatedAt: "2026-11-12T01:00:00Z" }));
+  });
+
+  it("offers Critical only for a notification the catalog marks critical", async () => {
+    api.getDetail.mockResolvedValue(detail({ priority: "CRITICAL", defaultPriority: "CRITICAL" }));
+    await open();
+    fireEvent.click(await screen.findByRole("combobox", { name: "Priority" }));
+    for (const name of ["Low", "Medium", "High", "Critical"]) expect(await screen.findByRole("option", { name })).toBeTruthy();
+  });
+
   it("turns the in-app notification off without touching the email, and saves only what changed", async () => {
     await open();
     fireEvent.click(await screen.findByRole("tab", { name: "Delivery" }));
@@ -447,15 +476,14 @@ describe("Edit a notification", () => {
     expect(await screen.findByRole("button", { name: "Copy {{weirdOne}}" })).toBeTruthy();
   });
 
-  it("chooses an icon of Lucide or of Tabler and a colour, and saves them with Publish without touching the wording", async () => {
+  it("chooses an icon of Lucide or of Tabler, with no colour to choose, and saves it with Publish without touching the wording", async () => {
     await open();
-    // nothing chosen yet: the way back to the default is dimmed, and the colour is the one of the kind of notification
+    // nothing chosen yet: the way back to the default is dimmed; the colour of the icon is not chosen here (it follows the priority)
+    expect(screen.queryByLabelText("Colour")).toBeNull();
     expect((screen.getByRole("button", { name: "Use default" }) as HTMLButtonElement).disabled).toBe(true);
     const box = screen.getByRole("textbox", { name: "Search icons" });
     fireEvent.change(box, { target: { value: "ShieldAlert" } });
     fireEvent.click(await screen.findByRole("option", { name: "ShieldAlert" }, { timeout: 15000 }));
-    // the colour is chosen with the colour picker: any six-digit colour, kept as typed in capitals by the server
-    fireEvent.change(screen.getByLabelText("Colour"), { target: { value: "#2563EB" } });
     fireEvent.click(screen.getByRole("tab", { name: "Tabler" }));
     fireEvent.change(box, { target: { value: "IconBell" } });
     fireEvent.click(await screen.findByRole("option", { name: "IconBell" }));
@@ -463,7 +491,7 @@ describe("Edit a notification", () => {
     expect(screen.getByRole("option", { name: "IconBell" }).getAttribute("aria-selected")).toBe("true");
     expect((screen.getByRole("button", { name: "Use default" }) as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
-    await waitFor(() => expect(api.updateAppearance).toHaveBeenCalledWith("controlled_copy.recalled", "tabler:IconBell", "#2563EB", "2026-11-12T01:00:00Z"));
+    await waitFor(() => expect(api.updateAppearance).toHaveBeenCalledWith("controlled_copy.recalled", "tabler:IconBell", "2026-11-12T01:00:00Z"));
     expect(api.updateTemplate).not.toHaveBeenCalled();
   }, 30000);
 
@@ -471,7 +499,7 @@ describe("Edit a notification", () => {
     await open();
     fireEvent.change(screen.getByRole("textbox", { name: "In-app title" }), { target: { value: "Copy {{documentNumber}} recalled" } });
     fireEvent.click(screen.getAllByRole("button", { name: "Test Notification" })[0]);
-    expect(toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: "Copy SOP.0001 recalled", type: "warning" }));
+    expect(toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: "Copy SOP.0001 recalled", type: "warning", color: "#DC2626" }));
     const shown = toast.showToast.mock.calls.at(-1)?.[0];
     expect(shown.icon).toBeTruthy();
     expect(shown.message).toBeTruthy();
@@ -493,17 +521,27 @@ describe("Edit a notification", () => {
   }, 30000);
 
   it("goes back to the icon of its kind with Use default, and Discard Changes forgets a choice", async () => {
-    api.getDetail.mockResolvedValue(detail({ icon: "lucide:Clock", iconTone: "amber" }));
+    api.getDetail.mockResolvedValue(detail({ icon: "lucide:Clock" }));
     await open();
-    expect((screen.getByLabelText("Colour") as HTMLInputElement).value).toBe("#D97706");   // amber
     expect((screen.getByRole("button", { name: "Use default" }) as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Use default" }));
     expect((screen.getByRole("button", { name: "Use default" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getAllByRole("button", { name: "Discard Changes" })[0]);
-    expect((screen.getByLabelText("Colour") as HTMLInputElement).value).toBe("#D97706");
     fireEvent.click(screen.getByRole("button", { name: "Use default" }));
     fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
-    await waitFor(() => expect(api.updateAppearance).toHaveBeenCalledWith("controlled_copy.recalled", null, null, "2026-11-12T01:00:00Z"));
+    await waitFor(() => expect(api.updateAppearance).toHaveBeenCalledWith("controlled_copy.recalled", null, "2026-11-12T01:00:00Z"));
+  });
+
+  it("colours the icon of the preview by the priority being chosen: Low green, Medium yellow, High red", async () => {
+    api.getDetail.mockResolvedValue(detail({ priority: "MEDIUM", defaultPriority: "MEDIUM" }));
+    await open();
+    const tile = (bg: string, text: string) => document.querySelector(`.h-8.w-8.rounded-lg.${bg}.${text}`);
+    expect(tile("bg-amber-50", "text-amber-600")).toBeTruthy();
+    for (const [name, bg, text] of [["Low", "bg-emerald-50", "text-emerald-600"], ["High", "bg-red-50", "text-red-600"]]) {
+      fireEvent.click(await screen.findByRole("combobox", { name: "Priority" }));
+      fireEvent.click(await screen.findByRole("option", { name }));
+      expect(tile(bg, text)).toBeTruthy();
+    }
   });
 
   it("publishes any notification without an electronic signature, and sends nothing of one", async () => {
