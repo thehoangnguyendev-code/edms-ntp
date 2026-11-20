@@ -146,6 +146,11 @@ services:
     image: clamav/clamav:stable
     container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-clamav
     restart: unless-stopped
+    environment:
+      # A scan of a big PDF is streamed to the daemon in one piece: with the stock 25M it answers "INSTREAM size limit exceeded" and the upload fails as "unavailable".
+      CLAMD_CONF_StreamMaxLength: 100M
+      CLAMD_CONF_MaxFileSize: 100M
+      CLAMD_CONF_MaxScanSize: 200M
     logging: *default-logging
     security_opt:
       - no-new-privileges:true
@@ -344,14 +349,7 @@ services:
       APP_SECURITY_COMPATIBILITY_ALIASES_ENABLED: "false"
       # Lifecycle state policy engine (V169 seeds = parity with strict rule)
       APP_SECURITY_LIFECYCLE_POLICY_ENABLED: "true"
-      # Phase 1-2.5 / Phase 3 hybrid authorization engine cutover
-      # (SECURITY_AUTHORIZATION_HYBRID_REFACTOR_PLAN.md §7 rule 3). Shadow-evaluation confirmed 0
-      # mismatches for all four resource types before enabling each. REQUEST_COPY is a documented
-      # exclusion (see ControlledCopyResourceAdapter#resolvePolicy) -- unaffected, its real
-      # enforcement path (requireRequestControlledCopy) never reaches this adapter's per-copy-id
-      # lookup. Rollback: remove this line (or clear the value) and restart -- the legacy
-      # evaluators are still fully intact and untouched until cutover rule 5 (Phase 1-2.6/3) deletes them.
-      APP_AUTHORIZATION_HYBRID_ENGINE_ENABLED_RESOURCE_TYPES: "REVISION,DOCUMENT,CONTROLLED_COPY,CONTROLLED_COPY_BATCH"
+      # The Hybrid authorization engine decides who may act, always on: the per-type cutover flag (APP_AUTHORIZATION_HYBRID_ENGINE_ENABLED_RESOURCE_TYPES) was removed 2026-11-20.
       SERVER_TOMCAT_CONNECTION_TIMEOUT: 5m
       SPRING_MVC_ASYNC_REQUEST_TIMEOUT: 900000
       SPRING_TASK_EXECUTION_POOL_CORE_SIZE: 4

@@ -117,6 +117,9 @@ public class UncontrolledCopyService {
     }
 
     private final UncontrolledCopyRepository uncontrolledCopyRepository;
+    private final com.eqms.service.authorization.ShadowGuard shadow;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.eqms.service.authorization.EngineCapabilities engineCapabilities;
     private final UncontrolledCopyEligibilityRuleRepository eligibilityRuleRepository;
     private final DocumentTypeRepository documentTypeRepository;
     private final UncontrolledCopyDistributionJobRepository jobRepository;
@@ -141,6 +144,7 @@ public class UncontrolledCopyService {
     @org.springframework.beans.factory.annotation.Autowired
     private com.eqms.service.training.TrainingPreviewMarking previewMarking;
 
+    /** Without the shadow of the Hybrid engine (unit tests build the service this way; Spring uses the constructor below). */
     public UncontrolledCopyService(
             UncontrolledCopyRepository uncontrolledCopyRepository,
             UncontrolledCopyEligibilityRuleRepository eligibilityRuleRepository,
@@ -163,6 +167,34 @@ public class UncontrolledCopyService {
             ApplicationEventPublisher eventPublisher,
             SodConstraintService sodConstraintService
     ) {
+        this(uncontrolledCopyRepository, eligibilityRuleRepository, documentTypeRepository, jobRepository, jobItemRepository, documentRecordRepository, documentRevisionRepository, userAccountRepository, currentUserService, permissionEvaluationService, documentAuthorizationService, auditTrailService, electronicSignatureService, fileStorageService, pdfMarkingService, policyService, emailNotificationService, systemActorProvider, eventPublisher, sodConstraintService, new com.eqms.service.authorization.ShadowGuard(null));
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public UncontrolledCopyService(
+            UncontrolledCopyRepository uncontrolledCopyRepository,
+            UncontrolledCopyEligibilityRuleRepository eligibilityRuleRepository,
+            DocumentTypeRepository documentTypeRepository,
+            UncontrolledCopyDistributionJobRepository jobRepository,
+            UncontrolledCopyDistributionJobItemRepository jobItemRepository,
+            DocumentRecordRepository documentRecordRepository,
+            DocumentRevisionRepository documentRevisionRepository,
+            UserAccountRepository userAccountRepository,
+            CurrentUserService currentUserService,
+            PermissionEvaluationService permissionEvaluationService,
+            DocumentAuthorizationService documentAuthorizationService,
+            AuditTrailService auditTrailService,
+            ElectronicSignatureService electronicSignatureService,
+            FileStorageService fileStorageService,
+            ControlledCopyPdfMarkingService pdfMarkingService,
+            UncontrolledCopyPolicyService policyService,
+            EmailNotificationService emailNotificationService,
+            SystemActorProvider systemActorProvider,
+            ApplicationEventPublisher eventPublisher,
+            SodConstraintService sodConstraintService
+    ,
+            com.eqms.service.authorization.ShadowGuard shadow) {
+        this.shadow = shadow;
         this.uncontrolledCopyRepository = uncontrolledCopyRepository;
         this.eligibilityRuleRepository = eligibilityRuleRepository;
         this.documentTypeRepository = documentTypeRepository;
@@ -224,6 +256,7 @@ public class UncontrolledCopyService {
         int safeLimit = limit == null || limit < 1 ? 20 : Math.min(limit, MAX_LIST_PAGE_SIZE);
         boolean seesAll = seesAllCopies(currentUser);
         boolean distributor = permissionEvaluationService.hasPermission(currentUser, P_DISTRIBUTE);
+        boolean flowReader = permissionEvaluationService.hasPermission(currentUser, P_VIEW);
         Specification<UncontrolledCopyRecord> specification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (!seesAll) {
@@ -231,6 +264,10 @@ public class UncontrolledCopyService {
                 Predicate visible = cb.equal(root.get("recipientUserId"), currentUser.getId());
                 if (distributor) {
                     visible = cb.or(visible, cb.equal(root.get("statusCode"), STATUS_READY));
+                }
+                if (flowReader) {
+                    // A person named in the flow of the revision of the copy, who holds the base view permission, sees the record (never the file).
+                    visible = cb.or(visible, documentAuthorizationService.copyFlowPredicate(currentUser, root, query, cb));
                 }
                 predicates.add(visible);
             }
@@ -506,8 +543,12 @@ public class UncontrolledCopyService {
 
     @Transactional
     public UncontrolledCopyResponse distribute(UUID id, UncontrolledCopyActionRequest request) {
+        return shadow.around(currentUserService.requireCurrentUser(), "UNCONTROLLED_COPY", id, "DISTRIBUTE", com.eqms.service.authorization.ShadowGuard::isDenial, () -> distributeInner(id, request));
+    }
+
+    private UncontrolledCopyResponse distributeInner(UUID id, UncontrolledCopyActionRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        requirePermission(currentUser, P_DISTRIBUTE, "You do not have permission to distribute uncontrolled copies.");
+        // who may distribute is decided by the Hybrid engine (ShadowGuard, UNCONTROLLED_COPY / DISTRIBUTE)
         String reason = firstNonBlank(normalize(request == null ? null : request.reason()), "Distributed uncontrolled copy");
         UncontrolledCopyRecord copy = requireCopy(id);
         UncontrolledCopyDistributionJob job = distributeOne(copy, currentUser, request == null ? null : request.signatureToken(), reason);
@@ -594,9 +635,13 @@ public class UncontrolledCopyService {
 
     @Transactional
     public UncontrolledCopyResponse cancel(UUID id, UncontrolledCopyActionRequest request) {
+        return shadow.around(currentUserService.requireCurrentUser(), "UNCONTROLLED_COPY", id, "CANCEL", com.eqms.service.authorization.ShadowGuard::isDenial, () -> cancelInner(id, request));
+    }
+
+    private UncontrolledCopyResponse cancelInner(UUID id, UncontrolledCopyActionRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         UncontrolledCopyRecord copy = requireCopy(id);
-        requirePermission(currentUser, P_CANCEL, "You do not have permission to cancel uncontrolled copy requests.");
+        // who may cancel is decided by the Hybrid engine (ShadowGuard, UNCONTROLLED_COPY / CANCEL)
         requireStatus(copy, "cancelled", STATUS_READY);
         String reason = normalize(request == null ? null : request.reason());
         if (!StringUtils.hasText(reason)) {
@@ -1096,7 +1141,10 @@ public class UncontrolledCopyService {
 
     private boolean canViewRecord(UserAccount user, UncontrolledCopyRecord copy) {
         return seesAllCopies(user) || isRecipient(user, copy)
-                || (STATUS_READY.equals(copy.getStatusCode()) && permissionEvaluationService.hasPermission(user, P_DISTRIBUTE));
+                || (STATUS_READY.equals(copy.getStatusCode()) && permissionEvaluationService.hasPermission(user, P_DISTRIBUTE))
+                // VISIBILITY-TIERS-2026-11-20: named in the flow of the revision of the copy = the record, never the file (preview and download
+                // keep their own recipient / requester / distributor rules below).
+                || documentAuthorizationService.isNamedInFlowOfUncontrolledCopy(user, copy.getRevision());
     }
 
     private boolean isOwnRequest(UserAccount user, UncontrolledCopyRecord copy) {
@@ -1270,9 +1318,14 @@ public class UncontrolledCopyService {
         boolean expired = isExpired(copy);
         boolean own = isOwnRequest(currentUser, copy);
         boolean ready = STATUS_READY.equals(code);
+        // Distribute and Cancel follow the Hybrid engine (only asked for a copy that waits for distribution: the others are never offered)
+        Map<String, Object> engineHints = !ready ? Map.of("distribute", false, "cancel", false)
+                : engineCapabilities == null
+                ? Map.of("distribute", permissionEvaluationService.hasPermission(currentUser, P_DISTRIBUTE), "cancel", permissionEvaluationService.hasPermission(currentUser, P_CANCEL))
+                : engineCapabilities.apply(currentUser, "UNCONTROLLED_COPY", copy.getId(), Map.of("distribute", true, "cancel", true), Map.of("distribute", "DISTRIBUTE", "cancel", "CANCEL"), Map.of());
         UncontrolledCopyResponse.Capabilities capabilities = new UncontrolledCopyResponse.Capabilities(
-                ready && permissionEvaluationService.hasPermission(currentUser, P_DISTRIBUTE),
-                ready && permissionEvaluationService.hasPermission(currentUser, P_CANCEL),
+                Boolean.TRUE.equals(engineHints.get("distribute")),
+                Boolean.TRUE.equals(engineHints.get("cancel")),
                 canPreview(currentUser, copy),
                 canDownloadIgnoringLimit(currentUser, copy)
                         && (policyService.loadOrDefault().isAllowRedownload() || copy.getDownloadCount() == 0

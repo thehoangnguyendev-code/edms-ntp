@@ -1,6 +1,7 @@
 package com.eqms.service;
 
 import com.eqms.auth.CurrentUserService;
+import com.eqms.dto.user.AccessExplorerDtos;
 import com.eqms.dto.user.AccessExplorerDtos.HoldersResponse;
 import com.eqms.entity.AccessProfilePermissionSet;
 import com.eqms.entity.Permission;
@@ -122,8 +123,8 @@ class AccessExplorerServiceTest {
         link(verifySet, trainer);
         assign(trainer, ann, bob);
 
-        HoldersResponse onlyActive = service.whoHolds("training.paper.verify", true);
-        HoldersResponse everyone = service.whoHolds("training.paper.verify", false);
+        HoldersResponse onlyActive = service.whoHolds("training.paper.verify", true, null, 0, 100);
+        HoldersResponse everyone = service.whoHolds("training.paper.verify", false, null, 0, 100);
 
         assertThat(onlyActive.holders()).extracting(h -> h.username()).containsExactly("ann");
         assertThat(onlyActive.holders().get(0).viaProfiles()).containsExactly("Trainer");
@@ -156,7 +157,7 @@ class AccessExplorerServiceTest {
         when(linkRepo.findByPermissionSetId(one.getId())).thenReturn(List.of(viaOne));
         assign(live, cy);
 
-        HoldersResponse response = service.whoHolds("training.paper.verify", true);
+        HoldersResponse response = service.whoHolds("training.paper.verify", true, null, 0, 100);
 
         assertThat(response.holders()).extracting(h -> h.username()).containsExactly("cy");
         assertThat(response.holders().get(0).viaPermissionSets()).containsExactly("Set A", "Set B");
@@ -176,36 +177,111 @@ class AccessExplorerServiceTest {
         link(s, p);
         assign(p, dee);
 
-        assertThat(service.whoHolds("training.paper.verify", true).holders().get(0).timeLimitedUntil()).isEqualTo(end);
-        assertThatThrownBy(() -> service.whoHolds("no.such.code", true)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Unknown permission");
-        assertThatThrownBy(() -> service.whoHolds("  ", true)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(service.whoHolds("training.paper.verify", true, null, 0, 100).holders().get(0).timeLimitedUntil()).isEqualTo(end);
+        assertThatThrownBy(() -> service.whoHolds("no.such.code", true, null, 0, 100)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Unknown permission");
+        assertThatThrownBy(() -> service.whoHolds("  ", true, null, 0, 100)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void searchFindsByCodeNameOrModuleAndCapsTheList() {
+    void theListSearchesWithEveryWordInAnyOrderAndFiltersByModule() {
         List<Permission> all = new java.util.ArrayList<>();
-        for (int i = 0; i < 80; i++) all.add(permission("training.item" + String.format("%02d", i), "Item " + i, "training"));
+        for (int i = 0; i < 80; i++) all.add(permission("audit.item" + String.format("%02d", i), "Item " + i, "audit"));
         all.add(target);
         all.add(permission("reports.run.create", "Create Report Run", "reports"));
+        all.add(permission("system.none", "No module", null));
         when(permissionRepo.findAll()).thenReturn(all);
 
-        assertThat(service.searchPermissions("paper")).extracting(o -> o.code()).containsExactly("training.paper.verify");
-        assertThat(service.searchPermissions("REPORT RUN")).extracting(o -> o.code()).containsExactly("reports.run.create");
+        assertThat(codes(service.listPermissions("paper", null, null, "code", "asc", 0, 10))).containsExactly("training.paper.verify");
+        assertThat(codes(service.listPermissions("REPORT RUN", null, null, "code", "asc", 0, 10))).containsExactly("reports.run.create");
         // the words may come in any order and in different fields
-        assertThat(service.searchPermissions("verify paper")).extracting(o -> o.code()).containsExactly("training.paper.verify");
-        assertThat(service.searchPermissions("paper verify  training")).extracting(o -> o.code()).containsExactly("training.paper.verify");
-        assertThat(service.searchPermissions("paper reports")).isEmpty();
-        assertThat(service.searchPermissions(null)).hasSize(AccessExplorerService.MAX_PERMISSIONS);
-        assertThat(service.searchPermissions("training")).hasSize(AccessExplorerService.MAX_PERMISSIONS);
+        assertThat(codes(service.listPermissions("verify paper", null, null, "code", "asc", 0, 10))).containsExactly("training.paper.verify");
+        assertThat(codes(service.listPermissions("paper verify  training", null, null, "code", "asc", 0, 10))).containsExactly("training.paper.verify");
+        assertThat(service.listPermissions("paper reports", null, null, "code", "asc", 0, 10).content()).isEmpty();
+        // a module is an exact key, not a word, and is reachable past the first page
+        assertThat(codes(service.listPermissions("", " TRAINING ", null, "code", "asc", 0, 10))).containsExactly("training.paper.verify");
+        assertThat(service.modules()).containsExactly("audit", "reports", "training");
+    }
+
+    @Test
+    void theListIsPagedSortedAndCountsHowWidelyEachPermissionIsHeld() {
+        List<Permission> all = new java.util.ArrayList<>();
+        for (int i = 0; i < 25; i++) all.add(permission("audit.item" + String.format("%02d", i), "Item " + String.format("%02d", i), "audit"));
+        all.add(target);
+        when(permissionRepo.findAll()).thenReturn(all);
+        when(permissionRepo.holderCountsByCode()).thenReturn(List.of(new Object[] {"training.paper.verify", 2L, 4L, 3L, 2L}, new Object[] {"audit.item03", 1L, 1L, 1L, 1L}));
+
+        AccessExplorerDtos.PermissionPage first = service.listPermissions("", null, null, "holderCount", "desc", 0, 10);
+
+        assertThat(first.totalElements()).isEqualTo(26);
+        assertThat(first.totalPages()).isEqualTo(3);
+        assertThat(first.content()).hasSize(10);
+        AccessExplorerDtos.PermissionRow top = first.content().get(0);
+        assertThat(top.code()).isEqualTo("training.paper.verify");
+        assertThat(top.permissionSetCount()).isEqualTo(2);
+        assertThat(top.accessProfileCount()).isEqualTo(4);
+        assertThat(top.holderCount()).isEqualTo(3);
+        assertThat(top.activeHolderCount()).isEqualTo(2);
+        assertThat(first.content().get(1).code()).isEqualTo("audit.item03");
+        // the last page has the rest, and a page far past the end is empty, not an error
+        assertThat(service.listPermissions("", null, null, "code", "asc", 2, 10).content()).hasSize(6);
+        assertThat(service.listPermissions("", null, null, "code", "asc", 9, 10).content()).isEmpty();
+        // held / none
+        assertThat(codes(service.listPermissions("", null, "held", "code", "asc", 0, 10))).containsExactly("audit.item03", "training.paper.verify");
+        assertThat(service.listPermissions("", null, "none", "code", "asc", 0, 100).totalElements()).isEqualTo(24);
+        // the page size is capped so one request cannot read everything
+        assertThat(service.listPermissions("", null, null, "code", "asc", 0, 100000).size()).isEqualTo(AccessExplorerService.MAX_PAGE_SIZE);
+    }
+
+    @Test
+    void thePeopleOfAPermissionAreSearchedAndPagedOnTheServer() {
+        PermissionSet verifySet = set("TRAINING_PAPER", "Training Paper");
+        RoleDefinition trainer = profile("TRAINER", "Trainer", true);
+        when(setRepo.findActiveSetsGrantingCode("training.paper.verify")).thenReturn(List.of(verifySet));
+        link(verifySet, trainer);
+        UserAccount[] people = new UserAccount[12];
+        for (int i = 0; i < people.length; i++) {
+            people[i] = user("user" + String.format("%02d", i), i == 7 ? "Bao Tran" : "Person " + String.format("%02d", i), UserStatus.Active);
+            people[i].setDepartment(i == 7 ? "Packaging" : "QA");
+        }
+        assign(trainer, people);
+
+        HoldersResponse firstPage = service.whoHolds("training.paper.verify", true, null, 0, 10);
+        assertThat(firstPage.holders()).hasSize(10);
+        assertThat(firstPage.holderTotal()).isEqualTo(12);
+        assertThat(firstPage.totalPages()).isEqualTo(2);
+        assertThat(firstPage.holderCount()).isEqualTo(12);
+        assertThat(service.whoHolds("training.paper.verify", true, null, 1, 10).holders()).hasSize(2);
+
+        HoldersResponse searched = service.whoHolds("training.paper.verify", true, "packaging bao", 0, 10);
+        assertThat(searched.holders()).extracting(h -> h.fullName()).containsExactly("Bao Tran");
+        assertThat(searched.holderTotal()).isEqualTo(1);
+        // the totals of the permission do not shrink with the search
+        assertThat(searched.holderCount()).isEqualTo(12);
+        // a person is also found by the profile or the set they hold it through
+        assertThat(service.whoHolds("training.paper.verify", true, "trainer", 0, 10).holderTotal()).isEqualTo(12);
+        assertThat(service.whoHolds("training.paper.verify", true, "nothing like this", 0, 10).holders()).isEmpty();
+    }
+
+    private static List<String> codes(AccessExplorerDtos.PermissionPage page) {
+        return page.content().stream().map(AccessExplorerDtos.PermissionRow::code).toList();
+    }
+
+    @Test
+    void theModuleListAndTheListAreRefusedWithoutTheViewPermissionToo() {
+        when(permissions.hasAnyPermission(admin, "settings.user.view", "security.access_profiles.view")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.modules()).isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> service.listPermissions("x", "training", null, null, null, 0, 10)).isInstanceOf(AccessDeniedException.class);
+        verify(permissionRepo, never()).findAll();
+        verify(permissionRepo, never()).holderCountsByCode();
     }
 
     @Test
     void someoneWhoMayNeitherViewUsersNorAccessProfilesIsRefusedAndNothingIsRead() {
         when(permissions.hasAnyPermission(admin, "settings.user.view", "security.access_profiles.view")).thenReturn(false);
 
-        assertThatThrownBy(() -> service.whoHolds("training.paper.verify", true)).isInstanceOf(AccessDeniedException.class);
-        assertThatThrownBy(() -> service.searchPermissions("x")).isInstanceOf(AccessDeniedException.class);
-        verify(setRepo, never()).findActiveSetsGrantingCode(anyString());
+        assertThatThrownBy(() -> service.whoHolds("training.paper.verify", true, null, 0, 100)).isInstanceOf(AccessDeniedException.class);
+                verify(setRepo, never()).findActiveSetsGrantingCode(anyString());
         verify(permissionRepo, never()).findAll();
         verify(assignmentRepo, never()).findByAccessProfileId(any());
     }

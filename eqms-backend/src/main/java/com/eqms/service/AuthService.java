@@ -70,6 +70,8 @@ public class AuthService {
     private final long loginChallengeTtlMinutes;
     private final long signatureTokenTtlMinutes;
 
+    private ConcurrentSessionService concurrentSessions;
+
     public AuthService(
             UserAccountRepository userRepository,
             AuthSessionRepository sessionRepository,
@@ -288,6 +290,9 @@ public class AuthService {
 
         AuthSession session = sessionRepository.findByRefreshTokenHash(tokenService.hashToken(refreshToken))
                 .orElseThrow(() -> new UnauthorizedException("Refresh token is invalid"));
+        if (AuthSession.REVOKED_CONCURRENT_LIMIT.equals(session.getRevokedReason())) {
+            throw new UnauthorizedException(ConcurrentSessionService.MESSAGE, ConcurrentSessionService.REVOKED_CODE);
+        }
         if (!session.isActive()) {
             throw new UnauthorizedException("Refresh token expired or revoked");
         }
@@ -484,6 +489,15 @@ public class AuthService {
         session.setCurrentSession(false);
         auditService.log("session_revoked_after_lockout", user, auditDetails("sessionId", session.getId()), clientIp(httpRequest), userAgent(httpRequest));
         trailService.logSafely("SESSION", "Session", session.getId(), "SESSION_REVOKED", "LOCKED", "REVOKED", "Session ended: the account was locked after too many failed attempts");
+    }
+
+    /** The wrong password made when signing was the one that locked the account: the session it was made on ends too. */
+    private void endSessionIfAccountLockedOut(UserAccount user, HttpServletRequest httpRequest) {
+        if (user.getLockedUntil() == null || !user.getLockedUntil().isAfter(Instant.now())) {
+            return;
+        }
+        var principal = currentUserService.requireAuthenticatedPrincipal();
+        sessionRepository.findById(principal.sessionId()).ifPresent(session -> revokeSessionIfAccountLockedOut(user, session, httpRequest));
     }
 
     private boolean hasAppMfa(UserAccount user) {
@@ -1080,7 +1094,18 @@ public class AuthService {
     // Authentication failures must not roll back the security audit event written below.
     @Transactional(noRollbackFor = UnauthorizedException.class)
     public VerifySignatureResponse verifySignature(VerifySignatureRequest request) {
+        return verifySignature(request, null);
+    }
+
+    /**
+     * Checks the signer's username and password before a signature. A wrong password counts toward its own count and limit (Maximum Signature
+     * Attempts), apart from the wrong passwords at sign-in. It is written to the Audit Trail, and when it is the entry that reaches the limit the
+     * account is locked and the session it was made on ends too. A right password clears the signing count.
+     */
+    @Transactional(noRollbackFor = UnauthorizedException.class)
+    public VerifySignatureResponse verifySignature(VerifySignatureRequest request, HttpServletRequest httpRequest) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
+        rejectLockedAccount(currentUser);
         String normalizedUsername = request.username() == null ? "" : request.username().trim();
         if (!StringUtils.hasText(normalizedUsername)) {
             auditService.log("esign_verify_failed", currentUser, auditDetails("reason", "signature_username_missing"), null, null);
@@ -1091,8 +1116,13 @@ public class AuthService {
             throw new UnauthorizedException("Electronic signature must belong to the current user");
         }
         if (!StringUtils.hasText(request.password()) || !passwordEncoder.matches(request.password(), currentUser.getPasswordHash())) {
-            auditService.log("esign_verify_failed", currentUser, auditDetails("identifier", currentUser.getUsername()), null, null);
-            throw new UnauthorizedException("Password is incorrect");
+            String message = registerFailedAttempt(currentUser, httpRequest, "Password", true, () ->
+                    auditService.log("esign_verify_failed", currentUser, auditDetails("identifier", currentUser.getUsername(), "reason", "signature_password_incorrect"), clientIp(httpRequest), userAgent(httpRequest)));
+            endSessionIfAccountLockedOut(currentUser, httpRequest);
+            throw new UnauthorizedException(message);
+        }
+        if (currentUser.getFailedSignatureCount() > 0) {
+            currentUser.setFailedSignatureCount(0); // a right password when signing clears the signing count only; the sign-in count is a separate one
         }
         String signatureToken = tokenService.createSignatureToken(currentUser);
         // Deliberately NOT a separate "VERIFY_E_SIGNATURE" Audit Trail row. This only checks the
@@ -1135,12 +1165,26 @@ public class AuthService {
      * Returns what the person is told.
      */
     private String registerFailedAttempt(UserAccount user, HttpServletRequest request, String factor, Runnable attemptLog) {
-        user.setFailedLoginCount(user.getFailedLoginCount() + 1);
+        return registerFailedAttempt(user, request, factor, false, attemptLog);
+    }
+
+    /**
+     * {@code atSigning}: the wrong entry was made when signing. It is counted apart from the wrong entries at sign-in, against its own limit; the
+     * on/off switch of Account Lockout is the same for both, and reaching either limit locks the account.
+     */
+    private String registerFailedAttempt(UserAccount user, HttpServletRequest request, String factor, boolean atSigning, Runnable attemptLog) {
+        String kind = atSigning ? "signing attempts" : "login attempts";
+        int count = (atSigning ? user.getFailedSignatureCount() : user.getFailedLoginCount()) + 1;
+        if (atSigning) {
+            user.setFailedSignatureCount(count);
+        } else {
+            user.setFailedLoginCount(count);
+        }
         com.fasterxml.jackson.databind.JsonNode security = systemConfigurationService.requireConfiguration().getSecurityConfig();
         boolean lockoutEnabled = security != null && security.path("enableAccountLockout").asBoolean(true);
-        int maxAttempts = security != null ? security.path("maxLoginAttempts").asInt(5) : 5;
+        int maxAttempts = security != null ? security.path(atSigning ? "maxSignatureAttempts" : "maxLoginAttempts").asInt(5) : 5;
 
-        boolean justLockedOut = lockoutEnabled && user.getFailedLoginCount() >= maxAttempts;
+        boolean justLockedOut = lockoutEnabled && count >= maxAttempts;
         if (justLockedOut) {
             user.setLockedUntil(Instant.now().plus(36500, java.time.temporal.ChronoUnit.DAYS));
             notificationDispatcher.dispatch("security.account_locked", List.of(user), Map.of());
@@ -1154,8 +1198,8 @@ public class AuthService {
         if (justLockedOut) {
             auditService.log("account_locked", user, auditDetails(
                     "username", user.getUsername(),
-                    "reason", "auto_lockout_max_attempts",
-                    "failedLoginCount", user.getFailedLoginCount()
+                    "reason", atSigning ? "auto_lockout_max_signature_attempts" : "auto_lockout_max_attempts",
+                    atSigning ? "failedSignatureCount" : "failedLoginCount", count
             ), clientIp(request), userAgent(request));
             trailService.logAs(
                     user,
@@ -1165,17 +1209,19 @@ public class AuthService {
                     "ACCOUNT_LOCKED",
                     "ACTIVE",
                     "LOCKED",
-                    "System automatically locked this account after " + user.getFailedLoginCount()
-                            + " consecutive failed login attempts (limit: " + maxAttempts + ")."
+                    "System automatically locked this account after " + count
+                            + " consecutive failed " + kind + " (limit: " + maxAttempts + ")."
             );
         }
         if (lockoutEnabled) {
-            int remaining = Math.max(0, maxAttempts - user.getFailedLoginCount());
+            int remaining = Math.max(0, maxAttempts - count);
             if (remaining == 0) {
-                return "Account is locked after too many failed login attempts. Please contact an administrator.";
+                return atSigning
+                        ? "Account is locked after too many failed signing attempts. Please contact an administrator."
+                        : "Account is locked after too many failed login attempts. Please contact an administrator.";
             }
             return factor + " is incorrect. You have " + remaining
-                    + " login attempt" + (remaining == 1 ? "" : "s")
+                    + (atSigning ? " signing attempt" : " login attempt") + (remaining == 1 ? "" : "s")
                     + " remaining before your account is locked.";
         }
         return factor + " is incorrect";
@@ -1231,7 +1277,17 @@ public class AuthService {
         session.setExpiresAt(Instant.now().plusSeconds(refreshTokenTtlDays * 24 * 60 * 60));
         authSessionInit(session);
         sessionRepository.save(session);
+        // Newest sign-in wins: when the account is over its limit of sessions, the oldest ones end now (no-op when the limit is 0).
+        if (concurrentSessions != null) {
+            concurrentSessions.enforceLimit(user, session, clientIp(request), userAgent(request));
+        }
         return session;
+    }
+
+    /** Optional so that the unit tests that build this service by hand keep working; Spring always provides it. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setConcurrentSessions(ConcurrentSessionService concurrentSessions) {
+        this.concurrentSessions = concurrentSessions;
     }
 
     private void authSessionInit(AuthSession session) {
@@ -1558,6 +1614,9 @@ public class AuthService {
     }
 
     private String clientIp(HttpServletRequest request) {
+        if (request == null) {
+            return null;
+        }
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
             return forwarded.split(",")[0].trim();
@@ -1566,7 +1625,7 @@ public class AuthService {
     }
 
     private String userAgent(HttpServletRequest request) {
-        return request.getHeader("User-Agent");
+        return request == null ? null : request.getHeader("User-Agent");
     }
 
     private MfaMethod toMfaMethod(String method) {

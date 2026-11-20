@@ -73,9 +73,10 @@ public class DocumentControlMenuAccess {
             return new Sections(false, false, false);
         }
         return new Sections(
-                documentAuthorization.canListAllDocuments(user) || namedInDocumentFlow(user),
+                documentAuthorization.canListAllDocuments(user) || documentAuthorization.canViewDepartmentRecords(user) || namedInDocumentFlow(user),
                 permissions.hasPermission(user, P_CONTROLLED_COPY_VIEW)
-                        && (documentAuthorization.canViewAllControlledCopies(user) || controlledCopies.existsByRecipientUser_Id(user.getId())),
+                        && (documentAuthorization.canViewAllControlledCopies(user) || controlledCopies.existsByRecipientUser_Id(user.getId())
+                        || namedInDocumentFlow(user)),
                 uncontrolledCopiesVisible(user));
     }
 
@@ -99,6 +100,7 @@ public class DocumentControlMenuAccess {
         boolean distributor = permissions.hasPermission(user, P_UNCONTROLLED_COPY_DISTRIBUTE);
         return distributor
                 || (permissions.hasPermission(user, P_UNCONTROLLED_COPY_VIEW) && documentAuthorization.canViewAllUncontrolledCopies(user))
+                || (permissions.hasPermission(user, P_UNCONTROLLED_COPY_VIEW) && namedInDocumentFlow(user))
                 || uncontrolledCopies.existsByRecipientUserId(user.getId());
     }
 }

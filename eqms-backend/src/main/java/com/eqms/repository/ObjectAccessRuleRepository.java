@@ -7,8 +7,6 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ObjectAccessRuleRepository extends JpaRepository<ObjectAccessRule, UUID> {
-    List<ObjectAccessRule> findAllByOrderByPriorityDescNameAsc();
-    List<ObjectAccessRule> findAllByActiveOrderByPriorityDescNameAsc(boolean active);
 
     /**
      * The active shares (rules owned by a Department or by a Business Unit) that may concern one user: for everyone, for the people of the

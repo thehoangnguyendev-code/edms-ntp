@@ -44,7 +44,6 @@ class WorkflowRolesCatalogParityTest {
     @Mock private RevisionWorkflowParticipantRepository revisionWorkflowParticipantRepository;
     @Mock private DocumentRevisionRepository documentRevisionRepository;
     @Mock private PermissionEvaluationService permissionEvaluationService;
-    @Mock private ObjectAccessEvaluationService objectAccessEvaluationService;
     @Mock private LifecycleStatePolicyEvaluator lifecycleStatePolicyEvaluator;
     @Mock private com.eqms.repository.DocumentRelationRepository documentRelationRepository;
     @Mock private DocumentMasterWorkflowAuthorizationService documentMasterWorkflowAuthorizationService;
@@ -66,7 +65,6 @@ class WorkflowRolesCatalogParityTest {
                 revisionWorkflowParticipantRepository,
                 documentRevisionRepository,
                 permissionEvaluationService,
-                objectAccessEvaluationService,
                 lifecycleStatePolicyEvaluator,
                 documentRelationRepository,
                 documentMasterWorkflowAuthorizationService,

@@ -76,8 +76,8 @@ public class NotificationPolicyController {
         return ResponseEntity.ok(notificationPolicyService.updatePolicy(eventCode, request));
     }
 
-    /** The icon and the colour of the in-app notification; both optional, empty meaning the icon of its kind. */
-    public record AppearanceBody(String icon, String iconTone, java.time.Instant expectedUpdatedAt) {
+    /** The icon of the in-app notification; optional, empty meaning the icon of its kind. Its colour follows the priority. */
+    public record AppearanceBody(String icon, java.time.Instant expectedUpdatedAt) {
     }
 
     @PutMapping("/{eventCode}/appearance")
@@ -86,7 +86,7 @@ public class NotificationPolicyController {
             @RequestBody AppearanceBody body
     ) {
         requireManage();
-        return ResponseEntity.ok(notificationPolicyService.updateAppearance(eventCode, body.icon(), body.iconTone(), body.expectedUpdatedAt()));
+        return ResponseEntity.ok(notificationPolicyService.updateAppearance(eventCode, body.icon(), body.expectedUpdatedAt()));
     }
 
     @PutMapping("/{eventCode}/templates/{channel}")

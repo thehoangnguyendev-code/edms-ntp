@@ -68,12 +68,6 @@ public class WorkflowActionPolicyController {
         return ResponseEntity.ok(policyService.getById(id));
     }
 
-    @GetMapping("/defaults/document-revision")
-    public ResponseEntity<List<WorkflowActionPolicyResponse>> getSystemDefaults() {
-        requireView();
-        return ResponseEntity.ok(policyService.getDefaultDocumentRevisionPolicies());
-    }
-
     @GetMapping("/effective")
     public ResponseEntity<WorkflowActionPolicyEffectiveResponse> getEffective(
             @RequestParam String moduleKey,

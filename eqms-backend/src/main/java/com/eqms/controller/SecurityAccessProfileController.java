@@ -6,8 +6,6 @@ import com.eqms.dto.settings.AccessProfileAssignmentRequest;
 import com.eqms.dto.settings.AccessProfileRequest;
 import com.eqms.dto.settings.AccessProfileResponse;
 import com.eqms.dto.settings.SecurityChangeRequest;
-import com.eqms.dto.security.EffectiveAccessResponse;
-import com.eqms.service.AccessEffectiveService;
 import com.eqms.service.AccessProfileService;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -22,21 +20,9 @@ import java.util.UUID;
 public class SecurityAccessProfileController {
 
     private final AccessProfileService service;
-    private final AccessEffectiveService accessEffectiveService;
 
-    public SecurityAccessProfileController(AccessProfileService service, AccessEffectiveService accessEffectiveService) {
+    public SecurityAccessProfileController(AccessProfileService service) {
         this.service = service;
-        this.accessEffectiveService = accessEffectiveService;
-    }
-
-    @GetMapping("/{id}/effective-access")
-    public com.eqms.dto.security.EffectiveAccessQueryResponse getEffectiveAccess(
-            @PathVariable UUID id,
-            @RequestParam(required = false) UUID documentTypeId,
-            @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "ALL") String outcome
-    ) {
-        return accessEffectiveService.queryEffectiveAccess(id, documentTypeId, search, outcome);
     }
 
     @GetMapping
@@ -81,15 +67,6 @@ public class SecurityAccessProfileController {
         return service.updateProfileConfiguration(id, req);
     }
 
-    /** Replace the role's individually-picked permissions (its auto-managed ROLE_<code> set). */
-    @PostMapping("/{id}/managed-permissions")
-    public ResponseEntity<Void> setManagedPermissions(@PathVariable UUID id,
-            @RequestBody com.eqms.dto.settings.ManagedPermissionsRequest body) {
-        service.setManagedPermissions(id, body.codes(),
-                new SecurityChangeRequest(body.signatureToken(), body.reason()));
-        return ResponseEntity.ok().build();
-    }
-
     @GetMapping("/{id}")
     public AccessProfileDetailResponse get(@PathVariable UUID id) {
         return service.getProfile(id);
@@ -132,58 +109,9 @@ public class SecurityAccessProfileController {
         return service.getPermissionSets(id);
     }
 
-    @PutMapping("/{id}/permission-sets")
-    public ResponseEntity<Void> setPermissionSets(@PathVariable UUID id,
-            @RequestBody AccessProfileAssignmentRequest.PermissionSets body) {
-        service.setPermissionSets(id, body.permissionSetIds(),
-                new SecurityChangeRequest(body.signatureToken(), body.reason()));
-        return ResponseEntity.ok().build();
-    }
-
-    @PostMapping("/{id}/permission-sets/{psId}")
-    public ResponseEntity<Void> addPermissionSet(@PathVariable UUID id, @PathVariable UUID psId,
-            @RequestBody(required = false) SecurityChangeRequest sig) {
-        service.addPermissionSet(id, psId, sig);
-        return ResponseEntity.ok().build();
-    }
-
-    @DeleteMapping("/{id}/permission-sets/{psId}")
-    public ResponseEntity<Void> removePermissionSet(@PathVariable UUID id, @PathVariable UUID psId,
-            @RequestBody(required = false) SecurityChangeRequest sig) {
-        service.removePermissionSet(id, psId, sig);
-        return ResponseEntity.noContent().build();
-    }
-
     @GetMapping("/{id}/workflow-roles")
     public List<String> getWorkflowRoles(@PathVariable UUID id) {
         return service.getWorkflowRoles(id);
-    }
-
-    @PutMapping("/{id}/workflow-roles")
-    public ResponseEntity<Void> setWorkflowRoles(@PathVariable UUID id,
-            @RequestBody AccessProfileAssignmentRequest.WorkflowRoles body) {
-        service.setWorkflowRoles(id, body.roles(),
-                new SecurityChangeRequest(body.signatureToken(), body.reason()));
-        return ResponseEntity.ok().build();
-    }
-
-    @PostMapping("/{id}/workflow-roles/{role}")
-    public ResponseEntity<Void> addWorkflowRole(@PathVariable UUID id, @PathVariable String role,
-            @RequestBody(required = false) SecurityChangeRequest sig) {
-        service.addWorkflowRole(id, role, sig);
-        return ResponseEntity.ok().build();
-    }
-
-    @DeleteMapping("/{id}/workflow-roles/{role}")
-    public ResponseEntity<Void> removeWorkflowRole(@PathVariable UUID id, @PathVariable String role,
-            @RequestBody(required = false) SecurityChangeRequest sig) {
-        service.removeWorkflowRole(id, role, sig);
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/{id}/users")
-    public List<AccessProfileDetailResponse.AssignedUserSummary> getUsers(@PathVariable UUID id) {
-        return service.getAssignedUsers(id);
     }
 
     @GetMapping("/{id}/users/paged")

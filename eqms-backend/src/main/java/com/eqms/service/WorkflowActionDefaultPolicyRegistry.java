@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Immutable baseline defaults for Document Master, Document Revision and Controlled Copy system policies.
+ * Immutable baseline defaults for Document Master, Document Revision, Controlled Copy and Report template review system policies.
  * Used by resetToSystemDefault() to fully restore a system policy.
  */
 public final class WorkflowActionDefaultPolicyRegistry {
@@ -184,6 +184,372 @@ public final class WorkflowActionDefaultPolicyRegistry {
         CC_DEFAULTS = Collections.unmodifiableMap(m);
     }
 
+    // ── Report template review defaults (V807) ───────────────────────────────
+
+    private static final Map<String, DefaultPolicy> REPORT_TEMPLATE_DEFAULTS;
+
+    static {
+        Map<String, DefaultPolicy> m = new java.util.LinkedHashMap<>();
+        m.put("APPROVE", new DefaultPolicy("APPROVE", "PENDING_APPROVAL", "reports.definition.approve", 100, true,
+                "A holder of the approval permission approves a template that is not for GMP decisions, unless they wrote or submitted the version.",
+                List.of(permission("reports.definition.approve"))));
+        m.put("APPROVE_GMP", new DefaultPolicy("APPROVE_GMP", "PENDING_APPROVAL", "reports.definition.approve_gmp", 100, true,
+                "A holder of the GMP approval permission approves a template for GMP decisions, unless they wrote or submitted the version.",
+                List.of(permission("reports.definition.approve_gmp"))));
+        m.put("REJECT", new DefaultPolicy("REJECT", "PENDING_APPROVAL", "reports.definition.approve", 100, true,
+                "A holder of the approval permission returns a template that is not for GMP decisions to Draft, unless they wrote or submitted the version.",
+                List.of(permission("reports.definition.approve"))));
+        m.put("REJECT_GMP", new DefaultPolicy("REJECT_GMP", "PENDING_APPROVAL", "reports.definition.approve_gmp", 100, true,
+                "A holder of the GMP approval permission returns a template for GMP decisions to Draft, unless they wrote or submitted the version.",
+                List.of(permission("reports.definition.approve_gmp"))));
+        m.put("SUBMIT", new DefaultPolicy("SUBMIT", "ANY", "reports.definition.manage", 100, true,
+                "A holder of the manage permission submits a draft template for approval.",
+                List.of(permission("reports.definition.manage"))));
+        m.put("UPGRADE", new DefaultPolicy("UPGRADE", "ANY", "reports.definition.upgrade", 100, true,
+                "A holder of the upgrade permission starts a new revision of a template that has an effective revision.",
+                List.of(permission("reports.definition.upgrade"))));
+        m.put("SET_ENABLED", new DefaultPolicy("SET_ENABLED", "ANY", "reports.definition.set_enabled", 100, true,
+                "A holder of the enable permission turns an approved template on or off.",
+                List.of(permission("reports.definition.set_enabled"))));
+        m.put("DISCARD_REVISION", new DefaultPolicy("DISCARD_REVISION", "ANY", "reports.definition.discard_revision", 100, true,
+                "A holder of the discard permission discards an open draft revision.",
+                List.of(permission("reports.definition.discard_revision"))));
+        m.put("DELETE", new DefaultPolicy("DELETE", "ANY", "reports.definition.manage", 100, true,
+                "A holder of the manage permission deletes a template that is not for GMP decisions. A GMP template is disabled, never deleted (no DELETE_GMP policy exists).",
+                List.of(permission("reports.definition.manage"))));
+        REPORT_TEMPLATE_DEFAULTS = Collections.unmodifiableMap(m);
+    }
+
+    // ── Training defaults (V810) ─────────────────────────────────────────────
+
+    /** A system policy of a Training lifecycle: the workflow, the object type of its resource and the default itself. */
+    public record TrainingDefault(String workflowKey, String objectType, DefaultPolicy policy) {}
+
+    private static final Map<String, TrainingDefault> TRAINING_DEFAULTS;
+
+    static {
+        Map<String, TrainingDefault> m = new java.util.LinkedHashMap<>();
+        m.put("TRAINING_REQUIREMENT|SUBMIT|DRAFT", new TrainingDefault("TRAINING_REQUIREMENT", "TRAINING_REQUIREMENT", new DefaultPolicy("SUBMIT", "DRAFT", "training.requirement.prepare", 100, true,
+                "A person who prepares requirements, in the department of the requirement, sends a draft with at least one line for review.",
+                List.of(permission("training.requirement.prepare")))));
+        m.put("TRAINING_REQUIREMENT|REVIEW|PENDING_REVIEW", new TrainingDefault("TRAINING_REQUIREMENT", "TRAINING_REQUIREMENT", new DefaultPolicy("REVIEW", "PENDING_REVIEW", "training.requirement.review", 100, true,
+                "The person designated to review, who did not prepare the requirement, reviews it and sends it for approval.",
+                List.of(permission("training.requirement.review")))));
+        m.put("TRAINING_REQUIREMENT|APPROVE|PENDING_APPROVAL", new TrainingDefault("TRAINING_REQUIREMENT", "TRAINING_REQUIREMENT", new DefaultPolicy("APPROVE", "PENDING_APPROVAL", "training.requirement.approve", 100, true,
+                "The person designated to approve, who neither prepared nor reviewed the requirement, approves it.",
+                List.of(permission("training.requirement.approve")))));
+        m.put("TRAINING_REQUIREMENT|REJECT|PENDING_REVIEW", new TrainingDefault("TRAINING_REQUIREMENT", "TRAINING_REQUIREMENT", new DefaultPolicy("REJECT", "PENDING_REVIEW", "training.requirement.review", 100, true,
+                "The person designated to review sends the requirement back to Draft with a reason.",
+                List.of(permission("training.requirement.review")))));
+        m.put("TRAINING_REQUIREMENT|REJECT|PENDING_APPROVAL", new TrainingDefault("TRAINING_REQUIREMENT", "TRAINING_REQUIREMENT", new DefaultPolicy("REJECT", "PENDING_APPROVAL", "training.requirement.approve", 100, true,
+                "The person designated to approve sends the requirement back to Draft with a reason.",
+                List.of(permission("training.requirement.approve")))));
+        m.put("TRAINING_MATRIX|SUBMIT|DRAFT", new TrainingDefault("TRAINING_MATRIX", "TRAINING_MATRIX_VERSION", new DefaultPolicy("SUBMIT", "DRAFT", "training.matrix.manage", 100, true,
+                "A person who manages matrices, in the department of the matrix, sends a complete draft version for approval.",
+                List.of(permission("training.matrix.manage")))));
+        m.put("TRAINING_MATRIX|APPROVE|PENDING_APPROVAL", new TrainingDefault("TRAINING_MATRIX", "TRAINING_MATRIX_VERSION", new DefaultPolicy("APPROVE", "PENDING_APPROVAL", "training.matrix.approve", 100, true,
+                "The person designated to approve, who did not prepare the version, approves it and it becomes the effective version.",
+                List.of(permission("training.matrix.approve")))));
+        m.put("TRAINING_MATRIX|REJECT|PENDING_APPROVAL", new TrainingDefault("TRAINING_MATRIX", "TRAINING_MATRIX_VERSION", new DefaultPolicy("REJECT", "PENDING_APPROVAL", "training.matrix.approve", 100, true,
+                "The person designated to approve sends the version back to Draft with a reason.",
+                List.of(permission("training.matrix.approve")))));
+        m.put("TRAINING_ACTIVITY|UPDATE|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("UPDATE", "PLANNED", "training.activity.organize", 100, true,
+                "An organizer, in the department of the activity, edits it (the title, due date and unit are fixed once it is notified).",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|UPDATE|NOTIFIED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("UPDATE", "NOTIFIED", "training.activity.organize", 100, true,
+                "An organizer, in the department of the activity, edits it (the title, due date and unit are fixed once it is notified).",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|UPDATE|IN_PROGRESS", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("UPDATE", "IN_PROGRESS", "training.activity.organize", 100, true,
+                "An organizer, in the department of the activity, edits it (the title, due date and unit are fixed once it is notified).",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|UPDATE|PENDING_QA_CONFIRMATION", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("UPDATE", "PENDING_QA_CONFIRMATION", "training.activity.organize", 100, true,
+                "An organizer, in the department of the activity, edits it (the title, due date and unit are fixed once it is notified).",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|ADD_SESSION|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("ADD_SESSION", "PLANNED", "training.activity.organize", 100, true,
+                "An organizer adds a session before the training starts.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|ADD_SESSION|NOTIFIED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("ADD_SESSION", "NOTIFIED", "training.activity.organize", 100, true,
+                "An organizer adds a session before the training starts.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|ADD_PARTICIPANTS|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("ADD_PARTICIPANTS", "PLANNED", "training.activity.organize", 100, true,
+                "An organizer adds people to a session until the list is confirmed.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|CONFIRM_LIST|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CONFIRM_LIST", "PLANNED", "training.activity.organize", 100, true,
+                "An organizer confirms the list of participants, with a signature.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|NOTIFY|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("NOTIFY", "PLANNED", "training.activity.organize", 100, true,
+                "An organizer notifies the participants once the list is confirmed and the content is approved.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|CANCEL|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CANCEL", "PLANNED", "training.activity.organize", 100, true,
+                "An organizer cancels the activity with a reason and a signature, unless somebody already passed.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|CANCEL|NOTIFIED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CANCEL", "NOTIFIED", "training.activity.organize", 100, true,
+                "An organizer cancels the activity with a reason and a signature, unless somebody already passed.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|CANCEL|IN_PROGRESS", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CANCEL", "IN_PROGRESS", "training.activity.organize", 100, true,
+                "An organizer cancels the activity with a reason and a signature, unless somebody already passed.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|CANCEL|PENDING_QA_CONFIRMATION", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CANCEL", "PENDING_QA_CONFIRMATION", "training.activity.organize", 100, true,
+                "An organizer cancels the activity with a reason and a signature, unless somebody already passed.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|REOPEN_CONTENT|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("REOPEN_CONTENT", "PLANNED", "training.activity.organize", 100, true,
+                "An organizer reopens the reviewed and approved content, with a reason and a signature.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|REOPEN_CONTENT|NOTIFIED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("REOPEN_CONTENT", "NOTIFIED", "training.activity.organize", 100, true,
+                "An organizer reopens the reviewed and approved content, with a reason and a signature.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|SUPPLEMENTARY|IN_PROGRESS", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("SUPPLEMENTARY", "IN_PROGRESS", "training.activity.organize", 100, true,
+                "An organizer opens a supplementary training for people who were absent or failed.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|SUPPLEMENTARY|PENDING_QA_CONFIRMATION", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("SUPPLEMENTARY", "PENDING_QA_CONFIRMATION", "training.activity.organize", 100, true,
+                "An organizer opens a supplementary training for people who were absent or failed.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|SUPPLEMENTARY|COMPLETED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("SUPPLEMENTARY", "COMPLETED", "training.activity.organize", 100, true,
+                "An organizer opens a supplementary training for people who were absent or failed.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|CONTENT_REVIEW|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CONTENT_REVIEW", "PLANNED", "training.content.review", 100, true,
+                "The person designated to review the content, who did not create the activity, signs the review.",
+                List.of(permission("training.content.review")))));
+        m.put("TRAINING_ACTIVITY|CONTENT_REVIEW|NOTIFIED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CONTENT_REVIEW", "NOTIFIED", "training.content.review", 100, true,
+                "The person designated to review the content, who did not create the activity, signs the review.",
+                List.of(permission("training.content.review")))));
+        m.put("TRAINING_ACTIVITY|CONTENT_APPROVE|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CONTENT_APPROVE", "PLANNED", "training.content.approve", 100, true,
+                "The person designated to approve the content, who neither created the activity nor reviewed the content, signs the approval.",
+                List.of(permission("training.content.approve")))));
+        m.put("TRAINING_ACTIVITY|CONTENT_APPROVE|NOTIFIED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CONTENT_APPROVE", "NOTIFIED", "training.content.approve", 100, true,
+                "The person designated to approve the content, who neither created the activity nor reviewed the content, signs the approval.",
+                List.of(permission("training.content.approve")))));
+        m.put("TRAINING_ACTIVITY|SEND_ATTENDANCE_LIST|IN_PROGRESS", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("SEND_ATTENDANCE_LIST", "IN_PROGRESS", "", 100, true,
+                "The trainer of a session (or, for a session without a trainer, a conductor of the department) sends the attendance list.",
+                List.of())));
+        m.put("TRAINING_ACTIVITY|FINISH|IN_PROGRESS", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("FINISH", "IN_PROGRESS", "", 100, true,
+                "The trainer (or the conductor of the department) finishes the training and sends the results to QA, with a signature.",
+                List.of())));
+        m.put("TRAINING_ACTIVITY|CONFIRM_COMPLETION|PENDING_QA_CONFIRMATION", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CONFIRM_COMPLETION", "PENDING_QA_CONFIRMATION", "training.activity.close", 100, true,
+                "A person who may close activities, in the department, other than the one who prepared the list, confirms the completion.",
+                List.of(permission("training.activity.close")))));
+        m.put("TRAINING_ACTIVITY|RETURN_FOR_CORRECTION|PENDING_QA_CONFIRMATION", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("RETURN_FOR_CORRECTION", "PENDING_QA_CONFIRMATION", "training.activity.close", 100, true,
+                "The same person returns the results for correction, with a reason and a signature.",
+                List.of(permission("training.activity.close")))));
+        TRAINING_DEFAULTS = Collections.unmodifiableMap(m);
+    }
+
+    // ── Defaults of the modules added after Training (V812 and later): one generic map, filled by the generated lines below ──
+
+    /** A system policy of any module's lifecycle: the module, the workflow, the object type of its resource and the default itself. */
+    public record ModuleDefault(String moduleKey, String workflowKey, String objectType, DefaultPolicy policy) {}
+
+    private static final Map<String, ModuleDefault> MODULE_DEFAULTS;
+
+    static {
+        Map<String, ModuleDefault> m = new java.util.LinkedHashMap<>();
+        m.put("TRAINING_PARTICIPANT|REMIND_TO_READ|NOTIFIED", new ModuleDefault("TRAINING", "TRAINING_PARTICIPANT", "TRAINING_PARTICIPANT", new DefaultPolicy("REMIND_TO_READ", "NOTIFIED", "", 100, true,
+                "A conductor, in the department of the activity, reminds an invited reader to read.",
+                List.of())));
+        m.put("TRAINING_PARTICIPANT|REMIND_TO_READ|IN_PROGRESS", new ModuleDefault("TRAINING", "TRAINING_PARTICIPANT", "TRAINING_PARTICIPANT", new DefaultPolicy("REMIND_TO_READ", "IN_PROGRESS", "", 100, true,
+                "A conductor, in the department of the activity, reminds an invited reader to read.",
+                List.of())));
+        m.put("TRAINING_PARTICIPANT|EXCUSE_READER|NOTIFIED", new ModuleDefault("TRAINING", "TRAINING_PARTICIPANT", "TRAINING_PARTICIPANT", new DefaultPolicy("EXCUSE_READER", "NOTIFIED", "", 100, true,
+                "A conductor excuses a reader who cannot read, with a reason and a signature, but never for themselves.",
+                List.of())));
+        m.put("TRAINING_PARTICIPANT|EXCUSE_READER|IN_PROGRESS", new ModuleDefault("TRAINING", "TRAINING_PARTICIPANT", "TRAINING_PARTICIPANT", new DefaultPolicy("EXCUSE_READER", "IN_PROGRESS", "", 100, true,
+                "A conductor excuses a reader who cannot read, with a reason and a signature, but never for themselves.",
+                List.of())));
+        m.put("TRAINING_PARTICIPANT|CORRECT_ATTENDANCE|IN_PROGRESS", new ModuleDefault("TRAINING", "TRAINING_PARTICIPANT", "TRAINING_PARTICIPANT", new DefaultPolicy("CORRECT_ATTENDANCE", "IN_PROGRESS", "", 100, true,
+                "A conductor corrects a recorded attendance with a reason, but never their own.",
+                List.of())));
+        m.put("TRAINING_PARTICIPANT|SET_PARTICIPATION|PLANNED", new ModuleDefault("TRAINING", "TRAINING_PARTICIPANT", "TRAINING_PARTICIPANT", new DefaultPolicy("SET_PARTICIPATION", "PLANNED", "", 100, true,
+                "A conductor sets the role of a participant, but never their own.",
+                List.of())));
+        m.put("TRAINING_PARTICIPANT|SET_PARTICIPATION|NOTIFIED", new ModuleDefault("TRAINING", "TRAINING_PARTICIPANT", "TRAINING_PARTICIPANT", new DefaultPolicy("SET_PARTICIPATION", "NOTIFIED", "", 100, true,
+                "A conductor sets the role of a participant, but never their own.",
+                List.of())));
+        m.put("TRAINING_PARTICIPANT|SET_PARTICIPATION|IN_PROGRESS", new ModuleDefault("TRAINING", "TRAINING_PARTICIPANT", "TRAINING_PARTICIPANT", new DefaultPolicy("SET_PARTICIPATION", "IN_PROGRESS", "", 100, true,
+                "A conductor sets the role of a participant, but never their own.",
+                List.of())));
+        m.put("TRAINING_PARTICIPANT|REMOVE_PARTICIPANT|PLANNED", new ModuleDefault("TRAINING", "TRAINING_PARTICIPANT", "TRAINING_PARTICIPANT", new DefaultPolicy("REMOVE_PARTICIPANT", "PLANNED", "training.activity.organize", 100, true,
+                "An organizer removes an invited person while the list is not confirmed, with a reason.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_PARTICIPANT|SET_PLANNED_ABSENCE|PLANNED", new ModuleDefault("TRAINING", "TRAINING_PARTICIPANT", "TRAINING_PARTICIPANT", new DefaultPolicy("SET_PLANNED_ABSENCE", "PLANNED", "training.activity.organize", 100, true,
+                "An organizer records or clears a planned absence of an invited person.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_PARTICIPANT|SET_PLANNED_ABSENCE|NOTIFIED", new ModuleDefault("TRAINING", "TRAINING_PARTICIPANT", "TRAINING_PARTICIPANT", new DefaultPolicy("SET_PLANNED_ABSENCE", "NOTIFIED", "training.activity.organize", 100, true,
+                "An organizer records or clears a planned absence of an invited person.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_PARTICIPANT|CONFIRM_READ|NOTIFIED", new ModuleDefault("TRAINING", "TRAINING_PARTICIPANT", "TRAINING_PARTICIPANT", new DefaultPolicy("CONFIRM_READ", "NOTIFIED", "training.self.view", 100, true,
+                "The invited person confirms that they read the material, with a signature.",
+                List.of(permission("training.self.view")))));
+        m.put("TRAINING_PARTICIPANT|CONFIRM_READ|IN_PROGRESS", new ModuleDefault("TRAINING", "TRAINING_PARTICIPANT", "TRAINING_PARTICIPANT", new DefaultPolicy("CONFIRM_READ", "IN_PROGRESS", "training.self.view", 100, true,
+                "The invited person confirms that they read the material, with a signature.",
+                List.of(permission("training.self.view")))));
+        m.put("TRAINING_ASSESSMENT|UPDATE|DRAFT", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("UPDATE", "DRAFT", "training.assessment.design", 100, true,
+                "A designer edits a draft assessment.",
+                List.of(permission("training.assessment.design")))));
+        m.put("TRAINING_ASSESSMENT|DELETE|DRAFT", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("DELETE", "DRAFT", "training.assessment.design", 100, true,
+                "A designer deletes a draft assessment, with a reason.",
+                List.of(permission("training.assessment.design")))));
+        m.put("TRAINING_ASSESSMENT|SUBMIT|DRAFT", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("SUBMIT", "DRAFT", "training.assessment.design", 100, true,
+                "A designer submits a draft with at least one item for approval.",
+                List.of(permission("training.assessment.design")))));
+        m.put("TRAINING_ASSESSMENT|APPROVE|PENDING_APPROVAL", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("APPROVE", "PENDING_APPROVAL", "training.assessment.approve", 100, true,
+                "An approver who did not create, edit or submit the assessment approves it, with a signature.",
+                List.of(permission("training.assessment.approve")))));
+        m.put("TRAINING_ASSESSMENT|RETURN_TO_DRAFT|PENDING_APPROVAL", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("RETURN_TO_DRAFT", "PENDING_APPROVAL", "", 100, true,
+                "A designer or an approver returns the assessment to Draft, with a reason.",
+                List.of())));
+        m.put("TRAINING_ASSESSMENT|UPGRADE_REVISION|EFFECTIVE", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("UPGRADE_REVISION", "EFFECTIVE", "training.assessment.design", 100, true,
+                "A designer starts a new revision of an effective assessment.",
+                List.of(permission("training.assessment.design")))));
+        m.put("TRAINING_JOB_ASSIGNMENT|UPDATE|DRAFT", new ModuleDefault("TRAINING", "TRAINING_JOB_ASSIGNMENT", "TRAINING_JOB_ASSIGNMENT", new DefaultPolicy("UPDATE", "DRAFT", "training.job_assignment.manage", 100, true,
+                "A person who manages job assignments, in the department, edits a draft assignment.",
+                List.of(permission("training.job_assignment.manage")))));
+        m.put("TRAINING_JOB_ASSIGNMENT|REQUEST_EXCEPTION|DRAFT", new ModuleDefault("TRAINING", "TRAINING_JOB_ASSIGNMENT", "TRAINING_JOB_ASSIGNMENT", new DefaultPolicy("REQUEST_EXCEPTION", "DRAFT", "training.job_assignment.manage", 100, true,
+                "The same person asks for an exception to the required training and chooses who approves it.",
+                List.of(permission("training.job_assignment.manage")))));
+        m.put("TRAINING_JOB_ASSIGNMENT|APPROVE_EXCEPTION|DRAFT", new ModuleDefault("TRAINING", "TRAINING_JOB_ASSIGNMENT", "TRAINING_JOB_ASSIGNMENT", new DefaultPolicy("APPROVE_EXCEPTION", "DRAFT", "training.job_assignment.exception.approve", 100, true,
+                "The person designated approves the exception, unless they are the person assigned or created the assignment.",
+                List.of(permission("training.job_assignment.exception.approve")))));
+        m.put("TRAINING_JOB_ASSIGNMENT|SUBMIT|DRAFT", new ModuleDefault("TRAINING", "TRAINING_JOB_ASSIGNMENT", "TRAINING_JOB_ASSIGNMENT", new DefaultPolicy("SUBMIT", "DRAFT", "training.job_assignment.manage", 100, true,
+                "The assignor signs and sends the assignment to the person, who cannot assign themselves.",
+                List.of(permission("training.job_assignment.manage")))));
+        m.put("TRAINING_JOB_ASSIGNMENT|ACCEPT|PENDING_RECEIVER", new ModuleDefault("TRAINING", "TRAINING_JOB_ASSIGNMENT", "TRAINING_JOB_ASSIGNMENT", new DefaultPolicy("ACCEPT", "PENDING_RECEIVER", "training.self.view", 100, true,
+                "The person assigned accepts, with a signature; it becomes effective.",
+                List.of(permission("training.self.view")))));
+        m.put("TRAINING_JOB_ASSIGNMENT|CANCEL|DRAFT", new ModuleDefault("TRAINING", "TRAINING_JOB_ASSIGNMENT", "TRAINING_JOB_ASSIGNMENT", new DefaultPolicy("CANCEL", "DRAFT", "training.job_assignment.manage", 100, true,
+                "A person who manages job assignments cancels the assignment, with a reason.",
+                List.of(permission("training.job_assignment.manage")))));
+        m.put("TRAINING_JOB_ASSIGNMENT|CANCEL|PENDING_RECEIVER", new ModuleDefault("TRAINING", "TRAINING_JOB_ASSIGNMENT", "TRAINING_JOB_ASSIGNMENT", new DefaultPolicy("CANCEL", "PENDING_RECEIVER", "training.job_assignment.manage", 100, true,
+                "A person who manages job assignments cancels the assignment, with a reason.",
+                List.of(permission("training.job_assignment.manage")))));
+        m.put("TRAINING_PERSONNEL_REVIEW|UPDATE_ITEM|OPEN", new ModuleDefault("TRAINING", "TRAINING_PERSONNEL_REVIEW", "TRAINING_PERSONNEL_REVIEW", new DefaultPolicy("UPDATE_ITEM", "OPEN", "training.job_assignment.manage", 100, true,
+                "A person who manages job assignments, for the department of the person reviewed, updates an item of the review.",
+                List.of(permission("training.job_assignment.manage")))));
+        m.put("TRAINING_PERSONNEL_REVIEW|CREATE_ACTIVITY|OPEN", new ModuleDefault("TRAINING", "TRAINING_PERSONNEL_REVIEW", "TRAINING_PERSONNEL_REVIEW", new DefaultPolicy("CREATE_ACTIVITY", "OPEN", "training.job_assignment.manage", 100, true,
+                "The same person opens a training activity for an item.",
+                List.of(permission("training.job_assignment.manage")))));
+        m.put("TRAINING_PERSONNEL_REVIEW|CLOSE|OPEN", new ModuleDefault("TRAINING", "TRAINING_PERSONNEL_REVIEW", "TRAINING_PERSONNEL_REVIEW", new DefaultPolicy("CLOSE", "OPEN", "training.job_assignment.manage", 100, true,
+                "The closer chosen (or any person allowed, when none was chosen) closes the review with a signature, but not for themselves.",
+                List.of(permission("training.job_assignment.manage")))));
+        m.put("TRAINING_PERSONNEL_REVIEW|CANCEL|OPEN", new ModuleDefault("TRAINING", "TRAINING_PERSONNEL_REVIEW", "TRAINING_PERSONNEL_REVIEW", new DefaultPolicy("CANCEL", "OPEN", "training.job_assignment.manage", 100, true,
+                "A person who manages job assignments cancels the review, with a reason.",
+                List.of(permission("training.job_assignment.manage")))));
+        m.put("TRAINING_PERSONNEL_REVIEW|CHANGE_CLOSER|OPEN", new ModuleDefault("TRAINING", "TRAINING_PERSONNEL_REVIEW", "TRAINING_PERSONNEL_REVIEW", new DefaultPolicy("CHANGE_CLOSER", "OPEN", "training.job_assignment.manage", 100, true,
+                "A person who may reassign approval steps hands the closing over to another person, with a reason.",
+                List.of(permission("training.job_assignment.manage")))));
+        m.put("TRAINING_RECORD_EXPORT|APPROVE|PENDING_APPROVAL", new ModuleDefault("TRAINING", "TRAINING_RECORD_EXPORT", "TRAINING_RECORD_EXPORT", new DefaultPolicy("APPROVE", "PENDING_APPROVAL", "training.record.export", 100, true,
+                "The person designated, who did not prepare the export of a personal training record, approves it with a signature.",
+                List.of(permission("training.record.export")))));
+        m.put("TRAINING_RECORD_EXPORT|REJECT|PENDING_APPROVAL", new ModuleDefault("TRAINING", "TRAINING_RECORD_EXPORT", "TRAINING_RECORD_EXPORT", new DefaultPolicy("REJECT", "PENDING_APPROVAL", "training.record.export", 100, true,
+                "The person designated rejects the export, with a reason.",
+                List.of(permission("training.record.export")))));
+        m.put("TRAINING_RECORD_EXPORT_BATCH|APPROVE|PENDING_APPROVAL", new ModuleDefault("TRAINING", "TRAINING_RECORD_EXPORT_BATCH", "TRAINING_RECORD_EXPORT_BATCH", new DefaultPolicy("APPROVE", "PENDING_APPROVAL", "training.record.export", 100, true,
+                "The person designated, who did not prepare the yearly export of a department, approves it with a signature.",
+                List.of(permission("training.record.export")))));
+        m.put("TRAINING_RECORD_EXPORT_BATCH|REJECT|PENDING_APPROVAL", new ModuleDefault("TRAINING", "TRAINING_RECORD_EXPORT_BATCH", "TRAINING_RECORD_EXPORT_BATCH", new DefaultPolicy("REJECT", "PENDING_APPROVAL", "training.record.export", 100, true,
+                "The person designated rejects the batch, with a reason.",
+                List.of(permission("training.record.export")))));
+        m.put("TRAINING_TRAINER_EXCEPTION|APPROVE|PENDING", new ModuleDefault("TRAINING", "TRAINING_TRAINER_EXCEPTION", "TRAINING_TRAINER_EXCEPTION", new DefaultPolicy("APPROVE", "PENDING", "training.trainer.exception.approve", 100, true,
+                "The person designated approves a trainer who is not qualified, unless they asked for it or are the trainer.",
+                List.of(permission("training.trainer.exception.approve")))));
+        m.put("TRAINING_TRAINER_EXCEPTION|REJECT|PENDING", new ModuleDefault("TRAINING", "TRAINING_TRAINER_EXCEPTION", "TRAINING_TRAINER_EXCEPTION", new DefaultPolicy("REJECT", "PENDING", "training.trainer.exception.approve", 100, true,
+                "The person designated rejects the exception, with a reason.",
+                List.of(permission("training.trainer.exception.approve")))));
+        m.put("TRAINING_SUSPENSION|RESUME|OPEN", new ModuleDefault("TRAINING", "TRAINING_SUSPENSION", "TRAINING_SUSPENSION", new DefaultPolicy("RESUME", "OPEN", "training.job_assignment.manage", 100, true,
+                "A person who manages job assignments, for the department of the person, lets the work resume with a reason and a signature, but not their own.",
+                List.of(permission("training.job_assignment.manage")))));
+        m.put("TRAINING_VENDOR|APPROVE|DRAFT", new ModuleDefault("TRAINING", "TRAINING_VENDOR", "TRAINING_VENDOR", new DefaultPolicy("APPROVE", "DRAFT", "training.admin.manage", 100, true,
+                "A Training administrator who did not create the external vendor approves it, with a signature.",
+                List.of(permission("training.admin.manage")))));
+        m.put("TRAINING_RECORD|VOID|ACTIVE", new ModuleDefault("TRAINING", "TRAINING_RECORD", "TRAINING_RECORD", new DefaultPolicy("VOID", "ACTIVE", "training.record.void", 100, true,
+                "A person who may void records, in the department of the activity and other than the one who confirmed its completion, voids a record with a reason and a signature.",
+                List.of(permission("training.record.void")))));
+        m.put("REPORT_SCHEDULE|PAUSE|ANY", new ModuleDefault("REPORT", "REPORT_SCHEDULE", "REPORT_SCHEDULE", new DefaultPolicy("PAUSE", "ANY", "", 100, true,
+                "Whoever may manage the schedule pauses it.",
+                List.of())));
+        m.put("REPORT_SCHEDULE|RESUME|ANY", new ModuleDefault("REPORT", "REPORT_SCHEDULE", "REPORT_SCHEDULE", new DefaultPolicy("RESUME", "ANY", "", 100, true,
+                "Whoever may manage the schedule resumes it.",
+                List.of())));
+        m.put("REPORT_SCHEDULE|DELETE|ANY", new ModuleDefault("REPORT", "REPORT_SCHEDULE", "REPORT_SCHEDULE", new DefaultPolicy("DELETE", "ANY", "", 100, true,
+                "Whoever may manage the schedule deletes it.",
+                List.of())));
+        m.put("REPORT_SCHEDULE|CHANGE_OWNER|ANY", new ModuleDefault("REPORT", "REPORT_SCHEDULE", "REPORT_SCHEDULE", new DefaultPolicy("CHANGE_OWNER", "ANY", "", 100, true,
+                "Whoever may manage the schedule hands it to another active owner, with a reason.",
+                List.of())));
+        m.put("REPORT_RUN|RETRY|FAILED", new ModuleDefault("REPORT", "REPORT_RUN", "REPORT_RUN", new DefaultPolicy("RETRY", "FAILED", "", 100, true,
+                "A person who may request reports and see the run retries a run that failed.",
+                List.of())));
+        m.put("REPORT_RUN|RETRY|RETRY_SCHEDULED", new ModuleDefault("REPORT", "REPORT_RUN", "REPORT_RUN", new DefaultPolicy("RETRY", "RETRY_SCHEDULED", "", 100, true,
+                "A person who may request reports and see the run retries a run that failed.",
+                List.of())));
+        m.put("REPORT_ARTIFACT|PLACE_HOLD|NOT_HELD", new ModuleDefault("REPORT", "REPORT_ARTIFACT", "REPORT_ARTIFACT", new DefaultPolicy("PLACE_HOLD", "NOT_HELD", "", 100, true,
+                "A person who manages report retention places a legal hold on a report file, with a reason.",
+                List.of())));
+        m.put("REPORT_ARTIFACT|RELEASE_HOLD|HELD", new ModuleDefault("REPORT", "REPORT_ARTIFACT", "REPORT_ARTIFACT", new DefaultPolicy("RELEASE_HOLD", "HELD", "", 100, true,
+                "The same person releases the legal hold, with a reason and a signature.",
+                List.of())));
+        m.put("ACCESS_REVIEW_CAMPAIGN|DECIDE_ITEM|IN_PROGRESS", new ModuleDefault("SECURITY_REVIEW", "ACCESS_REVIEW_CAMPAIGN", "ACCESS_REVIEW_CAMPAIGN", new DefaultPolicy("DECIDE_ITEM", "IN_PROGRESS", "security.access_review.manage", 100, true,
+                "A person who manages access reviews records a decision on an item of an in-progress campaign.",
+                List.of(permission("security.access_review.manage")))));
+        m.put("ACCESS_REVIEW_CAMPAIGN|COMPLETE|IN_PROGRESS", new ModuleDefault("SECURITY_REVIEW", "ACCESS_REVIEW_CAMPAIGN", "ACCESS_REVIEW_CAMPAIGN", new DefaultPolicy("COMPLETE", "IN_PROGRESS", "security.access_review.manage", 100, true,
+                "The same person completes the campaign when no item is pending, with a signature.",
+                List.of(permission("security.access_review.manage")))));
+        m.put("ACCESS_REVIEW_CAMPAIGN|CANCEL|IN_PROGRESS", new ModuleDefault("SECURITY_REVIEW", "ACCESS_REVIEW_CAMPAIGN", "ACCESS_REVIEW_CAMPAIGN", new DefaultPolicy("CANCEL", "IN_PROGRESS", "security.access_review.manage", 100, true,
+                "The same person cancels an in-progress campaign.",
+                List.of(permission("security.access_review.manage")))));
+        m.put("AUDIT_REVIEW_CAMPAIGN|DECIDE_ITEM|IN_PROGRESS", new ModuleDefault("SECURITY_REVIEW", "AUDIT_REVIEW_CAMPAIGN", "AUDIT_REVIEW_CAMPAIGN", new DefaultPolicy("DECIDE_ITEM", "IN_PROGRESS", "audit.review.manage", 100, true,
+                "A person who manages audit trail reviews records a decision on an item of an in-progress campaign.",
+                List.of(permission("audit.review.manage")))));
+        m.put("AUDIT_REVIEW_CAMPAIGN|COMPLETE|IN_PROGRESS", new ModuleDefault("SECURITY_REVIEW", "AUDIT_REVIEW_CAMPAIGN", "AUDIT_REVIEW_CAMPAIGN", new DefaultPolicy("COMPLETE", "IN_PROGRESS", "audit.review.manage", 100, true,
+                "The same person completes the campaign when no item is pending, with a signature.",
+                List.of(permission("audit.review.manage")))));
+        m.put("AUDIT_REVIEW_CAMPAIGN|CANCEL|IN_PROGRESS", new ModuleDefault("SECURITY_REVIEW", "AUDIT_REVIEW_CAMPAIGN", "AUDIT_REVIEW_CAMPAIGN", new DefaultPolicy("CANCEL", "IN_PROGRESS", "audit.review.manage", 100, true,
+                "The same person cancels an in-progress campaign.",
+                List.of(permission("audit.review.manage")))));
+        m.put("UNCONTROLLED_COPY|DISTRIBUTE|READY_FOR_DISTRIBUTION", new ModuleDefault("DOCUMENT_CONTROL", "UNCONTROLLED_COPY", "UNCONTROLLED_COPY", new DefaultPolicy("DISTRIBUTE", "READY_FOR_DISTRIBUTION", "documents.uncontrolled_copy.distribute", 100, true,
+                "A person who may distribute uncontrolled copies distributes a copy that is ready, with a signature.",
+                List.of(permission("documents.uncontrolled_copy.distribute")))));
+        m.put("UNCONTROLLED_COPY|CANCEL|READY_FOR_DISTRIBUTION", new ModuleDefault("DOCUMENT_CONTROL", "UNCONTROLLED_COPY", "UNCONTROLLED_COPY", new DefaultPolicy("CANCEL", "READY_FOR_DISTRIBUTION", "documents.uncontrolled_copy.cancel_request", 100, true,
+                "A person who may cancel uncontrolled copy requests cancels a copy that is ready, with a reason and a signature.",
+                List.of(permission("documents.uncontrolled_copy.cancel_request")))));
+        m.put("TRAINING_ACTIVITY|HOLD_SESSION|NOTIFIED", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("HOLD_SESSION", "NOTIFIED", "", 100, true,
+                "A conductor, in the department of the activity, holds a session; the first one starts the activity, with a signature.",
+                List.of())));
+        m.put("TRAINING_ACTIVITY|HOLD_SESSION|IN_PROGRESS", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("HOLD_SESSION", "IN_PROGRESS", "", 100, true,
+                "A conductor, in the department of the activity, holds a session; the first one starts the activity, with a signature.",
+                List.of())));
+        m.put("TRAINING_ACTIVITY|RECORD_ATTENDANCE|IN_PROGRESS", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("RECORD_ATTENDANCE", "IN_PROGRESS", "", 100, true,
+                "A conductor records the attendance of a person in a session that is being held.",
+                List.of())));
+        m.put("TRAINING_ACTIVITY|POSTPONE_SESSION|PLANNED", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("POSTPONE_SESSION", "PLANNED", "training.activity.organize", 100, true,
+                "A person who organizes, in the department, moves a session that has not started, with a reason.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|POSTPONE_SESSION|NOTIFIED", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("POSTPONE_SESSION", "NOTIFIED", "training.activity.organize", 100, true,
+                "A person who organizes, in the department, moves a session that has not started, with a reason.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|POSTPONE_SESSION|IN_PROGRESS", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("POSTPONE_SESSION", "IN_PROGRESS", "training.activity.organize", 100, true,
+                "A person who organizes, in the department, moves a session that has not started, with a reason.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|UPDATE_SESSION|PLANNED", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("UPDATE_SESSION", "PLANNED", "training.activity.organize", 100, true,
+                "A person who organizes, in the department, changes a session that has not started, with a reason.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|UPDATE_SESSION|NOTIFIED", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("UPDATE_SESSION", "NOTIFIED", "training.activity.organize", 100, true,
+                "A person who organizes, in the department, changes a session that has not started, with a reason.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|SET_CONTENT_EXEMPTIONS|PLANNED", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("SET_CONTENT_EXEMPTIONS", "PLANNED", "training.activity.organize", 100, true,
+                "A person who organizes, in the department, sets the exemption of the materials or of the assessment, until the content is reviewed.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|SET_CONTENT_EXEMPTIONS|NOTIFIED", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("SET_CONTENT_EXEMPTIONS", "NOTIFIED", "training.activity.organize", 100, true,
+                "A person who organizes, in the department, sets the exemption of the materials or of the assessment, until the content is reviewed.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|RECORD_ASSESSMENT|IN_PROGRESS", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("RECORD_ASSESSMENT", "IN_PROGRESS", "training.assessment.record", 100, true,
+                "A person who records assessments, in the department, writes the result of a participant while the training is in progress.",
+                List.of(permission("training.assessment.record")))));
+        m.put("TRAINING_ACTIVITY|DESIGNATE|ANY", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("DESIGNATE", "ANY", "training.activity.organize", 100, true,
+                "A person who organizes, in the department, designates the person of an approval step of the activity.",
+                List.of(permission("training.activity.organize")))));
+        MODULE_DEFAULTS = Collections.unmodifiableMap(m);
+    }
+
     private WorkflowActionDefaultPolicyRegistry() {}
 
     // ── Lookup API ─────────────────────────────────────────────────────────────
@@ -210,6 +576,15 @@ public final class WorkflowActionDefaultPolicyRegistry {
         if ("CONTROLLED_COPY".equals(workflowKey)) {
             return CC_DEFAULTS.get(ccKey(actionCode, fromStatus));
         }
+        if ("REPORT_TEMPLATE".equals(workflowKey)) {
+            return REPORT_TEMPLATE_DEFAULTS.get(actionCode);
+        }
+        ModuleDefault generic = MODULE_DEFAULTS.get(workflowKey + "|" + actionCode + "|" + fromStatus);
+        if (generic != null) return generic.policy();
+        if (workflowKey != null && workflowKey.startsWith("TRAINING_")) {
+            TrainingDefault found = TRAINING_DEFAULTS.get(workflowKey + "|" + actionCode + "|" + fromStatus);
+            return found == null ? null : found.policy();
+        }
         return get(actionCode, fromStatus);
     }
 
@@ -221,6 +596,24 @@ public final class WorkflowActionDefaultPolicyRegistry {
     /** All Controlled Copy defaults. */
     public static java.util.Collection<DefaultPolicy> allControlledCopy() {
         return CC_DEFAULTS.values();
+    }
+
+    /** The defaults of every module other than Document Control and Report: Training's own map and the generic one. */
+    public static java.util.List<ModuleDefault> allModule() {
+        java.util.List<ModuleDefault> out = new java.util.ArrayList<>();
+        for (TrainingDefault d : TRAINING_DEFAULTS.values()) out.add(new ModuleDefault("TRAINING", d.workflowKey(), d.objectType(), d.policy()));
+        out.addAll(MODULE_DEFAULTS.values());
+        return out;
+    }
+
+    /** All Training defaults. */
+    public static java.util.Collection<TrainingDefault> allTraining() {
+        return TRAINING_DEFAULTS.values();
+    }
+
+    /** All Report template review defaults. */
+    public static java.util.Collection<DefaultPolicy> allReportTemplate() {
+        return REPORT_TEMPLATE_DEFAULTS.values();
     }
 
     /** All Document Master defaults. */

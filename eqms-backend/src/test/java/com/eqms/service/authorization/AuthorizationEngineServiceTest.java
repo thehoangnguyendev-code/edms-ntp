@@ -43,7 +43,16 @@ class AuthorizationEngineServiceTest {
         boolean withinObjectScope = true;
         ResolvedPolicy policy = new ResolvedPolicy("documents.revision.submit_review", 1L, List.of(), "ANY");
         Optional<String> preconditionFailure = Optional.empty();
+        String variant;
+        String variantSeenByPolicy = "not called";
+        java.util.Map<String, ResolvedPolicy> policyByVariant = new java.util.HashMap<>();
 
+        @Override public String resolveVariant(UUID resourceId) { return variant; }
+        @Override public Optional<ResolvedPolicy> resolvePolicy(String actionCode, String state, UUID documentTypeId, String variant) {
+            variantSeenByPolicy = variant;
+            if (!policyByVariant.isEmpty()) return Optional.ofNullable(policyByVariant.get(variant));
+            return resolvePolicy(actionCode, state, documentTypeId);
+        }
         @Override public String resourceType() { return "REVISION"; }
         @Override public String resolveState(UUID resourceId) { return state; }
         @Override public UUID resolveDocumentTypeId(UUID resourceId) { return documentTypeId; }
@@ -257,5 +266,96 @@ class AuthorizationEngineServiceTest {
         AuthorizationDecision d = service.authorize(request());
 
         assertThat(d.allowed()).isTrue();
+    }
+
+    // ---- 2026-11-18, phase A.2: runtime "a different person" check and the variant of a workflow ----
+
+    @Test
+    void authorize_forbiddenRelationHeld_deniedAsSeparationOfDuties() {
+        fakeAdapter.policy = new ResolvedPolicy("documents.revision.submit_review", 1L, List.of(), "ANY", List.of("AUTHOR", "SUBMITTER"));
+        fakeAdapter.matchedRelations = Set.of("SUBMITTER");
+
+        AuthorizationDecision d = service.authorize(request());
+
+        assertThat(d.allowed()).isFalse();
+        assertThat(d.reasonCode()).isEqualTo("SEPARATION_OF_DUTIES");
+        assertThat(d.requiredPermission()).isEqualTo("documents.revision.submit_review");
+        assertThat(d.resourceState()).isEqualTo("DRAFT");
+    }
+
+    @Test
+    void authorize_forbiddenRelationNotHeld_allowed() {
+        fakeAdapter.policy = new ResolvedPolicy("documents.revision.submit_review", 1L, List.of(), "ANY", List.of("AUTHOR", "SUBMITTER"));
+        fakeAdapter.matchedRelations = Set.of("ASSIGNED_APPROVER");
+
+        assertThat(service.authorize(request()).allowed()).isTrue();
+    }
+
+    @Test
+    void authorize_forbiddenRelationIsCheckedAfterTheRequiredOnes() {
+        // a person who lacks the required relation is told so first, not that they are the author
+        fakeAdapter.policy = new ResolvedPolicy("documents.revision.submit_review", 1L, List.of("ASSIGNED_APPROVER"), "ANY", List.of("AUTHOR"));
+        fakeAdapter.matchedRelations = Set.of("AUTHOR");
+
+        assertThat(service.authorize(request()).reasonCode()).isEqualTo("ACTOR_NOT_ALLOWED");
+
+        fakeAdapter.matchedRelations = Set.of("AUTHOR", "ASSIGNED_APPROVER");
+        assertThat(service.authorize(request()).reasonCode()).isEqualTo("SEPARATION_OF_DUTIES");
+    }
+
+    @Test
+    void authorize_aMissingPermissionStillWinsOverTheForbiddenRelation() {
+        fakeAdapter.policy = new ResolvedPolicy("documents.revision.submit_review", 1L, List.of(), "ANY", List.of("AUTHOR"));
+        fakeAdapter.matchedRelations = Set.of("AUTHOR");
+        when(permissionEvaluationService.hasPermission(activeUser, "documents.revision.submit_review")).thenReturn(false);
+
+        assertThat(service.authorize(request()).reasonCode()).isEqualTo("MISSING_PERMISSION");
+    }
+
+    @Test
+    void policyWithoutForbiddenRelations_isUnchanged_andTheFourArgumentConstructorMeansNone() {
+        assertThat(new ResolvedPolicy("p", 1L, List.of(), "ANY").forbiddenRelationCodes()).isEmpty();
+        assertThat(new ResolvedPolicy("p", 1L, null, null, null).forbiddenRelationCodes()).isEmpty();
+        fakeAdapter.matchedRelations = Set.of("AUTHOR", "SUBMITTER");
+        assertThat(service.authorize(request()).allowed()).isTrue();
+    }
+
+    @Test
+    void authorize_passesTheVariantOfTheResourceToThePolicyLookup() {
+        fakeAdapter.variant = "GMP";
+        fakeAdapter.policyByVariant.put("GMP", new ResolvedPolicy("reports.definition.approve_gmp", 3L, List.of(), "ANY"));
+        fakeAdapter.policyByVariant.put(null, new ResolvedPolicy("reports.definition.approve", 3L, List.of(), "ANY"));
+        when(permissionEvaluationService.hasPermission(activeUser, "reports.definition.approve_gmp")).thenReturn(false);
+
+        AuthorizationDecision gmp = service.authorize(request());
+
+        assertThat(fakeAdapter.variantSeenByPolicy).isEqualTo("GMP");
+        assertThat(gmp.allowed()).isFalse();
+        assertThat(gmp.requiredPermission()).isEqualTo("reports.definition.approve_gmp");
+
+        fakeAdapter.variant = null;
+        when(permissionEvaluationService.hasPermission(activeUser, "reports.definition.approve")).thenReturn(true);
+        assertThat(service.authorize(request()).allowed()).isTrue();
+        assertThat(fakeAdapter.variantSeenByPolicy).isNull();
+    }
+
+    @Test
+    void anAdapterWithoutVariants_isAskedWithAnEmptyVariantAndItsThreeArgumentMethodIsUsed() {
+        // the default of the interface: resolveVariant is null and the four-argument method calls the three-argument one
+        ResourceAuthorizationAdapter plain = new ResourceAuthorizationAdapter() {
+            @Override public String resourceType() { return "PLAIN"; }
+            @Override public String resolveState(UUID id) { return "X"; }
+            @Override public UUID resolveDocumentTypeId(UUID id) { return null; }
+            @Override public Optional<ResolvedPolicy> resolvePolicy(String a, String s2, UUID d) { return Optional.of(new ResolvedPolicy("documents.revision.submit_review", 9L, List.of(), "ANY")); }
+            @Override public Set<String> resolveMatchedRelations(UserAccount actor, UUID id) { return Set.of(); }
+            @Override public boolean isWithinObjectScope(UserAccount actor, UUID id, String action) { return true; }
+        };
+        assertThat(plain.resolveVariant(resourceId)).isNull();
+        AuthorizationEngineService engine = new AuthorizationEngineService(permissionEvaluationService, relationDefinitionRepository, userAccessProfileRepository, List.of(plain));
+
+        AuthorizationDecision d = engine.authorize(AuthorizationRequest.of(activeUser, "PLAIN", resourceId, "ANY_ACTION"));
+
+        assertThat(d.allowed()).isTrue();
+        assertThat(d.matchedPolicyVersion()).isEqualTo(9L);
     }
 }

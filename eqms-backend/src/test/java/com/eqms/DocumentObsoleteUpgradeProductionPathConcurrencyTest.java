@@ -5,7 +5,6 @@ import com.eqms.entity.*;
 import com.eqms.exception.DocumentLifecycleConflictException;
 import com.eqms.repository.*;
 import com.eqms.service.*;
-import com.eqms.service.authorization.AuthorizationCutoverFlags;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -157,21 +156,40 @@ class DocumentObsoleteUpgradeProductionPathConcurrencyTest {
         // harmless terminal state instead.
         DocumentStatusDefinition closedCancelledDoc = documentStatusRepository.findById("CLOSED_CANCELLED").orElse(null);
         RevisionStatusDefinition closedCancelledRev = revisionStatusRepository.findById("CLOSED_CANCELLED").orElse(null);
+        RevisionStatusDefinition obsoletedRev = revisionStatusRepository.findById("OBSOLETED").orElse(null);
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
-        tx.executeWithoutResult(status -> {
-            if (closedCancelledRev != null) {
-                revisionRepository.findAllByDocument_IdOrderByCreatedAtDesc(documentId).forEach(r -> {
-                    r.setStatus(closedCancelledRev);
-                    revisionRepository.save(r);
-                });
-            }
-            if (closedCancelledDoc != null) {
-                documentRepository.findById(documentId).ifPresent(d -> {
+        // The lifecycle refuses some moves (an Effective or an Obsoleted revision is not cancelled): each fixture gets its own transaction and its own attempt, and what cannot move is left as the test
+        // ended, which is already a harmless state (the test either made it Obsoleted or the upgrade left it Effective).
+        if (closedCancelledRev != null) {
+            revisionRepository.findAllByDocument_IdOrderByCreatedAtDesc(documentId).forEach(r -> {
+                String code = r.getStatus() == null ? "" : r.getStatus().getCode();
+                if ("OBSOLETED".equals(code) || "CLOSED_CANCELLED".equals(code)) return; // already terminal
+                for (RevisionStatusDefinition target : new RevisionStatusDefinition[] {closedCancelledRev, obsoletedRev}) {
+                    if (target == null) continue;
+                    try {
+                        tx.executeWithoutResult(status -> {
+                            revisionRepository.findById(r.getId()).ifPresent(fresh -> {
+                                fresh.setStatus(target);
+                                revisionRepository.saveAndFlush(fresh);
+                            });
+                        });
+                        return;
+                    } catch (RuntimeException refused) {
+                        // the lifecycle refuses this move: try the next target, else leave it
+                    }
+                }
+            });
+        }
+        if (closedCancelledDoc != null) {
+            try {
+                tx.executeWithoutResult(status -> documentRepository.findById(documentId).ifPresent(d -> {
                     d.setStatus(closedCancelledDoc);
-                    documentRepository.save(d);
-                });
+                    documentRepository.saveAndFlush(d);
+                }));
+            } catch (RuntimeException refused) {
+                // an active document with an Effective revision is not cancelled: left as it is
             }
-        });
+        }
     }
 
     private com.eqms.dto.document.DocumentObsoleteRequest obsoleteRequest() {

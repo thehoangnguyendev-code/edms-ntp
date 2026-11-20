@@ -132,6 +132,17 @@ public class MinioObjectStorageService {
         return enabled;
     }
 
+    /** The address that tells whether the object store is alive (MinIO answers 200 there without any login), from the endpoint the storage really uses. */
+    public String healthUrl() {
+        String endpoint;
+        try {
+            endpoint = resolveConfig(null).endpoint();
+        } catch (RuntimeException ex) {
+            endpoint = defaultEndpoint;
+        }
+        return endpoint.replaceAll("/+$", "") + "/minio/health/live";
+    }
+
     @PostConstruct
     public void initialize() {
         if (!enabled || !initializeOnStartup) {

@@ -44,12 +44,14 @@ public class TrainingVendorService {
     private static final Map<String, String> LABEL = Map.of("DRAFT", "Draft", "ACTIVE", "Active", "EXPIRED", "Approval ended", "INACTIVE", "Inactive");
 
     private final JdbcTemplate jdbc;
+    private final TrainingShadow shadow;
     private final TrainingAccess access;
     private final ElectronicSignatureService signatures;
     private final AuditTrailService audit;
 
-    public TrainingVendorService(JdbcTemplate jdbc, TrainingAccess access, ElectronicSignatureService signatures, AuditTrailService audit) {
+    public TrainingVendorService(JdbcTemplate jdbc, TrainingAccess access, ElectronicSignatureService signatures, AuditTrailService audit, TrainingShadow shadow) {
         this.jdbc = jdbc;
+        this.shadow = shadow;
         this.access = access;
         this.signatures = signatures;
         this.audit = audit;
@@ -173,10 +175,13 @@ public class TrainingVendorService {
     /** Approves a Draft with the electronic signature of a person other than the one who wrote it. */
     @Transactional
     public Map<String, Object> approve(UserAccount actor, UUID id, SignRequest request) {
-        access.require(actor, "training.admin.manage");
+        return shadow.around(actor, "TRAINING_VENDOR", id, "APPROVE", true, () -> approveInner(actor, id, request));
+    }
+
+    private Map<String, Object> approveInner(UserAccount actor, UUID id, SignRequest request) {
+        // who may approve (the permission, and not the person who created the vendor) is decided by the Hybrid engine (TrainingShadow, TRAINING_VENDOR)
         Map<String, Object> v = lock(id);
         if (!"DRAFT".equals(v.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_VENDOR_NOT_DRAFT");
-        if (actor.getId().equals(v.get("created_by"))) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
         if (request == null || request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
         Object until = v.get("valid_until");
         if (until != null && ((java.sql.Date) until).toLocalDate().isBefore(LocalDate.now())) throw new IllegalArgumentException("TRAINING_VENDOR_VALIDITY_PAST");

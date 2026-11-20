@@ -110,6 +110,13 @@ public class UserUiPreferenceService {
         }
     }
 
+    /** Every card a layout may mention. An id never grants access: the page draws only the cards its viewer is authorised for. */
+    private static final java.util.Set<String> DASHBOARD_WIDGET_IDS = java.util.Set.of("user-kpis", "admin-kpis", "audit-activity", "revision-pipeline", "effective-by-type", "documents-by-status", "system-monitoring", "pending-work", "document-activity", "workflow-pipeline", "my-documents", "admin-total-users", "admin-total-documents", "admin-revisions-in-flight", "admin-audit-events", "user-pending-actions", "user-pending-review", "user-pending-approval", "user-effective-documents", "user-pending-training", "system-uptime", "database-connections", "active-sessions", "failed-logins", "users-by-status", "compliance-queues", "system-runtime", "locked-accounts", "electronic-signatures",
+        "backup-last-success", "backup-completed", "backup-failed", "backup-unverified", "backup-daily", "backup-attention", "backup-ledger", "backup-store-check", "backup-manual-copy",
+        "notifications-unread", "notifications-recent", "training-my-tasks", "training-my-signatures", "reports-recent-runs", "reports-failed-runs", "audit-recent-events", "open-access-reviews", "open-audit-trail-reviews", "open-controlled-copy-discrepancies",
+        "notifications-personal", "notifications-by-type", "notifications-delivery-failures", "training-my-task-list", "training-my-approval-list", "training-my-records", "training-activities-in-progress", "training-activities-overdue", "training-activities-awaiting-qa");
+    private static final int MAX_DASHBOARD_WIDGETS = 80;
+
     /** Layout preferences never grant access to a widget or its data. */
     static void validateDashboardLayout(JsonNode value) {
         if (value == null || !value.isObject()) throw new IllegalArgumentException("Dashboard layout must be an object");
@@ -117,7 +124,7 @@ public class UserUiPreferenceService {
             if (!"widgets".equals(field)) throw new IllegalArgumentException("Unknown dashboard layout setting: " + field);
         });
         JsonNode widgets = value.get("widgets");
-        if (widgets == null || !widgets.isArray() || widgets.size() > 30) throw new IllegalArgumentException("Dashboard widgets must be a list of at most 30 items");
+        if (widgets == null || !widgets.isArray() || widgets.size() > MAX_DASHBOARD_WIDGETS) throw new IllegalArgumentException("Dashboard widgets must be a list of at most " + MAX_DASHBOARD_WIDGETS + " items");
         var seen = new java.util.HashSet<String>();
         for (JsonNode widget : widgets) {
             if (!widget.isObject()) throw new IllegalArgumentException("Invalid dashboard widget");
@@ -125,7 +132,7 @@ public class UserUiPreferenceService {
                 if (!java.util.Set.of("id", "visible", "width").contains(field)) throw new IllegalArgumentException("Unknown widget setting: " + field);
             });
             JsonNode id = widget.get("id"), visible = widget.get("visible"), width = widget.get("width");
-            if (id == null || !id.isTextual() || !java.util.Set.of("user-kpis", "admin-kpis", "audit-activity", "revision-pipeline", "effective-by-type", "documents-by-status", "system-monitoring", "pending-work", "document-activity", "workflow-pipeline", "my-documents", "admin-total-users", "admin-total-documents", "admin-revisions-in-flight", "admin-audit-events", "user-pending-actions", "user-pending-review", "user-pending-approval", "user-effective-documents", "user-pending-training", "system-uptime", "database-connections", "active-sessions", "failed-logins", "users-by-status", "compliance-queues", "system-runtime", "locked-accounts", "electronic-signatures").contains(id.asText()) || !seen.add(id.asText())) throw new IllegalArgumentException("Invalid or duplicate widget ID");
+            if (id == null || !id.isTextual() || !DASHBOARD_WIDGET_IDS.contains(id.asText()) || !seen.add(id.asText())) throw new IllegalArgumentException("Invalid or duplicate widget ID");
             if (visible == null || !visible.isBoolean()) throw new IllegalArgumentException("Widget visibility must be true or false");
             if (width == null || !width.isTextual() || !java.util.Set.of("half", "full").contains(width.asText())) throw new IllegalArgumentException("Invalid widget width");
         }

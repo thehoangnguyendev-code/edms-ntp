@@ -6,8 +6,6 @@ public record AccessProfileRequest(
         String description,
         String type,
         boolean active,
-        String businessUnitScope,
-        String departmentScope,
         String signatureToken,
         String reason
 ) {}

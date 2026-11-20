@@ -12,6 +12,12 @@ public final class AccessExplorerDtos {
     /** One permission of the catalogue, for the picker. */
     public record PermissionOption(String code, String name, String moduleKey, String category, String description) {}
 
+    /** One line of the Access Explorer list: a permission with how widely it is held. */
+    public record PermissionRow(String code, String name, String moduleKey, String category, String description, int permissionSetCount, int accessProfileCount, int holderCount,
+                                int activeHolderCount) {}
+
+    public record PermissionPage(List<PermissionRow> content, long totalElements, int totalPages, int page, int size) {}
+
     public record GrantingProfile(UUID id, String code, String name, boolean active, int holderCount) {}
 
     public record GrantingSet(UUID id, String code, String name, List<GrantingProfile> profiles) {}
@@ -34,5 +40,8 @@ public final class AccessExplorerDtos {
             List<GrantingSet> permissionSets,
             List<Holder> holders,
             int holderCount,
-            int activeHolderCount) {}
+            int activeHolderCount,
+            /** The people that match the search and the "only active" switch, before paging: {@code holders} is one page of them. */
+            long holderTotal,
+            int totalPages) {}
 }

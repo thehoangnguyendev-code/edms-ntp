@@ -81,6 +81,7 @@ public class TrainingAssessmentLibraryService {
     public record PreviewRequest(String name, String kind, Integer durationMinutes, List<ItemDto> items, boolean key, String code, String revisionNumber, Boolean sideBySide, String essayNumbering) {}
 
     private final JdbcTemplate jdbc;
+    private final TrainingShadow shadow;
     private final TrainingAccess access;
     private final TrainingStore store;
     private final ElectronicSignatureService signatures;
@@ -94,8 +95,9 @@ public class TrainingAssessmentLibraryService {
     @org.springframework.beans.factory.annotation.Autowired
     private TrainingCodeService codes;
 
-    public TrainingAssessmentLibraryService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, ElectronicSignatureService signatures, AuditTrailService audit, ObjectMapper json, TrainingFileService files, com.eqms.service.OnlyOfficeDocumentEditService onlyOffice, TrainingPreviewMarking marking) {
+    public TrainingAssessmentLibraryService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, ElectronicSignatureService signatures, AuditTrailService audit, ObjectMapper json, TrainingFileService files, com.eqms.service.OnlyOfficeDocumentEditService onlyOffice, TrainingPreviewMarking marking, TrainingShadow shadow) {
         this.files = files;
+        this.shadow = shadow;
         this.onlyOffice = onlyOffice;
         this.marking = marking;
         this.jdbc = jdbc;
@@ -247,6 +249,15 @@ public class TrainingAssessmentLibraryService {
         return detail(actor, row(id));
     }
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.eqms.service.authorization.EngineCapabilities engineCapabilities;
+
+    /** The buttons follow the decision of the Hybrid engine (EngineCapabilities); the keys that name no action stay as the hints were. */
+    private Map<String, Object> withEngine(UserAccount actor, Map<String, Object> row, Map<String, Object> caps) {
+        return engineCapabilities == null ? caps : engineCapabilities.apply(actor, "TRAINING_ASSESSMENT", (UUID) row.get("id"), caps,
+                Map.of("edit", "UPDATE", "delete", "DELETE", "returnToDraft", "RETURN_TO_DRAFT", "approve", "APPROVE"), Map.of("submit", "SUBMIT", "upgradeRevision", "UPGRADE_REVISION"));
+    }
+
     private Map<String, Object> detail(UserAccount actor, Map<String, Object> def) {
         UUID id = (UUID) def.get("id");
         Map<String, Object> out = TrainingRows.camel(def);
@@ -274,7 +285,7 @@ public class TrainingAssessmentLibraryService {
         caps.put("returnToDraft", (designer(actor) || approver(actor)) && pending);
         caps.put("approve", approver(actor) && pending && apart);
         caps.put("upgradeRevision", designer(actor) && "EFFECTIVE".equals(status) && !open);
-        out.put("capabilities", caps);
+        out.put("capabilities", withEngine(actor, def, caps));
         out.put("workflow", TrainingWorkflows.assessment(status));
         // Why the approval is not offered to a person who may approve in general (shown instead of hiding the button without a word).
         out.put("approveBlocker", approver(actor) && pending && !apart ? TrainingApprovalService.SEGREGATION : null);
@@ -482,7 +493,11 @@ public class TrainingAssessmentLibraryService {
 
     @Transactional
     public Map<String, Object> update(UserAccount actor, UUID id, SaveRequest request) {
-        access.require(actor, "training.assessment.design");
+        return shadow.around(actor, "TRAINING_ASSESSMENT", id, "UPDATE", true, () -> updateInner(actor, id, request));
+    }
+
+    private Map<String, Object> updateInner(UserAccount actor, UUID id, SaveRequest request) {
+        // who may do this (permission, and for the approval a person other than the author, the updater and the submitter) is decided by the Hybrid engine (TrainingShadow, TRAINING_ASSESSMENT)
         Map<String, Object> def = lock(id);
         if (!"DRAFT".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_DRAFT");
         if (request == null || request.version() == null || request.version().intValue() != ((Number) def.get("version")).intValue()) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_VERSION_CHANGED");
@@ -501,7 +516,11 @@ public class TrainingAssessmentLibraryService {
     /** A draft that is not wanted any more. Approved versions are never deleted. */
     @Transactional
     public Map<String, Object> delete(UserAccount actor, UUID id, ReasonRequest request) {
-        access.require(actor, "training.assessment.design");
+        return shadow.around(actor, "TRAINING_ASSESSMENT", id, "DELETE", true, () -> deleteInner(actor, id, request));
+    }
+
+    private Map<String, Object> deleteInner(UserAccount actor, UUID id, ReasonRequest request) {
+        // who may do this (permission, and for the approval a person other than the author, the updater and the submitter) is decided by the Hybrid engine (TrainingShadow, TRAINING_ASSESSMENT)
         Map<String, Object> def = lock(id);
         if (!"DRAFT".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_DRAFT");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
@@ -514,7 +533,11 @@ public class TrainingAssessmentLibraryService {
     /** The designer sends the draft for approval; it can no longer be changed until it is returned. */
     @Transactional
     public Map<String, Object> submit(UserAccount actor, UUID id) {
-        access.require(actor, "training.assessment.design");
+        return shadow.around(actor, "TRAINING_ASSESSMENT", id, "SUBMIT", true, () -> submitInner(actor, id));
+    }
+
+    private Map<String, Object> submitInner(UserAccount actor, UUID id) {
+        // who may do this (permission, and for the approval a person other than the author, the updater and the submitter) is decided by the Hybrid engine (TrainingShadow, TRAINING_ASSESSMENT)
         Map<String, Object> def = lock(id);
         if (!"DRAFT".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_DRAFT");
         Integer count = jdbc.queryForObject("select count(*) from training_assessment_def_items where def_id = ?", Integer.class, id);
@@ -527,7 +550,11 @@ public class TrainingAssessmentLibraryService {
     /** The approver, or the designer, takes it back to a draft with a reason (for example a mistake in a question). */
     @Transactional
     public Map<String, Object> returnToDraft(UserAccount actor, UUID id, ReasonRequest request) {
-        access.require(actor, "training.assessment.design", "training.assessment.approve");
+        return shadow.around(actor, "TRAINING_ASSESSMENT", id, "RETURN_TO_DRAFT", true, () -> returnToDraftInner(actor, id, request));
+    }
+
+    private Map<String, Object> returnToDraftInner(UserAccount actor, UUID id, ReasonRequest request) {
+        // who may do this (permission, and for the approval a person other than the author, the updater and the submitter) is decided by the Hybrid engine (TrainingShadow, TRAINING_ASSESSMENT)
         Map<String, Object> def = lock(id);
         if (!"PENDING_APPROVAL".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_PENDING");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
@@ -540,10 +567,13 @@ public class TrainingAssessmentLibraryService {
     /** The approval: a person who holds the approval permission and is not the one who made, changed or submitted the draft, with a signature. The earlier effective version of the code is replaced. */
     @Transactional
     public Map<String, Object> approve(UserAccount actor, UUID id, ApproveRequest request) {
-        access.require(actor, "training.assessment.approve");
+        return shadow.around(actor, "TRAINING_ASSESSMENT", id, "APPROVE", true, () -> approveInner(actor, id, request));
+    }
+
+    private Map<String, Object> approveInner(UserAccount actor, UUID id, ApproveRequest request) {
+        // who may do this (permission, and for the approval a person other than the author, the updater and the submitter) is decided by the Hybrid engine (TrainingShadow, TRAINING_ASSESSMENT)
         Map<String, Object> def = lock(id);
         if (!"PENDING_APPROVAL".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_PENDING");
-        if (actor.getId().equals(def.get("created_by")) || actor.getId().equals(def.get("updated_by")) || actor.getId().equals(def.get("submitted_by"))) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
         if (request == null || request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
         String approvedRevision = approvedRevision(String.valueOf(def.get("revision_number")));
         String label = def.get("code") + " " + approvedRevision;
@@ -558,7 +588,11 @@ public class TrainingAssessmentLibraryService {
     /** A change to an effective assessment is a new draft version of the same code. */
     @Transactional
     public Map<String, Object> upgradeRevision(UserAccount actor, UUID id) {
-        access.require(actor, "training.assessment.design");
+        return shadow.around(actor, "TRAINING_ASSESSMENT", id, "UPGRADE_REVISION", true, () -> upgradeRevisionInner(actor, id));
+    }
+
+    private Map<String, Object> upgradeRevisionInner(UserAccount actor, UUID id) {
+        // who may do this (permission, and for the approval a person other than the author, the updater and the submitter) is decided by the Hybrid engine (TrainingShadow, TRAINING_ASSESSMENT)
         Map<String, Object> def = lock(id);
         if (!"EFFECTIVE".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_APPROVED");
         Integer drafts = jdbc.queryForObject("select count(*) from training_assessment_defs where code = ? and status in ('DRAFT', 'PENDING_APPROVAL')", Integer.class, def.get("code"));

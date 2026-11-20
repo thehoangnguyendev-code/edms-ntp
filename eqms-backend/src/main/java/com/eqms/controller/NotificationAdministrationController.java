@@ -68,6 +68,7 @@ public class NotificationAdministrationController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String module,
             @RequestParam(required = false) String type,
+            @RequestParam(required = false) String priority,
             @RequestParam(required = false) String usage,
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo,
@@ -84,6 +85,6 @@ public class NotificationAdministrationController {
             throw new AccessDeniedException("Current user is not allowed to view notifications");
         }
         return ResponseEntity.ok(service.list(new NotificationAdministrationService.Query(
-                search, channel, status, module, type, usage, updatedFrom, updatedTo, sortBy, sortDirection, page, Math.min(Math.max(limit, 1), 100)), events, emails));
+                search, channel, status, module, type, usage, updatedFrom, updatedTo, sortBy, sortDirection, page, Math.min(Math.max(limit, 1), 100), priority), events, emails));
     }
 }

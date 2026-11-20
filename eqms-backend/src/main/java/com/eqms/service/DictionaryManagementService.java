@@ -79,7 +79,7 @@ public class DictionaryManagementService {
     // F-17: dictionary master data (Document Type, Business Unit, Department, Storage Location,
     // Retention Policy...) drives the authorization model itself — Document Type is the key
     // workflow_action_policies.document_type_id is keyed on, and Business Unit/Department feed
-    // ObjectAccessEvaluationService's scope matching. This was previously reachable by any
+    // the department of a record (visibility and the Knowledge Base). This was previously reachable by any
     // authenticated user with no permission check at either the controller or service layer.
     private static final String BUSINESS_UNIT_VIEW = "settings.business_unit.view";
     private static final String BUSINESS_UNIT_MANAGE = "settings.business_unit.manage";

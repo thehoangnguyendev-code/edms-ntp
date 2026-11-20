@@ -58,6 +58,7 @@ class ReportScheduleOwnerTest {
                 "name", "Monthly status", "owner_user_id", currentOwner.toString(), "creator_user_id", actor.getId().toString()));
         service = new ReportPlatformService(jdbc, new ObjectMapper(), permissions, mock(DocumentRecordRepository.class), users,
                 mock(DocumentAuthorizationService.class), mock(FileStorageService.class), audit);
+        com.eqms.service.authorization.TestGuards.withAllowingEngine(service);
         when(users.findById(newOwner)).thenReturn(Optional.of(person(newOwner, UserStatus.Active)));
     }
 

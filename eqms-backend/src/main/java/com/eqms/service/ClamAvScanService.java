@@ -39,8 +39,24 @@ public class ClamAvScanService {
     @Value("${app.security.virus-scan.port:3310}")
     private int port;
 
+    /** Time allowed to connect, and the least time allowed to wait for the answer. */
     @Value("${app.security.virus-scan.timeout-ms:15000}")
     private int timeoutMs;
+
+    /** The daemon answers only after it has scanned the whole file, so a big file needs longer than a small one: this is added to the wait for each MB sent. */
+    @Value("${app.security.virus-scan.timeout-per-mb-ms:4000}")
+    private int timeoutPerMbMs;
+
+    /** The most the wait for one answer can grow to, however big the file. */
+    @Value("${app.security.virus-scan.max-read-timeout-ms:120000}")
+    private int maxReadTimeoutMs;
+
+    /** A connection that fails, is cut or times out is tried again (a daemon that is reloading its signatures or busy with another file answers a moment later). */
+    @Value("${app.security.virus-scan.max-attempts:3}")
+    private int maxAttempts;
+
+    @Value("${app.security.virus-scan.retry-delay-ms:1000}")
+    private int retryDelayMs;
 
     public boolean isEnabled() {
         return enabled;
@@ -85,9 +101,43 @@ public class ClamAvScanService {
         if (!enabled) {
             return ScanResult.ofClean();
         }
+        int attempts = Math.max(1, maxAttempts);
+        IOException last = null;
+        for (int attempt = 1; attempt <= attempts; attempt++) {
+            try {
+                return scanOnce(content, attempt);
+            } catch (IOException ex) {
+                last = ex;
+                log.warn("ClamAV scan attempt {}/{} failed (daemon at {}:{} unreachable, cut or timed out): {}", attempt, attempts, host, port, ex.getMessage());
+                if (attempt < attempts && !pause((long) retryDelayMs * attempt)) {
+                    break;
+                }
+            }
+        }
+        throw new VirusScanUnavailableException("Virus scan service is unavailable. Please try again shortly.", last);
+    }
+
+    /** How long to wait for the answer for a file of this size: the base time plus a share for each MB, never more than the cap; each new attempt waits longer. */
+    int readTimeoutMs(int contentBytes, int attempt) {
+        long wanted = timeoutMs + (long) timeoutPerMbMs * ((contentBytes + 1_048_575L) / 1_048_576L);
+        long cap = Math.max(timeoutMs, maxReadTimeoutMs);
+        return (int) Math.min(cap, wanted * Math.max(1, attempt));
+    }
+
+    private boolean pause(long millis) {
+        try {
+            Thread.sleep(millis);
+            return true;
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    private ScanResult scanOnce(byte[] content, int attempt) throws IOException {
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(host, port), timeoutMs);
-            socket.setSoTimeout(timeoutMs);
+            socket.setSoTimeout(readTimeoutMs(content.length, attempt));
             try (DataOutputStream out = new DataOutputStream(socket.getOutputStream());
                  InputStream in = socket.getInputStream()) {
                 out.write("zINSTREAM\0".getBytes(StandardCharsets.US_ASCII));
@@ -105,11 +155,27 @@ public class ClamAvScanService {
                 out.flush();
 
                 String response = readResponse(in);
+                if (response.isEmpty()) {
+                    throw new IOException("the daemon closed the connection without an answer");
+                }
                 return interpretResponse(response);
             }
+        }
+    }
+
+    /** Whether the daemon answers: ClamAV replies PONG to PING. A short question, never a file; it is what the "service not available" warning uses. */
+    public boolean ping() {
+        if (!enabled) {
+            return true;
+        }
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(host, port), Math.min(timeoutMs, 3000));
+            socket.setSoTimeout(Math.min(timeoutMs, 3000));
+            socket.getOutputStream().write("zPING\0".getBytes(StandardCharsets.US_ASCII));
+            socket.getOutputStream().flush();
+            return "PONG".equals(readResponse(socket.getInputStream()));
         } catch (IOException ex) {
-            log.warn("ClamAV scan failed (daemon at {}:{} unreachable or timed out): {}", host, port, ex.getMessage());
-            throw new VirusScanUnavailableException("Virus scan service is unavailable. Please try again shortly.", ex);
+            return false;
         }
     }
 
@@ -130,6 +196,11 @@ public class ClamAvScanService {
             String signature = response.replace("stream:", "").replace("FOUND", "").trim();
             log.warn("ClamAV flagged an uploaded file as infected: {}", signature);
             return ScanResult.ofInfected(signature);
+        }
+        if (response.toLowerCase().contains("size limit exceeded")) {
+            // not a passing fault: trying again cannot help, the daemon must be allowed to take bigger files (StreamMaxLength)
+            log.warn("ClamAV refused a file for its size ({}): raise StreamMaxLength of the daemon", response);
+            throw new VirusScanUnavailableException("The file is larger than the virus scanner accepts. Split it into smaller files.", null);
         }
         log.warn("Unrecognized ClamAV response, treating as scan failure: {}", response);
         throw new VirusScanUnavailableException("Virus scan returned an unexpected result. Please try again shortly.", null);

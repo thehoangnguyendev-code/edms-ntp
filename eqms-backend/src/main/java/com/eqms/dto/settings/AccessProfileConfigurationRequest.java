@@ -26,8 +26,6 @@ public record AccessProfileConfigurationRequest(
     public record General(
             String name,
             String description,
-            boolean active,
-            String businessUnitScope,
-            String departmentScope
+            boolean active
     ) {}
 }

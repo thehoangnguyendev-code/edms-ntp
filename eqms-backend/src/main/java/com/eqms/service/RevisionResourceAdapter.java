@@ -37,20 +37,17 @@ public class RevisionResourceAdapter implements ResourceAuthorizationAdapter {
 
     private final DocumentRevisionRepository revisionRepository;
     private final RevisionWorkflowAuthorizationService revisionWorkflowAuthorizationService;
-    private final ObjectAccessEvaluationService objectAccessEvaluationService;
     private final WorkflowActionPolicyService workflowActionPolicyService;
     private final WorkflowActionPolicyRelationRepository workflowActionPolicyRelationRepository;
 
     public RevisionResourceAdapter(
             DocumentRevisionRepository revisionRepository,
             RevisionWorkflowAuthorizationService revisionWorkflowAuthorizationService,
-            ObjectAccessEvaluationService objectAccessEvaluationService,
             WorkflowActionPolicyService workflowActionPolicyService,
             WorkflowActionPolicyRelationRepository workflowActionPolicyRelationRepository
     ) {
         this.revisionRepository = revisionRepository;
         this.revisionWorkflowAuthorizationService = revisionWorkflowAuthorizationService;
-        this.objectAccessEvaluationService = objectAccessEvaluationService;
         this.workflowActionPolicyService = workflowActionPolicyService;
         this.workflowActionPolicyRelationRepository = workflowActionPolicyRelationRepository;
     }
@@ -81,13 +78,24 @@ public class RevisionResourceAdapter implements ResourceAuthorizationAdapter {
                         policy.getRequiredPermissionCode(),
                         policy.getVersion(),
                         requiredRelationCodes(policy),
-                        policy.getRelationMatchRule()));
+                        policy.getRelationMatchRule(),
+                        forbiddenRelationCodes(policy)));
     }
 
     private java.util.List<String> requiredRelationCodes(WorkflowActionPolicy policy) {
         return workflowActionPolicyRelationRepository
                 .findAllByPolicy_IdAndActiveTrueOrderByPriorityAsc(policy.getId())
                 .stream()
+                .filter(r -> !r.isForbidden())
+                .map(r -> r.getRelationDefinition().getCode())
+                .toList();
+    }
+
+    private java.util.List<String> forbiddenRelationCodes(WorkflowActionPolicy policy) {
+        return workflowActionPolicyRelationRepository
+                .findAllByPolicy_IdAndActiveTrueOrderByPriorityAsc(policy.getId())
+                .stream()
+                .filter(r -> r.isForbidden())
                 .map(r -> r.getRelationDefinition().getCode())
                 .toList();
     }
@@ -116,11 +124,8 @@ public class RevisionResourceAdapter implements ResourceAuthorizationAdapter {
 
     @Override
     public boolean isWithinObjectScope(UserAccount actor, UUID resourceId, String action) {
-        DocumentRevisionRecord revision = findRevision(resourceId);
-        if (revision == null) {
-            return false;
-        }
-        return objectAccessEvaluationService.canAccessRevision(actor, revision, action);
+        // No department or Access Profile scope any more (VISIBILITY-TIERS-2026-11-20): the step only confirms that the Revision exists.
+        return findRevision(resourceId) != null;
     }
 
     @Override

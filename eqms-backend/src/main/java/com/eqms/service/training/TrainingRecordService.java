@@ -23,12 +23,14 @@ import java.util.UUID;
 @Service
 public class TrainingRecordService {
     private final JdbcTemplate jdbc;
+    private final TrainingShadow shadow;
     private final TrainingAccess access;
     private final TrainingStore store;
     private final ElectronicSignatureService signatures;
 
-    public TrainingRecordService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, ElectronicSignatureService signatures) {
+    public TrainingRecordService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, ElectronicSignatureService signatures, TrainingShadow shadow) {
         this.jdbc = jdbc;
+        this.shadow = shadow;
         this.access = access;
         this.store = store;
         this.signatures = signatures;
@@ -216,13 +218,15 @@ public class TrainingRecordService {
      */
     @Transactional
     public Map<String, Object> voidRecord(UserAccount actor, UUID recordId, VoidRequest request) {
-        access.require(actor, "training.record.void");
+        return shadow.around(actor, "TRAINING_RECORD", recordId, "VOID", true, () -> voidRecordInner(actor, recordId, request));
+    }
+
+    private Map<String, Object> voidRecordInner(UserAccount actor, UUID recordId, VoidRequest request) {
+        // who may void (the permission, the department of the activity, and not the person who confirmed it) is decided by the Hybrid engine (TrainingShadow, TRAINING_RECORD)
         Map<String, Object> record = jdbc.queryForList("select * from training_records where id=?", recordId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         Map<String, Object> activity = store.activity((UUID) record.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        access.requireScope(actor, (UUID) activity.get("organizer_department_id"));
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         if (request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
-        if (actor.getId().equals(activity.get("confirmed_by"))) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
         Integer already = jdbc.queryForObject("select count(*) from training_record_voids where record_id=?", Integer.class, recordId);
         if (already != null && already > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_RECORD_ALREADY_VOIDED");
         UUID signature = signatures.createEntitySignature("TRAINING_RECORD", recordId, record.get("training_number") + " #" + record.get("record_no"), actor,

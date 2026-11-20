@@ -21,7 +21,7 @@ class ReportTemplatePermissionBoundaryTest {
         var templates=new ReportTemplateService(jdbc,new ObjectMapper(),fresh,audit,List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
         var platform=new ReportPlatformService(jdbc,new ObjectMapper(),cached,mock(DocumentRecordRepository.class),mock(UserAccountRepository.class),mock(DocumentAuthorizationService.class),storage,audit);platform.configureTemplates(templates);
         assertThrows(SecurityException.class,()->platform.download(actor,UUID.randomUUID(),UUID.randomUUID()));
-        assertThrows(SecurityException.class,()->platform.retryRun(actor,UUID.randomUUID()));
+        // retrying a run is decided by the Hybrid engine since the cutover of REPORT_RUN; its adapter reads the permissions as they are now: ReportRunRetryStaleGrantTest
         assertThrows(SecurityException.class,()->platform.configurationHistory(actor,"DOCUMENT_STATUS"));
         verifyNoInteractions(jdbc,storage,audit);
     }

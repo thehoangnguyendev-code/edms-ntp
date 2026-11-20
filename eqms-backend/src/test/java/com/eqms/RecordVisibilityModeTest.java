@@ -17,7 +17,6 @@ import com.eqms.service.AuditTrailService;
 import com.eqms.service.DocumentAuthorizationService;
 import com.eqms.service.EffectivePermissionService;
 import com.eqms.service.EffectivePermissionService.EffectivePermissionResult;
-import com.eqms.service.ObjectAccessEvaluationService;
 import com.eqms.service.PermissionEvaluationService;
 import com.eqms.service.SecureFileAccessService;
 import com.eqms.service.SystemConfigurationService;
@@ -42,10 +41,9 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 /**
- * Document Properties > Record visibility (Decision DOC-VISIBILITY-2026-10-06).
- * PARTICIPANTS_ONLY: only people in a record's flow (or a copy's named recipient) see it.
- * ALL_WITH_VIEW_PERMISSION: every holder of the base view permission sees every record.
- * The dedicated view-all permissions always see everything, in both modes.
+ * Record visibility (Decision DOC-VISIBILITY-2026-10-06, VISIBILITY-TIERS-2026-11-20): only people in a record's flow (or a copy's named recipient)
+ * see it; the dedicated view-all permissions see everything. The system-wide "all holders of the view permission" mode was removed; the department
+ * level is covered by DocumentDepartmentVisibilityTest and the copies by CopyFlowVisibilityTest.
  */
 @ExtendWith(MockitoExtension.class)
 class RecordVisibilityModeTest {
@@ -62,7 +60,6 @@ class RecordVisibilityModeTest {
     @Mock RevisionWorkflowParticipantRepository revisionParticipantRepository;
     @Mock DocumentRevisionRepository documentRevisionRepository;
     @Mock PermissionEvaluationService permissionEvaluationService;
-    @Mock ObjectAccessEvaluationService objectAccessEvaluationService;
     @Mock SystemConfigurationService systemConfigurationService;
 
     @InjectMocks DocumentAuthorizationService documentAuthorizationService;
@@ -90,10 +87,6 @@ class RecordVisibilityModeTest {
                 .thenReturn(List.of());
         lenient().when(revisionParticipantRepository.countByRevision_Document_IdAndUser_Id(any(), any())).thenReturn(0L);
         lenient().when(systemConfigurationService.getRetainVisibilityForRemovedParticipantTypes()).thenReturn(Set.of());
-    }
-
-    private void mode(String value) {
-        lenient().when(systemConfigurationService.getDocumentVisibilityMode()).thenReturn(value);
     }
 
     private void grant(String... codes) {
@@ -124,11 +117,10 @@ class RecordVisibilityModeTest {
         return copy;
     }
 
-    // ── Document / Revision: PARTICIPANTS_ONLY ───────────────────────────────
+    // ── Document / Revision: participants only ───────────────────────────────
 
     @Test
     void participantsOnly_viewPermissionAloneNeverShowsAnyStatus() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY);
         grant(VIEW);
 
         for (String status : List.of("DRAFT", "PENDING_REVIEW", "EFFECTIVE", "OBSOLETED", "CLOSED_CANCELLED")) {
@@ -141,64 +133,25 @@ class RecordVisibilityModeTest {
 
     @Test
     void participantsOnly_authorOfRevisionSeesItWithoutViewPermission() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY);
         DocumentRevisionRecord revision = revisionWithStatus("DRAFT");
         revision.setAuthor(user);
 
         assertThat(documentAuthorizationService.canViewRevision(user, revision)).isTrue();
     }
 
-    // ── Document / Revision: ALL_WITH_VIEW_PERMISSION ────────────────────────
+    // ── Blanket permission ───────────────────────────────────────────────────
 
     @Test
-    void open_viewPermissionHolderSeesEveryRevisionAndDocument() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION);
-        grant(VIEW);
-
+    void viewAllPermissionSeesEverything() {
+        grant(VIEW_ALL);
+        assertThat(documentAuthorizationService.canViewAllDocuments(user)).isTrue();
         assertThat(documentAuthorizationService.canViewRevision(user, revisionWithStatus("DRAFT"))).isTrue();
-        assertThat(documentAuthorizationService.canViewRevision(user, revisionWithStatus("EFFECTIVE"))).isTrue();
         assertThat(documentAuthorizationService.canViewDocument(user, documentWithId())).isTrue();
         assertThat(documentAuthorizationService.canListAllDocuments(user)).isTrue();
     }
 
     @Test
-    void open_withoutViewPermissionStillSeesNothing() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION);
-
-        assertThat(documentAuthorizationService.canViewRevision(user, revisionWithStatus("EFFECTIVE"))).isFalse();
-        assertThat(documentAuthorizationService.canViewDocument(user, documentWithId())).isFalse();
-        assertThat(documentAuthorizationService.canListAllDocuments(user)).isFalse();
-    }
-
-    @Test
-    void unknownStoredModeFailsClosedToParticipantsOnly() {
-        // SystemConfigurationService resolves a corrupt value to PARTICIPANTS_ONLY; the authorization
-        // service must treat anything other than the explicit open value as restrictive.
-        mode("SOMETHING_ELSE");
-        grant(VIEW);
-
-        assertThat(documentAuthorizationService.isOpenVisibilityMode()).isFalse();
-        assertThat(documentAuthorizationService.canViewRevision(user, revisionWithStatus("EFFECTIVE"))).isFalse();
-    }
-
-    // ── Blanket permission ───────────────────────────────────────────────────
-
-    @Test
-    void viewAllPermissionSeesEverythingInBothModes() {
-        grant(VIEW_ALL);
-        for (String mode : List.of(SystemConfigurationService.DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY,
-                SystemConfigurationService.DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION)) {
-            mode(mode);
-            assertThat(documentAuthorizationService.canViewAllDocuments(user)).isTrue();
-            assertThat(documentAuthorizationService.canViewRevision(user, revisionWithStatus("DRAFT"))).isTrue();
-            assertThat(documentAuthorizationService.canViewDocument(user, documentWithId())).isTrue();
-            assertThat(documentAuthorizationService.canListAllDocuments(user)).isTrue();
-        }
-    }
-
-    @Test
     void administrationPermissionsNoLongerImplyViewAll() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY);
         grant("documents.admin.view", "documents.admin.manage_workflow_roles", "security.sod.manage", VIEW);
         lenient().when(permissionEvaluationService.hasAnyPermission(any(), any(String[].class))).thenReturn(true);
 
@@ -210,14 +163,12 @@ class RecordVisibilityModeTest {
 
     @Test
     void controlledCopy_namedRecipientSeesItInParticipantsOnlyMode() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY);
 
         assertThat(documentAuthorizationService.canViewControlledCopy(user, copyFor(user, "Staff Member"))).isTrue();
     }
 
     @Test
     void controlledCopy_nonRecipientDoesNotSeeItEvenWithMatchingDisplayName() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY);
         UserAccount other = new UserAccount();
         other.setId(UUID.randomUUID());
         // Same display text as the signed-in user, different account: must not match.
@@ -230,7 +181,6 @@ class RecordVisibilityModeTest {
 
     @Test
     void controlledCopy_documentParticipantIsNotARecipient() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY);
         UserAccount other = new UserAccount();
         other.setId(UUID.randomUUID());
         ControlledCopyRecord copy = copyFor(other, "Someone Else");
@@ -242,7 +192,6 @@ class RecordVisibilityModeTest {
 
     @Test
     void controlledCopy_viewAllPermissionSeesAllCopiesAndBatches() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY);
         grant(CC_VIEW_ALL);
         UserAccount other = new UserAccount();
         other.setId(UUID.randomUUID());
@@ -253,7 +202,6 @@ class RecordVisibilityModeTest {
 
     @Test
     void controlledCopy_batchIsHiddenFromARecipientWithoutBlanketPermission() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY);
         grant(CC_VIEW);
 
         assertThat(documentAuthorizationService.canViewControlledCopyBatch(user)).isFalse();
@@ -261,50 +209,20 @@ class RecordVisibilityModeTest {
 
     @Test
     void controlledCopy_documentViewAllDoesNotImplyCopyViewAll() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY);
         grant(VIEW_ALL);
 
         assertThat(documentAuthorizationService.canViewAllControlledCopies(user)).isFalse();
         assertThat(documentAuthorizationService.canViewAllUncontrolledCopies(user)).isFalse();
     }
 
-    @Test
-    void controlledCopy_openModeShowsEveryCopyToBaseViewPermissionHolder() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION);
-        grant(CC_VIEW);
-        UserAccount other = new UserAccount();
-        other.setId(UUID.randomUUID());
-
-        assertThat(documentAuthorizationService.canViewControlledCopy(user, copyFor(other, "Someone Else"))).isTrue();
-        assertThat(documentAuthorizationService.canViewControlledCopyBatch(user)).isTrue();
-    }
-
-    @Test
-    void controlledCopy_openModeStillNeedsTheBaseCopyPermission() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION);
-        UserAccount other = new UserAccount();
-        other.setId(UUID.randomUUID());
-
-        assertThat(documentAuthorizationService.canViewControlledCopy(user, copyFor(other, "Someone Else"))).isFalse();
-    }
-
     // ── Uncontrolled Copy ────────────────────────────────────────────────────
 
     @Test
-    void uncontrolledCopy_blanketViewNeedsDedicatedPermissionOrOpenMode() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY);
+    void uncontrolledCopy_blanketViewNeedsTheDedicatedPermission() {
         grant(UC_VIEW);
         assertThat(documentAuthorizationService.canViewAllUncontrolledCopies(user)).isFalse();
 
         grant(UC_VIEW_ALL);
-        assertThat(documentAuthorizationService.canViewAllUncontrolledCopies(user)).isTrue();
-    }
-
-    @Test
-    void uncontrolledCopy_openModeShowsEveryCopyToBaseViewPermissionHolder() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION);
-        grant(UC_VIEW);
-
         assertThat(documentAuthorizationService.canViewAllUncontrolledCopies(user)).isTrue();
     }
 
@@ -334,7 +252,6 @@ class RecordVisibilityModeTest {
 
     @Test
     void participantsOnly_snapshotPreview_deniedForNonParticipant() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY);
         SecureFileAccessService service = fileAccessService();
         when(revisionParticipantRepository.countByRevision_IdAndUser_Id(revisionId, userId)).thenReturn(0L);
 
@@ -347,7 +264,6 @@ class RecordVisibilityModeTest {
 
     @Test
     void participantsOnly_snapshotPreview_allowedForAssignedParticipant() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY);
         SecureFileAccessService service = fileAccessService();
         when(revisionParticipantRepository.countByRevision_IdAndUser_Id(revisionId, userId)).thenReturn(1L);
 
@@ -359,7 +275,6 @@ class RecordVisibilityModeTest {
 
     @Test
     void participantsOnly_snapshotPreview_allowedForAuthor() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY);
         SecureFileAccessService service = fileAccessService();
         lenient().when(revisionParticipantRepository.countByRevision_IdAndUser_Id(revisionId, userId)).thenReturn(0L);
 
@@ -370,13 +285,16 @@ class RecordVisibilityModeTest {
     }
 
     @Test
-    void open_snapshotPreview_allowedForNonParticipant() {
-        mode(SystemConfigurationService.DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION);
+    void departmentLevel_doesNotOpenTheInFlightReviewSnapshot() {
+        // the department level is read-only: a person of the department who is not in the flow does not read the content under review
+        grant("documents.document.view_department", "documents.document.view");
         SecureFileAccessService service = fileAccessService();
+        when(revisionParticipantRepository.countByRevision_IdAndUser_Id(revisionId, userId)).thenReturn(0L);
 
         FileAccessDecision decision = service.check(user, FileAccessAction.VIEW_PREVIEW,
                 FileObjectType.REVIEW_SNAPSHOT, revisionId, snapshotContext("PENDING_REVIEW", UUID.randomUUID()));
 
-        assertThat(decision.allowed()).isTrue();
+        assertThat(decision.allowed()).isFalse();
+        assertThat(decision.reasonCode()).isEqualTo("NOT_ASSIGNED_PARTICIPANT");
     }
 }

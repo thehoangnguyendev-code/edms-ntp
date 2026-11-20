@@ -33,13 +33,6 @@ public class ObjectAccessRule {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    /** Canonical rule subjects. An empty set means the rule applies to all Access Profiles. */
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "access_profile_object_rules",
-            joinColumns = @JoinColumn(name = "object_access_rule_id"),
-            inverseJoinColumns = @JoinColumn(name = "access_profile_id"))
-    private Set<RoleDefinition> accessProfiles = new LinkedHashSet<>();
-
     @Column(name = "resource_type", nullable = false, length = 50)
     private String resourceType;
 
@@ -154,8 +147,6 @@ public class ObjectAccessRule {
     public void setName(String name) { this.name = name; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
-    public Set<RoleDefinition> getAccessProfiles() { return accessProfiles; }
-    public void setAccessProfiles(Set<RoleDefinition> accessProfiles) { this.accessProfiles = accessProfiles == null ? new LinkedHashSet<>() : new LinkedHashSet<>(accessProfiles); }
     public String getResourceType() { return resourceType; }
     public void setResourceType(String resourceType) { this.resourceType = resourceType; }
     public UUID getResourceId() { return resourceId; }

@@ -32,7 +32,6 @@ class RevisionResourceAdapterTest {
 
     @Mock private DocumentRevisionRepository revisionRepository;
     @Mock private RevisionWorkflowAuthorizationService revisionWorkflowAuthorizationService;
-    @Mock private ObjectAccessEvaluationService objectAccessEvaluationService;
     @Mock private WorkflowActionPolicyService workflowActionPolicyService;
     @Mock private WorkflowActionPolicyRelationRepository workflowActionPolicyRelationRepository;
 
@@ -44,7 +43,7 @@ class RevisionResourceAdapterTest {
     @BeforeEach
     void setUp() {
         adapter = new RevisionResourceAdapter(revisionRepository, revisionWorkflowAuthorizationService,
-                objectAccessEvaluationService, workflowActionPolicyService, workflowActionPolicyRelationRepository);
+                workflowActionPolicyService, workflowActionPolicyRelationRepository);
         actor = new UserAccount();
         actor.setId(UUID.randomUUID());
         revisionId = UUID.randomUUID();
@@ -143,8 +142,7 @@ class RevisionResourceAdapterTest {
     }
 
     @Test
-    void isWithinObjectScope_delegatesToObjectAccessEvaluationService() {
-        when(objectAccessEvaluationService.canAccessRevision(actor, revision, "VIEW")).thenReturn(true);
+    void isWithinObjectScope_existingRevision_isWithinScope() {
 
         assertThat(adapter.isWithinObjectScope(actor, revisionId, "VIEW")).isTrue();
     }

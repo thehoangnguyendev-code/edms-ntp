@@ -66,8 +66,18 @@ class ReportTemplateRevisionActionsTest {
         when(permissionsMock.getEffectivePermissionCodes(any(UserAccount.class))).thenReturn(Set.of("reports.definition.manage", "reports.definition.upgrade", "reports.definition.discard_revision", "reports.definition.set_enabled", "reports.catalog.view"));
         service = new ReportTemplateService(jdbc, new ObjectMapper(), permissionsMock, audit, List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
         service.configureRevisions(revisions);
+        service.configureEngine(engineThat(true));
         when(revisions.effective(anyString())).thenReturn(null);
         when(revisions.open(anyString())).thenReturn(null);
+    }
+
+    /** The engine decides who may act (the rules are the matrix of ReportTemplateResourceAdapterTest): here it allows or refuses everything. */
+    private static com.eqms.service.authorization.AuthorizationEngineService engineThat(boolean allows) {
+        var engine = mock(com.eqms.service.authorization.AuthorizationEngineService.class);
+        when(engine.authorize(org.mockito.ArgumentMatchers.any(com.eqms.service.authorization.AuthorizationRequest.class))).thenReturn(allows
+                ? com.eqms.service.authorization.AuthorizationDecision.allow("TEST", List.of(), List.of(), 1L, "EFFECTIVE", Map.of())
+                : com.eqms.service.authorization.AuthorizationDecision.deny("MISSING_PERMISSION", "p", "EFFECTIVE"));
+        return engine;
     }
 
     private void stored(HashMap<String, Object> row) {
@@ -245,6 +255,7 @@ class ReportTemplateRevisionActionsTest {
         stored(template(true, null, 5));
         when(revisions.effective(CODE)).thenReturn(Map.of("revision", 2));
         var manager = userWith("reports.definition.manage");
+        service.configureEngine(engineThat(false)); // the policies ask for the permission of the action, which the manager does not hold
         assertThatThrownBy(() -> service.upgrade(manager, CODE, 5, "x")).isInstanceOf(SecurityException.class);
         assertThatThrownBy(() -> service.discardRevision(manager, CODE, 6, "x")).isInstanceOf(SecurityException.class);
         assertThatThrownBy(() -> service.setEnabled(manager, CODE, false, null)).isInstanceOf(SecurityException.class);

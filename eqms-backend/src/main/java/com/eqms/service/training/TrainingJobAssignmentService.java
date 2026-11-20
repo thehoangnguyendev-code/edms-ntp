@@ -30,6 +30,7 @@ import java.util.UUID;
 public class TrainingJobAssignmentService {
     private static final String TYPE = "TRAINING_JOB_ASSIGNMENT";
     private final ObjectMapper json = new ObjectMapper();
+    private final TrainingShadow shadow;
 
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;
@@ -40,8 +41,9 @@ public class TrainingJobAssignmentService {
     private final TrainingNotifier notifier;
 
     public TrainingJobAssignmentService(JdbcTemplate jdbc, TrainingAccess access, TrainingApprovalService approvals, ElectronicSignatureService signatures,
-                                        AuditTrailService audit, UserAccountRepository users, TrainingNotifier notifier) {
+                                        AuditTrailService audit, UserAccountRepository users, TrainingNotifier notifier, TrainingShadow shadow) {
         this.jdbc = jdbc;
+        this.shadow = shadow;
         this.access = access;
         this.approvals = approvals;
         this.signatures = signatures;
@@ -202,7 +204,7 @@ public class TrainingJobAssignmentService {
               from training_job_required_items i left join documents d on d.id = i.document_id where i.assignment_id = ? order by i.sort_order
             """, id)));
         if ("DRAFT".equals(j.get("status"))) out.put("eligibility", eligibilityForRoles((UUID) j.get("person_user_id"), newRolesOf(id), requiredOf(id)));
-        out.put("capabilities", capabilities(actor, j));
+        out.put("capabilities", withEngine(actor, j, capabilities(actor, j)));
         out.put("workflow", TrainingWorkflows.job((String) j.get("status")));
         return out;
     }
@@ -228,6 +230,15 @@ public class TrainingJobAssignmentService {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.eqms.service.authorization.EngineCapabilities engineCapabilities;
+
+    /** The buttons follow the decision of the Hybrid engine (EngineCapabilities); the keys that name no action stay as the hints were. */
+    private Map<String, Object> withEngine(UserAccount actor, Map<String, Object> row, Map<String, Object> caps) {
+        return engineCapabilities == null ? caps : engineCapabilities.apply(actor, "TRAINING_JOB_ASSIGNMENT", (UUID) row.get("id"), caps,
+                Map.of("edit", "UPDATE", "requestException", "REQUEST_EXCEPTION", "approveException", "APPROVE_EXCEPTION", "submit", "SUBMIT", "accept", "ACCEPT", "cancel", "CANCEL"), Map.of());
     }
 
     private Map<String, Object> capabilities(UserAccount actor, Map<String, Object> j) {
@@ -458,8 +469,12 @@ public class TrainingJobAssignmentService {
 
     @Transactional
     public Map<String, Object> update(UserAccount actor, UUID id, SaveRequest request) {
+        return shadow.around(actor, "TRAINING_JOB_ASSIGNMENT", id, "UPDATE", true, () -> updateInner(actor, id, request));
+    }
+
+    private Map<String, Object> updateInner(UserAccount actor, UUID id, SaveRequest request) {
+        // who may do this (the permission in the department, the person assigned for the acceptance, and not the person assigned for the submission) is decided by the Hybrid engine (TrainingShadow, TRAINING_JOB_ASSIGNMENT); the exception approval stays a signature step
         Map<String, Object> j = lock(id);
-        requireManage(actor, j);
         requireStatus(j, "DRAFT");
         requireVersion(j, request == null ? null : request.version());
         validateDuties(request.duties());
@@ -478,8 +493,12 @@ public class TrainingJobAssignmentService {
     /** The assignment may go ahead before the training is complete only if someone designated approves an exception with a reason. */
     @Transactional
     public Map<String, Object> requestException(UserAccount actor, UUID id, ExceptionRequest request) {
+        return shadow.around(actor, "TRAINING_JOB_ASSIGNMENT", id, "REQUEST_EXCEPTION", false, () -> requestExceptionInner(actor, id, request));
+    }
+
+    private Map<String, Object> requestExceptionInner(UserAccount actor, UUID id, ExceptionRequest request) {
+        // who may do this (the permission in the department, the person assigned for the acceptance, and not the person assigned for the submission) is decided by the Hybrid engine (TrainingShadow, TRAINING_JOB_ASSIGNMENT); the exception approval stays a signature step
         Map<String, Object> j = lock(id);
-        requireManage(actor, j);
         requireStatus(j, "DRAFT");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         approvals.cancelOpen(TYPE, id, "Replaced");
@@ -498,6 +517,10 @@ public class TrainingJobAssignmentService {
 
     @Transactional
     public Map<String, Object> approveException(UserAccount actor, UUID id, SignRequest request) {
+        return shadow.around(actor, "TRAINING_JOB_ASSIGNMENT", id, "APPROVE_EXCEPTION", true, () -> approveExceptionInner(actor, id, request));
+    }
+
+    private Map<String, Object> approveExceptionInner(UserAccount actor, UUID id, SignRequest request) {
         Map<String, Object> j = lock(id);
         requireStatus(j, "DRAFT");
         if (j.get("exception_reason") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_JOB_NO_EXCEPTION");
@@ -513,11 +536,14 @@ public class TrainingJobAssignmentService {
     /** The person who assigns signs. The training the matrix requires must be complete, or an exception must be approved. */
     @Transactional
     public Map<String, Object> submit(UserAccount actor, UUID id, SignRequest request) {
+        return shadow.around(actor, "TRAINING_JOB_ASSIGNMENT", id, "SUBMIT", true, () -> submitInner(actor, id, request));
+    }
+
+    private Map<String, Object> submitInner(UserAccount actor, UUID id, SignRequest request) {
+        // who may do this (the permission in the department, the person assigned for the acceptance, and not the person assigned for the submission) is decided by the Hybrid engine (TrainingShadow, TRAINING_JOB_ASSIGNMENT); the exception approval stays a signature step
         Map<String, Object> j = lock(id);
-        requireManage(actor, j);
         requireStatus(j, "DRAFT");
         requireVersion(j, request == null ? null : request.version());
-        if (actor.getId().equals(j.get("person_user_id"))) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
         Integer duties = jdbc.queryForObject("select count(*) from training_job_assignment_duties where assignment_id=?", Integer.class, id);
         if (duties == null || duties == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_JOB_DUTIES_REQUIRED");
         Map<String, Object> eligibility = eligibilityForRoles((UUID) j.get("person_user_id"), newRolesOf(id), requiredOf(id));
@@ -538,11 +564,14 @@ public class TrainingJobAssignmentService {
     /** The employee accepts with a signature: the assignment is effective (a change replaces the role it names), and the Work Position of the person is recorded for the matrix. */
     @Transactional
     public Map<String, Object> accept(UserAccount actor, UUID id, SignRequest request) {
+        return shadow.around(actor, "TRAINING_JOB_ASSIGNMENT", id, "ACCEPT", true, () -> acceptInner(actor, id, request));
+    }
+
+    private Map<String, Object> acceptInner(UserAccount actor, UUID id, SignRequest request) {
+        // who may do this (the permission in the department, the person assigned for the acceptance, and not the person assigned for the submission) is decided by the Hybrid engine (TrainingShadow, TRAINING_JOB_ASSIGNMENT); the exception approval stays a signature step
         Map<String, Object> j = lock(id);
         requireStatus(j, "PENDING_RECEIVER");
         requireVersion(j, request == null ? null : request.version());
-        if (!actor.getId().equals(j.get("person_user_id"))) throw new SecurityException(TrainingAccess.DENIED);
-        access.require(actor, "training.self.view");
         UUID signature = sign(actor, j, "TRAINING_JOB_ACCEPTED", request == null ? null : request.signatureToken());
         // the earlier issuance is replaced by this one, which lists the whole set; a role that is replaced stops being held, the roles given start, the roles carried over stay as they are
         jdbc.update("update training_job_assignments set status='OBSOLETED', version=version+1, updated_at=now() where person_user_id=? and status='EFFECTIVE' and id <> ?", actor.getId(), id);
@@ -564,8 +593,12 @@ public class TrainingJobAssignmentService {
 
     @Transactional
     public Map<String, Object> cancel(UserAccount actor, UUID id, CancelRequest request) {
+        return shadow.around(actor, "TRAINING_JOB_ASSIGNMENT", id, "CANCEL", true, () -> cancelInner(actor, id, request));
+    }
+
+    private Map<String, Object> cancelInner(UserAccount actor, UUID id, CancelRequest request) {
+        // who may do this (the permission in the department, the person assigned for the acceptance, and not the person assigned for the submission) is decided by the Hybrid engine (TrainingShadow, TRAINING_JOB_ASSIGNMENT); the exception approval stays a signature step
         Map<String, Object> j = lock(id);
-        requireManage(actor, j);
         requireStatus(j, "DRAFT", "PENDING_RECEIVER");
         requireVersion(j, request == null ? null : request.version());
         if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
@@ -588,11 +621,6 @@ public class TrainingJobAssignmentService {
         access.require(actor, "training.job_assignment.view", "training.job_assignment.manage");
         access.requireScope(actor, (UUID) j.get("department_id"));
         return j;
-    }
-
-    private void requireManage(UserAccount actor, Map<String, Object> j) {
-        access.require(actor, "training.job_assignment.manage");
-        access.requireScope(actor, (UUID) j.get("department_id"));
     }
 
     private static void requireStatus(Map<String, Object> j, String... allowed) {
@@ -647,10 +675,11 @@ public class TrainingJobAssignmentService {
     }
 
     /** The person the assignment is about and the person who prepared it cannot approve the exception. */
-    private static Set<UUID> keptApartFor(Map<String, Object> j) {
+    private Set<UUID> keptApartFor(Map<String, Object> j) {
+        // each person is kept apart only while the rule is ON (Separation Rules, V821)
         Set<UUID> apart = new java.util.HashSet<>();
-        apart.add((UUID) j.get("person_user_id"));
-        if (j.get("created_by") != null) apart.add((UUID) j.get("created_by"));
+        if (com.eqms.service.SeparationRuleSwitch.isOn(jdbc, "TRAINING_JOB_ASSIGNMENT", "APPROVE_EXCEPTION", "RECEIVER")) apart.add((UUID) j.get("person_user_id"));
+        if (j.get("created_by") != null && com.eqms.service.SeparationRuleSwitch.isOn(jdbc, "TRAINING_JOB_ASSIGNMENT", "APPROVE_EXCEPTION", "CREATOR")) apart.add((UUID) j.get("created_by"));
         return apart;
     }
 

@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  * (delegated to {@link ResourceAuthorizationAdapter#resolvePolicy} -- see that interface's javadoc
  * for why this is adapter-owned, not a single shared table), required permission, object
  * scope/explicit grant (steps 4-5 of §3), relation match (ANY/ALL). One step intentionally NOT yet
- * implemented, with the blocking reason:
+ * implemented, with the blocking reason (the relation-against-relation part is implemented since 2026-11-18, see {@link ResolvedPolicy#forbiddenRelationCodes()}):
  * <ul>
  *   <li>SoD (part of step 8) -- {@code SodConstraintService.checkPermissions} is an admin-facing,
  *       permission-gated method (throws for ordinary users) meant for validating a role's proposed
@@ -74,7 +74,7 @@ public class AuthorizationEngineService {
         String state = adapter.resolveState(request.resourceId());
         java.util.UUID documentTypeId = adapter.resolveDocumentTypeId(request.resourceId());
 
-        Optional<ResolvedPolicy> policyOpt = adapter.resolvePolicy(request.actionCode(), state, documentTypeId);
+        Optional<ResolvedPolicy> policyOpt = adapter.resolvePolicy(request.actionCode(), state, documentTypeId, adapter.resolveVariant(request.resourceId()));
         if (policyOpt.isEmpty()) {
             String reason = adapter.explainMissingPolicy(request.actionCode(), state).orElse("POLICY_NOT_CONFIGURED");
             return AuthorizationDecision.deny(reason, null, state);
@@ -114,17 +114,21 @@ public class AuthorizationEngineService {
             matchedRelations = List.copyOf(matched);
         }
 
-        // TODO: runtime SoD (permission-pair and relation-vs-relation) -- see class javadoc.
+        // Runtime separation of duties, relation against relation ("a different person"): the policy names the relations the actor must NOT hold for this
+        // resource (the approver is not the author or the submitter). A permission-pair SoD stays with SodConstraintService (a check of a role's permission set,
+        // not of a decision); see the class javadoc.
+        List<String> forbiddenRelationCodes = policy.forbiddenRelationCodes();
+        if (!forbiddenRelationCodes.isEmpty()) {
+            Set<String> held = new HashSet<>(adapter.resolveMatchedRelations(actor, request.resourceId()));
+            held.addAll(resolveGenericRelations(actor, request.resourceType(), forbiddenRelationCodes));
+            if (forbiddenRelationCodes.stream().anyMatch(held::contains)) {
+                return AuthorizationDecision.deny("SEPARATION_OF_DUTIES", requiredPermission, state);
+            }
+        }
 
         Map<String, Object> requiredControls = new HashMap<>();
         return AuthorizationDecision.allow(
                 requiredPermission, List.of(), matchedRelations, policy.policyVersion(), state, requiredControls);
-    }
-
-    /** Relation definitions currently registered for a resource type -- used by admin UIs/tests. */
-    @Transactional(readOnly = true)
-    public List<AuthorizationRelationDefinition> relationDefinitionsFor(String resourceType) {
-        return relationDefinitionRepository.findAllByResourceTypeAndActiveTrueOrderByCodeAsc(resourceType);
     }
 
     /**

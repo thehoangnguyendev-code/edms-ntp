@@ -113,6 +113,6 @@ public class UserAuthorizationSummaryService {
                 .toList();
         return new UserAuthorizationSummaryResponse.AccessProfile(
                 profile.getId(), profile.getCode(), profile.getName(), profile.isActive(),
-                profile.getBusinessUnitScope(), profile.getDepartmentScope(), workflowRoles, permissionSets);
+                workflowRoles, permissionSets);
     }
 }

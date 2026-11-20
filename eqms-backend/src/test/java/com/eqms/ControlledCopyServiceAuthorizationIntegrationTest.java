@@ -301,12 +301,8 @@ class ControlledCopyServiceAuthorizationIntegrationTest {
 
     @Test
     void download_deniedDoesNotOpenFileStream() {
-        // Anonymous, token-only access model: the preview/download link is meant to work without
-        // an EQMS login (see ControlledCopyAuthorizationService.requireTokenDownloadAccess), so the
-        // service no longer calls the user-based requireDownloadAccess check.
-        lenient().doThrow(new AccessDeniedException("denied"))
-                .when(controlledCopyAuthorizationService)
-                .requireTokenDownloadAccess(eq(copy), eq("preview-token-1"), any());
+        // Anonymous, token-only access model: the preview/download link is meant to work without an EQMS login; the link token and the
+        // preview grant decide it, not a user-based check.
 
         assertThatThrownBy(() -> service.downloadControlledCopy(copy.getId(), "preview-token-1", null))
                 .isInstanceOf(AccessDeniedException.class);

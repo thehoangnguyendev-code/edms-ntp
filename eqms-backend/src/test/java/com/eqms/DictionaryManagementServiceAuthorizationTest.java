@@ -28,7 +28,7 @@ import static org.mockito.Mockito.*;
 /**
  * F-17 — Dictionary master data (Business Unit, Department, Position, Storage Location,
  * Retention Policy) previously had NO permission gate at either the controller or service layer.
- * Business Unit/Department feed {@code ObjectAccessEvaluationService}'s scope matching — so an
+ * Business Unit/Department feed the department of a record — so an
  * unauthenticated-permission write here could reshape authorization decisions elsewhere.
  * (Document Type / Sub-Type permission coverage now lives in
  * {@code DocumentTypeAdminServiceAuthorizationTest}, alongside its own service.)

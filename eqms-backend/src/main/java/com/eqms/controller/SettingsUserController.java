@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.util.List;
 import java.util.UUID;
@@ -272,37 +271,10 @@ public class SettingsUserController {
         return ResponseEntity.ok(service.getUserCapabilities(id));
     }
 
-    @PutMapping("/users/{id}/role")
-    public ResponseEntity<UserManagementResponse> updateRole(@PathVariable UUID id, @Valid @RequestBody UpdateRoleRequest request, HttpServletRequest httpRequest) {
-        requireAccessProfileAssign();
-        return ResponseEntity.ok(service.updateRole(id, request, httpRequest));
-    }
-
     @GetMapping("/users/filters")
     public ResponseEntity<FilterOptionsResponse> getFilters() {
         requireUserView();
         return ResponseEntity.ok(service.getFilterOptions());
-    }
-
-    @GetMapping("/users/export")
-    public ResponseEntity<StreamingResponseBody> exportUsers(
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) String role,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String online,
-            @RequestParam(required = false) String businessUnit,
-            @RequestParam(required = false) String department,
-            @RequestParam(required = false) String position,
-            @RequestParam(required = false) String dateFrom,
-            @RequestParam(required = false) String dateTo,
-            @RequestParam(required = false) String suspendFrom,
-            @RequestParam(required = false) String suspendTo,
-            @RequestParam(required = false) String terminateFrom,
-            @RequestParam(required = false) String terminateTo,
-            @RequestParam(defaultValue = "false") boolean includeTerminated
-    ) {
-        requireUserView();
-        return TableExportRedirect.to("users");
     }
 
     @GetMapping("/permissions/catalog")
@@ -433,6 +405,12 @@ public class SettingsUserController {
     @org.springframework.beans.factory.annotation.Autowired
     private com.eqms.service.OnlyOfficeConfigurationService onlyOfficeConfigurationService;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.eqms.service.OnlyOfficeConnectionCheckService onlyOfficeConnectionCheckService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.eqms.service.IntegrationCheckService integrationCheckService;
+
     @GetMapping("/system/onlyoffice")
     public ResponseEntity<com.eqms.service.OnlyOfficeConfigurationService.OnlyOfficeConfiguration> getOnlyOfficeConfiguration() {
         requireAnyPage(false, ConfigurationAuditPage.INTEGRATIONS, ConfigurationAuditPage.PREVIEW_FILE);
@@ -440,46 +418,30 @@ public class SettingsUserController {
     }
 
     /**
-     * Pings the document server's own {@code /healthcheck} endpoint using the currently saved
-     * configuration (there is no separate "unsaved draft" test here, unlike Graph's test-connection,
-     * since OnlyOffice's config has no external tenant/credential round-trip to validate beyond
-     * reachability -- save the config first, then test).
+     * Tests the document server with the currently saved configuration (there is no separate "unsaved draft" test here: save the configuration first, then test).
+     * It looks at what can be verified from this side: the document server's own {@code /healthcheck}, and whether it accepts the saved JWT secret
+     * ({@link com.eqms.service.OnlyOfficeConnectionCheckService}). The answer keeps {@code success} and {@code message} and adds the {@code steps} that were looked at;
+     * the result is also kept as the "last check" shown on the Integrations page.
      */
     @PostMapping("/system/onlyoffice/test-connection")
     public ResponseEntity<java.util.Map<String, Object>> testOnlyOfficeConnection() {
         requirePage(ConfigurationAuditPage.INTEGRATIONS, true);
+        var result = onlyOfficeConnectionCheckService.run();
         var config = onlyOfficeConfigurationService.getEffectiveConfiguration();
-        if (!config.enabled() || !org.springframework.util.StringUtils.hasText(config.documentServerUrl())) {
-            return ResponseEntity.ok(java.util.Map.of("success", false, "message", "OnlyOffice is not enabled or the Document Server URL is not configured."));
-        }
-        try {
-            // OnlyOffice's bundled nginx does not handle a plaintext HTTP/2 upgrade attempt
-            // cleanly (returns 502) -- java.net.http.HttpClient defaults to trying HTTP/2 first,
-            // unlike curl, which is why a manual curl to the same URL succeeds while this call
-            // failed. Force HTTP/1.1 to match how every other call in this codebase (and OnlyOffice
-            // Document Server's own expectations) actually talks to it.
-            var client = java.net.http.HttpClient.newBuilder()
-                    .version(java.net.http.HttpClient.Version.HTTP_1_1)
-                    .connectTimeout(java.time.Duration.ofSeconds(10))
-                    .build();
-            var request = java.net.http.HttpRequest.newBuilder(java.net.URI.create(config.documentServerUrl() + "/healthcheck"))
-                    .timeout(java.time.Duration.ofSeconds(10))
-                    .GET()
-                    .build();
-            var response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
-            boolean healthy = response.statusCode() == 200 && response.body() != null && response.body().toLowerCase().contains("true");
-            return ResponseEntity.ok(java.util.Map.of(
-                    "success", healthy,
-                    "message", healthy
-                            ? "OnlyOffice Document Server is reachable and healthy."
-                            : "OnlyOffice Document Server responded but did not report healthy (HTTP " + response.statusCode() + ")."
-            ));
-        } catch (Exception ex) {
-            return ResponseEntity.ok(java.util.Map.of(
-                    "success", false,
-                    "message", "Unable to reach the OnlyOffice Document Server: " + ex.getMessage()
-            ));
-        }
+        integrationCheckService.record(currentUserService.requireCurrentUser(), com.eqms.service.IntegrationCheckService.ONLYOFFICE, result.success(), result.message(),
+                "OnlyOffice · " + java.util.Objects.toString(config.documentServerUrl(), ""), result.steps());
+        var body = new java.util.LinkedHashMap<String, Object>();
+        body.put("success", result.success());
+        body.put("message", result.message());
+        body.put("steps", result.steps());
+        return ResponseEntity.ok(body);
+    }
+
+    /** The last "Test connection" result of each integration, for the Integrations page (View is enough: it only reports what was tested and what came back). */
+    @GetMapping("/system/integrations/checks")
+    public ResponseEntity<java.util.Map<String, com.eqms.service.IntegrationCheckService.Check>> getIntegrationChecks() {
+        requirePage(ConfigurationAuditPage.INTEGRATIONS, false);
+        return ResponseEntity.ok(integrationCheckService.latest());
     }
 
     @PostMapping("/system/storage/test-connection")
@@ -487,12 +449,17 @@ public class SettingsUserController {
             @RequestBody com.fasterxml.jackson.databind.JsonNode request
     ) {
         requirePage(ConfigurationAuditPage.INTEGRATIONS, true);
+        var actor = currentUserService.requireCurrentUser();
+        String subject = com.eqms.service.IntegrationCheckService.storageSubject(request);
         try {
             fileStorageService.testConnection(request);
+            integrationCheckService.record(actor, com.eqms.service.IntegrationCheckService.STORAGE, true, "Storage connection test successful.", subject, java.util.List.of());
             return ResponseEntity.ok(new StorageConnectionTestResponse(true, "Storage connection test successful."));
         } catch (IllegalArgumentException e) {
+            integrationCheckService.record(actor, com.eqms.service.IntegrationCheckService.STORAGE, false, e.getMessage(), subject, java.util.List.of());
             return ResponseEntity.badRequest().body(new StorageConnectionTestResponse(false, e.getMessage()));
         } catch (Exception e) {
+            integrationCheckService.record(actor, com.eqms.service.IntegrationCheckService.STORAGE, false, "Storage connection test failed: " + e.getMessage(), subject, java.util.List.of());
             return ResponseEntity.status(500).body(new StorageConnectionTestResponse(false, "Storage connection test failed: " + e.getMessage()));
         }
     }

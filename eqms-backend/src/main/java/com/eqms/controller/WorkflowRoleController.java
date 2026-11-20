@@ -46,8 +46,9 @@ public class WorkflowRoleController {
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "label") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir,
-            @RequestParam(required = false) UUID accessProfileId) {
-        return ResponseEntity.ok(service.listPaged(page, limit, search, sortBy, sortDir, accessProfileId));
+            @RequestParam(required = false) UUID accessProfileId,
+            @RequestParam(required = false) UUID countForProfileId) {
+        return ResponseEntity.ok(service.listPaged(page, limit, search, sortBy, sortDir, accessProfileId, countForProfileId));
     }
 
     @GetMapping("/catalog")

@@ -181,9 +181,7 @@ public class DocumentService {
     @org.springframework.beans.factory.annotation.Autowired
     private org.springframework.context.ApplicationEventPublisher applicationEventPublisher;
     private final PermissionEvaluationService permissionEvaluationService;
-    private final AuthorizationShadowEvaluationService shadowEvaluationService;
     private final com.eqms.service.authorization.AuthorizationEngineService authorizationEngineService;
-    private final com.eqms.service.authorization.AuthorizationCutoverFlags cutoverFlags;
     private final ElectronicSignatureService electronicSignatureService;
     private final RevisionService revisionService;
     private final WorkflowParticipantEligibilityService workflowParticipantEligibilityService;
@@ -222,9 +220,7 @@ public class DocumentService {
             RevisionPublishingMetadataRepository publishingMetadataRepository,
             ControlledCopyBatchStatusService controlledCopyBatchStatusService,
             PermissionEvaluationService permissionEvaluationService,
-            AuthorizationShadowEvaluationService shadowEvaluationService,
             @org.springframework.context.annotation.Lazy com.eqms.service.authorization.AuthorizationEngineService authorizationEngineService,
-            com.eqms.service.authorization.AuthorizationCutoverFlags cutoverFlags,
             ElectronicSignatureService electronicSignatureService,
             @org.springframework.context.annotation.Lazy RevisionService revisionService,
             WorkflowParticipantEligibilityService workflowParticipantEligibilityService,
@@ -259,9 +255,7 @@ public class DocumentService {
         this.publishingMetadataRepository = publishingMetadataRepository;
         this.controlledCopyBatchStatusService = controlledCopyBatchStatusService;
         this.permissionEvaluationService = permissionEvaluationService;
-        this.shadowEvaluationService = shadowEvaluationService;
         this.authorizationEngineService = authorizationEngineService;
-        this.cutoverFlags = cutoverFlags;
         this.electronicSignatureService = electronicSignatureService;
         this.revisionService = revisionService;
         this.workflowParticipantEligibilityService = workflowParticipantEligibilityService;
@@ -270,31 +264,20 @@ public class DocumentService {
     }
 
     /**
-     * Runs the new hybrid engine alongside the direct permission check above for UPDATE_METADATA,
-     * logs any disagreement, and -- once {@link AuthorizationCutoverFlags} enables DOCUMENT
-     * (Phase 1-2.5 cutover rule 3) -- returns the engine's allowed/denied decision as the real
-     * one instead of the legacy permission check. Mirrors the mechanism in
-     * {@link RevisionWorkflowAuthorizationService#check} and
-     * {@link DocumentMasterWorkflowAuthorizationService#check}.
+     * Who may change the metadata of a Document while configuring its next revision: the Hybrid engine decides alone (permission, state policy),
+     * fail-closed like the other Document actions -- if the engine cannot answer the step is refused, never decided by a second code path.
      */
-    private boolean evaluateUpdateMetadataAllowed(UserAccount user, DocumentRecord document, boolean legacyAllowed) {
+    private boolean engineAllowsUpdateMetadata(UserAccount user, DocumentRecord document) {
         if (user == null || document == null || document.getId() == null) {
-            return legacyAllowed;
+            return false;
         }
         try {
-            var policyDecision = authorizationEngineService.authorize(
-                    com.eqms.service.authorization.AuthorizationRequest.of(
-                            user, "DOCUMENT", document.getId(), "UPDATE_METADATA"));
-            shadowEvaluationService.recordMismatch(
-                    user, "DOCUMENT", document.getId(), "UPDATE_METADATA",
-                    policyDecision, legacyAllowed, legacyAllowed ? null : "MISSING_PERMISSION");
-            if (cutoverFlags != null && cutoverFlags.isEnabled("DOCUMENT")) {
-                return policyDecision.allowed();
-            }
+            return authorizationEngineService.authorize(
+                    com.eqms.service.authorization.AuthorizationRequest.of(user, "DOCUMENT", document.getId(), "UPDATE_METADATA")).allowed();
         } catch (Exception e) {
-            log.warn("Shadow evaluation failed for document {} action UPDATE_METADATA: {}", document.getId(), e.getMessage());
+            log.error("Authorization engine failed for document {} action UPDATE_METADATA: {}", document.getId(), e.getMessage(), e);
+            return false;
         }
-        return legacyAllowed;
     }
 
     @Transactional(readOnly = true)
@@ -1340,9 +1323,7 @@ public class DocumentService {
         }
 
         if (metadataChanged) {
-            boolean legacyAllowed = permissionEvaluationService.hasPermission(currentUser, "documents.document.configure_next_metadata");
-            boolean allowed = evaluateUpdateMetadataAllowed(currentUser, document, legacyAllowed);
-            if (!allowed) {
+            if (!engineAllowsUpdateMetadata(currentUser, document)) {
                 throw new AccessDeniedException("Current user cannot edit this document's metadata");
             }
         }

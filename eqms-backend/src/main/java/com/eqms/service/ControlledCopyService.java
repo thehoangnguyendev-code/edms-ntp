@@ -533,7 +533,7 @@ public class ControlledCopyService {
     public ControlledCopyListItemResponse getControlledCopyDetail(UUID id) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         ControlledCopyRecord copy = requireControlledCopyForDetail(id);
-        if (!canViewControlledCopy(currentUser, copy)) {
+        if (!canSeeControlledCopyRecord(currentUser, copy)) {
             throw new AccessDeniedException("Controlled copy access denied");
         }
         // "Opened By" reflects whoever last opened this copy's detail view, matching the same
@@ -552,7 +552,8 @@ public class ControlledCopyService {
                 copy.getStatus(),
                 "Opened controlled copy detail"
         );
-        return toResponse(copy, true);
+        // The evidence files are content: a person who only sees the record does not get them.
+        return toResponse(copy, canViewControlledCopy(currentUser, copy));
     }
 
     /**
@@ -662,7 +663,7 @@ public class ControlledCopyService {
         Optional<ControlledCopyRecord> copy = controlledCopyRepository.findById(id);
         if (copy.isPresent()) {
             ControlledCopyRecord record = copy.get();
-            if (!canViewControlledCopy(currentUser, record)) {
+            if (!canSeeControlledCopyRecord(currentUser, record)) {
                 throw new AccessDeniedException("Controlled copy access denied");
             }
             // Same "Opened By" tracking as getControlledCopyDetail() -- this is the endpoint the
@@ -680,7 +681,7 @@ public class ControlledCopyService {
                     record.getStatus(),
                     "Opened controlled copy detail"
             );
-            return toResponse(record, true);
+            return toResponse(record, canViewControlledCopy(currentUser, record));
         }
 
         ControlledCopyDistributionBatch batch = requireDistributionBatch(id);
@@ -693,10 +694,10 @@ public class ControlledCopyService {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         Optional<ControlledCopyRecord> copy = controlledCopyRepository.findById(id);
         if (copy.isPresent()) {
-            if (!canViewControlledCopy(currentUser, copy.get())) {
+            if (!canSeeControlledCopyRecord(currentUser, copy.get())) {
                 throw new AccessDeniedException("Controlled copy access denied");
             }
-            return toResponse(copy.get(), true);
+            return toResponse(copy.get(), canViewControlledCopy(currentUser, copy.get()));
         }
 
         ControlledCopyDistributionBatch batch = requireDistributionBatch(id);
@@ -803,7 +804,7 @@ public class ControlledCopyService {
     public List<SignatureResponse> getControlledCopySignatures(UUID id) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         ControlledCopyRecord copy = requireControlledCopy(id);
-        if (!canViewControlledCopy(currentUser, copy)) {
+        if (!canSeeControlledCopyRecord(currentUser, copy)) {
             throw new AccessDeniedException("Controlled copy access denied");
         }
         return buildSignatureRows(copy);
@@ -2725,8 +2726,14 @@ public class ControlledCopyService {
         return value != null && value.toLowerCase(Locale.ROOT).contains(pattern);
     }
 
+    /** The CONTENT of the copy (issued PDF, evidence files): the recipient and the view-everything holders. */
     private boolean canViewControlledCopy(UserAccount currentUser, ControlledCopyRecord copy) {
         return documentAuthorizationService.canViewControlledCopy(currentUser, copy);
+    }
+
+    /** The RECORD of the copy (list row, detail, signatures): the above, and the people named in the flow of the revision of the copy. */
+    private boolean canSeeControlledCopyRecord(UserAccount currentUser, ControlledCopyRecord copy) {
+        return documentAuthorizationService.canSeeControlledCopyRecord(currentUser, copy);
     }
 
     private void requirePermission(UserAccount currentUser, String permissionCode, String message) {
@@ -2969,11 +2976,11 @@ public class ControlledCopyService {
     }
 
     /**
-     * Database-level mirror of {@link #canViewControlledCopy(UserAccount, ControlledCopyRecord)},
+     * Database-level mirror of {@link #canSeeControlledCopyRecord(UserAccount, ControlledCopyRecord)},
      * used so the list endpoint can filter+paginate in SQL instead of loading every filter-matched
      * row into memory to authorize row-by-row. If
      * {@link DocumentAuthorizationService#canViewAllControlledCopies} is true, no restriction is
-     * added; otherwise only copies whose recipient is the current user. Keep both in sync by hand;
+     * added; otherwise the copies whose recipient is the current user and the copies of the revisions in whose flow the person is named. Keep both in sync by hand;
      * there is deliberately no shared implementation because one is a Java predicate over a loaded
      * entity and the other is a JPA Criteria predicate translated to SQL.
      */
@@ -2981,9 +2988,14 @@ public class ControlledCopyService {
         if (documentAuthorizationService.canViewAllControlledCopies(currentUser)) {
             return (root, query, cb) -> cb.conjunction();
         }
-        // Everyone else sees only the copies on which they are the named recipient (account id).
+        // Everyone else sees the copies on which they are the named recipient (account id) and, when they hold the base copy view
+        // permission, the copies of the revisions in whose flow they are named. Same rule as canSeeControlledCopyRecord.
         UUID userId = currentUser.getId();
-        return (root, query, cb) -> cb.equal(root.get("recipientUser").get("id"), userId);
+        boolean flowReader = permissionEvaluationService.hasPermission(currentUser, DocumentAuthorizationService.PERMISSION_CONTROLLED_COPY_VIEW);
+        return (root, query, cb) -> {
+            Predicate recipient = cb.equal(root.get("recipientUser").get("id"), userId);
+            return flowReader ? cb.or(recipient, documentAuthorizationService.copyFlowPredicate(currentUser, root, query, cb)) : recipient;
+        };
     }
 
     private Comparator<ControlledCopyRecord> resolveComparator(String sortBy, String sortDirection) {

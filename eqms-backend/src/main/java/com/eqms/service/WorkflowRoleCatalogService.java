@@ -168,6 +168,7 @@ public class WorkflowRoleCatalogService {
         if (!StringUtils.hasText(request.moduleKey())) {
             throw new IllegalArgumentException("Workflow role module is required");
         }
+        requireKnownModule(request.moduleKey());
         String code = request.code().trim().toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9_]", "_");
         if (workflowRoleRepository.findByCodeIgnoreCase(code).isPresent()) {
             throw new IllegalArgumentException("A workflow role with code \"" + code + "\" already exists");
@@ -216,6 +217,9 @@ public class WorkflowRoleCatalogService {
         }
         if (!StringUtils.hasText(request.moduleKey())) {
             throw new IllegalArgumentException("Workflow role module is required");
+        }
+        if (!role.isSystem() || !role.getModuleKey().equalsIgnoreCase(request.moduleKey().trim())) {
+            requireKnownModule(request.moduleKey());
         }
         if (role.isSystem() && !request.active()) {
             throw new IllegalArgumentException("System workflow roles cannot be deactivated");
@@ -346,5 +350,14 @@ public class WorkflowRoleCatalogService {
                 role.getId(), role.getCode(), role.getLabel(), role.getModuleKey(),
                 role.getDescription(), role.getDisplayOrder(), role.isActive(), role.isSystem(),
                 role.getCreatedAt(), role.getUpdatedAt());
+    }
+
+    /** The modules a workflow role can belong to: one vocabulary, the lower-case module keys of the system (a free text had three spellings of Document Control). */
+    public static final java.util.Set<String> MODULES = java.util.Set.of("documents", "training", "reports", "backup", "security", "audit-trail");
+
+    private static void requireKnownModule(String moduleKey) {
+        if (moduleKey == null || !MODULES.contains(moduleKey.trim().toLowerCase(Locale.ROOT))) {
+            throw new IllegalArgumentException("Workflow role module must be one of: " + String.join(", ", new java.util.TreeSet<>(MODULES)));
+        }
     }
 }

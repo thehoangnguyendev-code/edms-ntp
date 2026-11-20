@@ -123,6 +123,14 @@ public class OnlyOfficeConfigurationService {
         boolean clearSecret = booleanValue(incomingOnlyOffice, "clearJwtSecret", false);
         String resolvedSecret = clearSecret ? "" : normalizeSecret(incomingSecret, existingSecret);
         mergedOnlyOffice.put("jwtSecret", resolvedSecret == null ? "" : resolvedSecret);
+        // When the secret last changed is kept by the server and never taken from the request: it moves only when the stored secret really changes.
+        String existingChangedAt = text(existingOnlyOffice, "jwtSecretChangedAt");
+        mergedOnlyOffice.remove("jwtSecretChangedAt");
+        if (!(existingSecret == null ? "" : existingSecret).equals(resolvedSecret == null ? "" : resolvedSecret)) {
+            mergedOnlyOffice.put("jwtSecretChangedAt", java.time.Instant.now().toString());
+        } else if (existingChangedAt != null) {
+            mergedOnlyOffice.put("jwtSecretChangedAt", existingChangedAt);
+        }
         mergedOnlyOffice.remove("jwtSecretMasked");
         mergedOnlyOffice.remove("jwtSecretConfigured");
         mergedOnlyOffice.remove("clearJwtSecret");

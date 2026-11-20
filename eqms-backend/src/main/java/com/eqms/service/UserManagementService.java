@@ -19,9 +19,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.Instant;
@@ -80,6 +77,10 @@ public class UserManagementService {
     private static final String ACTION_USER_CERTIFICATION_UPDATED = "USER_CERTIFICATION_UPDATED";
     private static final String ACTION_USER_CERTIFICATION_DELETED = "USER_CERTIFICATION_DELETED";
     private static final String ACTION_DOCUMENT_ADMINISTRATION_UPDATED = "DOCUMENT_ADMINISTRATION_UPDATED";
+
+    /** Signs a change to the document workflow rules; optional only so that older test wiring still builds, never skipped at run time. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private SecurityChangeSignatureService securityChangeSignatureService;
 
     private final UserAccountRepository userRepository;
     private final UserEducationRepository educationRepository;
@@ -837,6 +838,7 @@ public class UserManagementService {
         user.setMustChangePassword(true);
         user.setPasswordChangedAt(Instant.now());
         user.setFailedLoginCount(0);
+        user.setFailedSignatureCount(0);
         user.setLockedUntil(null);
         revokeAllSessions(user.getId());
         auditService.log("user_password_reset", user, auditDetails(
@@ -901,6 +903,7 @@ public class UserManagementService {
         user.setMustChangePassword(true);
         user.setPasswordChangedAt(Instant.now());
         user.setFailedLoginCount(0);
+        user.setFailedSignatureCount(0);
         user.setLockedUntil(null);
         revokeAllSessions(user.getId());
 
@@ -1357,13 +1360,16 @@ public class UserManagementService {
         if (hasText(search)) {
             permissions = permissionRepository.searchPermissions(search.trim());
             if (hasText(module)) {
-                String normalizedModule = module.trim().toLowerCase(Locale.ROOT);
+                // a module is spelled in several ways in the permission table ("report" and "reports"): every spelling is the module
                 permissions = permissions.stream()
-                        .filter(p -> normalizedModule.equalsIgnoreCase(p.getModuleKey()))
+                        .filter(p -> com.eqms.util.ModuleKeys.same(module, p.getModuleKey()))
                         .toList();
             }
         } else if (hasText(module)) {
-            permissions = permissionRepository.findAllByModuleKeyIgnoreCaseOrderByDisplayOrderAscCodeAsc(module.trim());
+            permissions = permissionRepository.findAll().stream()
+                    .filter(p -> com.eqms.util.ModuleKeys.same(module, p.getModuleKey()))
+                    .sorted(java.util.Comparator.comparing((Permission p) -> p.getDisplayOrder() == null ? Integer.MAX_VALUE : p.getDisplayOrder()).thenComparing(Permission::getCode))
+                    .toList();
         } else {
             permissions = permissionRepository.findAll();
         }
@@ -1395,30 +1401,6 @@ public class UserManagementService {
         flat.sort(comparator);
 
         return PagedList.paginate(flat, page, limit);
-    }
-
-    @Transactional
-    public UserManagementResponse updateRole(UUID id, UpdateRoleRequest request, HttpServletRequest httpRequest) {
-        UserAccount user = requireUser(id);
-        String oldRole = user.getRoleName();
-        String oldStatus = user.getStatus() != null ? user.getStatus().name() : null;
-        user.setRoleName(request.role());
-        auditService.log("user_role_updated", user, auditDetails("role", request.role()), clientIp(httpRequest), userAgent(httpRequest));
-
-        List<AuditTrailChangeResponse> changes = new ArrayList<>();
-        changes.add(new AuditTrailChangeResponse("role", oldRole != null ? oldRole : "", request.role() != null ? request.role() : ""));
-        auditTrailService.log(
-                "USER",
-                user.getFullName(),
-                user.getId(),
-                ACTION_USER_ROLE_UPDATED,
-                oldStatus,
-                user.getStatus() != null ? user.getStatus().name() : null,
-                "Updated role from " + oldRole + " to " + request.role() + " for user " + user.getUsername(),
-                changes
-        );
-
-        return toResponse(user, true);
     }
 
     // NOTE: the RoleDefinition-CRUD surface (getRoles/getRole/createRole/updateRole/deleteRole/
@@ -1491,6 +1473,12 @@ public class UserManagementService {
 
     @Transactional
     public DocumentAdministrationResponse updateDocumentAdministration(DocumentAdministrationRequest request, HttpServletRequest httpRequest) {
+        // The rules decide who may review and approve a revision: a change is signed. Check the signature BEFORE any state change (a denied save has no side effect).
+        UserAccount actor = currentUserService.requireCurrentUser();
+        if (securityChangeSignatureService == null) {
+            throw new IllegalStateException("The electronic signature service is not available");
+        }
+        securityChangeSignatureService.requireValidToken(actor, request.signatureToken());
         DocumentWorkflowSetting setting = requireDocumentWorkflowSetting();
 
         List<AuditTrailChangeResponse> changes = new ArrayList<>();
@@ -1507,11 +1495,15 @@ public class UserManagementService {
         setting.setSameUserCannotHoldMultipleWorkflowRoles(request.sameUserCannotHoldMultipleWorkflowRoles());
         setting.setDcoCannotBeReviewerOrApprover(request.dcoCannotBeReviewerOrApprover());
         setting.setReviewerAndApproverDifferentDepartments(request.reviewerAndApproverDifferentDepartments());
-        auditService.log("document_administration_updated", currentUserService.requireCurrentUser(),
+        auditService.log("document_administration_updated", actor,
                 auditDetails(), clientIp(httpRequest), userAgent(httpRequest));
 
         String reason = request.reason();
-        auditTrailService.log(
+        ElectronicSignature signature = securityChangeSignatureService.record(actor, request.signatureToken(),
+                SecurityChangeSignatureService.MEANING_SOD_RULE_CHANGE,
+                "DOCUMENT_WORKFLOW_SETTING", setting.getId(), "Document Workflow Settings", reason, null, null);
+        auditTrailService.logAs(
+                actor,
                 "SYSTEM_CONFIGURATION",
                 "Document Workflow Settings",
                 setting.getId(),
@@ -1521,7 +1513,8 @@ public class UserManagementService {
                 (reason != null && !reason.isBlank())
                         ? "Updated document workflow administration configuration: " + reason
                         : "Updated document workflow administration configuration",
-                changes
+                changes,
+                signature == null ? null : signature.getId()
         );
 
         return getDocumentAdministration();
@@ -1609,54 +1602,6 @@ public class UserManagementService {
                 getBusinessUnits(),
                 getPositions()
         );
-    }
-
-    /** Writes a potentially large user export without materialising the tenant in memory. */
-    @Transactional
-    public void writeUsersExport(
-            String search,
-            String role,
-            String status,
-            String online,
-            String businessUnit,
-            String department,
-            String position,
-            String dateFrom,
-            String dateTo,
-            String suspendFrom,
-            String suspendTo,
-            String terminateFrom,
-            String terminateTo,
-            boolean includeTerminated,
-            java.io.OutputStream outputStream
-    ) throws java.io.IOException {
-        Specification<UserAccount> specification = buildSpecification(
-                search, role, status, online, businessUnit, department, position, dateFrom, dateTo, suspendFrom, suspendTo, terminateFrom, terminateTo, includeTerminated
-        );
-
-        try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
-            writer.print(com.eqms.util.CsvSafety.BOM);
-            writer.println("Employee ID,Full Name,Username,Email,Access Profile,Position,Business Unit,Department,Status,Last Login,Created Date");
-            int page = 0;
-            Page<UserAccount> result;
-            do {
-                result = userRepository.findAll(specification, PageRequest.of(page++, 500, Sort.by(Sort.Direction.ASC, "fullName")));
-                List<UUID> pageIds = result.getContent().stream().map(UserAccount::getId).toList();
-                Map<UUID, List<String>> accessProfileNamesByUser = batchAccessProfileNames(pageIds);
-                for (UserAccount account : result.getContent()) {
-                    UserManagementResponse user = toResponse(account, false, false, false,
-                            accessProfileNamesByUser.getOrDefault(account.getId(), List.of()));
-                    String accessProfiles = user.accessProfileNames().isEmpty()
-                            ? "Unassigned"
-                            : String.join("; ", user.accessProfileNames());
-                    writer.printf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%n",
-                            csv(user.employeeCode()), csv(user.fullName()), csv(user.username()), csv(user.email()),
-                            csv(accessProfiles), csv(user.position()), csv(user.businessUnit()), csv(user.department()),
-                            csv(user.status()), csv(user.lastLogin()), csv(user.createdDate()));
-                }
-                writer.flush();
-            } while (result.hasNext());
-        }
     }
 
     @Transactional

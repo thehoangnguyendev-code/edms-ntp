@@ -20,7 +20,7 @@ class TrainingParticipantQueryTest {
     TrainingActivityService service;
 
     @BeforeEach void setup() {
-        service = spy(new TrainingActivityService(jdbc, access, store, null, null, null, null, null, null, null, null, null));
+        service = spy(new TrainingActivityService(jdbc, access, store, null, null, null, null, null, null, null, null, null, com.eqms.service.authorization.TestGuards.allowingTraining()));
         when(store.activity(id)).thenReturn(Optional.of(Map.of("organizer_department_id", department)));
     }
 

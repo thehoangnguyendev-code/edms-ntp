@@ -59,7 +59,7 @@ class TrainingMatrixAuditDetailTest {
         when(signature.getId()).thenReturn(signatureId);
         when(signatures.createEntitySignature(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(signature);
         when(jdbc.queryForList(contains("from training_matrices where id=?"), eq(matrixId))).thenReturn(List.of(Map.of("id", matrixId, "code", "TM-QA", "department_id", UUID.randomUUID())));
-        service = spy(new TrainingMatrixService(jdbc, access, store, approvals, signatures, audit, users, notifier));
+        service = spy(new TrainingMatrixService(jdbc, access, store, approvals, signatures, audit, users, notifier, com.eqms.service.authorization.TestGuards.allowingTraining()));
         doReturn(Map.of()).when(service).version(any(), any());
     }
 

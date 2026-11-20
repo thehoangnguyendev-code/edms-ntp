@@ -106,6 +106,31 @@ public class NotificationPolicyService {
         return com.eqms.util.PagedList.paginate(summaries, page, limit);
     }
 
+    /** Low, Medium, High: how important a notification is, for sorting and for the filter. */
+    static int priorityRank(String priority) {
+        return switch (priority == null ? "" : priority.trim().toUpperCase(Locale.ROOT)) {
+            case NotificationEventDefinition.PRIORITY_LOW -> 1;
+            case NotificationEventDefinition.PRIORITY_HIGH -> 3;
+            case NotificationEventDefinition.PRIORITY_CRITICAL -> 4;
+            default -> 2;
+        };
+    }
+
+    /**
+     * The priority an administrator asks for: LOW, MEDIUM or HIGH. CRITICAL is only the default of an event the catalog marks critical, so it can be kept
+     * but not given to another notification. Null when no change is asked.
+     */
+    static String requestedPriority(String requested, NotificationEventDefinition event) {
+        if (requested == null) return null;
+        String value = requested.trim().toUpperCase(Locale.ROOT);
+        boolean keepsCriticalDefault = NotificationEventDefinition.PRIORITY_CRITICAL.equals(value)
+                && NotificationEventDefinition.PRIORITY_CRITICAL.equalsIgnoreCase(event.getPriority());
+        if (!VALID_PRIORITIES.contains(value) || (NotificationEventDefinition.PRIORITY_CRITICAL.equals(value) && !keepsCriticalDefault)) {
+            throw new IllegalArgumentException("Invalid priority: " + requested + ". Choose Low, Medium or High.");
+        }
+        return value;
+    }
+
     /** EMAIL: the email is switched on. IN_APP_ONLY: it is not (whether or not the event has one). Anything else: no filter. */
     static boolean matchesChannel(String channel, String enabledChannels) {
         if (!StringUtils.hasText(channel)) return true;
@@ -120,7 +145,7 @@ public class NotificationPolicyService {
 
     private java.util.Comparator<NotificationPolicySummaryResponse> summaryComparator(String sortBy, String sortDirection) {
         java.util.Comparator<NotificationPolicySummaryResponse> comparator = switch (sortBy == null ? "" : sortBy) {
-            case "priority" -> java.util.Comparator.comparing(NotificationPolicySummaryResponse::priority, String.CASE_INSENSITIVE_ORDER);
+            case "priority" -> java.util.Comparator.comparingInt((NotificationPolicySummaryResponse s) -> priorityRank(s.priority()));
             case "updatedAt" -> java.util.Comparator.comparing(NotificationPolicySummaryResponse::updatedAt);
             case "name" -> java.util.Comparator.comparing(NotificationPolicySummaryResponse::name, String.CASE_INSENSITIVE_ORDER);
             default -> java.util.Comparator.comparing(NotificationPolicySummaryResponse::module, String.CASE_INSENSITIVE_ORDER);
@@ -167,6 +192,7 @@ public class NotificationPolicyService {
         if (request.digestMode() != null && !VALID_DIGEST_MODES.contains(request.digestMode().toUpperCase(Locale.ROOT))) {
             throw new IllegalArgumentException("Invalid digest mode: " + request.digestMode());
         }
+        String requestedPriority = requestedPriority(request.priority(), event);
         java.util.List<String> requestedChannels = null;
         if (request.enabledChannels() != null) {
             requestedChannels = request.enabledChannels().stream().filter(StringUtils::hasText).map(c -> c.trim().toUpperCase(Locale.ROOT)).distinct().toList();
@@ -223,6 +249,15 @@ public class NotificationPolicyService {
             }
             if (requestedChannels.contains(NotificationTemplateVersion.CHANNEL_EMAIL)) {
                 ensureEmailWording(policy, currentUser, changes);
+            }
+        }
+        if (request.priority() != null) {
+            // stored only when it differs from the default of the event; the default puts the notification back (null)
+            String stored = requestedPriority.equalsIgnoreCase(event.getPriority()) ? null : requestedPriority;
+            String before = policy.effectivePriority(event);
+            if (!java.util.Objects.equals(stored, policy.getPriority())) {
+                policy.setPriority(stored);
+                changes.add(new AuditTrailChangeResponse("Priority", before, requestedPriority));
             }
         }
         if (request.digestMode() != null) {
@@ -303,41 +338,30 @@ public class NotificationPolicyService {
     /**
      * The icon of an in-app notification is one icon of the Lucide or the Tabler library, written {@code lucide:BellRing} or {@code tabler:IconBell}
      * (the library and the name of its React component). The libraries live in the browser, so the server checks the form of the key, not the
-     * list of names; a name that no longer exists draws the icon of the kind of notification instead. The tones are the colours it may have.
+     * list of names; a name that no longer exists draws the icon of the kind of notification instead. The colour of the icon is not chosen: it follows
+     * the priority of the notification.
      */
     public static final Pattern ICON_KEY = Pattern.compile("^(lucide|tabler):[A-Za-z][A-Za-z0-9]{0,59}$");
-    private static final java.util.regex.Pattern ICON_HEX = java.util.regex.Pattern.compile("^#[0-9a-fA-F]{6}$");
-    public static final Set<String> ICON_TONES = Set.of("emerald", "blue", "amber", "red", "purple", "cyan", "indigo", "slate");
 
-    /**
-     * Chooses the icon of the in-app notification of an event: an icon of {@link #ICON_KEY} and one tone of {@link #ICON_TONES}; empty means the icon
-     * of its kind. The change is written to the Audit Trail with the value before and after.
-     */
-    public NotificationPolicyDetailResponse updateAppearance(String eventCode, String icon, String iconTone) {
-        return updateAppearance(eventCode, icon, iconTone, null);
+    /** Chooses the icon of the in-app notification of an event; empty means the icon of its kind. The change is written to the Audit Trail with the value before and after. */
+    public NotificationPolicyDetailResponse updateAppearance(String eventCode, String icon) {
+        return updateAppearance(eventCode, icon, null);
     }
 
     @Transactional
-    public NotificationPolicyDetailResponse updateAppearance(String eventCode, String icon, String iconTone, java.time.Instant expectedUpdatedAt) {
+    public NotificationPolicyDetailResponse updateAppearance(String eventCode, String icon, java.time.Instant expectedUpdatedAt) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         NotificationEventDefinition event = requireEvent(eventCode);
         NotificationPolicy policy = lockPolicy(eventCode);
         requireFresh(policy, expectedUpdatedAt);
         String newIcon = StringUtils.hasText(icon) ? icon.trim() : null;
-        // a six-digit hex colour chosen with the colour picker (kept in capitals), or one of the names the first version offered
-        String newTone = !StringUtils.hasText(iconTone) ? null : ICON_HEX.matcher(iconTone.trim()).matches() ? iconTone.trim().toUpperCase(Locale.ROOT) : iconTone.trim().toLowerCase(Locale.ROOT);
         if (newIcon != null && !ICON_KEY.matcher(newIcon).matches()) {
             throw new IllegalArgumentException("The icon must be an icon of the Lucide or the Tabler library, written lucide:Name or tabler:Name");
         }
-        if (newTone != null && !ICON_HEX.matcher(newTone).matches() && !ICON_TONES.contains(newTone)) {
-            throw new IllegalArgumentException("The colour must be written as #RRGGBB (or be one of: " + String.join(", ", new java.util.TreeSet<>(ICON_TONES)) + ")");
-        }
         List<AuditTrailChangeResponse> changes = new ArrayList<>();
         diffField(changes, "Icon", policy.getIcon() == null ? "" : policy.getIcon(), newIcon == null ? "" : newIcon);
-        diffField(changes, "Icon colour", policy.getIconTone() == null ? "" : policy.getIconTone(), newTone == null ? "" : newTone);
         if (!changes.isEmpty()) {
             policy.setIcon(newIcon);
-            policy.setIconTone(newTone);
             policy.setUpdatedBy(currentUser);
             policy.setUpdatedAt(java.time.Instant.now());
             policyRepository.save(policy);
@@ -794,7 +818,7 @@ public class NotificationPolicyService {
     private NotificationPolicySummaryResponse toSummary(NotificationEventDefinition event, NotificationPolicy policy) {
         return new NotificationPolicySummaryResponse(
                 event.getCode(), event.getName(), event.getDescription(), event.getModule(),
-                event.getPriority(), event.getSupportedChannels(),
+                policy == null ? event.getPriority() : policy.effectivePriority(event), event.getSupportedChannels(),
                 policy == null ? NotificationPolicy.STATUS_DRAFT : policy.getStatus(),
                 policy == null ? "" : policy.getEnabledChannels(),
                 policy != null && policy.isEscalationEnabled(),
@@ -805,13 +829,13 @@ public class NotificationPolicyService {
     private NotificationPolicyDetailResponse toDetail(NotificationEventDefinition event, NotificationPolicy policy, List<NotificationTemplateVersionResponse> templates) {
         return new NotificationPolicyDetailResponse(
                 event.getCode(), event.getName(), event.getDescription(), event.getModule(),
-                event.getPriority(), event.getRelatedAction(), event.getDataObject(),
+                policy.effectivePriority(event), event.getRelatedAction(), event.getDataObject(),
                 event.getSupportedChannels(), event.getAvailableVariables(),
                 policy.getStatus(), policy.getEnabledChannels(), policy.getRecipientRules(), policy.getDigestMode(),
                 policy.getQuietHoursStart(), policy.getQuietHoursEnd(), policy.isEscalationEnabled(), policy.getEscalationAfterMinutes(),
                 policy.getEscalationRecipientRules(),
                 policy.getUpdatedBy() == null ? null : policy.getUpdatedBy().getFullName(),
-                policy.getUpdatedAt(), templates, policy.getIcon(), policy.getIconTone()
+                policy.getUpdatedAt(), templates, policy.getIcon(), event.getPriority()
         );
     }
 

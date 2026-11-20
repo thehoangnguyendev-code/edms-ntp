@@ -35,8 +35,10 @@ import java.util.UUID;
 public class TrainingActivityService {
     private static final Set<String> CREATE_KINDS = Set.of("INITIAL", "PERIODIC", "UNPLANNED", "EXTERNAL");
 
+    private static final String TYPE = "TRAINING_ACTIVITY";
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;
+    private final TrainingShadow shadow;
     private final TrainingStore store;
     private final TrainingNumberService numbers;
     private final TrainingSettingsService settings;
@@ -49,9 +51,10 @@ public class TrainingActivityService {
     private final TrainingVendorService vendors;
 
     public TrainingActivityService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, TrainingNumberService numbers, TrainingSettingsService settings,
-                                   TrainingApprovalService approvals, ElectronicSignatureService signatures, UserAccountRepository users, TrainingNotifier notifier, TrainingTrainerService trainers, TrainingSuspensionService suspensions, TrainingVendorService vendors) {
+                                   TrainingApprovalService approvals, ElectronicSignatureService signatures, UserAccountRepository users, TrainingNotifier notifier, TrainingTrainerService trainers, TrainingSuspensionService suspensions, TrainingVendorService vendors, TrainingShadow shadow) {
         this.jdbc = jdbc;
         this.access = access;
+        this.shadow = shadow;
         this.store = store;
         this.numbers = numbers;
         this.settings = settings;
@@ -359,7 +362,7 @@ public class TrainingActivityService {
         out.put("workflow", TrainingWorkflows.activity((String) activity.get("status"), (String) out.get("cancelledFromStatus")));
         Integer proposed = jdbc.queryForObject("select count(*) from training_proposed_participants where activity_id=? and applied_at is null", Integer.class, id);
         out.put("proposedParticipantCount", proposed == null ? 0 : proposed);
-        out.put("capabilities", capabilities(actor, activity));
+        out.put("capabilities", withEngine(actor, activity, capabilities(actor, activity)));
         return out;
     }
 
@@ -586,6 +589,15 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
     }
 
     /** What the screen may offer the person for this activity. Only a hint: every command checks again. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.eqms.service.authorization.EngineCapabilities engineCapabilities;
+
+    /** The buttons follow the decision of the Hybrid engine (EngineCapabilities); the keys that name no action stay as the hints were. */
+    private Map<String, Object> withEngine(UserAccount actor, Map<String, Object> row, Map<String, Object> caps) {
+        return engineCapabilities == null ? caps : engineCapabilities.apply(actor, "TRAINING_ACTIVITY", (UUID) row.get("id"), caps,
+                Map.of(), Map.ofEntries(Map.entry("edit", "UPDATE"), Map.entry("planSessions", "ADD_SESSION"), Map.entry("addParticipants", "ADD_PARTICIPANTS"), Map.entry("confirmList", "CONFIRM_LIST"), Map.entry("notify", "NOTIFY"), Map.entry("sendAttendanceList", "SEND_ATTENDANCE_LIST"), Map.entry("finishTraining", "FINISH"), Map.entry("confirmCompletion", "CONFIRM_COMPLETION"), Map.entry("returnForCorrection", "RETURN_FOR_CORRECTION"), Map.entry("reopenContent", "REOPEN_CONTENT"), Map.entry("cancel", "CANCEL"), Map.entry("addSupplementary", "SUPPLEMENTARY")));
+    }
+
     private Map<String, Object> capabilities(UserAccount actor, Map<String, Object> activity) {
         String status = String.valueOf(activity.get("status"));
         UUID department = (UUID) activity.get("organizer_department_id");
@@ -753,7 +765,12 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
 
     @Transactional
     public Map<String, Object> update(UserAccount actor, UUID id, UpdateRequest request) {
-        Map<String, Object> activity = lockedForOrganizer(actor, id);
+        return shadow.around(actor, TYPE, id, "UPDATE", true, () -> updateInner(actor, id, request));
+    }
+
+    private Map<String, Object> updateInner(UserAccount actor, UUID id, UpdateRequest request) {
+        // who may do this (the permission to organize and the department of the activity) is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY / TRAINING_PARTICIPANT)
+        Map<String, Object> activity = lockedUnderEngine(id);
         requireVersion(activity, request == null ? null : request.version());
         // The remarks do not touch the training or its record, so they stay open until the activity is completed; the title, due date and training unit are fixed once it is notified.
         requireStatus(activity, "PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION");
@@ -799,7 +816,12 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
 
     @Transactional
     public Map<String, Object> addSession(UserAccount actor, UUID id, SessionRequest request) {
-        Map<String, Object> activity = lockedForOrganizer(actor, id);
+        return shadow.around(actor, TYPE, id, "ADD_SESSION", true, () -> addSessionInner(actor, id, request));
+    }
+
+    private Map<String, Object> addSessionInner(UserAccount actor, UUID id, SessionRequest request) {
+        // who may do this (the permission to organize and the department of the activity) is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY / TRAINING_PARTICIPANT)
+        Map<String, Object> activity = lockedUnderEngine(id);
         requireStatus(activity, "PLANNED", "NOTIFIED");
         boolean externalActivity = "EXTERNAL".equals(activity.get("kind"));
         if (request == null || (!externalActivity && (request.method() == null || request.assessmentMethod() == null))) throw new IllegalArgumentException("TRAINING_SESSION_INVALID");
@@ -841,7 +863,12 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
 
     @Transactional
     public Map<String, Object> addParticipants(UserAccount actor, UUID id, ParticipantsRequest request) {
-        Map<String, Object> activity = lockedForOrganizer(actor, id);
+        return shadow.around(actor, TYPE, id, "ADD_PARTICIPANTS", true, () -> addParticipantsInner(actor, id, request));
+    }
+
+    private Map<String, Object> addParticipantsInner(UserAccount actor, UUID id, ParticipantsRequest request) {
+        // who may do this (the permission to organize and the department of the activity) is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY / TRAINING_PARTICIPANT)
+        Map<String, Object> activity = lockedUnderEngine(id);
         requireStatus(activity, "PLANNED");
         // The list is prepared and communicated before the training (SOP.0003 5.3.4). Once it is confirmed it is not changed; a person who is not on it is trained in a make-up or a new training.
         if (activity.get("list_prepared_by") != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_LIST_LOCKED");
@@ -893,7 +920,12 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
     /** The person who prepared the list confirms it before the activity is notified (APD.0117 section 4). */
     @Transactional
     public Map<String, Object> confirmList(UserAccount actor, UUID id, CommandRequest request) {
-        Map<String, Object> activity = lockedForOrganizer(actor, id);
+        return shadow.around(actor, TYPE, id, "CONFIRM_LIST", true, () -> confirmListInner(actor, id, request));
+    }
+
+    private Map<String, Object> confirmListInner(UserAccount actor, UUID id, CommandRequest request) {
+        // who may do this (the permission to organize and the department of the activity) is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY / TRAINING_PARTICIPANT)
+        Map<String, Object> activity = lockedUnderEngine(id);
         requireStatus(activity, "PLANNED");
         Integer people = jdbc.queryForObject("select count(*) from training_participants where activity_id=?", Integer.class, id);
         if (people == null || people == 0) throw new IllegalArgumentException("TRAINING_PARTICIPANT_REQUIRED");
@@ -915,7 +947,12 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
 
     @Transactional
     public Map<String, Object> designate(UserAccount actor, UUID id, String step, UUID assignee) {
-        Map<String, Object> activity = lockedForOrganizer(actor, id);
+        return shadow.around(actor, TYPE, id, "DESIGNATE", false, () -> designateInner(actor, id, step, assignee));
+    }
+
+    private Map<String, Object> designateInner(UserAccount actor, UUID id, String step, UUID assignee) {
+        // who may do this is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY, V816)
+        Map<String, Object> activity = lockedUnderEngine(id);
         approvals.designate(actor, TrainingApprovalService.activity(activity), step, assignee, keptApart(activity, step));
         return get(actor, id);
     }
@@ -931,6 +968,10 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
     /** Review and approval of the content and the test (SOP 5.3.5): each by the person designated for the step, who signs. */
     @Transactional
     public Map<String, Object> confirmContent(UserAccount actor, UUID id, String step, CommandRequest request) {
+        return shadow.around(actor, TYPE, id, step, true, () -> confirmContentInner(actor, id, step, request));
+    }
+
+    private Map<String, Object> confirmContentInner(UserAccount actor, UUID id, String step, CommandRequest request) {
         if (!"CONTENT_REVIEW".equals(step) && !"CONTENT_APPROVE".equals(step)) throw new IllegalArgumentException("TRAINING_STEP_UNKNOWN");
         Map<String, Object> activity = store.activityForUpdate(id).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         requireStatus(activity, "PLANNED", "NOTIFIED");
@@ -985,7 +1026,12 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
      */
     @Transactional
     public Map<String, Object> setContentExemptions(UserAccount actor, UUID id, ExemptionRequest request) {
-        Map<String, Object> activity = lockedForOrganizer(actor, id);
+        return shadow.around(actor, TYPE, id, "SET_CONTENT_EXEMPTIONS", false, () -> setContentExemptionsInner(actor, id, request));
+    }
+
+    private Map<String, Object> setContentExemptionsInner(UserAccount actor, UUID id, ExemptionRequest request) {
+        // who may do this is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY, V816)
+        Map<String, Object> activity = lockedUnderEngine(id);
         requireStatus(activity, "PLANNED", "NOTIFIED");
         if (confirmed(id, "CONTENT_REVIEWED")) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_ALREADY_REVIEWED");
         if (request == null || (request.materialsExempt() == null && request.assessmentExempt() == null)) throw new IllegalArgumentException("TRAINING_ACTIVITY_INVALID_TRANSITION");
@@ -1014,7 +1060,12 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
 
     @Transactional
     public Map<String, Object> notifyActivity(UserAccount actor, UUID id, CommandRequest request) {
-        Map<String, Object> activity = lockedForOrganizer(actor, id);
+        return shadow.around(actor, TYPE, id, "NOTIFY", true, () -> notifyActivityInner(actor, id, request));
+    }
+
+    private Map<String, Object> notifyActivityInner(UserAccount actor, UUID id, CommandRequest request) {
+        // who may do this (the permission to organize and the department of the activity) is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY / TRAINING_PARTICIPANT)
+        Map<String, Object> activity = lockedUnderEngine(id);
         requireVersion(activity, request == null ? null : request.version());
         requireStatus(activity, "PLANNED");
         if (activity.get("list_prepared_by") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_LIST_NOT_CONFIRMED");
@@ -1041,9 +1092,13 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
 
     @Transactional
     public Map<String, Object> holdSession(UserAccount actor, UUID sessionId, HoldRequest request) {
+        return shadow.around(actor, TYPE, (UUID) session(sessionId).get("activity_id"), "HOLD_SESSION", false, () -> holdSessionInner(actor, sessionId, request));
+    }
+
+    private Map<String, Object> holdSessionInner(UserAccount actor, UUID sessionId, HoldRequest request) {
+        // who may do this is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY, V816)
         Map<String, Object> session = session(sessionId);
         Map<String, Object> activity = store.activityForUpdate((UUID) session.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        requireConductor(actor, activity);
         requireStatus(activity, "NOTIFIED", "IN_PROGRESS");
         if (!TrainingSessionState.notStarted(session)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
         LocalDate heldOn = LocalDate.now(TrainingNumberService.ZONE);
@@ -1162,6 +1217,10 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
      */
     @Transactional
     public Map<String, Object> sendAttendanceList(UserAccount actor, UUID id, CommandRequest request) {
+        return shadow.around(actor, TYPE, id, "SEND_ATTENDANCE_LIST", true, () -> sendAttendanceListInner(actor, id, request));
+    }
+
+    private Map<String, Object> sendAttendanceListInner(UserAccount actor, UUID id, CommandRequest request) {
         Map<String, Object> activity = lockedForSender(actor, id);
         requireVersion(activity, request == null ? null : request.version());
         requireStatus(activity, "IN_PROGRESS");
@@ -1198,9 +1257,13 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
 
     @Transactional
     public Map<String, Object> postponeSession(UserAccount actor, UUID sessionId, PostponeRequest request) {
+        return shadow.around(actor, TYPE, (UUID) session(sessionId).get("activity_id"), "POSTPONE_SESSION", false, () -> postponeSessionInner(actor, sessionId, request));
+    }
+
+    private Map<String, Object> postponeSessionInner(UserAccount actor, UUID sessionId, PostponeRequest request) {
+        // who may do this is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY, V816)
         Map<String, Object> session = session(sessionId);
         Map<String, Object> activity = store.activityForUpdate((UUID) session.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        requireOrganizer(actor, activity);
         requireStatus(activity, "PLANNED", "NOTIFIED", "IN_PROGRESS");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         if (request.newDate() == null) throw new IllegalArgumentException("TRAINING_DATE_REQUIRED");
@@ -1264,10 +1327,14 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
 
     @Transactional
     public Map<String, Object> recordAttendance(UserAccount actor, UUID participantId, AttendanceRequest request) {
+        return shadow.around(actor, TYPE, (UUID) participant(participantId).get("activity_id"), "RECORD_ATTENDANCE", false, () -> recordAttendanceInner(actor, participantId, request));
+    }
+
+    private Map<String, Object> recordAttendanceInner(UserAccount actor, UUID participantId, AttendanceRequest request) {
+        // who may do this is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY, V816)
         Map<String, Object> participant = participant(participantId);
         startSession(actor, (UUID) participant.get("session_id"));
         Map<String, Object> activity = store.activityForUpdate((UUID) participant.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        requireConductor(actor, activity);
         requireStatus(activity, "IN_PROGRESS");
         if (request == null || request.state() == null || !Set.of("ATTENDED", "ONLINE", "ABSENT").contains(request.state())) throw new IllegalArgumentException("TRAINING_ATTENDANCE_INVALID");
         Map<String, Object> session = session((UUID) participant.get("session_id"));
@@ -1292,13 +1359,16 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
      */
     @Transactional
     public Map<String, Object> correctAttendance(UserAccount actor, UUID participantId, CorrectionRequest request) {
+        return shadow.around(actor, "TRAINING_PARTICIPANT", participantId, "CORRECT_ATTENDANCE", true, () -> correctAttendanceInner(actor, participantId, request));
+    }
+
+    private Map<String, Object> correctAttendanceInner(UserAccount actor, UUID participantId, CorrectionRequest request) {
+        // who may do this (a conductor of the department, or the person invited for confirming the reading, and never one's own attendance) is decided by the Hybrid engine (TrainingShadow, TRAINING_PARTICIPANT)
         Map<String, Object> participant = participant(participantId);
         Map<String, Object> activity = store.activityForUpdate((UUID) participant.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        requireConductor(actor, activity);
         requireStatus(activity, "IN_PROGRESS");
         if (request == null || request.state() == null || !Set.of("ATTENDED", "ONLINE", "ABSENT").contains(request.state())) throw new IllegalArgumentException("TRAINING_ATTENDANCE_INVALID");
         if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
-        if (participant.get("person_user_id") != null && participant.get("person_user_id").equals(actor.getId())) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
         if ("SELF_READING".equals(session((UUID) participant.get("session_id")).get("method"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SELF_READING_ELECTRONIC_ONLY");
         String before = String.valueOf(participant.get("state"));
         if (!Set.of("ATTENDED", "ONLINE", "ABSENT").contains(before)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_NOT_RECORDED");
@@ -1336,10 +1406,14 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
      */
     @Transactional
     public Map<String, Object> setParticipation(UserAccount actor, UUID participantId, ParticipationRequest request) {
+        return shadow.around(actor, "TRAINING_PARTICIPANT", participantId, "SET_PARTICIPATION", true, () -> setParticipationInner(actor, participantId, request));
+    }
+
+    private Map<String, Object> setParticipationInner(UserAccount actor, UUID participantId, ParticipationRequest request) {
+        // who may do this (a conductor of the department, or the person invited for confirming the reading, and never one's own attendance) is decided by the Hybrid engine (TrainingShadow, TRAINING_PARTICIPANT)
         Map<String, Object> p = jdbc.queryForList("select * from training_participants where id=? for update", participantId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         UUID activityId = (UUID) p.get("activity_id");
         Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        requireConductor(actor, activity);
         requireStatus(activity, "PLANNED", "NOTIFIED", "IN_PROGRESS");
         if (activity.get("results_finished_at") != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ALREADY_FINISHED");
         if (request == null || request.role() == null || !PARTICIPATION_ROLES.contains(request.role())) throw new IllegalArgumentException("TRAINING_PARTICIPATION_INVALID");
@@ -1370,10 +1444,13 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
     /** The result is computed here from the score and the pass mark in force; the screen cannot send a result. The person who marks is not the person marked. */
     @Transactional
     public Map<String, Object> recordAssessment(UserAccount actor, UUID participantId, AssessmentRequest request) {
+        return shadow.around(actor, TYPE, (UUID) participant(participantId).get("activity_id"), "RECORD_ASSESSMENT", false, () -> recordAssessmentInner(actor, participantId, request));
+    }
+
+    private Map<String, Object> recordAssessmentInner(UserAccount actor, UUID participantId, AssessmentRequest request) {
+        // who may do this is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY, V816)
         Map<String, Object> participant = participant(participantId);
         Map<String, Object> activity = store.activityForUpdate((UUID) participant.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        access.require(actor, "training.assessment.record");
-        access.requireScope(actor, (UUID) activity.get("organizer_department_id"));
         requireStatus(activity, "IN_PROGRESS");
         // Once the trainer has finished the training the results are written in the list and signed: they are not changed any more (a retraining is a supplementary training).
         if (activity.get("results_finished_at") != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ALREADY_FINISHED");
@@ -1408,9 +1485,12 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
     /** Self-reading: the person confirms having read and understood, with a signature (TR-16). Only for the person's own row. */
     @Transactional
     public Map<String, Object> confirmRead(UserAccount actor, UUID participantId, CommandRequest request) {
+        return shadow.around(actor, "TRAINING_PARTICIPANT", participantId, "CONFIRM_READ", true, () -> confirmReadInner(actor, participantId, request));
+    }
+
+    private Map<String, Object> confirmReadInner(UserAccount actor, UUID participantId, CommandRequest request) {
+        // who may do this (a conductor of the department, or the person invited for confirming the reading, and never one's own attendance) is decided by the Hybrid engine (TrainingShadow, TRAINING_PARTICIPANT)
         Map<String, Object> participant = participant(participantId);
-        if (!actor.getId().equals(participant.get("person_user_id"))) throw new SecurityException(TrainingAccess.DENIED);
-        access.require(actor, "training.self.view");
         Map<String, Object> activity = store.activityForUpdate((UUID) participant.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         requireStatus(activity, "NOTIFIED", "IN_PROGRESS");
         Map<String, Object> session = session((UUID) participant.get("session_id"));
@@ -1431,9 +1511,13 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
      */
     @Transactional
     public Map<String, Object> remindToRead(UserAccount actor, UUID participantId) {
+        return shadow.around(actor, "TRAINING_PARTICIPANT", participantId, "REMIND_TO_READ", true, () -> remindToReadInner(actor, participantId));
+    }
+
+    private Map<String, Object> remindToReadInner(UserAccount actor, UUID participantId) {
+        // who may do this (a conductor of the department, or the person invited for confirming the reading, and never one's own attendance) is decided by the Hybrid engine (TrainingShadow, TRAINING_PARTICIPANT)
         Map<String, Object> participant = participant(participantId);
         Map<String, Object> activity = store.activityForUpdate((UUID) participant.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        requireConductor(actor, activity);
         requireStatus(activity, "NOTIFIED", "IN_PROGRESS");
         Map<String, Object> session = session((UUID) participant.get("session_id"));
         if (!"SELF_READING".equals(session.get("method")) || !"INVITED".equals(participant.get("state")) || participant.get("person_user_id") == null)
@@ -1457,14 +1541,17 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
      */
     @Transactional
     public Map<String, Object> excuseReader(UserAccount actor, UUID participantId, CommandRequest request) {
+        return shadow.around(actor, "TRAINING_PARTICIPANT", participantId, "EXCUSE_READER", true, () -> excuseReaderInner(actor, participantId, request));
+    }
+
+    private Map<String, Object> excuseReaderInner(UserAccount actor, UUID participantId, CommandRequest request) {
+        // who may do this (a conductor of the department, or the person invited for confirming the reading, and never one's own attendance) is decided by the Hybrid engine (TrainingShadow, TRAINING_PARTICIPANT)
         Map<String, Object> participant = participant(participantId);
         Map<String, Object> activity = store.activityForUpdate((UUID) participant.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        requireConductor(actor, activity);
         requireStatus(activity, "NOTIFIED", "IN_PROGRESS");
         Map<String, Object> session = session((UUID) participant.get("session_id"));
         if (!"SELF_READING".equals(session.get("method")) || !"INVITED".equals(participant.get("state"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CANNOT_READ_NOT_APPLICABLE");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
-        if (participant.get("person_user_id") != null && participant.get("person_user_id").equals(actor.getId())) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
         UUID signature = sign(actor, activity, "TRAINING_READER_EXCUSED", request);
         String reason = request.reason().trim();
         // the state of the person's account at the time is part of the record: the reason is typed, the account state is a system fact (ALCOA+)
@@ -1545,6 +1632,10 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
      */
     @Transactional
     public Map<String, Object> finishTraining(UserAccount actor, UUID id, CommandRequest request) {
+        return shadow.around(actor, TYPE, id, "FINISH", true, () -> finishTrainingInner(actor, id, request));
+    }
+
+    private Map<String, Object> finishTrainingInner(UserAccount actor, UUID id, CommandRequest request) {
         Map<String, Object> activity = lockedForSender(actor, id);
         requireVersion(activity, request == null ? null : request.version());
         requireStatus(activity, "IN_PROGRESS");
@@ -1597,6 +1688,10 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
     /** QA confirms the activity is complete (APD.0117 section 6): a person who holds the permission, not the one who prepared the list, with a signature. */
     @Transactional
     public Map<String, Object> confirmCompletion(UserAccount actor, UUID id, CommandRequest request) {
+        return shadow.around(actor, TYPE, id, "CONFIRM_COMPLETION", true, () -> confirmCompletionInner(actor, id, request));
+    }
+
+    private Map<String, Object> confirmCompletionInner(UserAccount actor, UUID id, CommandRequest request) {
         Map<String, Object> activity = store.activityForUpdate(id).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         requireVersion(activity, request == null ? null : request.version());
         requireStatus(activity, "PENDING_QA_CONFIRMATION");
@@ -1670,7 +1765,12 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
 
     @Transactional
     public Map<String, Object> cancel(UserAccount actor, UUID id, CommandRequest request) {
-        Map<String, Object> activity = lockedForOrganizer(actor, id);
+        return shadow.around(actor, TYPE, id, "CANCEL", true, () -> cancelInner(actor, id, request));
+    }
+
+    private Map<String, Object> cancelInner(UserAccount actor, UUID id, CommandRequest request) {
+        // who may do this (the permission to organize and the department of the activity) is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY / TRAINING_PARTICIPANT)
+        Map<String, Object> activity = lockedUnderEngine(id);
         requireVersion(activity, request == null ? null : request.version());
         requireStatus(activity, "PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION");
         if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
@@ -1688,7 +1788,12 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
     /** Make-up for people who were absent, or retraining for people who failed: a new activity under the same number with the next letter (TR-02). */
     @Transactional
     public Map<String, Object> supplementary(UserAccount actor, UUID id, SupplementaryRequest request) {
-        Map<String, Object> parent = lockedForOrganizer(actor, id);
+        return shadow.around(actor, TYPE, id, "SUPPLEMENTARY", true, () -> supplementaryInner(actor, id, request));
+    }
+
+    private Map<String, Object> supplementaryInner(UserAccount actor, UUID id, SupplementaryRequest request) {
+        // who may do this (the permission to organize and the department of the activity) is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY / TRAINING_PARTICIPANT)
+        Map<String, Object> parent = lockedUnderEngine(id);
         requireStatus(parent, "IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED");
         if (request == null || request.participantIds() == null || request.participantIds().isEmpty()) throw new IllegalArgumentException("TRAINING_PARTICIPANT_REQUIRED");
         if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
@@ -1753,9 +1858,14 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
      */
     @Transactional
     public Map<String, Object> removeParticipant(UserAccount actor, UUID participantId, ReasonRequest request) {
+        return shadow.around(actor, "TRAINING_PARTICIPANT", participantId, "REMOVE_PARTICIPANT", true, () -> removeParticipantInner(actor, participantId, request));
+    }
+
+    private Map<String, Object> removeParticipantInner(UserAccount actor, UUID participantId, ReasonRequest request) {
+        // who may do this (the permission to organize and the department of the activity) is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY / TRAINING_PARTICIPANT)
         Map<String, Object> p = jdbc.queryForList("select * from training_participants where id=? for update", participantId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         UUID activityId = (UUID) p.get("activity_id");
-        Map<String, Object> activity = lockedForOrganizer(actor, activityId);
+        Map<String, Object> activity = lockedUnderEngine(activityId);
         requireStatus(activity, "PLANNED");
         if (activity.get("list_prepared_by") != null || !"INVITED".equals(p.get("state"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PARTICIPANT_LOCKED");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
@@ -1769,9 +1879,14 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
     /** Marks a person who is known to be away before the training (an empty reason clears the mark). The person stays in the attendee list, as the SOP requires. */
     @Transactional
     public Map<String, Object> setPlannedAbsence(UserAccount actor, UUID participantId, ReasonRequest request) {
+        return shadow.around(actor, "TRAINING_PARTICIPANT", participantId, "SET_PLANNED_ABSENCE", true, () -> setPlannedAbsenceInner(actor, participantId, request));
+    }
+
+    private Map<String, Object> setPlannedAbsenceInner(UserAccount actor, UUID participantId, ReasonRequest request) {
+        // who may do this (the permission to organize and the department of the activity) is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY / TRAINING_PARTICIPANT)
         Map<String, Object> p = jdbc.queryForList("select * from training_participants where id=? for update", participantId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         UUID activityId = (UUID) p.get("activity_id");
-        Map<String, Object> activity = lockedForOrganizer(actor, activityId);
+        Map<String, Object> activity = lockedUnderEngine(activityId);
         requireStatus(activity, "PLANNED", "NOTIFIED");
         if (!"INVITED".equals(p.get("state"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PARTICIPANT_LOCKED");
         String reason = request == null || request.reason() == null || request.reason().isBlank() ? null : request.reason().trim();
@@ -1842,6 +1957,11 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         return pending == null || pending == 0;
     }
 
+    /** The activity, locked, for a step whose person is decided by the Hybrid engine before the step runs: the record must exist, nothing else is checked here. */
+    private Map<String, Object> lockedUnderEngine(UUID id) {
+        return store.activityForUpdate(id).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+    }
+
     private Map<String, Object> lockedForOrganizer(UserAccount actor, UUID id) {
         Map<String, Object> activity = store.activityForUpdate(id).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         requireOrganizer(actor, activity);
@@ -1898,8 +2018,13 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
      */
     @Transactional
     public Map<String, Object> updateSession(UserAccount actor, UUID sessionId, SessionUpdateRequest request) {
+        return shadow.around(actor, TYPE, (UUID) session(sessionId).get("activity_id"), "UPDATE_SESSION", false, () -> updateSessionInner(actor, sessionId, request));
+    }
+
+    private Map<String, Object> updateSessionInner(UserAccount actor, UUID sessionId, SessionUpdateRequest request) {
+        // who may do this is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY, V816)
         Map<String, Object> session = session(sessionId);
-        Map<String, Object> activity = lockedForOrganizer(actor, (UUID) session.get("activity_id"));
+        Map<String, Object> activity = lockedUnderEngine((UUID) session.get("activity_id"));
         requireStatus(activity, "PLANNED", "NOTIFIED");
         if (!TrainingSessionState.notStarted(session)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_STARTED");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
@@ -1950,7 +2075,12 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
      */
     @Transactional
     public Map<String, Object> reopenContent(UserAccount actor, UUID id, CommandRequest request) {
-        Map<String, Object> activity = lockedForOrganizer(actor, id);
+        return shadow.around(actor, TYPE, id, "REOPEN_CONTENT", true, () -> reopenContentInner(actor, id, request));
+    }
+
+    private Map<String, Object> reopenContentInner(UserAccount actor, UUID id, CommandRequest request) {
+        // who may do this (the permission to organize and the department of the activity) is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY / TRAINING_PARTICIPANT)
+        Map<String, Object> activity = lockedUnderEngine(id);
         requireVersion(activity, request == null ? null : request.version());
         requireStatus(activity, "PLANNED", "NOTIFIED");
         if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
@@ -1976,6 +2106,10 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
      */
     @Transactional
     public Map<String, Object> returnForCorrection(UserAccount actor, UUID id, CommandRequest request) {
+        return shadow.around(actor, TYPE, id, "RETURN_FOR_CORRECTION", true, () -> returnForCorrectionInner(actor, id, request));
+    }
+
+    private Map<String, Object> returnForCorrectionInner(UserAccount actor, UUID id, CommandRequest request) {
         Map<String, Object> activity = store.activityForUpdate(id).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         requireVersion(activity, request == null ? null : request.version());
         requireStatus(activity, "PENDING_QA_CONFIRMATION");
@@ -2093,10 +2227,11 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         Set<UUID> apart = new java.util.HashSet<>();
         UUID id = (UUID) activity.get("id");
         if ("CONTENT_REVIEW".equals(step) || "CONTENT_APPROVE".equals(step)) {
-            if (activity.get("created_by") != null) apart.add((UUID) activity.get("created_by"));
-            if ("CONTENT_APPROVE".equals(step)) apart.addAll(jdbc.queryForList("select confirmed_by from training_active_confirmations where activity_id=? and kind='CONTENT_REVIEWED'", UUID.class, id));
+            // each person is kept apart only while the rule of this step is ON (Separation Rules, V821)
+            if (activity.get("created_by") != null && com.eqms.service.SeparationRuleSwitch.isOn(jdbc, "TRAINING_ACTIVITY", step, "CONTENT_CREATOR")) apart.add((UUID) activity.get("created_by"));
+            if ("CONTENT_APPROVE".equals(step) && com.eqms.service.SeparationRuleSwitch.isOn(jdbc, "TRAINING_ACTIVITY", "CONTENT_APPROVE", "CONTENT_REVIEWER")) apart.addAll(jdbc.queryForList("select confirmed_by from training_active_confirmations where activity_id=? and kind='CONTENT_REVIEWED'", UUID.class, id));
         } else if ("ACTIVITY_COMPLETE".equals(step)) {
-            if (activity.get("list_prepared_by") != null) apart.add((UUID) activity.get("list_prepared_by"));
+            if (activity.get("list_prepared_by") != null && com.eqms.service.SeparationRuleSwitch.isOn(jdbc, "TRAINING_ACTIVITY", "CONFIRM_COMPLETION", "LIST_PREPARER")) apart.add((UUID) activity.get("list_prepared_by"));
         }
         return apart;
     }

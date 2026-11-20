@@ -6,6 +6,9 @@ import com.eqms.entity.UserStatus;
 import com.eqms.service.AuditTrailService;
 import com.eqms.service.EffectivePermissionService;
 import com.eqms.service.SecurityChangeSignatureService;
+import com.eqms.service.authorization.AuthorizationDecision;
+import com.eqms.service.authorization.AuthorizationEngineService;
+import com.eqms.service.authorization.AuthorizationRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +31,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -67,6 +71,7 @@ class ReportTemplateApprovalTest {
                 .thenReturn(Set.of("reports.definition.approve", "reports.definition.manage"));
         service = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
         service.configureSignatures(signatures);
+        service.configureEngine(allowingEngine());
     }
 
     private void pendingSubmittedBy(UUID submitter, UUID versionAuthor) {
@@ -81,24 +86,6 @@ class ReportTemplateApprovalTest {
         assertThatThrownBy(() -> service.submitForApproval(approver, CODE, 2, "again"))
                 .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getReason()).isEqualTo("REPORT_TEMPLATE_NOT_DRAFT"));
         verify(jdbc, never()).update(anyString(), anyObj(), anyObj(), anyObj(), anyObj());
-    }
-
-    @Test
-    void theAuthorOfTheVersionCannotApproveIt() {
-        pendingSubmittedBy(UUID.randomUUID(), approver.getId());
-
-        assertThatThrownBy(() -> service.approve(approver, CODE, 2, "Reviewed", "tok"))
-                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getReason()).isEqualTo("REPORT_APPROVER_IS_AUTHOR"));
-        verify(jdbc, never()).update(anyString(), anyObj(), anyObj(), anyObj());
-    }
-
-    @Test
-    void thePersonWhoSubmittedItCannotApproveIt() {
-        pendingSubmittedBy(approver.getId(), author);
-
-        assertThatThrownBy(() -> service.approve(approver, CODE, 2, "Reviewed", "tok"))
-                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getReason()).isEqualTo("REPORT_APPROVER_IS_AUTHOR"));
-        verify(jdbc, never()).update(anyString(), anyObj(), anyObj(), anyObj());
     }
 
     @Test
@@ -132,6 +119,7 @@ class ReportTemplateApprovalTest {
         when(permissions.getEffectivePermissionCodes(any(UserAccount.class))).thenReturn(Set.of(permissionCodes));
         var made = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
         made.configureSignatures(signatures);
+        made.configureEngine(allowingEngine());
         return made;
     }
 
@@ -140,17 +128,6 @@ class ReportTemplateApprovalTest {
         locked.put("gmp_use", gmp);
         when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(locked));
         when(jdbc.queryForList(anyString(), eq(String.class), anyObj(), anyObj())).thenReturn(List.of(author.toString()));
-    }
-
-    @Test
-    void anOrdinaryApproverCannotApproveOrReturnATemplateForGmpDecisions() {
-        pendingTemplate(true);
-        var ordinary = serviceFor("reports.definition.approve");
-
-        assertThatThrownBy(() -> ordinary.approve(approver, CODE, 2, "Reviewed", "tok")).isInstanceOf(SecurityException.class).hasMessage("REPORT_GMP_APPROVER_REQUIRED");
-        assertThatThrownBy(() -> ordinary.reject(approver, CODE, 2, "Not clear", "tok")).isInstanceOf(SecurityException.class).hasMessage("REPORT_GMP_APPROVER_REQUIRED");
-        verify(jdbc, never()).update(anyString(), anyObj(), anyObj(), anyObj());
-        verify(signatures, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -167,39 +144,10 @@ class ReportTemplateApprovalTest {
     }
 
     @Test
-    void theGmpApproverStillCannotApproveHisOwnVersion() {
-        var locked = row("PENDING_APPROVAL", 2, UUID.randomUUID());
-        locked.put("gmp_use", true);
-        when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(locked));
-        when(jdbc.queryForList(anyString(), eq(String.class), anyObj(), anyObj())).thenReturn(List.of(approver.getId().toString()));
-
-        assertThatThrownBy(() -> serviceFor("reports.definition.approve_gmp").approve(approver, CODE, 2, "Reviewed", "tok"))
-                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getReason()).isEqualTo("REPORT_APPROVER_IS_AUTHOR"));
-    }
-
-    @Test
-    void aTemplateThatIsNotForGmpDecisionsNeedsTheOrdinaryApprovalPermission() {
-        pendingTemplate(false);
-
-        assertThatThrownBy(() -> serviceFor("reports.definition.approve_gmp").approve(approver, CODE, 2, "Reviewed", "tok"))
-                .isInstanceOf(SecurityException.class).hasMessage("REPORT_SCOPE_DENIED");
-        verify(signatures, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
-    }
-
-    @Test
     void theReviewPermissionIsDecidedByTheTemplateNotByTheReviewer() {
         var any = serviceFor("reports.definition.approve");
         assertThat(any.reviewPermissionFor(true, null)).isEqualTo("reports.definition.approve_gmp");
         assertThat(any.reviewPermissionFor(false, null)).isEqualTo("reports.definition.approve");
-    }
-
-    @Test
-    void aVersionThatIsNotPendingCannotBeDecided() {
-        when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(row("DRAFT", null, null)));
-
-        assertThatThrownBy(() -> service.reject(approver, CODE, 2, "Not clear", "tok"))
-                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getReason()).isEqualTo("REPORT_TEMPLATE_NOT_PENDING"));
-        verify(jdbc, never()).update(anyString(), anyObj(), anyObj(), anyObj());
     }
 
     @Test
@@ -245,12 +193,85 @@ class ReportTemplateApprovalTest {
                 });
     }
 
+    // ---- 2026-11-18: the engine decides who may review a template (cutover of REPORT_TEMPLATE; the rules themselves are the matrix of ReportTemplateResourceAdapterTest). Here: the words of its refusals.
+
+    private static AuthorizationEngineService allowingEngine() {
+        AuthorizationEngineService engine = mock(AuthorizationEngineService.class);
+        when(engine.authorize(any(AuthorizationRequest.class))).thenReturn(AuthorizationDecision.allow("TEST", List.of(), List.of(), 1L, "PENDING_APPROVAL", Map.of()));
+        return engine;
+    }
+
+    private void withEngine(String ignored, AuthorizationDecision decision) {
+        AuthorizationEngineService engine = mock(AuthorizationEngineService.class);
+        when(engine.authorize(any(AuthorizationRequest.class))).thenReturn(decision);
+        service.configureEngine(engine);
+    }
+
+    private void signatureWorks() {
+        var signature = mock(ElectronicSignature.class);
+        when(signature.getSignatureId()).thenReturn("ESIG-7");
+        when(signatures.record(any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(signature);
+    }
+
     @Test
-    void theAccessIsNotDecidedByNameAlone() {
-        // The approve permission is what matters, not the manage permission: a manager without it cannot approve.
-        var permissions = mock(EffectivePermissionService.class);
-        when(permissions.getEffectivePermissionCodes(any(UserAccount.class))).thenReturn(Set.of("reports.definition.manage"));
-        var onlyManager = new ReportTemplateService(jdbc, new ObjectMapper(), permissions, mock(AuditTrailService.class), List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
-        assertThatThrownBy(() -> onlyManager.approve(approver, CODE, 2, "Reviewed", "tok")).isInstanceOf(SecurityException.class);
+    void engine_theEngineRefusesTheAuthor_inTheWordsTheScreensKnow_evenWhereTheOldChecksWouldAllow() {
+        pendingSubmittedBy(UUID.randomUUID(), author);   // the old checks would allow this approver
+        withEngine("REPORT_TEMPLATE", AuthorizationDecision.deny("SEPARATION_OF_DUTIES", "reports.definition.approve", "PENDING_APPROVAL"));
+
+        assertThatThrownBy(() -> service.approve(approver, CODE, 2, "Reviewed", "tok"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getReason()).isEqualTo("REPORT_APPROVER_IS_AUTHOR"));
+        verify(signatures, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void engine_theEngineDecides_soAnEditedPolicyTakesEffect_anApproverWhomTheOldChecksRefuseIsAllowed() {
+        pendingSubmittedBy(UUID.randomUUID(), approver.getId());   // the old checks refuse: the approver is the author
+        signatureWorks();
+        withEngine("REPORT_TEMPLATE", AuthorizationDecision.allow("reports.definition.approve", List.of(), List.of(), 3L, "PENDING_APPROVAL", Map.of()));
+
+        service.approve(approver, CODE, 2, "The policy was changed by the owner", "tok");
+
+        verify(signatures).record(eq(approver), eq("tok"), eq(ReportTemplateService.MEANING_TEMPLATE_APPROVAL), eq("REPORT_DEFINITION"), any(), eq(CODE), any(), eq("PENDING_APPROVAL"), eq("APPROVED_V2"));
+    }
+
+    @Test
+    void engine_aMissingGmpPermissionIsAnsweredAsAlways() {
+        pendingSubmittedBy(UUID.randomUUID(), author);
+        withEngine("REPORT_TEMPLATE", AuthorizationDecision.deny("MISSING_PERMISSION", "reports.definition.approve_gmp", "PENDING_APPROVAL"));
+
+        assertThatThrownBy(() -> service.approve(approver, CODE, 2, "Reviewed", "tok"))
+                .isInstanceOfSatisfying(SecurityException.class, e -> assertThat(e.getMessage()).isEqualTo("REPORT_GMP_APPROVER_REQUIRED"));
+    }
+
+    @Test
+    void engine_aTemplateThatIsNotPendingIsAConflict_butAPersonWithoutAnyApprovalPermissionIsToldTheyMayNot() {
+        when(jdbc.queryForList(anyString(), anyObj())).thenReturn(List.of(row("DRAFT", null, null)));
+        withEngine("REPORT_TEMPLATE", AuthorizationDecision.deny("POLICY_NOT_CONFIGURED", null, "DRAFT"));
+
+        assertThatThrownBy(() -> service.approve(approver, CODE, 2, "Reviewed", "tok"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getReason()).isEqualTo("REPORT_TEMPLATE_NOT_PENDING"));
+
+        ReportTemplateService withoutPermission = serviceFor("reports.definition.manage");
+        withoutPermission.configureEngine(mock(AuthorizationEngineService.class, invocation -> AuthorizationDecision.deny("POLICY_NOT_CONFIGURED", null, "DRAFT")));
+        assertThatThrownBy(() -> withoutPermission.approve(approver, CODE, 2, "Reviewed", "tok")).isInstanceOf(SecurityException.class);
+    }
+
+    @Test
+    void engine_aMissingReasonOrAChangedVersionAreStillTheirOwnErrors_andAreNotComparedAsDecisions() {
+        pendingSubmittedBy(UUID.randomUUID(), author);
+        withEngine("REPORT_TEMPLATE", AuthorizationDecision.allow("reports.definition.approve", List.of(), List.of(), 3L, "PENDING_APPROVAL", Map.of()));
+
+        assertThatThrownBy(() -> service.approve(approver, CODE, 2, " ", "tok")).isInstanceOf(IllegalArgumentException.class).hasMessage("REPORT_CHANGE_REASON_REQUIRED");
+        assertThatThrownBy(() -> service.approve(approver, CODE, 9, "Reviewed", "tok"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getReason()).isEqualTo("REPORT_TEMPLATE_VERSION_CHANGED"));
+    }
+
+    @Test
+    void rejectFollowsTheSameWay() {
+        pendingSubmittedBy(UUID.randomUUID(), author);
+        withEngine("REPORT_TEMPLATE", AuthorizationDecision.deny("SEPARATION_OF_DUTIES", "reports.definition.approve", "PENDING_APPROVAL"));
+
+        assertThatThrownBy(() -> service.reject(approver, CODE, 2, "Needs work", "tok"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getReason()).isEqualTo("REPORT_APPROVER_IS_AUTHOR"));
     }
 }

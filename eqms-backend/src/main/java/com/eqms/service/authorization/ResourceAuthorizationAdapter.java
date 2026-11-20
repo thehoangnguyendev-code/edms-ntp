@@ -40,6 +40,23 @@ public interface ResourceAuthorizationAdapter {
     Optional<ResolvedPolicy> resolvePolicy(String actionCode, String state, UUID documentTypeId);
 
     /**
+     * The variant of the workflow this resource instance follows when one policy table serves two ways of working for the same action (for example a report template
+     * that is used for GMP decisions or not, with a different approval permission). Null means the resource has no variants, which is what every adapter that
+     * existed before 2026-11-18 means. The engine passes it to {@link #resolvePolicy(String, String, UUID, String)}.
+     */
+    default String resolveVariant(UUID resourceId) {
+        return null;
+    }
+
+    /**
+     * Policy for one (action, state, documentType, variant). The default ignores the variant and calls the three-argument method, so an adapter without variants
+     * needs no change; an adapter with variants overrides this one.
+     */
+    default Optional<ResolvedPolicy> resolvePolicy(String actionCode, String state, UUID documentTypeId, String variant) {
+        return resolvePolicy(actionCode, state, documentTypeId);
+    }
+
+    /**
      * Codes from {@code authorization_relation_definitions} (resource_type = {@link #resourceType()})
      * that {@code actor} currently satisfies for this specific resource instance -- e.g. an actor who
      * is the assigned Author of revision R returns {"AUTHOR"}. Empty set if none match.
@@ -47,12 +64,9 @@ public interface ResourceAuthorizationAdapter {
     Set<String> resolveMatchedRelations(UserAccount actor, UUID resourceId);
 
     /**
-     * Data scope / explicit object grant check (SECURITY_AUTHORIZATION_HYBRID_REFACTOR_PLAN.md §3
-     * steps 4-5: Explicit Deny always wins, Explicit Allow or a matching data scope otherwise
-     * required). Document/Revision adapters delegate to the existing single source of truth,
-     * {@link com.eqms.service.ObjectAccessEvaluationService#canAccessDocument} /
-     * {@code #canAccessRevision} -- both already implement rule-based ALLOW/DENY plus BU/Department
-     * scope in one boolean, so this method is a thin passthrough, not new logic.
+     * Data scope check (SECURITY_AUTHORIZATION_HYBRID_REFACTOR_PLAN.md §3 steps 4-5). The Document Control adapters only confirm that the
+     * record exists: the department and the scope of an Access Profile no longer take part in Document Control decisions
+     * (VISIBILITY-TIERS-2026-11-20); the other modules decide their own scope (for example the department of Training Management).
      */
     boolean isWithinObjectScope(UserAccount actor, UUID resourceId, String action);
 

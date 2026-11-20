@@ -137,11 +137,11 @@ public class TableExcelExportController {
                 } while(more);
             }
             case "access-profiles" -> {
-                w.headers("Code","Name","Description","Type","Status","System","Business Unit Scope","Department Scope","Permission Sets","Workflow Roles","Assigned Users","Document Visibility","Created At","Updated At");
+                w.headers("Code","Name","Description","Type","Status","System","Permission Sets","Workflow Roles","Assigned Users","Document Visibility","Created At","Updated At");
                 int page=0; boolean more;
                 do {
                     var result=profiles.listProfiles(page++,500,search,q.get("type"),status,q.get("createdFrom"),q.get("createdTo"),q.get("updatedFrom"),q.get("updatedTo"),q.getOrDefault("sortBy","name"),direction);
-                    for(var r:result.getContent()) w.row(r.code(),r.name(),r.description(),r.type(),r.active()?"Active":"Inactive",r.system(),r.businessUnitScope(),r.departmentScope(),
+                    for(var r:result.getContent()) w.row(r.code(),r.name(),r.description(),r.type(),r.active()?"Active":"Inactive",r.system(),
                             r.permissionSetCount(),String.join("; ",r.workflowRoles()),r.assignedUserCount(),r.documentControlVisibility(),r.createdAt(),r.updatedAt());
                     more=result.hasNext();
                 } while(more);

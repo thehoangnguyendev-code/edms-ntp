@@ -377,11 +377,7 @@ class WorkflowActionPolicyMultiWorkflowTest {
         WorkflowActionPolicyResponse result = service.resetToSystemDefault(policy.getId(), null, null, null);
 
         assertThat(result.requiredPermissionCode()).isEqualTo("documents.controlled_copy.view_file");
-        assertThat(result.actors()).hasSize(3);
-        assertThat(result.actors()).anyMatch(a -> a.actorType() == WorkflowActorType.PERMISSION
-                && "documents.workspace.manage".equals(a.actorCode()));
-        assertThat(result.actors()).anyMatch(a -> a.actorType() == WorkflowActorType.RECIPIENT);
-        assertThat(result.actors()).anyMatch(a -> a.actorType() == WorkflowActorType.OWNER);
+        assertThat(result.actors()).isEmpty(); // only REQUEST_COPY keeps actors
     }
 
     @Test
@@ -396,10 +392,7 @@ class WorkflowActionPolicyMultiWorkflowTest {
         WorkflowActionPolicyResponse result = service.resetToSystemDefault(policy.getId(), null, null, null);
 
         assertThat(result.requiredPermissionCode()).isEqualTo("documents.controlled_copy.distribute");
-        assertThat(result.actors()).hasSize(1);
-        assertThat(result.actors()).anyMatch(a -> a.actorType() == WorkflowActorType.PERMISSION
-                && "documents.workspace.manage".equals(a.actorCode()));
-        assertThat(result.actors()).noneMatch(a -> a.actorType() == WorkflowActorType.OWNER);
+        assertThat(result.actors()).isEmpty();
     }
 
     @Test
@@ -413,10 +406,7 @@ class WorkflowActionPolicyMultiWorkflowTest {
         WorkflowActionPolicyResponse result = service.resetToSystemDefault(policy.getId(), null, null, null);
 
         assertThat(result.requiredPermissionCode()).isEqualTo("documents.revision.publish");
-        assertThat(result.actors()).hasSize(1);
-        assertThat(result.actors()).anyMatch(a -> a.actorType() == WorkflowActorType.PERMISSION
-                && "documents.workspace.manage".equals(a.actorCode()));
-        assertThat(result.actors()).noneMatch(a -> a.actorType() == WorkflowActorType.OWNER);
+        assertThat(result.actors()).isEmpty();
     }
 
     @Test
@@ -431,7 +421,19 @@ class WorkflowActionPolicyMultiWorkflowTest {
 
         // CC default, not revision default
         assertThat(result.requiredPermissionCode()).isEqualTo("documents.controlled_copy.view_file");
-        assertThat(result.actors()).anyMatch(a -> a.actorType() == WorkflowActorType.OWNER);
+        assertThat(result.actors()).isEmpty();
+    }
+
+    @Test
+    void resetDefault_requestCopy_restoresItsActors_theOnlyPolicyThatKeepsThem() {
+        WorkflowActionPolicy policy = ccPolicy("REQUEST_COPY", "EFFECTIVE", "documents.controlled_copy.request_custom");
+        policy.setSystem(true);
+        when(policyRepo.findById(any())).thenReturn(Optional.of(policy));
+        when(policyRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        WorkflowActionPolicyResponse result = service.resetToSystemDefault(policy.getId(), null, null, null);
+
+        assertThat(result.actors()).isNotEmpty();
     }
 
     @Test

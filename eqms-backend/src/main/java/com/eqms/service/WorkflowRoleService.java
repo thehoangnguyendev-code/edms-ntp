@@ -87,10 +87,12 @@ public class WorkflowRoleService {
     /**
      * The workflow roles, searched, sorted and paged on the server. With `accessProfileId` only the roles that Access Profile has are
      * listed (read-only profile details); without it the whole active catalog is listed (the editor ticks from it).
+     * `countForProfileId` is the Access Profile whose users the "users" sort orders by (the screen shows that profile's number);
+     * without it the sort uses the users of the role across every profile.
      */
     @Transactional
     public com.eqms.dto.user.PageResponse<WorkflowRoleResponse> listPaged(
-            int page, int limit, String search, String sortBy, String sortDir, UUID accessProfileId) {
+            int page, int limit, String search, String sortBy, String sortDir, UUID accessProfileId, UUID countForProfileId) {
         String term = search == null ? "" : search.trim().toLowerCase(java.util.Locale.ROOT);
         var matches = listAll().stream()
                 .filter(role -> accessProfileId == null
@@ -103,7 +105,7 @@ public class WorkflowRoleService {
         java.util.Comparator<WorkflowRoleResponse> order = switch (sortBy == null ? "" : sortBy) {
             case "code" -> java.util.Comparator.comparing(WorkflowRoleResponse::code, java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
             case "module" -> java.util.Comparator.comparing(WorkflowRoleResponse::moduleKey, java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-            case "users" -> java.util.Comparator.comparingLong(WorkflowRoleResponse::totalUsers);
+            case "users" -> java.util.Comparator.comparingLong(role -> usersOf(role, countForProfileId));
             default -> byLabel;
         };
         if ("desc".equalsIgnoreCase(sortDir)) order = order.reversed();
@@ -112,6 +114,13 @@ public class WorkflowRoleService {
         int start = (int) Math.min((long) (safePage - 1) * size, sorted.size());
         return new com.eqms.dto.user.PageResponse<>(sorted.subList(start, Math.min(start + size, sorted.size())),
                 new com.eqms.dto.user.PaginationResponse(safePage, size, sorted.size(), Math.max(1, (int) Math.ceil((double) sorted.size() / size))));
+    }
+
+    /** The users that hold this role through one Access Profile, or through every profile when none is given. */
+    static long usersOf(WorkflowRoleResponse role, UUID profileId) {
+        if (profileId == null) return role.totalUsers();
+        return role.assignedProfiles().stream().filter(profile -> profileId.equals(profile.id()))
+                .mapToLong(WorkflowRoleProfileRef::assignedUsers).sum();
     }
 
     private void requireView() {

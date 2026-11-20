@@ -335,32 +335,28 @@ public class SecureFileAccessService {
                     "Review snapshot is only available during review stages or after a rejection.",
                     permissionCode, action, FileObjectType.REVIEW_SNAPSHOT, objectId);
         }
-        // Record visibility "Participants only": in-flight snapshot content is restricted to the
-        // revision's author, assigned participants, and holders of the view-all permission.
-        // Record visibility "All" opens it to every holder of the permission checked above, unless
-        // the data-driven lifecycle policy is enabled.
-        if (!documentAuthorizationService.isOpenVisibilityMode() || lifecyclePolicyEnabled) {
-            UUID revisionId = context.getUUID("revisionId");
-            UUID authorId = context.getUUID("authorId");
-            boolean hasCrossDocumentVisibility = canViewAllDocuments(user);
-            boolean allowed;
-            if (hasCrossDocumentVisibility) {
-                allowed = true;
-            } else if (lifecyclePolicyEnabled) {
-                // Data-driven decision (seeded to parity with the hardcoded strict rule).
-                allowed = lifecycleStatePolicyEvaluator.canPerform(user, LifecycleCapability.PREVIEW,
-                        status, null, revisionId, authorId);
-            } else {
-                boolean isAuthor = user.getId() != null && Objects.equals(authorId, user.getId());
-                boolean isParticipant = revisionId != null && user.getId() != null
-                        && revisionWorkflowParticipantRepository.countByRevision_IdAndUser_Id(revisionId, user.getId()) > 0;
-                allowed = isAuthor || isParticipant;
-            }
-            if (!allowed) {
-                return FileAccessDecision.denied("NOT_ASSIGNED_PARTICIPANT",
-                        "Only the revision author, assigned workflow participants, or a DCO/Document Admin can access in-review content.",
-                        permissionCode, action, FileObjectType.REVIEW_SNAPSHOT, objectId);
-            }
+        // In-flight snapshot content is restricted to the revision's author, assigned participants, and holders of the
+        // view-all permission. The department level of visibility does not open it (VISIBILITY-TIERS-2026-11-20).
+        UUID revisionId = context.getUUID("revisionId");
+        UUID authorId = context.getUUID("authorId");
+        boolean hasCrossDocumentVisibility = canViewAllDocuments(user);
+        boolean allowed;
+        if (hasCrossDocumentVisibility) {
+            allowed = true;
+        } else if (lifecyclePolicyEnabled) {
+            // Data-driven decision (seeded to parity with the hardcoded strict rule).
+            allowed = lifecycleStatePolicyEvaluator.canPerform(user, LifecycleCapability.PREVIEW,
+                    status, null, revisionId, authorId);
+        } else {
+            boolean isAuthor = user.getId() != null && Objects.equals(authorId, user.getId());
+            boolean isParticipant = revisionId != null && user.getId() != null
+                    && revisionWorkflowParticipantRepository.countByRevision_IdAndUser_Id(revisionId, user.getId()) > 0;
+            allowed = isAuthor || isParticipant;
+        }
+        if (!allowed) {
+            return FileAccessDecision.denied("NOT_ASSIGNED_PARTICIPANT",
+                    "Only the revision author, assigned workflow participants, or a DCO/Document Admin can access in-review content.",
+                    permissionCode, action, FileObjectType.REVIEW_SNAPSHOT, objectId);
         }
         return null;
     }

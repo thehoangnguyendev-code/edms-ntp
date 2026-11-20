@@ -151,36 +151,22 @@ class NotificationPolicyDeliveryTest {
         assertThatThrownBy(() -> service.updatePolicy("document.approved", policyChange)).isInstanceOf(IllegalStateException.class).hasMessageContaining("changed by someone else");
         var wording = new com.eqms.dto.notification.UpdateNotificationTemplateRequest("T", "S", null, null, null, null, null, OPENED);
         assertThatThrownBy(() -> service.updateTemplate("document.approved", "IN_APP", wording)).isInstanceOf(IllegalStateException.class).hasMessageContaining("changed by someone else");
-        assertThatThrownBy(() -> service.updateAppearance("document.approved", "lucide:Bell", "emerald", OPENED)).isInstanceOf(IllegalStateException.class).hasMessageContaining("changed by someone else");
+        assertThatThrownBy(() -> service.updateAppearance("document.approved", "lucide:Bell", OPENED)).isInstanceOf(IllegalStateException.class).hasMessageContaining("changed by someone else");
         verify(policies, never()).save(any());
         verify(versions, never()).save(any());
         assertThat(policy.getStatus()).isEqualTo("ACTIVE");
     }
 
     @Test
-    void theColourOfTheIconIsAnySixDigitColourKeptInCapitalsOrAnOldName_andNothingElse() {
-        policy.setUpdatedAt(OPENED);
-        service.updateAppearance("document.approved", "lucide:Bell", "#d946ef");
-        assertThat(policy.getIconTone()).isEqualTo("#D946EF");
-        service.updateAppearance("document.approved", "lucide:Bell", "Purple");
-        assertThat(policy.getIconTone()).isEqualTo("purple");
-        service.updateAppearance("document.approved", "lucide:Bell", null);
-        assertThat(policy.getIconTone()).isNull();
-        for (String bad : new String[] {"pink", "#fff", "#GGGGGG", "url(x)", "#d946ef; color: red", "123456"}) {
-            assertThatThrownBy(() -> service.updateAppearance("document.approved", "lucide:Bell", bad)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("#RRGGBB");
-        }
-    }
-
-    @Test
     void aChangeToANotificationNobodyElseChangedIsAcceptedAndAChangeWithNoTokenSkipsTheCheck() {
         policy.setUpdatedAt(OPENED);
-        service.updateAppearance("document.approved", "lucide:Bell", "emerald", OPENED);
+        service.updateAppearance("document.approved", "lucide:Bell", OPENED);
         assertThat(policy.getIcon()).isEqualTo("lucide:Bell");
         // the time moved with that change, so the same token is now stale
         assertThat(policy.getUpdatedAt()).isAfter(OPENED);
-        assertThatThrownBy(() -> service.updateAppearance("document.approved", "lucide:Mail", "blue", OPENED)).hasMessageContaining("changed by someone else");
+        assertThatThrownBy(() -> service.updateAppearance("document.approved", "lucide:Mail", OPENED)).hasMessageContaining("changed by someone else");
         // a client that sends no token (an older client, a script) is not refused
-        service.updateAppearance("document.approved", "lucide:Mail", "blue");
+        service.updateAppearance("document.approved", "lucide:Mail");
         assertThat(policy.getIcon()).isEqualTo("lucide:Mail");
     }
 

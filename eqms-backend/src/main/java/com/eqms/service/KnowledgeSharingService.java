@@ -525,7 +525,6 @@ public class KnowledgeSharingService {
             default -> 30;
         });
         rule.setActive(true);
-        rule.setAccessProfiles(new LinkedHashSet<>());
         rule.setGranteeUsers(users);
         rule.setGranteePositions(positions);
         rule.setGranteeDepartments(departments);

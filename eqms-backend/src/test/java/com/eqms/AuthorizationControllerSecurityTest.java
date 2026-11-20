@@ -45,7 +45,8 @@ class AuthorizationControllerSecurityTest {
     @BeforeEach
     void setUp() {
         controller = new AuthorizationController(
-                engine, relationDefinitionRepository, currentUserService, permissionEvaluationService, userAccountRepository);
+                engine, relationDefinitionRepository, currentUserService, permissionEvaluationService, userAccountRepository,
+                org.mockito.Mockito.mock(com.eqms.service.authorization.AuthorizationResourceLookupService.class));
         caller = new UserAccount();
         caller.setId(UUID.randomUUID());
         subject = new UserAccount();
@@ -54,11 +55,18 @@ class AuthorizationControllerSecurityTest {
     }
 
     @Test
+    void resourceLookup_withoutAccessProfileUpdatePermission_denied() {
+        when(permissionEvaluationService.hasPermission(caller, "security.access_profiles.update")).thenReturn(false);
+
+        org.junit.jupiter.api.Assertions.assertThrows(org.springframework.security.access.AccessDeniedException.class, () -> controller.resourceLookup("TRAINING_ACTIVITY", "TRN", 10));
+    }
+
+    @Test
     void evaluate_withoutAccessProfileUpdatePermission_denied() {
         when(permissionEvaluationService.hasPermission(caller, "security.access_profiles.update")).thenReturn(false);
 
         assertThatThrownBy(() -> controller.evaluate(
-                new AuthorizationEvaluateRequest(subject.getId(), "REVISION", UUID.randomUUID(), "SUBMIT_FOR_REVIEW", null)))
+                new AuthorizationEvaluateRequest(subject.getId(), "REVISION", UUID.randomUUID(), "SUBMIT_FOR_REVIEW", null, null)))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
@@ -71,7 +79,7 @@ class AuthorizationControllerSecurityTest {
         when(engine.authorize(any())).thenReturn(expected);
 
         AuthorizationDecision result = controller.evaluate(
-                new AuthorizationEvaluateRequest(subject.getId(), "REVISION", resourceId, "SUBMIT_FOR_REVIEW", null));
+                new AuthorizationEvaluateRequest(subject.getId(), "REVISION", resourceId, "SUBMIT_FOR_REVIEW", null, null));
 
         assertThat(result).isEqualTo(expected);
     }

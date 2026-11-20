@@ -58,6 +58,9 @@ class StorageUsageAlertServiceTest {
                 && "/settings/configuration/integrations".equals(v.get("actionUrl")) && v.get("message").contains("85%")));
         verify(notifications, times(1)).dispatchIndependently(any(), any(), any());
         verify(jdbc).update(contains("warning_notified=true"));
+        // the time and the number of administrators told are kept as history
+        verify(jdbc).update(contains("warning_notified_at=now()"));
+        verify(jdbc).update(contains("warning_recipient_count=1"));
     }
 
     @Test
@@ -77,6 +80,8 @@ class StorageUsageAlertServiceTest {
         assertEquals(0, service.afterSuccessfulScan(50));
 
         verify(jdbc).update(contains("warning_notified=false"));
+        // arming the notice again keeps the history of the last notice
+        verify(jdbc, never()).update(contains("warning_notified_at"));
         verifyNoInteractions(notifications);
     }
 

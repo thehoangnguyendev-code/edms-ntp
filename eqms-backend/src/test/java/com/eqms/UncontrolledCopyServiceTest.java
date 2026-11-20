@@ -72,6 +72,11 @@ class UncontrolledCopyServiceTest {
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private SodConstraintService sodConstraintService;
 
+    /** The shadow of the Hybrid engine, without an engine: it only runs the legacy step. */
+    /** The Hybrid engine decides who may distribute or cancel (UNCONTROLLED_COPY is in ShadowGuard.ENGINE_DECIDES): here it answers as the policies of V815 say, from the permissions the test gives. */
+    @Mock private com.eqms.service.authorization.AuthorizationEngineService engine;
+    private com.eqms.service.authorization.ShadowGuard shadow;
+
     @InjectMocks
     private UncontrolledCopyService service;
 
@@ -81,6 +86,16 @@ class UncontrolledCopyServiceTest {
 
     @BeforeEach
     void setUp() {
+        shadow = new com.eqms.service.authorization.ShadowGuard(engine);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "shadow", shadow);
+        lenient().when(engine.authorize(any())).thenAnswer(invocation -> {
+            com.eqms.service.authorization.AuthorizationRequest request = invocation.getArgument(0);
+            String permission = "DISTRIBUTE".equals(request.actionCode()) ? UncontrolledCopyService.P_DISTRIBUTE : UncontrolledCopyService.P_CANCEL;
+            String state = copy.getStatusCode();
+            if (!UncontrolledCopyService.STATUS_READY.equals(state)) return com.eqms.service.authorization.AuthorizationDecision.deny("POLICY_NOT_CONFIGURED", null, state);
+            if (!permissionEvaluationService.hasPermission(request.actor(), permission)) return com.eqms.service.authorization.AuthorizationDecision.deny("MISSING_PERMISSION", permission, state);
+            return com.eqms.service.authorization.AuthorizationDecision.allow(permission, java.util.List.of(), java.util.List.of(), 1L, state, java.util.Map.of());
+        });
         requester = user("requester@example.com", "Requester");
         approver = user("approver@example.com", "Approver");
         copy = new UncontrolledCopyRecord();
@@ -126,7 +141,7 @@ class UncontrolledCopyServiceTest {
 
         AccessDeniedException refused = assertThrows(AccessDeniedException.class, () -> service.distribute(copy.getId(), action("x")));
 
-        assertTrue(refused.getMessage().contains("distribute uncontrolled copies"));
+        assertEquals("MISSING_PERMISSION", refused.getMessage());
         assertEquals(UncontrolledCopyService.STATUS_READY, copy.getStatusCode());
         verifyNoInteractions(electronicSignatureService);
     }
@@ -146,9 +161,10 @@ class UncontrolledCopyServiceTest {
         copy.setStatusCode(UncontrolledCopyService.STATUS_DISTRIBUTED);
         copy.setStatus("Distributed");
 
-        IllegalStateException refused = assertThrows(IllegalStateException.class, () -> service.distribute(copy.getId(), action("x")));
+        // the engine refuses the state: the step stops before the service (no policy for a copy that is Distributed)
+        AccessDeniedException refused = assertThrows(AccessDeniedException.class, () -> service.distribute(copy.getId(), action("x")));
 
-        assertTrue(refused.getMessage().contains("cannot be distributed"));
+        assertEquals("POLICY_NOT_CONFIGURED", refused.getMessage());
     }
 
     @Test

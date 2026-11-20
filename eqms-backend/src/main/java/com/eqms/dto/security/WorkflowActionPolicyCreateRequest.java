@@ -2,7 +2,6 @@ package com.eqms.dto.security;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 
 import java.util.List;
 import java.util.UUID;
@@ -18,7 +17,7 @@ public record WorkflowActionPolicyCreateRequest(
         Integer priority,
         Boolean active,
         String description,
-        @NotEmpty @Valid List<WorkflowActionPolicyActorRequest> actors,
+        @Valid List<WorkflowActionPolicyActorRequest> actors,
         String changeReason,
         String signatureToken
 ) {

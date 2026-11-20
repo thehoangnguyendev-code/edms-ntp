@@ -6,6 +6,10 @@ import com.eqms.entity.UserAccount;
 import com.eqms.entity.UserStatus;
 import com.eqms.entity.ElectronicSignature;
 import com.eqms.service.AuditTrailService;
+import com.eqms.service.ReportTemplateResourceAdapter;
+import com.eqms.service.authorization.AuthorizationDecision;
+import com.eqms.service.authorization.AuthorizationEngineService;
+import com.eqms.service.authorization.AuthorizationRequest;
 import com.eqms.service.EffectivePermissionService;
 import com.eqms.service.SecurityChangeSignatureService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -641,8 +645,35 @@ public class ReportTemplateService {
             """, code, actor.getId()).isEmpty();
         actions.put("createReport", decide(held, List.of("reports.run.create", "report.module.export"), hasScope,
                 !hasEffective ? "REPORT_NOT_APPROVED" : !active ? "REPORT_TEMPLATE_DISABLED" : "REPORT_SCOPE_DENIED", false));
+        withEngine(actor, code, actions, Map.of("submitForApproval", "SUBMIT", "approve", ReportTemplateResourceAdapter.ACTION_APPROVE, "reject", ReportTemplateResourceAdapter.ACTION_REJECT, "upgrade", "UPGRADE",
+                "discardRevision", "DISCARD_REVISION", "disable", "SET_ENABLED", "enable", "SET_ENABLED", "delete", ReportTemplateResourceAdapter.ACTION_DELETE));
         return new ResourceCapabilitiesResponse("REPORT_TEMPLATE", code, lifecycleOf(Map.of("active", active, "approvalStatus", String.valueOf(row.get("approval_status")))),
                 Instant.now().toString(), actions);
+    }
+
+    /**
+     * The buttons follow the Hybrid engine, which decides when the person presses one: an action the hints allow but the engine refuses is turned off, with the reason of the engine in the words of the
+     * screens. (A GMP template cannot be deleted: the engine has no policy for it and the hint already says so.)
+     */
+    private void withEngine(UserAccount actor, String code, Map<String, ResourceActionCapabilityResponse> actions, Map<String, String> engineActions) {
+        if (engine == null) return;
+        UUID id = ReportTemplateResourceAdapter.idOf(code);
+        engineActions.forEach((key, action) -> {
+            ResourceActionCapabilityResponse hint = actions.get(key);
+            if (hint == null || !hint.allowed()) return;
+            AuthorizationDecision decision;
+            try {
+                decision = engine.authorize(AuthorizationRequest.of(actor, ReportTemplateResourceAdapter.RESOURCE_TYPE, id, action));
+            } catch (RuntimeException failure) {
+                actions.put(key, new ResourceActionCapabilityResponse(false, "REPORT_SCOPE_DENIED", "REPORT_SCOPE_DENIED", hint.requiredPermissionCode(), hint.requiresESignature()));
+                return;
+            }
+            if (decision.allowed()) return;
+            String reason = "SEPARATION_OF_DUTIES".equals(decision.reasonCode()) ? "REPORT_APPROVER_IS_AUTHOR"
+                    : "MISSING_PERMISSION".equals(decision.reasonCode()) ? "REPORT_PERMISSION_REQUIRED"
+                    : "POLICY_NOT_CONFIGURED".equals(decision.reasonCode()) ? "REPORT_TEMPLATE_NOT_PENDING" : "REPORT_SCOPE_DENIED";
+            actions.put(key, new ResourceActionCapabilityResponse(false, reason, reason, decision.requiredPermission() != null ? decision.requiredPermission() : hint.requiredPermissionCode(), hint.requiresESignature()));
+        });
     }
 
     /** One decision: allowed only when the user holds one of the permissions and the state allows it; otherwise the stable reason code says why. */
@@ -661,7 +692,7 @@ public class ReportTemplateService {
      */
     @Transactional
     public Map<String, Object> upgrade(UserAccount actor, String code, Integer version, String reason) {
-        require(actor, "reports.definition.upgrade");
+        requireByPolicy(actor, code, "UPGRADE", "reports.definition.upgrade");
         if (reason == null || reason.isBlank() || reason.length() > 1000) throw new IllegalArgumentException("REPORT_CHANGE_REASON_REQUIRED");
         if (revisions == null) throw new IllegalStateException("REPORT_REVISIONS_UNAVAILABLE");
         var rows = jdbc.queryForList("select definition_version, deleted_at from report_definitions where code=? for update", code);
@@ -690,7 +721,7 @@ public class ReportTemplateService {
      */
     @Transactional
     public Map<String, Object> setEnabled(UserAccount actor, String code, boolean enabled, String reason) {
-        require(actor, "reports.definition.set_enabled");
+        requireByPolicy(actor, code, "SET_ENABLED", "reports.definition.set_enabled");
         if (reason != null && reason.length() > 1000) throw new IllegalArgumentException("REPORT_CHANGE_REASON_REQUIRED");
         var rows = jdbc.queryForList("select active, deleted_at from report_definitions where code=? for update", code);
         if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "REPORT_TEMPLATE_NOT_FOUND");
@@ -711,7 +742,7 @@ public class ReportTemplateService {
      */
     @Transactional
     public Map<String, Object> discardRevision(UserAccount actor, String code, Integer version, String reason) {
-        require(actor, "reports.definition.discard_revision");
+        requireByPolicy(actor, code, "DISCARD_REVISION", "reports.definition.discard_revision");
         if (reason == null || reason.isBlank() || reason.length() > 1000) throw new IllegalArgumentException("REPORT_CHANGE_REASON_REQUIRED");
         if (revisions == null) throw new IllegalStateException("REPORT_REVISIONS_UNAVAILABLE");
         var rows = jdbc.queryForList("select deleted_at from report_definitions where code=? for update", code);
@@ -822,7 +853,7 @@ public class ReportTemplateService {
      */
     @Transactional
     public Map<String, Object> submitForApproval(UserAccount actor, String code, Integer version, String note) {
-        require(actor, "reports.definition.manage");
+        requireByPolicy(actor, code, "SUBMIT", "reports.definition.manage");
         var row = lockedForReview(code, version);
         if (!"DRAFT".equals(row.get("approval_status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "REPORT_TEMPLATE_NOT_DRAFT");
         if (!Boolean.TRUE.equals(row.get("active"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "REPORT_TEMPLATE_DISABLED");
@@ -841,11 +872,7 @@ public class ReportTemplateService {
     /** Approves the submitted version with an electronic signature. The approver must not be the author of that version or the submitter. */
     @Transactional
     public Map<String, Object> approve(UserAccount actor, String code, Integer version, String reason, String signatureToken) {
-        require(actor, PERMISSION_APPROVE, PERMISSION_APPROVE_GMP);
-        if (reason == null || reason.isBlank() || reason.length() > 1000) throw new IllegalArgumentException("REPORT_CHANGE_REASON_REQUIRED");
-        var row = lockedForReview(code, version);
-        requireReviewPermission(actor, code, row);
-        requireIndependentReviewer(actor, code, version, row);
+        var row = reviewChecks(actor, code, version, reason, ReportTemplateResourceAdapter.ACTION_APPROVE);
         if (signatures == null) throw new IllegalStateException("REPORT_SIGNATURE_UNAVAILABLE");
         signatures.requireValidToken(actor, signatureToken);
         String approved = "APPROVED_V" + version;
@@ -877,11 +904,7 @@ public class ReportTemplateService {
     /** Returns the submitted version to Draft with the reason kept. Signed electronically (REPORT-TEMPLATE-APPROVAL-2026-10-14). */
     @Transactional
     public Map<String, Object> reject(UserAccount actor, String code, Integer version, String reason, String signatureToken) {
-        require(actor, PERMISSION_APPROVE, PERMISSION_APPROVE_GMP);
-        if (reason == null || reason.isBlank() || reason.length() > 1000) throw new IllegalArgumentException("REPORT_CHANGE_REASON_REQUIRED");
-        var row = lockedForReview(code, version);
-        requireReviewPermission(actor, code, row);
-        requireIndependentReviewer(actor, code, version, row);
+        var row = reviewChecks(actor, code, version, reason, ReportTemplateResourceAdapter.ACTION_REJECT);
         if (signatures == null) throw new IllegalStateException("REPORT_SIGNATURE_UNAVAILABLE");
         signatures.requireValidToken(actor, signatureToken);
         ElectronicSignature signature = signatures.record(actor, signatureToken, MEANING_TEMPLATE_REJECTION, "REPORT_DEFINITION",
@@ -894,6 +917,75 @@ public class ReportTemplateService {
         }
         audit.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), "REPORT_TEMPLATE_REJECTED", "PENDING_APPROVAL", "DRAFT", reason.trim() + " [signature " + signature.getSignatureId() + "]", com.eqms.util.AuditChanges.reason("Reason for Rejection", reason));
         return withRevisionInfo(overlay(definition(code), revisions == null ? null : revisions.open(code)));
+    }
+
+    private AuthorizationEngineService engine;
+    private com.eqms.service.authorization.EngineEvaluationCounters counters;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCounters(com.eqms.service.authorization.EngineEvaluationCounters counters) {
+        this.counters = counters;
+    }
+
+    /** The Hybrid engine, which decides who may review a template or act on its life (cutover 2026-11-18: the old checks were deleted). Lazy: the engine reaches this module's adapter. */
+    @org.springframework.beans.factory.annotation.Autowired
+    public void configureEngine(@org.springframework.context.annotation.Lazy AuthorizationEngineService engine) {
+        this.engine = engine;
+    }
+
+    /** The decision of the engine, failing closed: no engine or an error of the engine refuses the person. */
+    private AuthorizationDecision decide(UserAccount actor, UUID id, String engineAction) {
+        if (engine == null) throw new IllegalStateException("The authorization engine is not available");
+        try {
+            AuthorizationDecision decision = engine.authorize(AuthorizationRequest.of(actor, ReportTemplateResourceAdapter.RESOURCE_TYPE, id, engineAction));
+            if (counters != null) counters.record(ReportTemplateResourceAdapter.RESOURCE_TYPE, engineAction, decision.allowed());
+            return decision;
+        } catch (RuntimeException failure) {
+            if (counters != null) counters.record(ReportTemplateResourceAdapter.RESOURCE_TYPE, engineAction, false);
+            throw new SecurityException("REPORT_SCOPE_DENIED");
+        }
+    }
+
+    /**
+     * Approving or returning a template: the engine decides (policies in Workflow Authorization: permission, GMP variant, the person kept apart; rows approved by the owner 2026-11-18,
+     * AUTHORIZATION_ACTION_CATALOG_REPORT_AS_IS). The errors keep the codes the screens already know. What stays here is not a decision of the engine: a reason, a template that exists and the version
+     * that is current.
+     */
+    private Map<String, Object> reviewChecks(UserAccount actor, String code, Integer version, String reason, String engineAction) {
+        AuthorizationDecision decision = decide(actor, ReportTemplateResourceAdapter.idOf(code), engineAction);
+        if (!decision.allowed()) throw refusalOf(actor, decision);
+        if (reason == null || reason.isBlank() || reason.length() > 1000) throw new IllegalArgumentException("REPORT_CHANGE_REASON_REQUIRED");
+        return lockedForReview(code, version);
+    }
+
+    /** The refusal of the engine in the words the screens already know. */
+    private RuntimeException refusalOf(UserAccount actor, AuthorizationDecision decision) {
+        String reasonCode = decision.reasonCode();
+        if ("SEPARATION_OF_DUTIES".equals(reasonCode)) return new ResponseStatusException(HttpStatus.CONFLICT, "REPORT_APPROVER_IS_AUTHOR");
+        if ("MISSING_PERMISSION".equals(reasonCode)) {
+            return new SecurityException(PERMISSION_APPROVE_GMP.equals(decision.requiredPermission()) ? "REPORT_GMP_APPROVER_REQUIRED" : "REPORT_SCOPE_DENIED");
+        }
+        if ("POLICY_NOT_CONFIGURED".equals(reasonCode)) {
+            // the template is not pending (or the action is not configured): a person who holds neither approval permission is told they may not, as always
+            var held = permissions.getEffectivePermissionCodes(actor);
+            if (!held.contains(PERMISSION_APPROVE) && !held.contains(PERMISSION_APPROVE_GMP)) return new SecurityException("REPORT_SCOPE_DENIED");
+            return new ResponseStatusException(HttpStatus.CONFLICT, "REPORT_TEMPLATE_NOT_PENDING");
+        }
+        return new SecurityException("REPORT_SCOPE_DENIED");
+    }
+
+    /**
+     * The gate of an action of the life of a template (submit, upgrade, enable or disable, discard a revision, delete): the engine decides. A GMP template is refused for DELETE by the service itself
+     * after the gate, with its own error; the engine has no policy for it, so for that one case only the permission is asked, as it always was ({@code require}).
+     */
+    private void requireByPolicy(UserAccount actor, String code, String engineAction, String permission) {
+        AuthorizationDecision decision = decide(actor, ReportTemplateResourceAdapter.idOf(code == null ? "" : code), engineAction);
+        boolean gmpDelete = "POLICY_NOT_CONFIGURED".equals(decision.reasonCode()) && ReportTemplateResourceAdapter.ACTION_DELETE.equals(engineAction);
+        if (gmpDelete) {
+            require(actor, permission);
+            return;
+        }
+        if (!decision.allowed()) throw new SecurityException("REPORT_SCOPE_DENIED");
     }
 
     /** Locks the template and checks that the version named by the caller is the current one. */
@@ -922,18 +1014,6 @@ public class ReportTemplateService {
         return row;
     }
 
-    /** Only a submitted version can be decided, and never by the person who wrote it or who submitted it. */
-    private void requireIndependentReviewer(UserAccount actor, String code, Integer version, Map<String, Object> row) {
-        if (!"PENDING_APPROVAL".equals(row.get("approval_status")) || !Objects.equals(row.get("submitted_version") == null ? null : ((Number) row.get("submitted_version")).intValue(), version))
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "REPORT_TEMPLATE_NOT_PENDING");
-        List<String> authors = row.containsKey("open_revision")
-                ? (((Map<?, ?>) row.get("open_revision")).get("last_changed_by_user_id") == null ? List.of() : List.of(String.valueOf(((Map<?, ?>) row.get("open_revision")).get("last_changed_by_user_id"))))
-                : jdbc.queryForList("select changed_by_user_id::text from report_definition_versions where definition_code=? and version=? order by created_at desc limit 1", String.class, code, version);
-        if (authors.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "REPORT_AUTHOR_UNKNOWN");
-        String me = actor.getId().toString();
-        if (me.equals(authors.getFirst()) || me.equals(String.valueOf(row.get("submitted_by_user_id"))))
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "REPORT_APPROVER_IS_AUTHOR");
-    }
 
     /**
      * The lifecycle the owner set (2026-10-14): Draft -> Pending approval -> Active -> Inactive. Disabling is a change, so a template that is
@@ -996,7 +1076,7 @@ public class ReportTemplateService {
 
     @Transactional
     public void delete(UserAccount actor,String code,Integer version,String reason) {
-        require(actor,"reports.definition.manage");
+        requireByPolicy(actor, code, "DELETE", "reports.definition.manage");
         if(reason==null||reason.isBlank()||reason.length()>1000)throw new IllegalArgumentException("REPORT_CHANGE_REASON_REQUIRED");
         var before=jdbc.queryForList("select definition_version,deleted_at,gmp_use from report_definitions where code=? and source_code is not null for update",code);
         if(before.isEmpty())throw new ResponseStatusException(HttpStatus.NOT_FOUND,"REPORT_TEMPLATE_NOT_FOUND");
@@ -1220,15 +1300,6 @@ public class ReportTemplateService {
         return gmp ? PERMISSION_APPROVE_GMP : PERMISSION_APPROVE;
     }
 
-    private void requireReviewPermission(UserAccount actor, String code, Map<String, Object> lockedRow) {
-        var live = jdbc.queryForList("select gmp_use from report_definitions where code=?", code);
-        boolean liveGmp = !live.isEmpty() && Boolean.TRUE.equals(live.getFirst().get("gmp_use"));
-        @SuppressWarnings("unchecked") Map<String, Object> open = lockedRow.get("open_revision") instanceof Map<?, ?> m ? (Map<String, Object>) m : null;
-        String needed = reviewPermissionFor(liveGmp, open);
-        if (!permissions.getEffectivePermissionCodes(actor).contains(needed)) {
-            throw new SecurityException(PERMISSION_APPROVE_GMP.equals(needed) ? "REPORT_GMP_APPROVER_REQUIRED" : "REPORT_SCOPE_DENIED");
-        }
-    }
 
     /**
      * REPORT-GMP-NOTICE-2026-11-12: the statement every report file carries. A template marked for GMP decisions whose current version is approved says who approved

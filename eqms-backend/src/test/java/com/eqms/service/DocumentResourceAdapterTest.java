@@ -27,7 +27,6 @@ class DocumentResourceAdapterTest {
 
     @Mock private DocumentRecordRepository documentRepository;
     @Mock private LifecycleStatePolicyRepository lifecycleStatePolicyRepository;
-    @Mock private ObjectAccessEvaluationService objectAccessEvaluationService;
 
     private DocumentResourceAdapter adapter;
     private UserAccount actor;
@@ -36,7 +35,7 @@ class DocumentResourceAdapterTest {
 
     @BeforeEach
     void setUp() {
-        adapter = new DocumentResourceAdapter(documentRepository, lifecycleStatePolicyRepository, objectAccessEvaluationService);
+        adapter = new DocumentResourceAdapter(documentRepository, lifecycleStatePolicyRepository);
         actor = new UserAccount();
         actor.setId(UUID.randomUUID());
         documentId = UUID.randomUUID();
@@ -144,8 +143,7 @@ class DocumentResourceAdapterTest {
     }
 
     @Test
-    void isWithinObjectScope_delegatesToObjectAccessEvaluationService() {
-        when(objectAccessEvaluationService.canAccessDocument(actor, document, "VIEW")).thenReturn(true);
+    void isWithinObjectScope_existingDocument_isWithinScope() {
 
         assertThat(adapter.isWithinObjectScope(actor, documentId, "VIEW")).isTrue();
     }

@@ -36,7 +36,6 @@ public class DocumentParticipantEligibilityService {
     private final DocumentRevisionRepository revisions;
     private final UserAccountRepository users;
     private final PermissionEvaluationService permissions;
-    private final ObjectAccessEvaluationService objectAccess;
     private final RevisionWorkflowParticipantRepository revisionParticipants;
     private final DocumentWorkflowSettingRepository settings;
     private final CurrentUserService currentUserService;
@@ -46,7 +45,6 @@ public class DocumentParticipantEligibilityService {
             DocumentRevisionRepository revisions,
             UserAccountRepository users,
             PermissionEvaluationService permissions,
-            ObjectAccessEvaluationService objectAccess,
             RevisionWorkflowParticipantRepository revisionParticipants,
             DocumentWorkflowSettingRepository settings,
             CurrentUserService currentUserService,
@@ -55,7 +53,6 @@ public class DocumentParticipantEligibilityService {
         this.revisions = revisions;
         this.users = users;
         this.permissions = permissions;
-        this.objectAccess = objectAccess;
         this.revisionParticipants = revisionParticipants;
         this.settings = settings;
         this.currentUserService = currentUserService;
@@ -98,7 +95,6 @@ public class DocumentParticipantEligibilityService {
                         && user.getDepartment() != null
                         && reviewerDepartments.contains(user.getDepartment().trim().toUpperCase(Locale.ROOT))))
                 .filter(user -> permissions.hasPermission(user, requiredPermission))
-                .filter(user -> objectAccess.canAccessRevision(user, revision, "VIEW"))
                 .map(user -> new EligibleParticipantResponse(user.getId(), user.getFullName(), user.getEmployeeCode(), user.getDepartment(), type))
                 .toList();
         return new PageResponse<>(items, new PaginationResponse(

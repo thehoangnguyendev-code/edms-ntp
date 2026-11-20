@@ -120,21 +120,6 @@ class WorkflowActionPolicyControllerSecurityTest {
         assertThat(controller.getById(anyId).getStatusCode().value()).isEqualTo(200);
     }
 
-    // GET /defaults/document-revision
-    @Test
-    void getSystemDefaults_withoutViewPermission_throws403() {
-        setupNoPermUser();
-        assertThatThrownBy(() -> controller.getSystemDefaults())
-                .isInstanceOf(AccessDeniedException.class);
-    }
-
-    @Test
-    void getSystemDefaults_withViewPermission_reaches200() {
-        setupViewUser();
-        when(policyService.getDefaultDocumentRevisionPolicies()).thenReturn(List.of());
-        assertThat(controller.getSystemDefaults().getStatusCode().value()).isEqualTo(200);
-    }
-
     // GET /effective
     @Test
     void getEffective_withoutViewPermission_throws403() {
@@ -415,7 +400,6 @@ class WorkflowActionPolicyControllerSecurityTest {
         setupNoPermUser();
         try { controller.listAll(); } catch (AccessDeniedException ignored) {}
         try { controller.getById(anyId); } catch (AccessDeniedException ignored) {}
-        try { controller.getSystemDefaults(); } catch (AccessDeniedException ignored) {}
         try { controller.getOptions(); } catch (AccessDeniedException ignored) {}
 
         verifyNoInteractions(policyService);

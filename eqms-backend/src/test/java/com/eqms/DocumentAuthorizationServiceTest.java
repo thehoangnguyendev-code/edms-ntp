@@ -13,7 +13,6 @@ import com.eqms.repository.RevisionWorkflowParticipantRepository;
 import com.eqms.repository.UserAccessProfileRepository;
 import com.eqms.service.DocumentAuthorizationService;
 import com.eqms.service.LifecycleStatePolicyEvaluator;
-import com.eqms.service.ObjectAccessEvaluationService;
 import com.eqms.service.PermissionEvaluationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,7 +50,6 @@ class DocumentAuthorizationServiceTest {
     @Mock private RevisionWorkflowParticipantRepository revisionWorkflowParticipantRepository;
     @Mock private DocumentRevisionRepository documentRevisionRepository;
     @Mock private PermissionEvaluationService permissionEvaluationService;
-    @Mock private ObjectAccessEvaluationService objectAccessEvaluationService;
     @Mock private LifecycleStatePolicyEvaluator lifecycleStatePolicyEvaluator;
     @Mock private DocumentRelationRepository documentRelationRepository;
     @Mock private com.eqms.service.SystemConfigurationService systemConfigurationService;
@@ -70,8 +68,6 @@ class DocumentAuthorizationServiceTest {
         document = new DocumentRecord();
         document.setId(UUID.randomUUID());
 
-        lenient().when(objectAccessEvaluationService.canViewDocument(any(), any())).thenReturn(true);
-        lenient().when(objectAccessEvaluationService.canViewRevision(any(), any())).thenReturn(true);
         lenient().when(userAccessProfileRepository.findUserIdsByWorkflowRole(anyString())).thenReturn(List.of());
         lenient().when(documentWorkflowParticipantRepository.findAllByDocument_IdOrderBySequenceOrderAsc(any()))
                 .thenReturn(List.of());
@@ -123,12 +119,6 @@ class DocumentAuthorizationServiceTest {
     // ── canViewDocument ──────────────────────────────────────────────────────
 
     @Test
-    void canViewDocument_false_whenObjectAccessRuleDenies() {
-        lenient().when(objectAccessEvaluationService.canViewDocument(user, document)).thenReturn(false);
-        assertThat(service.canViewDocument(user, document)).isFalse();
-    }
-
-    @Test
     void canViewDocument_true_forAuthor() {
         when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         document.setAuthor(user);
@@ -136,14 +126,12 @@ class DocumentAuthorizationServiceTest {
     }
 
     @Test
-    void canViewDocument_true_forAssignedAuthor_whenBroadObjectScopeDenies() {
-        // Direct record assignment is intentionally evaluated before BU/department
-        // scope. A DCO may assign an Author outside that Author's default scope.
+    void canViewDocument_true_forAssignedAuthor_ofAnyDepartment() {
+        // Direct record assignment is enough, whatever the department of the Document (the scope of an Access Profile no longer exists).
         when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         document.setAuthor(user);
 
         assertThat(service.canViewDocument(user, document)).isTrue();
-        verify(objectAccessEvaluationService, never()).canViewDocument(user, document);
     }
 
     @Test
@@ -189,13 +177,12 @@ class DocumentAuthorizationServiceTest {
     }
 
     @Test
-    void canViewRevision_true_forAssignedAuthor_whenBroadObjectScopeDenies() {
+    void canViewRevision_true_forAssignedAuthor_ofAnyDepartment() {
         when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         DocumentRevisionRecord revision = revisionWithStatus("DRAFT");
         revision.setAuthor(user);
 
         assertThat(service.canViewRevision(user, revision)).isTrue();
-        verify(objectAccessEvaluationService, never()).canViewRevision(user, revision);
     }
 
     @Test

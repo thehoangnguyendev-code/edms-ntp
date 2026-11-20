@@ -179,12 +179,6 @@ public class WorkflowActionPolicyService {
                 .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found"));
     }
 
-    public List<WorkflowActionPolicyResponse> getDefaultDocumentRevisionPolicies() {
-        return policyRepo.findAllByOrderByActionCodeAscPriorityAsc()
-                .stream().filter(WorkflowActionPolicy::isSystem)
-                .map(p -> toResponse(p, null)).toList();
-    }
-
     // ── Effective policy lookup ───────────────────────────────────────────────
 
     public WorkflowActionPolicyEffectiveResponse getEffectivePolicy(
@@ -296,7 +290,11 @@ public class WorkflowActionPolicyService {
         securityChangeSignatureService.requireValidToken(actor, request.signatureToken());
         workflowRegistryService.requireAction(
                 request.moduleKey(), request.workflowKey(), request.objectType(), request.actionCode());
-        validateActors(request.actors(), request.workflowKey(), request.actionCode(), request.requiredPermissionCode());
+        if (usesActors(request.objectType(), request.actionCode())) {
+            validateActors(request.actors(), request.workflowKey(), request.actionCode(), request.requiredPermissionCode());
+        } else {
+            requirePermissionCode(request.requiredPermissionCode());
+        }
 
         int priority = request.priority() != null ? request.priority() : 100;
         boolean active = request.active() == null || request.active();
@@ -353,7 +351,11 @@ public class WorkflowActionPolicyService {
                         .map(a -> new WorkflowActionPolicyActorRequest(a.getActorType(), a.getActorCode()))
                         .toList();
 
-        validateActors(actorRequests, source.getWorkflowKey(), source.getActionCode(), permCode);
+        if (usesActors(source.getObjectType(), source.getActionCode())) {
+            validateActors(actorRequests, source.getWorkflowKey(), source.getActionCode(), permCode);
+        } else {
+            requirePermissionCode(permCode);
+        }
 
         int priority = request.priority() != null ? request.priority() : 100;
 
@@ -494,7 +496,10 @@ public class WorkflowActionPolicyService {
         policy.setUpdatedBy(actor != null ? actor.getId() : null);
         policyRepo.save(policy);
 
-        workflowActionPolicyRelationRepository.deleteAllByPolicy_Id(id);
+        // only the required relations are replaced here; the forbidden ones (a different person, V807) have their own editor
+        // through the collection of the policy, see setForbiddenRelations
+        policy.getRelations().removeIf(r -> !r.isForbidden());
+        policyRepo.saveAndFlush(policy);
         int priority = 100;
         for (UUID relationDefinitionId : relationDefinitionIds == null ? List.<UUID>of() : relationDefinitionIds) {
             AuthorizationRelationDefinition definition = authorizationRelationDefinitionRepository.findById(relationDefinitionId)
@@ -504,6 +509,7 @@ public class WorkflowActionPolicyService {
             relation.setRelationDefinition(definition);
             relation.setPriority(priority);
             relation.setActive(true);
+            policy.getRelations().add(relation);
             workflowActionPolicyRelationRepository.save(relation);
             priority += 100;
         }
@@ -518,6 +524,98 @@ public class WorkflowActionPolicyService {
                         .map(WorkflowActionPolicyRelationResponse::relationCode).toList(),
                 changeReason, esig == null ? null : esig.getId());
         return response;
+    }
+
+    /**
+     * Replaces the relations this policy FORBIDS (V807): the actor must not hold any of them on the resource, so that the person who wrote or submitted a version cannot also approve it.
+     * Like {@link #setPolicyRelations} it is e-signed and audited; the required relations are not touched.
+     */
+    @Transactional
+    public WorkflowActionPolicyResponse setForbiddenRelations(
+            UUID id, List<UUID> relationDefinitionIds, String signatureToken, String changeReason, UserAccount actor
+    ) {
+        securityChangeSignatureService.requireValidToken(actor, signatureToken);
+        WorkflowActionPolicy policy = policyRepo.findById(id)
+                .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found"));
+        String oldValue = summarize(policy) + " forbidden=" + forbiddenCodes(id);
+        replaceForbiddenRelations(policy, relationDefinitionIds, actor);
+
+        WorkflowActionPolicyResponse response = toResponse(policy, null);
+        String newValue = summarize(policy) + " forbidden=" + forbiddenCodes(id);
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, signatureToken,
+                SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
+                "WORKFLOW_ACTION_POLICY", id, policy.getActionCode(), changeReason, oldValue, newValue);
+        auditSafely(actor, id, "WORKFLOW_ACTION_POLICY_RELATIONS_UPDATED", oldValue, newValue, changeReason, esig == null ? null : esig.getId());
+        return response;
+    }
+
+    /**
+     * Replaces the forbidden relations of SEVERAL policies under ONE electronic signature (a signature token can be used only once, and an administrator ticks several rules before saving). One signature
+     * is recorded, and every policy that changed gets its own audit entry that carries it. All or nothing: a failure rolls every policy back.
+     *
+     * @param forbiddenByPolicy the complete new set of forbidden relation definitions of each policy to change
+     */
+    @Transactional
+    public void setForbiddenRelationsMany(Map<UUID, List<UUID>> forbiddenByPolicy, String signatureToken, String changeReason, UserAccount actor) {
+        securityChangeSignatureService.requireValidToken(actor, signatureToken);
+        List<String[]> audits = new ArrayList<>(); // policy id, old value, new value
+        UUID first = null;
+        String firstAction = null;
+        StringBuilder oldAll = new StringBuilder();
+        StringBuilder newAll = new StringBuilder();
+        for (Map.Entry<UUID, List<UUID>> entry : forbiddenByPolicy.entrySet()) {
+            WorkflowActionPolicy policy = policyRepo.findById(entry.getKey())
+                    .orElseThrow(() -> WorkflowPolicyException.notFound("Workflow action policy not found"));
+            String oldValue = summarize(policy) + " forbidden=" + forbiddenCodes(entry.getKey());
+            replaceForbiddenRelations(policy, entry.getValue(), actor);
+            String newValue = summarize(policy) + " forbidden=" + forbiddenCodes(entry.getKey());
+            audits.add(new String[] {entry.getKey().toString(), oldValue, newValue});
+            if (first == null) { first = entry.getKey(); firstAction = policy.getActionCode(); }
+            oldAll.append(oldValue).append("; ");
+            newAll.append(newValue).append("; ");
+        }
+        if (first == null) return;
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, signatureToken,
+                SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
+                "WORKFLOW_ACTION_POLICY", first, audits.size() == 1 ? firstAction : "Separation rules (" + audits.size() + " steps)", changeReason, oldAll.toString(), newAll.toString());
+        for (String[] a : audits) {
+            auditSafely(actor, UUID.fromString(a[0]), "WORKFLOW_ACTION_POLICY_RELATIONS_UPDATED", a[1], a[2], changeReason, esig == null ? null : esig.getId());
+        }
+    }
+
+    /** Removes the forbidden relations of the policy and sets the given ones, through the collection of the policy (see the note in the body). */
+    private void replaceForbiddenRelations(WorkflowActionPolicy policy, List<UUID> relationDefinitionIds, UserAccount actor) {
+        UUID id = policy.getId();
+        policy.setUpdatedBy(actor != null ? actor.getId() : null);
+        policyRepo.save(policy);
+
+        // Remove through the collection of the policy (cascade ALL + orphanRemoval, eager): a delete by query leaves the rows in that collection and the flush re-persists them, so a rule could never
+        // be switched off or changed (found 2026-11-19 while testing the review campaign rules).
+        policy.getRelations().removeIf(WorkflowActionPolicyRelation::isForbidden);
+        policyRepo.saveAndFlush(policy);
+        int priority = 1000;
+        for (UUID relationDefinitionId : relationDefinitionIds == null ? List.<UUID>of() : relationDefinitionIds) {
+            AuthorizationRelationDefinition definition = authorizationRelationDefinitionRepository.findById(relationDefinitionId)
+                    .orElseThrow(() -> WorkflowPolicyException.notFound("Relation definition not found: " + relationDefinitionId));
+            if (workflowActionPolicyRelationRepository.findAllByPolicy_IdAndActiveTrueOrderByPriorityAsc(id).stream()
+                    .anyMatch(r -> r.getRelationDefinition().getId().equals(definition.getId()))) {
+                throw WorkflowPolicyException.validationError("A relation cannot be both required and forbidden: " + definition.getCode());
+            }
+            WorkflowActionPolicyRelation relation = new WorkflowActionPolicyRelation();
+            relation.setPolicy(policy);
+            relation.setRelationDefinition(definition);
+            relation.setPriority(priority);
+            relation.setActive(true);
+            relation.setForbidden(true);
+            policy.getRelations().add(relation);
+            workflowActionPolicyRelationRepository.save(relation);
+            priority += 100;
+        }
+    }
+
+    private List<String> forbiddenCodes(UUID policyId) {
+        return workflowActionPolicyRelationRepository.findAllByPolicy_IdAndActiveTrueOrderByPriorityAsc(policyId).stream()
+                .filter(r -> r.isForbidden()).map(r -> r.getRelationDefinition().getCode()).toList();
     }
 
     // ── Preview / diff ────────────────────────────────────────────────────────
@@ -555,13 +653,15 @@ public class WorkflowActionPolicyService {
                     policy.getDocumentTypeId() != null ? policy.getDocumentTypeId().toString() : null,
                     request.documentTypeId() != null ? request.documentTypeId().toString() : null));
         }
+        boolean actorsMatter = usesActors(policy.getObjectType(), policy.getActionCode());
+        List<WorkflowActionPolicyActorRequest> requestedActors = actorsMatter && request.actors() != null ? request.actors() : List.of();
         List<String> oldActors = policy.getActors().stream()
                 .map(a -> a.getActorType().name() + (a.getActorCode() != null ? ":" + a.getActorCode() : ""))
                 .sorted().toList();
-        List<String> newActors = request.actors().stream()
+        List<String> newActors = requestedActors.stream()
                 .map(a -> a.actorType().name() + (a.actorCode() != null ? ":" + a.actorCode() : ""))
                 .sorted().toList();
-        if (!oldActors.equals(newActors)) {
+        if (actorsMatter && !oldActors.equals(newActors)) {
             changes.add(new PolicyChange("actors", String.join(", ", oldActors), String.join(", ", newActors)));
         }
 
@@ -569,10 +669,10 @@ public class WorkflowActionPolicyService {
         // warn if new policy is broader than default
         DefaultPolicy defaults = WorkflowActionDefaultPolicyRegistry.get(
                 policy.getWorkflowKey(), policy.getActionCode(), policy.getFromStatus());
-        if (defaults != null) {
+        if (defaults != null && actorsMatter) {
             Set<WorkflowActorType> defaultActorTypes = defaults.actors().stream()
                     .map(DefaultActorEntry::actorType).collect(Collectors.toSet());
-            boolean broader = request.actors().stream()
+            boolean broader = requestedActors.stream()
                     .anyMatch(a -> !defaultActorTypes.contains(a.actorType()));
             if (broader) {
                 warnings.add(new PolicyWarning("BROAD_ACTOR_POLICY",
@@ -580,6 +680,19 @@ public class WorkflowActionPolicyService {
             }
         }
 
+        // For a resource type whose old checks were deleted, this policy is the only decision about who may do the action: say what saving does
+        if (decidedByThePolicyAlone(policy)) {
+            warnings.add(new PolicyWarning("ENGINE_DECIDES_ALONE",
+                    "This policy is the only decision about who may do this action (the old checks in the service were removed). A change takes effect at once for everyone."));
+            if (!request.active()) {
+                warnings.add(new PolicyWarning("DEACTIVATING_STOPS_THE_ACTION",
+                        "With this policy inactive nobody can do this action from this state, whatever their permissions."));
+            }
+            if (request.requiredPermissionCode() == null || request.requiredPermissionCode().isBlank()) {
+                warnings.add(new PolicyWarning("NO_PERMISSION_AND_NO_ACTOR",
+                        "This policy names no permission: only the relations of the record decide, so check that they are what you mean."));
+            }
+        }
         return new WorkflowActionPolicyPreviewResponse(true, id, changes, warnings, wouldAffect(policy));
     }
 
@@ -674,9 +787,9 @@ public class WorkflowActionPolicyService {
         policy.setDocumentTypeId(null);
         policy.setUpdatedBy(actor != null ? actor.getId() : null);
 
-        // Restore actors from defaults
+        // Restore actors from defaults (only the policy whose actors are read; the others have none)
         policy.getActors().clear();
-        for (DefaultActorEntry entry : defaults.actors()) {
+        for (DefaultActorEntry entry : usesActors(policy.getObjectType(), policy.getActionCode()) ? defaults.actors() : List.<DefaultActorEntry>of()) {
             WorkflowActionPolicyActor a = new WorkflowActionPolicyActor();
             a.setPolicy(policy);
             a.setActorType(entry.actorType());
@@ -705,10 +818,28 @@ public class WorkflowActionPolicyService {
             throw WorkflowPolicyException.validationError(
                     "Permission code not found: " + request.requiredPermissionCode());
         }
+        if (!usesActors(existing.getObjectType(), existing.getActionCode())) {
+            return;
+        }
         if (request.actors() == null || request.actors().isEmpty()) {
             throw WorkflowPolicyException.validationError("At least one actor is required.");
         }
         validateActorsForAction(request.actors(), existing.getWorkflowKey(), existing.getActionCode());
+    }
+
+    /**
+     * The actors of a policy are read at runtime by ONE step only: REQUEST_COPY of a Controlled Copy, which has no record yet and so cannot go through the engine.
+     * Every other policy is decided by the engine from its permission, its relations and the state, which never read actors; their actors are not asked for, not stored and not shown
+     * (owner decision 2026-11-20).
+     */
+    static boolean usesActors(String objectType, String actionCode) {
+        return "CONTROLLED_COPY".equals(objectType) && "REQUEST_COPY".equals(actionCode);
+    }
+
+    private void requirePermissionCode(String permCode) {
+        if (permCode == null || permissionRepository.findByCode(permCode).isEmpty()) {
+            throw WorkflowPolicyException.validationError("Permission code not found: " + permCode);
+        }
     }
 
     /**
@@ -771,10 +902,6 @@ public class WorkflowActionPolicyService {
         return workflowRegistryService.getAllowedActorTypes(workflowKey, actionCode);
     }
 
-    public boolean isActorTypeAllowed(RevisionWorkflowAction action, WorkflowActorType actorType) {
-        return workflowRegistryService.getAllowedActorTypes(WORKFLOW, action.name()).contains(actorType);
-    }
-
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private void checkDuplicate(String moduleKey, String workflowKey, String objectType,
@@ -798,6 +925,9 @@ public class WorkflowActionPolicyService {
     private void buildActors(WorkflowActionPolicy policy,
                              List<WorkflowActionPolicyActorRequest> actorRequests,
                              UserAccount actor) {
+        if (!usesActors(policy.getObjectType(), policy.getActionCode()) || actorRequests == null) {
+            return;
+        }
         for (WorkflowActionPolicyActorRequest req : actorRequests) {
             WorkflowActionPolicyActor a = new WorkflowActionPolicyActor();
             a.setPolicy(policy);
@@ -853,7 +983,8 @@ public class WorkflowActionPolicyService {
                                 r.getRelationDefinition().getCode(),
                                 r.getRelationDefinition().getDisplayName(),
                                 r.getRelationDefinition().getResolverCode(),
-                                r.getPriority()))
+                                r.getPriority(),
+                                r.isForbidden()))
                         .toList();
 
         return new WorkflowActionPolicyResponse(
@@ -871,10 +1002,24 @@ public class WorkflowActionPolicyService {
                 deactivatable,
                 p.getDescription(),
                 actors,
-                List.of(),     // warnings — populated per-request in previewUpdate if needed
+                // ENGINE_DECIDES_ALONE: the old checks of this resource type were deleted, so this policy is the only decision (the screens warn before a change or a deactivation)
+                decidedByThePolicyAlone(p) ? List.of("ENGINE_DECIDES_ALONE") : List.of(),
                 p.getCreatedAt(), p.getUpdatedAt(),
                 p.getRelationMatchRule(), relations
         );
+    }
+
+    /**
+     * True when the old checks of the policy's resource type are gone and the engine, reading this policy, is the only decision about who may do the action: the types behind the gate,
+     * Revision, and Document / Controlled Copy / Copy Batch (their steps ask the engine and nothing else). REQUEST_COPY is the exception: it has no record yet and keeps its own evaluation.
+     */
+    private static boolean decidedByThePolicyAlone(WorkflowActionPolicy p) {
+        String type = p.getObjectType();
+        if ("REQUEST_COPY".equals(p.getActionCode())) {
+            return false;
+        }
+        return com.eqms.service.authorization.ShadowGuard.engineDecides(type) || "REVISION".equals(type)
+                || "DOCUMENT".equals(type) || "CONTROLLED_COPY".equals(type) || "CONTROLLED_COPY_BATCH".equals(type);
     }
 
     private WouldAffect wouldAffect(WorkflowActionPolicy p) {
@@ -926,8 +1071,19 @@ public class WorkflowActionPolicyService {
     static final class Labels {
         private Labels() {}
 
+        /** "BACKUP_RESTORE" -> "Backup Restore": a readable default for a module, a workflow or an action that has no label of its own. */
+        static String pretty(String code) {
+            if (code == null) return null;
+            return java.util.Arrays.stream(code.toLowerCase(java.util.Locale.ROOT).split("_"))
+                    .map(w -> w.isEmpty() ? w : Character.toUpperCase(w.charAt(0)) + w.substring(1)).collect(java.util.stream.Collectors.joining(" "));
+        }
+
         static String module(String key) {
-            return "DOCUMENT_CONTROL".equals(key) ? "Document Control" : key;
+            // the name of the menu the module is under (the same names as the screens: utils/moduleDisplay.ts)
+            if ("REPORT".equals(key)) return "Reports";
+            if ("TRAINING".equals(key)) return "Training Management";
+            if ("SECURITY_REVIEW".equals(key)) return "Access Review & Audit Trail Review";
+            return "DOCUMENT_CONTROL".equals(key) ? "Document Control" : pretty(key);
         }
 
         static String workflow(String key) {
@@ -935,7 +1091,11 @@ public class WorkflowActionPolicyService {
             return switch (key) {
                 case "DOCUMENT_REVISION" -> "Document Revision";
                 case "CONTROLLED_COPY"   -> "Controlled Copy";
-                default -> key;
+                case "REPORT_TEMPLATE"   -> "Report Template Review";
+                case "TRAINING_REQUIREMENT" -> "Training Requirement";
+                case "TRAINING_MATRIX"   -> "Training Matrix";
+                case "TRAINING_ACTIVITY" -> "Training Activity";
+                default -> pretty(key);
             };
         }
 
@@ -974,7 +1134,31 @@ public class WorkflowActionPolicyService {
                 case "UPLOAD_EVIDENCE"            -> "Upload Evidence";
                 case "EXPIRE_COPY"                -> "Expire Copy";
                 case "CANCEL_REQUEST"             -> "Cancel Request";
-                default -> code;
+                // Report template review
+                case "APPROVE"                    -> "Approve Template";
+                case "APPROVE_GMP"                -> "Approve GMP Template";
+                case "REJECT"                     -> "Return Template to Draft";
+                case "REJECT_GMP"                 -> "Return GMP Template to Draft";
+                case "SUBMIT"                     -> "Submit Template for Approval";
+                case "UPGRADE"                    -> "Start a New Revision";
+                case "SET_ENABLED"                -> "Enable or Disable Template";
+                case "DISCARD_REVISION"           -> "Discard Draft Revision";
+                case "DELETE"                     -> "Delete Template";
+                case "REVIEW"                     -> "Review";
+                case "UPDATE" -> "Edit Activity";
+                case "ADD_SESSION" -> "Add Session";
+                case "ADD_PARTICIPANTS" -> "Add Participants";
+                case "CONFIRM_LIST" -> "Confirm Participant List";
+                case "NOTIFY" -> "Notify Participants";
+                case "REOPEN_CONTENT" -> "Reopen Content";
+                case "SUPPLEMENTARY" -> "Supplementary Training";
+                case "CONTENT_REVIEW" -> "Review Content";
+                case "CONTENT_APPROVE" -> "Approve Content";
+                case "SEND_ATTENDANCE_LIST" -> "Send Attendance List";
+                case "FINISH" -> "Finish Training";
+                case "CONFIRM_COMPLETION" -> "Confirm Completion";
+                case "RETURN_FOR_CORRECTION" -> "Return for Correction";
+                default -> pretty(code);
             };
         }
 

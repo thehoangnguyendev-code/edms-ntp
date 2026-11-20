@@ -38,6 +38,7 @@ public class TrainingRequirementService {
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;
     private final TrainingApprovalService approvals;
+    private final TrainingShadow shadow;
     private final ElectronicSignatureService signatures;
     private final AuditTrailService audit;
     private final TrainingActivityService activities;
@@ -49,10 +50,11 @@ public class TrainingRequirementService {
     private TrainingCodeService codes;
 
     public TrainingRequirementService(JdbcTemplate jdbc, TrainingAccess access, TrainingApprovalService approvals, ElectronicSignatureService signatures, AuditTrailService audit,
-                                      TrainingActivityService activities, TrainingNotifier notifier, com.eqms.repository.UserAccountRepository users) {
+                                      TrainingActivityService activities, TrainingNotifier notifier, com.eqms.repository.UserAccountRepository users, TrainingShadow shadow) {
         this.jdbc = jdbc;
         this.access = access;
         this.approvals = approvals;
+        this.shadow = shadow;
         this.signatures = signatures;
         this.audit = audit;
         this.activities = activities;
@@ -145,9 +147,18 @@ public class TrainingRequirementService {
              where l.requirement_id = ? order by l.line_no
             """, id)));
         out.put("approvers", TrainingRows.camel(approvals.assignments(TYPE, id)));
-        out.put("capabilities", capabilities(actor, r));
+        out.put("capabilities", withEngine(actor, r, capabilities(actor, r)));
         out.put("workflow", TrainingWorkflows.requirement((String) r.get("status")));
         return out;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.eqms.service.authorization.EngineCapabilities engineCapabilities;
+
+    /** The buttons follow the decision of the Hybrid engine (EngineCapabilities); the keys that name no action stay as the hints were. */
+    private Map<String, Object> withEngine(UserAccount actor, Map<String, Object> row, Map<String, Object> caps) {
+        return engineCapabilities == null ? caps : engineCapabilities.apply(actor, "TRAINING_REQUIREMENT", (UUID) row.get("id"), caps,
+                Map.of("submit", "SUBMIT", "review", "REVIEW", "approve", "APPROVE", "reject", "REJECT"), Map.of());
     }
 
     private Map<String, Object> capabilities(UserAccount actor, Map<String, Object> r) {
@@ -267,8 +278,12 @@ public class TrainingRequirementService {
     /** The preparer signs and chooses the reviewer. */
     @Transactional
     public Map<String, Object> submit(UserAccount actor, UUID id, SubmitRequest request) {
+        return shadow.around(actor, TYPE, id, "SUBMIT", false, () -> submitInner(actor, id, request));
+    }
+
+    private Map<String, Object> submitInner(UserAccount actor, UUID id, SubmitRequest request) {
+        // who may submit (the permission to prepare and the department) is decided by the Hybrid engine (TrainingShadow, TRAINING_REQUIREMENT); the review and approval stay signature steps
         Map<String, Object> r = lock(id);
-        requirePrepare(actor, r);
         requireStatus(r, "DRAFT");
         requireVersion(r, request == null ? null : request.version());
         Integer lines = jdbc.queryForObject("select count(*) from training_requirement_lines where requirement_id=?", Integer.class, id);
@@ -288,6 +303,10 @@ public class TrainingRequirementService {
     /** The reviewer signs and chooses who approves; the approver is neither the preparer nor the reviewer. */
     @Transactional
     public Map<String, Object> review(UserAccount actor, UUID id, SubmitRequest request) {
+        return shadow.around(actor, TYPE, id, "REVIEW", false, () -> reviewInner(actor, id, request));
+    }
+
+    private Map<String, Object> reviewInner(UserAccount actor, UUID id, SubmitRequest request) {
         Map<String, Object> r = lock(id);
         requireStatus(r, "PENDING_REVIEW");
         requireVersion(r, request == null ? null : request.version());
@@ -306,6 +325,10 @@ public class TrainingRequirementService {
 
     @Transactional
     public Map<String, Object> approve(UserAccount actor, UUID id, SignRequest request) {
+        return shadow.around(actor, TYPE, id, "APPROVE", true, () -> approveInner(actor, id, request));
+    }
+
+    private Map<String, Object> approveInner(UserAccount actor, UUID id, SignRequest request) {
         Map<String, Object> r = lock(id);
         requireStatus(r, "PENDING_APPROVAL");
         requireVersion(r, request == null ? null : request.version());
@@ -322,6 +345,10 @@ public class TrainingRequirementService {
 
     @Transactional
     public Map<String, Object> reject(UserAccount actor, UUID id, RejectRequest request) {
+        return shadow.around(actor, TYPE, id, "REJECT", true, () -> rejectInner(actor, id, request));
+    }
+
+    private Map<String, Object> rejectInner(UserAccount actor, UUID id, RejectRequest request) {
         Map<String, Object> r = lock(id);
         requireStatus(r, "PENDING_REVIEW", "PENDING_APPROVAL");
         requireVersion(r, request == null ? null : request.version());

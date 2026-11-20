@@ -41,14 +41,17 @@ public class AuthorizationController {
     private final CurrentUserService currentUserService;
     private final PermissionEvaluationService permissionEvaluationService;
     private final UserAccountRepository userAccountRepository;
+    private final com.eqms.service.authorization.AuthorizationResourceLookupService resourceLookup;
 
     public AuthorizationController(
             AuthorizationEngineService engine,
             AuthorizationRelationDefinitionRepository relationDefinitionRepository,
             CurrentUserService currentUserService,
             PermissionEvaluationService permissionEvaluationService,
-            UserAccountRepository userAccountRepository
+            UserAccountRepository userAccountRepository,
+            com.eqms.service.authorization.AuthorizationResourceLookupService resourceLookup
     ) {
+        this.resourceLookup = resourceLookup;
         this.engine = engine;
         this.relationDefinitionRepository = relationDefinitionRepository;
         this.currentUserService = currentUserService;
@@ -68,8 +71,23 @@ public class AuthorizationController {
         }
         UserAccount subject = userAccountRepository.findById(request.subjectUserId())
                 .orElseThrow(() -> new IllegalArgumentException("Subject user not found"));
+        java.util.UUID resourceId = request.resourceId();
+        if (resourceId == null && "REPORT_TEMPLATE".equals(request.resourceType()) && request.resourceCode() != null && !request.resourceCode().isBlank()) {
+            resourceId = com.eqms.service.ReportTemplateResourceAdapter.idOf(request.resourceCode().trim());
+        }
         return engine.authorize(new AuthorizationRequest(
-                subject, request.resourceType(), request.resourceId(), request.actionCode(), request.context()));
+                subject, request.resourceType(), resourceId, request.actionCode(), request.context()));
+    }
+
+    /** The Simulator finds a record by its number or name instead of a pasted id: same gate as {@link #evaluate}. */
+    @GetMapping("/resource-lookup")
+    public List<com.eqms.service.authorization.AuthorizationResourceLookupService.Found> resourceLookup(
+            @RequestParam String resourceType, @RequestParam(required = false) String search, @RequestParam(defaultValue = "20") int limit) {
+        UserAccount caller = currentUserService.requireCurrentUser();
+        if (!permissionEvaluationService.hasPermission(caller, "security.access_profiles.update")) {
+            throw new AccessDeniedException("Access profile management permission required");
+        }
+        return resourceLookup.find(resourceType, search, limit);
     }
 
     /** Read-only relation catalog (SECURITY_AUTHORIZATION_HYBRID_REFACTOR_PLAN.md §5.3 "Relation Definitions"). */

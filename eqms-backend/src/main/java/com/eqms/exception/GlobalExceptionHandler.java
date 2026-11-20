@@ -70,7 +70,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ApiErrorResponse(
                         new ApiErrorResponse.ErrorBody(
-                                "UNAUTHORIZED",
+                                exception.getCode() == null ? "UNAUTHORIZED" : exception.getCode(),
                                 exception.getMessage() == null ? "Authentication required" : exception.getMessage(),
                                 List.of()
                         )

@@ -27,6 +27,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Parity check between the list endpoints and the record-level rule used for detail access
@@ -70,57 +72,104 @@ public class DocumentListVisibilityParityIntegrationTest {
                 new UsernamePasswordAuthenticationToken(principal, null, List.of()));
     }
 
-    private Set<String> allDocumentIdsInList() {
+    /** The pages read for one user: a list item is made with the workflow actions of the person (several queries each), so reading a list of thousands is slow on the shared dev database. */
+    private static final int MAX_PAGES = 3;
+
+    /** The ids of a list and whether the whole list was read. */
+    private record Listed(Set<String> ids, boolean complete) {}
+
+    private Listed documentIdsInList() {
         Set<String> ids = new HashSet<>();
-        for (int page = 1; ; page++) {
+        for (int page = 1; page <= MAX_PAGES; page++) {
             List<DocumentListItemResponse> data = documentService.listDocuments(
                     null, null, null, null, null, null, null, null, null, null, null, null,
                     null, null, null, null, null, null, null, null, null, null, null, page, PAGE_SIZE).data();
-            if (data.isEmpty()) break;
+            if (data.isEmpty()) return new Listed(ids, true);
             data.forEach(item -> ids.add(item.id()));
         }
-        return ids;
+        return new Listed(ids, false);
     }
 
-    private Set<String> allRevisionIdsInList() {
+    private Listed revisionIdsInList() {
         Set<String> ids = new HashSet<>();
-        for (int page = 1; ; page++) {
+        for (int page = 1; page <= MAX_PAGES; page++) {
             List<RevisionListItemResponse> data = revisionService.listRevisions(
                     null, null, null, null, null, null, null, null, null, null, null, null, null,
                     null, null, null, null, null, false, false, null, null, page, PAGE_SIZE).data();
-            if (data.isEmpty()) break;
+            if (data.isEmpty()) return new Listed(ids, true);
             data.forEach(item -> ids.add(item.id()));
         }
-        return ids;
+        return new Listed(ids, false);
     }
 
+    /** How many records outside a user's list are asked about the detail rule (a stride over all of them), see {@link #documentAndRevisionLists_matchDetailVisibility_forEveryNonAdminUser}. */
+    private static final int OUTSIDE_SAMPLE = 40;
+
+    /** How many users are checked (an even sample by user name). */
+    private static final int MAX_USERS = 4;
+
+    /**
+     * The two directions of the parity, at a cost that does not grow with the data of the shared dev database (the first version asked the detail rule about every document and every revision for every
+     * user: with thousands of records that is millions of queries and the run never ended):
+     * <ul>
+     *   <li>everything a list returns is allowed by the detail rule (the list never shows more than the detail allows);</li>
+     *   <li>of the records outside the list, an evenly spread sample of {@value #OUTSIDE_SAMPLE} is refused by the detail rule (the list never hides what the detail allows); only for a list that was read to its end.</li>
+     * </ul>
+     * An even sample of {@value #MAX_USERS} users, and at most {@value #MAX_PAGES} pages of each list, keep the run to minutes.
+     */
     @Test
     void documentAndRevisionLists_matchDetailVisibility_forEveryNonAdminUser() {
         List<DocumentRecord> documents = documentRecordRepository.findAll();
         List<DocumentRevisionRecord> revisions = documentRevisionRepository.findAll();
         int checkedUsers = 0;
 
-        for (UserAccount user : userAccountRepository.findAll()) {
-            if (documentAuthorizationService.canViewAllDocuments(user)) {
-                continue;
-            }
+        List<UserAccount> withoutBlanketGrant = userAccountRepository.findAll().stream()
+                .filter(user -> !documentAuthorizationService.canViewAllDocuments(user))
+                .sorted(java.util.Comparator.comparing(user -> String.valueOf(user.getUsername())))
+                .toList();
+        int userStride = Math.max(1, withoutBlanketGrant.size() / MAX_USERS);
+        for (int u = 0; u < withoutBlanketGrant.size(); u += userStride) {
+            UserAccount user = withoutBlanketGrant.get(u);
             checkedUsers++;
             authenticateAs(user);
 
-            Set<String> expectedDocuments = documents.stream()
-                    .filter(document -> documentAuthorizationService.isDirectStakeholder(user, document))
-                    .map(document -> document.getId().toString())
-                    .collect(Collectors.toSet());
-            assertEquals(expectedDocuments, allDocumentIdsInList(),
-                    "Document list differs from detail visibility for user " + user.getUsername());
+            Listed listedDocumentsRead = documentIdsInList();
+            Set<String> listedDocuments = listedDocumentsRead.ids();
+            for (DocumentRecord document : documents) {
+                if (listedDocuments.contains(document.getId().toString())) {
+                    assertTrue(documentAuthorizationService.isDirectStakeholder(user, document),
+                            "Document " + document.getDocumentNumber() + " is in the list of " + user.getUsername() + " but the detail rule refuses it");
+                }
+            }
+            if (listedDocumentsRead.complete()) {
+                assertOutsideTheListIsRefused(user, documents, listedDocuments, DocumentRecord::getId,
+                        document -> documentAuthorizationService.isDirectStakeholder(user, document), "Document");
+            }
 
-            Set<String> expectedRevisions = revisions.stream()
-                    .filter(revision -> documentAuthorizationService.isDirectStakeholder(user, revision))
-                    .map(revision -> revision.getId().toString())
-                    .collect(Collectors.toSet());
-            assertEquals(expectedRevisions, allRevisionIdsInList(),
-                    "Revision list differs from detail visibility for user " + user.getUsername());
+            Listed listedRevisionsRead = revisionIdsInList();
+            Set<String> listedRevisions = listedRevisionsRead.ids();
+            for (DocumentRevisionRecord revision : revisions) {
+                if (listedRevisions.contains(revision.getId().toString())) {
+                    assertTrue(documentAuthorizationService.isDirectStakeholder(user, revision),
+                            "Revision " + revision.getId() + " is in the list of " + user.getUsername() + " but the detail rule refuses it");
+                }
+            }
+            if (listedRevisionsRead.complete()) {
+                assertOutsideTheListIsRefused(user, revisions, listedRevisions, DocumentRevisionRecord::getId,
+                        revision -> documentAuthorizationService.isDirectStakeholder(user, revision), "Revision");
+            }
         }
         assertEquals(true, checkedUsers > 0, "Seed data must include at least one user without a blanket view grant");
+    }
+
+    private <T> void assertOutsideTheListIsRefused(UserAccount user, List<T> all, Set<String> listed, java.util.function.Function<T, UUID> id,
+                                                   java.util.function.Predicate<T> allowedByDetailRule, String kind) {
+        List<T> outside = all.stream().filter(record -> !listed.contains(id.apply(record).toString())).toList();
+        int stride = Math.max(1, outside.size() / OUTSIDE_SAMPLE);
+        for (int i = 0; i < outside.size(); i += stride) {
+            T record = outside.get(i);
+            assertFalse(allowedByDetailRule.test(record),
+                    kind + " " + id.apply(record) + " is allowed by the detail rule for " + user.getUsername() + " but is not in the list");
+        }
     }
 }

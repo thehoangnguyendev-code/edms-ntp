@@ -38,6 +38,7 @@ public class TrainingMatrixService {
     private final TrainingAccess access;
     private final TrainingStore store;
     private final TrainingApprovalService approvals;
+    private final TrainingShadow shadow;
     private final ElectronicSignatureService signatures;
     private final AuditTrailService audit;
     private final UserAccountRepository users;
@@ -48,11 +49,12 @@ public class TrainingMatrixService {
     private TrainingCodeService codes;
 
     public TrainingMatrixService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, TrainingApprovalService approvals, ElectronicSignatureService signatures,
-                                 AuditTrailService audit, UserAccountRepository users, TrainingNotifier notifier) {
+                                 AuditTrailService audit, UserAccountRepository users, TrainingNotifier notifier, TrainingShadow shadow) {
         this.jdbc = jdbc;
         this.access = access;
         this.store = store;
         this.approvals = approvals;
+        this.shadow = shadow;
         this.signatures = signatures;
         this.audit = audit;
         this.users = users;
@@ -188,9 +190,18 @@ public class TrainingMatrixService {
         out.put("rows", rows);
         out.put("positions", positions(department));
         out.put("approvers", TrainingRows.camel(approvals.assignments(TYPE, versionId)));
-        out.put("capabilities", capabilities(actor, v, department));
+        out.put("capabilities", withEngine(actor, v, capabilities(actor, v, department)));
         out.put("workflow", TrainingWorkflows.matrixVersion((String) v.get("status")));
         return out;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.eqms.service.authorization.EngineCapabilities engineCapabilities;
+
+    /** The buttons follow the decision of the Hybrid engine (EngineCapabilities); the keys that name no action stay as the hints were. */
+    private Map<String, Object> withEngine(UserAccount actor, Map<String, Object> row, Map<String, Object> caps) {
+        return engineCapabilities == null ? caps : engineCapabilities.apply(actor, "TRAINING_MATRIX_VERSION", (UUID) row.get("id"), caps,
+                Map.of("submit", "SUBMIT"), Map.of("approve", "APPROVE", "reject", "REJECT"));
     }
 
     private Map<String, Object> capabilities(UserAccount actor, Map<String, Object> v, UUID department) {
@@ -475,9 +486,13 @@ public class TrainingMatrixService {
     /** Sends the version for approval: the preparer signs and chooses the person who approves. */
     @Transactional
     public Map<String, Object> submit(UserAccount actor, UUID versionId, SubmitRequest request) {
+        return shadow.around(actor, TYPE, versionId, "SUBMIT", false, () -> submitInner(actor, versionId, request));
+    }
+
+    private Map<String, Object> submitInner(UserAccount actor, UUID versionId, SubmitRequest request) {
+        // who may submit (the permission to manage the matrix and the department) is decided by the Hybrid engine (TrainingShadow, TRAINING_MATRIX_VERSION); the approval stays a signature step
         Map<String, Object> v = lockVersion(versionId);
         UUID department = departmentOf(v);
-        requireManage(actor, department);
         requireStatus(v, "DRAFT");
         requireVersion(v, request == null ? null : request.version());
         Integer rows = jdbc.queryForObject("select count(*) from training_matrix_rows where version_id=?", Integer.class, versionId);
@@ -502,6 +517,10 @@ public class TrainingMatrixService {
 
     @Transactional
     public Map<String, Object> approve(UserAccount actor, UUID versionId, SignRequest request) {
+        return shadow.around(actor, TYPE, versionId, "APPROVE", true, () -> approveInner(actor, versionId, request));
+    }
+
+    private Map<String, Object> approveInner(UserAccount actor, UUID versionId, SignRequest request) {
         Map<String, Object> v = lockVersion(versionId);
         requireStatus(v, "PENDING_APPROVAL");
         requireVersion(v, request == null ? null : request.version());
@@ -525,6 +544,10 @@ public class TrainingMatrixService {
 
     @Transactional
     public Map<String, Object> reject(UserAccount actor, UUID versionId, RejectRequest request) {
+        return shadow.around(actor, TYPE, versionId, "REJECT", true, () -> rejectInner(actor, versionId, request));
+    }
+
+    private Map<String, Object> rejectInner(UserAccount actor, UUID versionId, RejectRequest request) {
         Map<String, Object> v = lockVersion(versionId);
         requireStatus(v, "PENDING_APPROVAL");
         requireVersion(v, request == null ? null : request.version());
@@ -684,7 +707,7 @@ public class TrainingMatrixService {
     /** The person who prepared the version, and the person who is acting, cannot approve it. */
     private Set<UUID> keptApart(Map<String, Object> version, UserAccount actor) {
         Set<UUID> apart = new LinkedHashSet<>();
-        if (version.get("prepared_by") != null) apart.add((UUID) version.get("prepared_by"));
+        if (version.get("prepared_by") != null && com.eqms.service.SeparationRuleSwitch.isOn(jdbc, "TRAINING_MATRIX_VERSION", "APPROVE", "PREPARER")) apart.add((UUID) version.get("prepared_by"));
         return apart;
     }
 

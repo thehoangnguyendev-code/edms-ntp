@@ -87,7 +87,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                     if (sessionOptional.isPresent()) {
                         AuthSession session = sessionOptional.get();
                         if (session.getRevokedAt() != null) {
-                            writeSessionRevokedResponse(response);
+                            writeSessionRevokedResponse(response, session.getRevokedReason());
                             return;
                         }
 
@@ -266,16 +266,19 @@ public class AuthTokenFilter extends OncePerRequestFilter {
      * Return a stable authentication error rather than continuing as an anonymous request, so
      * every active client clears its local credentials and redirects to sign-in on its next call.
      */
-    private void writeSessionRevokedResponse(HttpServletResponse response) {
+    private void writeSessionRevokedResponse(HttpServletResponse response, String revokedReason) {
         if (response.isCommitted()) {
             return;
         }
         response.setStatus(401);
         response.setContentType("application/json");
+        boolean otherDevice = AuthSession.REVOKED_CONCURRENT_LIMIT.equals(revokedReason);
         try {
             response.getWriter().write(objectMapper.writeValueAsString(Map.of(
-                    "code", "SESSION_REVOKED",
-                    "message", "Your session has been signed out. Please sign in again."
+                    "code", otherDevice ? "SESSION_REVOKED_CONCURRENT_LIMIT" : "SESSION_REVOKED",
+                    "message", otherDevice
+                            ? "This session has ended because the account was signed in on another device."
+                            : "Your session has been signed out. Please sign in again."
             )));
             response.flushBuffer();
         } catch (IOException ignored) {

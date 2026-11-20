@@ -59,6 +59,7 @@ public class TrainingPersonnelReviewService {
     public record CancelRequest(String reason) {}
 
     private final JdbcTemplate jdbc;
+    private final TrainingShadow shadow;
     private final TrainingAccess access;
     private final ElectronicSignatureService signatures;
     private final AuditTrailService audit;
@@ -70,8 +71,9 @@ public class TrainingPersonnelReviewService {
     private final TrainingComplianceService compliance;
 
     public TrainingPersonnelReviewService(JdbcTemplate jdbc, TrainingAccess access, ElectronicSignatureService signatures, AuditTrailService audit, UserAccountRepository users, TrainingActivityService activities, TrainingComplianceService compliance,
-                                          TrainingApprovalService approvals, TrainingNotifier notifier) {
+                                          TrainingApprovalService approvals, TrainingNotifier notifier, TrainingShadow shadow) {
         this.compliance = compliance;
+        this.shadow = shadow;
         this.activities = activities;
         this.approvals = approvals;
         this.notifier = notifier;
@@ -145,6 +147,15 @@ public class TrainingPersonnelReviewService {
         return result;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.eqms.service.authorization.EngineCapabilities engineCapabilities;
+
+    /** The buttons follow the decision of the Hybrid engine (EngineCapabilities); the keys that name no action stay as the hints were. */
+    private Map<String, Object> withEngine(UserAccount actor, Map<String, Object> row, Map<String, Object> caps) {
+        return engineCapabilities == null ? caps : engineCapabilities.apply(actor, "TRAINING_PERSONNEL_REVIEW", (UUID) row.get("id"), caps,
+                Map.of("editItems", "UPDATE_ITEM", "cancel", "CANCEL"), Map.of("close", "CLOSE", "changeCloser", "CHANGE_CLOSER"));
+    }
+
     @Transactional(readOnly = true)
     public Map<String, Object> get(UserAccount actor, UUID id) {
         access.require(actor, "training.job_assignment.view");
@@ -177,11 +188,11 @@ public class TrainingPersonnelReviewService {
         out.put("closerName", closer == null ? null : closer.get("full_name"));
         out.put("readyToClose", ready);
         out.put("workflow", TrainingWorkflows.personnelReview((String) r.get("status")));
-        out.put("capabilities", Map.of(
+        out.put("capabilities", withEngine(actor, r, Map.of(
                 "editItems", open && manage,
                 "close", ready && manage && !actor.getId().equals(person) && (closer == null || actor.getId().equals(closer.get("assignee_user_id"))),
                 "changeCloser", open && closer != null && access.has(actor, "training.approval.reassign"),
-                "cancel", open && manage));
+                "cancel", open && manage)));
         if ("ABSENCE_RETURN".equals(r.get("kind"))) {
             LocalDate from = ((Date) r.get("absence_from")).toLocalDate(), to = ((Date) r.get("absence_to")).toLocalDate();
             out.put("absenceOverSixMonths", to.isAfter(from.plusMonths(6)));
@@ -270,11 +281,14 @@ public class TrainingPersonnelReviewService {
 
     @Transactional
     public Map<String, Object> updateItem(UserAccount actor, UUID id, String itemCode, ItemRequest request) {
-        access.require(actor, "training.job_assignment.manage");
+        return shadow.around(actor, "TRAINING_PERSONNEL_REVIEW", id, "UPDATE_ITEM", true, () -> updateItemInner(actor, id, itemCode, request));
+    }
+
+    private Map<String, Object> updateItemInner(UserAccount actor, UUID id, String itemCode, ItemRequest request) {
+        // who may do this (the permission, the department of the person reviewed, and not the person reviewed for the closing) is decided by the Hybrid engine (TrainingShadow, TRAINING_PERSONNEL_REVIEW); the signature step of the closer chosen stays
         Map<String, Object> r = lock(id);
         if (!"OPEN".equals(r.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_REVIEW_CLOSED");
         UUID person = (UUID) r.get("person_user_id");
-        if (!inScope(actor, person)) throw new SecurityException(TrainingAccess.DENIED);
         Item item = ITEMS.get((String) r.get("kind")).stream().filter(i -> i.code().equals(itemCode)).findFirst().orElseThrow(() -> new IllegalArgumentException("TRAINING_REVIEW_ITEM_INVALID"));
         if (request == null || request.status() == null || !Set.of("PENDING", "DONE", "NOT_NEEDED").contains(request.status())) throw new IllegalArgumentException("TRAINING_PREPARATION_STATUS_INVALID");
         String note = blank(request.note());
@@ -305,11 +319,14 @@ public class TrainingPersonnelReviewService {
      */
     @Transactional
     public Map<String, Object> createActivity(UserAccount actor, UUID id, String itemCode) {
-        access.require(actor, "training.job_assignment.manage");
+        return shadow.around(actor, "TRAINING_PERSONNEL_REVIEW", id, "CREATE_ACTIVITY", true, () -> createActivityInner(actor, id, itemCode));
+    }
+
+    private Map<String, Object> createActivityInner(UserAccount actor, UUID id, String itemCode) {
+        // who may do this (the permission, the department of the person reviewed, and not the person reviewed for the closing) is decided by the Hybrid engine (TrainingShadow, TRAINING_PERSONNEL_REVIEW); the signature step of the closer chosen stays
         Map<String, Object> r = lock(id);
         if (!"OPEN".equals(r.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_REVIEW_CLOSED");
         UUID person = (UUID) r.get("person_user_id");
-        if (!inScope(actor, person)) throw new SecurityException(TrainingAccess.DENIED);
         Item item = ITEMS.get((String) r.get("kind")).stream().filter(i -> i.code().equals(itemCode)).findFirst().orElseThrow(() -> new IllegalArgumentException("TRAINING_REVIEW_ITEM_INVALID"));
         if (!item.link()) throw new IllegalArgumentException("TRAINING_REVIEW_ITEM_INVALID");
         Integer linked = jdbc.queryForObject("select count(*) from training_personnel_review_items where review_id = ? and item_code = ? and activity_id is not null", Integer.class, id, itemCode);
@@ -390,12 +407,14 @@ public class TrainingPersonnelReviewService {
 
     @Transactional
     public Map<String, Object> close(UserAccount actor, UUID id, CloseRequest request) {
-        access.require(actor, "training.job_assignment.manage");
+        return shadow.around(actor, "TRAINING_PERSONNEL_REVIEW", id, "CLOSE", true, () -> closeInner(actor, id, request));
+    }
+
+    private Map<String, Object> closeInner(UserAccount actor, UUID id, CloseRequest request) {
+        // who may do this (the permission, the department of the person reviewed, and not the person reviewed for the closing) is decided by the Hybrid engine (TrainingShadow, TRAINING_PERSONNEL_REVIEW); the signature step of the closer chosen stays
         Map<String, Object> r = lock(id);
         UUID person = (UUID) r.get("person_user_id");
         if (!"OPEN".equals(r.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_REVIEW_CLOSED");
-        if (!inScope(actor, person)) throw new SecurityException(TrainingAccess.DENIED);
-        if (actor.getId().equals(person)) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
         Integer pending = jdbc.queryForObject("select count(*) from training_personnel_review_items where review_id = ? and status = 'PENDING'", Integer.class, id);
         if (pending != null && pending > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_REVIEW_ITEMS_PENDING");
         if (request == null || request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
@@ -413,10 +432,13 @@ public class TrainingPersonnelReviewService {
 
     @Transactional
     public Map<String, Object> cancel(UserAccount actor, UUID id, CancelRequest request) {
-        access.require(actor, "training.job_assignment.manage");
+        return shadow.around(actor, "TRAINING_PERSONNEL_REVIEW", id, "CANCEL", true, () -> cancelInner(actor, id, request));
+    }
+
+    private Map<String, Object> cancelInner(UserAccount actor, UUID id, CancelRequest request) {
+        // who may do this (the permission, the department of the person reviewed, and not the person reviewed for the closing) is decided by the Hybrid engine (TrainingShadow, TRAINING_PERSONNEL_REVIEW); the signature step of the closer chosen stays
         Map<String, Object> r = lock(id);
         if (!"OPEN".equals(r.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_REVIEW_CLOSED");
-        if (!inScope(actor, (UUID) r.get("person_user_id"))) throw new SecurityException(TrainingAccess.DENIED);
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         jdbc.update("update training_personnel_reviews set status = 'CANCELLED', cancel_reason = ? where id = ?", request.reason().trim(), id);
         approvals.cancelOpen(TYPE, id, "Review cancelled");
@@ -455,11 +477,14 @@ public class TrainingPersonnelReviewService {
     /** Hands the closing over to another person (the person is away, left, or lost the permission): a reason is required and both people are on record. */
     @Transactional
     public Map<String, Object> changeCloser(UserAccount actor, UUID id, ChangeCloserRequest request) {
-        access.require(actor, "training.job_assignment.manage");
+        return shadow.around(actor, "TRAINING_PERSONNEL_REVIEW", id, "CHANGE_CLOSER", false, () -> changeCloserInner(actor, id, request));
+    }
+
+    private Map<String, Object> changeCloserInner(UserAccount actor, UUID id, ChangeCloserRequest request) {
+        // who may do this (the permission, the department of the person reviewed, and not the person reviewed for the closing) is decided by the Hybrid engine (TrainingShadow, TRAINING_PERSONNEL_REVIEW); the signature step of the closer chosen stays
         Map<String, Object> r = lock(id);
         if (!"OPEN".equals(r.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_REVIEW_CLOSED");
         UUID personId = (UUID) r.get("person_user_id");
-        if (!inScope(actor, personId)) throw new SecurityException(TrainingAccess.DENIED);
         Map<String, Object> assignment = closerAssignment(id);
         if (assignment == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSIGNMENT_NOT_FOUND");
         UserAccount person = users.findById(personId).orElseThrow();

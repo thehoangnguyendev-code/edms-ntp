@@ -99,70 +99,61 @@ class AccessProfileServiceSecurityTest {
         actor = user("qa-admin");
     }
 
+    private static com.eqms.dto.settings.AccessProfileConfigurationRequest sharedSetsOnly(java.util.List<UUID> setIds) {
+        // only the shared permission sets section is sent; every other section is left untouched (null)
+        return new com.eqms.dto.settings.AccessProfileConfigurationRequest(null, null, null, setIds, null, null, "token", "reason");
+    }
+
     /**
      * There is no more identity-specific "system super admin profile" lock: every profile
      * (including one that happens to still carry the legacy SYSTEM_SUPER_ADMIN code) is editable
      * given a valid signature, subject only to the general admin-coverage / no-self-grant
      * invariants exercised elsewhere in this file. Adding a permission set never removes admin
-     * coverage, so it should simply succeed here.
+     * coverage, so it should simply succeed here. (The single add/remove/set endpoints were removed
+     * 2026-11-19; this is the one save path every screen uses.)
      */
     @Test
-    void addPermissionSet_succeedsRegardlessOfProfileCode() {
+    void updateProfileConfiguration_addingASharedSet_succeedsRegardlessOfProfileCode() {
         UUID profileId = UUID.randomUUID();
         UUID setId = UUID.randomUUID();
         RoleDefinition profile = accessProfile(profileId, EffectivePermissionService.SYSTEM_SUPER_ADMIN_CODE);
 
         allowAssign();
+        when(roleRepo.findByIdForUpdate(profileId)).thenReturn(Optional.of(profile));
         when(roleRepo.findById(profileId)).thenReturn(Optional.of(profile));
+        when(roleRepo.save(profile)).thenReturn(profile);
         when(permSetRepo.findById(setId)).thenReturn(Optional.of(permissionSet(setId, "Critical Admin Set")));
-        when(appSetRepo.existsByAccessProfileIdAndPermissionSetId(profileId, setId)).thenReturn(false);
+        org.mockito.Mockito.lenient().when(appSetRepo.findByAccessProfileId(profileId)).thenReturn(List.of());
+        org.mockito.Mockito.lenient().when(permSetRepo.findByCode(any())).thenReturn(Optional.empty());
+        org.mockito.Mockito.lenient().when(appWfRepo.findByAccessProfileId(profileId)).thenReturn(List.of());
+        org.mockito.Mockito.lenient().when(uapRepo.findByAccessProfileId(profileId)).thenReturn(List.of());
 
-        service.addPermissionSet(profileId, setId, null);
+        service.updateProfileConfiguration(profileId, sharedSetsOnly(List.of(setId)));
 
         verify(appSetRepo).save(any());
         verify(permissionEvaluationService).clearCache();
     }
 
     @Test
-    void setPermissionSets_deniedWhenActorAddsCriticalSetToOwnProfile_doesNotMutate() {
+    void updateProfileConfiguration_deniedWhenActorAddsCriticalSetToOwnProfile_doesNotMutate() {
         UUID profileId = UUID.randomUUID();
         UUID criticalSetId = UUID.randomUUID();
         RoleDefinition profile = accessProfile(profileId, "QA_ADMIN");
 
         allowAssign();
-        when(roleRepo.findById(profileId)).thenReturn(Optional.of(profile));
-        when(appSetRepo.findByAccessProfileId(profileId)).thenReturn(List.of());
+        when(roleRepo.findByIdForUpdate(profileId)).thenReturn(Optional.of(profile));
+        org.mockito.Mockito.lenient().when(roleRepo.findById(profileId)).thenReturn(Optional.of(profile));
+        org.mockito.Mockito.lenient().when(appSetRepo.findByAccessProfileId(profileId)).thenReturn(List.of());
+        org.mockito.Mockito.lenient().when(permSetRepo.findByCode(any())).thenReturn(Optional.empty());
         when(uapRepo.existsByUserIdAndAccessProfileId(actor.getId(), profileId)).thenReturn(true);
         when(permissionSetItemRepo.findAllByPermissionSet_Id(criticalSetId))
                 .thenReturn(List.of(permissionSetItem(criticalPermission("security.access_profiles.update"))));
 
-        assertThatThrownBy(() -> service.setPermissionSets(profileId, List.of(criticalSetId), null))
+        assertThatThrownBy(() -> service.updateProfileConfiguration(profileId, sharedSetsOnly(List.of(criticalSetId))))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("critical permissions");
 
         verify(appSetRepo, never()).deleteByAccessProfileId(profileId);
-        verify(appSetRepo, never()).save(any());
-        verify(auditTrailService, never()).logAs(any(), any(), any(), any(), any(), any(), any(), any(), any());
-        verify(permissionEvaluationService, never()).clearCache();
-    }
-
-    @Test
-    void addPermissionSet_deniedWhenActorAddsCriticalSetToOwnProfile_doesNotMutate() {
-        UUID profileId = UUID.randomUUID();
-        UUID criticalSetId = UUID.randomUUID();
-        RoleDefinition profile = accessProfile(profileId, "QA_ADMIN");
-
-        allowAssign();
-        when(roleRepo.findById(profileId)).thenReturn(Optional.of(profile));
-        when(permSetRepo.findById(criticalSetId)).thenReturn(Optional.of(permissionSet(criticalSetId, "Security Admin")));
-        when(uapRepo.existsByUserIdAndAccessProfileId(actor.getId(), profileId)).thenReturn(true);
-        when(permissionSetItemRepo.findAllByPermissionSet_Id(criticalSetId))
-                .thenReturn(List.of(permissionSetItem(criticalPermission("security.permission_sets.manage"))));
-
-        assertThatThrownBy(() -> service.addPermissionSet(profileId, criticalSetId, null))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("critical permissions");
-
         verify(appSetRepo, never()).save(any());
         verify(auditTrailService, never()).logAs(any(), any(), any(), any(), any(), any(), any(), any(), any());
         verify(permissionEvaluationService, never()).clearCache();
@@ -246,7 +237,7 @@ class AccessProfileServiceSecurityTest {
         org.mockito.Mockito.lenient().when(appWfRepo.findByAccessProfileId(savedRole.getId())).thenReturn(List.of());
 
         service.createProfileFull(new com.eqms.dto.settings.AccessProfileFullRequest(
-                "QC Supervisor", "desc", true, null, null,
+                "QC Supervisor", "desc", true,
                 List.of("documents.document.view"), List.of(), List.of("DOCUMENT_REVIEWER"),
                 List.of(target.getId()), "token", "reason"));
 
@@ -285,7 +276,7 @@ class AccessProfileServiceSecurityTest {
         when(sodConstraintRepo.findActiveConstraintsInvolvingAny(any())).thenReturn(List.of(constraint));
 
         assertThatThrownBy(() -> service.createProfileFull(new com.eqms.dto.settings.AccessProfileFullRequest(
-                "QC Supervisor", "desc", true, null, null,
+                "QC Supervisor", "desc", true,
                 List.of("documents.revision.submit_review"), List.of(), List.of(),
                 List.of(target.getId()), "token", "reason")))
                 .isInstanceOf(IllegalStateException.class)

@@ -395,6 +395,17 @@ public class OnlyOfficeDocumentEditService {
         return sendCommand(body);
     }
 
+    /**
+     * Asks the Document Server's command service for its version, signed with the saved JWT secret (the same signing every other command uses).
+     * The answer is the command service's error code: 0 = the secret was accepted, 6 = the token was refused (the secret differs from the one on the Document Server).
+     * @throws IllegalStateException when OnlyOffice is not configured or the command service cannot be reached
+     */
+    public int checkCommandService() {
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put("c", "version");
+        return sendCommand(body);
+    }
+
     private int sendCommand(ObjectNode body) {
         OnlyOfficeConfigurationService.OnlyOfficeConfiguration config = configurationService.getEffectiveConfiguration();
         if (!config.enabled() || !StringUtils.hasText(config.jwtSecret()) || !StringUtils.hasText(config.documentServerUrl())) {

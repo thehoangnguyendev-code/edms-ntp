@@ -35,6 +35,7 @@ public class TrainingRecordExportService {
     private static final String TYPE = "TRAINING_RECORD_EXPORT";
 
     private final JdbcTemplate jdbc;
+    private final TrainingShadow shadow;
     private final TrainingAccess access;
     private final TrainingApprovalService approvals;
     private final ElectronicSignatureService signatures;
@@ -45,8 +46,9 @@ public class TrainingRecordExportService {
     private final TrainingFormTemplates templates;
 
     public TrainingRecordExportService(JdbcTemplate jdbc, TrainingAccess access, TrainingApprovalService approvals, ElectronicSignatureService signatures, AuditTrailService audit,
-                                       UserAccountRepository users, FileStorageService files, TrainingFormExportService forms, TrainingFormTemplates templates) {
+                                       UserAccountRepository users, FileStorageService files, TrainingFormExportService forms, TrainingFormTemplates templates, TrainingShadow shadow) {
         this.jdbc = jdbc;
+        this.shadow = shadow;
         this.access = access;
         this.approvals = approvals;
         this.signatures = signatures;
@@ -134,6 +136,10 @@ public class TrainingRecordExportService {
     /** The approver signs; the PDF is written now, from the records as they are at this moment, and never again. */
     @Transactional
     public Map<String, Object> approve(UserAccount actor, UUID id, SignRequest request) {
+        return shadow.around(actor, "TRAINING_RECORD_EXPORT", id, "APPROVE", true, () -> approveInner(actor, id, request));
+    }
+
+    private Map<String, Object> approveInner(UserAccount actor, UUID id, SignRequest request) {
         Map<String, Object> e = lock(id);
         if (!"PENDING_APPROVAL".equals(e.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXPORT_INVALID_TRANSITION");
         UUID person = (UUID) e.get("person_user_id");
@@ -166,6 +172,10 @@ public class TrainingRecordExportService {
 
     @Transactional
     public Map<String, Object> reject(UserAccount actor, UUID id, RejectRequest request) {
+        return shadow.around(actor, "TRAINING_RECORD_EXPORT", id, "REJECT", true, () -> rejectInner(actor, id, request));
+    }
+
+    private Map<String, Object> rejectInner(UserAccount actor, UUID id, RejectRequest request) {
         Map<String, Object> e = lock(id);
         if (!"PENDING_APPROVAL".equals(e.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXPORT_INVALID_TRANSITION");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");

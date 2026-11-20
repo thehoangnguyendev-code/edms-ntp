@@ -22,7 +22,7 @@ class TrainingPersonPositionDetailsTest {
     private final UserAccount actor = mock(UserAccount.class);
     private final TrainingMatrixService service = new TrainingMatrixService(jdbc, access, mock(TrainingStore.class),
             mock(TrainingApprovalService.class), mock(ElectronicSignatureService.class), mock(AuditTrailService.class),
-            mock(UserAccountRepository.class), mock(TrainingNotifier.class));
+            mock(UserAccountRepository.class), mock(TrainingNotifier.class), com.eqms.service.authorization.TestGuards.allowingTraining());
     private final UUID personId = UUID.randomUUID();
 
     @Test void deniesPeopleOutsideTheCurrentDepartmentBeforeReadingPositions() {

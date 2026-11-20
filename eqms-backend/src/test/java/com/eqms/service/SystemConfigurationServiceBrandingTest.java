@@ -84,6 +84,22 @@ class SystemConfigurationServiceBrandingTest {
         }
     }
 
+    /** NOTIFICATION-INBOX-LAYOUT-2026-11-20: the inbox is drawn with priority tabs until the administrator chooses the timeline; only known values are saved. */
+    @Test
+    void theNotificationInboxHasPriorityTabsUnlessTheAdministratorChoosesTheTimelineAndOnlyKnownValuesAreSaved() throws Exception {
+        assertEquals("TABS", serviceWithGeneral("{}").getPublicBranding().notificationInboxLayout());
+        assertEquals("TIMELINE", serviceWithGeneral("{\"appearance\":{\"notificationInboxLayout\":\"TIMELINE\"}}").getPublicBranding().notificationInboxLayout());
+        assertEquals("TABS", serviceWithGeneral("{\"appearance\":{\"notificationInboxLayout\":\"table\"}}").getPublicBranding().notificationInboxLayout());
+        for (String good : new String[] {"\"TABS\"", "\"TIMELINE\"", "null"}) {
+            var general = mapper.readTree("{\"appearance\":{\"notificationInboxLayout\":" + good + "}}");
+            assertDoesNotThrow(() -> SystemConfigurationService.validateNotificationInboxLayout(general), good);
+        }
+        for (String bad : new String[] {"\"table\"", "\"timeline\"", "1", "true"}) {
+            var general = mapper.readTree("{\"appearance\":{\"notificationInboxLayout\":" + bad + "}}");
+            assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validateNotificationInboxLayout(general), bad);
+        }
+    }
+
     @Test
     void trainingMaterialsLayoutIsATableUnlessTheAdministratorChoosesTilesAndOnlyKnownValuesAreSaved() throws Exception {
         assertEquals("TABLE", serviceWithGeneral("{}").getPublicBranding().trainingMaterialsLayout());

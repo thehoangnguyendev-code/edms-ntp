@@ -205,8 +205,8 @@ public class AuthController {
     }
 
     @PostMapping("/verify-signature")
-    public ResponseEntity<VerifySignatureResponse> verifySignature(@Valid @RequestBody VerifySignatureRequest request) {
-        return ResponseEntity.ok(authService.verifySignature(request));
+    public ResponseEntity<VerifySignatureResponse> verifySignature(@Valid @RequestBody VerifySignatureRequest request, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(authService.verifySignature(request, httpRequest));
     }
 
     private void setTokenCookies(HttpServletResponse response, String accessToken, String refreshToken, long accessTokenMaxAgeSeconds) {

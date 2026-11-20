@@ -38,6 +38,23 @@ class DocumentControlVisibilityTest {
     }
 
     @Test
+    void theDepartmentPermissionAloneMeansTheDepartmentLevel() {
+        assertThat(DocumentControlVisibility.classify(Set.of("documents.module.view", "documents.document.view", "documents.document.view_department")))
+                .isEqualTo(DocumentControlVisibility.DEPARTMENT);
+        assertThat(DocumentControlVisibility.classify(List.of(" DOCUMENTS.DOCUMENT.VIEW_DEPARTMENT ")))
+                .isEqualTo(DocumentControlVisibility.DEPARTMENT);
+    }
+
+    @Test
+    void viewEverythingIncludesTheDepartmentLevel_andAPartialViewAllStaysIncomplete() {
+        assertThat(DocumentControlVisibility.classify(List.of(
+                "documents.document.view_department", "documents.document.view_all", "documents.controlled_copy.view_all", "documents.uncontrolled_copy.view_all")))
+                .isEqualTo(DocumentControlVisibility.VIEW_EVERYTHING);
+        assertThat(DocumentControlVisibility.classify(List.of("documents.document.view_department", "documents.document.view_all")))
+                .isEqualTo(DocumentControlVisibility.INCOMPLETE);
+    }
+
+    @Test
     void theBundleIsTheThreeCodesOfTheDocumentAuthorizationService() {
         assertThat(DocumentControlVisibility.VIEW_ALL_PERMISSIONS).containsExactly(
                 DocumentAuthorizationService.PERMISSION_DOCUMENT_VIEW_ALL,

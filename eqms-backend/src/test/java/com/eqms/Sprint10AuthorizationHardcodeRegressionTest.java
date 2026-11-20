@@ -18,7 +18,6 @@ import com.eqms.service.ElectronicSignaturePdfPreviewService;
 import com.eqms.service.ElectronicSignatureService;
 import com.eqms.service.EffectivePermissionService;
 import com.eqms.service.NavigationService;
-import com.eqms.service.ObjectAccessRuleService;
 import com.eqms.service.PermissionEvaluationService;
 import com.eqms.service.PermissionSetService;
 import com.eqms.service.RevisionService;
@@ -49,7 +48,7 @@ import static org.mockito.Mockito.when;
  * Verifies that:
  * - Role-name string gates have been removed from ControlledCopyPolicyController,
  *   ElectronicSignatureSettingsController, UserManagementService, NavigationService,
- *   PermissionSetService, ObjectAccessRuleService, SodConstraintService, ConfigurationController.
+ *   PermissionSetService, SodConstraintService, ConfigurationController.
  * - canPublishRevision on RevisionListItemResponse is derived from
  *   RevisionWorkflowAuthorizationService, not a role/status FE check.
  * - Users with raw role names like "System Administrator" or "QA Administrator" are
@@ -237,7 +236,7 @@ class Sprint10AuthorizationHardcodeRegressionTest {
                 .doesNotContain("security-access-profiles", "security-workflow-roles");
     }
 
-    // ── 4. PermissionSetService, ObjectAccessRuleService, SodConstraintService ─
+    // ── 4. PermissionSetService, SodConstraintService ─
 
     @Mock com.eqms.repository.PermissionSetRepository permissionSetRepository;
     @Mock com.eqms.repository.PermissionSetItemRepository permissionSetItemRepository;
@@ -267,31 +266,7 @@ class Sprint10AuthorizationHardcodeRegressionTest {
         assertThatThrownBy(service::listAll).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
     }
 
-    @Mock com.eqms.repository.ObjectAccessRuleRepository objectAccessRuleRepository;
     @Mock com.eqms.repository.RoleDefinitionRepository roleDefinitionRepository;
-
-    @Test
-    void objectAccessRuleService_requireAdmin_deniedForSuperAdminFlagWithoutPermission() {
-        when(currentUserService.requireCurrentUser()).thenReturn(superAdminUser);
-        when(permissionEvaluationService.hasAnyPermission(eq(superAdminUser), any(String[].class))).thenReturn(false);
-
-        var service = new ObjectAccessRuleService(objectAccessRuleRepository, roleDefinitionRepository,
-                null, null, null,
-                currentUserService, auditTrailService, permissionEvaluationService, securityChangeSignatureService,
-                null, null);
-        assertThatThrownBy(service::listAll).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
-    }
-
-    @Test
-    void objectAccessRuleService_requireAdmin_deniedWhenRoleNameOnlyNoSuperAdmin() {
-        when(currentUserService.requireCurrentUser()).thenReturn(nonSuperAdminWithOldRoleName);
-
-        var service = new ObjectAccessRuleService(objectAccessRuleRepository, roleDefinitionRepository,
-                null, null, null,
-                currentUserService, auditTrailService, permissionEvaluationService, securityChangeSignatureService,
-                null, null);
-        assertThatThrownBy(service::listAll).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
-    }
 
     @Mock com.eqms.repository.SodConstraintRepository sodRepository;
     @Mock EffectivePermissionService effectivePermissionService;

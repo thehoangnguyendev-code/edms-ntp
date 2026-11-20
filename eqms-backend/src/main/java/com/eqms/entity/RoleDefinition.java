@@ -48,12 +48,6 @@ public class RoleDefinition {
     @Column(name = "type", nullable = false, length = 20)
     private String type = "CUSTOM";
 
-    @Column(name = "business_unit_scope")
-    private String businessUnitScope;
-
-    @Column(name = "department_scope")
-    private String departmentScope;
-
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
@@ -140,22 +134,6 @@ public class RoleDefinition {
 
     public void setType(String type) {
         this.type = type;
-    }
-
-    public String getBusinessUnitScope() {
-        return businessUnitScope;
-    }
-
-    public void setBusinessUnitScope(String businessUnitScope) {
-        this.businessUnitScope = businessUnitScope;
-    }
-
-    public String getDepartmentScope() {
-        return departmentScope;
-    }
-
-    public void setDepartmentScope(String departmentScope) {
-        this.departmentScope = departmentScope;
     }
 
     public boolean isTestData() { return testData; }

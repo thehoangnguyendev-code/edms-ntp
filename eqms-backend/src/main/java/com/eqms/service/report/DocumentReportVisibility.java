@@ -40,6 +40,11 @@ public class DocumentReportVisibility {
         args.add(actor.getId());
         sql.append(" or exists(select 1 from revision_workflow_participants vp join document_revisions vr on vr.id=vp.revision_id where vr.document_id=").append(doc).append(".id and vp.user_id=?)");
         args.add(actor.getId());
+        if (authorization.canViewDepartmentRecords(actor)) {
+            // The department level of the Document list: the Documents whose Department is the person's own.
+            sql.append(" or ").append(doc).append(".department_id=?");
+            args.add(actor.getDepartmentId());
+        }
         retained(sql, args, actor, doc + ".id");
         return new ReportQueryKit.Cond(sql.append(")").toString(), args);
     }
@@ -54,6 +59,11 @@ public class DocumentReportVisibility {
                 + " or exists(select 1 from documents vd where vd.id=" + rev + ".document_id and vd.owner_user_id=?)"
                 + " or exists(select 1 from revision_workflow_participants vp where vp.revision_id=" + rev + ".id and vp.user_id=?)");
         args.add(actor.getId()); args.add(actor.getId()); args.add(actor.getId()); args.add(actor.getId());
+        if (authorization.canViewDepartmentRecords(actor)) {
+            // The department level of the Revision list follows the Document (the Department written on the Document).
+            sql.append(" or exists(select 1 from documents vdd where vdd.id=").append(rev).append(".document_id and vdd.department_id=?)");
+            args.add(actor.getDepartmentId());
+        }
         retained(sql, args, actor, rev + ".document_id");
         return new ReportQueryKit.Cond(sql.append(")").toString(), args);
     }
@@ -63,7 +73,13 @@ public class DocumentReportVisibility {
         if (authorization.canViewAllControlledCopies(actor)) {
             return ReportQueryKit.EVERYTHING;
         }
-        return new ReportQueryKit.Cond("(" + copy + ".recipient_user_id=?)", List.of(actor.getId()));
+        List<Object> args = new ArrayList<>();
+        StringBuilder sql = new StringBuilder("(" + copy + ".recipient_user_id=?");
+        args.add(actor.getId());
+        if (permissions.hasPermission(actor, DocumentAuthorizationService.PERMISSION_CONTROLLED_COPY_VIEW)) {
+            namedInRevisionFlow(sql, args, actor, copy);
+        }
+        return new ReportQueryKit.Cond(sql.append(")").toString(), args);
     }
 
     /** Uncontrolled Copies: everything for a view-everything holder; otherwise the copies of the recipient, and, for a person who may approve or reject, the requests that wait for a decision. */
@@ -71,11 +87,26 @@ public class DocumentReportVisibility {
         if (permissions.hasPermission(actor, UncontrolledCopyService.P_VIEW) && authorization.canViewAllUncontrolledCopies(actor)) {
             return ReportQueryKit.EVERYTHING;
         }
-        String sql = "(" + copy + ".recipient_user_id=?";
+        List<Object> args = new ArrayList<>();
+        StringBuilder sql = new StringBuilder("(" + copy + ".recipient_user_id=?");
+        args.add(actor.getId());
         if (permissions.hasPermission(actor, UncontrolledCopyService.P_DISTRIBUTE)) {
-            sql += " or " + copy + ".status_code='" + UncontrolledCopyService.STATUS_READY + "'";
+            sql.append(" or ").append(copy).append(".status_code='").append(UncontrolledCopyService.STATUS_READY).append("'");
         }
-        return new ReportQueryKit.Cond(sql + ")", List.of(actor.getId()));
+        if (permissions.hasPermission(actor, UncontrolledCopyService.P_VIEW)) {
+            namedInRevisionFlow(sql, args, actor, copy);
+        }
+        return new ReportQueryKit.Cond(sql.append(")").toString(), args);
+    }
+
+    /** SQL form of DocumentAuthorizationService#isNamedInRevisionFlow for a copy: named in the flow of the revision the copy belongs to (the record, never the file). */
+    private void namedInRevisionFlow(StringBuilder sql, List<Object> args, UserAccount actor, String copy) {
+        sql.append(" or exists(select 1 from document_revisions cr where cr.id=").append(copy).append(".revision_id and (cr.author_user_id=? or cr.owner_user_id=?")
+                .append(" or exists(select 1 from documents cd where cd.id=cr.document_id and cd.owner_user_id=?)")
+                .append(" or exists(select 1 from revision_workflow_participants cp where cp.revision_id=cr.id and cp.user_id=?)");
+        args.add(actor.getId()); args.add(actor.getId()); args.add(actor.getId()); args.add(actor.getId());
+        retained(sql, args, actor, "cr.document_id");
+        sql.append("))");
     }
 
     private void retained(StringBuilder sql, List<Object> args, UserAccount actor, String documentIdSql) {

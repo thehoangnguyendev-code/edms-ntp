@@ -40,7 +40,7 @@ class TrainingTrainerServiceTest {
         when(jdbc.queryForList(contains("training_trainer_exceptions"), eq(sessionId))).thenReturn(List.of());
         when(users.findById(trainerId)).thenReturn(Optional.of(trainer));
         when(access.has(trainer, "training.trainer.qualified")).thenReturn(holdsPermission);
-        return new TrainingTrainerService(jdbc, access, null, null, null, null, users).qualification(sessionId);
+        return new TrainingTrainerService(jdbc, access, null, null, null, null, users, com.eqms.service.authorization.TestGuards.allowingTraining()).qualification(sessionId);
     }
 
     /** Owner decision 2026-10-28: the record "Trainer" (written when the person gave a training) counts for the matrix, not as proof that the trainer was trained on the topic (SOP.0003 5.1). */
@@ -55,7 +55,7 @@ class TrainingTrainerServiceTest {
         when(users.findById(trainerId)).thenReturn(Optional.of(trainer));
         when(access.has(trainer, "training.trainer.qualified")).thenReturn(false);
 
-        Map<String, Object> q = new TrainingTrainerService(jdbc, access, null, null, null, null, users).qualification(sessionId);
+        Map<String, Object> q = new TrainingTrainerService(jdbc, access, null, null, null, null, users, com.eqms.service.authorization.TestGuards.allowingTraining()).qualification(sessionId);
 
         assertThat(q).containsEntry("gmpTrained", true).containsEntry("qualified", false);
     }

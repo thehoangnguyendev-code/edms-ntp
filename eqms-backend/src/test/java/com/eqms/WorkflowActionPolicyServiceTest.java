@@ -178,8 +178,8 @@ class WorkflowActionPolicyServiceTest {
         assertThat(resp.actionCode()).isEqualTo("SUBMIT_FOR_REVIEW");
         assertThat(resp.priority()).isEqualTo(50);
         assertThat(resp.system()).isFalse();
-        assertThat(resp.actors()).hasSize(1);
-        assertThat(resp.actors().get(0).actorType()).isEqualTo(WorkflowActorType.PERMISSION);
+        // the engine decides a Revision policy from its permission, relations and state; its actors are neither asked for nor stored
+        assertThat(resp.actors()).isEmpty();
     }
 
     @Test
@@ -235,74 +235,19 @@ class WorkflowActionPolicyServiceTest {
     }
 
     @Test
-    void createPolicy_noActors_throws() {
-        WorkflowActionPolicyCreateRequest req = new WorkflowActionPolicyCreateRequest(
-                "DOCUMENT_CONTROL", "DOCUMENT_REVISION", "REVISION",
-                "SUBMIT_FOR_REVIEW", "DRAFT", null,
-                "documents.revision.submit_review", 100, true, null,
-                List.of(), null);
-
-        // @NotEmpty on actors will prevent this reaching service in production,
-        // but service-level validation also guards it
-        assertThatThrownBy(() -> service.createPolicy(req, null))
-                .isInstanceOf(WorkflowPolicyException.class)
-                .extracting("errorCode").isEqualTo("WORKFLOW_POLICY_VALIDATION_ERROR");
-    }
-
-    @Test
-    void createPolicy_invalidActorForAction_throws() {
-        WorkflowActionPolicyCreateRequest req = new WorkflowActionPolicyCreateRequest(
-                "DOCUMENT_CONTROL", "DOCUMENT_REVISION", "REVISION",
-                "UPLOAD_SOURCE", "DRAFT", null,
-                "documents.revision.upload_source", 100, true, null,
-                List.of(new WorkflowActionPolicyActorRequest(WorkflowActorType.OWNER, null)),
-                null);
-
-        assertThatThrownBy(() -> service.createPolicy(req, null))
-                .isInstanceOf(WorkflowPolicyException.class)
-                .hasMessageContaining("not permitted");
-    }
-
-    @Test
-    void createPolicy_authorForPublish_throws() {
-        WorkflowActionPolicyCreateRequest req = new WorkflowActionPolicyCreateRequest(
-                "DOCUMENT_CONTROL", "DOCUMENT_REVISION", "REVISION",
-                "PUBLISH", "READY_FOR_PUBLISHING", null,
-                "documents.revision.publish", 100, true, null,
-                List.of(new WorkflowActionPolicyActorRequest(WorkflowActorType.AUTHOR, null)),
-                null);
-
-        assertThatThrownBy(() -> service.createPolicy(req, null))
-                .isInstanceOf(WorkflowPolicyException.class)
-                .hasMessageContaining("not permitted");
-    }
-
-    @Test
-    void createPolicy_actorCodeRequiredForAccessProfile_throws() {
-        WorkflowActionPolicyCreateRequest req = new WorkflowActionPolicyCreateRequest(
-                "DOCUMENT_CONTROL", "DOCUMENT_REVISION", "REVISION",
-                "SUBMIT_FOR_REVIEW", "DRAFT", null,
-                "documents.revision.submit_review", 100, true, null,
-                List.of(new WorkflowActionPolicyActorRequest(WorkflowActorType.ACCESS_PROFILE, null)),
-                null);
-
-        assertThatThrownBy(() -> service.createPolicy(req, null))
-                .isInstanceOf(WorkflowPolicyException.class)
-                .hasMessageContaining("actorCode is required");
-    }
-
-    @Test
-    void createPolicy_ownerCannotSubmitForReview_throws() {
-        WorkflowActionPolicyCreateRequest req = new WorkflowActionPolicyCreateRequest(
-                "DOCUMENT_CONTROL", "DOCUMENT_REVISION", "REVISION",
-                "SUBMIT_FOR_REVIEW", "DRAFT", null,
-                "documents.revision.submit_review", 100, true, null,
-                List.of(new WorkflowActionPolicyActorRequest(WorkflowActorType.OWNER, null)),
-                null);
-
-        assertThatThrownBy(() -> service.createPolicy(req, null))
-                .isInstanceOf(WorkflowPolicyException.class)
-                .hasMessageContaining("not permitted");
+    void createPolicy_actorsOfARevisionPolicy_areNotValidatedNorStored() {
+        when(policyRepo.existsActiveDuplicate(any(), any(), any(), any(), any(), anyInt(), any(), any())).thenReturn(false);
+        when(policyRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        // an actor that would have been refused before (the owner may not upload a source) and no actor at all: both are accepted and nothing is stored
+        for (List<WorkflowActionPolicyActorRequest> actors : List.of(
+                List.<WorkflowActionPolicyActorRequest>of(),
+                List.of(new WorkflowActionPolicyActorRequest(WorkflowActorType.OWNER, null)))) {
+            WorkflowActionPolicyCreateRequest req = new WorkflowActionPolicyCreateRequest(
+                    "DOCUMENT_CONTROL", "DOCUMENT_REVISION", "REVISION",
+                    "UPLOAD_SOURCE", "DRAFT", null,
+                    "documents.revision.upload_source", 100, true, null, actors, null);
+            assertThat(service.createPolicy(req, null).actors()).isEmpty();
+        }
     }
 
     // ── createDocumentTypeOverride ────────────────────────────────────────────
@@ -323,8 +268,8 @@ class WorkflowActionPolicyServiceTest {
         assertThat(resp.documentTypeId()).isEqualTo(docTypeId);
         assertThat(resp.actionCode()).isEqualTo("SUBMIT_FOR_REVIEW");
         assertThat(resp.system()).isFalse();
-        // actor copied from source (stable permission selector)
-        assertThat(resp.actors()).hasSize(1);
+        // a Revision policy has no actors to copy
+        assertThat(resp.actors()).isEmpty();
     }
 
     @Test
@@ -551,7 +496,7 @@ class WorkflowActionPolicyServiceTest {
     }
 
     @Test
-    void resetToSystemDefault_restoresActors() {
+    void resetToSystemDefault_leavesNoActorsOnARevisionPolicy() {
         // change actors to something non-default
         basePolicy.getActors().clear();
         basePolicy.getActors().add(actor(basePolicy, WorkflowActorType.ASSIGNED_REVIEWER, null));
@@ -560,12 +505,8 @@ class WorkflowActionPolicyServiceTest {
 
         WorkflowActionPolicyResponse resp = service.resetToSystemDefault(policyId, null, null, null);
 
-        // The Author submits for review by default (Complete Editing is retired). Reset restores that actor, never a
-        // specific Access Profile such as DCO: adding one back is business configuration in Workflow Authorization.
-        assertThat(resp.actors()).singleElement().satisfies(a -> {
-            assertThat(a.actorType()).isEqualTo(WorkflowActorType.AUTHOR);
-            assertThat(a.actorCode()).isNull();
-        });
+        // Only REQUEST_COPY of a Controlled Copy keeps actors (the one step that reads them); a Revision policy ends up with none.
+        assertThat(resp.actors()).isEmpty();
     }
 
     @Test
@@ -590,38 +531,6 @@ class WorkflowActionPolicyServiceTest {
         assertThatThrownBy(() -> service.resetToSystemDefault(policyId, null, null, null))
                 .isInstanceOf(WorkflowPolicyException.class)
                 .extracting("errorCode").isEqualTo("WORKFLOW_POLICY_RESET_NOT_ALLOWED");
-    }
-
-    // ── isActorTypeAllowed ────────────────────────────────────────────────────
-
-    @Test
-    void isActorTypeAllowed_authorForUploadSource_true() {
-        assertThat(service.isActorTypeAllowed(RevisionWorkflowAction.UPLOAD_SOURCE,
-                WorkflowActorType.AUTHOR)).isTrue();
-    }
-
-    @Test
-    void isActorTypeAllowed_ownerForUploadSource_false() {
-        assertThat(service.isActorTypeAllowed(RevisionWorkflowAction.UPLOAD_SOURCE,
-                WorkflowActorType.OWNER)).isFalse();
-    }
-
-    @Test
-    void isActorTypeAllowed_assignedReviewerForCompleteReview_true() {
-        assertThat(service.isActorTypeAllowed(RevisionWorkflowAction.COMPLETE_REVIEW,
-                WorkflowActorType.ASSIGNED_REVIEWER)).isTrue();
-    }
-
-    @Test
-    void isActorTypeAllowed_assignedApproverForReview_false() {
-        assertThat(service.isActorTypeAllowed(RevisionWorkflowAction.COMPLETE_REVIEW,
-                WorkflowActorType.ASSIGNED_APPROVER)).isFalse();
-    }
-
-    @Test
-    void isActorTypeAllowed_authorForPublish_false() {
-        assertThat(service.isActorTypeAllowed(RevisionWorkflowAction.PUBLISH,
-                WorkflowActorType.AUTHOR)).isFalse();
     }
 
     // ── optionsEndpointData ───────────────────────────────────────────────────

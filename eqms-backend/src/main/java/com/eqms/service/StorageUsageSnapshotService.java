@@ -47,7 +47,8 @@ public class StorageUsageSnapshotService {
 
     public record Snapshot(Instant measuredAt, long totalBytes, long objectVersions,
                            JsonNode byDomain, JsonNode byFileType) {}
-    public record ScanState(Instant lastAttemptAt, Instant lastSuccessAt, String lastResult, boolean stale) {}
+    /** {@code warningSentAt} and {@code warningRecipients} describe the last time the administrators were told that the usage reached the warning threshold (null when never). */
+    public record ScanState(Instant lastAttemptAt, Instant lastSuccessAt, String lastResult, boolean stale, Instant warningSentAt, Integer warningRecipients) {}
 
     public StorageUsageSnapshotService(MinioObjectStorageService storage, JdbcTemplate jdbc, ObjectMapper mapper) {
         this.storage = storage;
@@ -116,13 +117,14 @@ public class StorageUsageSnapshotService {
     }
 
     public ScanState scanState() {
-        return jdbc.queryForObject("SELECT last_attempt_at,last_success_at,last_result FROM storage_usage_scan_state WHERE id=true",
+        return jdbc.queryForObject("SELECT last_attempt_at,last_success_at,last_result,warning_notified_at,warning_recipient_count FROM storage_usage_scan_state WHERE id=true",
                 (rs, row) -> {
                     Instant attempt = rs.getTimestamp(1) == null ? null : rs.getTimestamp(1).toInstant();
                     Instant success = rs.getTimestamp(2) == null ? null : rs.getTimestamp(2).toInstant();
                     long maxAge = intervalMs <= 0 ? 7200000 : intervalMs > Long.MAX_VALUE / 2 ? Long.MAX_VALUE : intervalMs * 2;
                     boolean stale = success == null || java.time.Duration.between(success, Instant.now()).toMillis() > maxAge;
-                    return new ScanState(attempt, success, rs.getString(3), stale);
+                    Instant warningSentAt = rs.getTimestamp(4) == null ? null : rs.getTimestamp(4).toInstant();
+                    return new ScanState(attempt, success, rs.getString(3), stale, warningSentAt, rs.getObject(5, Integer.class));
                 });
     }
 

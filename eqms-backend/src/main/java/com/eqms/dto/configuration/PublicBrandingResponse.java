@@ -57,6 +57,8 @@ public record PublicBrandingResponse(
         String auditTabView,
         /** The look of the timeline when auditTabView is TIMELINE: RAIL, CENTER, COMPACT or SCROLL_LIT (COMPACT when the administrator set nothing). */
         String auditTabTimelineStyle,
+        /** How the notifications inbox of every person is drawn: TABS (priority tabs and a plain list) or TIMELINE (days on a timeline with a filter column); TABS when the administrator set nothing. */
+        String notificationInboxLayout,
         /** Which sign-in screen every user sees: CLASSIC (the screen that existed before) or SPLIT (a card with the form on the left and a blue product panel on the right). CLASSIC when the administrator set nothing. */
         String loginLayout,
         /** The right-hand panel of the Split sign-in screen: {intervalSeconds, slides:[{title, subtitle, image}]}; null when the administrator saved no slides (the screen then draws its product preview). */

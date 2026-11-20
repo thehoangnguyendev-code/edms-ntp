@@ -16,6 +16,9 @@ import com.eqms.repository.DocumentWorkflowParticipantRepository;
 import com.eqms.repository.RevisionWorkflowParticipantRepository;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.From;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
@@ -35,6 +38,11 @@ public class DocumentAuthorizationService {
     /** The one dedicated blanket-view permission for Documents/Revisions. */
     public static final String PERMISSION_DOCUMENT_VIEW_ALL = "documents.document.view_all";
     public static final String PERMISSION_DOCUMENT_VIEW = "documents.document.view";
+    /**
+     * The middle visibility level (VISIBILITY-TIERS-2026-11-20): the Documents and Revisions whose Department (written on the Document) is the
+     * person's own Department, with or without a name in the flow. {@value #PERMISSION_DOCUMENT_VIEW_ALL} includes it.
+     */
+    public static final String PERMISSION_DOCUMENT_VIEW_DEPARTMENT = "documents.document.view_department";
     /** Dedicated blanket-view permissions for copies -- independent of the document one. */
     public static final String PERMISSION_CONTROLLED_COPY_VIEW_ALL = "documents.controlled_copy.view_all";
     public static final String PERMISSION_CONTROLLED_COPY_VIEW = "documents.controlled_copy.view";
@@ -45,7 +53,6 @@ public class DocumentAuthorizationService {
     private final RevisionWorkflowParticipantRepository revisionWorkflowParticipantRepository;
     private final DocumentRevisionRepository documentRevisionRepository;
     private final PermissionEvaluationService permissionEvaluationService;
-    private final ObjectAccessEvaluationService objectAccessEvaluationService;
     private final LifecycleStatePolicyEvaluator lifecycleStatePolicyEvaluator;
     private final DocumentRelationRepository documentRelationRepository;
     private final DocumentMasterWorkflowAuthorizationService documentMasterWorkflowAuthorizationService;
@@ -58,7 +65,6 @@ public class DocumentAuthorizationService {
             RevisionWorkflowParticipantRepository revisionWorkflowParticipantRepository,
             DocumentRevisionRepository documentRevisionRepository,
             PermissionEvaluationService permissionEvaluationService,
-            ObjectAccessEvaluationService objectAccessEvaluationService,
             LifecycleStatePolicyEvaluator lifecycleStatePolicyEvaluator,
             DocumentRelationRepository documentRelationRepository,
             DocumentMasterWorkflowAuthorizationService documentMasterWorkflowAuthorizationService,
@@ -70,7 +76,6 @@ public class DocumentAuthorizationService {
         this.revisionWorkflowParticipantRepository = revisionWorkflowParticipantRepository;
         this.documentRevisionRepository = documentRevisionRepository;
         this.permissionEvaluationService = permissionEvaluationService;
-        this.objectAccessEvaluationService = objectAccessEvaluationService;
         this.documentStakeholderHistoryRepository = documentStakeholderHistoryRepository;
         this.systemConfigurationService = systemConfigurationService;
         this.lifecycleStatePolicyEvaluator = lifecycleStatePolicyEvaluator;
@@ -80,7 +85,7 @@ public class DocumentAuthorizationService {
     }
 
     /** The sole blanket-view grant is the dedicated {@value #PERMISSION_DOCUMENT_VIEW_ALL}
-     *  permission, independent of the Record visibility mode and of any Access Profile name.
+     *  permission, independent of any Access Profile name.
      *  Administration/operational permissions never imply it (V540 granted it to every set that
      *  previously relied on them), and legacy DCO pool membership / workflow-role assignment are
      *  descriptive metadata only (see V172 parity notes). */
@@ -91,42 +96,45 @@ public class DocumentAuthorizationService {
         return permissionEvaluationService.hasPermission(user, PERMISSION_DOCUMENT_VIEW_ALL);
     }
 
-    /** True when Document Properties > Record visibility is "All" (ALL_WITH_VIEW_PERMISSION). */
-    public boolean isOpenVisibilityMode() {
-        return SystemConfigurationService.DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION
-                .equals(systemConfigurationService.getDocumentVisibilityMode());
+    /**
+     * Department level of visibility: the person holds {@value #PERMISSION_DOCUMENT_VIEW_DEPARTMENT} (and the base view permission) and has a
+     * Department. A person with no Department stays at the "named in the flow" level. This is an indirect grant: it does not make the person a
+     * direct stakeholder, so the separate preview and Audit Trail permissions still apply to them.
+     */
+    public boolean canViewDepartmentRecords(UserAccount user) {
+        return user != null && user.getId() != null && user.getDepartmentId() != null
+                && permissionEvaluationService.hasPermission(user, PERMISSION_DOCUMENT_VIEW_DEPARTMENT)
+                && permissionEvaluationService.hasPermission(user, PERMISSION_DOCUMENT_VIEW);
     }
 
-    /** Open mode: every holder of the base permission sees every record. */
-    private boolean hasOpenVisibility(UserAccount user, String baseViewPermission) {
-        return user != null && user.getId() != null
-                && isOpenVisibilityMode()
-                && permissionEvaluationService.hasPermission(user, baseViewPermission);
+    /** True when the Document belongs to the Department of the person and the person holds the department level (the Department is compared by id). */
+    public boolean isInViewerDepartment(UserAccount user, DocumentRecord document) {
+        return document != null && document.getDepartment() != null && document.getDepartment().getId() != null
+                && canViewDepartmentRecords(user)
+                && document.getDepartment().getId().equals(user.getDepartmentId());
     }
 
-    /** Whether the Document/Revision list may skip the participant row filter: blanket grant, or
-     *  open mode with the base view permission. */
+    /** Whether the Document/Revision list may skip the participant row filter: the blanket grant only (the system-wide "open" mode was removed,
+     *  VISIBILITY-TIERS-2026-11-20; the department level adds a row condition instead). */
     public boolean canListAllDocuments(UserAccount user) {
-        return canViewAllDocuments(user) || hasOpenVisibility(user, PERMISSION_DOCUMENT_VIEW);
+        return canViewAllDocuments(user);
     }
 
-    /** Controlled Copy blanket view: dedicated permission, or open mode with the base permission. */
+    /** Controlled Copy blanket view: the dedicated permission. */
     public boolean canViewAllControlledCopies(UserAccount user) {
         return user != null && user.getId() != null
-                && (permissionEvaluationService.hasPermission(user, PERMISSION_CONTROLLED_COPY_VIEW_ALL)
-                || hasOpenVisibility(user, PERMISSION_CONTROLLED_COPY_VIEW));
+                && permissionEvaluationService.hasPermission(user, PERMISSION_CONTROLLED_COPY_VIEW_ALL);
     }
 
-    /** Uncontrolled Copy blanket view: dedicated permission, or open mode with the base permission. */
+    /** Uncontrolled Copy blanket view: the dedicated permission. */
     public boolean canViewAllUncontrolledCopies(UserAccount user) {
         return user != null && user.getId() != null
-                && (permissionEvaluationService.hasPermission(user, PERMISSION_UNCONTROLLED_COPY_VIEW_ALL)
-                || hasOpenVisibility(user, PERMISSION_UNCONTROLLED_COPY_VIEW));
+                && permissionEvaluationService.hasPermission(user, PERMISSION_UNCONTROLLED_COPY_VIEW_ALL);
     }
 
-    /** A Controlled Copy is visible to blanket viewers and to the user named as its recipient
-     *  (matched by account id, never by display text). Document-flow participants and the people
-     *  who acted on the copy do not see it merely for that reason. */
+    /** The CONTENT of a Controlled Copy (issued PDF, evidence files) is visible to blanket viewers and to the user named as its recipient
+     *  (matched by account id, never by display text). The people named in the flow of the revision see the RECORD, see
+     *  {@link #canSeeControlledCopyRecord}; the people who acted on the copy do not see it merely for that reason. */
     public boolean canViewControlledCopy(UserAccount user, ControlledCopyRecord copy) {
         if (user == null || user.getId() == null || copy == null) {
             return false;
@@ -135,6 +143,68 @@ public class DocumentAuthorizationService {
             return true;
         }
         return copy.getRecipientUser() != null && user.getId().equals(copy.getRecipientUser().getId());
+    }
+
+    /**
+     * The RECORD of a Controlled Copy (list row, detail, signatures, Audit Trail), not its content: everyone who may view the copy
+     * ({@link #canViewControlledCopy}), plus a person named in the flow of the revision the copy belongs to who holds the base copy view
+     * permission (VISIBILITY-TIERS-2026-11-20: "the people in the flow only see the copy"). The issued PDF and the evidence files stay with
+     * {@link #canViewControlledCopy}: seeing the record never opens them.
+     */
+    public boolean canSeeControlledCopyRecord(UserAccount user, ControlledCopyRecord copy) {
+        if (canViewControlledCopy(user, copy)) {
+            return true;
+        }
+        return user != null && user.getId() != null && copy != null
+                && isNamedInRevisionFlow(user, copy.getRevision())
+                && permissionEvaluationService.hasPermission(user, PERMISSION_CONTROLLED_COPY_VIEW);
+    }
+
+    public void requireCanSeeControlledCopyRecord(UserAccount user, ControlledCopyRecord copy) {
+        if (!canSeeControlledCopyRecord(user, copy)) {
+            throw new AccessDeniedException("Controlled copy access denied");
+        }
+    }
+
+    /** Same rule for an Uncontrolled Copy: named in the flow of its revision and holding the base view permission (the record, never the file). */
+    public boolean isNamedInFlowOfUncontrolledCopy(UserAccount user, DocumentRevisionRecord revision) {
+        return user != null && user.getId() != null
+                && isNamedInRevisionFlow(user, revision)
+                && permissionEvaluationService.hasPermission(user, PERMISSION_UNCONTROLLED_COPY_VIEW);
+    }
+
+    /**
+     * SQL form of "named in the flow of the revision of the copy" for the Controlled and Uncontrolled Copy lists (the Criteria mirror of
+     * {@link #isNamedInRevisionFlow}). The revision is joined explicitly and LEFT, so a copy without a revision is never dropped from the
+     * list of its recipient. The caller adds the base view permission test, as the record rule does.
+     */
+    public Predicate copyFlowPredicate(UserAccount user, From<?, ?> copyRoot, CriteriaQuery<?> query, CriteriaBuilder cb) {
+        UUID userId = user.getId();
+        Join<?, DocumentRevisionRecord> revision = copyRoot.join("revision", JoinType.LEFT);
+        Join<DocumentRevisionRecord, DocumentRecord> document = revision.join("document", JoinType.LEFT);
+        List<Predicate> named = new ArrayList<>();
+        named.add(cb.equal(revision.get("author").get("id"), userId));
+        named.add(cb.equal(revision.get("owner").get("id"), userId));
+        named.add(cb.equal(document.get("owner").get("id"), userId));
+
+        Subquery<UUID> participant = query.subquery(UUID.class);
+        var participantRoot = participant.from(RevisionWorkflowParticipant.class);
+        participant.select(participantRoot.get("revision").get("id")).where(
+                cb.equal(participantRoot.get("revision").get("id"), revision.get("id")),
+                cb.equal(participantRoot.get("user").get("id"), userId));
+        named.add(cb.exists(participant));
+
+        Set<String> retainedTypes = systemConfigurationService.getRetainVisibilityForRemovedParticipantTypes();
+        if (!retainedTypes.isEmpty()) {
+            Subquery<UUID> history = query.subquery(UUID.class);
+            var historyRoot = history.from(DocumentStakeholderHistory.class);
+            history.select(historyRoot.get("document").get("id")).where(
+                    cb.equal(historyRoot.get("document").get("id"), document.get("id")),
+                    cb.equal(historyRoot.get("user").get("id"), userId),
+                    historyRoot.get("participantType").in(retainedTypes));
+            named.add(cb.exists(history));
+        }
+        return cb.or(named.toArray(Predicate[]::new));
     }
 
     /** A distribution batch lists every recipient, so only blanket viewers may open it. */
@@ -158,12 +228,6 @@ public class DocumentAuthorizationService {
         return permissionEvaluationService.hasPermission(user, "documents.workspace.manage");
     }
 
-    public void requireCanManageDocumentWorkspace(UserAccount user) {
-        if (!canManageDocumentWorkspace(user)) {
-            throw new AccessDeniedException("Current user is not allowed to perform this action");
-        }
-    }
-
     /** "documents.document.create" was previously only ever read by CapabilityService to decide
      * whether the FE shows the "+ Add Document" button -- the actual create-draft endpoint only
      * checked the broader documents.workspace.manage (also used by canPublishRevision(), so it
@@ -185,10 +249,6 @@ public class DocumentAuthorizationService {
         documentMasterWorkflowAuthorizationService.require(user, document, actionCode);
     }
 
-    public boolean canPerformDocumentMasterLifecycleAction(UserAccount user, DocumentRecord document, String actionCode) {
-        return documentMasterWorkflowAuthorizationService.isAllowed(user, document, actionCode);
-    }
-
     /** Opening a revision is an OPERATION: it follows the workspace-management permission, not the view-everything bundle (a person who may only look must not be able to act; owner decision 2026-11-08). */
     public boolean canManageRevisionWorkspace(UserAccount user) {
         return canManageDocumentWorkspace(user);
@@ -198,12 +258,6 @@ public class DocumentAuthorizationService {
         // The explicit workspace-management permission matches the policy row seeded
         // for PUBLISH. Role names are intentionally not part of this decision.
         return canManageDocumentWorkspace(user);
-    }
-
-    public void requireCanPublishRevision(UserAccount user) {
-        if (!canPublishRevision(user)) {
-            throw new AccessDeniedException("Current user is not authorized to publish revisions.");
-        }
     }
 
     public void requireCanManageRevisionWorkspace(UserAccount user) {
@@ -267,9 +321,19 @@ public class DocumentAuthorizationService {
         if (isDirectStakeholder(user, document)) {
             return true;
         }
-        // Open mode (Record visibility = "All") is an ADDITIONAL grant -- it never short-circuits
-        // ahead of the author/participant checks above.
-        return hasOpenVisibility(user, PERMISSION_DOCUMENT_VIEW);
+        // The department level is an ADDITIONAL grant -- it never short-circuits ahead of the author/participant checks above.
+        return isInViewerDepartment(user, document);
+    }
+
+    /**
+     * Seeing the Document as a person who may also ACT on the strength of it (a viewer may request a Controlled Copy for themselves): the people
+     * named in the flow and the view-everything holders -- NOT the department level, which is read-only (VISIBILITY-TIERS-2026-11-20).
+     */
+    public boolean canViewDocumentAsActor(UserAccount user, DocumentRecord document) {
+        if (user == null || user.getId() == null || document == null) {
+            return false;
+        }
+        return isDirectStakeholder(user, document);
     }
 
     public void requireCanViewDocument(UserAccount user, DocumentRecord document) {
@@ -298,8 +362,18 @@ public class DocumentAuthorizationService {
         if (user == null || user.getId() == null || revision == null) {
             return false;
         }
-        if (canViewAllDocuments(user)) {
-            return true;
+        return canViewAllDocuments(user) || isNamedInRevisionFlow(user, revision);
+    }
+
+    /**
+     * True when the person has a name in the flow of THIS Revision: its Author, the creator of the Revision or of its Document, an assigned
+     * Co-author/Reviewer/Approver, or -- when the toggle of that role is on -- a person removed from a role of the Document. Never true because of
+     * a blanket grant ({@code view_all}) or the department level: a person who is only named in a flow is told apart from one who sees everything.
+     * A person removed from the flow of a newer Revision is not named in it (the flow is read per Revision).
+     */
+    public boolean isNamedInRevisionFlow(UserAccount user, DocumentRevisionRecord revision) {
+        if (user == null || user.getId() == null || revision == null) {
+            return false;
         }
 
         UUID currentUserId = user.getId();
@@ -353,6 +427,10 @@ public class DocumentAuthorizationService {
         List<Predicate> visible = new ArrayList<>();
         visible.add(cb.equal(root.get("author").get("id"), userId));
         visible.add(cb.equal(root.get("owner").get("id"), userId));
+        if (canViewDepartmentRecords(user)) {
+            // Department level: the Documents whose Department is the person's own (same test as isInViewerDepartment).
+            visible.add(cb.equal(root.get("department").get("id"), user.getDepartmentId()));
+        }
 
         Subquery<UUID> documentParticipant = query.subquery(UUID.class);
         var documentParticipantRoot = documentParticipant.from(DocumentWorkflowParticipant.class);
@@ -392,6 +470,10 @@ public class DocumentAuthorizationService {
         visible.add(cb.equal(root.get("author").get("id"), userId));
         visible.add(cb.equal(root.get("owner").get("id"), userId));
         visible.add(cb.equal(root.get("document").get("owner").get("id"), userId));
+        if (canViewDepartmentRecords(user)) {
+            // Department level follows the Document (same test as canViewRevision / isInViewerDepartment).
+            visible.add(cb.equal(root.get("document").get("department").get("id"), user.getDepartmentId()));
+        }
 
         Subquery<UUID> revisionParticipant = query.subquery(UUID.class);
         var revisionParticipantRoot = revisionParticipant.from(RevisionWorkflowParticipant.class);
@@ -421,9 +503,9 @@ public class DocumentAuthorizationService {
             return true;
         }
 
-        // Open mode (Record visibility = "All") is an ADDITIONAL grant -- it never short-circuits
-        // ahead of the author/participant checks above.
-        return hasOpenVisibility(user, PERMISSION_DOCUMENT_VIEW);
+        // The department level follows the Document (a Revision is seen with its Document). It is an ADDITIONAL
+        // grant -- it never short-circuits ahead of the author/participant checks above.
+        return isInViewerDepartment(user, revision.getDocument());
     }
 
     public void requireCanViewRevision(UserAccount user, DocumentRevisionRecord revision) {
@@ -620,12 +702,6 @@ public class DocumentAuthorizationService {
                 RevisionWorkflowAction.OPEN_PUBLISHING_WORKSPACE,
                 RevisionWorkflowAuthorizationContext.of(revision)
         );
-    }
-
-    public void requireCanEditRevisionFileOnline(UserAccount user, DocumentRevisionRecord revision) {
-        if (!canEditRevisionFileOnline(user, revision)) {
-            throw new AccessDeniedException("Only the assigned Author or Co-Author can edit the revision file online.");
-        }
     }
 
     /** Only the first REVIEWER whose action is still PENDING (sequential review) may act,

@@ -63,7 +63,7 @@ import java.util.UUID;
 public class ControlledCopyRecallBatchService {
 
     public static final int MAX_FILES = 50;
-    public static final long MAX_FILE_BYTES = 25L * 1024 * 1024;
+    public static final long MAX_FILE_BYTES = 50L * 1024 * 1024;
     private static final String PERMISSION_RECALL = "documents.controlled_copy.recall";
     private static final String ENTITY_TYPE = "Controlled Copy Recall Batch";
     private static final String SIGNATURE_ENTITY_TYPE = "ControlledCopyRecallBatch";

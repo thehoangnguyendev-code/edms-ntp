@@ -284,7 +284,8 @@ public class TrainingFileService {
     }
 
     /** Most pages of one scanned batch (the reader of the codes stops there), so a hostile file cannot keep the server rendering. */
-    private static final int MAX_BATCH_PAGES = com.eqms.service.ControlledCopyScanCodeService.MAX_SCAN_PAGES;
+    // its own limit: it used to follow the one of Recall by Scan, which was raised without any decision about training scans
+    private static final int MAX_BATCH_PAGES = 200;
 
     /**
      * One scanned file with the pages of many people, in any order (owner decision 2026-10-30). Every page carries the QR code of its copy (TrainingPaperQr): the server reads it, puts the pages of the same

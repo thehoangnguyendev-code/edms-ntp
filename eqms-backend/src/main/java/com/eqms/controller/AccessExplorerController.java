@@ -1,7 +1,7 @@
 package com.eqms.controller;
 
 import com.eqms.dto.user.AccessExplorerDtos.HoldersResponse;
-import com.eqms.dto.user.AccessExplorerDtos.PermissionOption;
+import com.eqms.dto.user.AccessExplorerDtos.PermissionPage;
 import com.eqms.service.AccessExplorerService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,12 +22,21 @@ public class AccessExplorerController {
     }
 
     @GetMapping("/permissions")
-    public ResponseEntity<List<PermissionOption>> permissions(@RequestParam(required = false) String search) {
-        return ResponseEntity.ok(service.searchPermissions(search));
+    public ResponseEntity<PermissionPage> permissions(@RequestParam(required = false) String search, @RequestParam(required = false) String module,
+                                                      @RequestParam(required = false) String held, @RequestParam(required = false) String sortBy,
+                                                      @RequestParam(required = false) String sortDir, @RequestParam(defaultValue = "0") int page,
+                                                      @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(service.listPermissions(search, module, held, sortBy, sortDir, page, size));
+    }
+
+    @GetMapping("/modules")
+    public ResponseEntity<List<String>> modules() {
+        return ResponseEntity.ok(service.modules());
     }
 
     @GetMapping("/holders")
-    public ResponseEntity<HoldersResponse> holders(@RequestParam String code, @RequestParam(defaultValue = "true") boolean activeOnly) {
-        return ResponseEntity.ok(service.whoHolds(code, activeOnly));
+    public ResponseEntity<HoldersResponse> holders(@RequestParam String code, @RequestParam(defaultValue = "true") boolean activeOnly, @RequestParam(required = false) String search,
+                                                   @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(service.whoHolds(code, activeOnly, search, page, size));
     }
 }

@@ -127,7 +127,7 @@ public class NotificationService {
                 buildSort(sortBy, sortDirection)
         );
         Page<UserNotification> result = notificationRepository.findAll(specification, pageable);
-        java.util.Map<String, String[]> icons = iconsOf(result.getContent().stream().map(UserNotification::getType).collect(java.util.stream.Collectors.toSet()));
+        java.util.Map<String, String> icons = iconsOf(result.getContent().stream().map(UserNotification::getType).collect(java.util.stream.Collectors.toSet()));
         List<NotificationResponse> data = result.getContent().stream().map(n -> toResponse(n, icons)).toList();
         return new PageResponse<>(
                 data,
@@ -164,7 +164,12 @@ public class NotificationService {
                         notification -> notification.getType().trim().toLowerCase(Locale.ROOT),
                         java.util.stream.Collectors.counting()
                 ));
-        return new NotificationSummaryResponse(total, unread, personal, system, byType);
+        Map<String, Long> byPriority = notifications.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        notification -> StringUtils.hasText(notification.getPriority()) ? notification.getPriority().trim().toLowerCase(Locale.ROOT) : "medium",
+                        java.util.stream.Collectors.counting()
+                ));
+        return new NotificationSummaryResponse(total, unread, personal, system, byType, byPriority);
     }
 
     /**
@@ -510,10 +515,17 @@ public class NotificationService {
                 predicates.add(cb.equal(cb.lower(root.get("type")), type.toLowerCase(Locale.ROOT)));
             }
             if (StringUtils.hasText(module) && !"all".equalsIgnoreCase(module)) {
-                predicates.add(cb.equal(cb.lower(root.get("module")), module.toLowerCase(Locale.ROOT)));
+                // the module of a notification is spelled in many ways in the table (DOCUMENT_CONTROL, Document, Document Control): the filter finds all of them
+                var compact = cb.function("regexp_replace", String.class, cb.lower(root.get("module")), cb.literal("[\\s._-]+"), cb.literal(""), cb.literal("g"));
+                var spellings = com.eqms.util.ModuleKeys.compactSpellingsOf(module);
+                predicates.add(spellings.isEmpty() ? cb.equal(cb.lower(root.get("module")), module.toLowerCase(Locale.ROOT)) : compact.in(spellings));
             }
             if (StringUtils.hasText(priority) && !"all".equalsIgnoreCase(priority)) {
-                predicates.add(cb.equal(cb.lower(root.get("priority")), priority.toLowerCase(Locale.ROOT)));
+                // one priority, or several separated by commas ("critical,high")
+                var levels = java.util.Arrays.stream(priority.split(",")).map(String::trim).filter(StringUtils::hasText).map(p -> p.toLowerCase(Locale.ROOT)).toList();
+                if (!levels.isEmpty()) {
+                    predicates.add(cb.lower(root.get("priority")).in(levels));
+                }
             }
             if (StringUtils.hasText(status) && !"all".equalsIgnoreCase(status)) {
                 predicates.add(cb.equal(cb.lower(root.get("status")), status.toLowerCase(Locale.ROOT)));
@@ -579,15 +591,15 @@ public class NotificationService {
         return toResponse(notification, iconsOf(java.util.Collections.singleton(notification.getType())));
     }
 
-    /** The icon and tone chosen for each kind (the event code is the type of the notification); a kind with none chosen is not in the map. */
-    private java.util.Map<String, String[]> iconsOf(java.util.Collection<String> types) {
-        java.util.Map<String, String[]> icons = new java.util.HashMap<>();
+    /** The icon chosen for each kind (the event code is the type of the notification); a kind with none chosen is not in the map. */
+    private java.util.Map<String, String> iconsOf(java.util.Collection<String> types) {
+        java.util.Map<String, String> icons = new java.util.HashMap<>();
         if (policyRepository == null) return icons;
         for (String type : types) {
             if (type == null || type.isBlank()) continue;
             try {
                 policyRepository.findByEventCode(type).ifPresent(policy -> {
-                    if (policy.getIcon() != null || policy.getIconTone() != null) icons.put(type, new String[] {policy.getIcon(), policy.getIconTone()});
+                    if (policy.getIcon() != null) icons.put(type, policy.getIcon());
                 });
             } catch (RuntimeException ignored) {
                 // an icon is a decoration: never let it stop the list of notifications
@@ -596,8 +608,8 @@ public class NotificationService {
         return icons;
     }
 
-    private NotificationResponse toResponse(UserNotification notification, java.util.Map<String, String[]> icons) {
-        String[] icon = icons.get(notification.getType());
+    private NotificationResponse toResponse(UserNotification notification, java.util.Map<String, String> icons) {
+        String icon = icons.get(notification.getType());
         return new NotificationResponse(
                 notification.getId(),
                 notification.getType(),
@@ -621,8 +633,7 @@ public class NotificationService {
                         notification.getRelatedEntityTitle()
                 ),
                 notification.getMetadata(),
-                icon == null ? null : icon[0],
-                icon == null ? null : icon[1]
+                icon
         );
     }
 

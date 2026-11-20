@@ -17,15 +17,26 @@ import java.util.List;
  *                               the actor must satisfy, per {@code relationMatchRule}. Empty means
  *                               no relation requirement -- permission alone suffices.
  * @param relationMatchRule "ANY" or "ALL".
+ * @param forbiddenRelationCodes Relation codes the actor must NOT satisfy for this resource (runtime separation of duties, "a different person":
+ *                               e.g. the approver of a report template must not be its author or the person who submitted it). Checked after the
+ *                               required relations; a match denies with {@code SEPARATION_OF_DUTIES}. Empty means none. Added 2026-11-18 (phase A.2 of
+ *                               AUTHORIZATION_SYSTEM_WIDE_HYBRID_PLAN); the four-argument constructor keeps every existing adapter unchanged.
  */
 public record ResolvedPolicy(
         String requiredPermissionCode,
         Long policyVersion,
         List<String> requiredRelationCodes,
-        String relationMatchRule
+        String relationMatchRule,
+        List<String> forbiddenRelationCodes
 ) {
     public ResolvedPolicy {
         if (requiredRelationCodes == null) requiredRelationCodes = List.of();
         if (relationMatchRule == null) relationMatchRule = "ANY";
+        if (forbiddenRelationCodes == null) forbiddenRelationCodes = List.of();
+    }
+
+    /** A policy with no forbidden relation: what every adapter built before the "a different person" check returns. */
+    public ResolvedPolicy(String requiredPermissionCode, Long policyVersion, List<String> requiredRelationCodes, String relationMatchRule) {
+        this(requiredPermissionCode, policyVersion, requiredRelationCodes, relationMatchRule, List.of());
     }
 }

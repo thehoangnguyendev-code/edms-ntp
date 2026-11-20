@@ -13,8 +13,6 @@ public record AccessProfileFullRequest(
         String name,
         String description,
         boolean active,
-        String businessUnitScope,
-        String departmentScope,
         List<String> permissionCodes,
         List<UUID> permissionSetIds,
         List<String> workflowRoles,

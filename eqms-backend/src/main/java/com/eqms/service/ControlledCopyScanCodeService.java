@@ -51,8 +51,8 @@ public final class ControlledCopyScanCodeService {
     public static final String PAYLOAD_PREFIX = "EQMSCC1:";
     /** Prefix of a per-page code: {@code EQMSCC2:<token>:<page>:<pages>}, so loose pages can be put back in order. */
     public static final String PAGE_PAYLOAD_PREFIX = "EQMSCC2:";
-    /** Most pages read from one scan, so a hostile file cannot keep the server rendering. */
-    public static final int MAX_SCAN_PAGES = 200;
+    /** Most pages read from one scan, so a hostile file cannot keep the server rendering (raised from 200 on the owner's request, 2026-11-18). */
+    public static final int MAX_SCAN_PAGES = 1000;
     private static final String ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
     /** 26 characters of a 32-symbol alphabet = 130 bits of randomness. */
     static final int TOKEN_LENGTH = 26;

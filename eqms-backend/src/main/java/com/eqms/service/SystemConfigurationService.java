@@ -251,6 +251,7 @@ public class SystemConfigurationService {
         if ("video".equals(videoBackground.path("mode").asText()) && (authBackgroundVideoStore == null || !authBackgroundVideoStore.exists(UUID.fromString(videoBackground.path("videoId").asText())))) throw new IllegalArgumentException("Authentication background video does not exist");
         validateTrainingMaterialsLayout(nextGeneral);
         validateAuditTabView(nextGeneral);
+        validateNotificationInboxLayout(nextGeneral);
         validateLoginLayout(nextGeneral);
         validateLoginCarousel(nextGeneral);
         validateKnowledgeFolderNames(nextGeneral);
@@ -476,6 +477,7 @@ public class SystemConfigurationService {
                 optionalHexColor(appearance, "menuIconColor"),
                 auditTabView(appearance),
                 auditTabTimelineStyle(appearance),
+                notificationInboxLayout(appearance),
                 loginLayout(appearance),
                 loginCarousel(appearance)
         );
@@ -601,6 +603,23 @@ public class SystemConfigurationService {
     String auditTabTimelineStyle(JsonNode appearance) {
         String value = appearance == null ? null : textValue(appearance, "auditTabTimelineStyle");
         return value != null && AUDIT_TAB_TIMELINE_STYLES.contains(value) ? value : DEFAULT_AUDIT_TAB_TIMELINE_STYLE;
+    }
+
+    /** Machine values only; the admin UI owns the labels. Missing or unknown values fall back to the priority tabs. */
+    static final java.util.Set<String> NOTIFICATION_INBOX_LAYOUTS = java.util.Set.of("TABS", "TIMELINE");
+    static final String DEFAULT_NOTIFICATION_INBOX_LAYOUT = "TABS";
+
+    String notificationInboxLayout(JsonNode appearance) {
+        String value = appearance == null ? null : textValue(appearance, "notificationInboxLayout");
+        return value != null && NOTIFICATION_INBOX_LAYOUTS.contains(value) ? value : DEFAULT_NOTIFICATION_INBOX_LAYOUT;
+    }
+
+    static void validateNotificationInboxLayout(JsonNode general) {
+        JsonNode appearance = general == null ? null : general.get("appearance");
+        JsonNode layout = appearance == null ? null : appearance.get("notificationInboxLayout");
+        if (layout != null && !layout.isNull() && (!layout.isTextual() || !NOTIFICATION_INBOX_LAYOUTS.contains(layout.asText()))) {
+            throw new IllegalArgumentException("notificationInboxLayout must be one of " + NOTIFICATION_INBOX_LAYOUTS);
+        }
     }
 
     static void validateAuditTabView(JsonNode general) {
@@ -984,13 +1003,6 @@ public class SystemConfigurationService {
         return value >= 1 ? value : 30;
     }
 
-    /** Document Properties > Record visibility: only people in a record's flow (Author/Co-Author/
-     *  Reviewer/Approver, or a copy's recipient) see it. Holders of the dedicated view-all
-     *  permissions always see everything regardless of this setting. */
-    public static final String DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY = "PARTICIPANTS_ONLY";
-    /** Every holder of the base view permission sees every record. */
-    public static final String DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION = "ALL_WITH_VIEW_PERMISSION";
-
     /** Knowledge Base visibility (a separate setting from Record Visibility): a user sees the Effective documents of their own Department (the default). */
     public static final String KNOWLEDGE_VISIBILITY_OWN_DEPARTMENT = "OWN_DEPARTMENT";
     /** Knowledge Base visibility: a user sees the Effective documents of every Department of the Business Unit their own Department belongs to. */
@@ -1001,21 +1013,6 @@ public class SystemConfigurationService {
     public static final String KNOWLEDGE_VISIBILITY_SHARING = "SHARING";
     static final java.util.Set<String> KNOWLEDGE_VISIBILITY_MODES = java.util.Set.of(
             KNOWLEDGE_VISIBILITY_OWN_DEPARTMENT, KNOWLEDGE_VISIBILITY_OWN_BUSINESS_UNIT, KNOWLEDGE_VISIBILITY_ALL, KNOWLEDGE_VISIBILITY_SHARING);
-
-    /**
-     * Record visibility mode for Document Control. Missing, blank or unrecognised values resolve to
-     * PARTICIPANTS_ONLY, the restrictive default, so a corrupt value can never widen access.
-     */
-    @Transactional(readOnly = true)
-    public String getDocumentVisibilityMode() {
-        JsonNode documents = requireConfiguration().getDocumentsConfig();
-        JsonNode value = documents == null ? null : documents.get("documentVisibilityMode");
-        if (value != null && value.isTextual()
-                && DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION.equals(value.asText())) {
-            return DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION;
-        }
-        return DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY;
-    }
 
     /**
      * How the Knowledge Base decides who sees a document: OWN_DEPARTMENT (the default, today's behaviour), OWN_BUSINESS_UNIT (the whole Business Unit
@@ -1621,7 +1618,9 @@ public class SystemConfigurationService {
               "sessionTimeoutMinutes": 30,
               "enable2FA": true,
               "enableAccountLockout": true,
-              "maxLoginAttempts": 5
+              "maxLoginAttempts": 5,
+              "maxSignatureAttempts": 5,
+              "maxConcurrentSessions": 0
             }
             """));
         config.setDocumentsConfig(parse("""
@@ -1890,13 +1889,6 @@ public class SystemConfigurationService {
         if (seed != null && !seed.isNull() && !java.util.Set.of("0.0.1", "0.1").contains(seed.asText())) {
             throw new IllegalArgumentException("Revision number seed must be 0.0.1 or 0.1");
         }
-        JsonNode visibilityMode = documents.get("documentVisibilityMode");
-        if (visibilityMode != null && !visibilityMode.isNull()
-                && (!visibilityMode.isTextual() || !java.util.Set.of(
-                        DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY, DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION)
-                        .contains(visibilityMode.asText()))) {
-            throw new IllegalArgumentException("Record visibility must be PARTICIPANTS_ONLY or ALL_WITH_VIEW_PERMISSION");
-        }
         JsonNode knowledgeMode = documents.get("knowledgeVisibilityMode");
         if (knowledgeMode != null && !knowledgeMode.isNull()
                 && (!knowledgeMode.isTextual() || !KNOWLEDGE_VISIBILITY_MODES.contains(knowledgeMode.asText()))) {
@@ -2020,6 +2012,26 @@ public class SystemConfigurationService {
             int maxLoginAttempts = maxLoginAttemptsNode.asInt();
             if (maxLoginAttempts < 3 || maxLoginAttempts > 10) {
                 throw new IllegalArgumentException("Maximum Login Attempts must be between 3 and 10");
+            }
+        }
+        JsonNode maxSignatureAttemptsNode = securityConfig.get("maxSignatureAttempts");
+        if (maxSignatureAttemptsNode != null && !maxSignatureAttemptsNode.isNull()) {
+            if (!maxSignatureAttemptsNode.isNumber()) {
+                throw new IllegalArgumentException("Maximum Signature Attempts must be an integer");
+            }
+            int maxSignatureAttempts = maxSignatureAttemptsNode.asInt();
+            if (maxSignatureAttempts < 3 || maxSignatureAttempts > 10) {
+                throw new IllegalArgumentException("Maximum Signature Attempts must be between 3 and 10");
+            }
+        }
+        JsonNode maxConcurrentSessionsNode = securityConfig.get("maxConcurrentSessions");
+        if (maxConcurrentSessionsNode != null && !maxConcurrentSessionsNode.isNull()) {
+            if (!maxConcurrentSessionsNode.isNumber()) {
+                throw new IllegalArgumentException("Maximum Concurrent Sessions must be an integer");
+            }
+            int maxConcurrentSessions = maxConcurrentSessionsNode.asInt();
+            if (maxConcurrentSessions < 0 || maxConcurrentSessions > 10) {
+                throw new IllegalArgumentException("Maximum Concurrent Sessions must be between 0 and 10");
             }
         }
 

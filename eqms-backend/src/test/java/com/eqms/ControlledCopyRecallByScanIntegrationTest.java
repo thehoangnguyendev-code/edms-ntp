@@ -70,6 +70,8 @@ class ControlledCopyRecallByScanIntegrationTest {
     @Autowired private ExecutedRecordRepository executedRecordRepository;
     @Autowired private UserAccountRepository userAccountRepository;
     @Autowired private ControlledCopyAuthorizationService controlledCopyAuthorizationService;
+    @Autowired private com.eqms.repository.ControlledCopyRecallItemRepository recallItemRepository;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired private com.eqms.service.ControlledCopyPolicyService policyService;
     @Autowired private DocumentAuthorizationService documentAuthorizationService;
 
@@ -122,6 +124,16 @@ class ControlledCopyRecallByScanIntegrationTest {
                     || copy.getRevision() == null || copy.getDocument() == null || copy.getRecalledAt() != null) {
                 continue;
             }
+            // A copy the recall by scan itself would block is not a fixture of this test: one issued for reading only (it is not recalled by scan), and one that a scan of an open draft already claims
+            // (the shared dev database keeps the drafts of earlier runs).
+            if (com.eqms.service.ControlledCopyService.USAGE_READ_AND_COMPLY.equals(copy.getUsagePurpose())) {
+                continue;
+            }
+            boolean claimed = recallItemRepository.findAllByControlledCopy_IdInAndBatch_StatusAndBatch_IdNot(
+                    List.of(copy.getId()), com.eqms.entity.ControlledCopyRecallBatch.STATUS_DRAFT, UUID.randomUUID()).stream().anyMatch(item -> !item.isExcluded());
+            if (claimed) {
+                continue;
+            }
             try {
                 controlledCopyAuthorizationService.requireRecallControlledCopy(admin, copy);
             } catch (AccessDeniedException ex) {
@@ -131,8 +143,32 @@ class ControlledCopyRecallByScanIntegrationTest {
             controlledCopyRepository.saveAndFlush(copy);
             found.add(copy);
         }
-        assumeTrue(found.size() >= wanted, "Seed data has fewer than " + wanted + " recallable Distributed paper copies");
+        // A recall is permanent (the copy becomes Obsoleted for good) and the shared dev database cannot delete a copy, so every run uses the copies up: when too few are left this test makes the Distributed paper
+        // copies it needs, as copies of one that exists (same document and revision, a new number and a new code), instead of skipping the check.
+        while (found.size() < wanted) {
+            ControlledCopyRecord made = newDistributedPaperCopy();
+            made.setScanToken(ControlledCopyScanCodeService.newToken());
+            controlledCopyRepository.saveAndFlush(made);
+            found.add(made);
+        }
         return found;
+    }
+
+    private ControlledCopyRecord newDistributedPaperCopy() {
+        UUID template = jdbc.queryForObject("select id from controlled_copies where document_id is not null and revision_id is not null and distributed_at is not null order by distributed_at asc limit 1", UUID.class);
+        assumeTrue(template != null, "The dev database has no controlled copy to make a Distributed copy from");
+        UUID id = UUID.randomUUID();
+        String number = "CC-RECALLSCAN-" + id.toString().substring(0, 8).toUpperCase();
+        jdbc.update("""
+                insert into controlled_copies
+                select r.* from controlled_copies t, lateral jsonb_populate_record(null::controlled_copies, to_jsonb(t) || jsonb_build_object(
+                    'id', ?::text, 'controlled_copy_number', ?::text, 'access_token', ?::text, 'status', 'Distributed', 'status_code', 'DISTRIBUTED', 'usage_purpose', null,
+                    'scan_token', null, 'replaces_controlled_copy_id', null, 'replaced_controlled_copy_id', null, 'recalled_at', null, 'recalled_by_user_id', null, 'recall_reason', null,
+                    'obsoleted_at', null, 'obsoleted_by_user_id', null, 'obsolete_reason', null, 'destroyed_at', null, 'destroyed_by_user_id', null, 'destroy_reason', null,
+                    'cancelled_at', null, 'cancelled_by_user_id', null, 'distribution_batch_id', null, 'valid_until', null, 'has_expiry_date', false, 'expiry_date', null)) r
+                where t.id = ?
+                """, id.toString(), number, UUID.randomUUID().toString(), template);
+        return controlledCopyRepository.findById(id).orElseThrow();
     }
 
     private static byte[] scanOf(ControlledCopyRecord copy) throws Exception {
@@ -244,29 +280,29 @@ class ControlledCopyRecallByScanIntegrationTest {
         }
         assertThat(file.fileName()).isEqualTo("scan.pdf");
 
-        // The named recipient sees exactly the records of their own copies; anyone else sees none of them.
+        // DC-VISIBILITY-TIERS-2026-11-07: a Record has no flow of its own, so whoever holds the Records permission sees all of them, whoever the copy was issued to (the one exception, a copy issued for
+        // reading, is not recalled by scan). Whoever does not hold the permission sees none and is refused.
         UserAccount recipient = copy.getRecipientUser();
-        if (recipient != null && !documentAuthorizationService.canViewAllControlledCopies(recipient)) {
+        if (recipient != null && userHasViewPermission(recipient)) {
             authenticateAs(recipient);
-            Set<String> mine = new HashSet<>();
-            executedRecordRepository.findAll().stream()
-                    .filter(candidate -> candidate.getSourceControlledCopy() != null
-                            && candidate.getSourceControlledCopy().getRecipientUser() != null
-                            && recipient.getId().equals(candidate.getSourceControlledCopy().getRecipientUser().getId()))
-                    .forEach(candidate -> mine.add(candidate.getId().toString()));
-            if (userHasViewPermission(recipient)) {
-                assertThat(visibleRecordIds()).isEqualTo(mine);
-                assertThat(executedRecordService.previewFile(record.getId()).bytes()).isNotEmpty();
-            }
+            assertThat(visibleRecordIds()).contains(record.getId().toString());
+            assertThat(executedRecordService.previewFile(record.getId()).bytes()).isNotEmpty();
         }
-        UserAccount stranger = userAccountRepository.findAll().stream()
-                .filter(user -> !documentAuthorizationService.canViewAllControlledCopies(user))
+        UserAccount holder = userAccountRepository.findAll().stream()
                 .filter(user -> copy.getRecipientUser() == null || !copy.getRecipientUser().getId().equals(user.getId()))
                 .filter(this::userHasViewPermission)
                 .findFirst().orElse(null);
-        if (stranger != null) {
-            authenticateAs(stranger);
-            assertThat(visibleRecordIds()).doesNotContain(record.getId().toString());
+        if (holder != null) {
+            authenticateAs(holder);
+            assertThat(visibleRecordIds()).contains(record.getId().toString());
+            assertThat(executedRecordService.previewFile(record.getId()).bytes()).isNotEmpty();
+        }
+        UserAccount withoutPermission = userAccountRepository.findAll().stream()
+                .filter(user -> user.getStatus() == com.eqms.entity.UserStatus.Active)
+                .filter(user -> !userHasViewPermission(user))
+                .findFirst().orElse(null);
+        if (withoutPermission != null) {
+            authenticateAs(withoutPermission);
             assertThatThrownBy(() -> executedRecordService.previewFile(record.getId())).isInstanceOf(AccessDeniedException.class);
         }
     }

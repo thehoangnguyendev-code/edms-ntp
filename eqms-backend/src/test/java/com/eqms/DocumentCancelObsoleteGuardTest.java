@@ -16,7 +16,6 @@ import com.eqms.exception.DocumentLifecycleConflictException;
 import org.springframework.context.ApplicationEventPublisher;
 import com.eqms.repository.*;
 import com.eqms.service.*;
-import com.eqms.service.authorization.AuthorizationCutoverFlags;
 import com.eqms.service.authorization.AuthorizationEngineService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -73,9 +72,7 @@ public class DocumentCancelObsoleteGuardTest {
     @Mock private RevisionPublishingMetadataRepository publishingMetadataRepository;
     @Mock private ControlledCopyBatchStatusService controlledCopyBatchStatusService;
     @Mock private PermissionEvaluationService permissionEvaluationService;
-    @Mock private AuthorizationShadowEvaluationService shadowEvaluationService;
     @Mock private AuthorizationEngineService authorizationEngineService;
-    @Mock private AuthorizationCutoverFlags cutoverFlags;
     @Mock private ElectronicSignatureService electronicSignatureService;
     @Mock private RevisionService revisionService;
     @Mock private WorkflowParticipantEligibilityService workflowParticipantEligibilityService;

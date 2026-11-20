@@ -78,15 +78,24 @@ public class NotificationPolicy {
     @Column(name = "icon", length = 40)
     private String icon;
 
-    /** The tone of the colour of that icon (one of NotificationPolicyService.ICON_TONES); null means the tone of its kind. */
-    @Column(name = "icon_tone", length = 20)
-    private String iconTone;
+    /** The priority an administrator chose (LOW, MEDIUM or HIGH); null means the default priority of the catalog event. */
+    @Column(name = "priority", length = 20)
+    private String priority;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
+
+    public String getPriority() { return priority; }
+    public void setPriority(String priority) { this.priority = priority; }
+
+    /** The priority the notification is sent with: the one an administrator chose, else the default of its catalog event. */
+    public String effectivePriority(NotificationEventDefinition event) {
+        if (priority != null && !priority.isBlank()) return priority;
+        return event == null || event.getPriority() == null ? NotificationEventDefinition.PRIORITY_MEDIUM : event.getPriority();
+    }
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -96,8 +105,6 @@ public class NotificationPolicy {
     public void setStatus(String status) { this.status = status; }
     public String getIcon() { return icon; }
     public void setIcon(String icon) { this.icon = icon; }
-    public String getIconTone() { return iconTone; }
-    public void setIconTone(String iconTone) { this.iconTone = iconTone; }
     public String getEnabledChannels() { return enabledChannels; }
     public void setEnabledChannels(String enabledChannels) { this.enabledChannels = enabledChannels; }
     public JsonNode getRecipientRules() { return recipientRules; }

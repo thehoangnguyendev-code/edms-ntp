@@ -148,6 +148,10 @@ public class UserAccount {
     @Column(name = "failed_login_count", nullable = false)
     private int failedLoginCount;
 
+    /** Wrong passwords when signing, counted apart from the wrong passwords at sign-in; it has its own limit (Maximum Signature Attempts). */
+    @Column(name = "failed_signature_count", nullable = false)
+    private int failedSignatureCount;
+
     @Column(name = "locked_until")
     private Instant lockedUntil;
 
@@ -493,6 +497,14 @@ public class UserAccount {
 
     public void setFailedLoginCount(int failedLoginCount) {
         this.failedLoginCount = failedLoginCount;
+    }
+
+    public int getFailedSignatureCount() {
+        return failedSignatureCount;
+    }
+
+    public void setFailedSignatureCount(int failedSignatureCount) {
+        this.failedSignatureCount = failedSignatureCount;
     }
 
     public Instant getLockedUntil() {

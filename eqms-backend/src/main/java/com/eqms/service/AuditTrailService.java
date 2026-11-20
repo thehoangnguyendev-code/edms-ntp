@@ -738,7 +738,7 @@ public class AuditTrailService {
             if (normalized.equals("CONTROLLED COPY")) {
                 ControlledCopyRecord copy = controlledCopyRepository.findById(entityId)
                         .orElseThrow(() -> new AccessDeniedException("Controlled copy audit access denied"));
-                if (!documentAuthorizationServiceProvider.getObject().canViewControlledCopy(actor, copy)) {
+                if (!documentAuthorizationServiceProvider.getObject().canSeeControlledCopyRecord(actor, copy)) {
                     throw new AccessDeniedException("Controlled copy audit access denied");
                 }
             } else {

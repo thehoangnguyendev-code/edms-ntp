@@ -44,16 +44,13 @@ public class DocumentResourceAdapter implements ResourceAuthorizationAdapter {
 
     private final DocumentRecordRepository documentRepository;
     private final LifecycleStatePolicyRepository lifecycleStatePolicyRepository;
-    private final ObjectAccessEvaluationService objectAccessEvaluationService;
 
     public DocumentResourceAdapter(
             DocumentRecordRepository documentRepository,
-            LifecycleStatePolicyRepository lifecycleStatePolicyRepository,
-            ObjectAccessEvaluationService objectAccessEvaluationService
+            LifecycleStatePolicyRepository lifecycleStatePolicyRepository
     ) {
         this.documentRepository = documentRepository;
         this.lifecycleStatePolicyRepository = lifecycleStatePolicyRepository;
-        this.objectAccessEvaluationService = objectAccessEvaluationService;
     }
 
     @Override
@@ -109,11 +106,9 @@ public class DocumentResourceAdapter implements ResourceAuthorizationAdapter {
 
     @Override
     public boolean isWithinObjectScope(UserAccount actor, UUID resourceId, String action) {
-        DocumentRecord document = findDocument(resourceId);
-        if (document == null) {
-            return false;
-        }
-        return objectAccessEvaluationService.canAccessDocument(actor, document, action);
+        // Who may act is decided by permission, relation to the record, state and separation of duties; the department and the Access Profile
+        // scope no longer take part (VISIBILITY-TIERS-2026-11-20). The step only confirms that the Document exists.
+        return findDocument(resourceId) != null;
     }
 
     private DocumentRecord findDocument(UUID resourceId) {

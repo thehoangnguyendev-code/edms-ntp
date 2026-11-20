@@ -91,6 +91,15 @@ public class PermissionSetService {
                 .map(this::toResponse).toList();
     }
 
+    /**
+     * Whether a set is in a list. Auto-managed per-role sets (ROLE_ prefix) are hidden from the shared list by default; in the list of one Access
+     * Profile's sets only that profile's own managed set is hidden, because a managed set of another profile attached to it still grants permissions.
+     */
+    static boolean isListed(String code, boolean includeManaged, boolean ofOneProfile, String ownManagedCode) {
+        if (includeManaged || !isManagedSetCode(code)) return true;
+        return ofOneProfile && !code.equals(ownManagedCode);
+    }
+
     /** Auto-managed per-role sets (ROLE_ prefix) are hidden from the shared list by default. */
     static boolean isManagedSetCode(String code) {
         return code != null && code.startsWith(MANAGED_SET_PREFIX);
@@ -295,8 +304,6 @@ public class PermissionSetService {
                         profile.getId(),
                         profile.getName(),
                         profile.getCode(),
-                        profile.getBusinessUnitScope(),
-                        profile.getDepartmentScope(),
                         profile.isActive(),
                         userAccessProfileRepository.countByAccessProfileId(profile.getId())))
                 .toList();
@@ -437,6 +444,7 @@ public class PermissionSetService {
         List<String> modules = items.stream()
                 .map(i -> i.getPermission().getModuleKey())
                 .filter(Objects::nonNull)
+                .map(com.eqms.util.ModuleKeys::canonical)
                 .distinct()
                 .sorted()
                 .toList();
@@ -494,13 +502,18 @@ public class PermissionSetService {
             String createdFrom, String createdTo, String updatedFrom, String updatedTo,
             String sortBy, String sortDir, boolean includeManaged, UUID accessProfileId) {
         requireView();
+        var links = accessProfileId == null ? List.<com.eqms.entity.AccessProfilePermissionSet>of()
+                : accessProfilePermissionSetRepository.findByAccessProfileId(accessProfileId);
         java.util.Set<UUID> attached = accessProfileId == null ? null
-                : accessProfilePermissionSetRepository.findByAccessProfileId(accessProfileId).stream()
-                        .map(link -> link.getPermissionSetId()).collect(Collectors.toSet());
+                : links.stream().map(link -> link.getPermissionSetId()).collect(Collectors.toSet());
+        // The auto-managed set of the profile itself (its direct permissions) is edited on the Permissions tab; every other ROLE_ set attached to it
+        // (the managed set of another profile) grants permissions through this profile and is listed with the shared sets.
+        String ownManagedCode = links.stream().map(com.eqms.entity.AccessProfilePermissionSet::getAccessProfile)
+                .filter(java.util.Objects::nonNull).map(profile -> MANAGED_SET_PREFIX + profile.getCode()).findFirst().orElse(null);
         List<PermissionSetResponse> all = permissionSetRepository.findAllByOrderByNameAsc()
                 .stream()
                 .filter(ps -> attached == null || attached.contains(ps.getId()))
-                .filter(ps -> includeManaged || !isManagedSetCode(ps.getCode()))
+                .filter(ps -> isListed(ps.getCode(), includeManaged, attached != null, ownManagedCode))
                 .map(this::toResponse).collect(Collectors.toList());
 
         String q = search == null ? "" : search.trim().toLowerCase(java.util.Locale.ROOT);
@@ -509,7 +522,7 @@ public class PermissionSetService {
             if ("INACTIVE".equalsIgnoreCase(status) && psr.active()) return false;
             if ("SYSTEM".equalsIgnoreCase(type) && !psr.system()) return false;
             if ("CUSTOM".equalsIgnoreCase(type) && psr.system()) return false;
-            if (StringUtils.hasText(module) && !"ALL".equalsIgnoreCase(module) && !psr.modules().contains(module)) return false;
+            if (StringUtils.hasText(module) && !"ALL".equalsIgnoreCase(module) && !psr.modules().contains(com.eqms.util.ModuleKeys.canonical(module))) return false;
             if (StringUtils.hasText(category) && !"ALL".equalsIgnoreCase(category) && !psr.category().equals(category)) return false;
             if (!isWithinDateRange(psr.createdAt(), createdFrom, createdTo)) return false;
             if (!isWithinDateRange(psr.updatedAt(), updatedFrom, updatedTo)) return false;

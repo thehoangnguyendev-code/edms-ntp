@@ -28,6 +28,7 @@ public record NotificationPolicyDetailResponse(
         Instant updatedAt,
         List<NotificationTemplateVersionResponse> activeTemplates,
         String icon,
-        String iconTone
+        /** The priority of the event in the catalog; {@code priority} is the one the notification is sent with (an administrator may have changed it). */
+        String defaultPriority
 ) {
 }

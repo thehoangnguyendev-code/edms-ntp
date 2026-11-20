@@ -56,6 +56,7 @@ class ReportLegalHoldTest {
         service = new ReportPlatformService(jdbc, new ObjectMapper(), permissions, mock(DocumentRecordRepository.class),
                 mock(UserAccountRepository.class), mock(DocumentAuthorizationService.class), mock(FileStorageService.class), audit);
         service.configureSignatures(signatures);
+        com.eqms.service.authorization.TestGuards.withAllowingEngine(service);
         when(jdbc.update(anyString(), anyObj(), anyObj(), anyObj())).thenReturn(1);
     }
 

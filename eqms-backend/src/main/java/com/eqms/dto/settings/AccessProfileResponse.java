@@ -14,8 +14,6 @@ public record AccessProfileResponse(
         boolean system,
         /** A DEV/UAT/test profile (display badge only). */
         boolean testData,
-        String businessUnitScope,
-        String departmentScope,
         int permissionSetCount,
         int workflowRoleCount,
         int assignedUserCount,
@@ -38,8 +36,6 @@ public record AccessProfileResponse(
             boolean active,
             boolean system,
             boolean testData,
-            String businessUnitScope,
-            String departmentScope,
             int permissionSetCount,
             int workflowRoleCount,
             int assignedUserCount,
@@ -48,10 +44,10 @@ public record AccessProfileResponse(
             Instant createdAt,
             Instant updatedAt,
             String createdAtDisplay) {
-        this(id, code, name, description, type, active, system, testData, businessUnitScope, departmentScope, permissionSetCount, workflowRoleCount, assignedUserCount, workflowRoles, documentControlVisibility, createdAt, updatedAt, createdAtDisplay, null);
+        this(id, code, name, description, type, active, system, testData, permissionSetCount, workflowRoleCount, assignedUserCount, workflowRoles, documentControlVisibility, createdAt, updatedAt, createdAtDisplay, null);
     }
 
     public AccessProfileResponse withCapabilities(AccessProfileCapabilitiesResponse capabilities) {
-        return new AccessProfileResponse(id, code, name, description, type, active, system, testData, businessUnitScope, departmentScope, permissionSetCount, workflowRoleCount, assignedUserCount, workflowRoles, documentControlVisibility, createdAt, updatedAt, createdAtDisplay, capabilities);
+        return new AccessProfileResponse(id, code, name, description, type, active, system, testData, permissionSetCount, workflowRoleCount, assignedUserCount, workflowRoles, documentControlVisibility, createdAt, updatedAt, createdAtDisplay, capabilities);
     }
 }

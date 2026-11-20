@@ -73,4 +73,13 @@ class StorageProviderAndSecurityValidationTest {
         assertThatCode(() -> validateSecurity(json("{\"passwordMinLength\":12,\"sessionTimeoutMinutes\":30}"))).doesNotThrowAnyException();
         assertThat(true).isTrue();
     }
+
+    @Test
+    void theSigningLimitIsCheckedAsItsOwnSettingWithTheSameRange() throws Exception {
+        assertThatThrownBy(() -> validateSecurity(json("{\"maxSignatureAttempts\":2}"))).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Maximum Signature Attempts");
+        assertThatThrownBy(() -> validateSecurity(json("{\"maxSignatureAttempts\":11}"))).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Maximum Signature Attempts");
+        assertThatThrownBy(() -> validateSecurity(json("{\"maxSignatureAttempts\":\"5\"}"))).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Maximum Signature Attempts");
+        assertThatCode(() -> validateSecurity(json("{\"maxLoginAttempts\":5,\"maxSignatureAttempts\":3}"))).doesNotThrowAnyException();
+        assertThatCode(() -> validateSecurity(json("{\"maxSignatureAttempts\":10}"))).doesNotThrowAnyException();
+    }
 }

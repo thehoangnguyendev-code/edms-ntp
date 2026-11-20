@@ -234,7 +234,6 @@ public class NavigationService {
         // Backup & Restore: one screen per sub-menu. Gated by its own view permission.
         if (hasPermission(normalizedPermissions, "backup.module.view")) {
             List<NavigationItemResponse> backupChildren = new ArrayList<>();
-            backupChildren.add(new NavigationItemResponse("backup-overview", "Backup Status Overview", null, "/backup-restore/overview", false, null));
             List<NavigationItemResponse> backupGroupChildren = new ArrayList<>();
             backupGroupChildren.add(new NavigationItemResponse("backup-backups", "Backup History", null, "/backup-restore/backups", false, null));
             backupGroupChildren.add(new NavigationItemResponse("backup-schedules", "Backup Schedules", null, "/backup-restore/backups/schedules", false, null));
@@ -278,11 +277,7 @@ public class NavigationService {
             securityAdvancedChildren.add(new NavigationItemResponse("sec-permission-sets", "Shared Permission Sets", null, "/security/permission-sets", false, null));
         }
         if (hasPermission(normalizedPermissions, "security.workflow_authorization.view")) {
-            securityAdvancedChildren.add(new NavigationItemResponse("sec-workflow-role-catalog", "Workflow Role Catalog", null, "/security/advanced/workflow-roles", false, null));
             securityAdvancedChildren.add(new NavigationItemResponse("sec-authorization-diagnostics", "Engine Diagnostics", "IconActivity", "/security/authorization-diagnostics", false, null));
-        }
-        if (hasPermission(normalizedPermissions, "security.object_rules.view")) {
-            securityAdvancedChildren.add(new NavigationItemResponse("sec-object-rules", "Object Access Rules", null, "/security/object-rules", false, null));
         }
         if (hasPermission(normalizedPermissions, "security.sod.view")) {
             securityAdvancedChildren.add(new NavigationItemResponse("sec-sod", "Segregation of Duties", null, "/security/sod", false, null));

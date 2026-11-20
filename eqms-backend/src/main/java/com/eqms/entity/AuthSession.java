@@ -18,6 +18,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "auth_sessions")
+@jakarta.persistence.EntityListeners(AuthSessionChangeListener.class)
 public class AuthSession {
 
     public enum SessionStatus {
@@ -69,11 +70,30 @@ public class AuthSession {
     @Column(name = "revoked_at")
     private Instant revokedAt;
 
+    /** Why the session was revoked by the system; null for a sign-out, an admin force logout or a lock-out. See {@link #REVOKED_CONCURRENT_LIMIT}. */
+    @Column(name = "revoked_reason", length = 40)
+    private String revokedReason;
+
+    /** The same account signed in on another device and the limit of sessions per account left no room for this one. */
+    public static final String REVOKED_CONCURRENT_LIMIT = "CONCURRENT_LIMIT";
+
     @Column(name = "locked_at")
     private Instant lockedAt;
 
     @Column(name = "failed_reauth_count", nullable = false)
     private int failedReauthCount;
+
+    /** What the "Logged in Users" screen shows that can change without a new session: its state, whether it is the current one, whether it was revoked. Not persisted. */
+    @jakarta.persistence.Transient
+    private String stateFingerprint;
+
+    void rememberStateForChangeDetection() {
+        this.stateFingerprint = status + "|" + currentSession + "|" + (revokedAt != null);
+    }
+
+    boolean stateChangedSinceRemembered() {
+        return stateFingerprint == null || !stateFingerprint.equals(status + "|" + currentSession + "|" + (revokedAt != null));
+    }
 
     @PrePersist
     void onCreate() {
@@ -184,6 +204,14 @@ public class AuthSession {
 
     public void setRevokedAt(Instant revokedAt) {
         this.revokedAt = revokedAt;
+    }
+
+    public String getRevokedReason() {
+        return revokedReason;
+    }
+
+    public void setRevokedReason(String revokedReason) {
+        this.revokedReason = revokedReason;
     }
 
     public Instant getLockedAt() {

@@ -42,7 +42,12 @@ public class NotificationAdministrationService {
     }
 
     public record Query(String search, String channel, String status, String module, String type, String usage,
-                        String updatedFrom, String updatedTo, String sortBy, String sortDirection, int page, int limit) {
+                        String updatedFrom, String updatedTo, String sortBy, String sortDirection, int page, int limit, String priority) {
+        /** A query without a priority filter. */
+        public Query(String search, String channel, String status, String module, String type, String usage,
+                     String updatedFrom, String updatedTo, String sortBy, String sortDirection, int page, int limit) {
+            this(search, channel, status, module, type, usage, updatedFrom, updatedTo, sortBy, sortDirection, page, limit, null);
+        }
     }
 
     private final NotificationPolicyService policies;
@@ -101,6 +106,7 @@ public class NotificationAdministrationService {
                 .filter(r -> !StringUtils.hasText(q.status()) || statusKey(q.status()).equals(r.status()))
                 .filter(r -> !StringUtils.hasText(q.module()) || (r.module() != null && key(q.module()).equals(key(r.module()))))
                 .filter(r -> !StringUtils.hasText(q.type()) || q.type().equalsIgnoreCase(r.type()))
+                .filter(r -> !StringUtils.hasText(q.priority()) || q.priority().trim().equalsIgnoreCase(r.priority()))
                 .filter(r -> usageMatches(q.usage(), r))
                 .filter(r -> from == null || (r.updatedAt() != null && !r.updatedAt().isBefore(from)))
                 .filter(r -> to == null || (r.updatedAt() != null && !r.updatedAt().isAfter(to)))
@@ -218,6 +224,7 @@ public class NotificationAdministrationService {
             case "channel" -> Comparator.comparing(Row::channel).thenComparing(byName);
             case "status" -> Comparator.comparing((Row r) -> nz(r.status())).thenComparing(byName);
             case "updatedAt" -> Comparator.comparing((Row r) -> r.updatedAt() == null ? Instant.EPOCH : r.updatedAt()).thenComparing(byName);
+            case "priority" -> Comparator.comparingInt((Row r) -> r.priority() == null ? 0 : NotificationPolicyService.priorityRank(r.priority())).thenComparing(byName);
             case "category" -> Comparator.comparing((Row r) -> nz(r.module() != null ? r.module() : r.type()).toLowerCase(Locale.ROOT)).thenComparing(byName);
             default -> byName;
         };

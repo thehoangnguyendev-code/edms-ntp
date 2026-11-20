@@ -28,6 +28,10 @@ public class WorkflowActionPolicyRelation {
     @Column(name = "require_sequence", nullable = false)
     private boolean requireSequence = false;
 
+    /** True: the actor must NOT hold this relation on the resource (runtime separation of duties, V807); false: the relation is one of those the policy requires. */
+    @Column(name = "forbidden", nullable = false)
+    private boolean forbidden = false;
+
     @Column(nullable = false)
     private int priority = 100;
 
@@ -55,6 +59,8 @@ public class WorkflowActionPolicyRelation {
     public void setPolicy(WorkflowActionPolicy policy) { this.policy = policy; }
     public AuthorizationRelationDefinition getRelationDefinition() { return relationDefinition; }
     public void setRelationDefinition(AuthorizationRelationDefinition relationDefinition) { this.relationDefinition = relationDefinition; }
+    public boolean isForbidden() { return forbidden; }
+    public void setForbidden(boolean forbidden) { this.forbidden = forbidden; }
     public boolean isRequireSequence() { return requireSequence; }
     public void setRequireSequence(boolean requireSequence) { this.requireSequence = requireSequence; }
     public int getPriority() { return priority; }

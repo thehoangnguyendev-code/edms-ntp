@@ -168,7 +168,13 @@ class UserUiPreferenceServiceTest {
         for (String id : new String[]{"admin-total-users", "admin-total-documents", "admin-revisions-in-flight", "admin-audit-events",
                 "user-pending-actions", "user-pending-review", "user-pending-approval", "user-effective-documents", "user-pending-training",
                 "system-uptime", "database-connections", "active-sessions", "failed-logins", "users-by-status", "compliance-queues",
-                "system-runtime", "locked-accounts", "electronic-signatures", "admin-kpis", "user-kpis", "system-monitoring"}) {
+                "system-runtime", "locked-accounts", "electronic-signatures", "admin-kpis", "user-kpis", "system-monitoring",
+                "backup-last-success", "backup-completed", "backup-failed", "backup-unverified", "backup-daily", "backup-attention",
+                "backup-ledger", "backup-store-check", "backup-manual-copy",
+                "notifications-unread", "notifications-recent", "training-my-tasks", "training-my-signatures", "reports-recent-runs",
+                "reports-failed-runs", "audit-recent-events", "open-access-reviews", "open-audit-trail-reviews",
+                "open-controlled-copy-discrepancies",
+                "notifications-personal", "notifications-by-type", "notifications-delivery-failures", "training-my-task-list", "training-my-approval-list", "training-my-records", "training-activities-in-progress", "training-activities-overdue", "training-activities-awaiting-qa"}) {
             widgets.addObject().put("id", id).put("visible", false).put("width", "full");
         }
         var layout = mapper.createObjectNode().set("widgets", widgets);

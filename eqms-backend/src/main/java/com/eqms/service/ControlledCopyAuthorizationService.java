@@ -67,7 +67,6 @@ public class ControlledCopyAuthorizationService {
     private final WorkflowActionPolicyRepository workflowActionPolicyRepository;
     private final UserAccessProfileRepository userAccessProfileRepository;
     private final DocumentRecordRepository documentRecordRepository;
-    private final ObjectAccessEvaluationService objectAccessEvaluationService;
     private final PasswordEncoder passwordEncoder;
     private final AuthorizationEngineService authorizationEngineService;
 
@@ -83,7 +82,6 @@ public class ControlledCopyAuthorizationService {
             WorkflowActionPolicyRepository workflowActionPolicyRepository,
             UserAccessProfileRepository userAccessProfileRepository,
             DocumentRecordRepository documentRecordRepository,
-            ObjectAccessEvaluationService objectAccessEvaluationService,
             PasswordEncoder passwordEncoder,
             // @Lazy breaks the circular dependency: AuthorizationEngineService resolves
             // CONTROLLED_COPY(_BATCH) requests via ControlledCopyResourceAdapter /
@@ -101,13 +99,11 @@ public class ControlledCopyAuthorizationService {
         this.workflowActionPolicyRepository = workflowActionPolicyRepository;
         this.userAccessProfileRepository = userAccessProfileRepository;
         this.documentRecordRepository = documentRecordRepository;
-        this.objectAccessEvaluationService = objectAccessEvaluationService;
         this.passwordEncoder = passwordEncoder;
         this.authorizationEngineService = authorizationEngineService;
     }
 
-    /** Compatibility constructor for isolated legacy unit tests. Spring uses
-     * the full constructor and therefore always applies object scope. */
+    /** Compatibility constructor for isolated legacy unit tests. */
     @Deprecated(forRemoval = false)
     public ControlledCopyAuthorizationService(
             PermissionEvaluationService permissionEvaluationService,
@@ -124,29 +120,7 @@ public class ControlledCopyAuthorizationService {
         this(permissionEvaluationService, currentUserService, documentAuthorizationService,
                 controlledCopyPolicyService, secureFileAccessService, controlledCopyRepository,
                 controlledCopyDistributionBatchRepository, workflowActionPolicyRepository,
-                userAccessProfileRepository, documentRecordRepository, null, null, null);
-    }
-
-    /** Compatibility constructor retained for existing isolated policy tests. */
-    @Deprecated(forRemoval = false)
-    public ControlledCopyAuthorizationService(
-            PermissionEvaluationService permissionEvaluationService,
-            CurrentUserService currentUserService,
-            DocumentAuthorizationService documentAuthorizationService,
-            ControlledCopyPolicyService controlledCopyPolicyService,
-            SecureFileAccessService secureFileAccessService,
-            ControlledCopyRepository controlledCopyRepository,
-            ControlledCopyDistributionBatchRepository controlledCopyDistributionBatchRepository,
-            WorkflowActionPolicyRepository workflowActionPolicyRepository,
-            UserAccessProfileRepository userAccessProfileRepository,
-            DocumentRecordRepository documentRecordRepository,
-            ObjectAccessEvaluationService objectAccessEvaluationService
-    ) {
-        this(permissionEvaluationService, currentUserService, documentAuthorizationService,
-                controlledCopyPolicyService, secureFileAccessService, controlledCopyRepository,
-                controlledCopyDistributionBatchRepository, workflowActionPolicyRepository,
-                userAccessProfileRepository, documentRecordRepository,
-                objectAccessEvaluationService, null, null);
+                userAccessProfileRepository, documentRecordRepository, null, null);
     }
 
     /**
@@ -221,23 +195,6 @@ public class ControlledCopyAuthorizationService {
                     action, objectType, currentStatus, "USER_INACTIVE", "Current user is inactive.", requiredPermissionCode);
         }
 
-        // Controlled copies inherit the source document's object scope.  This
-        // guard is independent of permission and is intentionally not bypassed
-        // for SYSTEM_SUPER_ADMIN.
-        // Reporting a lost/damaged copy is an explicitly entitled controlled-copy
-        // operation. A user with the canonical action permission must be able
-        // to report a distributed copy even when the source document's
-        // department/object-scope rules do not include the DCO's profile.
-        // Otherwise the capability endpoint hides Submit while the user is
-        // correctly entitled to the controlled-copy operation.
-        boolean reportLostDamagedPermission = action == ControlledCopyWorkflowAction.REPORT_LOST_DAMAGED
-                && permissionEvaluationService.hasPermission(user, requiredPermissionCode);
-        if (!hasDocumentScope(user, context) && !reportLostDamagedPermission) {
-            return ControlledCopyAuthorizationDecision.denied(
-                    action, objectType, currentStatus, "OUT_OF_SCOPE",
-                    "You are outside the permitted scope for this controlled copy.", requiredPermissionCode);
-        }
-
         ControlledCopyPolicySetting policy = controlledCopyPolicyService.loadOrDefault();
 
         ControlledCopyAuthorizationDecision invariantFailure = validateInvariants(user, action, context, policy, objectType, currentStatus);
@@ -280,15 +237,6 @@ public class ControlledCopyAuthorizationService {
                 || action == ControlledCopyWorkflowAction.DISTRIBUTE_BATCH;
     }
 
-    private boolean hasDocumentScope(UserAccount user, ControlledCopyAuthorizationContext context) {
-        if (objectAccessEvaluationService == null || context == null || context.documentId() == null) {
-            return true;
-        }
-        return documentRecordRepository.findById(context.documentId())
-                .map(document -> objectAccessEvaluationService.canAccessDocument(user, document, "VIEW"))
-                .orElse(false);
-    }
-
     public void require(UserAccount user, ControlledCopyWorkflowAction action, ControlledCopyAuthorizationContext context) {
         ControlledCopyAuthorizationDecision decision = evaluate(user, action, context);
         if (!decision.allowed()) {
@@ -301,32 +249,17 @@ public class ControlledCopyAuthorizationService {
         }
     }
 
-    /** Shared-platform adapter entrypoint for Security Admin diagnosis. */
-    @Transactional(readOnly = true)
-    public ControlledCopyAuthorizationDecision diagnoseCopyAction(
-            UserAccount subject, UUID copyId, ControlledCopyWorkflowAction action
-    ) {
-        ControlledCopyRecord copy = controlledCopyRepository.findById(copyId)
-                .orElseThrow(() -> new IllegalArgumentException("Controlled copy not found"));
-        return evaluate(subject, action, buildCopyContext(copy));
-    }
-
-    /** Shared-platform adapter entrypoint for batch lifecycle diagnosis. */
-    @Transactional(readOnly = true)
-    public ControlledCopyAuthorizationDecision diagnoseBatchAction(
-            UserAccount subject, UUID batchId, ControlledCopyWorkflowAction action
-    ) {
-        ControlledCopyDistributionBatch batch = controlledCopyDistributionBatchRepository.findById(batchId)
-                .orElseThrow(() -> new IllegalArgumentException("Controlled copy distribution batch not found"));
-        return evaluate(subject, action, buildBatchContext(batch));
-    }
-
     @Transactional(readOnly = true)
     public ControlledCopyActionCapabilitiesResponse getCopyCapabilities(UUID controlledCopyId) {
         UserAccount user = requireCurrentUser();
         ControlledCopyRecord copy = controlledCopyRepository.findById(controlledCopyId)
                 .orElseThrow(() -> new IllegalArgumentException("Controlled copy not found"));
-        requireBaseAccess(user, copy);
+        // The capabilities are a hint for a screen that shows the RECORD of the copy, so the record rule applies here; the content actions below
+        // stay hidden from a person who does not see the content (recipient, view-everything holders).
+        if (copy.getRevision() == null || copy.getDocument() == null) {
+            throw new IllegalArgumentException("Controlled copy not found");
+        }
+        documentAuthorizationService.requireCanSeeControlledCopyRecord(user, copy);
         ControlledCopyAuthorizationContext context = buildCopyContext(copy);
         Map<String, ControlledCopyActionCapabilityDecisionResponse> actions = new LinkedHashMap<>();
         actions.put("previewFile", toCapability(user, ControlledCopyWorkflowAction.PREVIEW_FILE, context));
@@ -360,6 +293,17 @@ public class ControlledCopyAuthorizationService {
                         "documents.controlled_copy.view_file")
                 : ControlledCopyActionCapabilityDecisionResponse.deny("MISSING_PERMISSION", "You do not have permission to view the copy's document.",
                         "documents.controlled_copy.view_file", "VIEW_DOCUMENT", "CONTROLLED_COPY", normalizeStatus(copy.getStatusCode())));
+
+        if (!documentAuthorizationService.canViewControlledCopy(user, copy)) {
+            // A person named in the flow sees the record but not the content (the issued PDF belongs to the recipient and the view-everything
+            // holders): no button may offer it. The endpoints refuse it too; this only keeps the screen honest.
+            String hiddenStatus = normalizeStatus(copy.getStatusCode());
+            for (String[] hidden : new String[][] {{"previewFile", "PREVIEW_FILE"}, {"downloadFile", "DOWNLOAD_FILE"},
+                    {"printCopy", "PRINT_COPY"}, {"viewDocument", "VIEW_DOCUMENT"}}) {
+                actions.put(hidden[0], ControlledCopyActionCapabilityDecisionResponse.deny("COPY_CONTENT_NOT_VISIBLE",
+                        "You can see this copy record but not its content: the content is for the recipient.", null, hidden[1], "CONTROLLED_COPY", hiddenStatus));
+            }
+        }
 
         String previewObjectType = resolvePreviewObjectType(copy);
         String previewVersionToken = firstNonBlank(
@@ -460,26 +404,6 @@ public class ControlledCopyAuthorizationService {
         require(user, ControlledCopyWorkflowAction.PREVIEW_FILE, context);
     }
 
-    public void requireDownloadAccess(UserAccount user, ControlledCopyRecord copy, String token) {
-        ControlledCopyAuthorizationContext context = buildCopyContext(copy);
-        requireStatusAllowedForDownload(copy);
-        if (!StringUtils.hasText(token) || !token.equals(copy.getAccessToken())) {
-            throw new AccessDeniedException("The access token in this link is invalid, or a newer distribution link has since replaced it. Use the most recent distribution e-mail for this controlled copy.");
-        }
-        secureFileAccessService.require(
-                user,
-                FileAccessAction.DOWNLOAD,
-                FileObjectType.CONTROLLED_COPY,
-                copy.getId(),
-                com.eqms.dto.security.FileAccessContext.ofControlledCopy(
-                        copy,
-                        controlledCopyPolicyService.loadOrDefault().isAllowDownload(),
-                        controlledCopyPolicyService.loadOrDefault().isAllowPortalView()
-                )
-        );
-        require(user, ControlledCopyWorkflowAction.DOWNLOAD_FILE, context);
-    }
-
     /** Uses the same evaluator as the action-capability response and the print mutation. */
     public void requirePrintControlledCopy(UserAccount user, ControlledCopyRecord copy) {
         require(user, ControlledCopyWorkflowAction.PRINT_COPY, buildCopyContext(copy));
@@ -500,19 +424,6 @@ public class ControlledCopyAuthorizationService {
         requirePreviewPassword(copy, password);
         if (!controlledCopyPolicyService.loadOrDefault().isAllowPortalView()) {
             throw new AccessDeniedException("Portal view is disabled by the Controlled Copies Policy.");
-        }
-    }
-
-    public void requireTokenDownloadAccess(ControlledCopyRecord copy, String token, String password) {
-        requireStatusAllowedForDownload(copy);
-        if (!StringUtils.hasText(token) || !token.equals(copy.getAccessToken())) {
-            throw new AccessDeniedException("The access token in this link is invalid, or a newer distribution link has since replaced it. Use the most recent distribution e-mail for this controlled copy.");
-        }
-        requireTokenNotExpired(copy);
-        requirePreviewPassword(copy, password);
-        ControlledCopyPolicySetting policy = controlledCopyPolicyService.loadOrDefault();
-        if (!policy.isAllowDownload()) {
-            throw new AccessDeniedException("Download is disabled by the Controlled Copies Policy.");
         }
     }
 
@@ -577,15 +488,6 @@ public class ControlledCopyAuthorizationService {
         return expiry;
     }
 
-    public void requireEvidenceReadAccess(UserAccount user, ControlledCopyRecord copy, FileAccessAction accessAction) {
-        secureFileAccessService.require(
-                user,
-                accessAction,
-                FileObjectType.CONTROLLED_COPY_EVIDENCE,
-                copy.getId()
-        );
-    }
-
     public void requireDistributeControlledCopy(UserAccount user, ControlledCopyRecord copy) {
         require(user, ControlledCopyWorkflowAction.DISTRIBUTE_COPY, buildCopyContext(copy));
     }
@@ -639,21 +541,10 @@ public class ControlledCopyAuthorizationService {
         if (!StringUtils.hasText(requiredPermissionCode) || !permissionEvaluationService.hasPermission(user, requiredPermissionCode)) {
             throw new ControlledCopyAuthorizationException("MISSING_PERMISSION", "You do not have permission to perform this controlled copy action.", requiredPermissionCode, action);
         }
-        if (!hasDocumentScope(user, buildBatchContext(batch))) {
-            throw new ControlledCopyAuthorizationException("OUT_OF_SCOPE", "You are outside the permitted scope for this controlled copy.", requiredPermissionCode, action);
-        }
-    }
-
-    public void requireUploadEvidence(UserAccount user, ControlledCopyRecord copy) {
-        require(user, ControlledCopyWorkflowAction.UPLOAD_EVIDENCE, buildCopyContext(copy));
     }
 
     public void requireReplaceLostDamaged(UserAccount user, ControlledCopyRecord copy) {
         require(user, ControlledCopyWorkflowAction.REPLACE_LOST_DAMAGED, buildCopyContext(copy));
-    }
-
-    public void requireExpireControlledCopy(UserAccount user, ControlledCopyRecord copy) {
-        require(user, ControlledCopyWorkflowAction.EXPIRE_COPY, buildCopyContext(copy));
     }
 
     private ControlledCopyActionCapabilityDecisionResponse toCapability(
@@ -993,8 +884,9 @@ public class ControlledCopyAuthorizationService {
     }
 
     /**
-     * Matches any user who is allowed to view the parent document (author, co-author,
+     * Matches any user who is allowed to view the parent document as an actor (author, co-author,
      * reviewer, approver, an authorized workspace manager, or a general viewer under strict-visibility).
+     * The department level of visibility is read-only and does not match (VISIBILITY-TIERS-2026-11-20).
      * Used for controlled-copy read actions, and (since V233) also for REQUEST_COPY —
      * a viewer may self-service request exactly one copy for themselves; the "one copy,
      * for myself only" restriction is enforced in ControlledCopyService.requestControlledCopy,
@@ -1006,7 +898,7 @@ public class ControlledCopyAuthorizationService {
             return false;
         }
         return documentRecordRepository.findById(context.documentId())
-                .map(document -> documentAuthorizationService.canViewDocument(user, document))
+                .map(document -> documentAuthorizationService.canViewDocumentAsActor(user, document))
                 .orElse(false);
     }
 

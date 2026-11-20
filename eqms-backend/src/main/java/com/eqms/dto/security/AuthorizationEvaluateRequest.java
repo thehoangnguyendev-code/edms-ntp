@@ -9,5 +9,7 @@ public record AuthorizationEvaluateRequest(
         String resourceType,
         UUID resourceId,
         String actionCode,
-        Map<String, Object> context
+        Map<String, Object> context,
+        /** The code a person knows the record by (a report template code), for the resource types whose id is made from it; used when resourceId is empty. */
+        String resourceCode
 ) {}

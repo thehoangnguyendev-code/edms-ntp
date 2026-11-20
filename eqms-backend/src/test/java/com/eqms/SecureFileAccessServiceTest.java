@@ -199,9 +199,9 @@ class SecureFileAccessServiceTest {
     void pendingReview_reviewSnapshot_preview_allowed() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
         grantPermission("documents.revision.preview");
-        // Status/permission rule under Record visibility = "All"; the participants-only restriction
+        // Status/permission rule for a person who sees every record; the participants-only restriction
         // is covered by RecordVisibilityModeTest.
-        when(documentAuthorizationService.isOpenVisibilityMode()).thenReturn(true);
+        when(documentAuthorizationService.canViewAllDocuments(user)).thenReturn(true);
         FileAccessDecision decision = service.check(user, FileAccessAction.VIEW_PREVIEW,
                 FileObjectType.REVIEW_SNAPSHOT, objectId, pendingReviewCtx());
         assertThat(decision.allowed()).isTrue();

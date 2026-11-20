@@ -14,8 +14,6 @@ public record UserAuthorizationSummaryResponse(
             String code,
             String name,
             boolean active,
-            String businessUnitScope,
-            String departmentScope,
             List<String> workflowRoles,
             List<PermissionSet> permissionSets
     ) {}

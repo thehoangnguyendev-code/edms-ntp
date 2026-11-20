@@ -72,6 +72,12 @@ public class NotificationRealtimeService {
         }
     }
 
+    /** Sends an event only to the given users (every open stream of each); for signals that only some people may receive. */
+    public void publishEventToUsers(java.util.Collection<UUID> userIds, String eventName, Object payload) {
+        if (userIds == null || userIds.isEmpty() || eventName == null || eventName.isBlank() || payload == null) return;
+        userIds.forEach(userId -> publishUserEvent(userId, eventName, payload));
+    }
+
     /** Broadcasts a non-sensitive event with a payload (ids only, never document data) to every connected client. */
     public void publishGlobalEvent(String eventName, Object payload) {
         if (eventName == null || eventName.isBlank() || payload == null) return;

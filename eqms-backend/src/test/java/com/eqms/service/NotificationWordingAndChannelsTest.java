@@ -80,35 +80,29 @@ class NotificationWordingAndChannelsTest {
     // ------------------------------------------------------------------ the icon
 
     @Test
-    void theIconOfAnotificationIsChosenFromTheKnownIconsAndTonesAndTheChangeIsAudited() {
-        service.updateAppearance(event.getCode(), " tabler:IconShieldExclamation ", "red");
+    void theIconOfAnotificationIsChosenFromTheKnownIconsAndTheChangeIsAudited() {
+        service.updateAppearance(event.getCode(), " tabler:IconShieldExclamation ");
         assertThat(policy.getIcon()).isEqualTo("tabler:IconShieldExclamation");
-        assertThat(policy.getIconTone()).isEqualTo("red");
         ArgumentCaptor<java.util.List<com.eqms.dto.audittrail.AuditTrailChangeResponse>> changes = ArgumentCaptor.forClass(java.util.List.class);
         verify(audit).logAs(eq(admin), eq("NOTIFICATION_POLICY"), anyString(), any(), eq("UPDATE_ICON"), any(), any(), anyString(), changes.capture());
-        assertThat(changes.getValue()).extracting(com.eqms.dto.audittrail.AuditTrailChangeResponse::field).containsExactly("Icon", "Icon colour");
+        assertThat(changes.getValue()).extracting(com.eqms.dto.audittrail.AuditTrailChangeResponse::field).containsExactly("Icon");
     }
 
     @Test
     void anUnchangedIconWritesNothingAndAnEmptyOneGoesBackToTheIconOfItsKind() {
         policy.setIcon("lucide:Lock");
-        policy.setIconTone("amber");
-        service.updateAppearance(event.getCode(), "lucide:Lock", " amber ");
+        service.updateAppearance(event.getCode(), " lucide:Lock ");
         verify(policies, never()).save(any());
         verify(audit, never()).logAs(any(), anyString(), anyString(), any(), anyString(), any(), any(), anyString(), any());
-        service.updateAppearance(event.getCode(), "", null);
+        service.updateAppearance(event.getCode(), "");
         assertThat(policy.getIcon()).isNull();
-        assertThat(policy.getIconTone()).isNull();
     }
 
     @Test
-    void anIconOrToneThatIsNotKnownIsRefused() {
+    void anIconThatIsNotKnownIsRefused() {
         for (String bad : new String[] {"skull", "lock", "fontawesome:Skull", "lucide:", "lucide:Bell Ring", "lucide:../Bell", "tabler:<script>"}) {
-            assertThatThrownBy(() -> service.updateAppearance(event.getCode(), bad, "red")).hasMessageContaining("Lucide or the Tabler");
+            assertThatThrownBy(() -> service.updateAppearance(event.getCode(), bad)).hasMessageContaining("Lucide or the Tabler");
         }
-        assertThatThrownBy(() -> service.updateAppearance(event.getCode(), "lucide:Bell", "pink"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("#RRGGBB");
         verify(policies, never()).save(any());
     }
 

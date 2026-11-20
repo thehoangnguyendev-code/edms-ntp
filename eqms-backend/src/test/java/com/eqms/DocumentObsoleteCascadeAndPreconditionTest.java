@@ -41,6 +41,7 @@ import static org.mockito.Mockito.doThrow;
 class DocumentObsoleteCascadeAndPreconditionTest {
 
     @Autowired private DocumentService documentService;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
     @Autowired private RevisionService revisionService;
     @Autowired private ControlledCopyLifecycleObsolescenceService controlledCopyLifecycleObsolescenceService;
     @Autowired private DocumentRecordRepository documentRepository;
@@ -207,13 +208,22 @@ class DocumentObsoleteCascadeAndPreconditionTest {
         assertEquals("ACTIVE", after.getStatus().getCode(), "Document status must not change on rejection");
     }
 
+    /**
+     * The audit rows of this document (its own, and those of its revisions and copies, which carry its number). The whole table is not counted: the shared dev database is written by the running
+     * application and by other tests at the same time, which made "no audit row was created" fail without any audit row of this document.
+     */
+    private long auditRowsOf(DocumentRecord document) {
+        Long count = jdbcTemplate.queryForObject("select count(*) from audit_logs where entity_id = ? or document_number = ?", Long.class, document.getId(), document.getDocumentNumber());
+        return count == null ? 0 : count;
+    }
+
     private void assertRevisionInProgressRejected(String prefix, String inProgressStatusCode) {
         DocumentRecord document = newActiveDocument(prefix);
         newRevision(document, effective, "1.0.0");
         RevisionStatusDefinition inProgressStatus = revisionStatusRepository.findById(inProgressStatusCode).orElseThrow();
         newRevision(document, inProgressStatus, "2.0.0");
 
-        long auditRowsBefore = auditLogRepository.count();
+        long auditRowsBefore = auditRowsOf(document);
 
         DocumentLifecycleConflictException ex = assertThrows(DocumentLifecycleConflictException.class,
                 () -> documentService.obsoleteDocument(document.getId(), obsoleteRequest()));
@@ -224,7 +234,7 @@ class DocumentObsoleteCascadeAndPreconditionTest {
         List<DocumentRevisionRecord> revisions = revisionRepository.findAllByDocument_IdOrderByCreatedAtDesc(document.getId());
         assertTrue(revisions.stream().anyMatch(r -> inProgressStatusCode.equals(r.getStatus().getCode())),
                 "The in-progress revision must remain untouched");
-        assertEquals(auditRowsBefore, auditLogRepository.count(), "No audit entry may be created for a rejected attempt");
+        assertEquals(auditRowsBefore, auditRowsOf(document), "No audit entry may be created for a rejected attempt");
         assertTrue(electronicSignatureRepository.findByDocument_IdOrderBySignedAtAsc(document.getId()).isEmpty(),
                 "No ElectronicSignature row may be created for a rejected attempt");
     }
@@ -419,7 +429,7 @@ class DocumentObsoleteCascadeAndPreconditionTest {
         ControlledCopyRecord firstCopy = newControlledCopy(document, revision, "READY_FOR_DISTRIBUTION", 1);
         ControlledCopyRecord secondCopy = newControlledCopy(document, revision, "DISTRIBUTED", 2);
 
-        long auditRowsBefore = auditLogRepository.count();
+        long auditRowsBefore = auditRowsOf(document);
         long signatureRowsBefore = electronicSignatureRepository.findByDocument_IdOrderBySignedAtAsc(document.getId()).size();
 
         // Inject the failure at the LAST Controlled-Copy audit call -- by that point the Revision
@@ -450,7 +460,7 @@ class DocumentObsoleteCascadeAndPreconditionTest {
         assertNull(secondCopyAfter.getObsoleteReason());
 
         // TC-DOC-049: no orphan audit rows from the failed attempt, at any level.
-        assertEquals(auditRowsBefore, auditLogRepository.count(),
+        assertEquals(auditRowsBefore, auditRowsOf(document),
                 "No Document/Revision/Controlled-Copy audit row from the failed attempt may persist");
 
         // TC-DOC-050: no orphan ElectronicSignature row from the failed attempt.

@@ -65,7 +65,9 @@ public class StorageUsageAlertService {
                 dispatcher.dispatchIndependently(OperationalNotificationEvents.STORAGE_USAGE_WARNING, List.of(administrator),
                         NotificationDispatcher.noticeVariables(title, message, "/settings/configuration/integrations"));
             }
-            jdbc.update("UPDATE storage_usage_scan_state SET warning_notified=true WHERE id=true");
+            // The time and the number of administrators told are kept as history (shown on the Storage Usage tab); they are not cleared when the notice is armed again.
+            // The count is an int taken from the list size, so it is written into the statement and not bound.
+            jdbc.update("UPDATE storage_usage_scan_state SET warning_notified=true,warning_notified_at=now(),warning_recipient_count=" + administrators.size() + " WHERE id=true");
             return administrators.size();
         } catch (RuntimeException ex) {
             log.warn("The storage usage warning could not be recorded");

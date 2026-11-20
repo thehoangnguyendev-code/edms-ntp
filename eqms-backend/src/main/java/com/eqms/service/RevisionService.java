@@ -48,7 +48,6 @@ import com.eqms.entity.UserStatus;
 import com.eqms.dto.document.ReplaceWorkflowParticipantRequest;
 import com.eqms.entity.ControlledCopyRecord;
 import com.eqms.entity.WorkflowActionPolicy;
-import com.eqms.entity.WorkflowActionPolicyActor;
 import com.eqms.enums.RevisionWorkflowAction;
 import com.eqms.enums.FileAccessAction;
 import com.eqms.enums.FileObjectType;

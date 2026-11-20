@@ -20,7 +20,7 @@ class TrainingJobPositionsTest {
     private final TrainingAccess access = mock(TrainingAccess.class);
     private final TrainingJobAssignmentService service = new TrainingJobAssignmentService(jdbc, access,
             mock(TrainingApprovalService.class), mock(ElectronicSignatureService.class), mock(AuditTrailService.class),
-            mock(UserAccountRepository.class), mock(TrainingNotifier.class));
+            mock(UserAccountRepository.class), mock(TrainingNotifier.class), com.eqms.service.authorization.TestGuards.allowingTraining());
     private final UserAccount actor = mock(UserAccount.class);
     private final UUID assignment = UUID.randomUUID();
     private final UUID department = UUID.randomUUID();

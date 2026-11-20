@@ -35,6 +35,7 @@ import java.util.*;
 @Service
 public class ReportPlatformService {
     private final JdbcTemplate jdbc;
+    private final com.eqms.service.authorization.ShadowGuard shadow;
     private final ObjectMapper objectMapper;
     private final PermissionEvaluationService permissions;
     private final DocumentRecordRepository documents;
@@ -79,7 +80,15 @@ public class ReportPlatformService {
     @org.springframework.beans.factory.annotation.Autowired
     public void configureDelivery(com.eqms.service.report.ReportDeliveryService delivery) { this.delivery = delivery; }
 
+    /** Without the shadow of the Hybrid engine (the services are built this way in unit tests; Spring uses the constructor below). */
     public ReportPlatformService(JdbcTemplate jdbc, ObjectMapper objectMapper, PermissionEvaluationService permissions, DocumentRecordRepository documents, UserAccountRepository users, DocumentAuthorizationService documentAuthorization, FileStorageService fileStorage, AuditTrailService auditTrail) {
+        this(jdbc, objectMapper, permissions, documents, users, documentAuthorization, fileStorage, auditTrail, new com.eqms.service.authorization.ShadowGuard(null));
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ReportPlatformService(JdbcTemplate jdbc, ObjectMapper objectMapper, PermissionEvaluationService permissions, DocumentRecordRepository documents, UserAccountRepository users, DocumentAuthorizationService documentAuthorization, FileStorageService fileStorage, AuditTrailService auditTrail,
+            com.eqms.service.authorization.ShadowGuard shadow) {
+        this.shadow = shadow;
         this.jdbc = jdbc; this.objectMapper = objectMapper; this.permissions = permissions; this.documents=documents; this.users=users; this.documentAuthorization=documentAuthorization; this.fileStorage=fileStorage; this.auditTrail=auditTrail;
     }
 
@@ -282,31 +291,36 @@ public class ReportPlatformService {
     private String scheduleName(UUID id) {
         return jdbc.query("select coalesce(schedule_number, name) from report_schedules where id=?", rs -> rs.next() ? rs.getString(1) : "Scheduled report", id);
     }
-    public void pauseSchedule(UserAccount actor, UUID id) { updateScheduleStatus(actor, id, false, "PAUSED"); }
+    public void pauseSchedule(UserAccount actor, UUID id) {
+        shadow.run(actor, "REPORT_SCHEDULE", id, "PAUSE", com.eqms.service.authorization.ShadowGuard::isDenial, () -> pauseScheduleInner(actor, id));
+    }
+
+    private void pauseScheduleInner(UserAccount actor, UUID id) { updateScheduleStatus(actor, id, false, "PAUSED"); }
     public void resumeSchedule(UserAccount actor, UUID id) {
-        require(actor, "reports.schedule.manage", "report.module.export"); requireScheduleManagement(actor, id);
+        shadow.run(actor, "REPORT_SCHEDULE", id, "RESUME", com.eqms.service.authorization.ShadowGuard::isDenial, () -> resumeScheduleInner(actor, id));
+    }
+
+    private void resumeScheduleInner(UserAccount actor, UUID id) {
+        requireScheduleExists(id);
         Map<String,Object> row = jdbc.queryForMap("select cron_expression from report_schedules where id=?", id);
         Instant next = nextOccurrence(parseCron(String.valueOf(row.get("cron_expression")))); if (next == null) throw new IllegalArgumentException("Cron expression has no future occurrence");
         jdbc.update("update report_schedules set active=true,status='ACTIVE',next_run_at=?,updated_at=now() where id=?", java.sql.Timestamp.from(next), id);
         auditTrail.logAs(actor, "REPORT_SCHEDULE", scheduleName(id), id, "REPORT_SCHEDULE_RESUMED", null, "ACTIVE", "Scheduled report resumed");
     }
-    public void deleteSchedule(UserAccount actor, UUID id) { require(actor, "reports.schedule.manage", "report.module.export"); requireScheduleManagement(actor,id); String deletedName=scheduleName(id); jdbc.update("delete from report_schedules where id=?",id); auditTrail.logAs(actor, "REPORT_SCHEDULE", deletedName, id, "REPORT_SCHEDULE_DELETED", null, null, "Scheduled report deleted",
+    public void deleteSchedule(UserAccount actor, UUID id) {
+        shadow.run(actor, "REPORT_SCHEDULE", id, "DELETE", com.eqms.service.authorization.ShadowGuard::isDenial, () -> deleteScheduleInner(actor, id));
+    }
+
+    private void deleteScheduleInner(UserAccount actor, UUID id) { requireScheduleExists(id); String deletedName=scheduleName(id); jdbc.update("delete from report_schedules where id=?",id); auditTrail.logAs(actor, "REPORT_SCHEDULE", deletedName, id, "REPORT_SCHEDULE_DELETED", null, null, "Scheduled report deleted",
                 java.util.List.of(com.eqms.util.AuditChanges.of("Schedule",deletedName,null))); }
-    private void updateScheduleStatus(UserAccount actor, UUID id, boolean active, String status) { require(actor, "reports.schedule.manage", "report.module.export"); requireScheduleManagement(actor,id); jdbc.update("update report_schedules set active=?,status=?,updated_at=now() where id=?",active,status,id); auditTrail.logAs(actor, "REPORT_SCHEDULE", scheduleName(id), id, "REPORT_SCHEDULE_" + status, null, status, "Scheduled report status changed"); }
-    // Mirrors the ownership scoping already enforced in runDetail()/download(): the "manage" require()
-    // above accepts the broad legacy report.module.export permission too, so without this check any
-    // holder of that permission could pause/resume/delete another user's schedule despite the list
-    // view (schedules()) already restricting them to their own schedules.
-    private void requireScheduleManagement(UserAccount actor, UUID id) {
-        Map<String, Object> row;
+    private void updateScheduleStatus(UserAccount actor, UUID id, boolean active, String status) { requireScheduleExists(id); jdbc.update("update report_schedules set active=?,status=?,updated_at=now() where id=?",active,status,id); auditTrail.logAs(actor, "REPORT_SCHEDULE", scheduleName(id), id, "REPORT_SCHEDULE_" + status, null, status, "Scheduled report status changed"); }
+    // Who may manage a schedule (the manage or the export permission, and either every schedule or its creator) is decided by the Hybrid engine (ShadowGuard, REPORT_SCHEDULE, relation MAY_MANAGE);
+    // what stays here is that the schedule exists.
+    private void requireScheduleExists(UUID id) {
         try {
-            row = jdbc.queryForMap("select creator_user_id from report_schedules where id=?", id);
+            jdbc.queryForMap("select creator_user_id from report_schedules where id=?", id);
         } catch (org.springframework.dao.EmptyResultDataAccessException notFound) {
             throw new IllegalArgumentException("Report schedule not found");
-        }
-        boolean manageAll = permissions.hasPermission(actor, "reports.schedule.manage");
-        if (!manageAll && !actor.getId().toString().equals(String.valueOf(row.get("creator_user_id")))) {
-            throw new SecurityException("REPORT_SCOPE_DENIED");
         }
     }
     private CronExpression parseCron(String value) { try { return CronExpression.parse(value == null ? "" : value.trim()); } catch (Exception invalid) { throw new IllegalArgumentException("Invalid cron expression"); } }
@@ -609,11 +623,12 @@ public class ReportPlatformService {
 
     @org.springframework.transaction.annotation.Transactional
     public void retryRun(UserAccount actor, UUID runId) {
-        templates.require(actor,"reports.run.create","report.module.export");
-        require(actor, "reports.run.create", "report.module.export");
+        shadow.run(actor, "REPORT_RUN", runId, "RETRY", com.eqms.service.authorization.ShadowGuard::isDenial, () -> retryRunInner(actor, runId));
+    }
+
+    private void retryRunInner(UserAccount actor, UUID runId) {
+        // who may retry (the create or the export permission, and every run or their own) is decided by the Hybrid engine (ShadowGuard, REPORT_RUN, relation MAY_RETRY)
         Map<String,Object> run = jdbc.queryForMap("select requester_user_id,status,definition_code,authorization_snapshot from report_runs where id=? for update", runId);
-        boolean all = permissions.hasPermission(actor, "reports.run.view_all");
-        if (!all && !actor.getId().toString().equals(String.valueOf(run.get("requester_user_id")))) throw new SecurityException("REPORT_SCOPE_DENIED");
         if (!Set.of("FAILED", "RETRY_SCHEDULED").contains(String.valueOf(run.get("status")))) throw new IllegalStateException("REPORT_GENERATION_FAILED");
         // A run of a revision that is no longer effective is not generated again: the person starts a new request (REPORT-OBSOLETE-REVISION-2026-11-12).
         JsonNode queuedWith = readSnapshot(run.get("authorization_snapshot"));
@@ -870,7 +885,11 @@ public class ReportPlatformService {
      * and a person other than the one who applied it: a release lets the file be removed, and that cannot be undone.
      */
     public void setArtifactLegalHold(UserAccount actor, UUID runId, UUID artifactId, boolean legalHold, String reason, String signatureToken) {
-        require(actor, "reports.retention.manage", "reports.definition.manage");
+        shadow.run(actor, "REPORT_ARTIFACT", artifactId, (legalHold ? "PLACE_HOLD" : "RELEASE_HOLD"), com.eqms.service.authorization.ShadowGuard::isDenial, () -> setArtifactLegalHoldInner(actor, runId, artifactId, legalHold, reason, signatureToken));
+    }
+
+    private void setArtifactLegalHoldInner(UserAccount actor, UUID runId, UUID artifactId, boolean legalHold, String reason, String signatureToken) {
+        // who may change a legal hold is decided by the Hybrid engine (ShadowGuard, REPORT_ARTIFACT, relation HOLD_RIGHT)
         if (reason == null || reason.isBlank()) throw new IllegalArgumentException("A reason is required to change a legal hold");
         Map<String, Object> current;
         try {
@@ -953,8 +972,11 @@ public class ReportPlatformService {
 
     /** Hands a schedule to a named owner. Only the creator or a schedule administrator may do it; the reason and both owners are audited. */
     public void changeScheduleOwner(UserAccount actor, UUID id, UUID ownerUserId, String reason) {
-        require(actor, "reports.schedule.manage", "report.module.export");
-        requireScheduleManagement(actor, id);
+        shadow.run(actor, "REPORT_SCHEDULE", id, "CHANGE_OWNER", com.eqms.service.authorization.ShadowGuard::isDenial, () -> changeScheduleOwnerInner(actor, id, ownerUserId, reason));
+    }
+
+    private void changeScheduleOwnerInner(UserAccount actor, UUID id, UUID ownerUserId, String reason) {
+        requireScheduleExists(id);
         if (ownerUserId == null || reason == null || reason.isBlank() || reason.length() > 1000) throw new IllegalArgumentException("REPORT_SCHEDULE_INVALID");
         UserAccount owner = users.findById(ownerUserId).orElseThrow(() -> new IllegalArgumentException("REPORT_SCHEDULE_OWNER_INVALID"));
         if (owner.getStatus() != UserStatus.Active) throw new IllegalArgumentException("REPORT_SCHEDULE_OWNER_INVALID");

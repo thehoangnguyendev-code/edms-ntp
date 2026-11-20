@@ -49,7 +49,7 @@ class TrainingRecordServiceMyParticipationTest {
     @BeforeEach
     void setUp() {
         when(actor.getId()).thenReturn(personId);
-        service = new TrainingRecordService(jdbc, access, store, signatures);
+        service = new TrainingRecordService(jdbc, access, store, signatures, com.eqms.service.authorization.TestGuards.allowingTraining());
     }
 
     private Map<String, Object> line(String status, String state, String method) {

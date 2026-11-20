@@ -254,7 +254,8 @@ public class NotificationDispatcher {
                 ? activeVersion(policy.getId(), NotificationTemplateVersion.CHANNEL_EMAIL) : null;
 
         String moduleKey = event.getModule();
-        String priority = event.getPriority() == null ? "medium" : event.getPriority().toLowerCase(Locale.ROOT);
+        // the priority an administrator chose for the notification, else the default of its event
+        String priority = policy.effectivePriority(event).toLowerCase(Locale.ROOT);
         boolean inAppSent = false;
         boolean emailSent = false;
 

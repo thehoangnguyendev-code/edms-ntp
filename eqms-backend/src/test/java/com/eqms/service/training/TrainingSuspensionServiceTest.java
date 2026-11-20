@@ -60,7 +60,7 @@ class TrainingSuspensionServiceTest {
         when(users.findById(personId)).thenReturn(Optional.of(trainee));
         when(access.departmentOf(trainee)).thenReturn(departmentId);
         when(access.departmentOf(any(UserAccount.class))).thenReturn(departmentId);
-        service = new TrainingSuspensionService(jdbc, access, store, signatures, users, notifier, recipients);
+        service = new TrainingSuspensionService(jdbc, access, store, signatures, users, notifier, recipients, com.eqms.service.authorization.TestGuards.allowingTraining());
     }
 
     private Map<String, Object> activity() {
@@ -156,9 +156,12 @@ class TrainingSuspensionServiceTest {
     void thePersonConcernedCannotResumeTheirOwnWork() {
         Map<String, Object> row = open();
         when(actor.getId()).thenReturn(personId);
+        // the person kept apart is a rule of the engine now (the policy forbids the relation SUBJECT: TrainingOtherLifecyclesMatrixTest); here the engine refuses and nothing is signed
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "shadow", com.eqms.service.authorization.TestGuards.refusingTraining("SEPARATION_OF_DUTIES"));
 
         assertThatThrownBy(() -> service.resume(actor, (UUID) row.get("id"), new TrainingSuspensionService.ResumeRequest("ok", "token")))
-                .isInstanceOf(IllegalArgumentException.class).hasMessage(TrainingApprovalService.SEGREGATION);
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class).hasMessage("SEPARATION_OF_DUTIES");
+        verify(signatures, org.mockito.Mockito.never()).createEntitySignature(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test

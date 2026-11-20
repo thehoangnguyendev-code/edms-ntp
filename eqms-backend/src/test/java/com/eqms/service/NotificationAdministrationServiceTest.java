@@ -243,4 +243,12 @@ class NotificationAdministrationServiceTest {
         assertThat(counted.list(query(null, null, null, null, "NEVER_SENT", null, null, null), true, true).data()).extracting(Row::code).containsOnly("document.obsoleted");
         assertThat(counted.list(query(null, null, null, null, "SENT", null, null, null), true, true).data()).extracting(Row::code).containsOnly("document.expired");
     }
+    /** NOTIFICATION-PRIORITY-2026-11-20: the list can be narrowed to one priority; email messages carry none, so they drop out of a priority filter. */
+    @Test
+    void theListCanBeFilteredByPriority() {
+        var high = service.list(new Query(null, null, null, null, null, null, null, null, "name", "asc", 1, 50, "high"), true, true);
+        assertThat(high.data()).isNotEmpty().allMatch(r -> "HIGH".equals(r.priority()));
+        var low = service.list(new Query(null, null, null, null, null, null, null, null, "name", "asc", 1, 50, "LOW"), true, true);
+        assertThat(low.data()).isEmpty();
+    }
 }

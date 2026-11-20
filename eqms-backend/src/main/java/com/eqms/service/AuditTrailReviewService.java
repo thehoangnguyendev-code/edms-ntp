@@ -52,6 +52,7 @@ public class AuditTrailReviewService {
     private static final Set<String> DECISIONS = Set.of("CONFIRMED", "FLAGGED", "PENDING");
 
     private final com.eqms.repository.UserAccountRepository userRepo;
+    private final com.eqms.service.authorization.ShadowGuard shadow;
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private ObjectNumberService numbers;
     private final AuditTrailReviewCampaignRepository campaignRepo;
@@ -63,6 +64,7 @@ public class AuditTrailReviewService {
     private final SecurityChangeSignatureService securityChangeSignatureService;
     private final ElectronicSignatureService electronicSignatureService;
 
+    /** Without the shadow of the Hybrid engine (the services are built this way in unit tests; Spring uses the constructor below). */
     public AuditTrailReviewService(
             com.eqms.repository.UserAccountRepository userRepo,
             AuditTrailReviewCampaignRepository campaignRepo,
@@ -73,6 +75,22 @@ public class AuditTrailReviewService {
             AuditTrailService auditTrailService,
             SecurityChangeSignatureService securityChangeSignatureService,
             ElectronicSignatureService electronicSignatureService) {
+        this(userRepo, campaignRepo, itemRepo, auditLogRepository, permissionEvaluationService, currentUserService, auditTrailService, securityChangeSignatureService, electronicSignatureService, new com.eqms.service.authorization.ShadowGuard(null));
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public AuditTrailReviewService(
+            com.eqms.repository.UserAccountRepository userRepo,
+            AuditTrailReviewCampaignRepository campaignRepo,
+            AuditTrailReviewItemRepository itemRepo,
+            AuditLogRepository auditLogRepository,
+            PermissionEvaluationService permissionEvaluationService,
+            CurrentUserService currentUserService,
+            AuditTrailService auditTrailService,
+            SecurityChangeSignatureService securityChangeSignatureService,
+            ElectronicSignatureService electronicSignatureService,
+            com.eqms.service.authorization.ShadowGuard shadow) {
+        this.shadow = shadow;
         this.userRepo = userRepo;
         this.campaignRepo = campaignRepo;
         this.itemRepo = itemRepo;
@@ -179,7 +197,15 @@ public class AuditTrailReviewService {
 
     @Transactional
     public ItemResponse decideItem(UUID campaignId, UUID itemId, ItemDecisionRequest request) {
-        UserAccount actor = requireManage();
+        UserAccount actor = currentUserService.requireCurrentUser();
+        // Two asks of the engine: the campaign (permission, state) and the ITEM (a person kept apart from this item, V820; the id of an item is understood by the adapter of the campaign).
+        return shadow.around(actor, "AUDIT_REVIEW_CAMPAIGN", campaignId, "DECIDE_ITEM", com.eqms.service.authorization.ShadowGuard::isDenial,
+                () -> shadow.around(actor, "AUDIT_REVIEW_CAMPAIGN", itemId, "DECIDE_ITEM", com.eqms.service.authorization.ShadowGuard::isDenial, () -> decideItemInner(campaignId, itemId, request)));
+    }
+
+    private ItemResponse decideItemInner(UUID campaignId, UUID itemId, ItemDecisionRequest request) {
+        // who may do this is decided by the Hybrid engine (ShadowGuard, campaign type of this service)
+        UserAccount actor = currentUserService.requireCurrentUser();
         AuditTrailReviewCampaign campaign = require(campaignId);
         if (!"IN_PROGRESS".equals(campaign.getStatus())) {
             throw new IllegalStateException("Decisions can only be recorded on an in-progress campaign");
@@ -213,7 +239,12 @@ public class AuditTrailReviewService {
 
     @Transactional
     public CampaignDetailResponse completeCampaign(UUID id, CampaignCompleteRequest request) {
-        UserAccount actor = requireManage();
+        return shadow.around(currentUserService.requireCurrentUser(), "AUDIT_REVIEW_CAMPAIGN", id, "COMPLETE", com.eqms.service.authorization.ShadowGuard::isDenial, () -> completeCampaignInner(id, request));
+    }
+
+    private CampaignDetailResponse completeCampaignInner(UUID id, CampaignCompleteRequest request) {
+        // who may do this is decided by the Hybrid engine (ShadowGuard, campaign type of this service)
+        UserAccount actor = currentUserService.requireCurrentUser();
         String token = request != null ? request.signatureToken() : null;
         String reason = request != null ? request.reason() : null;
         securityChangeSignatureService.requireValidToken(actor, token);
@@ -249,7 +280,12 @@ public class AuditTrailReviewService {
 
     @Transactional
     public CampaignDetailResponse cancelCampaign(UUID id) {
-        UserAccount actor = requireManage();
+        return shadow.around(currentUserService.requireCurrentUser(), "AUDIT_REVIEW_CAMPAIGN", id, "CANCEL", com.eqms.service.authorization.ShadowGuard::isDenial, () -> cancelCampaignInner(id));
+    }
+
+    private CampaignDetailResponse cancelCampaignInner(UUID id) {
+        // who may do this is decided by the Hybrid engine (ShadowGuard, campaign type of this service)
+        UserAccount actor = currentUserService.requireCurrentUser();
         AuditTrailReviewCampaign campaign = require(id);
         if (!"IN_PROGRESS".equals(campaign.getStatus())) {
             throw new IllegalStateException("Only in-progress campaigns can be cancelled");

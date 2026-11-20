@@ -13,8 +13,6 @@ public record AccessProfileDetailResponse(
         boolean active,
         boolean system,
         boolean testData,
-        String businessUnitScope,
-        String departmentScope,
         List<PermissionSetSummary> permissionSets,
         List<String> workflowRoles,
         /** VIEW_EVERYTHING, INCOMPLETE or NAMED_IN_FLOW (computed from the permissions the profile grants). */

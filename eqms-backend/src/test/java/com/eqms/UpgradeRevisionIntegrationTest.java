@@ -39,6 +39,9 @@ public class UpgradeRevisionIntegrationTest {
     @Autowired
     private UserAccountRepository userAccountRepository;
 
+    @Autowired
+    private com.eqms.repository.DocumentWorkflowParticipantRepository documentWorkflowParticipantRepository;
+
     @Test
     public void testUpgradeRevisionLifecycle() {
         // Authenticate a seeded user
@@ -70,7 +73,10 @@ public class UpgradeRevisionIntegrationTest {
                             .anyMatch(r -> r.getStatus() != null && List.of(
                                     "DRAFT", "PENDING_REVIEW", "PENDING_APPROVAL", "PENDING_TRAINING",
                                     "READY_FOR_PUBLISHING").contains(r.getStatus().getCode()));
-                    return hasEffective && !hasInProgress;
+                    // The upgrade copies the roster of the document into the new revision and re-validates it: exactly one Approver is a floor of the product (RevisionService.validateApproverRules). The shared dev database also holds documents of other tests whose roster has none or two, which cannot be upgraded; this test is about the upgrade, not about those rosters.
+                    long approvers = documentWorkflowParticipantRepository.findAllByDocument_IdOrderBySequenceOrderAsc(candidate.getId()).stream()
+                            .filter(participant -> "APPROVER".equals(participant.getParticipantType())).count();
+                    return hasEffective && !hasInProgress && approvers == 1;
                 })
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("No ACTIVE document with an available effective revision"));

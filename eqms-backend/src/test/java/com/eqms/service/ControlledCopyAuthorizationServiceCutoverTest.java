@@ -47,7 +47,6 @@ class ControlledCopyAuthorizationServiceCutoverTest {
     @Mock private WorkflowActionPolicyRepository workflowActionPolicyRepository;
     @Mock private UserAccessProfileRepository userAccessProfileRepository;
     @Mock private DocumentRecordRepository documentRecordRepository;
-    @Mock private ObjectAccessEvaluationService objectAccessEvaluationService;
     @Mock private AuthorizationEngineService authorizationEngineService;
 
     private UserAccount user;
@@ -60,7 +59,7 @@ class ControlledCopyAuthorizationServiceCutoverTest {
                 controlledCopyPolicyService, secureFileAccessService, controlledCopyRepository,
                 controlledCopyDistributionBatchRepository, workflowActionPolicyRepository,
                 userAccessProfileRepository, documentRecordRepository,
-                objectAccessEvaluationService, null, authorizationEngineService);
+                null, authorizationEngineService);
     }
 
     @BeforeEach

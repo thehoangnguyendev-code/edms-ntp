@@ -28,6 +28,7 @@ public class TrainingTrainerService {
     static final String QUALIFIED = "training.trainer.qualified";
 
     private final JdbcTemplate jdbc;
+    private final TrainingShadow shadow;
     private final TrainingAccess access;
     private final TrainingApprovalService approvals;
     private final ElectronicSignatureService signatures;
@@ -35,8 +36,9 @@ public class TrainingTrainerService {
     private final TrainingStore store;
     private final UserAccountRepository users;
 
-    public TrainingTrainerService(JdbcTemplate jdbc, TrainingAccess access, TrainingApprovalService approvals, ElectronicSignatureService signatures, AuditTrailService audit, TrainingStore store, UserAccountRepository users) {
+    public TrainingTrainerService(JdbcTemplate jdbc, TrainingAccess access, TrainingApprovalService approvals, ElectronicSignatureService signatures, AuditTrailService audit, TrainingStore store, UserAccountRepository users, TrainingShadow shadow) {
         this.jdbc = jdbc;
+        this.shadow = shadow;
         this.access = access;
         this.approvals = approvals;
         this.signatures = signatures;
@@ -136,6 +138,10 @@ public class TrainingTrainerService {
 
     @Transactional
     public Map<String, Object> approve(UserAccount actor, UUID exceptionId, SignRequest request) {
+        return shadow.around(actor, "TRAINING_TRAINER_EXCEPTION", exceptionId, "APPROVE", true, () -> approveInner(actor, exceptionId, request));
+    }
+
+    private Map<String, Object> approveInner(UserAccount actor, UUID exceptionId, SignRequest request) {
         Map<String, Object> e = lock(exceptionId);
         if (!"PENDING".equals(e.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_TRAINER_EXCEPTION_DECIDED");
         Map<String, Object> activity = store.activity((UUID) e.get("activity_id")).orElseThrow();
@@ -152,6 +158,10 @@ public class TrainingTrainerService {
 
     @Transactional
     public Map<String, Object> reject(UserAccount actor, UUID exceptionId, RejectRequest request) {
+        return shadow.around(actor, "TRAINING_TRAINER_EXCEPTION", exceptionId, "REJECT", true, () -> rejectInner(actor, exceptionId, request));
+    }
+
+    private Map<String, Object> rejectInner(UserAccount actor, UUID exceptionId, RejectRequest request) {
         Map<String, Object> e = lock(exceptionId);
         if (!"PENDING".equals(e.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_TRAINER_EXCEPTION_DECIDED");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");

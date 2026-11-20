@@ -36,7 +36,6 @@ class ControlledCopyAuthorizationServiceTest {
     @Mock WorkflowActionPolicyRepository workflowActionPolicyRepository;
     @Mock UserAccessProfileRepository userAccessProfileRepository;
     @Mock DocumentRecordRepository documentRecordRepository;
-    @Mock ObjectAccessEvaluationService objectAccessEvaluationService;
 
     ControlledCopyAuthorizationService service;
     UserAccount user;
@@ -118,31 +117,6 @@ class ControlledCopyAuthorizationServiceTest {
         lenient().when(permissionEvaluationService.isSuperAdmin(user)).thenReturn(false);
         lenient().when(permissionEvaluationService.hasPermission(eq(user), anyString())).thenReturn(true);
         lenient().when(currentUserService.requireCurrentUser()).thenReturn(user);
-    }
-
-    @Test
-    void evaluate_superAdminCannotBypassDocumentScope() {
-        // REQUEST_COPY is the only action still decided by this legacy evaluator post-cutover
-        // (SECURITY_AUTHORIZATION_HYBRID_REFACTOR_PLAN.md Phase 3 cutover rule 5 -- no resourceId
-        // exists yet at request time, so it cannot go through AuthorizationEngineService). Every
-        // other action's scope/actor-matching behavior is now covered by
-        // ControlledCopyResourceAdapterTest against the engine path instead.
-        ControlledCopyAuthorizationService scopedService = new ControlledCopyAuthorizationService(
-                permissionEvaluationService, currentUserService, documentAuthorizationService,
-                controlledCopyPolicyService, secureFileAccessService, controlledCopyRepository,
-                controlledCopyDistributionBatchRepository, workflowActionPolicyRepository,
-                userAccessProfileRepository, documentRecordRepository, objectAccessEvaluationService
-        );
-        when(documentRecordRepository.findById(document.getId())).thenReturn(Optional.of(document));
-        when(objectAccessEvaluationService.canAccessDocument(eq(user), eq(document), eq("VIEW"))).thenReturn(false);
-
-        var decision = scopedService.evaluate(user, ControlledCopyWorkflowAction.REQUEST_COPY,
-                ControlledCopyAuthorizationContext.forRequest(document.getId(), revision.getId(),
-                        "ACTIVE", "EFFECTIVE", user.getId()));
-
-        assertThat(decision.allowed()).isFalse();
-        assertThat(decision.reasonCode()).isEqualTo("OUT_OF_SCOPE");
-        verify(permissionEvaluationService, never()).hasPermission(any(), any());
     }
 
     @Test

@@ -9,5 +9,7 @@ public record WorkflowActionPolicyRelationResponse(
         String relationCode,
         String relationDisplayName,
         String resolverCode,
-        int priority
+        int priority,
+        /** true: the actor must NOT hold this relation (a different person), false: the relation is required */
+        boolean forbidden
 ) {}

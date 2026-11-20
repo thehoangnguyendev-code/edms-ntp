@@ -41,7 +41,7 @@ class TrainingVendorAndPaperCopyRulesTest {
     private final UserAccount actor = mock(UserAccount.class);
 
     private TrainingVendorService vendors() {
-        return new TrainingVendorService(jdbc, access, signatures, audit);
+        return new TrainingVendorService(jdbc, access, signatures, audit, com.eqms.service.authorization.TestGuards.allowingTraining());
     }
 
     private static java.sql.Date date(LocalDate d) {
@@ -89,7 +89,11 @@ class TrainingVendorAndPaperCopyRulesTest {
         when(actor.getId()).thenReturn(me);
         UUID id = UUID.randomUUID();
         when(jdbc.queryForList(contains("for update"), any(Object[].class))).thenReturn(List.of(Map.of("status", "DRAFT", "created_by", me, "name", "Acme")));
-        assertThatThrownBy(() -> vendors().approve(actor, id, new TrainingVendorService.SignRequest("token"))).hasMessage(TrainingApprovalService.SEGREGATION);
+        // the writer kept apart is a rule of the engine now (the policy forbids the relation CREATOR: TrainingOtherLifecyclesMatrixTest)
+        var vendors = vendors();
+        org.springframework.test.util.ReflectionTestUtils.setField(vendors, "shadow", com.eqms.service.authorization.TestGuards.refusingTraining("SEPARATION_OF_DUTIES"));
+        assertThatThrownBy(() -> vendors.approve(actor, id, new TrainingVendorService.SignRequest("token")))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class).hasMessage("SEPARATION_OF_DUTIES");
         verify(signatures, never()).createEntitySignature(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 

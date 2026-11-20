@@ -32,7 +32,6 @@ public class ControlledCopyBatchResourceAdapter implements ResourceAuthorization
 
     private final ControlledCopyDistributionBatchRepository batchRepository;
     private final ControlledCopyAuthorizationService controlledCopyAuthorizationService;
-    private final ObjectAccessEvaluationService objectAccessEvaluationService;
     private final WorkflowActionPolicyService workflowActionPolicyService;
     private final WorkflowActionPolicyRelationRepository workflowActionPolicyRelationRepository;
     private final WorkflowActionPolicyRepository workflowActionPolicyRepository;
@@ -40,14 +39,12 @@ public class ControlledCopyBatchResourceAdapter implements ResourceAuthorization
     public ControlledCopyBatchResourceAdapter(
             ControlledCopyDistributionBatchRepository batchRepository,
             ControlledCopyAuthorizationService controlledCopyAuthorizationService,
-            ObjectAccessEvaluationService objectAccessEvaluationService,
             WorkflowActionPolicyService workflowActionPolicyService,
             WorkflowActionPolicyRelationRepository workflowActionPolicyRelationRepository,
             WorkflowActionPolicyRepository workflowActionPolicyRepository
     ) {
         this.batchRepository = batchRepository;
         this.controlledCopyAuthorizationService = controlledCopyAuthorizationService;
-        this.objectAccessEvaluationService = objectAccessEvaluationService;
         this.workflowActionPolicyService = workflowActionPolicyService;
         this.workflowActionPolicyRelationRepository = workflowActionPolicyRelationRepository;
         this.workflowActionPolicyRepository = workflowActionPolicyRepository;
@@ -75,7 +72,8 @@ public class ControlledCopyBatchResourceAdapter implements ResourceAuthorization
                         policy.getRequiredPermissionCode(),
                         policy.getVersion(),
                         requiredRelationCodes(policy),
-                        policy.getRelationMatchRule()));
+                        policy.getRelationMatchRule(),
+                        forbiddenRelationCodes(policy)));
     }
 
     @Override
@@ -89,6 +87,16 @@ public class ControlledCopyBatchResourceAdapter implements ResourceAuthorization
         return workflowActionPolicyRelationRepository
                 .findAllByPolicy_IdAndActiveTrueOrderByPriorityAsc(policy.getId())
                 .stream()
+                .filter(r -> !r.isForbidden())
+                .map(r -> r.getRelationDefinition().getCode())
+                .toList();
+    }
+
+    private java.util.List<String> forbiddenRelationCodes(WorkflowActionPolicy policy) {
+        return workflowActionPolicyRelationRepository
+                .findAllByPolicy_IdAndActiveTrueOrderByPriorityAsc(policy.getId())
+                .stream()
+                .filter(r -> r.isForbidden())
                 .map(r -> r.getRelationDefinition().getCode())
                 .toList();
     }
@@ -110,10 +118,8 @@ public class ControlledCopyBatchResourceAdapter implements ResourceAuthorization
     @Override
     public boolean isWithinObjectScope(UserAccount actor, UUID resourceId, String action) {
         ControlledCopyDistributionBatch batch = findBatch(resourceId);
-        if (batch == null || batch.getDocument() == null) {
-            return false;
-        }
-        return objectAccessEvaluationService.canAccessDocument(actor, batch.getDocument(), "VIEW");
+        // No department or Access Profile scope any more (VISIBILITY-TIERS-2026-11-20): the step only confirms that the batch and its Document exist.
+        return batch != null && batch.getDocument() != null;
     }
 
     @Override

@@ -6,6 +6,8 @@ import com.eqms.dto.user.AccessExplorerDtos.GrantingSet;
 import com.eqms.dto.user.AccessExplorerDtos.Holder;
 import com.eqms.dto.user.AccessExplorerDtos.HoldersResponse;
 import com.eqms.dto.user.AccessExplorerDtos.PermissionOption;
+import com.eqms.dto.user.AccessExplorerDtos.PermissionPage;
+import com.eqms.dto.user.AccessExplorerDtos.PermissionRow;
 import com.eqms.entity.AccessProfilePermissionSet;
 import com.eqms.entity.Permission;
 import com.eqms.entity.PermissionSet;
@@ -44,7 +46,7 @@ import java.util.UUID;
  */
 @Service
 public class AccessExplorerService {
-    static final int MAX_PERMISSIONS = 50;
+    static final int MAX_PAGE_SIZE = 100;
 
     private final CurrentUserService currentUserService;
     private final PermissionEvaluationService permissionEvaluationService;
@@ -73,19 +75,57 @@ public class AccessExplorerService {
         }
     }
 
-    /** The permissions whose code, name, module or description contains the text, for the picker. At most 50; an empty text gives the first 50 by code. */
+    /** The module keys that have at least one permission, for the module filter of the list. */
     @Transactional(readOnly = true)
-    public List<PermissionOption> searchPermissions(String search) {
+    public List<String> modules() {
         requireView();
-        // every word typed must be found somewhere in the permission, in any order ("paper verify" finds "Verify Paper Training")
+        return permissionRepository.findAll().stream().map(Permission::getModuleKey).filter(StringUtils::hasText).map(com.eqms.util.ModuleKeys::canonical).distinct().sorted(String.CASE_INSENSITIVE_ORDER).toList();
+    }
+
+    /**
+     * The list screen: every permission with how many permission sets, access profiles and people hold it. Searched, filtered, sorted and paged here, not in the browser. Every
+     * word typed must be found somewhere in the permission, in any order ("paper verify" finds "Verify Paper Training"). {@code held}: "held" keeps the permissions somebody
+     * holds, "none" the ones nobody holds (a permission nobody holds is worth a look), anything else keeps all.
+     */
+    @Transactional(readOnly = true)
+    public PermissionPage listPermissions(String search, String module, String held, String sortBy, String sortDir, int page, int size) {
+        requireView();
+        String moduleKey = module == null ? "" : module.trim();
         String[] words = search == null || search.isBlank() ? new String[0] : search.trim().toLowerCase(Locale.ROOT).split("[ \t]+");
-        return permissionRepository.findAll().stream()
+        Map<String, int[]> counts = new LinkedHashMap<>();
+        for (Object[] row : permissionRepository.holderCountsByCode()) {
+            counts.put(String.valueOf(row[0]), new int[] {((Number) row[1]).intValue(), ((Number) row[2]).intValue(), ((Number) row[3]).intValue(), ((Number) row[4]).intValue()});
+        }
+        int[] none = new int[4];
+        List<PermissionRow> rows = permissionRepository.findAll().stream()
+                .filter(p -> moduleKey.isEmpty() || com.eqms.util.ModuleKeys.same(moduleKey, p.getModuleKey()))
                 .filter(p -> java.util.Arrays.stream(words).allMatch(word -> contains(p.getCode(), word) || contains(p.getName(), word) || contains(p.getModuleKey(), word)
                         || contains(p.getCategory(), word) || contains(p.getDescription(), word)))
-                .sorted(Comparator.comparing(Permission::getCode, String.CASE_INSENSITIVE_ORDER))
-                .limit(MAX_PERMISSIONS)
-                .map(AccessExplorerService::option)
+                .map(p -> {
+                    int[] c = counts.getOrDefault(p.getCode(), none);
+                    return new PermissionRow(p.getCode(), p.getName(), p.getModuleKey(), p.getCategory(), p.getDescription(), c[0], c[1], c[2], c[3]);
+                })
+                .filter(r -> "held".equalsIgnoreCase(held) ? r.holderCount() > 0 : !"none".equalsIgnoreCase(held) || r.holderCount() == 0)
+                .sorted(rowOrder(sortBy, sortDir))
                 .toList();
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        int safePage = Math.max(page, 0);
+        int from = (int) Math.min((long) safePage * safeSize, rows.size());
+        return new PermissionPage(rows.subList(from, Math.min(from + safeSize, rows.size())), rows.size(), Math.max(1, (rows.size() + safeSize - 1) / safeSize), safePage, safeSize);
+    }
+
+    private static Comparator<PermissionRow> rowOrder(String sortBy, String sortDir) {
+        Comparator<PermissionRow> byCode = Comparator.comparing(PermissionRow::code, String.CASE_INSENSITIVE_ORDER);
+        Comparator<PermissionRow> order = switch (sortBy == null ? "" : sortBy) {
+            case "code" -> byCode;
+            case "module" -> Comparator.comparing((PermissionRow r) -> r.moduleKey() == null ? "" : r.moduleKey(), String.CASE_INSENSITIVE_ORDER).thenComparing(byCode);
+            case "category" -> Comparator.comparing((PermissionRow r) -> r.category() == null ? "" : r.category(), String.CASE_INSENSITIVE_ORDER).thenComparing(byCode);
+            case "permissionSetCount" -> Comparator.comparingInt(PermissionRow::permissionSetCount).thenComparing(byCode);
+            case "accessProfileCount" -> Comparator.comparingInt(PermissionRow::accessProfileCount).thenComparing(byCode);
+            case "holderCount" -> Comparator.comparingInt(PermissionRow::holderCount).thenComparing(byCode);
+            default -> Comparator.comparing((PermissionRow r) -> r.name() == null ? "" : r.name(), String.CASE_INSENSITIVE_ORDER).thenComparing(byCode);
+        };
+        return "desc".equalsIgnoreCase(sortDir) ? order.reversed() : order;
     }
 
     /**
@@ -93,7 +133,7 @@ public class AccessExplorerService {
      * account is Active (a suspended or terminated person holds nothing in practice). Nothing is written.
      */
     @Transactional(readOnly = true)
-    public HoldersResponse whoHolds(String code, boolean activeOnly) {
+    public HoldersResponse whoHolds(String code, boolean activeOnly, String search, int page, int size) {
         requireView();
         if (!StringUtils.hasText(code)) throw new IllegalArgumentException("A permission code is required");
         Permission permission = permissionRepository.findByCode(code.trim().toLowerCase(Locale.ROOT))
@@ -127,16 +167,23 @@ public class AccessExplorerService {
         timeLimitedGrantRepository.findByStatus(TimeLimitedUserGrant.STATUS_ACTIVE)
                 .forEach(g -> limited.merge(g.getUser().getId(), g.getEndAt(), (a, b) -> a.isAfter(b) ? a : b));
 
-        List<Holder> holders = users.values().stream()
+        String[] words = search == null || search.isBlank() ? new String[0] : search.trim().toLowerCase(Locale.ROOT).split("[ \t]+");
+        List<Holder> matching = users.values().stream()
                 .filter(u -> !activeOnly || u.getStatus() == UserStatus.Active)
                 .map(u -> new Holder(u.getId(), u.getEmployeeCode(), u.getUsername(), u.getFullName(), u.getDepartment(),
                         u.getStatus() == null ? null : u.getStatus().name(),
                         List.copyOf(profilesOf.getOrDefault(u.getId(), Set.of())), List.copyOf(setsOf.getOrDefault(u.getId(), Set.of())),
                         u.getLastLoginAt(), limited.get(u.getId())))
+                .filter(h -> java.util.Arrays.stream(words).allMatch(word -> contains(h.fullName(), word) || contains(h.username(), word) || contains(h.employeeCode(), word)
+                        || contains(h.department(), word) || h.viaProfiles().stream().anyMatch(n -> contains(n, word)) || h.viaPermissionSets().stream().anyMatch(n -> contains(n, word))))
                 .sorted(Comparator.comparing((Holder h) -> h.fullName() == null ? "" : h.fullName(), String.CASE_INSENSITIVE_ORDER))
                 .toList();
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        int from = (int) Math.min((long) Math.max(page, 0) * safeSize, matching.size());
+        List<Holder> holders = matching.subList(from, Math.min(from + safeSize, matching.size()));
+        int pages = Math.max(1, (matching.size() + safeSize - 1) / safeSize);
         int active = (int) users.values().stream().filter(u -> u.getStatus() == UserStatus.Active).count();
-        return new HoldersResponse(option(permission), sets, holders, users.size(), active);
+        return new HoldersResponse(option(permission), sets, holders, users.size(), active, matching.size(), pages);
     }
 
     private static boolean contains(String value, String needle) {

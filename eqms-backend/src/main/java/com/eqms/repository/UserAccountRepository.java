@@ -14,6 +14,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface UserAccountRepository extends JpaRepository<UserAccount, UUID>, JpaSpecificationExecutor<UserAccount> {
+    /** Takes the row lock, so two sign-ins of the same account decide their session limit one after the other. */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from UserAccount u where u.id = :id")
+    Optional<UserAccount> findByIdForUpdate(@Param("id") UUID id);
+
     Optional<UserAccount> findByUsername(String username);
     Optional<UserAccount> findByUsernameIgnoreCase(String username);
     Optional<UserAccount> findByEmail(String email);

@@ -7,13 +7,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * How much of Document Control an Access Profile lets its people see (DC-VISIBILITY-TIERS-2026-11-07). Computed from the permissions the
- * profile grants, never stored, so it cannot drift from what the profile really does.
+ * How much of Document Control an Access Profile lets its people see (DC-VISIBILITY-TIERS-2026-11-07, VISIBILITY-TIERS-2026-11-20). Computed from
+ * the permissions the profile grants, never stored, so it cannot drift from what the profile really does.
  *
  * <ul>
  *   <li>{@link #VIEW_EVERYTHING}: all three view-all permissions (Documents and Revisions, Controlled Copies, Uncontrolled Copies).</li>
  *   <li>{@link #INCOMPLETE}: one or two of them. Each still works alone, but the profile sees everything of one kind and only its own of another.</li>
- *   <li>{@link #NAMED_IN_FLOW}: none; a person sees exactly what has their name (the default).</li>
+ *   <li>{@link #DEPARTMENT}: none of the view-all permissions, but the department level: the Documents and Revisions of the person's own
+ *       Department, and (as in the default) what has their name, including the copies of the revisions where they are named.</li>
+ *   <li>{@link #NAMED_IN_FLOW}: none of them; a person sees exactly what has their name (the default).</li>
  * </ul>
  * The values are stable machine codes; a screen translates them for display only.
  */
@@ -22,6 +24,7 @@ public final class DocumentControlVisibility {
     public static final String VIEW_EVERYTHING = "VIEW_EVERYTHING";
     public static final String INCOMPLETE = "INCOMPLETE";
     public static final String NAMED_IN_FLOW = "NAMED_IN_FLOW";
+    public static final String DEPARTMENT = "DEPARTMENT";
 
     /** The three permissions of the view-everything bundle. */
     public static final List<String> VIEW_ALL_PERMISSIONS = List.of(
@@ -42,7 +45,7 @@ public final class DocumentControlVisibility {
                 .collect(Collectors.toSet());
         long held = VIEW_ALL_PERMISSIONS.stream().filter(granted::contains).count();
         if (held == 0) {
-            return NAMED_IN_FLOW;
+            return granted.contains(DocumentAuthorizationService.PERMISSION_DOCUMENT_VIEW_DEPARTMENT) ? DEPARTMENT : NAMED_IN_FLOW;
         }
         return held == VIEW_ALL_PERMISSIONS.size() ? VIEW_EVERYTHING : INCOMPLETE;
     }

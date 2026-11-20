@@ -28,6 +28,7 @@ public class TrainingSuspensionService {
     public record ResumeRequest(String reason, String signatureToken) {}
 
     private final JdbcTemplate jdbc;
+    private final TrainingShadow shadow;
     private final TrainingAccess access;
     private final TrainingStore store;
     private final ElectronicSignatureService signatures;
@@ -36,8 +37,9 @@ public class TrainingSuspensionService {
     private final TrainingRecipients recipients;
 
     public TrainingSuspensionService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, ElectronicSignatureService signatures, UserAccountRepository users,
-                                     TrainingNotifier notifier, TrainingRecipients recipients) {
+                                     TrainingNotifier notifier, TrainingRecipients recipients, TrainingShadow shadow) {
         this.jdbc = jdbc;
+        this.shadow = shadow;
         this.access = access;
         this.store = store;
         this.signatures = signatures;
@@ -148,12 +150,14 @@ public class TrainingSuspensionService {
     /** The head of the unit decides that the work may resume: a reason and an electronic signature, never the person concerned. */
     @Transactional
     public Map<String, Object> resume(UserAccount actor, UUID id, ResumeRequest request) {
+        return shadow.around(actor, "TRAINING_SUSPENSION", id, "RESUME", true, () -> resumeInner(actor, id, request));
+    }
+
+    private Map<String, Object> resumeInner(UserAccount actor, UUID id, ResumeRequest request) {
+        // who may resume (the permission, the department of the person, and not the person suspended) is decided by the Hybrid engine (TrainingShadow, TRAINING_SUSPENSION)
         Map<String, Object> row = jdbc.queryForList("select * from training_work_suspensions where id=? for update", id).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        access.require(actor, "training.job_assignment.manage");
         UUID person = (UUID) row.get("person_user_id");
-        access.requireScope(actor, departmentOfPerson(person));
         if (!"OPEN".equals(row.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SUSPENSION_NOT_OPEN");
-        if (actor.getId().equals(person)) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         if (request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
         Map<String, Object> activity = store.activity((UUID) row.get("activity_id")).orElseThrow();

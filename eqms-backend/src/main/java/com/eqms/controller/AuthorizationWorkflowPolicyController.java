@@ -51,6 +51,15 @@ public class AuthorizationWorkflowPolicyController {
                 request.signatureToken(), request.reason(), actor);
     }
 
+    public record SetForbiddenRelationsRequest(List<UUID> relationDefinitionIds, String signatureToken, String reason) {}
+
+    /** The relations the policy forbids (a different person); the required ones are set by {@code /relations}. */
+    @PutMapping("/{id}/forbidden-relations")
+    public WorkflowActionPolicyResponse setForbiddenRelations(@PathVariable UUID id, @RequestBody SetForbiddenRelationsRequest request) {
+        UserAccount actor = requireManage();
+        return policyService.setForbiddenRelations(id, request.relationDefinitionIds(), request.signatureToken(), request.reason(), actor);
+    }
+
     private UserAccount requireManage() {
         UserAccount user = currentUserService.requireCurrentUser();
         if (!permissionEvaluationService.hasPermission(user, "security.workflow_authorization.manage")) {

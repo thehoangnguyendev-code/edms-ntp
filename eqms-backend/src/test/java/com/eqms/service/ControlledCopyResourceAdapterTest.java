@@ -30,7 +30,6 @@ class ControlledCopyResourceAdapterTest {
 
     @Mock private ControlledCopyRepository controlledCopyRepository;
     @Mock private ControlledCopyAuthorizationService controlledCopyAuthorizationService;
-    @Mock private ObjectAccessEvaluationService objectAccessEvaluationService;
     @Mock private WorkflowActionPolicyService workflowActionPolicyService;
     @Mock private WorkflowActionPolicyRelationRepository workflowActionPolicyRelationRepository;
     @Mock private WorkflowActionPolicyRepository workflowActionPolicyRepository;
@@ -44,7 +43,7 @@ class ControlledCopyResourceAdapterTest {
     @BeforeEach
     void setUp() {
         adapter = new ControlledCopyResourceAdapter(controlledCopyRepository, controlledCopyAuthorizationService,
-                objectAccessEvaluationService, workflowActionPolicyService, workflowActionPolicyRelationRepository,
+                workflowActionPolicyService, workflowActionPolicyRelationRepository,
                 workflowActionPolicyRepository);
         actor = new UserAccount();
         actor.setId(UUID.randomUUID());
@@ -115,8 +114,7 @@ class ControlledCopyResourceAdapterTest {
     }
 
     @Test
-    void isWithinObjectScope_delegatesToObjectAccessEvaluationServiceAgainstParentDocument() {
-        when(objectAccessEvaluationService.canAccessDocument(actor, copy.getDocument(), "VIEW")).thenReturn(true);
+    void isWithinObjectScope_existingCopyWithItsDocument_isWithinScope() {
 
         assertThat(adapter.isWithinObjectScope(actor, copyId, "VIEW_COPY")).isTrue();
     }

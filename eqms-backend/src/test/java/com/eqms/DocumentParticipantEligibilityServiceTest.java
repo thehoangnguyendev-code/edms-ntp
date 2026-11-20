@@ -12,7 +12,6 @@ import com.eqms.repository.RevisionWorkflowParticipantRepository;
 import com.eqms.repository.UserAccountRepository;
 import com.eqms.service.DocumentAuthorizationService;
 import com.eqms.service.DocumentParticipantEligibilityService;
-import com.eqms.service.ObjectAccessEvaluationService;
 import com.eqms.service.PermissionEvaluationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,7 +47,6 @@ class DocumentParticipantEligibilityServiceTest {
     @Mock private DocumentRevisionRepository revisions;
     @Mock private UserAccountRepository users;
     @Mock private PermissionEvaluationService permissions;
-    @Mock private ObjectAccessEvaluationService objectAccess;
     @Mock private RevisionWorkflowParticipantRepository revisionParticipants;
     @Mock private DocumentWorkflowSettingRepository settings;
     @Mock private CurrentUserService currentUserService;
