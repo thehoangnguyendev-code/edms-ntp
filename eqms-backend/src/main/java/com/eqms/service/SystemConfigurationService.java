@@ -2364,8 +2364,10 @@ public class SystemConfigurationService {
     public com.eqms.dto.auth.PasswordPolicyResponse getPasswordPolicy() {
         JsonNode security = requireConfiguration().getSecurityConfig();
         if (security == null) {
-            return new com.eqms.dto.auth.PasswordPolicyResponse(12, true, true, true, true, 0, 0, false, false, false, false);
+            return new com.eqms.dto.auth.PasswordPolicyResponse(12, true, true, true, true, 0, 0, false, false, false, false, false, 0);
         }
+        // Same defaults as AuthService.changePassword, which enforces the history check.
+        boolean preventReuse = security.path("preventPasswordReuse").asBoolean(true);
         return new com.eqms.dto.auth.PasswordPolicyResponse(
                 security.path("passwordMinLength").asInt(12),
                 security.path("requireUppercase").asBoolean(true),
@@ -2377,7 +2379,9 @@ public class SystemConfigurationService {
                 security.path("disallowSequentialChars").asBoolean(false),
                 security.path("disallowCommonPasswords").asBoolean(false),
                 security.path("disallowUserInfo").asBoolean(false),
-                security.path("disallowWhitespace").asBoolean(false)
+                security.path("disallowWhitespace").asBoolean(false),
+                preventReuse,
+                preventReuse ? security.path("passwordHistoryCount").asInt(5) : 0
         );
     }
 

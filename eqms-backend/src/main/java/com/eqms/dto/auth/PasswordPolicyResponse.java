@@ -16,6 +16,10 @@ public record PasswordPolicyResponse(
         boolean disallowCommonPasswords,
         /** Reject passwords containing the user's username, e-mail name or name parts. */
         boolean disallowUserInfo,
-        boolean disallowWhitespace
+        boolean disallowWhitespace,
+        /** Reject a new password equal to one of the person's recent passwords. Only the server can check it (it holds the hashes). */
+        boolean preventPasswordReuse,
+        /** How many of the most recent passwords count as "used before" (0 when reuse is not prevented). */
+        int passwordHistoryCount
 ) {
 }

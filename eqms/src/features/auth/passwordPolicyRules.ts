@@ -39,6 +39,16 @@ const hasSequentialRun = (password: string) => {
 };
 
 /**
+ * The "not one of your last N passwords" rule as a sentence, or null when the policy does not prevent reuse.
+ * Only the server can check it (it holds the hashes), so it is a note beside the checklist and never a tick.
+ */
+export const passwordReuseNote = (policy: PasswordPolicy): string | null => {
+  const count = policy.passwordHistoryCount ?? 0;
+  if (!policy.preventPasswordReuse || count <= 0) return null;
+  return `Must be different from your last ${count} password${count === 1 ? "" : "s"}. This is checked when you save.`;
+};
+
+/**
  * Builds the checklist for the admin-configured password policy. Mirrors
  * SystemConfigurationService#validatePasswordPolicy on the server, which stays authoritative.
  * `userTokens` (username, e-mail name, name parts) enables the "no user information" rule when known.

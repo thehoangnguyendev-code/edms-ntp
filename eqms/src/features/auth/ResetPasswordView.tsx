@@ -11,7 +11,7 @@ import { useAuthUi } from "./useAuthUi";
 import { AuthBackLink, AuthField, AuthLayout, AuthTopBackButton } from "./components";
 import { authApi } from "@/services/api";
 import { usePasswordPolicy } from "./usePasswordPolicy";
-import { evaluatePasswordPolicy } from "./passwordPolicyRules";
+import { evaluatePasswordPolicy, passwordReuseNote } from "./passwordPolicyRules";
 
 interface ResetPasswordViewProps {
   onBackToLogin?: () => void;
@@ -83,6 +83,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
   }, [token]);
 
   const strength = useMemo(() => checkPasswordStrength(formData.newPassword, passwordPolicy), [formData.newPassword, passwordPolicy]);
+  const reuseNote = passwordReuseNote(passwordPolicy);
 
   const setField = (field: "newPassword" | "confirmPassword", value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -272,6 +273,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-0.5">
                     {strength.checks.map((check) => <React.Fragment key={check.key}>{renderStrengthCheck(check.label, check.met)}</React.Fragment>)}
                   </div>
+                  {reuseNote && <p className="text-xs text-slate-500">{reuseNote}</p>}
                   </div>
 
                   <AuthField htmlFor="confirmPassword" label="Confirm New Password" required error={errors.confirmPassword}>

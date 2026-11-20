@@ -56,6 +56,9 @@ export interface PasswordPolicy {
   disallowCommonPasswords?: boolean;
   disallowUserInfo?: boolean;
   disallowWhitespace?: boolean;
+  /** Only the server can check this one; the screen shows it as a note, not as a tick. */
+  preventPasswordReuse?: boolean;
+  passwordHistoryCount?: number;
 }
 
 export type LoginResult = AuthResponse | LoginChallengeResponse;

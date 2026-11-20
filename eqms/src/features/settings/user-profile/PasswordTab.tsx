@@ -8,7 +8,7 @@ import { WarningBanner } from '@/components/ui/banner/WarningBanner';
 import { FormSection } from '@/components/ui/form/FormSection';
 import { Badge } from '@/components/ui/badge/Badge';
 import { authApi, type PasswordPolicy } from '@/services/api/auth';
-import { evaluatePasswordPolicy } from '@/features/auth/passwordPolicyRules';
+import { evaluatePasswordPolicy, passwordReuseNote } from '@/features/auth/passwordPolicyRules';
 import { IconCalendarEvent, IconPasswordUser, IconSparkles, IconWorldQuestion } from '@tabler/icons-react';
 
 interface PasswordTabProps {
@@ -69,6 +69,7 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
     }, []);
 
     const passwordRequirements = evaluatePasswordPolicy(passwordData.newPassword, passwordPolicy, userTokens);
+    const reuseNote = passwordReuseNote(passwordPolicy);
     const hasTypedPassword = passwordData.newPassword.length > 0;
 
     // Calculate days until password expiry (default 90 days after last change)
@@ -289,6 +290,9 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
                                         </div>
                                     ))}
                                 </div>
+                                {reuseNote && (
+                                    <p className="mt-3 border-t border-slate-200 pt-3 text-xs text-slate-500">{reuseNote}</p>
+                                )}
                             </div>
 
                             {/* After-change option */}

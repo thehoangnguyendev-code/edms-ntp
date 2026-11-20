@@ -1,5 +1,5 @@
 import { useLeaveGuard } from '@/hooks/useLeaveGuard';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/app/routes.constants';
@@ -18,8 +18,15 @@ import { PasswordTab } from "./PasswordTab";
 import { usePasswordPolicy } from '@/features/auth/usePasswordPolicy';
 import { evaluatePasswordPolicy } from '@/features/auth/passwordPolicyRules';
 import { authApi } from '@/services/api/auth';
+import { getApiErrorMessage } from '@/utils/apiError';
 import { useAuth } from '@/contexts/AuthContext';
 import { isAvatarFileWithinLimit, isSupportedAvatarFile, readFileAsDataUrl } from '@/utils/avatar';
+
+/** Fixed, so the tab bar is handed the same list on every keystroke. */
+const PROFILE_TABS = [
+    { id: 'account', label: 'Account' },
+    { id: 'password', label: 'Password' },
+];
 
 interface ProfileViewProps {
     onBack?: () => void;
@@ -173,11 +180,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
     };
 
     const passwordPolicy = usePasswordPolicy();
-    const passwordUserTokens = [
-        originalFormData.username,
-        originalFormData.email.split('@')[0],
-        ...originalFormData.fullName.split(/\s+/),
-    ];
+    const passwordUserTokens = useMemo(
+        () => [
+            originalFormData.username,
+            originalFormData.email.split('@')[0],
+            ...originalFormData.fullName.split(/\s+/),
+        ],
+        [originalFormData.username, originalFormData.email, originalFormData.fullName],
+    );
+
+    // Built once per change of what they are made from, not on every keystroke: the header re-publishes its breadcrumbs whenever it is handed a new list.
+    const breadcrumbItems = useMemo(() => personalInformation(go), [go]);
+    const pageTitle = useMemo(() => {
+        const base = resolveConfiguredNavigationLabel('Personal Information', navigationLabelOverrides);
+        const displayName = authUser?.fullName || authUser?.username;
+        return displayName ? `${base} - ${displayName}` : base;
+    }, [navigationLabelOverrides, authUser?.fullName, authUser?.username]);
 
     const handleSubmit = async () => {
         let hasError = false;
@@ -280,7 +298,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
             setEditingFields({ email: false, phone: false });
         } catch (error) {
             console.error('Failed to save profile changes', error);
-            showToast({ type: 'error', title: 'Error', message: 'Failed to save changes. Please try again.' });
+            // The server's own reason, for example "You cannot reuse any of your last 5 passwords", so the person knows what to change.
+            showToast({ type: 'error', title: 'Error', message: getApiErrorMessage(error, 'Failed to save changes. Please try again.') });
         } finally {
             setIsNavigating(false);
         }
@@ -318,12 +337,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
     return (
         <div className="space-y-4 sm:space-y-6 w-full flex-1 flex flex-col">
             <PageHeader
-                title={(() => {
-                    const base = resolveConfiguredNavigationLabel('Personal Information', navigationLabelOverrides);
-                    const displayName = authUser?.fullName || authUser?.username;
-                    return displayName ? `${base} - ${displayName}` : base;
-                })()}
-                breadcrumbItems={personalInformation(go)}
+                title={pageTitle}
+                breadcrumbItems={breadcrumbItems}
                 actions={
                     <div className="flex items-center gap-2 md:gap-3 flex-wrap">
                         <Button
@@ -351,10 +366,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 {/* Tab Navigation */}
                 <TabNav
-                    tabs={[
-                        { id: 'account', label: 'Account' },
-                        { id: 'password', label: 'Password' }
-                    ]}
+                    tabs={PROFILE_TABS}
                     activeTab={activeTab}
                     onChange={setActiveTab}
                 />

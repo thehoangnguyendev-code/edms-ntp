@@ -11,7 +11,7 @@ import { useAuthUi } from "./useAuthUi";
 import { AuthField, AuthLayout, AuthBackLink, AuthTopBackButton } from "./components";
 import { IconArrowBigUpFilled } from "@tabler/icons-react";
 import { usePasswordPolicy } from "./usePasswordPolicy";
-import { evaluatePasswordPolicy } from "./passwordPolicyRules";
+import { evaluatePasswordPolicy, passwordReuseNote } from "./passwordPolicyRules";
 
 // ============================================================================
 // CONSTANTS & CONFIGURATION
@@ -98,6 +98,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
   const [focusedField, setFocusedField] = useState<"new" | "confirm" | null>(null);
 
   const strength = checkPasswordStrength(formData.newPassword, passwordPolicy);
+  const reuseNote = passwordReuseNote(passwordPolicy);
   const continueDisabled =
     isLoading || !strength.isValid || formData.newPassword !== formData.confirmPassword || !formData.currentPassword;
   const passwordChangeContext = {
@@ -366,6 +367,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-0.5">
                     {strength.checks.map((check) => <StrengthCheck key={check.key} label={check.label} checked={check.met} />)}
                   </div>
+                  {reuseNote && <p className="text-xs text-slate-500">{reuseNote}</p>}
                 </div>
               </AuthField>
 
