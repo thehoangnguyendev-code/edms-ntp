@@ -19,7 +19,7 @@ import { cn } from "@/components/ui/utils";
 import { useToast } from "@/components/ui/toast/Toast";
 import { useDebounce, usePortalDropdown } from "@/hooks";
 import { usePermissions } from "@/hooks/usePermissions";
-import { metadataApi } from "@/services/api/metadata";
+import { dictionaryApi } from "@/services/api/dictionary";
 import { knowledgeSharesApi, type KnowledgeShareRow } from "@/services/api/knowledgeShares";
 import { formatDateTime } from "@/utils/format";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
@@ -76,7 +76,7 @@ export const KnowledgeSharesPanel: React.FC = () => {
   };
 
   useEffect(() => {
-    metadataApi.getDepartments()
+    dictionaryApi.getDepartments()
       .then((items) => setDepartmentOptions([{ value: "", label: "All Departments" }, ...items.map((d) => ({ value: d.id, label: d.name }))]))
       .catch(() => undefined);
   }, []);

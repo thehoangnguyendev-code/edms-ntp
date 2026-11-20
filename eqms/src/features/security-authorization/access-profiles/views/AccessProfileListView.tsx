@@ -397,7 +397,7 @@ export const AccessProfileListView: React.FC = () => {
       cell: (profile) => (
         <div className="flex items-center gap-1.5 text-slate-700">
           <span className="font-medium">{profile.permissionSetCount}</span>
-          <span className="text-slate-400 text-xs">sets</span>
+          <span className="text-slate-400 text-xs">{profile.permissionSetCount === 1 ? "set" : "sets"}</span>
         </div>
       ),
     },
@@ -420,7 +420,9 @@ export const AccessProfileListView: React.FC = () => {
       header: "Document Control Visibility",
       label: "Document Control Visibility",
       cell: (profile) => {
-        const visibility = profile.documentControlVisibility ?? "NAMED_IN_FLOW";
+        const visibility = profile.documentControlVisibility;
+        // a profile with no Document Control permission has no Document Control visibility
+        if (!visibility) return <span className="text-slate-400">—</span>;
         return <Badge color={DOCUMENT_CONTROL_VISIBILITY_COLOR[visibility]} size="sm">{DOCUMENT_CONTROL_VISIBILITY_LABEL[visibility]}</Badge>;
       },
     },

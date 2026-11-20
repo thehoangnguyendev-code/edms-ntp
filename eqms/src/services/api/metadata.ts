@@ -58,16 +58,6 @@ export const metadataApi = {
   },
 
   /**
-   * Danh sách phòng ban dùng cho các bộ lọc hoặc form.
-   */
-  getDepartments: async () => {
-    const response = await api.get<{ id: string; name: string; code: string }[]>(
-      '/metadata/departments'
-    );
-    return response.data;
-  },
-
-  /**
    * Danh sách người dùng rút gọn để phục vụ bộ lọc "Assigned To".
    */
   getUsersLookup: async (params?: { department?: string; search?: string }) => {

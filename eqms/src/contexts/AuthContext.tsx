@@ -180,6 +180,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // Parse user first to ensure it's valid JSON
             const parsedUser = JSON.parse(storedUser);
 
+            // The access token comes back BEFORE the screen is told that the person is signed in: parts of the page (the notification check, the localisation loader)
+            // start calling the API as soon as isAuthenticated is true, and a call without the token is a 401/403 that is nobody's error (seen on about one reload in three).
+            // DEC-AUTHZ-2026-11-21-06.
+            try {
+              if (!authTokenStore.get()) {
+                const refreshedTokens = await authApi.refreshToken();
+                authTokenStore.set(refreshedTokens.accessToken);
+              }
+            } catch (refreshError) {
+              if (import.meta.env.DEV) console.warn('Unable to restore the access token:', refreshError);
+              secureStorage.removeItem('authToken');
+              secureStorage.removeItem('refreshToken');
+              secureStorage.removeItem('user');
+              authTokenStore.clear();
+              setUser(null);
+              setIsAuthenticated(false);
+              return;
+            }
+
             // Set authenticated state
             setUser(parsedUser);
             setIsAuthenticated(true);
@@ -191,10 +210,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             clientDiagnostics.log('session_restored', { userId: parsedUser.id });
 
             try {
-              if (!authTokenStore.get()) {
-                const refreshedTokens = await authApi.refreshToken();
-                authTokenStore.set(refreshedTokens.accessToken);
-              }
               const currentUser = await authApi.getCurrentUser();
               const appUser = mapAuthUserToUser(currentUser);
               setUser(appUser);
