@@ -55,6 +55,16 @@ class DocumentControlVisibilityTest {
     }
 
     @Test
+    void aProfileWithNoDocumentControlPermissionHasNoDocumentControlVisibility() {
+        // found 2026-11-21: a Training-only profile was shown as "Document Control: Named in flow"
+        assertThat(DocumentControlVisibility.ofProfile(Set.of("training.module.view", "training.activity.view"))).isNull();
+        assertThat(DocumentControlVisibility.ofProfile(null)).isNull();
+        assertThat(DocumentControlVisibility.ofProfile(List.of())).isNull();
+        assertThat(DocumentControlVisibility.ofProfile(Set.of("training.module.view", "documents.module.view"))).isEqualTo(DocumentControlVisibility.NAMED_IN_FLOW);
+        assertThat(DocumentControlVisibility.ofProfile(List.of(" Documents.Document.View_Department "))).isEqualTo(DocumentControlVisibility.DEPARTMENT);
+    }
+
+    @Test
     void theBundleIsTheThreeCodesOfTheDocumentAuthorizationService() {
         assertThat(DocumentControlVisibility.VIEW_ALL_PERMISSIONS).containsExactly(
                 DocumentAuthorizationService.PERMISSION_DOCUMENT_VIEW_ALL,

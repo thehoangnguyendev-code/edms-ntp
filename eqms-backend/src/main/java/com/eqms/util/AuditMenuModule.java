@@ -53,6 +53,8 @@ public final class AuditMenuModule {
             Map.entry("SODCONSTRAINT", SECURITY),
             Map.entry("WORKFLOWACTIONPOLICY", SECURITY),
             Map.entry("SESSION", SECURITY),
+            Map.entry("USERSESSION", SECURITY),
+            Map.entry("SESSIONREVOKEDCONCURRENTLIMIT", SECURITY),
             Map.entry("AUTH", SECURITY),
             Map.entry("AUTHENTICATION", SECURITY),
             Map.entry("WORKFLOWROLE", SECURITY),

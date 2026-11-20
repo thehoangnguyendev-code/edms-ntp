@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 class AuditObjectRegistryTest {
     /** Object Types that are not the name of a sidebar menu: the kinds of functions that were retired, and the legacy rows written before the screen was recorded. */
     private static final Set<String> NOT_A_MENU = Set.of(
-            "Form Settings (retired)", "Offline Media (retired)", "Training Calendar (retired)", "Prompt Specification (retired)", "Prompt Generation (retired)",
+            "Form Settings (retired)", "Offline Media (retired)", "Training Calendar (retired)", "Prompt Specification (retired)", "Prompt Generation (retired)", "Object Access Rules (retired)",
             "Table Export (before the screen was recorded)", "Settings (before the split)");
 
     @Test

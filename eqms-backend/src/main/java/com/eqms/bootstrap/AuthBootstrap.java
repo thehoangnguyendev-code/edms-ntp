@@ -38,7 +38,9 @@ public class AuthBootstrap implements ApplicationRunner {
             user.setDepartment("Quality Assurance");
             user.setPosition("Administrator");
             user.setStatus(UserStatus.Active);
-            user.setMustChangePassword(false);
+            // The first administrator of a new installation starts with a password that is written in the source, so it must be replaced at the first sign-in
+            // (21 CFR 11.300 / EU-GMP Annex 11 12.1: a credential that everyone who has read the code knows is not a unique identity). DEC-AUTHZ-2026-11-21-05.
+            user.setMustChangePassword(true);
             user.setMfaEnabled(false);
             user.setCreatedAt(Instant.now());
             user.setUpdatedAt(Instant.now());

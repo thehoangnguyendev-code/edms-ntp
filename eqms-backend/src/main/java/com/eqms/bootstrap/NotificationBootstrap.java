@@ -45,9 +45,9 @@ public class NotificationBootstrap implements ApplicationRunner {
         Optional<UserAccount> reviewer2 = userAccountRepository.findByUsername("reviewer.lead2");
         Optional<UserAccount> dco = userAccountRepository.findByUsername("dco.lead1");
 
-        List<UserAccount> users = List.of(admin.orElse(null), reviewer1.orElse(null), reviewer2.orElse(null), dco.orElse(null))
-                .stream()
-                .filter(java.util.Objects::nonNull)
+        // Only the sample accounts that exist: List.of(...) refuses a null, so a database without them (a new installation) stopped the whole application at start-up.
+        List<UserAccount> users = java.util.stream.Stream.of(admin, reviewer1, reviewer2, dco)
+                .flatMap(Optional::stream)
                 .toList();
 
         for (UserAccount user : users) {

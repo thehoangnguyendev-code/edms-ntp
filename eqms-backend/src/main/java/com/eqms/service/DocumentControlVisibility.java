@@ -35,6 +35,16 @@ public final class DocumentControlVisibility {
     private DocumentControlVisibility() {
     }
 
+    /**
+     * The visibility an Access Profile shows: null when it holds no Document Control permission at all (the choice exists only for a profile that holds a permission of the module),
+     * otherwise {@link #classify}.
+     */
+    public static String ofProfile(Collection<String> permissionCodes) {
+        boolean holdsDocumentControl = permissionCodes != null && permissionCodes.stream()
+                .anyMatch(code -> code != null && code.trim().toLowerCase(Locale.ROOT).startsWith("documents."));
+        return holdsDocumentControl ? classify(permissionCodes) : null;
+    }
+
     public static String classify(Collection<String> permissionCodes) {
         if (permissionCodes == null || permissionCodes.isEmpty()) {
             return NAMED_IN_FLOW;

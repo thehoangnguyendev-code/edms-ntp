@@ -96,7 +96,10 @@ public class ConcurrentSessionService {
             details.put("endedSessionIp", old.getIpAddress());
             details.put("newSessionIp", ipAddress);
             audit.log("SESSION_REVOKED_CONCURRENT_LIMIT", user, details, ipAddress, userAgent);
-            trail.logSafely("SESSION", "Authentication Session", old.getId(), "SESSION_REVOKED", from, "REVOKED",
+            // The end of a session is evidence, so it is written for the account that owns it, in the same transaction as the end itself. It used to go through
+            // logSafely, which needs a signed-in actor (there is none while a sign-in is being decided) and swallows its failure, so the Audit Trail never showed it.
+            // DEC-AUTHZ-2026-11-21-08.
+            trail.logAs(user, "SESSION", "Authentication Session", old.getId(), "SESSION_REVOKED", from, "REVOKED",
                     "Session ended: the account signed in on another device (limit " + limit + " per account)");
         }
         List<UUID> ids = ended.stream().map(AuthSession::getId).toList();

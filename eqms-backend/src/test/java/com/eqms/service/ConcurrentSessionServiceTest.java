@@ -83,6 +83,8 @@ class ConcurrentSessionServiceTest {
         verify(users).findByIdForUpdate(user.getId());
         verify(audit).log(eq("SESSION_REVOKED_CONCURRENT_LIMIT"), eq(user), ArgumentMatchers.<Map<String, Object>>any(), eq("10.0.0.2"), eq("ua"));
         verify(realtime).publishUserEvent(eq(user.getId()), eq("session-revoked"), any());
+        // the Audit Trail entry is written for the account that owns the session, as evidence (not through the best-effort logSafely that needs a signed-in actor)
+        verify(trail).logAs(eq(user), eq("SESSION"), eq("Authentication Session"), any(), eq("SESSION_REVOKED"), any(), eq("REVOKED"), any());
     }
 
     @Test

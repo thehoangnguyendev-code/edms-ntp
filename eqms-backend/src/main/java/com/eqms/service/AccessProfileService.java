@@ -1261,7 +1261,9 @@ public class AccessProfileService {
                 if (item.getPermission() != null) codes.add(item.getPermission().getCode());
             }
         }
-        return DocumentControlVisibility.classify(codes);
+        // A profile that holds no Document Control permission has no Document Control visibility to speak of: null (the screens show nothing), not "named in flow".
+        // DEC-AUTHZ-2026-11-21-07 (the same rule as the record-visibility pickers: a module's choice exists only for a profile that holds a permission of that module).
+        return DocumentControlVisibility.ofProfile(codes);
     }
 
     private AccessProfileDetailResponse.PermissionSetSummary toPermSetSummary(PermissionSet ps) {

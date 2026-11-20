@@ -1,0 +1,34 @@
+Changes: 20 files, 26 symbols
+Affected processes: 189
+Risk level: critical
+
+Changed symbols:
+  Symbol AuthBootstrap → eqms-backend/src/main/java/com/eqms/bootstrap/AuthBootstrap.java
+  Symbol NotificationBootstrap → eqms-backend/src/main/java/com/eqms/bootstrap/NotificationBootstrap.java
+  Symbol requireNoBlockingSodConflict → eqms-backend/src/main/java/com/eqms/service/AccessProfileService.java
+  Symbol AccessProfileService → eqms-backend/src/main/java/com/eqms/service/AccessProfileService.java
+  Symbol DocumentControlVisibility → eqms-backend/src/main/java/com/eqms/service/DocumentControlVisibility.java
+  Symbol EXACT → eqms-backend/src/main/java/com/eqms/util/AuditMenuModule.java
+  Symbol AuditMenuModule → eqms-backend/src/main/java/com/eqms/util/AuditMenuModule.java
+  Symbol of → eqms-backend/src/main/java/com/eqms/util/AuditObjectRegistry.java
+  Symbol AuditObjectRegistry → eqms-backend/src/main/java/com/eqms/util/AuditObjectRegistry.java
+  Symbol AuditObjectRegistryTest → eqms-backend/src/test/java/com/eqms/util/AuditObjectRegistryTest.java
+  Symbol NOT_A_MENU → eqms-backend/src/test/java/com/eqms/util/AuditObjectRegistryTest.java
+  Symbol AuthProvider → eqms/src/contexts/AuthContext.tsx
+  Symbol checkAuth → eqms/src/contexts/AuthContext.tsx
+  Symbol AuthProvider → eqms/src/contexts/AuthContext.tsx
+  Symbol AccessProfileListView → eqms/src/features/security-authorization/access-profiles/views/AccessProfileListView.tsx
+... and 11 more
+
+Affected execution flows:
+  • Notice → Sign (4 steps) — changed: AuditObjectRegistry, AuditObjectRegistry
+  • Cancel → Sign (4 steps) — changed: AuditObjectRegistry, AuditObjectRegistry
+  • Unlock → Sign (4 steps) — changed: AuditObjectRegistry, AuditObjectRegistry
+  • Notice → Configured (4 steps) — changed: AuditObjectRegistry, AuditObjectRegistry
+  • Cancel → Configured (4 steps) — changed: AuditObjectRegistry, AuditObjectRegistry
+  • Unlock → Configured (4 steps) — changed: AuditObjectRegistry, AuditObjectRegistry
+  • Publish → GetId (7 steps) — changed: AuditObjectRegistry
+  • Publish → GetDocument (7 steps) — changed: AuditObjectRegistry
+  • Publish → GetRevisionNumber (7 steps) — changed: AuditObjectRegistry
+  • Publish → GetEffectiveDate (7 steps) — changed: AuditObjectRegistry
+... and 179 more

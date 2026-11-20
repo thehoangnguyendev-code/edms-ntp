@@ -41,7 +41,8 @@ public final class AuditObjectRegistry {
         entry("Backup Alerts & Recipients", 'B', "BACKUPALERTRECIPIENT", "BACKUPALERTRULE");
         entry("Backup History", 'A', "BACKUP", "BACKUPEXPORT", "BACKUPINSPECTION");
         entry("Backup Policy", 'B', "BACKUPPOLICY");
-        entry("Backup Status Overview", 'C', "BACKUPSTORESCRUB");
+        // The Backup Status Overview menu was replaced by the dashboard widgets; the store check is shown with the store it checks (AUTHZ-COMPLETION-2026-11-21).
+        entry("Backup Storage & Encryption", 'C', "BACKUPSTORESCRUB");
         entry("Backup Storage & Encryption", 'B', "BACKUPTARGET");
         entry("Backup Storage & Encryption", 'C', "BACKUPMANUALCOPY");
         entry("Business Units", 'B', "BUSINESSUNIT");
@@ -76,10 +77,11 @@ public final class AuditObjectRegistry {
         entry("Knowledge Categories Hierarchies", 'B', "KNOWLEDGEHIERARCHY");
         entry("Knowledge Category Components", 'B', "KNOWLEDGECOMPONENT");
         entry("Legacy Training Evidence", 'A', "TRAININGLEGACYEVIDENCE");
-        entry("Logged in Users", 'C', "AUTH", "AUTHENTICATION", "SESSION");
+        entry("Logged in Users", 'C', "AUTH", "AUTHENTICATION", "SESSION", "USERSESSION", "SESSIONREVOKEDCONCURRENTLIMIT");
         entry("Notifications", 'C', "NOTIFICATION", "NOTIFICATIONINBOX");
         entry("Notifications Administration", 'B', "EMAILDESIGN", "EMAILTEMPLATE", "INAPPDESIGN", "NOTIFICATIONPOLICY");
-        entry("Object Access Rules", 'A', "OBJECTACCESSRULE");
+        // The Object Access Rules screen was removed (visibility is a permission of the profile now); nothing writes this kind any more, the records already written keep a readable name.
+        entry("Object Access Rules (retired)", 'A', "OBJECTACCESSRULE");
         entry("Object Numbering", 'B', "OBJECTNUMBERFORMAT");
         entry("Offline Media (retired)", 'C', "OFFLINEMEDIA");
         entry("Periodic Review", 'A', "AUDITTRAILREVIEW");
@@ -128,7 +130,8 @@ public final class AuditObjectRegistry {
         entry("Work Positions", 'B', "TRAININGJOBROLE");
         entry("Work Positions", 'C', "TRAININGPERSONPOSITION");
         entry("Workflow Authorization", 'B', "LIFECYCLESTATEPOLICY", "WORKFLOWACTIONPOLICY");
-        entry("Workflow Role Catalog", 'B', "WORKFLOWROLE");
+        // Workflow roles are administered on the Workflow Authorization page (there is no menu called Workflow Role Catalog).
+        entry("Workflow Authorization", 'B', "WORKFLOWROLE");
     }
 
     /** The kind of an entity type as it was written (any spelling), when it is registered. */
