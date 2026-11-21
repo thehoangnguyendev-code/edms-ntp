@@ -23,6 +23,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityNotFoundException;
 import java.util.*;
 
 @Service
@@ -963,22 +964,22 @@ public class AccessProfileService {
 
     private RoleDefinition requireRole(UUID id) {
         return roleRepo.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Access profile not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Access profile not found"));
     }
 
     private RoleDefinition requireRoleForConfigurationUpdate(UUID id) {
         return roleRepo.findByIdForUpdate(id)
-                .orElseThrow(() -> new NoSuchElementException("Access profile not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Access profile not found"));
     }
 
     private PermissionSet requirePermissionSet(UUID id) {
         return permSetRepo.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Permission set not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Permission set not found"));
     }
 
     private UserAccount requireUser(UUID id) {
         return userRepo.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("User not found"));
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
     }
 
     private void requireView() {

@@ -1,0 +1,8 @@
+detect-changes 2026-11-21 (whole working tree: includes other sessions' uncommitted files; only the files below were committed)
+My files: SharedSignatureController, ObjectNumberAccessExceptionHandler, AccessProfileService (4 lookup helpers), 3 tests, DECISION_LOG, coverage report + evidence
+Changes: 73 files, 146 symbols
+Affected processes: 192
+Risk level: critical
+
+Changed symbols:
+  Symbol Change record: Report templates, approval only for GMP use, and the menu of the templates (REPORT-NON-GMP-NO-APPROVAL-2026-11-15) → eqms-backend/docs/validation/REPORT_TEMPLATE_APPROVAL_2026_11_15_CHANGE_RECORD.md
