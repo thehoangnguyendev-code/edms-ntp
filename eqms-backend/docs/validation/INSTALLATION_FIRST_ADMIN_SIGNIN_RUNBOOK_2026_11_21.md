@@ -48,7 +48,15 @@ runbook gives the first administrator a working mailbox, it does not switch 2FA 
                                'senderName', '<display name>', 'senderEmail', '<sender address>')),
           updated_at = now()
     where config_key = 'default';
+
+   -- a new installation also has e-mail sending switched OFF; without this line no code is ever sent
+   update system_configurations
+      set notifications_config = jsonb_set(notifications_config, '{enableEmailNotifications}', 'true')
+    where config_key = 'default';
    ```
+
+   `<host>` is the SMTP server as the **backend** reaches it (a backend running on the same machine as
+   the mail catcher uses `localhost`, not a container name).
 
 3. **Set the administrator's real e-mail:**
 
@@ -56,11 +64,11 @@ runbook gives the first administrator a working mailbox, it does not switch 2FA 
    update app_users set email = '<real personal address>' where username = 'admin';
    ```
 
-4. **Restart or wait** for the application to reload the e-mail setting (the mail sender is cached; a
-   restart of the backend container is the sure way).
+4. **No restart is needed.** The mail sender is rebuilt when the e-mail setting changes (checked on the
+   scratch installation). The sign-in screen shows the masked new address.
 
-5. **First sign-in.** Open the application, sign in as `admin` with the initial password, enter the code
-   that arrives by e-mail, and set the new password when asked (`must_change_password` forces it).
+5. **First sign-in.** Open the application, sign in as `admin` with the initial password, choose to send the code by e-mail (the sign-in does not send it by itself),
+   enter the code that arrives, and set the new password when asked (`must_change_password` forces it).
    The initial password is the one written in `AuthBootstrap`; it is already published in the source,
    so it must not survive the first sign-in.
 
@@ -79,8 +87,11 @@ runbook gives the first administrator a working mailbox, it does not switch 2FA 
   local procedure (option (c)).
 - The SMTP password is stored in the database by the existing design; where and how it is protected is
   outside this step.
-- It was written from the source and the DEV database. It has **not** been run on a real new
-  installation; the scratch-database test of 2026-11-21 reached the sign-in screen and stopped there.
+- It was run on an empty scratch database on 2026-11-21 (see the Decision Log, DEC-AUTHZ-2026-11-21-11):
+  the first version of the SQL missed `enableEmailNotifications` and no code was sent; the version above
+  was then run through and the sign-in, the forced password change and the old password refused all worked.
+  It has **not** been run on a real production-like installation; that, with the signed record below, is
+  what QA still has to do.
 
 ## Installation record (copy per installation)
 
