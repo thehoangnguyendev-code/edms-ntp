@@ -169,7 +169,7 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
         )}
       </PortalDropdownMenu>
       <FormModal isOpen={creating && !signNew} onClose={() => setCreating(false)} onConfirm={() => setSignNew(true)} title="Prepare an Export" description="You sign as the person who prepared it. The person you choose approves with a signature, and the PDF is generated at that moment."
-        confirmText="Continue to signature" confirmDisabled={!personId || !reason.trim() || !approverId} size="md">
+        confirmText="Continue to Signature" confirmDisabled={!personId || !reason.trim() || !approverId} size="md">
         <div className="grid gap-4">
           <FormField label="Employee" required><Select value={personId} onChange={(v) => { setPersonId(v); setApproverId(""); }} options={people} onSearch={searchPeople} placeholder="Search by name" /></FormField>
           <FormField label="Reason for the export" required><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>

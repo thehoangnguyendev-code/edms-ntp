@@ -172,7 +172,7 @@ export function ExportsBatchesTab({ creating, setCreating }: { creating: boolean
       </PortalDropdownMenu>
       <FormModal isOpen={creating && !signNew} onClose={() => setCreating(false)} onConfirm={() => setSignNew(true)} title="Prepare a Batch Export"
         description="You sign as the person who prepared it. The person you choose approves with a signature, and only then are the PDFs made. Nobody can change them afterwards."
-        confirmText="Continue to signature" confirmDisabled={!departmentId || !yearOk || !reason.trim() || !approverId || !people || people.people === 0 || people.tooMany} size="md">
+        confirmText="Continue to Signature" confirmDisabled={!departmentId || !yearOk || !reason.trim() || !approverId || !people || people.people === 0 || people.tooMany} size="md">
         <div className="grid gap-4">
           <FormField label="Department" required><Select value={departmentId} onChange={setDepartmentId} options={departments} placeholder="Choose a department" /></FormField>
           <FormField label="Records up to the end of the year" required><Input type="number" min={2000} max={2100} value={year} onChange={(e) => setYear(e.target.value)} /></FormField>

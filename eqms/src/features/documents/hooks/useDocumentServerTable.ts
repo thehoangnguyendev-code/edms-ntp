@@ -1,4 +1,4 @@
-import { downloadTableExcel } from '@/services/api/tableExport';
+import { downloadTableExport, type TableExportOptions } from '@/services/api/tableExport';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useSearchParams } from "react-router-dom";
@@ -370,10 +370,10 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
   // (status, actions, counts): refetch the current page so it is never stale until a manual reload.
   useEntityChanged(["DOCUMENT", "REVISION"], () => reload(), { debounceMs: 1000 });
 
-  const exportDocuments = async () => {
+  const exportDocuments = async (options: TableExportOptions) => {
     setIsExporting(true);
     try {
-      await downloadTableExcel('documents', {
+      await downloadTableExport('documents', {
         scope: viewType,
         search: effectiveSearch || undefined,
         status: statusFilter === "All" ? undefined : statusFilter,
@@ -395,7 +395,7 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
         validTo: validToDate || undefined,
         sortBy: sortConfig.key,
         sortDirection: sortConfig.direction,
-      });
+      }, options);
 
       showToast({
         type: "success",

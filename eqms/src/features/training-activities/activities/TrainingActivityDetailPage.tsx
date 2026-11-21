@@ -3,12 +3,13 @@ import { SessionEditDialog } from "./components/SessionEditDialog";
 import { LegacyPeopleTab } from "./components/LegacyPeopleTab";
 import { SessionDetails } from "./components/SessionDetails";
 import { TrainingParticipantTable } from "./components/TrainingParticipantTable";
+import { TrainingAttendanceRow } from "./components/TrainingAttendanceRow";
 import { ContentRulesPanel, assessmentFormKind, contentRuleNote } from "./components/ContentRulesPanel";
 import { TrainingPersonName } from "../shared/TrainingPersonName";
 import { Avatar } from "@/components/ui/avatar";
 import { RadioGroup } from "@/components/ui/radio";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Children, Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -560,9 +561,16 @@ export function TrainingActivityDetailPage({
             : p.state === "ATTENDED" && p.signMode === "TRAINER_ATTESTED"
               ? " (marked by trainer)"
               : "");
+  /** Whether the trainer can mark this person present or absent now (held session, not a self-reading, still invited). */
+  const canMarkAttendance = (p: TrainingParticipant) =>
+    Boolean(caps?.recordAttendance) &&
+    p.state === "INVITED" &&
+    sessionOf(p.sessionId)?.method !== "SELF_READING" &&
+    sessionStarted(sessionOf(p.sessionId) ?? { status: "" });
   const renderActions = (
     p: TrainingParticipant,
     scope: "all" | "attendance" | "results",
+    opts?: { skipMark?: boolean },
   ) => (
     <div className="flex max-w-[11rem] flex-wrap gap-2">
       {scope !== "results" &&
@@ -642,10 +650,8 @@ export function TrainingActivityDetailPage({
           </Button>
         )}
       {scope !== "results" &&
-        caps?.recordAttendance &&
-        p.state === "INVITED" &&
-        sessionOf(p.sessionId)?.method !== "SELF_READING" &&
-        sessionStarted(sessionOf(p.sessionId) ?? { status: "" }) && (
+        !opts?.skipMark &&
+        canMarkAttendance(p) && (
           <Button
             size="sm"
            variant="outline-emerald"
@@ -946,11 +952,36 @@ export function TrainingActivityDetailPage({
       />
     </>
   );
-  const groupTables = (columns: DataTableColumn<TrainingParticipant>[]) =>
+  const groupTables = (columns: DataTableColumn<TrainingParticipant>[], renderRow?: (p: TrainingParticipant, index: number) => ReactNode) =>
     groups.map((group) => (
       <TrainingParticipantTable key={group.id} activityId={activity.id} sessionId={workspaceSessionId || pSession || undefined}
-        group={group.id} title={group.title} columns={columns} refreshToken={activity} />
+        group={group.id} title={group.title} columns={columns} refreshToken={activity} renderRow={renderRow} />
     ));
+  /** One person of the attendance step as a line: the status and every action at the right on a desktop, Mark and a menu on a phone. */
+  const attendanceRow = (p: TrainingParticipant) => {
+    const more = renderActions(p, "attendance", { skipMark: true });
+    const hasMore = Children.toArray(more.props.children).length > 0;
+    const statusColor = p.plannedAbsence && p.state === "INVITED" ? "amber" : p.state === "ABSENT" ? "red" : p.state === "ATTENDED" || p.state === "ONLINE" ? "emerald" : "slate";
+    return (
+      <TrainingAttendanceRow
+        key={p.id}
+        name={p.fullName}
+        avatar={p.avatar}
+        meta={[p.employeeCode, p.department, !singleSession ? `S${sessionOf(p.sessionId)?.sessionNo ?? ""}` : "", (p.participationRole ?? "TRAINEE") !== "TRAINEE" ? PARTICIPATION_ROLE_LABEL[p.participationRole ?? "TRAINEE"] : ""].filter(Boolean).join(" · ") || "—"}
+        notes={
+          <>
+            {!p.personUserId && p.externalOrg ? <div className="truncate text-xs text-slate-500">{p.externalOrg}</div> : null}
+            {p.addedReason ? <div className="text-xs text-amber-700">Added by hand: {p.addedReason}</div> : null}
+            {accountNote(p)}
+          </>
+        }
+        status={<Badge color={statusColor} className="max-w-full whitespace-normal">{labelOfState(p)}</Badge>}
+        actions={renderActions(p, "attendance")}
+        quickAction={canMarkAttendance(p) ? <Button size="sm" variant="outline-emerald" aria-label={`Mark Attendance of ${p.fullName}`} onClick={() => setDialog({ type: "attendance", participant: p })}>Mark</Button> : undefined}
+        moreActions={hasMore ? more : undefined}
+      />
+    );
+  };
   const signAction = (
     title: string,
     meaningCode: string,
@@ -1347,7 +1378,7 @@ export function TrainingActivityDetailPage({
         />
       )}
       {tab === "ws-attendance" && (
-        <WorkspaceAttendanceStep scoped={wsScoped} caps={caps} reading={wsReading} onActivity={() => void load()} table={groupTables(attendanceColumns)} />
+        <WorkspaceAttendanceStep scoped={wsScoped} caps={caps} reading={wsReading} onActivity={() => void load()} table={groupTables(attendanceColumns, attendanceRow)} />
       )}
       {tab === "ws-training" && (
         <WorkspaceTrainingStep activityId={activity.id} mode={mode} external={external} participants={activity.participants} />
@@ -1674,7 +1705,7 @@ export function TrainingActivityDetailPage({
                   loading={busy}
                   onClick={sendAttendanceList}
                 >
-                  Send attendance list to QA
+                  Send Attendance List to QA
                 </Button>
               )}
               {endButtons}

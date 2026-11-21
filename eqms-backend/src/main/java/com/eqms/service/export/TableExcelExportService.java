@@ -53,11 +53,35 @@ public class TableExcelExportService {
 
     @FunctionalInterface public interface Rows { void write(TableExcelWriter writer) throws IOException; }
 
+    public static final String CSV_MIME = "text/csv";
+    /** Separates the chosen column names in the {@code columns} request parameter (no column name contains it). */
+    public static final String COLUMN_SEPARATOR = "|";
+
+    /** {@code format=csv} makes a CSV file; anything else (or nothing) is the Excel workbook. */
+    static TableExcelWriter.Format formatOf(Map<String,String> query) {
+        String value = query.get("format");
+        if (value == null || value.isBlank() || "xlsx".equalsIgnoreCase(value)) return TableExcelWriter.Format.XLSX;
+        if ("csv".equalsIgnoreCase(value)) return TableExcelWriter.Format.CSV;
+        throw new IllegalArgumentException("Unknown export format");
+    }
+
+    /** The chosen columns, or null for every column. */
+    static Set<String> columnsOf(Map<String,String> query) {
+        String value = query.get("columns");
+        if (value == null || value.isBlank()) return null;
+        Set<String> names = new LinkedHashSet<>();
+        for (String part : value.split("\\" + COLUMN_SEPARATOR)) if (!part.isBlank()) names.add(part.trim());
+        return names;
+    }
+
     public ResponseEntity<StreamingResponseBody> generate(String name, Map<String,String> query, Rows source) throws IOException {
         var actor = users.requireCurrentUser();
+        TableExcelWriter.Format format = formatOf(query);
+        Set<String> chosenColumns = columnsOf(query);
+        String extension = format == TableExcelWriter.Format.CSV ? ".csv" : ".xlsx";
         String filename = name + "_" + DateTimeFormatter.ofPattern("ddMMyyyy_HHmm")
-                .withZone(DateTimeFormatUtils.ZONE).format(Instant.now()) + ".xlsx";
-        Path file = Files.createTempFile("eqms-table-export-", ".xlsx");
+                .withZone(DateTimeFormatUtils.ZONE).format(Instant.now()) + extension;
+        Path file = Files.createTempFile("eqms-table-export-", extension);
         file.toFile().deleteOnExit();
         if (!generationSlots.tryAcquire()) {
             Files.deleteIfExists(file);
@@ -65,7 +89,7 @@ public class TableExcelExportService {
         }
         try {
             transaction.executeWithoutResult(status -> {
-                try (TableExcelWriter writer = new TableExcelWriter()) {
+                try (TableExcelWriter writer = new TableExcelWriter(format, chosenColumns)) {
                     // Bulk audit export consumes a signature and must retain its normal write semantics.
                     if ("Audit_Trail".equals(name)) source.write(writer);
                     else try (var readScope = new TableExportReadScope(entityManager)) { source.write(writer); }
@@ -82,7 +106,7 @@ public class TableExcelExportService {
                     criteria.remove("page"); criteria.remove("limit"); criteria.remove("size");
                     UUID registerId = UUID.nameUUIDFromBytes(("table-export:" + name).getBytes(StandardCharsets.UTF_8));
                     audit.logAs(actor, auditKind(name), filename, registerId, "EXPORT", null, null,
-                            "Generated Excel file=" + filename + "; records=" + writer.recordCount()
+                            "Generated " + (format == TableExcelWriter.Format.CSV ? "CSV" : "Excel") + " file=" + filename + "; records=" + writer.recordCount()
                             + "; SHA-256=" + checksum + "; criteria=" + criteria);
                 } catch (IOException ex) { throw new UncheckedIOException(ex); }
                   catch (NoSuchAlgorithmException ex) { throw new IllegalStateException(ex); }
@@ -91,7 +115,7 @@ public class TableExcelExportService {
             StreamingResponseBody body = output -> {
                 try { Files.copy(file, output); } finally { Files.deleteIfExists(file); }
             };
-            return ResponseEntity.ok().contentType(MediaType.parseMediaType(MIME)).contentLength(length)
+            return ResponseEntity.ok().contentType(MediaType.parseMediaType(format == TableExcelWriter.Format.CSV ? CSV_MIME : MIME)).contentLength(length)
                     .header(HttpHeaders.CACHE_CONTROL, "no-store")
                     .header("X-Content-Type-Options", "nosniff")
                     .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename).build().toString())

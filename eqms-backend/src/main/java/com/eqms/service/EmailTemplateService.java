@@ -118,7 +118,8 @@ public class EmailTemplateService {
         );
     }
 
-    @Transactional(readOnly = true)
+    // not read-only: the export is written to the Audit Trail
+    @Transactional
     public List<EmailTemplateResponse> exportTemplates(
             String search,
             String type,
@@ -133,12 +134,16 @@ public class EmailTemplateService {
         String sortProperty = resolveSortProperty(sortBy);
         Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
 
-        return repository.findAll(
+        List<EmailTemplateResponse> exported = repository.findAll(
                         buildSpecification(search, type, status, createdFrom, createdTo, updatedFrom, updatedTo, null),
                         Sort.by(direction, sortProperty)
                 ).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+        // every export is recorded (AUDIT_TRAIL_STANDARD 1.6)
+        auditTrailService.log("EmailTemplate", "Email templates", java.util.UUID.nameUUIDFromBytes("EMAIL_TEMPLATE_EXPORT".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                "EXPORT", null, null, "Exported " + exported.size() + " email template(s)");
+        return exported;
     }
 
     @Transactional(readOnly = true)

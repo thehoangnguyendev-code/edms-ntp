@@ -1,5 +1,6 @@
 package com.eqms.config;
 
+import com.eqms.auth.ActuatorAccessFilter;
 import com.eqms.auth.AuthTokenFilter;
 import com.eqms.auth.RateLimitFilter;
 import com.eqms.auth.IdempotencyFilter;
@@ -36,12 +37,21 @@ public class SecurityConfig {
         return registration;
     }
 
+    /** Registered only in Spring Security's chain, like the rate limit filter (otherwise it would also run as a plain servlet filter). */
+    @Bean
+    FilterRegistrationBean<ActuatorAccessFilter> actuatorAccessFilterRegistration(ActuatorAccessFilter actuatorAccessFilter) {
+        FilterRegistrationBean<ActuatorAccessFilter> registration = new FilterRegistrationBean<>(actuatorAccessFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             AuthTokenFilter authTokenFilter,
             RateLimitFilter rateLimitFilter,
-            IdempotencyFilter idempotencyFilter
+            IdempotencyFilter idempotencyFilter,
+            ActuatorAccessFilter actuatorAccessFilter
     ) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
@@ -58,6 +68,7 @@ public class SecurityConfig {
                 // anonymous/authentication-attempt requests.
                 .addFilterAfter(rateLimitFilter, AuthTokenFilter.class)
                 .addFilterAfter(idempotencyFilter, RateLimitFilter.class)
+                .addFilterAfter(actuatorAccessFilter, IdempotencyFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         // Only the initial REQUEST dispatch is authenticated and authorized. Async completion (SSE stream
                         // ended/failed) and the container's ERROR dispatch re-enter the chain with an empty security

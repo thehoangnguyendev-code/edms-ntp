@@ -53,6 +53,28 @@ public class TableExcelExportController {
         return generate(dataset, q);
     }
 
+    /** The column names the file of this register can hold, so the person can choose which ones to export. */
+    @GetMapping("/{dataset:documents|revisions|controlled-copies|users|notifications|backups|backup-rehearsals|production-restores}/columns")
+    public Map<String,List<String>> columns(@PathVariable String dataset, @RequestParam Map<String,String> q) throws IOException {
+        return Map.of("columns", columnNames(dataset, q));
+    }
+
+    @GetMapping("/{dataset:access-profiles|permission-sets}/columns")
+    public Map<String,List<String>> columnsAdministration(@PathVariable String dataset, @RequestParam Map<String,String> q) throws IOException {
+        return Map.of("columns", columnNames(dataset, q));
+    }
+
+    private List<String> columnNames(String dataset, Map<String,String> q) throws IOException {
+        List<String> found = new ArrayList<>();
+        // The writer stops the export as soon as the headers are known, so no record is read.
+        try (TableExcelWriter w = new TableExcelWriter(TableExcelWriter.Format.XLSX, null, found::addAll)) {
+            write(dataset, q, w);
+        } catch (TableExcelWriter.HeadersCaptured done) {
+            // expected
+        }
+        return found;
+    }
+
     private ResponseEntity<StreamingResponseBody> generate(String dataset, Map<String,String> q) throws IOException {
         // Query and export run synchronously in one repeatable-read transaction. Only the completed file is streamed.
         String name = switch(dataset) {

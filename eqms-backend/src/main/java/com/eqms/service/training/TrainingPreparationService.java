@@ -107,7 +107,7 @@ public class TrainingPreparationService {
         preparationChanges.add(new com.eqms.dto.audittrail.AuditTrailChangeResponse(itemField + " › Status",
                 previousStatus == null ? null : TrainingStore.words(previousStatus), TrainingStore.words(request.status())));
         if (note != null) preparationChanges.add(new com.eqms.dto.audittrail.AuditTrailChangeResponse(itemField + " › Note", null, note));
-        store.auditActivity(actor, activity, "TRAINING_PREPARATION_UPDATED", null, request.status(), "Session S" + session.get("session_no") + ", " + itemCode + (note == null ? "" : ". " + note), preparationChanges);
+        store.auditActivity(actor, activity, "TRAINING_PREPARATION_UPDATED", null, request.status(), "Session S" + session.get("session_no") + ", " + TrainingStore.words(itemCode) + (note == null ? "" : ". " + note), preparationChanges);
         if (assignedTo != null && !assignedTo.equals(currentAssignee) && !assignedTo.equals(actor.getId())) {
             users.findById(assignedTo).ifPresent(person -> notifier.send("TRAINING_PREPARATION_ASSIGNED", person, actor, "Preparation for training " + activity.get("training_number"),
                     "You were asked to prepare: " + itemCode.toLowerCase() + " for session " + session.get("session_no") + " of " + activity.get("training_topics") + ".", "TRAINING_ACTIVITY", activityId, null));

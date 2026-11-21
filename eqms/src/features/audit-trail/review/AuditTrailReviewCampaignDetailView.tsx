@@ -1,4 +1,6 @@
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
+import { ConfiguredDesktopFilters } from "@/components/ui/filter/ConfiguredDesktopFilters";
+import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import React, { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
@@ -6,7 +8,11 @@ import {
   ChevronDown,
   ChevronUp,
   Check,
+  CalendarRange,
   Flag,
+  ListChecks,
+  PenLine,
+  UserCheck,
   MoreVertical,
   Search,
   X,
@@ -53,6 +59,17 @@ const DECISION_OPTIONS = [
   { label: "Confirmed", value: "CONFIRMED" },
   { label: "Flagged", value: "FLAGGED" },
 ];
+const SIGNED_OPTIONS = [
+  { label: "All", value: "ALL" },
+  { label: "Yes", value: "YES" },
+  { label: "No", value: "NO" },
+];
+const ALL_OPTION = { label: "All", value: "ALL" };
+/** The date pickers hold dd/MM/yyyy; the server takes yyyy-MM-dd. */
+const toServerDate = (value: string) =>
+  /^\d{2}\/\d{2}\/\d{4}/.test(value)
+    ? `${value.slice(6, 10)}-${value.slice(3, 5)}-${value.slice(0, 2)}`
+    : undefined;
 const statusBadge = (status: AuditTrailReviewCampaignSummary["status"]) =>
   status === "COMPLETED"
     ? "emerald"
@@ -171,6 +188,18 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
   const [search, setSearch] = useState("");
   const searchQuery = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [decision, setDecision] = useState("ALL");
+  const [moduleFilter, setModuleFilter] = useState("ALL");
+  const [actionFilter, setActionFilter] = useState("ALL");
+  const [signedFilter, setSignedFilter] = useState<"ALL" | "YES" | "NO">("ALL");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [expandedFilters, setExpandedFilters] = useState<Set<string>>(new Set(["Decision"]));
+  const toggleFilterSection = (label: string) => setExpandedFilters((previous) => {
+    const next = new Set(previous);
+    if (next.has(label)) next.delete(label); else next.add(label);
+    return next;
+  });
+  const [filterOptions, setFilterOptions] = useState<{ modules: string[]; actions: string[] }>({ modules: [], actions: [] });
   const [sortBy, setSortBy] = useState<SortKey>("timestamp");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -211,6 +240,11 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
         limit: itemsPerPage,
         search: searchQuery || undefined,
         decision: decision === "ALL" ? undefined : decision,
+        module: moduleFilter === "ALL" ? undefined : moduleFilter,
+        action: actionFilter === "ALL" ? undefined : actionFilter,
+        signed: signedFilter === "ALL" ? undefined : signedFilter,
+        from: toServerDate(dateFrom),
+        to: toServerDate(dateTo),
         sortBy,
         sortDirection,
       });
@@ -230,12 +264,17 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
       setItemsLoading(false);
     }
   }, [
+    actionFilter,
     currentPage,
+    dateFrom,
+    dateTo,
     decision,
     id,
     itemsPerPage,
+    moduleFilter,
     searchQuery,
     showToast,
+    signedFilter,
     sortBy,
     sortDirection,
   ]);
@@ -254,10 +293,22 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
+  useEffect(() => {
+    if (!id) return;
+    auditTrailApi.getReviewItemFilterOptions(id).then(setFilterOptions).catch(() => undefined);
+  }, [id]);
+
+  const moduleOptions = [ALL_OPTION, ...filterOptions.modules.map((value) => ({ label: formatAuditModuleLabel(value), value }))];
+  const actionOptions = [ALL_OPTION, ...filterOptions.actions.map((value) => ({ label: formatAuditActionLabel(value), value }))];
 
   const clearFilters = () => {
     setSearch("");
     setDecision("ALL");
+    setModuleFilter("ALL");
+    setActionFilter("ALL");
+    setSignedFilter("ALL");
+    setDateFrom("");
+    setDateTo("");
     setSortBy("timestamp");
     setSortDirection("asc");
     setCurrentPage(1);
@@ -349,7 +400,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
     return (
       <div className="space-y-4 md:space-y-6">
         <PageHeader
-          title="Audit Trail Review Campaign"
+          title="Periodic Review Details"
           breadcrumbItems={breadcrumb(navigate)}
           actions={
             <Button
@@ -368,7 +419,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
             Campaign not found
           </p>
           <Button variant="outline" size="sm" onClick={handleBack}>
-            Back to Audit Trail Review
+            Back to Periodic Review
           </Button>
         </section>
       </div>
@@ -378,8 +429,8 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
   return (
     <div className="flex w-full flex-1 flex-col space-y-6">
       <PageHeader
-        title={campaign.name}
-        breadcrumbItems={breadcrumb(navigate, campaign.name)}
+        title="Periodic Review Details"
+        breadcrumbItems={breadcrumb(navigate)}
         actions={
           <>
             <Button
@@ -416,62 +467,100 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
           </>
         }
       />
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-        <div className="flex flex-wrap items-center gap-3">
-          {campaign.campaignNumber && (
-            <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700" title="Audit Trail Campaign Number">
-              {campaign.campaignNumber}
-            </span>
-          )}
-          <h2 className="text-lg font-semibold text-slate-800">
-            {campaign.name}
-          </h2>
-          <Badge color={statusBadge(campaign.status)} size="xs">
-            {campaign.statusLabel}
-          </Badge>
-        </div>
-        {campaign.description && (
-          <p className="mt-1 text-sm text-slate-500">{campaign.description}</p>
-        )}
-        <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
-          <div>
-            <dt className="text-xs text-slate-500">Review period</dt>
-            <dd className="mt-0.5 font-medium text-slate-700">
-              {campaign.reviewPeriodStart
-                ? formatDateUS(campaign.reviewPeriodStart)
-                : "—"}{" "}
-              –{" "}
-              {campaign.reviewPeriodEnd
-                ? formatDateUS(campaign.reviewPeriodEnd)
-                : "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">Entries</dt>
-            <dd className="mt-0.5 font-medium text-slate-700">
-              {campaign.totalItems}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">Pending</dt>
-            <dd
-              className={cn(
-                "mt-0.5 font-medium",
-                campaign.pendingItems > 0
-                  ? "text-amber-600"
-                  : "text-emerald-600",
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 px-4 py-4 md:px-5">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              {campaign.campaignNumber && (
+                <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700" title="Audit Trail Campaign Number">
+                  {campaign.campaignNumber}
+                </span>
               )}
+              <Badge color={statusBadge(campaign.status)} size="xs">
+                {campaign.statusLabel}
+              </Badge>
+            </div>
+            <h2 className="mt-2 break-words text-lg font-semibold text-slate-800">
+              {campaign.name}
+            </h2>
+            {campaign.description && (
+              <p className="mt-1 break-words text-sm text-slate-500">{campaign.description}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+              <UserCheck className="h-5 w-5" />
+            </span>
+            <div className="text-sm">
+              <p className="text-xs text-slate-500">Reviewer</p>
+              <p className="font-medium text-slate-700">{campaign.reviewerName || "—"}</p>
+            </div>
+          </div>
+        </div>
+        <dl className="grid grid-cols-1 border-t border-slate-200 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              icon: <CalendarRange className="h-5 w-5" />,
+              label: "Review period",
+              value: `${campaign.reviewPeriodStart ? formatDateUS(campaign.reviewPeriodStart) : "—"} – ${campaign.reviewPeriodEnd ? formatDateUS(campaign.reviewPeriodEnd) : "—"}`,
+              tone: "text-slate-800",
+            },
+            {
+              icon: <ListChecks className="h-5 w-5" />,
+              label: "Entries",
+              value: String(campaign.totalItems),
+              tone: "text-slate-800",
+            },
+            {
+              icon: <Flag className="h-5 w-5" />,
+              label: "Pending",
+              value: String(campaign.pendingItems),
+              tone: campaign.pendingItems > 0 ? "text-amber-600" : "text-emerald-600",
+            },
+            {
+              icon: <PenLine className="h-5 w-5" />,
+              label: "Signed",
+              value: campaign.signedAt ? formatDateTime(campaign.signedAt) : "—",
+              tone: "text-slate-800",
+            },
+          ].map((tile) => (
+            <div
+              key={tile.label}
+              className="flex items-center gap-3 border-b border-slate-200 px-4 py-3 last:border-b-0 sm:[&:nth-child(odd)]:border-r lg:border-b-0 lg:border-r lg:last:border-r-0 lg:[&:nth-child(odd)]:border-r md:px-5"
             >
-              {campaign.pendingItems}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">Signed</dt>
-            <dd className="mt-0.5 font-medium text-slate-700">
-              {campaign.signedAt ? formatDateTime(campaign.signedAt) : "—"}
-            </dd>
-          </div>
+              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                {tile.icon}
+              </span>
+              <div className="min-w-0">
+                <dt className="text-xs text-slate-500">{tile.label}</dt>
+                <dd className={cn("mt-0.5 truncate text-sm font-semibold", tile.tone)}>{tile.value}</dd>
+              </div>
+            </div>
+          ))}
         </dl>
+        {campaign.totalItems > 0 && (
+          <div className="border-t border-slate-200 px-4 py-3 md:px-5">
+            <div className="mb-1.5 flex items-center justify-between text-xs text-slate-500">
+              <span>Review progress</span>
+              <span>
+                {campaign.totalItems - campaign.pendingItems} of {campaign.totalItems} entries decided
+              </span>
+            </div>
+            <div
+              className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={campaign.totalItems}
+              aria-valuenow={campaign.totalItems - campaign.pendingItems}
+              aria-label="Entries decided"
+            >
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                style={{ width: `${((campaign.totalItems - campaign.pendingItems) / campaign.totalItems) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
       </section>
       <section className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col px-4 pt-4 md:p-5">
@@ -514,48 +603,120 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                 </Button>
               </div>
             </div>
-            <div className="hidden grid-cols-1 items-end gap-4 md:grid sm:grid-cols-2 lg:grid-cols-3">
-              <div className="w-full">
-                <label className={labelClass}>Search audit entries</label>
-                <div className="relative">
-                  <Search className="pointer-events-none absolute inset-y-0 left-0 my-auto ml-3 h-4 w-4 text-slate-400" />
-                  <input
-                    value={search}
-                    onChange={(event) => {
-                      setSearch(event.target.value);
-                      setCurrentPage(1);
-                    }}
-                    placeholder="Search user, employee ID, module, action, entity..."
-                    className="block h-9 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-10 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                  {search && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearch("");
+            <ConfiguredDesktopFilters
+              search={
+                <input
+                  aria-label="Search"
+                  value={search}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Search user, employee ID, module, action, entity..."
+                  className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+                />
+              }
+              filters={[
+                { id: "decision", label: "Decision", value: decision, options: DECISION_OPTIONS, onChange: (value) => { setDecision(value); setCurrentPage(1); } },
+                { id: "module", label: "Module", value: moduleFilter, options: moduleOptions, onChange: (value) => { setModuleFilter(value); setCurrentPage(1); } },
+                { id: "action", label: "Action", value: actionFilter, options: actionOptions, onChange: (value) => { setActionFilter(value); setCurrentPage(1); } },
+                { id: "signed", label: "E-Signature", value: signedFilter, options: SIGNED_OPTIONS, onChange: (value) => { setSignedFilter(value as "ALL" | "YES" | "NO"); setCurrentPage(1); } },
+              ]}
+              dates={[
+                {
+                  id: "date",
+                  label: "Timestamp",
+                  from: dateFrom,
+                  to: dateTo,
+                  onFromChange: (value) => { setDateFrom(value); setCurrentPage(1); },
+                  onToChange: (value) => { setDateTo(value); setCurrentPage(1); },
+                },
+              ]}
+            >
+              <div className="hidden grid-cols-1 items-end gap-4 md:grid md:grid-cols-3">
+                <div className="w-full">
+                  <label className={labelClass}>Search</label>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute inset-y-0 left-0 my-auto ml-3 h-4 w-4 text-slate-400" />
+                    <input
+                      value={search}
+                      onChange={(event) => {
+                        setSearch(event.target.value);
                         setCurrentPage(1);
                       }}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 transition-colors hover:text-slate-600"
-                      aria-label="Clear search"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
+                      placeholder="Search user, employee ID, module, action, entity..."
+                      className="block h-9 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-10 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                    {search && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearch("");
+                          setCurrentPage(1);
+                        }}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 transition-colors hover:text-slate-600"
+                        aria-label="Clear search"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <Select
+                  label="Decision"
+                  value={decision}
+                  onChange={(value) => {
+                    setDecision(String(value));
+                    setCurrentPage(1);
+                  }}
+                  options={DECISION_OPTIONS}
+                />
+                <Select
+                  label="Module"
+                  value={moduleFilter}
+                  onChange={(value) => {
+                    setModuleFilter(String(value));
+                    setCurrentPage(1);
+                  }}
+                  options={moduleOptions}
+                />
+                <Select
+                  label="Action"
+                  value={actionFilter}
+                  onChange={(value) => {
+                    setActionFilter(String(value));
+                    setCurrentPage(1);
+                  }}
+                  options={actionOptions}
+                />
+                <Select
+                  label="E-Signature"
+                  value={signedFilter}
+                  onChange={(value) => {
+                    setSignedFilter(String(value) as "ALL" | "YES" | "NO");
+                    setCurrentPage(1);
+                  }}
+                  options={SIGNED_OPTIONS}
+                />
+                <DateRangePicker
+                  label="Timestamp"
+                  startDate={dateFrom}
+                  endDate={dateTo}
+                  onStartDateChange={(value) => {
+                    setDateFrom(value);
+                    setCurrentPage(1);
+                  }}
+                  onEndDateChange={(value) => {
+                    setDateTo(value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Select date range"
+                />
+                <div className="flex items-end">
+                  <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} />
                 </div>
               </div>
-              <Select
-                label="Decision"
-                value={decision}
-                onChange={(value) => {
-                  setDecision(String(value));
-                  setCurrentPage(1);
-                }}
-                options={DECISION_OPTIONS}
-              />
-              <div className="flex items-end">
-                <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} />
-              </div>
-            </div>
+            </ConfiguredDesktopFilters>
           </div>
         </div>
         <div className="relative flex flex-1 flex-col px-4 pb-4 md:px-5 md:pb-5">
@@ -636,7 +797,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                       >
                         <TableEmptyState
                           title="No audit log entries found"
-                          description="Try changing the search or decision filter."
+                          description="Try changing the search or the filters."
                         />
                       </TableMarkup.Cell>
                     </TableMarkup.Row>
@@ -758,23 +919,49 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
         onClear={clearFilters}
         onApply={() => setFilterDrawerOpen(false)}
       >
-        <FilterAccordionItem
-          label="Decision"
-          isExpanded
-          onToggle={() => undefined}
-        >
-          <div className="grid gap-2 pb-4 pt-1">
-            {DECISION_OPTIONS.map((option) => (
-              <FilterOptionButton
-                key={option.value}
-                label={option.label}
-                isSelected={decision === option.value}
-                onClick={() => {
-                  setDecision(option.value);
-                  setCurrentPage(1);
-                }}
-              />
-            ))}
+        {[
+          { label: "Decision", options: DECISION_OPTIONS, current: decision, set: setDecision },
+          { label: "Module", options: moduleOptions, current: moduleFilter, set: setModuleFilter },
+          { label: "Action", options: actionOptions, current: actionFilter, set: setActionFilter },
+          { label: "E-Signature", options: SIGNED_OPTIONS, current: signedFilter, set: (value: string) => setSignedFilter(value as "ALL" | "YES" | "NO") },
+        ].map((group) => (
+          <FilterAccordionItem
+            key={group.label}
+            label={group.label}
+            isExpanded={expandedFilters.has(group.label)}
+            onToggle={() => toggleFilterSection(group.label)}
+          >
+            <div className="grid max-h-60 gap-2 overflow-y-auto pb-4 pr-1 pt-1">
+              {group.options.map((option) => (
+                <FilterOptionButton
+                  key={option.value}
+                  label={option.label}
+                  isSelected={group.current === option.value}
+                  onClick={() => {
+                    group.set(option.value);
+                    setCurrentPage(1);
+                  }}
+                />
+              ))}
+            </div>
+          </FilterAccordionItem>
+        ))}
+        <FilterAccordionItem label="Timestamp" isExpanded={expandedFilters.has("Timestamp")} onToggle={() => toggleFilterSection("Timestamp")}>
+          <div className="pb-4 pt-2">
+            <DateRangePicker
+              label=""
+              startDate={dateFrom}
+              endDate={dateTo}
+              onStartDateChange={(value) => {
+                setDateFrom(value);
+                setCurrentPage(1);
+              }}
+              onEndDateChange={(value) => {
+                setDateTo(value);
+                setCurrentPage(1);
+              }}
+              placeholder="Select date range"
+            />
           </div>
         </FilterAccordionItem>
       </FilterDrawer>

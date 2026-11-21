@@ -200,7 +200,7 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
         onConfirm={() => voiding && setVoiding({ ...voiding, step: "sign" })}
         title="Void Training Record"
         description="The record is not deleted or changed: it stays in the list as voided with your reason and signature."
-        confirmText="Continue to signature"
+        confirmText="Continue to Signature"
         confirmVariant="destructive"
         confirmDisabled={!voiding?.reason.trim()}
         size="md"

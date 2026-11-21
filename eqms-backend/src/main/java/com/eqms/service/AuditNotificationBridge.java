@@ -82,6 +82,9 @@ public class AuditNotificationBridge {
         Map<String, String> variables = NotificationDispatcher.noticeVariables(actionName, message.length() > 480 ? message.substring(0, 477) + "..." : message, event.actionUrl());
         variables.put("actorName", actor);
         variables.put("entityName", what);
+        // the wording of the campaign events says "campaignName" (the name of the audited record is the name of the campaign);
+        // without it the e-mail "assigned audit review campaign {{campaignName}}" lost the name (notification review 2026-11-21)
+        variables.put("campaignName", what);
         // the wording of these events is stored with the placeholders below (the in-app message holds 500 characters), so a long comment is cut here
         variables.put("actionName", actionName);
         variables.put("actionComment", comment.length() > 300 ? comment.substring(0, 297) + "..." : comment);

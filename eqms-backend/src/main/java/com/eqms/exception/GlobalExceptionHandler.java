@@ -9,9 +9,11 @@ import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -422,10 +424,24 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    /**
+     * The client closed the connection while an event stream or a long download was being written (a tab
+     * closed, a navigation). There is nobody to answer and nothing wrong on the server; before this it was
+     * logged as an unhandled ERROR with a stack trace on every closed event stream.
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleClientGone(AsyncRequestNotUsableException exception) {
+        log.debug("Client closed the connection: {}", exception.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(Exception exception) {
         log.error("Unhandled exception while processing request", exception);
+        // JSON is set explicitly: an export or an event stream has already chosen its own content type
+        // (xlsx, text/event-stream), and with no JSON converter for that type the error body could not
+        // be written at all (HttpMessageNotWritableException) and the client got an empty answer.
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .contentType(MediaType.APPLICATION_JSON)
                 .body(new ApiErrorResponse(
                         new ApiErrorResponse.ErrorBody(
                                 "INTERNAL_ERROR",

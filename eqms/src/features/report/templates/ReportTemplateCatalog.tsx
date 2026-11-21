@@ -38,6 +38,7 @@ import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
 import { displayDateTime } from "@/utils/format";
 import { reportsApi } from "@/services/api/reports";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { readableCode } from "@/utils/machineText";
 
 const LIFECYCLE_TEXT: Record<string, string> = { ACTIVE: "Active", INACTIVE: "Disabled", DRAFT: "Draft", PENDING_APPROVAL: "Pending Approval" };
 const defaults = { status: "", sourceCode: "", format: "", orientation: "", gmp: "" };
@@ -247,7 +248,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
       sort: sortable("sourceCode"),
       cell: (row) =>
         result?.sources?.find((source) => source.value === row.sourceCode)
-          ?.label ?? row.sourceCode,
+          ?.label ?? readableCode(row.sourceCode),
     },
     {
       id: "category",

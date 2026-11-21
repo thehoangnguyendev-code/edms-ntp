@@ -106,7 +106,7 @@ describe("Disaster Recovery Plan", () => {
     fireEvent.click(await within(dialog).findByRole("combobox"));
     fireEvent.click(await screen.findByRole("option", { name: /qa.lead/ }));
     fireEvent.change(document.querySelector("textarea") as HTMLTextAreaElement, { target: { value: "Delegate to QA" } });
-    fireEvent.click(screen.getByRole("button", { name: "Continue to sign" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Sign" }));
 
     expect(await screen.findByText("meaning:BACKUP_DR_AUTHORITY_CHANGE")).toBeTruthy();
     expect(api.changeDrAuthority).not.toHaveBeenCalled();
@@ -136,7 +136,7 @@ describe("Disaster Recovery Plan", () => {
     fireEvent.click(await within(dialog).findByRole("combobox"));
     fireEvent.click(await screen.findByRole("option", { name: "Server lost, site intact" }));
     fireEvent.change(document.querySelector("textarea") as HTMLTextAreaElement, { target: { value: "The server room flooded" } });
-    fireEvent.click(screen.getByRole("button", { name: "Continue to sign" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Sign" }));
     expect(await screen.findByText("meaning:BACKUP_DR_DECLARE")).toBeTruthy();
     expect(api.declareDisaster).not.toHaveBeenCalled();
     await esign.confirm?.({ signatureToken: "tok-9" });
@@ -153,7 +153,7 @@ describe("Disaster Recovery Plan", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close the Open Declaration" }));
     await screen.findByRole("dialog");
     fireEvent.change(document.querySelector("textarea") as HTMLTextAreaElement, { target: { value: "Rebuilt on the spare server" } });
-    fireEvent.click(screen.getByRole("button", { name: "Continue to sign" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Sign" }));
     expect(await screen.findByText("meaning:BACKUP_DR_CLOSE")).toBeTruthy();
     await esign.confirm?.({ signatureToken: "tok-10" });
     await waitFor(() => expect(api.closeDeclaration).toHaveBeenCalledWith("DR-2026-0001", "Rebuilt on the spare server", "tok-10"));

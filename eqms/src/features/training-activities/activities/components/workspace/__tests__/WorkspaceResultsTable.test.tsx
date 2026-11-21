@@ -111,6 +111,27 @@ describe("Results typed in the row of each person", () => {
     expect(api.assessment).toHaveBeenNthCalledWith(1, "p1", 1, 1);
     expect(api.assessment).toHaveBeenNthCalledWith(2, "p2", 0, 1);
   });
+  it("groups the people by what is left to do: To score, Recorded, Absent", async () => {
+    render(<WorkspaceResultsTable {...props([person(1), person(2, { result: "PASSED", lastScore: 9, lastMax: 10, lastPercent: 90 }), person(3, { state: "ABSENT" })])} />);
+    await waitFor(() => expect(files.list).toHaveBeenCalled());
+    expect(screen.getByRole("region", { name: "To score" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Recorded" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Absent" })).toBeTruthy();
+  });
+
+  it("on a phone a tap on a person opens a sheet; Save and next saves that person and opens the next one to score", async () => {
+    api.assessment.mockResolvedValue({ id: "a1" });
+    render(<WorkspaceResultsTable {...props([person(1), person(2)])} />);
+    fireEvent.change(maxField(), { target: { value: "10" } });
+    fireEvent.click(screen.getByRole("button", { name: "Open Trainee 1" }));
+    const field = await screen.findByLabelText("Score");
+    fireEvent.change(field, { target: { value: "9" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save and next" }));
+    await waitFor(() => expect(api.assessment).toHaveBeenCalledWith("p1", 9, 10));
+    // the sheet now shows the second person
+    await waitFor(() => expect(screen.getAllByText("Trainee 2").length).toBeGreaterThan(2));
+  });
+
   it("takes no entry after the training is finished", async () => {
     render(<WorkspaceResultsTable {...props([person(1, { result: "PASSED", lastScore: 9, lastMax: 10, lastPercent: 90 })], { locked: true })} />);
     await waitFor(() => expect(files.list).toHaveBeenCalled());

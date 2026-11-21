@@ -650,7 +650,7 @@ export function ReportRunDetailPage() {
             ? "The file is kept and cannot be removed while the hold is set. Say why."
             : "Releasing a hold lets the file be removed. A person other than the one who placed the hold must release it, and the release is signed."
         }
-        confirmText={hold?.legalHold ? "Place hold" : "Continue to sign"}
+        confirmText={hold?.legalHold ? "Place hold" : "Continue to Sign"}
         confirmDisabled={!hold || !hold.reason.trim() || busy}
         onConfirm={() => {
           if (!hold) return;

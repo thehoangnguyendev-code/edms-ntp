@@ -42,6 +42,7 @@ import type {
 } from "../types";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { statusText } from "@/features/security-authorization/shared/humanizeCode";
 
 const VIEW_PERM = "security.workflow_authorization.view";
 const MANAGE_PERM = "security.workflow_authorization.manage";
@@ -183,7 +184,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
   const actionOptions: SelectOption[] = useMemo(() => [
     { label: "All", value: "ALL" },
     ...[...new Set(facetPolicies.map((p) => p.actionCode))].sort().map((a) => ({
-      label: facetPolicies.find((p) => p.actionCode === a)?.actionLabel ?? a,
+      label: statusText(facetPolicies.find((p) => p.actionCode === a)?.actionLabel, a),
       value: a,
     })),
   ], [facetPolicies]);
@@ -191,7 +192,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
   const fromStatusOptions: SelectOption[] = useMemo(() => [
     { label: "All", value: "ALL" },
     ...[...new Set(facetPolicies.map((p) => p.fromStatus))].sort().map((s) => ({
-      label: facetPolicies.find((p) => p.fromStatus === s)?.fromStatusLabel ?? s,
+      label: statusText(facetPolicies.find((p) => p.fromStatus === s)?.fromStatusLabel, s),
       value: s,
     })),
   ], [facetPolicies]);
@@ -349,14 +350,14 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
       cell: (policy) => (
         <div className="flex flex-col items-start gap-1">
           <div>
-            <div className="font-semibold text-slate-900">{policy.actionLabel ?? policy.actionCode}</div>
+            <div className="font-semibold text-slate-900">{statusText(policy.actionLabel, policy.actionCode)}</div>
             <div className="text-2xs text-slate-400">{policy.actionCode}</div>
           </div>
           {otherWarnings(policy).length > 0 && <Badge color="amber" size="sm">Warning</Badge>}
         </div>
       ),
     },
-    { id: "fromStatus", header: "From Status", label: "From Status", sort: { direction: sortKey === "fromStatus" ? sortDir : undefined, onSort: () => handleSort("fromStatus") }, cell: (policy) => policy.fromStatusLabel ?? policy.fromStatus },
+    { id: "fromStatus", header: "From Status", label: "From Status", sort: { direction: sortKey === "fromStatus" ? sortDir : undefined, onSort: () => handleSort("fromStatus") }, cell: (policy) => statusText(policy.fromStatusLabel, policy.fromStatus) },
     {
       id: "documentTypeName",
       header: "Document Type",

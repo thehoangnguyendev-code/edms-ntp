@@ -367,7 +367,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
         onClose={() => setTarget(undefined)}
         title={`Change Targets: ${target?.scenario.label ?? ""}`}
         description="The new targets take effect only after the electronic signature."
-        confirmText="Continue to sign"
+        confirmText="Continue to Sign"
         confirmDisabled={!target || !target.reason.trim() || !(Number(target.rpo) > 0) || !(Number(target.rto) > 0)}
         onConfirm={() => target && setTarget({ ...target, step: "sign" })}
       >
@@ -425,7 +425,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
         onClose={() => setDeclareAuthority(undefined)}
         title="Change Who May Declare a Disaster"
         description="The person must be an active account. The change takes effect after the electronic signature."
-        confirmText="Continue to sign"
+        confirmText="Continue to Sign"
         confirmDisabled={!declareAuthority || !declareAuthority.username.trim() || !declareAuthority.reason.trim()}
         onConfirm={() => declareAuthority && setDeclareAuthority({ ...declareAuthority, step: "sign" })}
       >
@@ -459,7 +459,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
         onClose={() => setDeclare(undefined)}
         title="Declare a Disaster"
         description="This opens a declaration that stays open until it is closed. It is recorded with your name, the time and your signature."
-        confirmText="Continue to sign"
+        confirmText="Continue to Sign"
         confirmDisabled={!declare || !declare.scenario || !declare.reason.trim()}
         onConfirm={() => declare && setDeclare({ ...declare, step: "sign" })}
       >
@@ -492,7 +492,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
         onClose={() => setClose(undefined)}
         title={`Close Declaration ${close?.declaration.code ?? ""}`}
         description="Close it when service is restored. The time since it was declared becomes the recovery time actually taken."
-        confirmText="Continue to sign"
+        confirmText="Continue to Sign"
         confirmDisabled={!close || !close.summary.trim()}
         onConfirm={() => close && setClose({ ...close, step: "sign" })}
       >

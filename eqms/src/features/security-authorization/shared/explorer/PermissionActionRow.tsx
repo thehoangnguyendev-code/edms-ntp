@@ -5,6 +5,7 @@ import { cn } from "@/components/ui/utils";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import type { Permission, PermissionRiskLevel } from "../../access-profiles/types";
 import { moduleDisplayName } from "@/utils/moduleDisplay";
+import { statusText } from "@/features/security-authorization/shared/humanizeCode";
 
 interface PermissionActionRowProps {
   permission: Permission;
@@ -42,7 +43,7 @@ function buildTooltip(p: Permission): string {
     `Risk: ${RISK_LABEL[p.riskLevel]}`,
   ];
   if (p.lifecycleUsages && p.lifecycleUsages.length > 0) {
-    const shown = p.lifecycleUsages.slice(0, 3).map((u) => `${u.objectTypeLabel} · ${u.fromStatusLabel ?? u.fromStatus ?? "Any state"} (${u.actionLabel})`);
+    const shown = p.lifecycleUsages.slice(0, 3).map((u) => `${u.objectTypeLabel} · ${u.fromStatus ? statusText(u.fromStatusLabel, u.fromStatus) : "Any state"} (${u.actionLabel})`);
     const extra = p.lifecycleUsages.length > 3 ? ` (+${p.lifecycleUsages.length - 3} more)` : "";
     lines.push(`Applies at: ${shown.join(", ")}${extra}`);
   }

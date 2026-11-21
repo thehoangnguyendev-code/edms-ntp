@@ -66,7 +66,10 @@ public class BackupRestoreController {
     @GetMapping("/overview")
     public ResponseEntity<JsonNode> overview() {
         require(currentUserService.requireCurrentUser(), VIEW_PERMISSION);
-        return noStore(agent.get("/internal/overview"));
+        JsonNode overview = agent.get("/internal/overview");
+        // the open alerts on the dashboard carry the words of their code and no code in their sentence, like the list of alerts
+        if (overview != null) BackupAlertController.labelTheAlerts(overview.get("openAlerts"));
+        return noStore(overview);
     }
 
     /** Per-day counts for the overview chart; the agent clamps the window, this only passes it on. */

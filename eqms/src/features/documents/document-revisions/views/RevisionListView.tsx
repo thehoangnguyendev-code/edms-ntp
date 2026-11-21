@@ -15,6 +15,7 @@ import { DocumentFilters } from "@/features/documents/shared/components";
 import { cn } from '@/components/ui/utils';
 import { IconChalkboardTeacher, IconArrowBarToRight, IconShare2, IconArrowBadgeRight } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
+import { TableExportModal } from "@/components/ui/modal/TableExportModal";
 import { revisionList } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { SectionLoading, FullPageLoading } from "@/components/ui/loading/Loading";
 import { usePortalDropdown, useNavigateWithLoading, useTableDragScroll } from "@/hooks";
@@ -72,6 +73,7 @@ export const RevisionListView: React.FC = () => {
 
   const [columns, setColumns] = useState<TableColumn[]>(() => [...DEFAULT_COLUMNS]);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [isExportOpen, setIsExportOpen] = useState(false);
   const [showESignModal, setShowESignModal] = useState(false);
   const [selectedRevisionForPublish, setSelectedRevisionForPublish] = useState<Revision | null>(null);
   const [showWarningModal, setShowWarningModal] = useState(false);
@@ -355,12 +357,21 @@ export const RevisionListView: React.FC = () => {
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {(isRouteNavigating || isNavigating) && <FullPageLoading text="Loading..." />}
       {/* Header */}
+      <TableExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        dataset="revisions"
+        title="Revisions"
+        totalRecords={totalItems}
+        onExport={exportRevisions}
+      />
+
       <PageHeader
         title="All Revisions"
         breadcrumbItems={revisionList(navigateTo)}
         actions={
           <Button
-            onClick={exportRevisions}
+            onClick={() => setIsExportOpen(true)}
             variant="outline"
             size="sm"
             className="whitespace-nowrap gap-2 self-start md:self-auto"

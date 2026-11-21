@@ -16,7 +16,12 @@ type Mark = { state: "PRESENT" | "ABSENT"; reason: string };
  * Quick roll-call (PLAN-TR-001 17.7): the trainer marks who is present for a whole session and signs once. Each row then shows that the trainer, not the trainee,
  * vouches for it. Only people still invited are listed; the server refuses anyone already recorded.
  */
-export function TrainingRollCallBlock({ activity, onChanged }: { activity: TrainingActivityDetail; onChanged: (next: TrainingActivityDetail) => void }) {
+export function TrainingRollCallBlock({ activity, onChanged, bare = false }: {
+  activity: TrainingActivityDetail;
+  onChanged: (next: TrainingActivityDetail) => void;
+  /** Only the buttons, to sit inside another panel (the self check-in); without it the block is its own card with a title and a note. */
+  bare?: boolean;
+}) {
   const { showToast } = useToast();
   const [session, setSession] = useState<TrainingSession>();
   const [marks, setMarks] = useState<Record<string, Mark>>({});
@@ -36,15 +41,21 @@ export function TrainingRollCallBlock({ activity, onChanged }: { activity: Train
 
   return (
     <>
-      <TabBlock title="Quick roll-call">
-        <p className="px-4 py-3 text-xs text-slate-500">Mark everyone of a session at once and sign one time. Use it when the trainer vouches for the attendance of the room.</p>
-        <div className="flex flex-wrap gap-2 p-4">
-          {candidates.map((s) => <Button key={s.id} size="sm" variant="outline-emerald" onClick={() => open(s)}>Session {s.sessionNo} ({invited(s.id).length} to mark)</Button>)}
-        </div>
-      </TabBlock>
+      {bare ? candidates.map((s) => (
+        <Button key={s.id} size="sm" variant="outline-emerald" onClick={() => open(s)}>
+          {candidates.length > 1 ? `Roll-call S${s.sessionNo} (${invited(s.id).length})` : "Quick roll-call"}
+        </Button>
+      )) : (
+        <TabBlock title="Quick roll-call">
+          <p className="px-4 py-3 text-xs text-slate-500">Mark everyone of a session at once and sign one time. Use it when the trainer vouches for the attendance of the room.</p>
+          <div className="flex flex-wrap gap-2 p-4">
+            {candidates.map((s) => <Button key={s.id} size="sm" variant="outline-emerald" onClick={() => open(s)}>Session {s.sessionNo} ({invited(s.id).length} to mark)</Button>)}
+          </div>
+        </TabBlock>
+      )}
 
       {session && !signing && (
-        <FormModal isOpen onClose={() => setSession(undefined)} onConfirm={() => setSigning(true)} title={`Roll-Call of Session ${session.sessionNo}`} description="Everyone starts as present. Change the ones who were absent and say why. Next you sign." confirmText="Continue to sign" confirmDisabled={!valid} size="xl">
+        <FormModal isOpen onClose={() => setSession(undefined)} onConfirm={() => setSigning(true)} title={`Roll-Call of Session ${session.sessionNo}`} description="Everyone starts as present. Change the ones who were absent and say why. Next you sign." confirmText="Continue to Sign" confirmDisabled={!valid} size="xl">
           <div className="space-y-2">
             {rows.map((p, i) => {
               const m = marks[p.id];

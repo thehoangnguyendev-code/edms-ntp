@@ -122,7 +122,7 @@ public class EducationManagementService {
         EducationDegreeLevel level = new EducationDegreeLevel();
         applyDegreeLevel(level, request);
         educationDegreeLevelRepository.save(level);
-        auditTrailService.logSafely("DEGREE_LEVEL", level.getName(), level.getId(), ACTION_EDUCATION_DEGREE_LEVEL_CREATED, null, null,
+        auditTrailService.log("DEGREE_LEVEL", level.getName(), level.getId(), ACTION_EDUCATION_DEGREE_LEVEL_CREATED, null, null,
                 DictionaryQuerySupport.buildCreateComment("Education Degree Level", level.getName()));
         return toDegreeLevelResponse(level);
     }
@@ -134,7 +134,7 @@ public class EducationManagementService {
         String before = describeDegreeLevel(level);
         validateUniqueDegreeLevel(id, request.name());
         applyDegreeLevel(level, request);
-        auditTrailService.logSafely("DEGREE_LEVEL", level.getName(), level.getId(), ACTION_EDUCATION_DEGREE_LEVEL_UPDATED, null, null,
+        auditTrailService.log("DEGREE_LEVEL", level.getName(), level.getId(), ACTION_EDUCATION_DEGREE_LEVEL_UPDATED, null, null,
                 DictionaryQuerySupport.buildUpdateComment("Education Degree Level", before, describeDegreeLevel(level)));
         return toDegreeLevelResponse(level);
     }
@@ -143,7 +143,7 @@ public class EducationManagementService {
     public void deleteDegreeLevel(UUID id) {
         requireManage(EDUCATION_DEGREE_LEVEL_MANAGE);
         EducationDegreeLevel level = requireDegreeLevel(id);
-        auditTrailService.logSafely("DEGREE_LEVEL", level.getName(), level.getId(), ACTION_EDUCATION_DEGREE_LEVEL_DELETED, null, null,
+        auditTrailService.log("DEGREE_LEVEL", level.getName(), level.getId(), ACTION_EDUCATION_DEGREE_LEVEL_DELETED, null, null,
                 DictionaryQuerySupport.buildDeleteComment("Education Degree Level", describeDegreeLevel(level)));
         educationDegreeLevelRepository.delete(level);
     }
@@ -203,7 +203,7 @@ public class EducationManagementService {
         School school = new School();
         applySchool(school, request);
         schoolRepository.save(school);
-        auditTrailService.logSafely("SCHOOL", school.getName(), school.getId(), ACTION_SCHOOL_CREATED, null, null,
+        auditTrailService.log("SCHOOL", school.getName(), school.getId(), ACTION_SCHOOL_CREATED, null, null,
                 DictionaryQuerySupport.buildCreateComment("School", school.getName()));
         return toSchoolResponse(school);
     }
@@ -215,7 +215,7 @@ public class EducationManagementService {
         String before = describeSchool(school);
         validateUniqueSchool(id, request.name());
         applySchool(school, request);
-        auditTrailService.logSafely("SCHOOL", school.getName(), school.getId(), ACTION_SCHOOL_UPDATED, null, null,
+        auditTrailService.log("SCHOOL", school.getName(), school.getId(), ACTION_SCHOOL_UPDATED, null, null,
                 DictionaryQuerySupport.buildUpdateComment("School", before, describeSchool(school)));
         return toSchoolResponse(school);
     }
@@ -224,7 +224,7 @@ public class EducationManagementService {
     public void deleteSchool(UUID id) {
         requireManage(EDUCATION_SCHOOL_MANAGE);
         School school = requireSchool(id);
-        auditTrailService.logSafely("SCHOOL", school.getName(), school.getId(), ACTION_SCHOOL_DELETED, null, null,
+        auditTrailService.log("SCHOOL", school.getName(), school.getId(), ACTION_SCHOOL_DELETED, null, null,
                 DictionaryQuerySupport.buildDeleteComment("School", describeSchool(school)));
         schoolRepository.delete(school);
     }

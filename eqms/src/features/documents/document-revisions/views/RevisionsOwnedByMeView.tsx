@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/components/ui/utils";
 import { Badge, type BadgeColor } from '@/components/ui/badge';
 import { PageHeader } from "@/components/ui/page/PageHeader";
+import { TableExportModal } from "@/components/ui/modal/TableExportModal";
 import { revisionsOwnedByMe } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { SectionLoading, FullPageLoading } from "@/components/ui/loading/Loading";
 import { RevisionTableView, TableColumn, useRevisionColumnLayout } from "@/features/documents/shared/components";
@@ -57,6 +58,7 @@ export const RevisionsOwnedByMeView: React.FC = () => {
     { id: "action", label: "Action", visible: true, order: 18, locked: true },
   ]);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [isExportOpen, setIsExportOpen] = useState(false);
 
   const {
     searchQuery,
@@ -247,12 +249,21 @@ export const RevisionsOwnedByMeView: React.FC = () => {
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {isNavigating && <FullPageLoading text="Loading..." />}
+      <TableExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        dataset="revisions"
+        title="Revisions"
+        totalRecords={totalItems}
+        onExport={exportRevisions}
+      />
+
       <PageHeader
         title="Revisions Owned By Me"
         breadcrumbItems={revisionsOwnedByMe(navigateTo)}
         actions={
           <Button
-            onClick={exportRevisions}
+            onClick={() => setIsExportOpen(true)}
             variant="outline"
             size="sm"
             className="whitespace-nowrap gap-2 self-start md:self-auto"

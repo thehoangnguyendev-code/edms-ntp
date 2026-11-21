@@ -27,6 +27,7 @@ import { useSecurityESign } from "@/features/security-authorization/shared/useSe
 import { ROUTES } from "@/app/routes.constants";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { statusText } from "@/features/security-authorization/shared/humanizeCode";
 
 const BASE_PATH = `${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/state-policies`;
 
@@ -224,7 +225,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
       header: "Status",
       label: "Status",
       sort: { direction: sortKey === "status" ? sortDir : undefined, onSort: () => handleSort("status") },
-      cell: (p) => (p.statusCode ? (p.statusLabel ?? p.statusCode) : <span className="text-slate-400 italic">Any status</span>),
+      cell: (p) => (p.statusCode ? statusText(p.statusLabel, p.statusCode) : <span className="text-slate-400 italic">Any status</span>),
     },
     {
       id: "documentType",

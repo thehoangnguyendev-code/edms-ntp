@@ -8,7 +8,7 @@ const api = vi.hoisted(() => ({
   markGroupAsRead: vi.fn(), deleteNotifications: vi.fn(), clearAllRead: vi.fn(),
 }));
 vi.mock("@/services/api/notifications", () => ({ notificationApi: api }));
-vi.mock("@/services/api/tableExport", () => ({ downloadTableExcel: vi.fn() }));
+vi.mock("@/services/api/tableExport", () => ({ downloadTableExport: vi.fn() }));
 const stable = vi.hoisted(() => ({
   toast: { showToast: vi.fn() },
   branding: { navigationLabelOverrides: {}, compactDesktopFilters: false, notificationInboxLayout: undefined as string | undefined },

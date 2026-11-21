@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
+import { Popover } from "@/components/ui/popover/Popover";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { WorkflowProgressStepper } from "@/components/ui/workflow-stepper/WorkflowProgressStepper";
 import type { WorkflowProgress } from "@/types/document";
@@ -81,12 +82,26 @@ export function ReadonlyGrid({ children }: { children: ReactNode }) {
 }
 
 /** A bordered block inside a tab (a table, an approval step). */
-export function TabBlock({ title, action, children }: { title?: string; action?: ReactNode; children: ReactNode }) {
+export function TabBlock({ title, action, hint, count, children }: {
+  title?: string;
+  action?: ReactNode;
+  /** Long explanation kept out of the page: shown in a small popover beside the title. */
+  hint?: ReactNode;
+  /** How many lines the block holds, shown beside the title. */
+  count?: number;
+  children: ReactNode;
+}) {
   return (
     <div className="space-y-3">
       {(title || action) && (
         <div className={`flex flex-wrap items-center gap-2 ${title ? "justify-between" : "justify-end"}`}>
-          {title && <h3 className="text-sm font-semibold text-slate-800">{title}</h3>}
+          {title && (
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+              {count !== undefined && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{count}</span>}
+              {hint && <Popover title={title} content={hint} contentClassName="w-80 max-w-[calc(100vw-2rem)]" triggerAriaLabel={`About ${title}`} />}
+            </div>
+          )}
           {action}
         </div>
       )}

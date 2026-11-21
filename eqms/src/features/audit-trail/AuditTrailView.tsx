@@ -1,4 +1,4 @@
-import { downloadTableExcel } from '@/services/api/tableExport';
+import { downloadTableExport } from '@/services/api/tableExport';
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -997,7 +997,7 @@ export const AuditTrailView: React.FC = () => {
         isOpen={isBulkExportESignOpen}
         onClose={() => setIsBulkExportESignOpen(false)}
         onConfirm={async (data: { reason: string; signatureToken?: string }) => {
-          await downloadTableExcel('audit-trail', {
+          await downloadTableExport('audit-trail', {
             search: debouncedSearchQuery,
             action: actionFilter as any,
             user: userFilter,

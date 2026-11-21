@@ -1,4 +1,4 @@
-import { downloadTableExcel } from '@/services/api/tableExport';
+import { downloadTableExport, type TableExportOptions } from '@/services/api/tableExport';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useToast } from "@/components/ui/toast";
@@ -502,9 +502,9 @@ export function useUserList() {
     setCurrentPage(1);
   };
 
-  const exportToExcel = async (_columns: TableColumn[]) => {
+  const exportUsers = async (options: TableExportOptions) => {
     try {
-      await downloadTableExcel('users', {
+      await downloadTableExport('users', {
         search: debouncedSearch.trim() || undefined,
         role: roleFilter === "All" ? undefined : roleFilter,
         position: positionFilter || undefined,
@@ -523,12 +523,12 @@ export function useUserList() {
         sortBy: sortConfig.key,
         sortDirection: sortConfig.direction,
         includeTerminated: showTerminated || statusFilter === "Terminated",
-      });
+      }, options);
 
       showToast({
         type: "success",
         title: "Export Successful",
-        message: `Exported ${totalItems} users to CSV`,
+        message: `Exported ${totalItems} users`,
       });
     } catch (error) {
       showToast({ type: "error", title: "Export Failed", message: String(error) });
@@ -639,7 +639,7 @@ export function useUserList() {
     suspendUser,
     terminateUser,
     reinstateUser,
-    exportToExcel,
+    exportUsers,
     clearFilters,
     sortConfig,
     handleSort,

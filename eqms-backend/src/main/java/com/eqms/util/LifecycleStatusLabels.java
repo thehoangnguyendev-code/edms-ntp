@@ -16,9 +16,7 @@ public final class LifecycleStatusLabels {
     // (below) can't produce on its own. Any status code NOT listed here still gets a readable
     // label via titleCase() -- the fallback is never the raw code, so a status added by a future
     // migration without an update here degrades gracefully instead of showing e.g. "READY_FOR_DISTRIBUTION".
-    private static final Map<String, String> LABELS = Map.ofEntries(
-            Map.entry("CLOSED_CANCELLED", "Closed / Cancelled")
-    );
+    private static final Map<String, String> LABELS = Map.of();
 
     private static final Map<String, String> OBJECT_TYPE_LABELS = Map.of(
             "DOCUMENT_REVISION", "Revision",
@@ -36,7 +34,8 @@ public final class LifecycleStatusLabels {
         if (statusCode == null || statusCode.isBlank()) {
             return null;
         }
-        return LABELS.getOrDefault(statusCode, titleCase(statusCode));
+        // one wording for a status on the whole server (DisplayLabels): the same as the status tables and the screens ("Closed - Cancelled")
+        return LABELS.getOrDefault(statusCode, DisplayLabels.status(statusCode));
     }
 
     /** Human-readable label for a policy's objectType (e.g. "CONTROLLED_COPY_BATCH" -> "Controlled Copy Batch"). */

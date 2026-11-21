@@ -29,6 +29,7 @@ import { ServerListPanel } from "@/features/backup-restore/components/ServerList
 import { formatDateTime } from "@/features/backup-restore/format";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { readableCode } from "@/utils/machineText";
 
 const ALL = "ALL";
 const STATE_OPTIONS = [
@@ -36,7 +37,7 @@ const STATE_OPTIONS = [
   { label: "Acknowledged", value: "ACKNOWLEDGED" },
   { label: "All", value: "ALL" },
 ];
-const SEVERITY_OPTIONS = [{ label: "All", value: ALL }, ...["CRITICAL", "HIGH", "WARNING", "INFO"].map((value) => ({ label: value, value }))];
+const SEVERITY_OPTIONS = [{ label: "All", value: ALL }, ...["CRITICAL", "HIGH", "WARNING", "INFO"].map((value) => ({ label: readableCode(value), value }))];
 type SortKey = "at" | "severity" | "code" | "ref" | "acknowledgedAt";
 const SEVERITY_COLOR = { CRITICAL: "red", HIGH: "red", WARNING: "amber", INFO: "blue" } as const;
 
@@ -136,8 +137,8 @@ const AlertsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => (page - 1) * pageSize + index + 1 },
     { id: "alertNumber", header: "Alert Number", label: "Alert Number", cell: (row) => <span className="text-xs sm:text-sm font-medium text-emerald-600 whitespace-nowrap">{row.alertNumber ?? "—"}</span> },
     { id: "at", header: "When", label: "When", sort: sortFor("at"), cell: (row) => formatDateTime(row.at) },
-    { id: "severity", header: "Severity", label: "Severity", sort: sortFor("severity"), cell: (row) => <Badge color={SEVERITY_COLOR[row.severity]}>{row.severity}</Badge> },
-    { id: "code", header: "Alert", label: "Alert", sort: sortFor("code"), cell: (row) => row.code },
+    { id: "severity", header: "Severity", label: "Severity", sort: sortFor("severity"), cell: (row) => <Badge color={SEVERITY_COLOR[row.severity]}>{row.severityLabel ?? readableCode(row.severity)}</Badge> },
+    { id: "code", header: "Alert", label: "Alert", sort: sortFor("code"), cell: (row) => row.codeLabel ?? readableCode(row.code) },
     { id: "detail", header: "Detail", label: "Detail", cell: (row) => <span className="break-words">{row.detail ?? "—"}</span> },
     { id: "ref", header: "Reference", label: "Reference", sort: sortFor("ref"), cell: (row) => row.ref ?? "—" },
     { id: "ack", header: "Acknowledged", label: "Acknowledged", sort: sortFor("acknowledgedAt"), cell: (row) => (row.acknowledgedAt ? `${row.acknowledgedBy ?? ""} · ${formatDateTime(row.acknowledgedAt)}` : "—") },

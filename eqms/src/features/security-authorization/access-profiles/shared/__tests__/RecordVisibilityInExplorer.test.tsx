@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // the filtered catalog comes from the server; here it is unreachable, so the explorer keeps the groups it was given
@@ -46,7 +46,8 @@ describe("Record visibility under the chip of its module", () => {
     await renderExplorer(["documents.document.view"]);
     expect(screen.getByTestId("record-visibility-picker")).toBeTruthy();
     fireEvent.click(chip("Training Management"));
-    expect(screen.queryByTestId("record-visibility-picker")).toBeNull(); // Training has no tick yet, so no picker either
+    // Training has no tick yet, so no picker either: the Document Control one slides away and is then gone
+    await waitFor(() => expect(screen.queryByTestId("record-visibility-picker")).toBeNull(), { timeout: 2000 });
   });
 
   it("shows the Training choice under the Training chip when a Training permission is ticked", async () => {

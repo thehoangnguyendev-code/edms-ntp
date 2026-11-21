@@ -144,7 +144,7 @@ const signDialog = async (page, user, reason) => {
   check("reject opens a reason dialog", await menuAction(approver, second, "Reject Request"));
   const rejectBox = await approver.waitForSelector("[role=dialog] textarea", { timeout: 10000 });
   const confirmDisabledBefore = await approver.evaluate(() => {
-    const b = Array.from(document.querySelectorAll("[role=dialog] button")).find((x) => x.textContent.trim() === "Continue to sign");
+    const b = Array.from(document.querySelectorAll("[role=dialog] button")).find((x) => x.textContent.trim() === "Continue to Sign");
     return b ? b.disabled : null;
   });
   check("reject continues to the signature only with a reason", confirmDisabledBefore === true);
@@ -153,7 +153,7 @@ const signDialog = async (page, user, reason) => {
   await approver.waitForFunction(() => document.querySelector("[role=dialog] textarea")?.value === "Change control not approved yet", { timeout: 5000 }).catch(async () => {
     console.log("DEBUG textareas:", JSON.stringify(await approver.evaluate(() => Array.from(document.querySelectorAll("textarea")).map((t) => ({ v: t.value, id: t.id, dlg: !!t.closest("[role=dialog]") })))));
   });
-  check("reject goes on to the rejection signature", await clickButton(approver, "Continue to sign", "[role=dialog]"));
+  check("reject goes on to the rejection signature", await clickButton(approver, "Continue to Sign", "[role=dialog]"));
   check("the rejection asks for its own electronic signature", await waitFor(approver, "Backup Restore Rejection"));
   await signDialog(approver, "approver.test1", "Rejected after review");
   await waitFor(approver, "Restore rejected");

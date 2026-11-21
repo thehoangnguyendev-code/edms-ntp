@@ -57,6 +57,8 @@ export interface DepartmentItem {
   primaryContactPhone?: string | null;
   /** The colour of the folder in the Knowledge Base explorer (#rrggbb; empty: an automatic colour). */
   iconColor?: string | null;
+  /** The people of this Department who still work there (every account of it except the Terminated ones). */
+  employeeCount?: number;
 }
 
 // ─── Position ────────────────────────────────────────────────────────────────
@@ -69,6 +71,8 @@ export interface PositionItem {
   isActive: boolean;
   createdDate: string;
   modifiedDate: string;
+  /** The people who hold this Position (every account with it except the Terminated ones). */
+  employeeCount?: number;
 }
 
 // ─── Document Type ───────────────────────────────────────────────────────────

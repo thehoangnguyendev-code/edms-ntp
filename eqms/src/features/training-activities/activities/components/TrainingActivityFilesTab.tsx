@@ -43,6 +43,9 @@ import { SpecimenViewModal } from "../../shared/SpecimenViewModal";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
 import type { ActivityMode } from "../TrainingActivityDetailPage";
 import { TrainingAssessmentEditorFrame } from "./TrainingAssessmentEditorFrame";
+import { Popover } from "@/components/ui/popover/Popover";
+import { LedgerEmpty, LedgerList, LedgerNote, LedgerRow } from "./workspace/ledger";
+import { TrainingMaterialsReader } from "./TrainingMaterialsReader";
 import { TrainingMaterialsBoard, type MaterialItem, type TrainingMaterialsLayout } from "./TrainingMaterialsBoard";
 import { useBranding } from "@/components/branding/BrandLogo";
 
@@ -92,6 +95,9 @@ export function TrainingActivityFilesTab({
   formNeeded = true,
   note = null,
   materialsReadOnly = false,
+  reader = false,
+  visible,
+  onSummary,
 }: {
   activityId: string;
   participants: TrainingParticipant[];
@@ -108,6 +114,12 @@ export function TrainingActivityFilesTab({
   note?: string | null;
   /** True in the Session Workspace: the test and the answer key that the plan holds are shown, never added, changed or removed there. */
   materialsReadOnly?: boolean;
+  /** True in the Session Workspace: the materials are drawn as a list with a detail panel, whatever layout the administrator chose for the planning screens. */
+  reader?: boolean;
+  /** With `reader` on the assessment part: which of its two sections is on screen (the other stays mounted, hidden). */
+  visible?: "materials" | "scans";
+  /** The Session Workspace asks to be told what the assessment blocks hold (the exam file, the scans and how many are still unchecked). */
+  onSummary?: (summary: { materials?: { examUploaded: boolean }; scans?: { total: number; unchecked: number } }) => void;
 }) {
   const { showToast } = useToast();
   const [files, setFiles] = useState<TrainingActivityFiles>();
@@ -138,6 +150,14 @@ export function TrainingActivityFilesTab({
   }, [activityId]);
   useEffect(load, [load]);
   useEntityChanged(["TRAINING"], load);
+  useEffect(() => {
+    if (part !== "assessment" || !files || !onSummary) return;
+    const exam = files.materials.some((m) => m.purpose === "EXAM" && !m.removedAt);
+    onSummary({
+      materials: !external && ((formKind !== "NONE" && formNeeded) || exam) ? { examUploaded: exam } : undefined,
+      scans: mode !== "edit" ? { total: files.evidence.length, unchecked: files.evidence.filter((e) => !e.receivedAt).length } : undefined,
+    });
+  }, [part, files, external, formKind, formNeeded, mode, onSummary]);
   const canEditHere = !materialsReadOnly && mode === "edit" && !!files?.canUploadMaterial;
   useEffect(() => {
     if (canEditHere && part === "assessment")
@@ -448,10 +468,12 @@ export function TrainingActivityFilesTab({
           )}
           {/* No test or checklist session and nothing uploaded: there is no form to show. The answer key is for a test. */}
           {!external && ((formKind !== "NONE" && formNeeded) || !!slotOf("EXAM")) && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-slate-800">
-                Assessment Materials
-              </h3>
+            <div hidden={reader && visible !== undefined && visible !== "materials"} className="space-y-3">
+              {!reader && (
+                <h3 className="text-sm font-semibold text-slate-800">
+                  Assessment Materials
+                </h3>
+              )}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
                 {assessmentZone("EXAM")}
                 {files.canSeeAnswerKey && formKind !== "CHECKLIST" && assessmentZone("ANSWER_KEY")}
@@ -459,10 +481,14 @@ export function TrainingActivityFilesTab({
             </div>
           )}
           {mode !== "edit" && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-800">
-              Scans and filled files
-            </h3>
+          <div hidden={reader && visible !== undefined && visible !== "scans"} className={`space-y-4 ${reader && canAddEvidence ? "pt-4" : ""}`}>
+            {!reader && <div id={reader ? "ws-assess-scans" : undefined} className="flex scroll-mt-24 items-center gap-2">
+              <h3 className="text-sm font-semibold text-slate-800">
+                Scans and filled files
+              </h3>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{files.evidence.length}</span>
+              <Popover title="Scans and filled files" content="A second person checks each scan against the paper." contentClassName="w-80 max-w-[calc(100vw-2rem)]" triggerAriaLabel="About Scans and filled files" />
+            </div>}
             {canAddEvidence && !external && <TrainingScanBatchUpload activityId={activityId} onDone={load} />}
             {canAddEvidence && external && (
               <div className="space-y-4">
@@ -554,6 +580,29 @@ export function TrainingActivityFilesTab({
                 </div>
               </div>
             )}
+            {reader ? (
+              <>
+                {/* the upload area above says the same sentence, so it is not said twice */}
+                {!canAddEvidence && <LedgerNote>A second person checks each scan against the paper.</LedgerNote>}
+                <div className="md:hidden">
+                  {files.evidence.length === 0 ? (
+                    <LedgerEmpty>{note ?? "No file yet."}</LedgerEmpty>
+                  ) : (
+                    <LedgerList>
+                      {files.evidence.map((e) => (
+                        <LedgerRow
+                          key={e.id}
+                          title={e.originalName}
+                          meta={[`${KIND_LABEL[e.kind] ?? e.kind} · ${size(e.sizeBytes)}`, `for ${e.participantName ?? "the whole session"}`, e.packCode, e.formUsed, `uploaded by ${e.uploadedByName} (${day(e.uploadedAt)})`, e.remark].filter(Boolean).join(" · ")}
+                          state={e.receivedAt ? `Checked by ${e.receivedByName}, ${when(e.receivedAt)}` : "Not yet checked"}
+                          tone={e.receivedAt ? "mute" : "amber"}
+                          primary={menuButton(e.id)}
+                        />
+                      ))}
+                    </LedgerList>
+                  )}
+                </div>
+                <div className="hidden md:block">
             <TabBlock>
               <DataTable
                 rows={files.evidence}
@@ -568,11 +617,38 @@ export function TrainingActivityFilesTab({
                 }
               />
             </TabBlock>
+                </div>
+              </>
+            ) : (
+            <TabBlock>
+              <DataTable
+                rows={files.evidence}
+                getRowKey={(e) => e.id}
+                columns={evidenceColumns}
+                columnLayout={evidenceLayout}
+                action={evidenceAction}
+                emptyState={
+                  <p className="p-4 text-sm text-slate-500">
+                    {note ?? "No file yet."}
+                  </p>
+                }
+              />
+            </TabBlock>
+            )}
           </div>
           )}
         </>
       )}
-      {part === "materials" && (
+      {part === "materials" && reader && (
+        <TrainingMaterialsReader
+          items={files.materials.filter((m) => m.purpose === "CONTENT").map(toItem)}
+          lockedNote={materialsNeeded && files.materials.some((m) => m.purpose === "CONTENT") ? "Materials can be added or removed in the planning step, until the content is reviewed. You can still open them here." : undefined}
+          emptyText={note ?? (materialsNeeded ? "No material yet. A file (PDF, slides, video) or a link can be added in the planning step." : "No material is needed for this training.")}
+          onPreview={(m) => preview(m.id, m.fileName)}
+          onDownload={(m) => void download(() => trainingFilesApi.downloadMaterial(m.id), m.fileName ?? "file")}
+        />
+      )}
+      {part === "materials" && !reader && (
         <>
           <TrainingMaterialsBoard
             layout={materialsLayout}

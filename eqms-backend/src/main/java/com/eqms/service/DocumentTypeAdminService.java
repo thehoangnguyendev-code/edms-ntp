@@ -150,7 +150,7 @@ public class DocumentTypeAdminService {
         DocumentType documentType = new DocumentType();
         applyDocumentType(documentType, request, true);
         documentTypeRepository.save(documentType);
-        auditTrailService.logSafely("DOCUMENT_TYPE", documentType.getName(), documentType.getId(), ACTION_DOCUMENT_TYPE_CREATED, null, null,
+        auditTrailService.log("DOCUMENT_TYPE", documentType.getName(), documentType.getId(), ACTION_DOCUMENT_TYPE_CREATED, null, null,
                 DictionaryQuerySupport.buildCreateComment("Document Type", documentType.getName(), documentType.getShortCode()));
         return toDocumentTypeResponse(documentType);
     }
@@ -162,7 +162,7 @@ public class DocumentTypeAdminService {
         String before = describeDocumentType(documentType);
         validateUniqueDocumentType(id, request.name(), request.shortCode());
         applyDocumentType(documentType, request, false);
-        auditTrailService.logSafely("DOCUMENT_TYPE", documentType.getName(), documentType.getId(), ACTION_DOCUMENT_TYPE_UPDATED, null, null,
+        auditTrailService.log("DOCUMENT_TYPE", documentType.getName(), documentType.getId(), ACTION_DOCUMENT_TYPE_UPDATED, null, null,
                 DictionaryQuerySupport.buildUpdateComment("Document Type", before, describeDocumentType(documentType)));
         return toDocumentTypeResponse(documentType);
     }
@@ -213,7 +213,7 @@ public class DocumentTypeAdminService {
         DocumentSubType subType = new DocumentSubType();
         applyDocumentSubType(subType, request, documentType, true);
         documentSubTypeRepository.save(subType);
-        auditTrailService.logSafely("DOCUMENT_SUB_TYPE", subType.getName(), subType.getId(), ACTION_DOCUMENT_SUB_TYPE_CREATED, null, null,
+        auditTrailService.log("DOCUMENT_SUB_TYPE", subType.getName(), subType.getId(), ACTION_DOCUMENT_SUB_TYPE_CREATED, null, null,
                 DictionaryQuerySupport.buildCreateComment("Document Sub-Type", subType.getName(), documentType.getName()));
         return toDocumentSubTypeResponse(subType);
     }
@@ -236,7 +236,7 @@ public class DocumentTypeAdminService {
         documentSubTypeRepository.flush();
         // Documents keep a display copy of the name; keep it aligned so a renamed Sub-Type still resolves on edit.
         documentRecordRepository.updateSubTypeNameBySubTypeId(id, subType.getName());
-        auditTrailService.logSafely("DOCUMENT_SUB_TYPE", subType.getName(), subType.getId(), ACTION_DOCUMENT_SUB_TYPE_UPDATED, null, null,
+        auditTrailService.log("DOCUMENT_SUB_TYPE", subType.getName(), subType.getId(), ACTION_DOCUMENT_SUB_TYPE_UPDATED, null, null,
                 DictionaryQuerySupport.buildUpdateComment("Document Sub-Type", before, describeDocumentSubType(subType)));
         return toDocumentSubTypeResponse(subType);
     }

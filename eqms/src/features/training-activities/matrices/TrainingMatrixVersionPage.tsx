@@ -791,7 +791,7 @@ function SubmitDialog({
       onClose={onClose}
       title="Send for Approval"
       description="Choose who approves this version. Only people the system found eligible are listed: they hold the approval permission, are in this department, and are not you."
-      confirmText="Continue to signature"
+      confirmText="Continue to Signature"
       isLoading={busy}
       confirmDisabled={!id}
       size="md"

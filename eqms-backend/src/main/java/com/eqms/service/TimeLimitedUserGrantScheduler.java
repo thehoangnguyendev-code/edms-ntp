@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -29,17 +31,23 @@ public class TimeLimitedUserGrantScheduler {
     private final UserAccountRepository userRepository;
     private final TimeLimitedUserGrantService grantService;
     private final DistributedSchedulerLockService schedulerLockService;
+    private final NotificationDispatcher notificationDispatcher;
+
+    /** The person is warned this long before the window ends (NOTIFICATION-REVIEW-2026-11-21: the owner chose a warning, the number of days was left to the system). */
+    static final java.time.Duration WARN_BEFORE_END = java.time.Duration.ofDays(3);
 
     public TimeLimitedUserGrantScheduler(
             TimeLimitedUserGrantRepository grantRepository,
             UserAccountRepository userRepository,
             TimeLimitedUserGrantService grantService,
-            DistributedSchedulerLockService schedulerLockService
+            DistributedSchedulerLockService schedulerLockService,
+            NotificationDispatcher notificationDispatcher
     ) {
         this.grantRepository = grantRepository;
         this.userRepository = userRepository;
         this.grantService = grantService;
         this.schedulerLockService = schedulerLockService;
+        this.notificationDispatcher = notificationDispatcher;
     }
 
     /** Runs every 15 minutes (dates only, but a near-immediate effect at the exact start/end date
@@ -83,5 +91,29 @@ public class TimeLimitedUserGrantScheduler {
             return;
         }
         grantService.applyWindowState(grant, user);
+        warnBeforeEnd(grant, user);
+    }
+
+    /**
+     * Tells the person once that the window ends within {@link #WARN_BEFORE_END}. Only for a window that is open now and
+     * only when the notice was really handled (sent, or switched off on purpose), so that a failure is tried again.
+     */
+    void warnBeforeEnd(TimeLimitedUserGrant grant, UserAccount user) {
+        Instant now = Instant.now();
+        if (grant.getExpiryWarnedAt() != null || !TimeLimitedUserGrant.STATUS_ACTIVE.equals(grant.getStatus())
+                || grant.getStartAt().isAfter(now) || !grant.getEndAt().isAfter(now)
+                || grant.getEndAt().isAfter(now.plus(WARN_BEFORE_END))) {
+            return;
+        }
+        NotificationDispatcher.Outcome outcome = notificationDispatcher.dispatch("user.time_limited_access_expiring", List.of(user), Map.of(
+                "endDate", grant.getEndAt().toString(),
+                "actionUrl", "/"
+        ));
+        if (outcome == null || outcome.blocked() == null || "POLICY_OFF".equals(outcome.blocked())) {
+            grant.setExpiryWarnedAt(now);
+            grantRepository.save(grant);
+        } else {
+            log.error("The notice that the time-limited access of {} ends soon was not sent: {}", user.getUsername(), outcome.blocked());
+        }
     }
 }

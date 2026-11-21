@@ -8,6 +8,7 @@ import { Badge, type BadgeColor } from "@/components/ui/badge";
 import { DocumentFilters } from "@/features/documents/shared/components";
 import { cn } from "@/components/ui/utils";
 import { PageHeader } from "@/components/ui/page/PageHeader";
+import { TableExportModal } from "@/components/ui/modal/TableExportModal";
 import { pendingDocuments } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { SectionLoading, FullPageLoading } from "@/components/ui/loading/Loading";
 import { usePortalDropdown, useNavigateWithLoading, useTableDragScroll } from "@/hooks";
@@ -55,6 +56,7 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
   const { navigateTo, navigateToPrepared, isNavigating } = useNavigateWithLoading();
   const [columns] = useState<TableColumn[]>(() => [...DEFAULT_COLUMNS]);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [isExportOpen, setIsExportOpen] = useState(false);
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
 
@@ -195,12 +197,21 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {isNavigating && <FullPageLoading text="Loading..." />}
+      <TableExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        dataset="revisions"
+        title="Revisions"
+        totalRecords={totalItems}
+        onExport={exportRevisions}
+      />
+
       <PageHeader
         title={title}
         breadcrumbItems={pendingDocuments(navigateTo, breadcrumbKey)}
         actions={
           <Button
-            onClick={exportRevisions}
+            onClick={() => setIsExportOpen(true)}
             variant="outline"
             size="sm"
             className="whitespace-nowrap gap-2 self-start md:self-auto"

@@ -94,7 +94,8 @@ class AccessProfileServiceSecurityTest {
                 effectivePermissionService,
                 sodConstraintRepo,
                 permissionSetService,
-                org.mockito.Mockito.mock(com.eqms.repository.AuditLogRepository.class));
+                org.mockito.Mockito.mock(com.eqms.repository.AuditLogRepository.class),
+                org.mockito.Mockito.mock(com.eqms.service.NotificationDispatcher.class));
 
         actor = user("qa-admin");
     }

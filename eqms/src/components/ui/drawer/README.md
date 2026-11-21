@@ -28,6 +28,6 @@ animates out first, then calls `onClose` once. An external `open=false` does not
 second modal after closing the drawer.
 
 Consumers: VersionHistoryDrawer, LearningHistoryDrawer,
-CellDetailDrawer, HeaderActionDrawer, AccessProfilePermissionSetDrawer, WorkflowRoleDrawer.
+CellDetailDrawer, HeaderActionDrawer, WorkflowRoleDrawer.
 FilterDrawer, inline mobile filter drawers, sidebar navigation and modal/dropdown
 components intentionally remain separate.

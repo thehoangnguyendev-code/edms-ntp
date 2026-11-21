@@ -1112,7 +1112,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         onConfirm={() => setSigning(true)}
         title={`Recall ${batch?.readyItems ?? 0} Controlled ${batch?.readyItems === 1 ? "Copy" : "Copies"}?`}
         description="You will sign once for every copy in this list. Each copy becomes Obsoleted (recalled) and its scan is filed under Records. This cannot be undone."
-        confirmText="Continue to sign"
+        confirmText="Continue to Sign"
         confirmDisabled={!attested || !receivedDate || receivedDate > todayIso()}
         size="md"
       >

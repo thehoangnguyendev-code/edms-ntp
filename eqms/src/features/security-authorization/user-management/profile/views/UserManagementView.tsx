@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { SmartphoneNfc, Search, Plus, MoreVertical, KeyRound, Download, PauseCircle, RotateCcw, X, ChevronUp, ChevronDown, ChevronRight, Check, UserPen, SquareX, LockOpen } from "lucide-react";
 import { IconBan, IconBrandTelegram, IconFilter2, IconMailUp, IconRestore, IconUserX } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
+import { TableExportModal } from "@/components/ui/modal/TableExportModal";
 import { userManagement } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -121,7 +122,7 @@ export const UserManagementView: React.FC = () => {
     suspendUser,
     terminateUser,
     reinstateUser,
-    exportToExcel,
+    exportUsers,
     clearFilters,
     sortConfig,
     handleSort,
@@ -183,6 +184,7 @@ export const UserManagementView: React.FC = () => {
     userEmail: "",
   });
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(["role", "status", "businessUnit", "department"]),
   );
@@ -366,6 +368,15 @@ export const UserManagementView: React.FC = () => {
   return (
     <div className="space-y-6 w-full flex-1 flex flex-col">
       {/* Header */}
+      <TableExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        dataset="users"
+        title="Users"
+        totalRecords={totalItems}
+        onExport={exportUsers}
+      />
+
       <PageHeader
         title="User Management"
         breadcrumbItems={userManagement()}
@@ -375,7 +386,7 @@ export const UserManagementView: React.FC = () => {
               size="sm"
               variant="outline"
               className="flex items-center gap-2 whitespace-nowrap"
-              onClick={() => exportToExcel(columns.filter((column) => column.id !== "expand"))}
+              onClick={() => setIsExportOpen(true)}
             >
               <Download className="h-4 w-4" />
               Export

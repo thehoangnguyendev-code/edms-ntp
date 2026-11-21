@@ -132,8 +132,16 @@ public class AuthService {
     // (found while live-verifying the new security.account_locked notification wiring).
     @Transactional(noRollbackFor = UnauthorizedException.class)
     public Object login(LoginRequest request, HttpServletRequest httpRequest) {
-        UserAccount user = findActiveUserByIdentifier(request.identifier())
-                .orElseThrow(() -> new UnauthorizedException("Username or email not found"));
+        Optional<UserAccount> found = findActiveUserByIdentifier(request.identifier());
+        if (found.isEmpty()) {
+            // Same work as a wrong password: without it an unknown name answered in about 9 ms and a known
+            // name in about 110 ms (the password hash), so the time alone told whether the account exists
+            // (API review 2026-11-21, owner decision: keep the messages, equalise the time).
+            passwordEncoder.matches(request.password() == null ? "" : request.password(), timingEqualisationHash());
+            recordUnknownAccountAttempt(request.identifier(), httpRequest);
+            throw new UnauthorizedException("Username or email not found");
+        }
+        UserAccount user = found.get();
 
         if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(Instant.now())) {
             throw new UnauthorizedException("Account is locked. Please contact administrator.");
@@ -1034,8 +1042,14 @@ public class AuthService {
     @Transactional(readOnly = true)
     public List<SessionResponse> getSessions() {
         AuthenticatedUser principal = currentUserService.requireAuthenticatedPrincipal();
-        return sessionRepository.findAllByUserIdOrderByCreatedAtDesc(principal.userId())
+        // Only the sessions that can still be used, newest first, at most MAX_LISTED_SESSIONS. The screen is
+        // "active sessions"; it was sent every session ever made (4,057 rows, 623 KB for one user). Ended
+        // sessions stay in the table untouched: they are records, and their retention is a QA decision.
+        Instant now = Instant.now();
+        return sessionRepository.findAllByUserIdAndRevokedAtIsNullOrderByCreatedAtDesc(principal.userId())
                 .stream()
+                .filter(session -> session.getExpiresAt() == null || session.getExpiresAt().isAfter(now))
+                .limit(MAX_LISTED_SESSIONS)
                 .map(session -> new SessionResponse(
                         session.getId().toString(),
                         session.getDeviceName() == null || session.getDeviceName().isBlank() ? "Unknown Device" : session.getDeviceName(),
@@ -1437,6 +1451,35 @@ public class AuthService {
                 left == null ? null : left.trim(),
                 right == null ? null : right.trim()
         );
+    }
+
+    static final int MAX_LISTED_SESSIONS = 100;
+
+    /**
+     * A failed sign-in with a name that no account has is recorded like any failed sign-in (AUDIT_TRAIL_STANDARD 1.1: every login failure).
+     * Before, only a wrong password of a real account left a trace, so a person trying names left none. The name is kept, cut to 80
+     * characters, with the address; the failed-login count of the monitoring screen includes it. A failure to write never changes the answer.
+     */
+    private void recordUnknownAccountAttempt(String identifier, HttpServletRequest httpRequest) {
+        try {
+            String attempted = identifier == null ? "" : identifier.trim();
+            if (attempted.length() > 80) attempted = attempted.substring(0, 80);
+            auditService.log("login_failed", (UserAccount) null, auditDetails("username", attempted, "accountFound", false), clientIp(httpRequest), userAgent(httpRequest));
+        } catch (RuntimeException failure) {
+            org.slf4j.LoggerFactory.getLogger(AuthService.class).error("The failed sign-in of an unknown name could not be recorded: {}", failure.getMessage());
+        }
+    }
+
+    private volatile String timingHash;
+
+    /** A password hash of the same cost as the real ones, made once, for the sign-in of a name that does not exist. */
+    private String timingEqualisationHash() {
+        String hash = timingHash;
+        if (hash == null) {
+            hash = passwordEncoder.encode("timing-equalisation-not-a-password");
+            timingHash = hash;
+        }
+        return hash;
     }
 
     private Optional<UserAccount> findActiveUserByIdentifier(String value) {

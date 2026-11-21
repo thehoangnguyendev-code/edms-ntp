@@ -180,6 +180,22 @@ public class SodConstraintService {
                 run.getViolationCount(), results);
     }
 
+    /**
+     * The distinct active Access Profile ids of every active user who holds two or more, read with one
+     * query for all assignments. A query per user made the SoD scan take 18 s on 6,000 users.
+     */
+    private Map<UUID, List<UUID>> profileIdsOfUsersWithSeveral(List<UserAccount> activeUsers, Map<UUID, RoleDefinition> profileById) {
+        Set<UUID> activeUserIds = activeUsers.stream().map(UserAccount::getId).collect(Collectors.toSet());
+        Map<UUID, List<UUID>> byUser = new HashMap<>();
+        for (com.eqms.entity.UserAccessProfile link : userAccessProfileRepository.findAll()) {
+            if (!activeUserIds.contains(link.getUserId()) || !profileById.containsKey(link.getAccessProfileId())) continue;
+            List<UUID> linked = byUser.computeIfAbsent(link.getUserId(), k -> new ArrayList<>());
+            if (!linked.contains(link.getAccessProfileId())) linked.add(link.getAccessProfileId());
+        }
+        byUser.values().removeIf(ids -> ids.size() < 2);
+        return byUser;
+    }
+
     @Transactional
     public List<SodViolationResponse> scanViolations() {
         requireView();
@@ -204,13 +220,10 @@ public class SodConstraintService {
                 .toList();
         Map<UUID, UserAccount> userById = new HashMap<>();
         Map<UUID, List<UUID>> userActiveProfileIds = new HashMap<>();
+        Map<UUID, List<UUID>> multiProfileUsers = profileIdsOfUsersWithSeveral(activeUsers, profileById);
         for (UserAccount user : activeUsers) {
-            List<UUID> ids = userAccessProfileRepository.findByUserId(user.getId()).stream()
-                    .map(com.eqms.entity.UserAccessProfile::getAccessProfileId)
-                    .filter(profileById::containsKey)
-                    .distinct()
-                    .toList();
-            if (ids.size() > 1) {
+            List<UUID> ids = multiProfileUsers.get(user.getId());
+            if (ids != null) {
                 userById.put(user.getId(), user);
                 userActiveProfileIds.put(user.getId(), ids);
             }
@@ -293,13 +306,10 @@ public class SodConstraintService {
                 .toList();
         Map<UUID, UserAccount> userById = new HashMap<>();
         Map<UUID, List<UUID>> userActiveProfileIds = new HashMap<>();
+        Map<UUID, List<UUID>> multiProfileUsers = profileIdsOfUsersWithSeveral(activeUsers, profileById);
         for (UserAccount user : activeUsers) {
-            List<UUID> ids = userAccessProfileRepository.findByUserId(user.getId()).stream()
-                    .map(com.eqms.entity.UserAccessProfile::getAccessProfileId)
-                    .filter(profileById::containsKey)
-                    .distinct()
-                    .toList();
-            if (ids.size() > 1) {
+            List<UUID> ids = multiProfileUsers.get(user.getId());
+            if (ids != null) {
                 userById.put(user.getId(), user);
                 userActiveProfileIds.put(user.getId(), ids);
             }

@@ -33,6 +33,7 @@ import { ROUTES } from "@/app/routes.constants";
 import type { DocumentComponentItem } from "../document-name-formats/documentNameFormatTypes";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
+import { readableCode } from "@/utils/machineText";
 
 export const DocumentComponentsTab: React.FC = () => {
   const navigate = useNavigate();
@@ -115,7 +116,7 @@ export const DocumentComponentsTab: React.FC = () => {
     { id: "name", header: "Name", label: "Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => (<div className="flex items-center gap-1.5"><span className="font-medium text-slate-900">{item.name}</span>{item.systemDefined && (<span title="System-defined — Table/Field mapping is fixed by the backend, cannot be edited"><Lock className="h-3 w-3 text-slate-400" /></span>)}</div>) },
     { id: "value", header: "Value (Token)", label: "Value (Token)", cell: (item) => <code className="text-2xs sm:text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{"{{" + item.value + "}}"}</code> },
     { id: "shortDescription", header: "Short Description", label: "Short Description", cellClassName: "text-slate-600 max-w-xs truncate", cell: (item) => item.shortDescription || "-" },
-    { id: "sourceTable", header: "Source", label: "Source", cell: (item) => (<Badge color={item.sourceTable === "FREE_TEXT" ? "sky" : "emerald"} size="sm">{item.sourceTable === "FREE_TEXT" ? "Free Text" : item.sourceTable}</Badge>) },
+    { id: "sourceTable", header: "Source", label: "Source", cell: (item) => (<Badge color={item.sourceTable === "FREE_TEXT" ? "sky" : "emerald"} size="sm">{item.sourceTable === "FREE_TEXT" ? "Free Text" : readableCode(item.sourceTable)}</Badge>) },
     { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>) },
     { id: "displayOrder", header: "Order", label: "Order", cellClassName: "text-slate-600", cell: (item) => item.displayOrder },
   ];

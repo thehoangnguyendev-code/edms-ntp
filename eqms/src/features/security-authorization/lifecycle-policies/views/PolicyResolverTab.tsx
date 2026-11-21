@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { workflowActionPolicyApi } from "@/services/api/workflowActionPolicy";
 import { extractApiError } from "../workflowPolicyUtils";
 import { moduleDisplayName } from "@/utils/moduleDisplay";
+import { statusText } from "@/features/security-authorization/shared/humanizeCode";
 import type {
   WorkflowActionPolicyEffectiveResponse,
   WorkflowActionPolicyOptions,
@@ -450,8 +451,8 @@ const PolicyResolutionResult: React.FC<{
         )}
         {result.policy && (
           <dl className="grid grid-cols-1 gap-x-6 gap-y-3 border-t border-slate-200 pt-4 text-sm sm:grid-cols-2">
-            <ResolutionField label="Action" value={result.policy.actionLabel ?? result.policy.actionCode} />
-            <ResolutionField label="From status" value={result.policy.fromStatusLabel ?? result.policy.fromStatus} />
+            <ResolutionField label="Action" value={statusText(result.policy.actionLabel, result.policy.actionCode)} />
+            <ResolutionField label="From status" value={statusText(result.policy.fromStatusLabel, result.policy.fromStatus)} />
             <ResolutionField label="Permission" value={result.policy.requiredPermissionCode} />
             <ResolutionField label="Priority" value={String(result.policy.priority)} />
             <ResolutionField label="Document type" value={result.policy.documentTypeName ?? "Global"} />

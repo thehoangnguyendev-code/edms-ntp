@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 const m = vi.hoisted(() => ({ summary: vi.fn(), capabilities: vi.fn(), update: vi.fn(), sign: vi.fn(), toast: vi.fn() }));
-vi.mock("@/services/api/settings", () => ({ settingsApi: { getAccessProfileEditorSummary: m.summary, getAccessProfileCapabilities: m.capabilities, updateAccessProfileConfiguration: m.update } }));
+vi.mock("@/services/api/settings", () => ({ settingsApi: { getAccessProfileEditorSummary: m.summary, getAccessProfileCapabilities: m.capabilities, updateAccessProfileConfiguration: m.update, listPermissionSets: () => Promise.resolve([]) } }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ showToast: m.toast }) }));
 vi.mock("@/features/security-authorization/shared/useSecurityESign", () => ({ useSecurityESign: () => ({ requestSignature: m.sign, signatureModal: null }) }));
 vi.mock("@/components/ui/page/PageHeader", () => ({ PageHeader: ({ actions }: { actions: React.ReactNode }) => <div>{actions}</div> }));

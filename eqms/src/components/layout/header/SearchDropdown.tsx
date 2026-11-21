@@ -72,13 +72,9 @@ export const SearchDropdown: React.FC<SearchDropdownProps> = ({ className, onClo
     };
   }, [debouncedQuery]);
 
-  // Keyboard shortcut for search
+  // Escape closes the dropdown
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-      }
       // Close search dropdown with Escape
       if (e.key === 'Escape' && isSearchFocused) {
         setIsSearchFocused(false);

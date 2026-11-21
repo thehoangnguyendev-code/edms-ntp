@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../utils';
+import { displayNode } from '@/utils/machineText';
 
 /**
  * Badge Component - Standardized badge for status, category, or label display.
@@ -131,7 +132,7 @@ export const Badge: React.FC<BadgeProps> = ({
         <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', isSolid ? 'bg-white' : DOT_COLOR[resolvedColor])} />
       )}
       {icon && <span className="shrink-0">{icon}</span>}
-      {children}
+      {displayNode(children)}
     </span>
   );
 };

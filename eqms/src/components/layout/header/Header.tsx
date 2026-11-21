@@ -7,6 +7,7 @@ import { Button } from '../../ui/button/Button';
 import { cn } from '../../ui/utils';
 import { Breadcrumb } from '../../ui/breadcrumb/Breadcrumb';
 import { NotificationsDropdown } from './NotificationsDropdown';
+import { GlobalSearchButton } from '@/features/global-search/GlobalSearchButton';
 import { MaintenanceCountdownChip } from '@/features/maintenance/MaintenanceCountdownChip';
 import { EnvironmentBadge } from './EnvironmentBadge';
 import { useBreadcrumb } from '@/contexts/BreadcrumbContext';
@@ -245,6 +246,11 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
 
             {/* Maintenance countdown: shown only while a notice runs (SDS 11.5.4) */}
             <MaintenanceCountdownChip />
+
+            {/* Search everything the person can open (Ctrl+K) */}
+            <motion.div layout="position">
+              <GlobalSearchButton />
+            </motion.div>
 
             {/* Notifications */}
             <motion.div layout="position">

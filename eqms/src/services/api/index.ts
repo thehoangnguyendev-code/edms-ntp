@@ -29,7 +29,7 @@ export { dictionaryApi } from './dictionary';
 export { educationApi } from './education';
 export { documentNameFormatApi } from './documentNameFormats';
 export { sharedApi } from './shared';
-export { searchApi, countApi } from './search';
+export { searchApi } from './search';
 export { metadataApi } from './metadata';
 export { promptSpecApi } from './promptSpec';
 export { navigationApi } from './navigation';

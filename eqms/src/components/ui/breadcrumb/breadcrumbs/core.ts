@@ -38,14 +38,14 @@ export const auditTrailDetail =(navigate?: NavigateFn): BreadcrumbItem[] => [
 export const auditTrailReview = (navigate?: NavigateFn): BreadcrumbItem[] => [
   dashboard(navigate),
   { label: "Audit Trail", onClick: () => navigate?.(ROUTES.AUDIT_TRAIL) },
-  { label: "Audit Trail Review", isActive: true },
+  { label: "Periodic Review", isActive: true },
 ];
 
-export const auditTrailReviewCampaignDetail = (navigate?: NavigateFn, campaignName?: string): BreadcrumbItem[] => [
+export const auditTrailReviewCampaignDetail = (navigate?: NavigateFn): BreadcrumbItem[] => [
   dashboard(navigate),
   { label: "Audit Trail", onClick: () => navigate?.(ROUTES.AUDIT_TRAIL) },
-  { label: "Audit Trail Review", onClick: () => navigate?.(ROUTES.AUDIT_TRAIL_REVIEW) },
-  { label: "Audit Trail Review Campaign", isActive: true },
+  { label: "Periodic Review", onClick: () => navigate?.(ROUTES.AUDIT_TRAIL_REVIEW) },
+  { label: "Periodic Review Details", isActive: true },
 ];
 
 export const report = (navigate?: NavigateFn, subLabel?: string): BreadcrumbItem[] => {

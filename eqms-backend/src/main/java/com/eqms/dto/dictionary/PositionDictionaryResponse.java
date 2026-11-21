@@ -10,6 +10,7 @@ public record PositionDictionaryResponse(
         String description,
         boolean isActive,
         String createdDate,
-        String modifiedDate
+        String modifiedDate,
+        long employeeCount
 ) {
 }

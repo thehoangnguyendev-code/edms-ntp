@@ -1,4 +1,4 @@
-import { downloadTableExcel } from '@/services/api/tableExport';
+import { downloadTableExport, type TableExportOptions } from '@/services/api/tableExport';
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useState, createRef, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
@@ -24,6 +24,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import type { ControlledCopy } from "./types";
 import {IconArrowBackUp, IconFilter2, IconInfoCircle, IconShare3, IconShredder} from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
+import { TableExportModal } from "@/components/ui/modal/TableExportModal";
 import { controlledCopies } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
@@ -1409,12 +1410,13 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
   };
 
   const [isExporting, setIsExporting] = useState(false);
-  const handleExport = async () => {
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const handleExport = async (options: TableExportOptions) => {
     if (isExporting) return;
     setIsExporting(true);
     const convertDate = (value: string) => value.replace(/^(\d{2})\/(\d{2})\/(\d{4})$/, '$3-$2-$1');
     try {
-      await downloadTableExcel('controlled-copies', {
+      await downloadTableExport('controlled-copies', {
         search: debouncedSearchQuery || undefined,
         status: viewType === 'all' ? (statusFilter !== 'All' ? statusFilter : undefined)
           : viewType === 'ready' ? 'READY_FOR_DISTRIBUTION' : 'DISTRIBUTED',
@@ -1428,7 +1430,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         recallTo: recallToDate ? convertDate(recallToDate) : undefined,
         usagePurpose: usagePurposeFilter !== USAGE_PURPOSE_ALL ? usagePurposeFilter : undefined,
         sortBy: sortConfig.key, sortDirection: sortConfig.direction,
-      });
+      }, options);
     } catch { showToast({ type: 'error', title: 'Export failed', message: 'Unable to export controlled copies.' }); }
     finally { setIsExporting(false); }
   };
@@ -1567,13 +1569,22 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
 
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6 w-full flex-1">
+      <TableExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        dataset="controlled-copies"
+        title="Controlled Copies"
+        totalRecords={totalItems}
+        onExport={handleExport}
+      />
+
       <PageHeader
         title={getPageTitle()}
         breadcrumbItems={controlledCopies(navigateTo, viewType)}
         actions={
           <div className="flex items-center gap-2">
             <Button
-              onClick={() => void handleExport()}
+              onClick={() => setIsExportOpen(true)}
               loading={isExporting}
               variant="outline"
               size="sm"

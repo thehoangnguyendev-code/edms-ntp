@@ -1,23 +1,23 @@
-﻿import React, { useCallback, useRef, useEffect, useState } from 'react';
+﻿﻿import React, { useCallback, useRef, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, User, CheckCheck, FileText, AlertTriangle, MessageCircle, UserPlus, CheckCircle, ThumbsUp, Reply, Settings, ArrowLeft, Lock, Pin, PinOff } from 'lucide-react';
-import { TabNav, type TabItem } from '../../ui/tabs/TabNav';
+import { ArrowLeft, ArrowRight, Bell, CheckCheck, Clock, Pin, PinOff, type LucideIcon } from 'lucide-react';
 import { Button } from '../../ui/button/Button';
 import { cn } from '../../ui/utils';
 import { ROUTES } from '@/app/routes.constants';
-import type { Notification, NotificationType } from '@/features/notifications/types';
-import { AlertModal } from '../../ui/modal/AlertModal';
+import type { Notification } from '@/features/notifications/types';
 import { FullPageLoading } from '../../ui/loading/Loading';
-import { IconArrowNarrowLeft, IconChevronLeft, IconSettings2 } from '@tabler/icons-react';
-import { notificationApi, type Notification as NotificationApiItem } from '@/services/api/notifications';
+import { IconSettings2 } from '@tabler/icons-react';
+import { notificationApi, type GetNotificationsParams, type Notification as NotificationApiItem } from '@/services/api/notifications';
 import { mapNotificationToViewModel, openNotificationActionUrl } from '@/features/notifications/adapters';
-import { formatNotificationDateTime } from '@/features/notifications/date';
+import { formatNotificationDateTime, formatNotificationRelativeTime, notificationDayGroup, type NotificationDayGroup } from '@/features/notifications/date';
 import { emitNotificationsChanged, subscribeNotificationsChanged } from '@/features/notifications/events';
 import { useNotificationRealtime } from '@/features/notifications/notificationRealtime';
-import { getNotificationTypeIcon, getNotificationIconStyles, getNotificationTypeLabel } from '@/features/notifications/notificationMeta';
+import { getNotificationTypeIcon, getNotificationTypeLabel } from '@/features/notifications/notificationMeta';
 import { createEmptyNotificationSummaryCounts, type NotificationSummaryCounts } from '@/features/notifications/types';
+import { moduleDisplayName } from '@/utils/moduleDisplay';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useNotificationDock } from './NotificationDockContext';
 import { useNotificationEntrance } from './useNotificationEntrance';
 
@@ -27,106 +27,24 @@ interface NotificationsDropdownProps {
   onToggle: () => void;
 }
 
-// Hook to detect mobile screen
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  return isMobile;
-};
+/** How many notifications a long list (the dock, the phone screen) asks for first, and how many more each "Show more" adds. */
+export const FEED_PAGE_SIZE = 25;
+/** The server does not cap the page size, so the screen does: past this the Notification Center is the place to read. */
+export const FEED_MAX_ITEMS = 100;
 
 export type DropdownNotification = {
   id: string;
   status: Notification['status'];
-  type: NotificationType;
-  avatar: typeof Bell;
-  avatarBg: string;
-  avatarColor: string;
-  /** The tint of the tile and the colour of the icon when the colour was chosen with the colour picker (the classes above are then empty). */
-  badge: typeof Bell;
-  badgeBg: string;
-  title: React.ReactNode;
-  time: string;
+  icon: LucideIcon;
+  /** low | medium | high | critical: the colour of the bar at the left of the row. */
+  priority: string;
+  title: string;
+  /** The text of the in-app notification, shown under the title (empty when it only repeats the title). */
+  body: string;
+  /** The module as the menu names it (the type of the notification when it has none). */
+  source: string;
+  createdAt: string;
   actionUrl?: string;
-};
-
-const TYPE_UI_MAP: Record<NotificationType, Omit<DropdownNotification, 'id' | 'status' | 'type' | 'title' | 'time' | 'actionUrl'>> = {
-  'review-request': {
-    avatar: User,
-    avatarBg: 'bg-blue-100',
-    avatarColor: 'text-blue-600',
-    badge: MessageCircle,
-    badgeBg: 'bg-blue-500',
-  },
-  approval: {
-    avatar: User,
-    avatarBg: 'bg-emerald-100',
-    avatarColor: 'text-emerald-600',
-    badge: CheckCircle,
-    badgeBg: 'bg-emerald-500',
-  },
-  'capa-assignment': {
-    avatar: AlertTriangle,
-    avatarBg: 'bg-amber-100',
-    avatarColor: 'text-amber-600',
-    badge: UserPlus,
-    badgeBg: 'bg-amber-500',
-  },
-  'training-completion': {
-    avatar: User,
-    avatarBg: 'bg-purple-100',
-    avatarColor: 'text-purple-600',
-    badge: ThumbsUp,
-    badgeBg: 'bg-purple-500',
-  },
-  'document-update': {
-    avatar: FileText,
-    avatarBg: 'bg-cyan-100',
-    avatarColor: 'text-cyan-600',
-    badge: CheckCircle,
-    badgeBg: 'bg-cyan-500',
-  },
-  'controlled-copy': {
-    avatar: Lock,
-    avatarBg: 'bg-emerald-100',
-    avatarColor: 'text-emerald-600',
-    badge: CheckCircle,
-    badgeBg: 'bg-emerald-500',
-  },
-  'comment-reply': {
-    avatar: User,
-    avatarBg: 'bg-slate-100',
-    avatarColor: 'text-slate-600',
-    badge: Reply,
-    badgeBg: 'bg-slate-500',
-  },
-  'deviation-assignment': {
-    avatar: AlertTriangle,
-    avatarBg: 'bg-red-100',
-    avatarColor: 'text-red-600',
-    badge: UserPlus,
-    badgeBg: 'bg-red-500',
-  },
-  'change-control': {
-    avatar: FileText,
-    avatarBg: 'bg-indigo-100',
-    avatarColor: 'text-indigo-600',
-    badge: CheckCircle,
-    badgeBg: 'bg-indigo-500',
-  },
-  system: {
-    avatar: Settings,
-    avatarBg: 'bg-slate-100',
-    avatarColor: 'text-slate-600',
-    badge: Bell,
-    badgeBg: 'bg-slate-500',
-  },
 };
 
 const toDropdownNotification = (item: NotificationApiItem): DropdownNotification => {
@@ -134,25 +52,44 @@ const toDropdownNotification = (item: NotificationApiItem): DropdownNotification
   return {
     id: viewModel.id,
     status: viewModel.status,
-    type: viewModel.type,
-    ...TYPE_UI_MAP[viewModel.type],
-    avatar: getNotificationTypeIcon(viewModel.type, viewModel.icon),
-    avatarBg: getNotificationIconStyles(viewModel.priority).bg,
-    avatarColor: getNotificationIconStyles(viewModel.priority).text,
-    title: <span className="font-medium">{viewModel.title || viewModel.description}</span>,
-    time: formatNotificationDateTime(viewModel.createdAt),
+    icon: getNotificationTypeIcon(viewModel.type, viewModel.icon),
+    priority: (viewModel.priority || 'medium').toLowerCase(),
+    title: viewModel.title || viewModel.description,
+    body: viewModel.title && viewModel.description && viewModel.description !== viewModel.title ? viewModel.description : '',
+    source: viewModel.module ? moduleDisplayName(viewModel.module) : getNotificationTypeLabel(viewModel.type),
+    createdAt: viewModel.createdAt,
     actionUrl: viewModel.actionUrl,
   };
 };
 
+export type NotificationTab = 'all' | 'unread' | 'me' | 'system';
+
+/** What each tab asks the server for: the tab is a filter of the server, never a cut of the few notifications that happen to be loaded. */
+const TAB_QUERY: Record<NotificationTab, Pick<GetNotificationsParams, 'scope' | 'status'>> = {
+  all: { scope: 'all' },
+  unread: { scope: 'all', status: 'unread' },
+  me: { scope: 'personal' },
+  system: { scope: 'system' },
+};
+
+/** How many notifications the server has for a tab. */
+export const countForTab = (counts: NotificationSummaryCounts, tab: NotificationTab): number =>
+  tab === 'unread' ? counts.unread : tab === 'me' ? counts.personal : tab === 'system' ? counts.system : counts.all;
+
+const GROUP_LABEL: Record<NotificationDayGroup, string> = { today: 'Today', yesterday: 'Yesterday', earlier: 'Earlier' };
+
+/** The bar at the left of a row follows the priority of the notification. */
+const PRIORITY_BAR: Record<string, string> = { low: 'bg-emerald-500', medium: 'bg-amber-400', high: 'bg-red-500', critical: 'bg-red-600' };
+
 const NotificationItem: React.FC<{
   notification: DropdownNotification;
-  isLast: boolean;
   onClose: () => void;
-  compact?: boolean;
+  large?: boolean;
   onClick?: () => void;
-}> = ({ notification, isLast, onClose, compact = false, onClick }) => {
-  const AvatarIcon = notification.avatar;
+}> = ({ notification, onClose, large = false, onClick }) => {
+  const Icon = notification.icon;
+  const unread = notification.status === 'unread';
+  const urgent = notification.priority === 'high' || notification.priority === 'critical';
 
   return (
     <div className="w-full" data-notification-id={notification.id}>
@@ -163,330 +100,75 @@ const NotificationItem: React.FC<{
           onClose();
         }}
         className={cn(
-          "w-full flex items-start transition-all duration-200 text-left group",
-          compact ? "gap-3 rounded-2xl border px-3.5 py-3 shadow-sm" : "gap-3 px-4 py-3.5",
-          compact && notification.status === 'unread' ? "border-emerald-100 bg-gradient-to-br from-emerald-50 to-white shadow-emerald-100/60" : "",
-          compact && notification.status !== 'unread' ? "border-slate-200 bg-white shadow-slate-200/70" : "",
-          !compact && notification.status === 'unread' ? "bg-slate-50/80" : !compact ? "bg-white" : "",
-          compact ? "hover:border-slate-300 hover:shadow-md" : "hover:bg-slate-100",
-          !compact && !isLast && "border-b border-slate-100"
+          'group relative block w-full py-3 pl-5 pr-4 text-left transition-colors hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none',
+          unread ? 'bg-white' : 'bg-slate-50/60',
+          large && 'min-h-[76px]',
         )}
       >
-        <div className={cn("relative shrink-0", compact ? "mt-0" : "mt-0.5")}>
-          <div className={cn(
-            "rounded-xl flex items-center justify-center ring-1 ring-inset ring-black/5 transition-transform group-hover:scale-105",
-            compact ? "h-10 w-10" : "h-9 w-9",
-            notification.avatarBg
-          )}>
-            <AvatarIcon className={cn(compact ? "h-4 w-4" : "h-4.5 w-4.5", notification.avatarColor)} />
-          </div>
-        </div>
-        <div className="flex-1 min-w-0 space-y-1">
-          <div className={cn(
-            "text-slate-900 font-medium line-clamp-2",
-            compact ? "text-[12px] leading-[1.35]" : "text-[12px] leading-tight"
-          )}>
-            {notification.title}
-          </div>
-
-          <div className="flex w-full items-center justify-between gap-2">
-            <p className="shrink-0 text-[10px] font-medium tabular-nums text-slate-400">{notification.time}</p>
-            <div className={cn(
-              "inline-flex shrink-0 items-center rounded-full border bg-slate-50 text-slate-600 border-slate-200 group-hover:bg-emerald-50 group-hover:border-emerald-200 group-hover:text-emerald-700 transition-colors",
-              compact ? "gap-1 px-1.5 py-0.5" : "gap-1 px-2.5 py-1"
-            )}>
-              <span className={cn(
-                "font-bold uppercase tracking-wider opacity-70",
-                compact ? "text-[7px]" : "text-[9px]"
-              )}>
-                {getNotificationTypeLabel(notification.type)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Unread indicator dot */}
-        {notification.status === 'unread' && (
-          <div className={cn("shrink-0", compact ? "mt-1.5" : "mt-1.5")}>
-            <div className={cn(
-              "rounded-full bg-emerald-500 animate-pulse",
-              compact ? "h-2 w-2" : "h-2 w-2"
-            )} />
-          </div>
+        <span aria-hidden="true" className={cn('absolute inset-y-0 left-0 w-1', PRIORITY_BAR[notification.priority] ?? PRIORITY_BAR.medium, !unread && 'opacity-40')} />
+        <span className="flex items-center justify-between gap-2">
+          <span className="flex min-w-0 items-center gap-1.5 text-2xs font-bold uppercase tracking-wider text-slate-500">
+            <Icon className="h-3 w-3 shrink-0" />
+            <span className="truncate">{notification.source}</span>
+          </span>
+          <span className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-slate-700">
+            {unread && <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+            {formatNotificationRelativeTime(notification.createdAt)}
+          </span>
+        </span>
+        <span className={cn('mt-1 line-clamp-2 block text-sm font-bold leading-snug', unread ? 'text-slate-900' : 'text-slate-600')}>
+          {notification.title}
+        </span>
+        {notification.body && <span className="mt-0.5 line-clamp-2 block text-xs font-normal leading-relaxed text-slate-600">{notification.body}</span>}
+        {urgent && (
+          <span className="mt-1.5 inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-2xs font-semibold text-red-700">
+            {notification.priority === 'critical' ? 'Critical' : 'High priority'}
+          </span>
         )}
+        <span className="mt-2 flex items-center gap-1 text-2xs font-medium tabular-nums text-slate-500">
+          <Clock className="h-3 w-3" />
+          {formatNotificationDateTime(notification.createdAt)}
+        </span>
+        {unread && <span className="sr-only">Unread</span>}
       </button>
     </div>
   );
 };
 
-const NotificationSkeleton: React.FC<{ isLast?: boolean }> = ({ isLast }) => (
-  <div className={cn("px-4 py-3 animate-pulse bg-white", !isLast && "border-b border-slate-100")}>
-    <div className="w-full flex items-start gap-2.5">
-      <div className="h-9 w-9 rounded-full bg-slate-200 shrink-0" />
-      <div className="flex-1 space-y-2 py-1">
-        <div className="h-2.5 bg-slate-200 rounded w-3/4" />
-        <div className="flex justify-between items-center text-left">
-          <div className="h-4 bg-slate-200 rounded w-12" />
-          <div className="h-2 bg-slate-200 rounded w-8" />
-        </div>
-      </div>
+const NotificationSkeleton: React.FC = () => (
+  <div className="flex animate-pulse items-start gap-3 border-b border-slate-100 bg-white px-4 py-3">
+    <div className="h-10 w-10 shrink-0 rounded-xl bg-slate-200" />
+    <div className="flex-1 space-y-2 py-1">
+      <div className="h-2.5 w-3/4 rounded bg-slate-200" />
+      <div className="h-2 w-1/3 rounded bg-slate-200" />
     </div>
   </div>
 );
 
-// Mobile Full-Screen Notifications Component
-const MobileNotificationsScreen: React.FC<{
-  onClose: () => void;
-  onViewAll: () => void;
-  onOpenSettings: () => void;
-  refreshSignal?: number;
-}> = ({ onClose, onViewAll, onOpenSettings, refreshSignal }) => {
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('all');
-  const [mobileNotifications, setMobileNotifications] = useState<DropdownNotification[]>([]);
-  const [counts, setCounts] = useState<NotificationSummaryCounts>(createEmptyNotificationSummaryCounts());
-  const mobileListRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const [summary, list] = await Promise.all([
-          notificationApi.getSummary(),
-          notificationApi.getNotifications({
-            scope: 'all',
-            page: 1,
-            limit: 8,
-            sortBy: 'createdAt',
-            sortDirection: 'desc',
-          }),
-        ]);
-        if (cancelled) {
-          return;
-        }
-        setCounts(summary);
-        setMobileNotifications(list.data.map((item) => toDropdownNotification(item)));
-      } catch (error) {
-        console.error('Failed to load mobile notifications', error);
-      }
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [refreshSignal]);
-
-  const MOBILE_FILTERS: TabItem[] = [
-    { id: 'all', label: 'All', count: counts.all },
-    { id: 'unread', label: 'Unread', count: counts.unread },
-    { id: 'me', label: 'For Me', count: counts.personal },
-    { id: 'system', label: 'System', count: counts.system },
-  ];
-
-  const filteredNotifications = mobileNotifications.filter(n => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'unread') return n.status === 'unread';
-    if (activeTab === 'me') return (n.type as any) !== 'system';
-    if (activeTab === 'system') return (n.type as any) === 'system';
-    return true;
-  });
-
-  const handleMarkAllRead = () => {
-    void notificationApi.markAllAsRead().then(async () => {
-      emitNotificationsChanged();
-      const [summary, list] = await Promise.all([
-        notificationApi.getSummary(),
-        notificationApi.getNotifications({
-          scope: 'all',
-          page: 1,
-          limit: 8,
-          sortBy: 'createdAt',
-          sortDirection: 'desc',
-        }),
-      ]);
-        setCounts(summary);
-      setMobileNotifications(list.data.map((item) => toDropdownNotification(item)));
-    });
-  };
-
-  useNotificationEntrance(mobileListRef, filteredNotifications.map((n) => n.id), mobileNotifications.length > 0);
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 bg-white md:hidden"
-      style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingLeft: 'env(safe-area-inset-left, 0px)',
-        paddingRight: 'env(safe-area-inset-right, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
-    >
-      <motion.div
-        initial={{ opacity: 0, x: 24 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 24 }}
-        transition={{ duration: 0.25, ease: 'easeOut' }}
-        className="flex h-full flex-col"
-      >
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-slate-600 hover:text-slate-900 transition-colors flex items-center justify-center"
-              aria-label="Back"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div className="min-w-0">
-              <h3 className="text-base font-semibold text-slate-900">Notifications</h3>
-              <p className="text-xs text-slate-500">
-                {counts.unread} unread of {counts.all} total
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-emerald-600 transition-colors hover:bg-emerald-50 disabled:pointer-events-none disabled:opacity-50"
-            onClick={handleMarkAllRead}
-            disabled={counts.unread === 0}
-          >
-            <CheckCheck className="h-4 w-4 text-emerald-600" />
-            <span>Mark all read</span>
-          </button>
-        </div>
-
-        <div className="border-b border-slate-100 px-4 py-3">
-          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            {MOBILE_FILTERS.map((filter) => {
-              const isActive = activeTab === filter.id;
-              return (
-                <button
-                  key={filter.id}
-                  type="button"
-                  onClick={() => setActiveTab(filter.id)}
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] font-semibold transition-colors",
-                    isActive
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  )}
-                >
-                  <span>{filter.label}</span>
-                  {typeof filter.count === 'number' && filter.count > 0 && (
-                    <span className={cn(
-                      "rounded-full px-1 py-0.5 text-[9px]",
-                      isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
-                    )}>
-                      {filter.count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div ref={mobileListRef} className="flex-1 overflow-y-auto overscroll-contain bg-slate-100/60 px-4 py-3 pb-28">
-          {filteredNotifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-12 text-center">
-              <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-                <Bell className="h-8 w-8 text-slate-400" />
-              </div>
-              <p className="text-base font-medium text-slate-900">No notifications</p>
-              <p className="text-sm text-slate-500 mt-1">You're all caught up!</p>
-              <div className="mt-5 flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onOpenSettings}
-                  className="rounded-lg"
-                >
-                  Settings
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    onViewAll();
-                    onClose();
-                  }}
-                  className="rounded-lg"
-                >
-                  Open Center
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              {filteredNotifications.map((notification, index) => (
-                <NotificationItem
-                  key={notification.id}
-                  notification={notification}
-                  isLast={index === filteredNotifications.length - 1}
-                  onClose={onClose}
-                  compact
-                  onClick={() => {
-                    if (notification.actionUrl) {
-                      openNotificationActionUrl(notification.actionUrl, navigate);
-                    }
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onOpenSettings}
-              className="h-10 rounded-xl"
-            >
-              Settings
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                onViewAll();
-                onClose();
-              }}
-              className="h-10 rounded-xl"
-            >
-              Open Center
-            </Button>
-          </div>
-        </div>
-      </motion.div>
-    </div>,
-    document.body
-  );
-};
-
-/** The newest notifications and the tab counts, loaded while `enabled` and again whenever `refreshSignal` changes. */
+/** The newest notifications of a tab and the counts of all tabs, loaded while `enabled` and again whenever `refreshSignal` changes. */
 export const useNotificationFeed = (enabled: boolean, limit: number, refreshSignal?: number) => {
   const [notifications, setNotifications] = useState<DropdownNotification[]>([]);
   const [counts, setCounts] = useState<NotificationSummaryCounts>(createEmptyNotificationSummaryCounts());
   const [loaded, setLoaded] = useState(false);
+  const [tab, setTabState] = useState<NotificationTab>('all');
+  const loadedTab = useRef<NotificationTab>('all');
 
   const fetchFeed = useCallback(async () => {
     const [summary, list] = await Promise.all([
       notificationApi.getSummary(),
-      notificationApi.getNotifications({ scope: 'all', page: 1, limit, sortBy: 'createdAt', sortDirection: 'desc' }),
+      notificationApi.getNotifications({ ...TAB_QUERY[tab], page: 1, limit, sortBy: 'createdAt', sortDirection: 'desc' }),
     ]);
     return { summary, items: list.data.map((item) => toDropdownNotification(item)) };
-  }, [limit]);
+  }, [limit, tab]);
 
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
+    // Another tab shows other notifications: the skeleton is the honest state until they arrive. A refresh of the same tab keeps what is on screen.
+    if (loadedTab.current !== tab) {
+      loadedTab.current = tab;
+      setLoaded(false);
+    }
     void (async () => {
       try {
         const { summary, items } = await fetchFeed();
@@ -501,7 +183,7 @@ export const useNotificationFeed = (enabled: boolean, limit: number, refreshSign
     return () => {
       cancelled = true;
     };
-  }, [enabled, fetchFeed, refreshSignal]);
+  }, [enabled, fetchFeed, refreshSignal, tab]);
 
   const markAllAsRead = useCallback(async () => {
     await notificationApi.markAllAsRead();
@@ -511,8 +193,21 @@ export const useNotificationFeed = (enabled: boolean, limit: number, refreshSign
     setNotifications(items);
   }, [fetchFeed]);
 
-  return { notifications, counts, loaded, markAllAsRead };
+  return { notifications, counts, loaded, markAllAsRead, tab, setTab: setTabState };
 };
+
+/** "Show more (25 of 60)" under a long list. */
+export const NotificationShowMore: React.FC<{ shown: number; total: number; onClick: () => void }> = ({ shown, total, onClick }) => (
+  <div className="border-t border-slate-100 px-5 py-3 text-center">
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-xs font-semibold text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 md:text-sm"
+    >
+      Show more ({shown} of {total})
+    </button>
+  </div>
+);
 
 export interface NotificationPinControl {
   /** True when the list is pinned to the side, so the button offers to unpin it. */
@@ -524,61 +219,81 @@ export interface NotificationPinControl {
 }
 
 export interface NotificationPanelProps {
-  /** `popover` is the dropdown under the bell; `dock` fills the pinned side panel. */
-  variant: 'popover' | 'dock';
+  /** `popover` is the dropdown under the bell; `dock` fills the pinned side panel; `screen` is the full-screen list on a phone. */
+  variant: 'popover' | 'dock' | 'screen';
   notifications: DropdownNotification[];
   counts: NotificationSummaryCounts;
   loaded: boolean;
+  tab: NotificationTab;
+  onTabChange: (tab: NotificationTab) => void;
   /** Called after an item was opened (the dropdown closes itself, the dock stays). */
   onItemOpened: () => void;
   onViewAll: () => void;
   onOpenSettings: () => void;
-  onRequestMarkAllRead: () => void;
-  pin: NotificationPinControl;
+  onMarkAllRead: () => void;
+  /** Not on the phone screen: pinning is for the wide layout. */
+  pin?: NotificationPinControl;
+  /** The arrow of the phone screen. */
+  onBack?: () => void;
   /** Receives keyboard focus when the bell is pressed while the list is already docked. */
   headingRef?: React.Ref<HTMLHeadingElement>;
-  /** Shown under the list, e.g. a "Show more" button in the dock. */
+  /** Shown under the list, e.g. a "Show more" button. */
   listFooter?: React.ReactNode;
 }
 
-/** The list the dropdown and the pinned dock share: title with pin and settings, tabs, notifications, footer actions. */
+/** The list the dropdown, the pinned dock and the phone screen share: title with actions, tabs, notifications by day, one footer button. */
 export const NotificationPanel: React.FC<NotificationPanelProps> = ({
-  variant, notifications, counts, loaded, onItemOpened, onViewAll, onOpenSettings, onRequestMarkAllRead, pin, headingRef, listFooter,
+  variant, notifications, counts, loaded, tab, onTabChange, onItemOpened, onViewAll, onOpenSettings, onMarkAllRead, pin, onBack, headingRef, listFooter,
 }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('all');
   const isDock = variant === 'dock';
+  const isScreen = variant === 'screen';
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const tabs: TabItem[] = [
-    { id: 'all', label: 'All', count: counts.all },
-    { id: 'me', label: 'For Me', count: counts.personal },
-    { id: 'system', label: 'System', count: counts.system },
+  // Only the unread number is worth a glance; the totals of the other tabs run into thousands and only crowd the row.
+  const tabs: { id: NotificationTab; label: string; badge: number }[] = [
+    { id: 'all', label: 'All', badge: 0 },
+    { id: 'unread', label: 'Unread', badge: counts.unread },
+    { id: 'me', label: 'For Me', badge: 0 },
+    { id: 'system', label: 'System', badge: 0 },
   ];
 
-  const visible = notifications.filter((n) => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'me') return (n.type as any) !== 'system';
-    if (activeTab === 'system') return (n.type as any) === 'system';
-    return true;
-  });
+  useNotificationEntrance(scrollRef, notifications.map((n) => n.id), loaded);
 
-  useNotificationEntrance(scrollRef, visible.map((n) => n.id), loaded);
+  const groups = (['today', 'yesterday', 'earlier'] as const)
+    .map((group) => ({ group, items: notifications.filter((n) => notificationDayGroup(n.createdAt) === group) }))
+    .filter(({ items }) => items.length > 0);
 
-  const pinLabel = pin.disabled ? (pin.disabledReason ?? 'Pin to the side') : pin.pinned ? 'Unpin notifications' : 'Pin notifications to the side';
-  const PinIcon = pin.pinned ? PinOff : Pin;
+  const iconButton = cn('grid shrink-0 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-emerald-600 disabled:pointer-events-none disabled:opacity-40', isScreen ? 'h-11 w-11' : 'h-8 w-8');
+  const pinLabel = pin?.disabled ? (pin.disabledReason ?? 'Pin to the side') : pin?.pinned ? 'Unpin notifications' : 'Pin notifications to the side';
+  const PinIcon = pin?.pinned ? PinOff : Pin;
 
   return (
-    <div className={cn('flex flex-col', isDock ? 'h-full min-h-0' : '')}>
-      <div className="flex items-center justify-between px-5 py-2 shrink-0">
-        <h3 ref={headingRef} tabIndex={-1} className="text-base font-bold text-slate-900 tracking-tight outline-none">Notifications</h3>
-        <div className="flex items-center gap-1">
+    <div className={cn('flex flex-col', (isDock || isScreen) && 'h-full min-h-0')}>
+      <div className={cn('flex shrink-0 items-center gap-1', isScreen ? 'border-b border-slate-200 px-2 py-2' : 'px-4 pt-3')}>
+        {onBack && (
+          <button type="button" onClick={onBack} className={cn(iconButton, 'text-slate-600')} aria-label="Back">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        )}
+        <div className="min-w-0 flex-1">
+          <h3 ref={headingRef} tabIndex={-1} className="text-lg font-bold leading-tight tracking-tight text-slate-900 outline-none">Notifications</h3>
+          <p className="text-xs text-slate-500">{counts.unread > 0 ? `${counts.unread} unread` : 'All caught up'}</p>
+        </div>
+        <button
+          type="button"
+          className={cn(iconButton, 'text-emerald-600')}
+          onClick={onMarkAllRead}
+          disabled={counts.unread === 0}
+          aria-label="Mark all as read"
+          title="Mark all as read"
+        >
+          <CheckCheck className="h-4 w-4" />
+        </button>
+        {pin && (
           <button
             type="button"
-            className={cn(
-              'p-1.5 rounded-lg transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40',
-              pin.pinned ? 'text-emerald-600' : 'text-slate-400 hover:text-emerald-600',
-            )}
+            className={cn(iconButton, pin.pinned && 'text-emerald-600')}
             onClick={pin.onToggle}
             disabled={pin.disabled}
             aria-pressed={pin.pinned}
@@ -587,86 +302,152 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           >
             <PinIcon className="h-4 w-4" />
           </button>
-          <button
-            type="button"
-            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-emerald-600 transition-colors"
-            onClick={onOpenSettings}
-            title="Notification settings"
-            aria-label="Notification settings"
-          >
-            <IconSettings2 className="h-4 w-4" />
-          </button>
-        </div>
+        )}
+        <button type="button" className={iconButton} onClick={onOpenSettings} title="Notification settings" aria-label="Notification settings">
+          <IconSettings2 className="h-4 w-4" />
+        </button>
       </div>
 
-      <div className="px-4 pb-2 shrink-0">
-        <TabNav tabs={tabs} activeTab={activeTab} onChange={setActiveTab} variant="pill" layoutId="notificationTabIndicator" className="w-full bg-slate-100/80" />
+      <div role="tablist" aria-label="Show" className="mx-4 my-3 grid shrink-0 grid-cols-4 rounded-xl bg-slate-100 p-1 text-xs font-medium">
+        {tabs.map((item) => {
+          const active = tab === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onTabChange(item.id)}
+              className={cn(
+                'flex items-center justify-center gap-1 rounded-lg py-1.5 transition-colors',
+                active ? 'bg-white font-semibold text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900',
+              )}
+            >
+              {item.label}
+              {item.badge > 0 && <span className="grid h-4 min-w-[16px] place-items-center rounded-full bg-emerald-600 px-1 text-2xs font-bold text-white">{item.badge > 99 ? '99+' : item.badge}</span>}
+            </button>
+          );
+        })}
       </div>
 
       <div
         ref={scrollRef}
+        role="tabpanel"
         className={cn(
-          'overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300 bg-white',
-          isDock ? 'flex-1 min-h-0 custom-scrollbar' : 'max-h-[420px] min-h-[300px]',
+          'overflow-y-auto overscroll-contain bg-white scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300',
+          isDock || isScreen ? 'min-h-0 flex-1' : 'max-h-[420px]',
         )}
       >
         {!loaded ? (
-          Array.from({ length: isDock ? 6 : 4 }).map((_, index) => <NotificationSkeleton key={index} isLast={index === (isDock ? 5 : 3)} />)
-        ) : visible.length === 0 ? (
-          <div className="py-20 text-center">
-            <p className="text-sm text-slate-400">No notifications here</p>
+          Array.from({ length: isDock || isScreen ? 6 : 4 }).map((_, index) => <NotificationSkeleton key={index} />)
+        ) : groups.length === 0 ? (
+          <div className="px-4 py-16 text-center">
+            <Bell className="mx-auto mb-3 h-8 w-8 text-slate-300" />
+            <p className="text-sm font-medium text-slate-700">{tab === 'unread' ? 'Nothing unread' : 'No notifications here'}</p>
+            <p className="mt-1 text-xs text-slate-500">{tab === 'unread' ? "You're all caught up." : 'New notifications will appear here.'}</p>
           </div>
         ) : (
-          visible.map((notification, index) => (
-            <NotificationItem
-              key={notification.id}
-              notification={notification}
-              isLast={index === visible.length - 1}
-              onClose={onItemOpened}
-              onClick={() => {
-                if (notification.actionUrl) {
-                  openNotificationActionUrl(notification.actionUrl, navigate);
-                }
-              }}
-            />
+          groups.map(({ group, items }) => (
+            <section key={group} aria-label={GROUP_LABEL[group]}>
+              <h4 className="bg-slate-50 px-4 py-1.5 text-2xs font-semibold uppercase tracking-wider text-slate-500">{GROUP_LABEL[group]}</h4>
+              <div className="divide-y divide-slate-300">
+                {items.map((notification) => (
+                  <NotificationItem
+                    key={notification.id}
+                    notification={notification}
+                    large={isScreen}
+                    onClose={onItemOpened}
+                    onClick={() => {
+                      if (notification.actionUrl) {
+                        openNotificationActionUrl(notification.actionUrl, navigate);
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            </section>
           ))
         )}
         {loaded && listFooter}
       </div>
 
-      <div className="flex items-center justify-between gap-2 px-5 py-3.5 border-t border-slate-100 bg-white shrink-0">
+      <div className="shrink-0 border-t border-slate-100 bg-white px-4 py-3">
         <button
           type="button"
-          className="text-[13px] font-semibold text-slate-900 hover:text-emerald-600 underline underline-offset-4 decoration-slate-300 hover:decoration-emerald-500 transition-colors"
-          onClick={onRequestMarkAllRead}
-        >
-          Mark All as Read
-        </button>
-        <Button
-          variant="outline"
-          size="xs"
           onClick={onViewAll}
-          className="h-9 px-4 rounded-lg text-xs font-medium border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all font-semibold"
+          className={cn(
+            'flex w-full items-center justify-center gap-1.5 bg-emerald-600 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2',
+            isScreen ? 'h-11 rounded-xl' : 'h-10 rounded-lg',
+          )}
         >
-          {isDock ? 'Open Center' : 'Open Notification Center'}
-        </Button>
+          Open Notification Center
+          <ArrowRight className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
 };
 
-/** The confirmation both places ask for before marking everything read. */
-export const MarkAllReadConfirm: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: () => void }> = ({ isOpen, onClose, onConfirm }) => (
-  <AlertModal
-    isOpen={isOpen}
-    onClose={onClose}
-    onConfirm={onConfirm}
-    title="Mark All as Read"
-    description="Are you sure you want to mark all notifications as read? This cannot be undone."
-    type="confirm"
-    confirmText="Yes, Mark All"
-  />
-);
+// Mobile Full-Screen Notifications Component
+const MobileNotificationsScreen: React.FC<{
+  onClose: () => void;
+  onViewAll: () => void;
+  onOpenSettings: () => void;
+  refreshSignal?: number;
+}> = ({ onClose, onViewAll, onOpenSettings, refreshSignal }) => {
+  const [limit, setLimit] = useState(FEED_PAGE_SIZE);
+  const { notifications, counts, loaded, markAllAsRead, tab, setTab } = useNotificationFeed(true, limit, refreshSignal);
+  const total = countForTab(counts, tab);
+  const hasMore = loaded && notifications.length < total && limit < FEED_MAX_ITEMS;
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-label="Notifications"
+      className="fixed inset-0 z-50 bg-white md:hidden"
+      style={{
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, x: 24 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: 24 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        className="h-full"
+      >
+        <NotificationPanel
+          variant="screen"
+          notifications={notifications}
+          counts={counts}
+          loaded={loaded}
+          tab={tab}
+          onTabChange={setTab}
+          onItemOpened={onClose}
+          onViewAll={() => {
+            onViewAll();
+            onClose();
+          }}
+          onOpenSettings={onOpenSettings}
+          onMarkAllRead={() => void markAllAsRead()}
+          onBack={onClose}
+          listFooter={hasMore ? <NotificationShowMore shown={notifications.length} total={total} onClick={() => setLimit((value) => Math.min(value + FEED_PAGE_SIZE, FEED_MAX_ITEMS))} /> : undefined}
+        />
+      </motion.div>
+    </div>,
+    document.body
+  );
+};
 
 // Desktop Dropdown Component
 const DesktopDropdown: React.FC<{
@@ -678,16 +459,11 @@ const DesktopDropdown: React.FC<{
   refreshSignal?: number;
 }> = ({ isOpen, onClose, buttonRef, onViewAll, onOpenSettings, refreshSignal }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const { canDock, pin } = useNotificationDock();
-  const { notifications, counts, loaded, markAllAsRead } = useNotificationFeed(isOpen, 8, refreshSignal);
-
-  const onConfirmMarkRead = () => {
-    void markAllAsRead().then(() => setIsConfirmOpen(false));
-  };
+  const { notifications, counts, loaded, markAllAsRead, tab, setTab } = useNotificationFeed(isOpen, 8, refreshSignal);
 
   useEffect(() => {
-    if (!isOpen || isConfirmOpen) return;
+    if (!isOpen) return;
     const handleClick = (e: MouseEvent) => {
       const target = e.target as Node;
       if (buttonRef.current && !buttonRef.current.contains(target) &&
@@ -695,9 +471,16 @@ const DesktopDropdown: React.FC<{
         onClose();
       }
     };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [isOpen, onClose, buttonRef, isConfirmOpen]);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [isOpen, onClose, buttonRef]);
 
   if (!isOpen) return null;
 
@@ -708,19 +491,19 @@ const DesktopDropdown: React.FC<{
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="absolute inset-0 z-0 bg-transparent pointer-events-auto"
-        onClick={() => {
-          if (!isConfirmOpen) onClose();
-        }}
+        onClick={onClose}
         aria-hidden="true"
       />
 
       <motion.div
         ref={dropdownRef}
+        role="dialog"
+        aria-label="Notifications"
         initial={{ opacity: 0, scale: 0.95, y: -10, transformOrigin: 'top right' }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: -10 }}
         transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
-        className="fixed w-[min(360px,calc(100vw-1rem))] bg-white/90 backdrop-blur-md border border-slate-200 rounded-2xl z-10 overflow-hidden pointer-events-auto flex flex-col shadow-xl"
+        className="fixed w-[min(380px,calc(100vw-1rem))] bg-white border border-slate-300 rounded-2xl z-10 overflow-hidden pointer-events-auto flex flex-col shadow-[0_16px_48px_-8px_rgba(15,23,42,0.35),0_4px_12px_-2px_rgba(15,23,42,0.12)]"
         style={{
           top: `${buttonRef.current?.getBoundingClientRect().bottom! + window.scrollY + 8}px`,
           right: `${window.innerWidth - buttonRef.current?.getBoundingClientRect().right! - window.scrollX}px`
@@ -731,13 +514,15 @@ const DesktopDropdown: React.FC<{
           notifications={notifications}
           counts={counts}
           loaded={loaded}
+          tab={tab}
+          onTabChange={setTab}
           onItemOpened={onClose}
           onViewAll={() => {
             onViewAll();
             onClose();
           }}
           onOpenSettings={onOpenSettings}
-          onRequestMarkAllRead={() => setIsConfirmOpen(true)}
+          onMarkAllRead={() => void markAllAsRead()}
           pin={{
             pinned: false,
             // Pinning moves the list to the side at once; the dropdown has nothing left to show.
@@ -750,8 +535,6 @@ const DesktopDropdown: React.FC<{
           }}
         />
       </motion.div>
-
-      <MarkAllReadConfirm isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={onConfirmMarkRead} />
     </div>,
     document.body
   );
@@ -760,7 +543,7 @@ const DesktopDropdown: React.FC<{
 
 export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ isOpen, onClose, onToggle }) => {
   const notificationRef = useRef<HTMLDivElement>(null);
-  const isMobile = useIsMobile();
+  const isMobile = useMediaQuery('(max-width: 767px)');
   const navigate = useNavigate();
   useNotificationRealtime();
   const [isNavigatingSettings, setIsNavigatingSettings] = useState(false);
@@ -829,6 +612,8 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
     }, 250);
   };
 
+  const unreadLabel = unreadCount > 9 ? '9+' : String(unreadCount);
+
   return (
     <>
       {/* Notifications Button */}
@@ -839,7 +624,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
           onClick={isDocked ? dock.requestFocus : onToggle}
           aria-label={isDocked ? 'Notifications (pinned to the side)' : 'Notifications'}
           aria-pressed={isDocked ? true : undefined}
-          className="relative text-slate-600 hover:bg-slate-100 hover:text-emerald-600 transition-colors"
+          className="relative text-slate-600 hover:bg-transparent hover:text-emerald-600 transition-colors"
         >
           <span className="relative inline-flex items-center justify-center">
             <motion.div
@@ -855,13 +640,15 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
             >
               <Bell className="h-5 w-5 md:h-6 md:w-6" />
             </motion.div>
-          {unreadCount > 0 && (
-            <span
-              className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white shadow-sm animate-pulse"
-              aria-label={`${unreadCount} unread notifications`}
-              title={`${unreadCount} unread notifications`}
-            />
-          )}
+            {unreadCount > 0 && (
+              <span
+                className="absolute -right-2 -top-2 grid h-4 min-w-[16px] place-items-center rounded-full bg-red-500 px-1 text-2xs font-bold leading-none text-white ring-2 ring-white"
+                title={`${unreadCount} unread notifications`}
+              >
+                <span aria-hidden="true">{unreadLabel}</span>
+                <span className="sr-only">{unreadCount} unread notifications</span>
+              </span>
+            )}
           </span>
         </Button>
       </div>

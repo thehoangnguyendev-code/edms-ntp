@@ -12,6 +12,8 @@ import { Textarea } from "../../shared/TrainingFields";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
 import { saveBlob } from "../../shared/trainingLabels";
 import { displayDateTime } from "@/utils/format";
+import { LedgerAction, LedgerList, LedgerNote, LedgerRow } from "./workspace/ledger";
+import { RowActionsMenu, type RowAction } from "./workspace/RowActionsMenu";
 
 export const DELIVERY_LABEL: Record<string, string> = { ELECTRONIC: "Electronic", PAPER: "Paper", MIXED: "Mixed" };
 const DELIVERY_OPTIONS = Object.entries(DELIVERY_LABEL).map(([value, label]) => ({ value, label }));
@@ -131,12 +133,85 @@ export function useTrainingPaper(activity: TrainingActivityDetail, onChanged: ()
 /**
  * The numbered paper copies of an activity (PLAN-TR-001 17.7), as a record: who printed each one and when, how many scans it has and where it is. The printing and the delivery of a session are done in
  * the Prepare step; a copy comes back only by the upload of its scan (the server closes it as Returned), so the person here can only record a copy as Lost or Voided.
+ * `bare` is the Session Workspace: a plain list under the tab of the step, with no block title of its own.
  */
-export function TrainingPrintedPacks({ activity, onChanged }: { activity: TrainingActivityDetail; onChanged: () => void }) {
+export function TrainingPrintedPacks({ activity, onChanged, bare = false, onSummary }: {
+  activity: TrainingActivityDetail;
+  onChanged: () => void;
+  bare?: boolean;
+  /** Tells the screen how many copies there are and how many are still Issued. */
+  onSummary?: (summary: { total: number; issued: number } | undefined) => void;
+}) {
   const { packs, busy, dialog, askCopy } = useTrainingPaper(activity, onChanged);
   const drag = useTableDragScroll();
-  if (packs.length === 0) return null;
   const open = packs.filter((p) => p.status === "ISSUED").length;
+  useEffect(() => { onSummary?.(packs.length > 0 ? { total: packs.length, issued: open } : undefined); }, [packs.length, open, onSummary]);
+  if (packs.length === 0) return null;
+  if (bare) {
+    const scans = (p: TrainingPaperPack) => (p.scanCount > 0 ? `${p.scanCount} scan${p.scanCount === 1 ? "" : "s"}` : "no scan");
+    const stateLabel = (p: TrainingPaperPack) => (p.status === "ISSUED" ? "Issued" : p.status === "RETURNED" ? "Returned" : p.status === "LOST" ? "Lost" : "Voided");
+    const closing = (p: TrainingPaperPack) => (p.status !== "ISSUED" && p.statusByName ? `${p.statusByName}, ${p.statusAt ? displayDateTime(p.statusAt) : ""}${p.statusReason && p.statusReason !== p.reason ? ` · ${p.statusReason}` : ""}` : undefined);
+    const actionsOf = (p: TrainingPaperPack): RowAction[] => (p.status === "ISSUED"
+      ? [
+          { key: "lost", label: "Record as Lost", disabled: busy, run: () => askCopy({ pack: p, status: "LOST" }) },
+          { key: "void", label: "Void the copy", danger: true, disabled: busy, run: () => askCopy({ pack: p, status: "VOIDED" }) },
+        ]
+      : []);
+    const tableColumns: DataTableColumn<TrainingPaperPack>[] = [
+      { id: "rowNo", header: "No.", locked: true, cell: (_p, i) => i + 1 },
+      { id: "code", header: "Pack", cell: (p) => `${p.packCode}${p.packKind === "EXAM" ? " (exam)" : ""}` },
+      { id: "copy", header: "Copy", cell: (p) => p.copyNo },
+      { id: "pages", header: "Pages", cell: (p) => p.pageCount },
+      { id: "people", header: "Trainees", cell: (p) => p.peopleCount },
+      { id: "by", header: "Printed by", cell: (p) => p.printedByName },
+      { id: "at", header: "Printed at", cell: (p) => displayDateTime(p.printedAt) },
+      { id: "reason", header: "Reason", cell: (p) => <div className="max-w-64 whitespace-normal">{p.reason ?? "—"}</div> },
+      { id: "scans", header: "Scans", cell: (p) => (p.scanCount > 0 ? p.scanCount : "—") },
+      {
+        id: "where",
+        header: "Where is the copy",
+        cell: (p) => (
+          <div className="max-w-64 whitespace-normal">
+            <Badge color={p.status === "ISSUED" ? "amber" : p.status === "RETURNED" ? "emerald" : "red"}>{stateLabel(p)}</Badge>
+            {closing(p) && <div className="text-xs text-slate-500">{closing(p)}</div>}
+          </div>
+        ),
+      },
+    ];
+    const rowMenu: DataTableAction<TrainingPaperPack> = {
+      cell: (p) => <RowActionsMenu id={p.id} label={`More actions for copy ${p.copyNo} of ${p.packCode}`} actions={actionsOf(p)} />,
+    };
+    return (
+      <div className="space-y-3">
+        <LedgerNote>A copy is Returned when its scan is uploaded in Scans and filled files (choose the copy there); record it as Lost or Voided if the paper will not come back. Do this before the training is confirmed as completed; QA can still confirm, and the open copies are written in the Audit Trail.</LedgerNote>
+        <div className="md:hidden">
+          <LedgerList>
+            {packs.map((p) => (
+              <LedgerRow
+                key={p.id}
+                title={`${p.packCode}${p.packKind === "EXAM" ? " (exam)" : ""} · copy ${p.copyNo}`}
+                meta={[`${p.pageCount} pages · ${p.peopleCount} trainees · ${scans(p)}`, `printed by ${p.printedByName}, ${displayDateTime(p.printedAt)}`, p.reason, closing(p) ? `${p.status === "RETURNED" ? "returned" : p.status === "LOST" ? "recorded lost" : "voided"} by ${closing(p)}` : undefined].filter(Boolean).join(" · ")}
+                state={stateLabel(p)}
+                tone={p.status === "ISSUED" ? "amber" : p.status === "LOST" ? "red" : "mute"}
+                actions={p.status === "ISSUED" ? (
+                  <>
+                    <LedgerAction disabled={busy} onClick={() => askCopy({ pack: p, status: "LOST" })}>Lost</LedgerAction>
+                    <LedgerAction disabled={busy} onClick={() => askCopy({ pack: p, status: "VOIDED" })}>Void</LedgerAction>
+                  </>
+                ) : undefined}
+              />
+            ))}
+          </LedgerList>
+        </div>
+        <div className="hidden md:block">
+          <TabBlock>
+            <DataTable rows={packs} getRowKey={(p) => p.id} columns={tableColumns} action={rowMenu} scrollerRef={drag.scrollerRef} scrollProps={drag.dragEvents} isDragging={drag.isDragging} />
+          </TabBlock>
+        </div>
+        {dialog}
+      </div>
+    );
+  }
   const packColumns: DataTableColumn<TrainingPaperPack>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_p, i) => i + 1 },
     { id: "code", header: "Pack", cell: (p) => `${p.packCode}${p.packKind === "EXAM" ? " (exam)" : ""}` },
@@ -168,10 +243,14 @@ export function TrainingPrintedPacks({ activity, onChanged }: { activity: Traini
   };
   return (
     <div className="space-y-6">
-      <TabBlock title="Printed packs">
+      <TabBlock
+        title="Printed packs"
+        count={packs.length}
+        hint="A copy is Returned when its scan is uploaded in Scans and filled files (choose the copy there); record it as Lost or Voided if the paper will not come back. Do this before the training is confirmed as completed; QA can still confirm, and the open copies are written in the Audit Trail."
+      >
         {open > 0 && (
-          <p role="status" className="px-4 py-3 text-xs text-amber-700">
-            {open} numbered copy(ies) are still Issued. A copy is Returned when its scan is uploaded in Scans and filled files (choose the copy there); record it as Lost or Voided if the paper will not come back. Do this before the training is confirmed as completed; QA can still confirm, and the open copies are written in the Audit Trail.
+          <p role="status" className="px-4 py-3 text-xs font-medium text-amber-700">
+            {open} still Issued
           </p>
         )}
         <DataTable rows={packs} getRowKey={(p) => p.id} columns={packColumns} action={where} scrollerRef={drag.scrollerRef} scrollProps={drag.dragEvents} isDragging={drag.isDragging} />

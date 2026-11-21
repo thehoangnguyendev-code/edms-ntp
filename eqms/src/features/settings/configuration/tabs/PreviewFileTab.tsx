@@ -199,7 +199,6 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
             <p className="ml-7 text-xs text-slate-500">Off hides the Print button and menu entry, and Ctrl+P does nothing.</p>
           </div>
         </div>
-        <p className="mt-3 text-xs text-slate-500">This stops the buttons and the shortcut, not a photograph or a screenshot of the screen: keep the watermark for that. Applies to files opened after it is saved.</p>
       </div>
 
       <div className="border-t border-slate-200 pt-6">

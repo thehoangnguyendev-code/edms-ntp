@@ -30,6 +30,10 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID>,
     @Query("update UserAccount u set u.roleName = :newRoleName where u.roleName = :previousRoleName")
     int replaceRoleName(@Param("previousRoleName") String previousRoleName, @Param("newRoleName") String newRoleName);
     long countByStatus(UserStatus status);
+    /** The people of a Department who still work there: every account of it except the Terminated ones. */
+    long countByDepartmentIdAndStatusNot(java.util.UUID departmentId, UserStatus status);
+    /** The people who hold a Position (an account keeps the Position name and its Department): every account except the Terminated ones. */
+    long countByPositionAndDepartmentIdAndStatusNot(String position, java.util.UUID departmentId, UserStatus status);
     /** Users whose lockout is still running at {@code now}. */
     long countByLockedUntilAfter(java.time.Instant now);
     java.util.List<UserAccount> findAllByStatus(UserStatus status);

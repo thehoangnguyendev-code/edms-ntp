@@ -69,13 +69,32 @@ public class DocumentExpiryNotifier {
         List<UserAccount> everyoneElse = recipients.allActive().stream()
                 .filter(user -> !holderIds.contains(user.getId()))
                 .toList();
+        boolean delivered = true;
         if (!everyoneElse.isEmpty()) {
-            notificationDispatcher.dispatch(EVENT_ALL_ACTIVE_USERS, everyoneElse, variables);
+            delivered &= wasHandled(EVENT_ALL_ACTIVE_USERS, notificationDispatcher.dispatch(EVENT_ALL_ACTIVE_USERS, everyoneElse, variables), documentNumber);
         }
         if (!recipients.copyHolders().isEmpty()) {
-            notificationDispatcher.dispatch(EVENT_COPY_HOLDER, recipients.copyHolders(), variables);
+            delivered &= wasHandled(EVENT_COPY_HOLDER, notificationDispatcher.dispatch(EVENT_COPY_HOLDER, recipients.copyHolders(), variables), documentNumber);
         }
-        processingService.markNotified(documentId, now);
+        // Marked only when the notices were really handled: 86 documents were marked "notified" while the
+        // dispatcher found no recipient (the policy had no recipient rule) and nobody was told (API review 2026-11-21).
+        if (delivered) {
+            processingService.markNotified(documentId, now);
+        }
+    }
+
+    /**
+     * A notice is handled when it was sent, or when the administrator switched the event off on purpose
+     * (nothing to retry). A refusal for any other reason (no recipient, event not registered) is a failure:
+     * the document stays un-notified so that the scheduler tries again, and the log says why.
+     */
+    private static boolean wasHandled(String eventCode, NotificationDispatcher.Outcome outcome, String documentNumber) {
+        if (outcome == null || outcome.blocked() == null || "POLICY_OFF".equals(outcome.blocked())) {
+            return true;
+        }
+        org.slf4j.LoggerFactory.getLogger(DocumentExpiryNotifier.class)
+                .error("Expiry notice {} for document {} was not sent: {}", eventCode, documentNumber, outcome.blocked());
+        return false;
     }
 
     private record Recipients(List<UserAccount> allActive, List<UserAccount> copyHolders) {

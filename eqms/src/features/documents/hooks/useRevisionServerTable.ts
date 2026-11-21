@@ -1,4 +1,4 @@
-import { downloadTableExcel } from '@/services/api/tableExport';
+import { downloadTableExport, type TableExportOptions } from '@/services/api/tableExport';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useSearchParams } from "react-router-dom";
@@ -443,10 +443,10 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
   // (status, actions, counts): refetch the current page so it is never stale until a manual reload.
   useEntityChanged(["REVISION"], () => reload(), { debounceMs: 1000 });
 
-  const exportRevisions = async () => {
+  const exportRevisions = async (options: TableExportOptions) => {
     setIsExporting(true);
     try {
-      await downloadTableExcel('revisions', {
+      await downloadTableExport('revisions', {
         search: effectiveSearch || undefined,
         status: statusFilter === "All" ? undefined : statusFilter,
         documentType: typeFilter === "All" ? undefined : typeFilter,
@@ -470,7 +470,7 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
         pending: viewType === "pending-review" || viewType === "pending-approval",
         sortBy: sortConfig.key,
         sortDirection: sortConfig.direction,
-      });
+      }, options);
 
     } catch (exportError) {
       if (import.meta.env.DEV) {

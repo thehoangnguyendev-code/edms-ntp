@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { VisibilityBox, DetailList } from "./VisibilityBox";
-import { VisibilityOptions, type VisibilityOption } from "./VisibilityOptions";
+import { VisibilityOptions, type VisibilityOption } from "@/components/ui/radio/VisibilityOptions";
 import { classifyModuleVisibility, levelRank, levelCodesOf, type ModuleVisibilityDef } from "./moduleVisibility";
 
 /**

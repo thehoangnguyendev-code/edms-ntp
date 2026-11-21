@@ -21,7 +21,7 @@ it("delegates search/paging and keeps off-page assignment IDs for editing", asyn
   mocks.query.mockResolvedValue({ userId: "target", accessProfiles: [{ id: "one", name: "Server selected row", code: "P1", active: true }], assignedProfileIds: ["one", "two"], effectivePermissionCount: 12, pagination: { total: 11, totalPages: 2 } });
   render(<MemoryRouter><SecurityAuthorizationTab user={{ id: "target", fullName: "Target" } as User} canEdit mfaRequiredByAdmin={false} isEditingProfile onMfaRequiredByAdminChange={vi.fn()} /></MemoryRouter>);
   await screen.findByText("Server selected row");
-  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  fireEvent.click(screen.getByRole("button", { name: "Next page" }));
   await waitFor(() => expect(mocks.query).toHaveBeenLastCalledWith("target", { search: undefined, page: 2, limit: 10 }));
   fireEvent.change(screen.getByPlaceholderText("Search access profiles..."), { target: { value: "not-a-local-match" } });
   await waitFor(() => expect(mocks.query).toHaveBeenLastCalledWith("target", { search: "not-a-local-match", page: 1, limit: 10 }));
@@ -36,7 +36,7 @@ it("draws the pagination inside the frame of the table, and the MFA explanation 
   await screen.findByText("Server selected row");
 
   const frame = screen.getByRole("table").closest(".rounded-xl");
-  expect(frame?.contains(screen.getByRole("button", { name: "Next" }))).toBe(true);
+  expect(frame?.contains(screen.getByRole("button", { name: "Next page" }))).toBe(true);
   const explanation = screen.getByText(/The user must set up MFA before using the system/);
   expect(explanation.className).not.toMatch(/max-w-/);
   expect(screen.getByText("Search")).toBeTruthy();

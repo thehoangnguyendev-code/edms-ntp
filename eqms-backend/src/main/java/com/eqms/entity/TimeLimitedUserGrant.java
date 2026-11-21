@@ -49,6 +49,10 @@ public class TimeLimitedUserGrant {
     @Column(name = "notified_at")
     private Instant notifiedAt;
 
+    /** When the person was warned that the window ends soon (once per window; cleared when the window is amended). */
+    @Column(name = "expiry_warned_at")
+    private Instant expiryWarnedAt;
+
     @Column(length = 255)
     private String reason;
 
@@ -136,6 +140,14 @@ public class TimeLimitedUserGrant {
 
     public void setNotifiedAt(Instant notifiedAt) {
         this.notifiedAt = notifiedAt;
+    }
+
+    public Instant getExpiryWarnedAt() {
+        return expiryWarnedAt;
+    }
+
+    public void setExpiryWarnedAt(Instant expiryWarnedAt) {
+        this.expiryWarnedAt = expiryWarnedAt;
     }
 
     public String getReason() {

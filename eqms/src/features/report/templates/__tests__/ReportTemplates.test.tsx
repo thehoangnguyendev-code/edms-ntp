@@ -240,8 +240,8 @@ describe("Reject a report template",()=>{
     expect(screen.getByRole("heading",{name:"Approve Revision"})).toBeInTheDocument();
     expect(screen.getByText(/by e-mail/)).toBeInTheDocument();
     // no reason, no way on to the signature
-    expect(screen.getByRole("button",{name:"Continue to sign"})).toBeDisabled();
+    expect(screen.getByRole("button",{name:"Continue to Sign"})).toBeDisabled();
     fireEvent.change(screen.getByLabelText(/^Reason/),{target:{value:"Add the department column"}});
-    expect(screen.getByRole("button",{name:"Continue to sign"})).toBeEnabled();
+    expect(screen.getByRole("button",{name:"Continue to Sign"})).toBeEnabled();
   });
 });

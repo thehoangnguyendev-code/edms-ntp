@@ -61,7 +61,7 @@ public class ControlledCopyPlaceholderFieldService {
         ControlledCopyPlaceholderField field = new ControlledCopyPlaceholderField();
         applyRequest(field, request);
         ControlledCopyPlaceholderField saved = repository.save(field);
-        auditTrailService.logSafely("CONTROLLED_COPY_PLACEHOLDER_FIELD", saved.getLabel(), saved.getId(), "CONTROLLED_COPY_PLACEHOLDER_FIELD_CREATED", null, null,
+        auditTrailService.log("CONTROLLED_COPY_PLACEHOLDER_FIELD", saved.getLabel(), saved.getId(), "CONTROLLED_COPY_PLACEHOLDER_FIELD_CREATED", null, null,
                 "Controlled Copy placeholder field created: " + saved.getLabel() + " (" + saved.getFieldKey() + ")");
         return toResponse(saved);
     }
@@ -72,7 +72,7 @@ public class ControlledCopyPlaceholderFieldService {
         ControlledCopyPlaceholderField field = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Placeholder field not found"));
         repository.delete(field);
-        auditTrailService.logSafely("CONTROLLED_COPY_PLACEHOLDER_FIELD", field.getLabel(), field.getId(), "CONTROLLED_COPY_PLACEHOLDER_FIELD_DELETED", null, null,
+        auditTrailService.log("CONTROLLED_COPY_PLACEHOLDER_FIELD", field.getLabel(), field.getId(), "CONTROLLED_COPY_PLACEHOLDER_FIELD_DELETED", null, null,
                 "Controlled Copy placeholder field deleted: " + field.getLabel() + " (" + field.getFieldKey() + ")");
     }
 

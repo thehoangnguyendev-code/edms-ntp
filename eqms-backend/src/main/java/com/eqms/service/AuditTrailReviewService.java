@@ -131,13 +131,40 @@ public class AuditTrailReviewService {
     @Transactional(readOnly = true)
     public PageResponse<ItemResponse> listCampaignItemsPaged(
             UUID campaignId, int page, int limit, String search, String decision, String sortBy, String sortDirection) {
+        return listCampaignItemsPaged(campaignId, page, limit, search, decision, null, null, null, null, null, sortBy, sortDirection);
+    }
+
+    /** Same query with the Module, Action, e-signature and timestamp-range filters. Dates are inclusive days in the system time zone. */
+    @Transactional(readOnly = true)
+    public PageResponse<ItemResponse> listCampaignItemsPaged(
+            UUID campaignId, int page, int limit, String search, String decision,
+            String module, String action, String signed, java.time.LocalDate from, java.time.LocalDate to,
+            String sortBy, String sortDirection) {
         requireView();
         require(campaignId);
+        if (from != null && to != null && to.isBefore(from)) {
+            throw new IllegalArgumentException("The end date must not be before the start date");
+        }
+        Instant start = from != null ? from.atStartOfDay(DateTimeFormatUtils.ZONE).toInstant() : Instant.EPOCH;
+        Instant end = to != null ? to.plusDays(1).atStartOfDay(DateTimeFormatUtils.ZONE).toInstant() : Instant.parse("9999-01-01T00:00:00Z");
         Page<AuditTrailReviewItem> results = itemRepo.search(
                 campaignId, normalizeSearch(search), normalizeDecision(decision),
+                StringUtils.hasText(module) ? module.trim() : "",
+                StringUtils.hasText(action) ? action.trim() : "",
+                normalizeSigned(signed), start, end,
                 PageRequest.of(normalizePage(page), normalizeLimit(limit), itemSort(sortBy, sortDirection)));
         return page(results, this::toItemResponse);
     }
+
+    /** The values the detail page offers in its Module and Action filters. */
+    @Transactional(readOnly = true)
+    public ItemFilterOptions listItemFilterOptions(UUID campaignId) {
+        requireView();
+        require(campaignId);
+        return new ItemFilterOptions(itemRepo.distinctModules(campaignId), itemRepo.distinctActions(campaignId));
+    }
+
+    public record ItemFilterOptions(List<String> modules, List<String> actions) {}
 
     @Transactional(readOnly = true)
     public CampaignDetailResponse getCampaign(UUID id) {
@@ -406,6 +433,12 @@ public class AuditTrailReviewService {
     private static String normalizeStatus(String status) {
         return StringUtils.hasText(status) && !"ALL".equalsIgnoreCase(status)
                 ? status.trim().toUpperCase(Locale.ROOT) : null;
+    }
+
+    private static String normalizeSigned(String signed) {
+        String value = StringUtils.hasText(signed) ? signed.trim().toUpperCase(Locale.ROOT) : "ALL";
+        if (!java.util.Set.of("ALL", "YES", "NO").contains(value)) throw new IllegalArgumentException("Invalid e-signature filter. Allowed: ALL, YES, NO");
+        return value;
     }
 
     private static String normalizeDecision(String decision) {

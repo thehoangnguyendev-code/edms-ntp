@@ -1,3 +1,4 @@
+import { displayText } from '@/utils/machineText';
 import { observeOverlayPosition, preferredScrollBehavior } from "@/utils/scroll";
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
@@ -386,7 +387,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                       : "bg-emerald-50 text-emerald-700 border border-emerald-100"
                   )}
                 >
-                  <span className="truncate">{option.label}</span>
+                  <span className="truncate">{displayText(option.label)}</span>
                   <button
                     type="button"
                     onClick={(e) => handleRemoveTag(option.value, e)}
@@ -396,7 +397,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                         ? "hover:bg-slate-200/70 text-slate-500"
                         : "hover:bg-emerald-200/50"
                     )}
-                    aria-label={`Remove ${option.label}`}
+                    aria-label={`Remove ${displayText(option.label)}`}
                   >
                     <X className="h-2.5 w-2.5" />
                   </button>
@@ -419,7 +420,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                   {remainingOptions.map(opt => (
                     <div key={opt.value} className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-slate-50">
                       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                      <span className="truncate pr-2 text-xs font-medium text-slate-700">{opt.label}</span>
+                      <span className="truncate pr-2 text-xs font-medium text-slate-700">{displayText(opt.label)}</span>
                     </div>
                   ))}
                 </div>
@@ -532,7 +533,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                         >
                           <Checkbox checked={isSelected} className="min-h-0 shrink-0 pointer-events-none" />
                           {option.icon && <span className="shrink-0 text-slate-500">{option.icon}</span>}
-                          <span className="flex-1 text-left font-medium text-slate-700">{option.label}</span>
+                          <span className="flex-1 text-left font-medium text-slate-700">{displayText(option.label)}</span>
                         </button>
                       );
                     })}

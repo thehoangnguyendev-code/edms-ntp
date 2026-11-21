@@ -1,7 +1,9 @@
 # Change record: Report templates, approval only for GMP use, and the menu of the templates (REPORT-NON-GMP-NO-APPROVAL-2026-11-15)
 
-> **Update 2026-11-15 (owner chose option A):** the rule "a template not used for GMP is in force when saved" described below was **removed** the same day; every template goes through approval. See Decision Log REPORT-ALL-TEMPLATES-APPROVED-2026-11-15. The menu, the revisions list, Reject and the notice to the author are unchanged. `ReportTemplateDatabaseTest` and `ReportTemplateRevisionActionsTest` now assert that every template waits for approval and that a template in force needs Upgrade; backend report, notification and menu tests 520 pass; frontend report tests 159 pass.
-
+> **Update 2026-11-15 (owner chose option A):** the rule "a template not used for GMP is in force when saved" described below was **removed** the same day; every template goes through approval. See Decision Log REPORT-ALL-TEMPLATES-APPROVED-2026-11-15. The menu, the revisions list, Reject and the notice to the author are unchanged. `ReportTemplateDatabaseTest` and `ReportTemplateRevisionActionsTest` now assert that every template waits for approval and that a template in force needs Upgrade; backend report, notification and menu tests 520 pass; frontend report tests 159 pass.
+
+
+
 Status: built and checked on DEV; **not committed**. Owner decision: Decision Log `REPORT-NON-GMP-NO-APPROVAL-2026-11-15` (QA has not confirmed it).
 
 ## What changed
@@ -32,7 +34,7 @@ GitNexus `impact` on `edms-ntp`: `ReportTemplateCatalog` LOW (3), `ReportTemplat
 - Frontend: `tsc` clean, whole suite 1602+ pass.
 
 ## Third step (owner: Reject, reason, notice to the author)
-- Return to Draft is now Reject; a reason is required (screen and server) and the e-signature stays. New notification event `report.template_rejected` (in-app + e-mail, to the author of the revision, not to the approver), wording with "Reason:", migrations V789 (signature meaning name) and V790 (wording for an existing database); the signature tag of a comment is not put into any notice.
+- Return to Draft is now Reject; a reason is required (screen and server) and the e-signature stays. New notification event `report.template_rejected` (in-app + e-mail, to the author of the revision, not to the approver), wording with "Reason:", migrations V789 (signature meaning name) and V790 (wording for an existing database); the signature tag of a comment is not put into any notice.Continue to Sign
 - Source: `AuditNotificationEvents`, `NotificationDefaultChannels`, `AuditNotificationBridge`, `NotificationEventCatalogBootstrap`, `ReportTemplateEditor`, `ReportTemplateRevisionsView`, V789, V790. GitNexus `impact`: `AuditNotificationBridge` LOW (0), `ReportTemplateEditor` LOW (1).
 - Evidence: `AuditNotificationBridgeTest` (new test: event found by the action, OWNER rule, author told and approver not, reason without the signature tag, e-mail by default), `EveryRegisteredNotificationHasASenderTest`, `NotificationDefaultChannelsTest`; 607 backend tests pass in the notification, report and menu classes (7 skipped: need a `postgres` login); frontend `tsc` clean, new test of the Reject dialog. DEV live: RPT.0039 revision submitted, approver.test1 (permission given for the test, then withdrawn) rejected with a blank reason: refused (400); with a reason: Draft; the author (admin) got the in-app notice "Report Template Rejected - RPT.0039 was rejected by Approver Test 1. Reason: ..." (priority high, link to the templates) and the e-mail "[EQMS] Report Template Rejected: RPT.0039" (MailHog) with the reason; the approver got nothing. Screens: Reject button, dialog empty (Continue to sign disabled) and with a reason, the signature step, the notification list of the author.
 - Left on DEV: RPT.0039 has a revision 1.0.1 **Pending Approval** (submitted again for the screenshots); revision 1.0.0 stays effective. `reports.definition.approve_gmp` is again held by no account.

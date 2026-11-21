@@ -321,6 +321,9 @@ export interface BackupAlertRecord {
   alertNumber?: string | null;
   at: string;
   severity: "INFO" | "WARNING" | "HIGH" | "CRITICAL";
+  /** The words of the severity and of the code, made by the server. */
+  severityLabel?: string;
+  codeLabel?: string;
   code: string;
   detail: string | null;
   ref: string | null;

@@ -14,6 +14,7 @@ import { settingsApi, type PermissionCatalogFlatItem, type PermissionLifecycleUs
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { moduleDisplayName, moduleSelectOptions } from "@/utils/moduleDisplay";
+import { statusText } from "@/features/security-authorization/shared/humanizeCode";
 
 type SortKey = "code" | "name" | "module" | "groupName";
 
@@ -29,7 +30,7 @@ const TABLE_COLS: { id: SortKey | "no" | "audit" | "lifecycle" | "description"; 
 ];
 
 const formatLifecycleState = (u: PermissionLifecycleUsage) =>
-  `${u.objectTypeLabel} · ${u.fromStatusLabel ?? u.fromStatus ?? "Any state"}`;
+  `${u.objectTypeLabel} · ${u.fromStatus ? statusText(u.fromStatusLabel, u.fromStatus) : "Any state"}`;
 // Includes the action -- two entries can share the same object type + status (e.g. distributing a
 // single Controlled Copy vs. a Controlled Copy Batch both apply "Ready for Distribution"), so the
 // action is what tells them apart and must be visible wherever more than one entry is listed together.

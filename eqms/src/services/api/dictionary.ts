@@ -74,6 +74,7 @@ type ApiDepartment = {
   departmentHeadEmployeeCode?: string | null;
   primaryContactPhone?: string | null;
   iconColor?: string | null;
+  employeeCount?: number;
 };
 
 type ApiPosition = {
@@ -85,6 +86,7 @@ type ApiPosition = {
   isActive: boolean;
   createdDate: string;
   modifiedDate: string;
+  employeeCount?: number;
 };
 
 type ApiDocumentType = {
@@ -230,6 +232,7 @@ const mapDepartment = (item: ApiDepartment): DepartmentItem => ({
   departmentHeadEmployeeCode: item.departmentHeadEmployeeCode ?? null,
   primaryContactPhone: item.primaryContactPhone ?? null,
   iconColor: item.iconColor ?? null,
+  employeeCount: item.employeeCount ?? 0,
 });
 
 const mapPosition = (item: ApiPosition): PositionItem => ({
@@ -241,6 +244,7 @@ const mapPosition = (item: ApiPosition): PositionItem => ({
   isActive: item.isActive,
   createdDate: item.createdDate,
   modifiedDate: item.modifiedDate,
+  employeeCount: item.employeeCount ?? 0,
 });
 
 const mapDocumentType = (item: ApiDocumentType): DocumentTypeItem => ({

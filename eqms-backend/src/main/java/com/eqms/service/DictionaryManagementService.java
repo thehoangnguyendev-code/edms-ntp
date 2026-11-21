@@ -199,7 +199,7 @@ public class DictionaryManagementService {
         BusinessUnit businessUnit = new BusinessUnit();
         applyBusinessUnit(businessUnit, request);
         businessUnitRepository.save(businessUnit);
-        auditTrailService.logSafely("BUSINESS_UNIT", businessUnit.getName(), businessUnit.getId(), ACTION_BUSINESS_UNIT_CREATED, null, null,
+        auditTrailService.log("BUSINESS_UNIT", businessUnit.getName(), businessUnit.getId(), ACTION_BUSINESS_UNIT_CREATED, null, null,
                 buildCreateComment("Business Unit", businessUnit.getName(), businessUnit.getCode()));
         return toBusinessUnitResponse(businessUnit);
     }
@@ -211,7 +211,7 @@ public class DictionaryManagementService {
         String before = describeBusinessUnit(businessUnit);
         validateUniqueBusinessUnit(id, request.name(), request.abbreviation());
         applyBusinessUnit(businessUnit, request);
-        auditTrailService.logSafely("BUSINESS_UNIT", businessUnit.getName(), businessUnit.getId(), ACTION_BUSINESS_UNIT_UPDATED, null, null,
+        auditTrailService.log("BUSINESS_UNIT", businessUnit.getName(), businessUnit.getId(), ACTION_BUSINESS_UNIT_UPDATED, null, null,
                 buildUpdateComment("Business Unit", before, describeBusinessUnit(businessUnit)));
         return toBusinessUnitResponse(businessUnit);
     }
@@ -226,7 +226,7 @@ public class DictionaryManagementService {
                 || documentRevisionRepository.existsByBusinessUnit_Id(id)) {
             throw dictionaryInUse("Business Unit", businessUnit.getName());
         }
-        auditTrailService.logSafely("BUSINESS_UNIT", businessUnit.getName(), businessUnit.getId(), ACTION_BUSINESS_UNIT_DELETED, null, null,
+        auditTrailService.log("BUSINESS_UNIT", businessUnit.getName(), businessUnit.getId(), ACTION_BUSINESS_UNIT_DELETED, null, null,
                 buildDeleteComment("Business Unit", describeBusinessUnit(businessUnit)));
         businessUnitRepository.delete(businessUnit);
     }
@@ -270,7 +270,7 @@ public class DictionaryManagementService {
         Department department = new Department();
         applyDepartment(department, request, businessUnit);
         departmentRepository.save(department);
-        auditTrailService.logSafely("DEPARTMENT", department.getName(), department.getId(), ACTION_DEPARTMENT_CREATED, null, null,
+        auditTrailService.log("DEPARTMENT", department.getName(), department.getId(), ACTION_DEPARTMENT_CREATED, null, null,
                 buildCreateComment("Department", department.getName(), department.getCode(), department.getBusinessUnit().getName()));
         return toDepartmentResponse(department);
     }
@@ -283,7 +283,7 @@ public class DictionaryManagementService {
         BusinessUnit businessUnit = requireBusinessUnitByName(request.businessUnit());
         validateUniqueDepartment(id, request.name(), request.abbreviation());
         applyDepartment(department, request, businessUnit);
-        auditTrailService.logSafely("DEPARTMENT", department.getName(), department.getId(), ACTION_DEPARTMENT_UPDATED, null, null,
+        auditTrailService.log("DEPARTMENT", department.getName(), department.getId(), ACTION_DEPARTMENT_UPDATED, null, null,
                 buildUpdateComment("Department", before, describeDepartment(department)));
         return toDepartmentResponse(department);
     }
@@ -298,7 +298,7 @@ public class DictionaryManagementService {
                 || controlledCopyExpiryLimitRepository.existsByDepartment_Id(id)) {
             throw dictionaryInUse("Department", department.getName());
         }
-        auditTrailService.logSafely("DEPARTMENT", department.getName(), department.getId(), ACTION_DEPARTMENT_DELETED, null, null,
+        auditTrailService.log("DEPARTMENT", department.getName(), department.getId(), ACTION_DEPARTMENT_DELETED, null, null,
                 buildDeleteComment("Department", describeDepartment(department)));
         departmentRepository.delete(department);
     }
@@ -342,7 +342,7 @@ public class DictionaryManagementService {
         Position position = new Position();
         applyPosition(position, request, businessUnit, department);
         positionRepository.save(position);
-        auditTrailService.logSafely("POSITION", position.getName(), position.getId(), ACTION_POSITION_CREATED, null, null,
+        auditTrailService.log("POSITION", position.getName(), position.getId(), ACTION_POSITION_CREATED, null, null,
                 buildCreateComment("Position", position.getName(), position.getCode(), position.getBusinessUnit().getName(), position.getDepartment().getName()));
         return toPositionResponse(position);
     }
@@ -357,7 +357,7 @@ public class DictionaryManagementService {
         validateDepartmentMatchesBusinessUnit(department, businessUnit);
         validateUniquePosition(id, request.name());
         applyPosition(position, request, businessUnit, department);
-        auditTrailService.logSafely("POSITION", position.getName(), position.getId(), ACTION_POSITION_UPDATED, null, null,
+        auditTrailService.log("POSITION", position.getName(), position.getId(), ACTION_POSITION_UPDATED, null, null,
                 buildUpdateComment("Position", before, describePosition(position)));
         return toPositionResponse(position);
     }
@@ -366,7 +366,7 @@ public class DictionaryManagementService {
     public void deletePosition(UUID id) {
         requireManage(POSITION_MANAGE);
         Position position = requirePosition(id);
-        auditTrailService.logSafely("POSITION", position.getName(), position.getId(), ACTION_POSITION_DELETED, null, null,
+        auditTrailService.log("POSITION", position.getName(), position.getId(), ACTION_POSITION_DELETED, null, null,
                 buildDeleteComment("Position", describePosition(position)));
         positionRepository.delete(position);
     }
@@ -409,7 +409,7 @@ public class DictionaryManagementService {
         StorageLocation storageLocation = new StorageLocation();
         applyStorageLocation(storageLocation, request);
         storageLocationRepository.save(storageLocation);
-        auditTrailService.logSafely("STORAGE_LOCATION", storageLocation.getName(), storageLocation.getId(), ACTION_STORAGE_LOCATION_CREATED, null, null,
+        auditTrailService.log("STORAGE_LOCATION", storageLocation.getName(), storageLocation.getId(), ACTION_STORAGE_LOCATION_CREATED, null, null,
                 buildCreateComment("Storage Location", storageLocation.getName()));
         return toStorageLocationResponse(storageLocation);
     }
@@ -421,7 +421,7 @@ public class DictionaryManagementService {
         String before = describeStorageLocation(storageLocation);
         validateUniqueStorageLocation(id, request.name());
         applyStorageLocation(storageLocation, request);
-        auditTrailService.logSafely("STORAGE_LOCATION", storageLocation.getName(), storageLocation.getId(), ACTION_STORAGE_LOCATION_UPDATED, null, null,
+        auditTrailService.log("STORAGE_LOCATION", storageLocation.getName(), storageLocation.getId(), ACTION_STORAGE_LOCATION_UPDATED, null, null,
                 buildUpdateComment("Storage Location", before, describeStorageLocation(storageLocation)));
         return toStorageLocationResponse(storageLocation);
     }
@@ -430,7 +430,7 @@ public class DictionaryManagementService {
     public void deleteStorageLocation(UUID id) {
         requireManage(STORAGE_LOCATION_MANAGE);
         StorageLocation storageLocation = requireStorageLocation(id);
-        auditTrailService.logSafely("STORAGE_LOCATION", storageLocation.getName(), storageLocation.getId(), ACTION_STORAGE_LOCATION_DELETED, null, null,
+        auditTrailService.log("STORAGE_LOCATION", storageLocation.getName(), storageLocation.getId(), ACTION_STORAGE_LOCATION_DELETED, null, null,
                 buildDeleteComment("Storage Location", describeStorageLocation(storageLocation)));
         storageLocationRepository.delete(storageLocation);
     }
@@ -485,7 +485,7 @@ public class DictionaryManagementService {
         RetentionPolicy retentionPolicy = new RetentionPolicy();
         applyRetentionPolicy(retentionPolicy, request);
         retentionPolicyRepository.save(retentionPolicy);
-        auditTrailService.logSafely("RETENTION_POLICY", retentionPolicy.getName(), retentionPolicy.getId(), ACTION_RETENTION_POLICY_CREATED, null, null,
+        auditTrailService.log("RETENTION_POLICY", retentionPolicy.getName(), retentionPolicy.getId(), ACTION_RETENTION_POLICY_CREATED, null, null,
                 buildCreateComment("Retention Policy", retentionPolicy.getName()));
         return toRetentionPolicyResponse(retentionPolicy);
     }
@@ -497,7 +497,7 @@ public class DictionaryManagementService {
         String before = describeRetentionPolicy(retentionPolicy);
         validateUniqueRetentionPolicy(id, request.name());
         applyRetentionPolicy(retentionPolicy, request);
-        auditTrailService.logSafely("RETENTION_POLICY", retentionPolicy.getName(), retentionPolicy.getId(), ACTION_RETENTION_POLICY_UPDATED, null, null,
+        auditTrailService.log("RETENTION_POLICY", retentionPolicy.getName(), retentionPolicy.getId(), ACTION_RETENTION_POLICY_UPDATED, null, null,
                 buildUpdateComment("Retention Policy", before, describeRetentionPolicy(retentionPolicy)));
         return toRetentionPolicyResponse(retentionPolicy);
     }
@@ -506,7 +506,7 @@ public class DictionaryManagementService {
     public void deleteRetentionPolicy(UUID id) {
         requireManage(RETENTION_POLICY_MANAGE);
         RetentionPolicy retentionPolicy = requireRetentionPolicy(id);
-        auditTrailService.logSafely("RETENTION_POLICY", retentionPolicy.getName(), retentionPolicy.getId(), ACTION_RETENTION_POLICY_DELETED, null, null,
+        auditTrailService.log("RETENTION_POLICY", retentionPolicy.getName(), retentionPolicy.getId(), ACTION_RETENTION_POLICY_DELETED, null, null,
                 buildDeleteComment("Retention Policy", describeRetentionPolicy(retentionPolicy)));
         retentionPolicyRepository.delete(retentionPolicy);
     }
@@ -706,7 +706,8 @@ public class DictionaryManagementService {
                 department.getDepartmentHead() == null ? null : department.getDepartmentHead().getFullName(),
                 department.getDepartmentHead() == null ? null : department.getDepartmentHead().getEmployeeCode(),
                 department.getPrimaryContactPhone(),
-                department.getIconColor()
+                department.getIconColor(),
+                userAccountRepository.countByDepartmentIdAndStatusNot(department.getId(), com.eqms.entity.UserStatus.Terminated)
         );
     }
 
@@ -719,7 +720,9 @@ public class DictionaryManagementService {
                 position.getDescription(),
                 position.isActive(),
                 formatDateTime(position.getCreatedAt()),
-                formatDateTime(position.getUpdatedAt())
+                formatDateTime(position.getUpdatedAt()),
+                position.getDepartment() == null ? 0
+                        : userAccountRepository.countByPositionAndDepartmentIdAndStatusNot(position.getName(), position.getDepartment().getId(), com.eqms.entity.UserStatus.Terminated)
         );
     }
 

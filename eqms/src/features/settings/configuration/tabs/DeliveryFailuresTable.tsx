@@ -10,6 +10,8 @@ import { useServerTable } from '@/features/settings/shared/hooks/useServerTable'
 import { ReportListToolbar, pickerDateToIso, type ReportSelectFilter } from '@/features/report/shared/ReportListToolbar';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { displayDateTime } from '@/utils/format';
+import { moduleDisplayName } from '@/utils/moduleDisplay';
+import { readableCode } from '@/utils/machineText';
 import { notificationApi, type NotificationDeliveryFailure } from '@/services/api/notifications';
 
 const MAX_ATTEMPTS = 5;
@@ -60,8 +62,8 @@ export const DeliveryFailuresTable: React.FC = () => {
   const columns: DataTableColumn<NotificationDeliveryFailure>[] = [
     { id: 'rowNo', header: 'No.', locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
     { id: 'recipient', header: 'Recipient', sort: sorted('recipient'), cell: (r) => <span className="block max-w-56 truncate" title={r.recipient}>{r.recipient}</span> },
-    { id: 'notificationType', header: 'Type', sort: sorted('notificationType'), cell: (r) => r.notificationType },
-    { id: 'eventDomain', header: 'Event Domain', sort: sorted('eventDomain'), cell: (r) => r.eventDomain || '—' },
+    { id: 'notificationType', header: 'Type', sort: sorted('notificationType'), cell: (r) => readableCode(r.notificationType) },
+    { id: 'eventDomain', header: 'Event Domain', sort: sorted('eventDomain'), cell: (r) => (r.eventDomain ? moduleDisplayName(r.eventDomain) : '—') },
     { id: 'channel', header: 'Channel', sort: sorted('channel'), cell: (r) => (r.channel === 'IN_APP' ? 'In-App' : 'Email') },
     { id: 'status', header: 'Status', sort: sorted('status'), cell: (r) => <Badge semantic={r.status === 'RESOLVED' ? 'success' : 'danger'}>{r.status === 'RESOLVED' ? 'Resolved' : 'Failed'}</Badge> },
     { id: 'attempts', header: 'Attempts', sort: sorted('attempts'), cell: (r) => `${r.attempts}/${MAX_ATTEMPTS}` },
@@ -75,7 +77,7 @@ export const DeliveryFailuresTable: React.FC = () => {
   const filters: ReportSelectFilter[] = [
     { id: 'status', label: 'Status', value: status, options: [{ label: 'All statuses', value: '' }, ...STATUS_OPTIONS], onChange: reset(setStatus) },
     { id: 'channel', label: 'Channel', value: channel, options: [{ label: 'All channels', value: '' }, ...CHANNEL_OPTIONS], onChange: reset(setChannel) },
-    { id: 'eventDomain', label: 'Event Domain', value: eventDomain, options: [{ label: 'All event domains', value: '' }, ...domains.map((d) => ({ label: d, value: d }))], onChange: reset(setEventDomain) },
+    { id: 'eventDomain', label: 'Event Domain', value: eventDomain, options: [{ label: 'All event domains', value: '' }, ...domains.map((d) => ({ label: moduleDisplayName(d), value: d }))], onChange: reset(setEventDomain) },
   ];
 
   return (

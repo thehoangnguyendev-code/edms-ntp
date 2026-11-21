@@ -8,7 +8,7 @@ import type { PermissionSetResponse } from "@/services/api/settings";
 import { PermissionSplitExplorer } from "@/features/security-authorization/shared/explorer/PermissionSplitExplorer";
 import { usePermissionCatalog } from "@/features/security-authorization/shared/usePermissionCatalog";
 import { DOCUMENT_CONTROL_VIEW_ALL_CODES, applyVisibilityChoice, type DocumentControlVisibilityChoice } from "../../shared/documentControlVisibility";
-import { RecordVisibilityForModule } from "../../shared/RecordVisibilityForModule";
+import { RecordVisibilityForModule, hasRecordVisibility } from "../../shared/RecordVisibilityForModule";
 import { applyModuleVisibility, type ModuleVisibilityDef } from "../../shared/moduleVisibility";
 
 /**
@@ -212,7 +212,7 @@ export const AccessProfilePermissionsTab: React.FC<{
         isLoading={catalogLoading}
         lockedCodes={lockedCodes}
         lockedNotes={lockedNotes}
-        moduleExtras={(moduleName) => (
+        moduleExtras={(moduleName) => !hasRecordVisibility(moduleName) ? null : (
           <RecordVisibilityForModule
             moduleName={moduleName}
             selectedCodes={selectedCodes}

@@ -1,4 +1,4 @@
-import { downloadTableExcel } from '@/services/api/tableExport';
+import { downloadTableExport, type TableExportOptions } from '@/services/api/tableExport';
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Copy, Download, Import, Plus, Search, Trash2, X, Check, MoreVertical, ChevronUp, ChevronDown } from "lucide-react";
@@ -7,6 +7,7 @@ import { DesktopSelectFilters } from '@/components/ui/filter/DesktopSelectFilter
 import { useBranding } from '@/components/branding/BrandLogo';
 import { IconFilter2, IconInfoCircle, IconPencilMinus, IconToggleLeft, IconToggleRight } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
+import { TableExportModal } from "@/components/ui/modal/TableExportModal";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -249,16 +250,17 @@ export const PermissionSetsView: React.FC = () => {
     }
   };
 
-  const handleExport = async () => {
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const handleExport = async (options: TableExportOptions) => {
     try {
-      await downloadTableExcel('permission-sets', {
+      await downloadTableExport('permission-sets', {
         search: debouncedSearch || undefined, status: statusFilter === 'ALL' ? undefined : statusFilter,
         type: typeFilter === 'ALL' ? undefined : typeFilter, module: moduleFilter === 'ALL' ? undefined : moduleFilter,
         category: categoryFilter === 'ALL' ? undefined : categoryFilter,
         createdFrom: createdFrom || undefined, createdTo: createdTo || undefined,
         updatedFrom: updatedFrom || undefined, updatedTo: updatedTo || undefined,
         sortBy: sortKey, sortDir,
-      });
+      }, options);
     } catch {
       showToast({ type: "error", message: "Export failed" });
     }
@@ -399,6 +401,15 @@ export const PermissionSetsView: React.FC = () => {
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {isInitialLoading && <FullPageLoading text="Loading permission sets..." />}
 
+      <TableExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        dataset="permission-sets"
+        title="Permission Sets"
+        totalRecords={totalItems}
+        onExport={handleExport}
+      />
+
       <PageHeader
         title="Shared Permission Sets"
         breadcrumbItems={permissionSetsBreadcrumb()}
@@ -411,7 +422,7 @@ export const PermissionSetsView: React.FC = () => {
                   Import
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={handleExport} className="whitespace-nowrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => setIsExportOpen(true)} className="whitespace-nowrap gap-2">
                 <Download className="h-4 w-4" />
                 Export
               </Button>

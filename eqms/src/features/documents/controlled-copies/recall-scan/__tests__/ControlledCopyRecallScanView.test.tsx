@@ -642,7 +642,7 @@ describe("Recall by Scan", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /Recall 1 controlled copy/i }));
 
-    const proceed = screen.getByRole("button", { name: "Continue to sign" });
+    const proceed = screen.getByRole("button", { name: "Continue to Sign" });
     expect(proceed).toBeDisabled();
     expect(screen.queryByRole("dialog", { name: "signature" })).toBeNull();
     fireEvent.click(screen.getByRole("checkbox"));
@@ -662,7 +662,7 @@ describe("Recall by Scan", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /Recall 2 controlled copies/i }));
     fireEvent.click(screen.getByRole("checkbox"));
-    fireEvent.click(screen.getByRole("button", { name: "Continue to sign" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Sign" }));
     expect(screen.getByText("signing RCB-2026-00001")).toBeInTheDocument();
     fireEvent.click(screen.getByText("sign"));
 
@@ -691,7 +691,7 @@ describe("Recall by Scan", () => {
     fireEvent.click(await screen.findByRole("button", { name: `01/${pad(target.getMonth() + 1)}/${target.getFullYear()}` }));
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
     fireEvent.click(screen.getByRole("checkbox"));
-    fireEvent.click(screen.getByRole("button", { name: "Continue to sign" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Sign" }));
     fireEvent.click(screen.getByText("sign"));
 
     await waitFor(() => expect(mocks.api.commit).toHaveBeenCalledWith("b1", expect.objectContaining({ receivedAt: `${target.getFullYear()}-${pad(target.getMonth() + 1)}-01` })));
@@ -707,7 +707,7 @@ describe("Recall by Scan", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /Recall 1 controlled copy/i }));
     fireEvent.click(screen.getByRole("checkbox"));
-    fireEvent.click(screen.getByRole("button", { name: "Continue to sign" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Sign" }));
     fireEvent.click(screen.getByText("sign"));
 
     await waitFor(() => expect(mocks.api.getBatch).toHaveBeenCalledWith("b1"));

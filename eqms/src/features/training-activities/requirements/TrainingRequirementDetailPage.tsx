@@ -227,7 +227,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
       <ReasonDialog open={dialog === "reject"} title="Reject Requirement" help="It goes back to draft with your reason." confirmText="Reject" destructive busy={busy} onClose={() => setDialog(undefined)} onSave={(reason) => run(() => trainingRequirementsApi.reject(req.id, req.version, reason), "Sent back to draft")} />
       <ReasonDialog open={typeof dialog === "object" && "postpone" in dialog} title="Postpone to the Next Month" help="The old month and the reason stay on the line." confirmText="Postpone" busy={busy} onClose={() => setDialog(undefined)}
         onSave={(reason) => run(() => trainingRequirementsApi.postpone((dialog as { postpone: string }).postpone, reason), "Line postponed")} />
-      <FormModal isOpen={typeof dialog === "object" && "qa" in dialog} onClose={() => setDialog(undefined)} title="QA Signature for the Line" description="The training of this line is completed. Your signature confirms it." confirmText="Continue to signature" size="md"
+      <FormModal isOpen={typeof dialog === "object" && "qa" in dialog} onClose={() => setDialog(undefined)} title="QA Signature for the Line" description="The training of this line is completed. Your signature confirms it." confirmText="Continue to Signature" size="md"
         onConfirm={() => { const lineId = (dialog as { qa: string }).qa; setDialog(undefined); setSign({ title: "Sign the Line", code: "TRAINING_COMPLETED", name: "Training Completed", changes: statusChange("Not signed by QA", "Signed by QA", "QA signature of the line"), run: (t) => trainingRequirementsApi.qaSign(lineId, t, qaComment.trim() || undefined) }); }}>
         <FormField label="Comment"><Textarea rows={3} value={qaComment} onChange={(e) => setQaComment(e.target.value)} /></FormField>
       </FormModal>
@@ -261,7 +261,7 @@ function NextPersonDialog({ requirementId, step, busy, onClose, onPick }: { requ
   const review = step === "REQUIREMENT_REVIEW";
   return (
     <FormModal isOpen onClose={onClose} onConfirm={() => onPick(id)} title={review ? "Choose who reviews" : "Choose who approves"}
-      description={review ? "The reviewer is not you. Only people the system found eligible are listed." : "The approver is neither the preparer nor you."} confirmText="Continue to signature" isLoading={busy} confirmDisabled={!id} size="md">
+      description={review ? "The reviewer is not you. Only people the system found eligible are listed." : "The approver is neither the preparer nor you."} confirmText="Continue to Signature" isLoading={busy} confirmDisabled={!id} size="md">
       {loaded && people.length === 0 ? <p className="text-sm text-amber-700">No eligible person was found.</p> : <Select label="Person" value={id} onChange={setId} options={people.map((p) => ({ label: `${p.fullName}${p.position ? ` — ${p.position}` : ""}`, value: p.id }))} onSearch={search} placeholder="Search by name" />}
     </FormModal>
   );

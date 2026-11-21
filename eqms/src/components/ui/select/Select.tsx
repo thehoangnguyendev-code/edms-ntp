@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { ChevronDown, Check, Search } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '../utils';
+import { displayText } from '@/utils/machineText';
 import { InlineLoading } from '../loading/Loading';
 import { CONTROL_STATE_CLASSES } from '../controlState';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -377,7 +378,7 @@ export const Select: React.FC<SelectProps> = ({
           "min-w-0 flex-1 truncate text-left",
           selectedOption ? (disabled ? "text-slate-600" : "text-slate-700 font-medium") : "text-slate-400",
         )}>
-          {selectedOption ? selectedOption.label : placeholder}
+          {selectedOption ? displayText(selectedOption.label) : placeholder}
         </span>
         <ChevronDown
           className={cn(
@@ -476,7 +477,7 @@ export const Select: React.FC<SelectProps> = ({
                             )}
                             style={{ height: rowHeight }}
                           >
-                            <span className={cn("flex-1 text-left", truncateOptions && "min-w-0 truncate")} title={truncateOptions ? option.label : undefined}>{option.label}</span>
+                            <span className={cn("flex-1 text-left", truncateOptions && "min-w-0 truncate")} title={truncateOptions ? displayText(option.label) : undefined}>{displayText(option.label)}</span>
                             <span className="flex items-center gap-2 shrink-0 ml-2">
                               {option.icon}
                               {isSelected && (
@@ -509,7 +510,7 @@ export const Select: React.FC<SelectProps> = ({
                         )}
                         style={{ height: rowHeight }}
                       >
-                        <span className={cn("flex-1 text-left", truncateOptions && "min-w-0 truncate")} title={truncateOptions ? option.label : undefined}>{option.label}</span>
+                        <span className={cn("flex-1 text-left", truncateOptions && "min-w-0 truncate")} title={truncateOptions ? displayText(option.label) : undefined}>{displayText(option.label)}</span>
                         <span className="flex items-center gap-2 shrink-0 ml-2">
                           {option.icon}
                           {isSelected && (

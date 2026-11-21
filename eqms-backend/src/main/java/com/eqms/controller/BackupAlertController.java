@@ -102,8 +102,27 @@ public class BackupAlertController {
             vars.put("search", cut(search, 200));
         }
         BackupAgentClient.Reply listed = agent.exchange(HttpMethod.GET, uri.buildAndExpand(vars).encode().toUriString(), null);
-        if (listed.ok()) numberTheAlerts(listed.body());
+        if (listed.ok()) {
+            numberTheAlerts(listed.body());
+            labelTheAlerts(listed.body() == null ? null : listed.body().get("data"));
+        }
         return reply(listed);
+    }
+
+    /** The agent raises an alert with a code and a sentence that may carry another code: each alert also carries the words of its code, and no code is left in the sentence. */
+    static void labelTheAlerts(JsonNode data) {
+        if (data == null || !data.isArray()) return;
+        for (JsonNode alert : data) {
+            if (!(alert instanceof com.fasterxml.jackson.databind.node.ObjectNode object)) continue;
+            String code = object.path("code").asText(null);
+            if (code != null) object.put("codeLabel", com.eqms.util.DisplayLabels.humanize(code));
+            String severity = object.path("severity").asText(null);
+            if (severity != null) object.put("severityLabel", com.eqms.util.DisplayLabels.humanize(severity));
+            if (object.path("detail").isTextual()) object.put("detail", com.eqms.util.DisplayLabels.prose(object.path("detail").asText()));
+            // a reference that is a machine word instead of a number (NEVER: no copy has ever been recorded) is shown as a word
+            String ref = object.path("ref").asText(null);
+            if (ref != null && com.eqms.util.DisplayLabels.isMachineValue(ref)) object.put("ref", com.eqms.util.DisplayLabels.humanize(ref));
+        }
     }
 
     @PostMapping("/alerts/{alertId}/acknowledge")

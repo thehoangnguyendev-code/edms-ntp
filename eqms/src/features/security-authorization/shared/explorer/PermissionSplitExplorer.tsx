@@ -10,6 +10,7 @@ import { MENU_MODULE_ORDER, moduleDisplayName, moduleOrderFromMenu, sortModulesL
 import { navigationApi } from "@/services/api/navigation";
 import { TabNav, type TabItem } from "@/components/ui/tabs";
 import { PermissionTableView } from "./PermissionTableView";
+import { Reveal } from "./Reveal";
 
 /** The choice between the cards and the table is a preference of the person, kept in this browser (nothing depends on it, so a refused storage is ignored). */
 const VIEW_STORAGE_KEY = "eqms.permission-explorer.view";
@@ -186,6 +187,7 @@ export const PermissionSplitExplorer: React.FC<
     return { module, groups: moduleGroups, permissions, selected: permissions.filter((permission) => selectedCodes.has(permission.id)).length };
   });
   const activeEntry = entries.find((entry) => entry.module === activeModule) ?? entries[0];
+  const extras = moduleExtras && activeEntry && activeEntry.selected > 0 ? moduleExtras(activeEntry.module) : null;
   const countLabel = (entry: { permissions: Permission[]; selected: number }) =>
     selectedOnly ? `${entry.permissions.length} granted` : `${entry.selected}/${entry.permissions.length}`;
   const isLocked = (code: string) => lockedCodes?.has(code) ?? false;
@@ -208,9 +210,10 @@ export const PermissionSplitExplorer: React.FC<
           </button>
         ))}
       </div>
-      {moduleExtras && activeEntry && activeEntry.selected > 0 && (
-        <div className="border-b border-slate-200 p-3 sm:p-4">{moduleExtras(activeEntry.module)}</div>
-      )}
+      {/* The extras of a module (its record-visibility choice) slide in and out; a module without extras leaves no space at all. */}
+      <Reveal show={extras != null}>
+        <div className="border-b border-slate-200 p-3 sm:p-4">{extras}</div>
+      </Reveal>
       {view === "table" ? (
         <div className={scrollBox}>
           <PermissionTableView

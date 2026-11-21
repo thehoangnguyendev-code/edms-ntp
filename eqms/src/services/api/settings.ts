@@ -359,6 +359,23 @@ export interface PermissionLifecycleUsage {
   actionLabel: string;
 }
 
+export interface PermissionSetPermissionRow {
+  code: string;
+  name: string;
+  description: string | null;
+  /** The module key as the server stores it; shown through moduleDisplayName. */
+  module: string;
+  requiresAudit: boolean;
+  lifecycleUsages: PermissionLifecycleUsage[];
+}
+
+export interface PermissionSetPermissionPage {
+  data: PermissionSetPermissionRow[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+  /** The values of the Module filter: the modules of what the search found, with how many. */
+  modules: { module: string; count: number }[];
+}
+
 export interface PermissionCatalogFlatItem {
   code: string;
   name: string;
@@ -962,6 +979,11 @@ export const settingsApi = {
   },
   getPermissionSet: async (id: string): Promise<PermissionSetResponse> => {
     const r = await api.get<PermissionSetResponse>(`/security/permission-sets/${id}`);
+    return r.data;
+  },
+  /** A page of the permissions of one Permission Set; the search and the Module filter are applied by the server. */
+  getPermissionSetPermissions: async (id: string, params: { page: number; limit: number; search?: string; module?: string }): Promise<PermissionSetPermissionPage> => {
+    const r = await api.get<PermissionSetPermissionPage>(`/security/permission-sets/${id}/permissions`, { params });
     return r.data;
   },
   getPermissionSetAssignedAccessProfiles: async (id: string): Promise<PermissionSetAssignedAccessProfile[]> => {

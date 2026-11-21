@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { SectionLoading } from "@/components/ui/loading";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
@@ -11,9 +12,11 @@ import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 const SORTABLE = new Set(["code", "name", "department", "state", "result", "read", "sign", "participation"]);
 
 /** Only one authorized group/session page is held in the browser; commands still use the original row IDs. */
-export function TrainingParticipantTable({ activityId, sessionId, group, title, columns, refreshToken }: {
+export function TrainingParticipantTable({ activityId, sessionId, group, title, columns, refreshToken, renderRow }: {
   activityId: string; sessionId?: string; group: string; title: string;
   columns: DataTableColumn<TrainingParticipant>[]; refreshToken: unknown;
+  /** Draws each person as a line of a list instead of a row of the table (the attendance step of the workspace); the server paging, search and sort are the same. */
+  renderRow?: (p: TrainingParticipant, index: number) => ReactNode;
 }) {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -53,11 +56,20 @@ export function TrainingParticipantTable({ activityId, sessionId, group, title, 
     <h3 className="mb-3 text-sm font-semibold text-slate-800">{title}{loaded ? ` (${total})` : ""}</h3>
     <div className="mb-4"><FilterSearchInput aria-label={`Search ${title}`} value={search} onChange={(value) => { setSearch(value); setPage(1); }} placeholder="Search name or employee ID…" /></div>
     {error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
-    <DataTable rows={rows} getRowKey={(p) => p.id} isLoading={loading}
+    {renderRow ? (
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        {loading && !loaded ? <SectionLoading minHeight="160px" /> : rows.length === 0 ? (
+          <TableEmptyState title="No Participants" description="No participant matches this session and search." />
+        ) : (
+          <ul className="divide-y divide-slate-100">{rows.map((p, i) => renderRow(p, (page - 1) * limit + i))}</ul>
+        )}
+        {total > 0 && <TablePagination currentPage={page} totalPages={pages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} />}
+      </div>
+    ) : <DataTable rows={rows} getRowKey={(p) => p.id} isLoading={loading}
       columns={columns.map((column) => column.id === "rowNo" ? { ...column, cell: (_p: TrainingParticipant, i: number) => (page - 1) * limit + i + 1 }
         : SORTABLE.has(column.id) ? { ...column, sort: { direction: sort.key === column.id ? sort.direction : undefined, onSort: () => { setSort((s) => ({ key: column.id, direction: s.key === column.id && s.direction === "asc" ? "desc" : "asc" })); setPage(1); } } }
         : column)}
       emptyState={<TableEmptyState title="No Participants" description="No participant matches this session and search." />}
-      pagination={total > 0 ? <TablePagination currentPage={page} totalPages={pages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} /> : undefined} />
+      pagination={total > 0 ? <TablePagination currentPage={page} totalPages={pages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} /> : undefined} />}
   </section>;
 }

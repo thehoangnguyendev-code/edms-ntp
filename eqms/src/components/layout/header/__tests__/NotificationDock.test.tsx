@@ -149,7 +149,7 @@ describe('Pinning the notification list to the side', () => {
     expect(await screen.findByTestId('notification-dock')).toBeInTheDocument();
   });
 
-  it('refreshes itself when notifications change, and marks everything read after a confirmation', async () => {
+  it('refreshes itself when notifications change, and marks everything read in one press', async () => {
     window.localStorage.setItem('eqms:notification-dock:u1', 'pinned');
     render(<Layout />);
     const side = await screen.findByTestId('notification-dock');
@@ -159,9 +159,30 @@ describe('Pinning the notification list to the side', () => {
     act(() => emitNotificationsChanged());
     await waitFor(() => expect(api.getNotifications.mock.calls.length).toBeGreaterThan(before));
 
-    fireEvent.click(within(side).getByRole('button', { name: 'Mark All as Read' }));
-    expect(api.markAllAsRead).not.toHaveBeenCalled(); // asks first
-    fireEvent.click(await screen.findByRole('button', { name: 'Yes, Mark All' }));
+    fireEvent.click(within(side).getByRole('button', { name: 'Mark all as read' }));
     await waitFor(() => expect(api.markAllAsRead).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe('The tabs of the notification list are filters of the server', () => {
+  it('asks the server for the unread ones, and for the personal ones, instead of cutting the eight that were loaded', async () => {
+    render(<Layout />);
+    fireEvent.click(bell());
+    await screen.findByText('Notice 1');
+    expect(api.getNotifications).toHaveBeenLastCalledWith(expect.not.objectContaining({ status: 'unread' }));
+
+    fireEvent.click(screen.getByRole('tab', { name: /^Unread/ }));
+    await waitFor(() => expect(api.getNotifications).toHaveBeenLastCalledWith(expect.objectContaining({ scope: 'all', status: 'unread' })));
+
+    fireEvent.click(screen.getByRole('tab', { name: /^For Me/ }));
+    await waitFor(() => expect(api.getNotifications).toHaveBeenLastCalledWith(expect.objectContaining({ scope: 'personal' })));
+    expect(screen.getByRole('tab', { name: /^For Me/ })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('shows the notifications under a heading of the day', async () => {
+    render(<Layout />);
+    fireEvent.click(bell());
+    await screen.findByText('Notice 1');
+    expect(screen.getAllByRole('region').length).toBeGreaterThan(0);
   });
 });

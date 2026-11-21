@@ -1172,11 +1172,11 @@ public class WorkflowActionPolicyService {
                 case "READY_FOR_PUBLISHING"     -> "Ready for Publishing";
                 case "EFFECTIVE"                -> "Effective";
                 case "OBSOLETED"                -> "Obsoleted";
-                case "CLOSED_CANCELLED"         -> "Cancelled";
                 // Controlled Copy statuses
                 case "READY_FOR_DISTRIBUTION"   -> "Ready for Distribution";
                 case "DISTRIBUTED"              -> "Distributed";
-                default -> code;
+                // every other status (Training Activity, Closed - Cancelled, one added later) is shown as words, never as the code: the one wording of the server
+                default -> com.eqms.util.DisplayLabels.status(code);
             };
         }
 

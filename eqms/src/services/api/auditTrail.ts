@@ -270,10 +270,24 @@ export const auditTrailApi = {
     limit: number;
     search?: string;
     decision?: string;
+    /** The entry's module as the server stores it (see getReviewItemFilterOptions). */
+    module?: string;
+    action?: string;
+    /** ALL, YES or NO: whether the entry carries an electronic signature. */
+    signed?: 'ALL' | 'YES' | 'NO';
+    /** yyyy-MM-dd, inclusive. */
+    from?: string;
+    to?: string;
     sortBy?: string;
     sortDirection?: 'asc' | 'desc';
   }): Promise<AuditTrailPageResponse<AuditTrailReviewItem>> => {
     const r = await api.get<AuditTrailPageResponse<AuditTrailReviewItem>>(`${ENDPOINT}/reviews/${campaignId}/items/paged`, { params });
+    return r.data;
+  },
+
+  /** The modules and actions that appear in one campaign, for its Module and Action filters. */
+  getReviewItemFilterOptions: async (campaignId: string): Promise<{ modules: string[]; actions: string[] }> => {
+    const r = await api.get<{ modules: string[]; actions: string[] }>(`${ENDPOINT}/reviews/${campaignId}/items/filter-options`);
     return r.data;
   },
 

@@ -268,7 +268,7 @@ export const AuditTrailReviewView: React.FC = () => {
   return (
     <div className="flex w-full flex-1 flex-col space-y-6">
       <PageHeader
-        title="Audit Trail Review"
+        title="Periodic Review"
         breadcrumbItems={auditTrailReviewBreadcrumb(navigate)}
         actions={
           canManage ? (

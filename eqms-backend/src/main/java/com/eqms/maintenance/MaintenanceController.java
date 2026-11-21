@@ -45,10 +45,13 @@ public class MaintenanceController {
     private final com.eqms.auth.CurrentUserService currentUser;
     private final com.eqms.service.PermissionEvaluationService permissions;
     private final com.eqms.service.SignatureTokenConsumptionService signatures;
+    private final com.eqms.service.AuditTrailService audit;
 
     public MaintenanceController(BackupAgentClient agent, MaintenancePassService passes, MaintenanceGateFilter gate, MaintenanceAnnouncements announcements,
                                  com.eqms.service.SystemConfigurationService configuration, com.eqms.auth.CurrentUserService currentUser,
-                                 com.eqms.service.PermissionEvaluationService permissions, com.eqms.service.SignatureTokenConsumptionService signatures) {
+                                 com.eqms.service.PermissionEvaluationService permissions, com.eqms.service.SignatureTokenConsumptionService signatures,
+                                 com.eqms.service.AuditTrailService audit) {
+        this.audit = audit;
         this.agent = agent;
         this.passes = passes;
         this.gate = gate;
@@ -75,6 +78,22 @@ public class MaintenanceController {
             return user.getUsername();
         } catch (RuntimeException e) {
             return null;
+        }
+    }
+
+    /** One identifier for the whole maintenance window in the Audit Trail (a window has no row of its own in this database). */
+    private static final java.util.UUID WINDOW_AUDIT_ID = java.util.UUID.nameUUIDFromBytes("MAINTENANCE_WINDOW".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+    /**
+     * What the operator did is written to the Audit Trail (AUDIT_TRAIL_STANDARD: every state change). It is best-effort on purpose: the window
+     * is operated while the system is drained or being restored, and a failure to write must never keep the operator from reopening it. A
+     * failure is logged as an error, never silent.
+     */
+    private void record(String operator, String action, String comment) {
+        try {
+            if (audit != null) audit.logMaintenanceOperator(operator, "BACKUP_RESTORE", "Maintenance window", WINDOW_AUDIT_ID, action, null, null, comment);
+        } catch (RuntimeException e) {
+            org.slf4j.LoggerFactory.getLogger(MaintenanceController.class).error("The maintenance action {} by {} could not be written to the Audit Trail", action, operator, e);
         }
     }
 
@@ -140,9 +159,11 @@ public class MaintenanceController {
             return noStore(Map.of("code", "SUPER_ADMIN_LOCKED", "message", "Too many failed sign-in attempts. Wait 15 minutes and try again."), HttpStatus.TOO_MANY_REQUESTS);
         }
         if (!verified.ok()) {
+            record(username.toLowerCase(), "MAINTENANCE_SIGN_IN_FAILED", "Sign-in to the maintenance window refused: wrong user name or password");
             return noStore(Map.of("code", "INVALID_CREDENTIALS", "message", "The user name or password is wrong"), HttpStatus.UNAUTHORIZED);
         }
         MaintenancePassService.Issued pass = passes.issue(username.toLowerCase());
+        record(username.toLowerCase(), "MAINTENANCE_SIGN_IN", "Signed in to operate the maintenance window");
         return noStore(Map.of("pass", pass.token(), "username", username.toLowerCase(), "expiresAt", pass.expiresAt().toString()));
     }
 
@@ -159,6 +180,7 @@ public class MaintenanceController {
         if (body == null || body.minutes() == null) return problem(HttpStatus.BAD_REQUEST, "MAINTENANCE_NOTICE_OUT_OF_RANGE", "The notice must be between 5 and 240 minutes");
         BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/maintenance/notice",
                 Map.of("minutes", body.minutes(), "requestId", body.requestId() == null ? "" : body.requestId(), "by", by));
+        if (reply.ok()) record(by, "MAINTENANCE_NOTICE_STARTED", "Maintenance notice of " + body.minutes() + " minutes started");
         if (reply.ok() && reply.body().path("endsAt").isTextual()) {
             // everyone is told through System Announcements (SDS 11.5.2 M1); the announcement ends after the window
             safely(() -> announcements.noticeStarted(reply.body().path("requestId").asText(), body.minutes(),
@@ -173,6 +195,7 @@ public class MaintenanceController {
         String by = operator(pass, signatureToken);
         if (by == null) return refused();
         BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/maintenance/cancel", Map.of("by", by));
+        if (reply.ok()) record(by, "MAINTENANCE_CANCELLED", "Maintenance notice cancelled");
         if (reply.ok()) safely(() -> announcements.cancelled(reply.body().path("requestId").asText(), by));
         return reply(reply);
     }
@@ -182,7 +205,9 @@ public class MaintenanceController {
                                          @RequestHeader(value = "X-Signature-Token", required = false) String signatureToken, @RequestBody LockBody body) {
         String by = operator(pass, signatureToken);
         if (by == null) return refused();
-        return forwardBy(by, HttpMethod.POST, "/internal/maintenance/lock", Map.of("by", by, "noUserConfirmed", body != null && body.noUserConfirmed()));
+        ResponseEntity<JsonNode> locked = forwardBy(by, HttpMethod.POST, "/internal/maintenance/lock", Map.of("by", by, "noUserConfirmed", body != null && body.noUserConfirmed()));
+        if (locked.getStatusCode().is2xxSuccessful()) record(by, "MAINTENANCE_LOCKED", "System locked for maintenance" + (body != null && body.noUserConfirmed() ? " (no signed-in user confirmed)" : ""));
+        return locked;
     }
 
     @PostMapping("/maintenance/unlock")
@@ -191,6 +216,7 @@ public class MaintenanceController {
         String by = operator(pass, signatureToken);
         if (by == null) return refused();
         BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/maintenance/unlock", Map.of("by", by));
+        if (reply.ok()) record(by, "MAINTENANCE_UNLOCKED", "System reopened after maintenance");
         if (reply.ok()) safely(() -> announcements.reopened(reply.body().path("requestId").asText(), by));
         return reply(reply);
     }

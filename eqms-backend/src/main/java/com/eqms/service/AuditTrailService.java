@@ -1088,6 +1088,15 @@ public class AuditTrailService {
     }
 
     /**
+     * Records an action of the person who operates the maintenance window: the Super Administrator (who is outside the user table) or
+     * a person with the maintenance bypass. The name is kept as an immutable snapshot, like an external recipient; no user account is involved.
+     */
+    @Transactional
+    public void logMaintenanceOperator(String operator, String entityType, String entityName, UUID entityId, String actionType, String fromStatus, String toStatus, String comment) {
+        persistWithoutAccount(operator, "Maintenance operator", entityType, entityName, entityId, actionType, fromStatus, toStatus, comment);
+    }
+
+    /**
      * Records something the system did by itself (a background worker finished or failed a job), in the same transaction as the change it records.
      * The actor is the system and no user account is involved (REPORT-RUN-AUDIT-2026-11-16).
      */
@@ -1243,7 +1252,10 @@ public class AuditTrailService {
         try {
             log(entityType, entityName, entityId, actionType, fromStatus, toStatus, comment);
         } catch (RuntimeException ex) {
-            // Best-effort audit logging must not block the primary business transaction.
+            // Best-effort audit logging must not block the primary business transaction, but it must never be silent:
+            // before this a failed write left the change with no record and no line in the log (API audit review 2026-11-21).
+            org.slf4j.LoggerFactory.getLogger(AuditTrailService.class).error(
+                    "A best-effort Audit Trail entry could not be written: {} {} {} ({})", entityType, actionType, entityName, ex.toString(), ex);
         }
     }
 
@@ -1416,16 +1428,21 @@ public class AuditTrailService {
         }
     }
 
+    /** A record whose entity could not be named falls back to its type as the server keeps it (TRAINING_ASSESSMENT): shown as words. */
+    private static String plainName(String value) {
+        return com.eqms.util.DisplayLabels.isMachineValue(value) ? com.eqms.util.DisplayLabels.humanize(value) : value;
+    }
+
     private AuditTrailRecordResponse toResponse(AuditLog log) {
         AuditActorSnapshot actorSnapshot = resolveActorSnapshot(log);
         String module = mapModule(log.getEntityType());
         String action = mapAction(log.getActionType());
         List<AuditTrailChangeResponse> changes = loadChanges(log);
         AuditEntitySnapshot entitySnapshot = resolveEntitySnapshot(log, module);
-        String entityLabel = entitySnapshot.entityLabel();
-        String objectCode = entitySnapshot.entityCode();
-        String changeSummary = com.eqms.util.AuditDisplayText.hideIds(buildChangeSummary(log, changes));
-        String normalizedDescription = com.eqms.util.AuditDisplayText.hideIds(buildDescription(log, action, entityLabel, changeSummary));
+        String entityLabel = plainName(entitySnapshot.entityLabel());
+        String objectCode = plainName(entitySnapshot.entityCode());
+        String changeSummary = com.eqms.util.DisplayLabels.prose(com.eqms.util.AuditDisplayText.hideIds(buildChangeSummary(log, changes)));
+        String normalizedDescription = com.eqms.util.DisplayLabels.prose(com.eqms.util.AuditDisplayText.hideIds(buildDescription(log, action, entityLabel, changeSummary)));
         String resolvedReason = com.eqms.util.AuditDisplayText.hideIds(resolveReason(log, normalizedDescription));
 
         Map<String, Object> metadata = new LinkedHashMap<>();
@@ -1461,7 +1478,7 @@ public class AuditTrailService {
                 module,
                 action,
                 log.getEntityId() == null ? null : log.getEntityId().toString(),
-                entitySnapshot.entityName(),
+                plainName(entitySnapshot.entityName()),
                 entityLabel,
                 objectCode,
                 normalizedDescription,
@@ -1485,10 +1502,10 @@ public class AuditTrailService {
         String action = mapAction(log.getActionType());
         List<AuditTrailChangeResponse> changes = loadChanges(log);
         AuditEntitySnapshot entitySnapshot = resolveEntitySnapshot(log, module);
-        String entityLabel = entitySnapshot.entityLabel();
-        String objectCode = entitySnapshot.entityCode();
-        String changeSummary = com.eqms.util.AuditDisplayText.hideIds(buildChangeSummary(log, changes));
-        String normalizedDescription = com.eqms.util.AuditDisplayText.hideIds(buildDescription(log, action, entityLabel, changeSummary));
+        String entityLabel = plainName(entitySnapshot.entityLabel());
+        String objectCode = plainName(entitySnapshot.entityCode());
+        String changeSummary = com.eqms.util.DisplayLabels.prose(com.eqms.util.AuditDisplayText.hideIds(buildChangeSummary(log, changes)));
+        String normalizedDescription = com.eqms.util.DisplayLabels.prose(com.eqms.util.AuditDisplayText.hideIds(buildDescription(log, action, entityLabel, changeSummary)));
         String resolvedReason = com.eqms.util.AuditDisplayText.hideIds(resolveReason(log, normalizedDescription));
         Map<String, Object> metadata = buildDetailMetadata(log, entitySnapshot, changeSummary, resolvedReason, module, action);
 
@@ -1504,7 +1521,7 @@ public class AuditTrailService {
                 log.getActionType(),
                 log.getEntityId() == null ? null : log.getEntityId().toString(),
                 log.getEntityType(),
-                entitySnapshot.entityName(),
+                plainName(entitySnapshot.entityName()),
                 entityLabel,
                 objectCode,
                 entitySnapshot.documentNumber(),
@@ -1967,6 +1984,11 @@ public class AuditTrailService {
         if (field != null && field.toLowerCase(Locale.ROOT).matches(".*(status|state).*")) {
             return humanizeField(normalized);
         }
+        // a setting that is one of a few named choices (layout, style, mode, severity...) is shown by the words of the choice, not by its code (SPLIT -> Split)
+        if (com.eqms.util.DisplayLabels.isMachineValue(normalized) && (normalized.contains("_")
+                || (field != null && field.toLowerCase(Locale.ROOT).matches(".*(layout|style|mode|type|kind|severity|method|priority|format|align|orientation|scope|channel|position|size|layer|frequency).*")))) {
+            return com.eqms.util.DisplayLabels.humanize(normalized);
+        }
         return com.eqms.util.AuditDisplayText.hideIds(normalized);
     }
 
@@ -2396,7 +2418,8 @@ public class AuditTrailService {
             case "DELETE_WORKING_NOTE" -> "Delete Working Note";
             case "DOWNLOAD_EVIDENCE" -> "Download Evidence";
             case "PUBLISH_TO_EFFECTIVE" -> "Publish to Effective";
-            default -> normalized.charAt(0) + normalized.substring(1).toLowerCase(Locale.ROOT);
+            // an action no rule names is shown as the words of its code ("training_approver_designated" -> "Training Approver Designated"), never as the code
+            default -> com.eqms.util.DisplayLabels.humanize(normalized);
         };
     }
 

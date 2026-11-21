@@ -29,7 +29,8 @@ import { WorkflowTab } from "./tabs/AccessProfileWorkflowTab";
 import { AccessProfileAssignedUsersTab } from "./tabs/AccessProfileAssignedUsersTab";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
 import { DOCUMENT_CONTROL_VISIBILITY_COLOR, DOCUMENT_CONTROL_VISIBILITY_LABEL } from "../shared/documentControlVisibility";
-import { AccessProfilePermissionSetDrawer } from "./tabs/AccessProfilePermissionSetDrawer";
+import { moduleVisibilityBadges } from "../shared/moduleVisibility";
+import { AccessProfilePermissionSetModal } from "./tabs/AccessProfilePermissionSetModal";
 import { accessProfileDetail as accessProfileDetailBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 
 type TabId = "general" | "permissions" | "permission-sets" | "workflow" | "users" | "audit";
@@ -70,7 +71,7 @@ export const AccessProfileDetailView: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [isEditing, setIsEditing] = useState(isEditRoute);
   const [deleteModal, setDeleteModal] = useState(false);
-  const [drawerPs, setDrawerPs] = useState<PermissionSetSummary | null>(null);
+  const [modalPs, setModalPs] = useState<PermissionSetSummary | null>(null);
   const [capabilities, setCapabilities] = useState<AccessProfileCapabilitiesResponse | null>(null);
   // Assignment diffs collected from the tabs; applied together on Save with a single e-signature.
   const [changes, setChanges] = useState<AssignChanges>(EMPTY_CHANGES);
@@ -81,6 +82,8 @@ export const AccessProfileDetailView: React.FC = () => {
   const [impactModal, setImpactModal] = useState(false);
   // Bumped after save/cancel so the assignment tabs re-fetch and drop local edits.
   const [reloadKey, setReloadKey] = useState(0);
+  // Everything the profile grants (its own permissions and its shared sets): the record-visibility badges of Training and Reports come from it.
+  const [grantedCodes, setGrantedCodes] = useState<string[]>([]);
 
   const [draft, setDraft] = useState({
     name: "",
@@ -107,6 +110,16 @@ export const AccessProfileDetailView: React.FC = () => {
       .catch(() => showToast({ type: "error", message: "Failed to load profile" }))
       .finally(() => setLoading(false));
   }, [id, showToast]);
+
+  useEffect(() => {
+    if (!profile) return;
+    let active = true;
+    const attached = new Set(profile.permissionSets.map((set) => set.id));
+    settingsApi.listPermissionSets(true)
+      .then((sets) => { if (active) setGrantedCodes(sets.filter((set) => attached.has(set.id)).flatMap((set) => set.permissionCodes)); })
+      .catch(() => { if (active) setGrantedCodes([]); });
+    return () => { active = false; };
+  }, [profile, reloadKey]);
 
   const can = (action: string) => Boolean(capabilities?.actions?.[action]?.allowed);
   const reason = (action: string) => capabilities?.actions?.[action]?.reason || "Action is not currently allowed";
@@ -334,7 +347,7 @@ export const AccessProfileDetailView: React.FC = () => {
                   title={!can("edit") ? reason("edit") : undefined}
                   onClick={() => setIsEditing(true)}
                 >
-                  Edit
+                  Edit Access Profile
                 </Button>
                 <Button
                   variant="outline-emerald"
@@ -398,6 +411,9 @@ export const AccessProfileDetailView: React.FC = () => {
                 <Badge color={flagColor(profile.active)} size="sm">
                   {profile.active ? "Active" : "Inactive"}
                 </Badge>
+                {moduleVisibilityBadges(grantedCodes).map((badge) => (
+                  <Badge key={badge.module} color={badge.color} size="sm">{`${badge.module}: ${badge.label}`}</Badge>
+                ))}
                 {profile.documentControlVisibility ? (
                   <Badge color={DOCUMENT_CONTROL_VISIBILITY_COLOR[profile.documentControlVisibility]} size="sm">
                     {`Document Control: ${DOCUMENT_CONTROL_VISIBILITY_LABEL[profile.documentControlVisibility]}`}
@@ -470,7 +486,7 @@ export const AccessProfileDetailView: React.FC = () => {
               reloadKey={reloadKey}
               canAssign={canAssignInTab("assignPermissionSets")}
               deniedReason={tabDeniedReason("assignPermissionSets")}
-              onOpenDrawer={setDrawerPs}
+              onOpenDrawer={setModalPs}
               onChangesChange={(diff) => handleTabChanges("permissionSets", diff)}
             />
           )}
@@ -502,7 +518,7 @@ export const AccessProfileDetailView: React.FC = () => {
         </div>
       </div>
 
-      {drawerPs && <AccessProfilePermissionSetDrawer ps={drawerPs} onClose={() => setDrawerPs(null)} />}
+      {modalPs && <AccessProfilePermissionSetModal ps={modalPs} onClose={() => setModalPs(null)} />}
 
       <AlertModal
         isOpen={impactModal}

@@ -234,6 +234,7 @@ export const ProductionRestoresView: React.FC = () => {
       actions={
         <>
           <BackupExportButton
+            totalRecords={total}
             dataset="production-restores"
             params={{
               search: debouncedSearch.trim() || undefined,

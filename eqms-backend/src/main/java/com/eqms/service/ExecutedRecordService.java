@@ -319,7 +319,8 @@ public class ExecutedRecordService {
     }
 
     /** Streams the scan for the preview modal: needs only the view permission (not download) and the record's visibility. */
-    @Transactional(readOnly = true)
+    // not read-only: the view of a GMP record is written to the Audit Trail (AUDIT_TRAIL_STANDARD 1.5)
+    @Transactional
     public RecordFile previewFile(UUID id) throws IOException {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         requirePermission(currentUser, P_VIEW, "Not permitted to view Executed Records");
@@ -334,6 +335,8 @@ public class ExecutedRecordService {
         String contentType = sniffed != null ? sniffed : "application/octet-stream";
         RecordFile marked = markedScan(record, bytes, contentType, StringUtils.hasText(record.getFileName()) ? record.getFileName() : record.getRecordNumber());
         // a view in the preview modal carries the watermark of the preview settings, on top of the stamp of the copy
+        auditTrailService.logAs(currentUser, ENTITY_TYPE, record.getRecordNumber(), record.getId(), "VIEW_FILE", null, null,
+                "Viewed the scan of the executed record in the preview");
         if (previewMarking != null) {
             var scan = previewMarking.markScan(marked.bytes(), marked.contentType(), currentUser);
             return new RecordFile(scan.bytes(), scan.contentType(), marked.fileName());
@@ -411,7 +414,8 @@ public class ExecutedRecordService {
         return new PageResponse<>(data, new PaginationResponse(safePage, safeLimit, result.getTotalElements(), result.getTotalPages()));
     }
 
-    @Transactional(readOnly = true)
+    // not read-only: the download of a GMP record is written to the Audit Trail (AUDIT_TRAIL_STANDARD 1.5)
+    @Transactional
     public byte[] downloadFile(UUID id) throws IOException {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         requirePermission(currentUser, P_VIEW, "Not permitted to view Executed Records");
@@ -423,6 +427,8 @@ public class ExecutedRecordService {
         }
         byte[] bytes = fileStorageService.readFile(record.getStorageObjectKey());
         String sniffed = ControlledCopyScanCodeService.sniffContentType(bytes);
+        auditTrailService.logAs(currentUser, ENTITY_TYPE, record.getRecordNumber(), record.getId(), "DOWNLOAD", null, null,
+                "Downloaded the file of the executed record");
         return markedScan(record, bytes, sniffed != null ? sniffed : "application/octet-stream", record.getFileName()).bytes();
     }
 

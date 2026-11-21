@@ -268,6 +268,7 @@ export const DepartmentsTab = React.forwardRef<
     { id: "icon", header: "Folder", label: "Folder", cell: (item) => <FolderIcon color={item.iconColor || folderColor(item.name)} className="h-6 w-7" /> },
     { id: "primaryContactPhone", header: "Primary Contact", label: "Primary Contact", sort: { direction: sortConfig.key === "primaryContactPhone" ? sortConfig.direction : undefined, onSort: () => handleSort("primaryContactPhone") }, cellClassName: "text-slate-700", cell: (item) => item.primaryContactPhone || "-" },
     { id: "departmentHeadName", header: "Department Head", label: "Department Head", cellClassName: "text-slate-700", cell: (item) => item.departmentHeadName || "-" },
+    { id: "employeeCount", header: "Employees", label: "Employees", cellClassName: "text-slate-700", cell: (item) => (item.employeeCount ?? 0).toLocaleString("en-US") },
     { id: "description", header: "Description", label: "Description", sort: { direction: sortConfig.key === "description" ? sortConfig.direction : undefined, onSort: () => handleSort("description") }, cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
     {
       id: "isActive",

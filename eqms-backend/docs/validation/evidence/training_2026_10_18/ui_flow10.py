@@ -14,7 +14,7 @@ with sync_playwright() as p:
     tp.on('response', lambda x: bad.append(f'{x.status} {x.url.split("/api")[-1][:70]}') if x.status >= 400 and '/api/' in x.url else None)
     tp.goto(f'{BASE}/training-management/check-in?code={code}'); tp.wait_for_timeout(2500)
     tp.screenshot(path='shots/ui_checkin_trainee.png')
-    tp.get_by_role('button', name='Continue to sign').click(); tp.wait_for_timeout(1000)
+    tp.get_by_role('button', name='Continue to Sign').click(); tp.wait_for_timeout(1000)
     d = tp.locator('[role=dialog]').last
     d.locator('textarea').fill('I am present')
     d.get_by_placeholder('Enter your username').fill('trainee.test1')

@@ -256,7 +256,7 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
                         <TableMarkup.Root className="text-xs table-auto w-auto">
                           <TableMarkup.Head>
-                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200">
+                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200 uppercase">
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>
                                 No.
                               </TableMarkup.HeaderCell>
@@ -319,7 +319,7 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
                         <TableMarkup.Root className="text-xs table-auto w-auto">
                           <TableMarkup.Head>
-                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200">
+                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200 uppercase">
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>
                                 No.
                               </TableMarkup.HeaderCell>
@@ -392,7 +392,7 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
                         <TableMarkup.Root className="text-xs table-auto w-auto">
                           <TableMarkup.Head>
-                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200">
+                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200 uppercase">
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Document Number
                               </TableMarkup.HeaderCell>
@@ -447,7 +447,7 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
                         <TableMarkup.Root className="text-xs table-auto w-auto">
                           <TableMarkup.Head>
-                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200">
+                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200 uppercase">
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Document Number
                               </TableMarkup.HeaderCell>

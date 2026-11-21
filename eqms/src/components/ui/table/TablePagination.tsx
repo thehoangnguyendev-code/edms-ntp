@@ -3,6 +3,7 @@ import { Button } from '../button/Button';
 import { Select } from '../select/Select';
 import { cn } from '../utils';
 import { useFitLevel } from '../useFitLevel';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 
 export interface TablePaginationProps {
@@ -95,6 +96,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   );
 
   const rootRef = useRef<HTMLDivElement>(null);
+  const isPhone = useMediaQuery('(max-width: 639px)');
   // Nothing here ever wraps: when the room is short the pagination gives up detail, in this order, and never by the width of the screen
   // (the sidebar and a modal take a different share of the same screen). 0 = everything; 1 = the page numbers become "3/113"; 2 = Previous
   // and Next become arrows; 3 = "results" is dropped; 4 = the word "Show:" is dropped too.
@@ -103,7 +105,8 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   if (totalPages === 0) return null;
 
   const numbered = showPageNumbers && level === 0;
-  const arrows = level >= 2;
+  // On a phone Previous and Next are always the arrows, whatever room is left: the text buttons are for a wider screen.
+  const arrows = level >= 2 || isPhone;
 
   return (
     <div

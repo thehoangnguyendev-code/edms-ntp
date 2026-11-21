@@ -29,6 +29,7 @@ import {
 } from "@/features/documents/shared/controlledCopyRequest";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { FormModal } from "@/components/ui/modal/FormModal";
+import { TableExportModal } from "@/components/ui/modal/TableExportModal";
 import { useToast } from "@/components/ui/toast";
 import { documentApi } from "@/services/api/documents";
 import { buildDocumentDetailSnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
@@ -139,6 +140,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
   const { navigateTo, navigateToPrepared, isNavigating } = useNavigateWithLoading();
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
   const [isNewDocChoiceOpen, setIsNewDocChoiceOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
   const [expandedDocumentId, setExpandedDocumentId] = React.useState<string | null>(null);
   const {
     searchQuery,
@@ -261,10 +263,6 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
 
   const handleExpandDocument = (documentId: string) => {
     setExpandedDocumentId(expandedDocumentId === documentId ? null : documentId);
-  };
-
-  const onExport = async () => {
-    await exportDocuments();
   };
 
   const mapRelationDocument = (doc: any) => ({
@@ -516,7 +514,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
         actions={
           <>
             <Button
-              onClick={onExport}
+              onClick={() => setIsExportOpen(true)}
               variant="outline"
               size="sm"
               className="whitespace-nowrap gap-2"
@@ -577,6 +575,15 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
           />
         </div>
       </FormModal>
+
+      <TableExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        dataset="documents"
+        title="Documents"
+        totalRecords={totalItems}
+        onExport={exportDocuments}
+      />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
         <div className="p-4 md:p-5 flex-1 flex flex-col">

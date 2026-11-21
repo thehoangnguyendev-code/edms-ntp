@@ -24,6 +24,10 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -79,7 +83,7 @@ class SodConstraintServiceScanViolationsTest {
 
         UserAccount holder = user("holder");
         when(userAccountRepository.findAll()).thenReturn(List.of(holder));
-        when(userAccessProfileRepository.findByUserId(holder.getId()))
+        when(userAccessProfileRepository.findAll())
                 .thenReturn(List.of(assignment(holder.getId(), dangerousProfile.getId())));
 
         List<SodViolationResponse> result = service.scanViolations();
@@ -102,7 +106,7 @@ class SodConstraintServiceScanViolationsTest {
 
         UserAccount holder = user("dual-role-holder");
         when(userAccountRepository.findAll()).thenReturn(List.of(holder));
-        when(userAccessProfileRepository.findByUserId(holder.getId())).thenReturn(List.of(
+        when(userAccessProfileRepository.findAll()).thenReturn(List.of(
                 assignment(holder.getId(), profileA.getId()),
                 assignment(holder.getId(), profileB.getId())));
 
@@ -115,6 +119,33 @@ class SodConstraintServiceScanViolationsTest {
         assertThat(combo.username()).isEqualTo("dual-role-holder");
         assertThat(combo.profilesGrantingA()).extracting("accessProfileCode").containsExactly("GRANTS_A");
         assertThat(combo.profilesGrantingB()).extracting("accessProfileCode").containsExactly("GRANTS_B");
+    }
+
+    @Test
+    void assignmentsAreReadOnceForAllUsers_notOneQueryPerUser() {
+        SodConstraint constraint = constraint(PERM_A, PERM_B);
+        when(sodRepository.findAllByActiveOrderByNameAsc(true)).thenReturn(List.of(constraint));
+        RoleDefinition profileA = profile("GRANTS_A");
+        RoleDefinition profileB = profile("GRANTS_B");
+        when(roleRepository.findAll()).thenReturn(List.of(profileA, profileB));
+        when(effectivePermissionService.getEffectivePermissionCodes(profileA)).thenReturn(Set.of(PERM_A));
+        when(effectivePermissionService.getEffectivePermissionCodes(profileB)).thenReturn(Set.of(PERM_B));
+
+        UserAccount first = user("first");
+        UserAccount second = user("second");
+        UserAccount single = user("single");
+        when(userAccountRepository.findAll()).thenReturn(List.of(first, second, single));
+        when(userAccessProfileRepository.findAll()).thenReturn(List.of(
+                assignment(first.getId(), profileA.getId()), assignment(first.getId(), profileB.getId()),
+                assignment(second.getId(), profileA.getId()), assignment(second.getId(), profileB.getId()),
+                assignment(single.getId(), profileA.getId())));
+
+        List<SodViolationResponse> result = service.scanViolations();
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).violatingUserCombinations()).extracting("username").containsExactlyInAnyOrder("first", "second");
+        verify(userAccessProfileRepository, times(1)).findAll();
+        verify(userAccessProfileRepository, never()).findByUserId(any());
     }
 
     // ── checkAccessProfileCombination: Mức 2/3 impact-scoped remediation data ─────────────────
@@ -173,7 +204,7 @@ class SodConstraintServiceScanViolationsTest {
 
         UserAccount holder = user("single-profile-user");
         when(userAccountRepository.findAll()).thenReturn(List.of(holder));
-        when(userAccessProfileRepository.findByUserId(holder.getId()))
+        when(userAccessProfileRepository.findAll())
                 .thenReturn(List.of(assignment(holder.getId(), profileA.getId())));
 
         List<SodViolationResponse> result = service.scanViolations();

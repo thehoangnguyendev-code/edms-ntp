@@ -45,7 +45,7 @@ export const VisibilityBox: React.FC<{
   }, { scope: panel, dependencies: [open] });
 
   return (
-    <section className={cn("rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 sm:p-4", className)} data-testid={testId}>
+    <section className={cn("rounded-xl border border-slate-300 bg-slate-100 p-3 sm:p-4", className)} data-testid={testId}>
       <div className="flex items-start gap-2">
         <Eye className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
         <div className="min-w-0 flex-1">
@@ -67,7 +67,7 @@ export const VisibilityBox: React.FC<{
       <div className="mt-2.5 space-y-2.5">{children}</div>
       {details && (
         <div ref={panel} data-details data-open={open} aria-hidden={!open} className="overflow-hidden" style={{ display: "none" }}>
-          <div className="mt-3 border-t border-dashed border-emerald-200 pt-2 text-xs leading-relaxed text-slate-600">{details}</div>
+          <div className="mt-3 border-t border-dashed border-slate-300 pt-2 text-xs leading-relaxed text-slate-600">{details}</div>
         </div>
       )}
     </section>

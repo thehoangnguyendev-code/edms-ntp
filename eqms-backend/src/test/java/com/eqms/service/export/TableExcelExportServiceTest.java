@@ -48,6 +48,20 @@ class TableExcelExportServiceTest {
             assertThat(comment.getValue()).contains("SHA-256=" + HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(output.toByteArray())));
         } finally { /* Streaming callback owns the temporary file. */ }
     }
+    @Test void csvWithChosenColumnsIsNamedAsCsvAndRecordedInTheAudit() throws Exception {
+        var response=exports.generate("Users",Map.of("format","csv","columns","Name"),w->{w.headers("Name","Email");w.row("A","a@x");});
+        assertThat(response.getHeaders().getContentType().toString()).isEqualTo(TableExcelExportService.CSV_MIME);
+        assertThat(response.getHeaders().getContentDisposition().getFilename()).matches("Users_\\d{8}_\\d{4}\\.csv");
+        var comment=ArgumentCaptor.forClass(String.class);
+        verify(audit).logAs(eq(actor),eq("USER"),matches("Users_.*\\.csv"),any(UUID.class),eq("EXPORT"),isNull(),isNull(),comment.capture());
+        assertThat(comment.getValue()).contains("Generated CSV file=","format=csv","columns=Name");
+        var output=new ByteArrayOutputStream();
+        response.getBody().writeTo(output);
+        assertThat(output.toString(java.nio.charset.StandardCharsets.UTF_8)).contains("No.,Name\r\n1,A\r\n").doesNotContain("a@x");
+    }
+    @Test void anUnknownFormatIsRefused() {
+        assertThatThrownBy(()->exports.generate("Users",Map.of("format","pdf"),w->w.headers("Name"))).isInstanceOf(IllegalArgumentException.class);
+    }
     @Test void bulkAuditSignaturePathNeverEntersReadOnlyExtractionScope() throws Exception {
         var response=exports.generate("Audit_Trail",Map.of(),w->{w.headers("Event");w.row("VIEW");});
         response.getBody().writeTo(OutputStream.nullOutputStream());

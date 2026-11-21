@@ -21,7 +21,7 @@ import { PermissionSplitExplorer } from "@/features/security-authorization/share
 import { usePermissionCatalog } from "@/features/security-authorization/shared/usePermissionCatalog";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { applyVisibilityChoice, classifyVisibility, DOCUMENT_CONTROL_VISIBILITY_LABEL, withKnowledgePermission, type DocumentControlVisibilityChoice } from "@/features/security-authorization/access-profiles/shared/documentControlVisibility";
-import { DOCUMENT_CONTROL_MODULE, RecordVisibilityForModule } from "@/features/security-authorization/access-profiles/shared/RecordVisibilityForModule";
+import { DOCUMENT_CONTROL_MODULE, RecordVisibilityForModule, hasRecordVisibility } from "@/features/security-authorization/access-profiles/shared/RecordVisibilityForModule";
 import { MODULE_VISIBILITY, applyModuleVisibility, classifyModuleVisibility, type ModuleVisibilityDef } from "@/features/security-authorization/access-profiles/shared/moduleVisibility";
 import { accessProfiles as accessProfilesBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { ROUTES } from "@/app/routes.constants";
@@ -262,7 +262,7 @@ export const RoleSetupWizardView: React.FC = () => {
     }
     return [DOCUMENT_CONTROL_MODULE, ...MODULE_VISIBILITY.map((def) => def.moduleName)].filter((name) => names.has(name));
   }, [effectiveVisibilityCodes, permissionGroups]);
-  const recordVisibilityOf = (moduleName: string) => (
+  const recordVisibilityOf = (moduleName: string) => !hasRecordVisibility(moduleName) ? null : (
     <RecordVisibilityForModule
       moduleName={moduleName}
       selectedCodes={effectiveVisibilityCodes}

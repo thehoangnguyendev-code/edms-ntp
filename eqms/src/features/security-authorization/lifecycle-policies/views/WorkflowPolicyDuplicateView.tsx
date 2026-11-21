@@ -17,6 +17,7 @@ import { navigateBack } from "@/app/navigation/backNavigation";
 import { lifecyclePoliciesSubPage } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { extractApiError } from "../workflowPolicyUtils";
 import type { WorkflowActionPolicy } from "../types";
+import { statusText } from "@/features/security-authorization/shared/humanizeCode";
 
 const VIEW_PERM = "security.workflow_authorization.view";
 const MANAGE_PERM = "security.workflow_authorization.manage";
@@ -149,8 +150,8 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
           {readOnlyField("Module", policy.moduleLabel ?? policy.moduleKey)}
           {readOnlyField("Workflow", policy.workflowLabel ?? policy.workflowKey)}
           {readOnlyField("Object Type", policy.objectType)}
-          {readOnlyField("Action", policy.actionLabel ?? policy.actionCode)}
-          {readOnlyField("From Status", policy.fromStatusLabel ?? policy.fromStatus)}
+          {readOnlyField("Action", statusText(policy.actionLabel, policy.actionCode))}
+          {readOnlyField("From Status", statusText(policy.fromStatusLabel, policy.fromStatus))}
           {readOnlyField("Document Type", policy.documentTypeName ?? "Global")}
           {readOnlyField("Required Permission", policy.requiredPermissionCode)}
           {readOnlyField("Priority", String(policy.priority))}

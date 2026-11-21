@@ -174,13 +174,16 @@ public class TrainingFormTemplateService {
     }
 
     /** The Word file of a template, for the administrator and for the person who prepares a test. */
-    @Transactional(readOnly = true)
+    // not read-only: the download of a template is written to the Audit Trail (AUDIT_TRAIL_STANDARD 1.5)
+    @Transactional
     public Map<String, Object> download(UserAccount actor, UUID id) {
         access.require(actor, "training.annex.view", "training.activity.organize");
         Map<String, Object> t = jdbc.queryForList("select * from training_form_templates where id = ?", id).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         // Only an enabled template is offered to the person who prepares a test; the others are for the administrator.
         if (!"ENABLED".equals(t.get("status")) && !access.has(actor, "training.annex.view")) throw new SecurityException(TrainingAccess.DENIED);
         byte[] bytes = files.readStored(String.valueOf(t.get("provider")), String.valueOf(t.get("stored_path")), String.valueOf(t.get("sha256")));
+        audit.logAs(actor, AUDIT_ENTITY, String.valueOf(t.get("original_name")), id, "TRAINING_FORM_TEMPLATE_DOWNLOADED", null, null,
+                "Downloaded the Word file of the form template " + t.get("original_name"));
         return Map.of("bytes", bytes, "contentType", String.valueOf(t.get("content_type")), "name", String.valueOf(t.get("original_name")));
     }
 

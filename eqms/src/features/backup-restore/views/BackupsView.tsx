@@ -235,6 +235,7 @@ export const BackupsView: React.FC = () => {
       actions={
         <>
           <BackupExportButton
+            totalRecords={total}
             dataset="backups"
             params={{
               search: debouncedSearch.trim() || undefined,

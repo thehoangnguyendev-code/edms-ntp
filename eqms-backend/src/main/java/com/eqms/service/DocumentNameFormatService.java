@@ -144,7 +144,7 @@ public class DocumentNameFormatService {
         component.setActive(request.isActive() == null || request.isActive());
         component.setDisplayOrder(request.displayOrder() == null ? nextComponentDisplayOrder() : request.displayOrder());
         componentRepository.save(component);
-        auditTrailService.logSafely("DOCUMENT_COMPONENT", component.getName(), component.getId(), ACTION_COMPONENT_CREATED, null, null,
+        auditTrailService.log("DOCUMENT_COMPONENT", component.getName(), component.getId(), ACTION_COMPONENT_CREATED, null, null,
                 "Document Component created: " + component.getName() + " (Free Text: \"" + component.getFreeText() + "\")");
         return toComponentResponse(component);
     }
@@ -289,7 +289,7 @@ public class DocumentNameFormatService {
         format.setActive(request.isActive() == null || request.isActive());
         applyComponents(format, request.components());
         formatRepository.save(format);
-        auditTrailService.logSafely("DOCUMENT_NAME_FORMAT", format.getName(), format.getId(), ACTION_FORMAT_CREATED, null, null,
+        auditTrailService.log("DOCUMENT_NAME_FORMAT", format.getName(), format.getId(), ACTION_FORMAT_CREATED, null, null,
                 "Document Name Format created: " + format.getName() + " (" + describeComponents(format) + ")");
         return toFormatResponse(format);
     }

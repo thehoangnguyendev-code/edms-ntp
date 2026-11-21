@@ -120,7 +120,7 @@ export const TransitionPolicyDetailView: React.FC = () => {
 
   const required = (policy.relations ?? []).filter((r) => !r.forbidden);
   const forbidden = (policy.relations ?? []).filter((r) => r.forbidden);
-  const actionName = policy.actionLabel ?? policy.actionCode;
+  const actionName = statusText(policy.actionLabel, policy.actionCode);
 
   const actions = (
     <div className="flex flex-wrap items-center gap-2">

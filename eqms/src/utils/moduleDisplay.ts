@@ -48,7 +48,12 @@ const MENU_NAME_BY_KEY: Record<string, string> = {
 const compact = (key: string) => key.toLowerCase().replace(/[\s._-]+/g, "");
 
 /** "some_new-module" is shown as "Some New Module" until it is named above. */
-const prettify = (key: string) => key.trim().replace(/[\s._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const prettify = (key: string) => {
+  const text = key.trim();
+  // a key written in capitals (ACCESS, SOME_NEW_MODULE) is a machine value: made into words, not shown in capitals
+  const words = /^[A-Z][A-Z0-9_ -]*$/.test(text) ? text.toLowerCase() : text;
+  return words.replace(/[\s._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+};
 
 export const moduleDisplayName = (key?: string | null): string => {
   const value = (key ?? "").trim();

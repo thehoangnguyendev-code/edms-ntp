@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { VisibilityBox, DetailList } from "./VisibilityBox";
-import { VisibilityOptions, type VisibilityOption } from "./VisibilityOptions";
+import { VisibilityOptions, type VisibilityOption } from "@/components/ui/radio/VisibilityOptions";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import {
   DOCUMENT_CONTROL_VIEW_ALL_CODES,

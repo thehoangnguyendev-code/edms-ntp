@@ -318,6 +318,11 @@ public class TimeLimitedUserGrantService {
             target.setTimeLimitedGrantId(null);
             userManagementService.changeUserStatus(target, UserStatus.Active);
             userRepository.save(target);
+            auditTrailService.logAs(
+                    actor, "USER", target.getFullName(), target.getId(), "USER_REINSTATED",
+                    UserStatus.Suspended.name(), UserStatus.Active.name(),
+                    "Reinstated: the time-limited grant that had suspended the account was cancelled", List.of(), null
+            );
         }
         return toResponse(grant);
     }
@@ -358,6 +363,7 @@ public class TimeLimitedUserGrantService {
         // notification for a newly amended window.
         if (!previousEndAt.equals(request.endAt())) {
             grant.setNotifiedAt(null);
+            grant.setExpiryWarnedAt(null);
         }
         grant = grantRepository.save(grant);
 
@@ -386,6 +392,10 @@ public class TimeLimitedUserGrantService {
      *  grant's window -- used right after creation so the effect isn't deferred to the next
      *  scheduler tick. Package-private so {@link TimeLimitedUserGrantScheduler} can reuse the
      *  exact same rule for its nightly pass. */
+    // Own transaction when the scheduler calls it through the proxy: the scheduler's own @Transactional methods are called from inside the
+    // class and are not proxied, so without this the status change ran with no transaction and the guard (propagation MANDATORY) refused it
+    // every 15 minutes: no account was ever suspended when its window ended (found 2026-11-21).
+    @Transactional
     void applyWindowState(TimeLimitedUserGrant grant, UserAccount user) {
         Instant now = Instant.now();
         boolean inWindow = !now.isBefore(grant.getStartAt()) && !now.isAfter(grant.getEndAt());
@@ -396,7 +406,7 @@ public class TimeLimitedUserGrantService {
                 grant.setStatus(TimeLimitedUserGrant.STATUS_EXPIRED);
                 grantRepository.save(grant);
             }
-            suspendForGrant(user, grant);
+            suspendForGrant(user, grant, "the time-limited access window ended");
             if (grant.isNotifyEmailOnExpiry() && grant.getNotifiedAt() == null) {
                 notificationDispatcher.dispatch("user.time_limited_access_expired", List.of(user), Map.<String, String>of(
                         "endDate", grant.getEndAt().toString()
@@ -408,7 +418,7 @@ public class TimeLimitedUserGrantService {
         }
         if (!inWindow) {
             // Before the window opens.
-            suspendForGrant(user, grant);
+            suspendForGrant(user, grant, "the time-limited access window has not opened yet");
             return;
         }
         // Inside the window -- reinstate only if this exact grant is the reason the user is
@@ -418,10 +428,22 @@ public class TimeLimitedUserGrantService {
             user.setTimeLimitedGrantId(null);
             userManagementService.changeUserStatus(user, UserStatus.Active);
             userRepository.save(user);
+            recordAutomaticStatusChange(user, grant, "USER_REINSTATED", UserStatus.Suspended, UserStatus.Active, "the time-limited access window opened");
         }
     }
 
-    private void suspendForGrant(UserAccount user, TimeLimitedUserGrant grant) {
+    /**
+     * The scheduler suspends and reinstates accounts on its own, which is an access-control change: it is written to the Audit
+     * Trail with the system as the actor, in the same transaction as the status change (so a failure to write undoes the change).
+     * Before this, only the manual suspend and reinstate left a record (AUDIT_TRAIL_STANDARD 1.3).
+     */
+    private void recordAutomaticStatusChange(UserAccount user, TimeLimitedUserGrant grant, String action, UserStatus from, UserStatus to, String why) {
+        auditTrailService.logSystem("USER", user.getFullName() == null || user.getFullName().isBlank() ? user.getUsername() : user.getFullName(), user.getId(),
+                action, from.name(), to.name(),
+                "Automatic: " + why + " (grant window " + grant.getStartAt() + " to " + grant.getEndAt() + ")");
+    }
+
+    private void suspendForGrant(UserAccount user, TimeLimitedUserGrant grant, String why) {
         if (user.getStatus() == UserStatus.Suspended) {
             // A pre-existing suspension is not owned by this grant.  In particular, do not add
             // a marker to a manually suspended account: a later in-window pass must never
@@ -436,6 +458,7 @@ public class TimeLimitedUserGrantService {
         userManagementService.changeUserStatus(user, UserStatus.Suspended);
         user.setSuspendReason("Time-limited access window (" + grant.getStartAt() + " to " + grant.getEndAt() + ")");
         userRepository.save(user);
+        recordAutomaticStatusChange(user, grant, "USER_SUSPENDED", UserStatus.Active, UserStatus.Suspended, why);
     }
 
     private void requireValidActionSignature(UserAccount actor, String signatureToken) {

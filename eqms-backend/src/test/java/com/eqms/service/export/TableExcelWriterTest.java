@@ -64,6 +64,50 @@ class TableExcelWriterTest {
         }
     }
 
+    @Test void onlyTheChosenColumnsAreWrittenToTheWorkbook() throws Exception {
+        var output=new ByteArrayOutputStream();
+        try(var writer=new TableExcelWriter(TableExcelWriter.Format.XLSX,java.util.Set.of("Title","Count"))) {
+            writer.headers("Code","Title","Count");
+            writer.row("0007","SOP",5);
+            writer.write(output);
+        }
+        try(var book=new XSSFWorkbook(new ByteArrayInputStream(output.toByteArray()))) {
+            var sheet=book.getSheetAt(0);
+            assertThat(sheet.getRow(0).getLastCellNum()).isEqualTo((short)3);
+            assertThat(sheet.getRow(0).getCell(1).getStringCellValue()).isEqualTo("Title");
+            assertThat(sheet.getRow(1).getCell(2).getNumericCellValue()).isEqualTo(5);
+        }
+    }
+
+    @Test void csvKeepsOnlyChosenColumnsQuotesTextAndNeutralisesFormulas() throws Exception {
+        var output=new ByteArrayOutputStream();
+        try(var writer=new TableExcelWriter(TableExcelWriter.Format.CSV,java.util.Set.of("Title","Created At"))) {
+            writer.headers("Code","Title","Created At");
+            writer.row("0007","=HYPERLINK(\"x\"), \"q\"\nline","2026-11-14T04:19:00Z");
+            writer.row("0008","-",null);
+            assertThat(writer.recordCount()).isEqualTo(2);
+            writer.write(output);
+        }
+        String text=output.toString(java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(text).startsWith("﻿No.,Title,Created At\r\n");
+        assertThat(text).contains("1,\"'=HYPERLINK(\"\"x\"\"), \"\"q\"\"\nline\",14/11/2026 11:19:00\r\n");
+        assertThat(text).contains("2,-,\r\n");
+    }
+
+    @Test void refusesAnUnknownOrEmptyColumnChoice() throws Exception {
+        try(var writer=new TableExcelWriter(TableExcelWriter.Format.CSV,java.util.Set.of("Nope"))) {
+            assertThatThrownBy(()->writer.headers("Code")).isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    @Test void aHeaderProbeReceivesTheColumnNamesAndStopsBeforeAnyRow() throws Exception {
+        var found=new java.util.ArrayList<String>();
+        try(var writer=new TableExcelWriter(TableExcelWriter.Format.XLSX,null,found::addAll)) {
+            assertThatThrownBy(()->writer.headers("Code","Title")).isInstanceOf(TableExcelWriter.HeadersCaptured.class);
+        }
+        assertThat(found).containsExactly("Code","Title");
+    }
+
     @Test void refusesMalformedRowsAndOversizedCellsInsteadOfSilentlyTruncating() throws Exception {
         try(var writer=new TableExcelWriter()) {
             writer.headers("Title");

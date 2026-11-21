@@ -1,4 +1,4 @@
-import { downloadTableExcel } from '@/services/api/tableExport';
+import { downloadTableExport, type TableExportOptions } from '@/services/api/tableExport';
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -7,6 +7,7 @@ import { useSecurityESign } from "@/features/security-authorization/shared/useSe
 import { Plus, Download, Search, Copy, MoreVertical, Users, ChevronUp, ChevronDown, Check, X, Trash2 } from "lucide-react";
 import { IconPencilMinus, IconToggleLeft, IconToggleRight, IconFilter2, IconInfoCircle } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
+import { TableExportModal } from "@/components/ui/modal/TableExportModal";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { flagColor } from "@/utils/status";
@@ -485,17 +486,18 @@ export const AccessProfileListView: React.FC = () => {
   const { layout: profileLayout, control: profileControl } = useCustomColumnLayout("access-profiles.list", profileColumns, profileAction);
 
   const [isExporting, setIsExporting] = useState(false);
-  const handleExport = async () => {
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const handleExport = async (options: TableExportOptions) => {
     if (isExporting) return;
     setIsExporting(true);
     try {
-      await downloadTableExcel('access-profiles', {
+      await downloadTableExport('access-profiles', {
         search: debouncedSearch || undefined, type: typeFilter !== 'ALL' ? typeFilter : undefined,
         status: statusFilter !== 'all' ? statusFilter : undefined,
         createdFrom: createdFromDate || undefined, createdTo: createdToDate || undefined,
         updatedFrom: updatedFromDate || undefined, updatedTo: updatedToDate || undefined,
         sortBy: sortConfig.key, sortDir: sortConfig.direction,
-      });
+      }, options);
     } catch { showToast({ type: 'error', message: 'Export failed' }); }
     finally { setIsExporting(false); }
   };
@@ -504,12 +506,21 @@ export const AccessProfileListView: React.FC = () => {
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {(isNavigating || isInitialLoading) && <FullPageLoading text="Loading…" />}
 
+      <TableExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        dataset="access-profiles"
+        title="Access Profiles"
+        totalRecords={totalItems}
+        onExport={handleExport}
+      />
+
       <PageHeader
         title="Access Profiles"
         breadcrumbItems={accessProfilesBreadcrumb()}
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={() => void handleExport()} loading={isExporting} className="whitespace-nowrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => setIsExportOpen(true)} loading={isExporting} className="whitespace-nowrap gap-2">
               <Download className="h-4 w-4" />
               Export
             </Button>

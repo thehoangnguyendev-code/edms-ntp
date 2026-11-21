@@ -614,8 +614,9 @@ public class NotificationService {
                 notification.getId(),
                 notification.getType(),
                 notification.getScope(),
-                notification.getTitle(),
-                notification.getMessage(),
+                // a message written with a code in it (a workflow role, an error code) is shown with the words of that code
+                com.eqms.util.DisplayLabels.prose(notification.getTitle()),
+                com.eqms.util.DisplayLabels.prose(notification.getMessage()),
                 notification.getModule(),
                 notification.getModuleKey(),
                 notification.getPriority(),

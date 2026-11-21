@@ -14,6 +14,8 @@ import { trainingError, type TrainingTranscriptionLine, trainingFilesApi, traini
 import { Input, Textarea } from "../../shared/TrainingFields";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
 import { day, statusChange } from "../../shared/trainingLabels";
+import { LedgerAction, LedgerEmpty, LedgerList, LedgerNote, LedgerRow, LedgerToolbar } from "./workspace/ledger";
+import { RowActionsMenu, type RowAction } from "./workspace/RowActionsMenu";
 
 const lineColumns: DataTableColumn<TrainingTranscriptionLine>[] = [
   { id: "n", header: "No.", cell: (_l, i) => i + 1 },
@@ -32,7 +34,13 @@ type Row = { state: string; got: string; max: string; reason: string };
  * Results written on paper, typed into the system (PLAN-TR-001 17.7). One person types the lines with the scan attached; a different person checks them against
  * the scan and signs. Only then are the lines applied as attendance and assessment. The server decides who may do which and whether a line is acceptable.
  */
-export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVerify, onChanged }: { activity: TrainingActivityDetail; userId?: string; canEnter: boolean; canVerify: boolean; onChanged: () => void }) {
+export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVerify, onChanged, bare = false, onSummary }: {
+  activity: TrainingActivityDetail; userId?: string; canEnter: boolean; canVerify: boolean; onChanged: () => void;
+  /** The Session Workspace: a plain list under the tab of the step, with no block title of its own. */
+  bare?: boolean;
+  /** Tells the screen how many results were typed and how many wait to be checked, once the list is loaded. */
+  onSummary?: (summary: { total: number; waiting: number } | undefined) => void;
+}) {
   const { showToast } = useToast();
   const [items, setItems] = useState<TrainingTranscription[]>([]);
   const [pendingSessions, setPendingSessions] = useState<string[]>([]);
@@ -64,12 +72,22 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
   useEffect(() => { load(); return () => { generation.current++; }; }, [load]);
   useEntityChanged(["TRAINING"], load);
 
+
   const fail = (e: unknown) => showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
   const done = (title: string) => { showToast({ type: "success", title, message: activity.trainingNumber }); load(); onChanged(); };
 
   const sessions = activity.sessions.filter((s) => sessionStarted(s) && (s.deliveryMode ?? "ELECTRONIC") !== "ELECTRONIC");
   const waiting = (sessionId: string) => pendingSessions.includes(sessionId);
   const open = (sessionId: string) => activity.participants.filter((p) => p.sessionId === sessionId && p.state === "INVITED");
+
+  const waitingCount = items.filter((t) => t.status === "ENTERED").length;
+  // In the Session Workspace the block has no tab when nothing was typed and nobody is left to type for: everyone of the session is already recorded.
+  const nothingToDo = total === 0 && !sessions.some((s) => open(s.id).length > 0 || waiting(s.id));
+  const hidden = queryState === "ready" && (sessions.length === 0 ? total === 0 : bare && nothingToDo);
+  useEffect(() => {
+    if (queryState !== "ready") return;
+    onSummary?.(hidden ? undefined : { total, waiting: waitingCount });
+  }, [queryState, total, waitingCount, hidden, onSummary]);
 
   const columns: DataTableColumn<TrainingTranscription>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_t, i) => (page - 1) * limit + i + 1 },
@@ -93,27 +111,74 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
     },
   ];
 
-  if (queryState === "ready" && sessions.length === 0 && total === 0) return null;
+  const typeButtons = canEnter && sessions.length > 0 ? sessions.map((s) => (
+    <Button key={s.id} size="sm" variant="outline-emerald" disabled={queryState !== "ready" || waiting(s.id) || open(s.id).length === 0} onClick={() => setEntering(s)}>
+      Type results of session {s.sessionNo}{queryState === "loading" ? " (loading)" : waiting(s.id) ? " (waiting to be checked)" : open(s.id).length === 0 ? " (nobody left)" : ""}
+    </Button>
+  )) : null;
+  if (hidden) return null;
   return (
     <>
-      <TabBlock title="Results from paper">
-        <p className="px-4 py-3 text-xs text-slate-500">
-          Type what the signed paper says, with the scan attached. A different person then checks the lines against the scan and signs; only then are attendance and scores recorded.
-          {canEnter && sessions.length > 0 && " Use the button of the session."}
-        </p>
-        {queryState === "error" && <p role="alert" className="px-4 text-sm text-red-700">Unable to load transcription status. Try again.</p>}
-        {canEnter && sessions.length > 0 && (
-          <div className="flex flex-wrap gap-2 px-4 pb-3">
-            {sessions.map((s) => (
-              <Button key={s.id} size="sm" variant="outline-emerald" disabled={queryState !== "ready" || waiting(s.id) || open(s.id).length === 0} onClick={() => setEntering(s)}>
-                Type results of session {s.sessionNo}{queryState === "loading" ? " (loading)" : waiting(s.id) ? " (waiting to be checked)" : open(s.id).length === 0 ? " (nobody left)" : ""}
-              </Button>
-            ))}
+      {bare ? (
+        <div className="space-y-3">
+          <LedgerNote>Type what the signed paper says, with the scan attached. A different person then checks the lines against the scan and signs; only then are attendance and scores recorded.{typeButtons ? " Use the button of the session." : ""}</LedgerNote>
+          {typeButtons && <LedgerToolbar>{typeButtons}</LedgerToolbar>}
+          {queryState === "error" && <p role="alert" className="text-sm text-red-700">Unable to load transcription status. Try again.</p>}
+          <div className="md:hidden">
+            {items.length === 0 ? (
+              queryState === "error" ? null : <LedgerEmpty>Nothing typed from paper yet.</LedgerEmpty>
+            ) : (
+              <LedgerList>
+                {items.map((t) => {
+                  const canCheck = ((t: TrainingTranscription) => t.status === "ENTERED" && canVerify && t.enteredBy !== userId)(t);
+                  return (
+                    <LedgerRow
+                      key={t.id}
+                      title={`S${t.sessionNo} · ${t.lines.length} lines · ${t.evidenceName}`}
+                      meta={[`Typed by ${t.enteredByName}, ${day(t.enteredAt)}`, t.verifiedByName ? `Checked by ${t.verifiedByName}, ${day(t.verifiedAt)}` : undefined, t.rejectReason ?? t.lateReason].filter(Boolean).join(" · ")}
+                      state={STATUS_LABEL[t.status]}
+                      tone={t.status === "REJECTED" ? "red" : t.status === "ENTERED" ? "blue" : "mute"}
+                      actions={<><LedgerAction onClick={() => setViewing(t)}>Lines</LedgerAction>{canCheck && <LedgerAction danger onClick={() => setRejecting(t)}>Reject</LedgerAction>}</>}
+                      primary={canCheck ? <Button size="sm" onClick={() => setSigning(t)}>Verify</Button> : undefined}
+                    />
+                  );
+                })}
+              </LedgerList>
+            )}
+            {total > 0 && <TablePagination currentPage={page} totalPages={pages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} />}
           </div>
-        )}
+          <div className="hidden md:block">
+            <TabBlock>
+              <DataTable
+                rows={items}
+                getRowKey={(t) => t.id}
+                columns={columns.slice(0, -1)}
+                action={{
+                  cell: (t) => {
+                    const canCheck = ((t: TrainingTranscription) => t.status === "ENTERED" && canVerify && t.enteredBy !== userId)(t);
+                    const actions: RowAction[] = [{ key: "lines", label: "Lines", run: () => setViewing(t) }];
+                    if (canCheck) actions.push({ key: "verify", label: "Verify", run: () => setSigning(t) }, { key: "reject", label: "Reject", danger: true, run: () => setRejecting(t) });
+                    return <RowActionsMenu id={t.id} label={`More actions for the results of session ${t.sessionNo}`} actions={actions} />;
+                  },
+                }}
+                emptyState={<p className="p-4 text-sm text-slate-500">Nothing typed from paper yet.</p>}
+                pagination={total > 0 ? <TablePagination currentPage={page} totalPages={pages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} /> : undefined}
+              />
+            </TabBlock>
+          </div>
+        </div>
+      ) : (
+      <TabBlock
+        title="Results from paper"
+        count={total}
+        hint="Type what the signed paper says, with the scan attached. A different person then checks the lines against the scan and signs; only then are attendance and scores recorded."
+      >
+        {queryState === "error" && <p role="alert" className="px-4 text-sm text-red-700">Unable to load transcription status. Try again.</p>}
+        {typeButtons && <div className="flex flex-wrap gap-2 p-4">{typeButtons}</div>}
         <DataTable rows={items} getRowKey={(t) => t.id} columns={columns} emptyState={<p className="p-4 text-sm text-slate-500">Nothing typed from paper yet.</p>}
           pagination={total > 0 ? <TablePagination currentPage={page} totalPages={pages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} /> : undefined} />
       </TabBlock>
+      )}
 
       {entering && (
         <EnterDialog

@@ -21,9 +21,23 @@ public final class TrainingRows {
         return " order by " + column + " " + ("desc".equalsIgnoreCase(direction) ? "desc" : "asc") + " nulls last, " + fallback;
     }
 
+    /** The columns that hold a machine value a screen shows as words; each gets its label beside it (status -> statusLabel) unless the row already has one. */
+    private static final List<String> LABELLED = List.of("status", "state", "result", "kind", "method", "deliveryMode", "caseType");
+
+    /** The label of a machine value is made once, on the server, so that no screen has to make a code readable (and none shows one). The value itself is not changed. */
+    private static void addLabels(Map<String, Object> row) {
+        for (String key : LABELLED) {
+            Object value = row.get(key);
+            if (value instanceof String code && com.eqms.util.DisplayLabels.isMachineValue(code) && !row.containsKey(key + "Label")) {
+                row.put(key + "Label", com.eqms.util.DisplayLabels.status(code));
+            }
+        }
+    }
+
     public static Map<String, Object> camel(Map<String, Object> row) {
         Map<String, Object> out = new LinkedHashMap<>();
         row.forEach((key, value) -> out.put(camelKey(key), plain(value)));
+        addLabels(out);
         if (out.get("documentNumber") != null && !out.containsKey("documentLabel")) {
             Object revision = out.containsKey("revisionNumber") ? out.get("revisionNumber") : out.get("documentRevision");
             out.put("documentLabel", documentLabel(out.get("documentNumber"), revision));

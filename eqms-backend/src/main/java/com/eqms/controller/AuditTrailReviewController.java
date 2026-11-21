@@ -56,9 +56,19 @@ public class AuditTrailReviewController {
             @RequestParam(defaultValue = "10") int limit,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String decision,
+            @RequestParam(required = false) String module,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) String signed,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate from,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate to,
             @RequestParam(defaultValue = "timestamp") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDirection) {
-        return ResponseEntity.ok(service.listCampaignItemsPaged(id, page, limit, search, decision, sortBy, sortDirection));
+        return ResponseEntity.ok(service.listCampaignItemsPaged(id, page, limit, search, decision, module, action, signed, from, to, sortBy, sortDirection));
+    }
+
+    @GetMapping("/{id}/items/filter-options")
+    public ResponseEntity<AuditTrailReviewService.ItemFilterOptions> itemFilterOptions(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.listItemFilterOptions(id));
     }
 
     @GetMapping("/{id}")

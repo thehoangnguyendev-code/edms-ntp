@@ -95,6 +95,19 @@ class AuditNotificationBridgeTest {
     }
 
     @Test
+    void theNameOfTheRecordIsAlsoGivenAsCampaignNameForTheWordingOfTheCampaignEvents() {
+        var dispatcher = mock(NotificationDispatcher.class);
+        var bridge = new AuditNotificationBridge(dispatcher, null, null);
+        UserAccount actor = person("Nguyen Van A");
+
+        bridge.onAuditedAction(new AuditNotificationBridge.AuditedAction(actor, "BACKUP_RESTORE", "Q3 Review", UUID.randomUUID(), "RESTORE_REQUESTED", ""));
+
+        ArgumentCaptor<Map<String, String>> variables = ArgumentCaptor.forClass(Map.class);
+        verify(dispatcher).dispatchIndependently(anyString(), any(), variables.capture());
+        assertThat(variables.getValue()).containsEntry("campaignName", "Q3 Review").containsEntry("entityName", "Q3 Review");
+    }
+
+    @Test
     void anActionThatRaisesNothingDispatchesNothing() {
         var dispatcher = mock(NotificationDispatcher.class);
         new AuditNotificationBridge(dispatcher, null, null).onAuditedAction(new AuditNotificationBridge.AuditedAction(person("A"), "DOCUMENT", "SOP.0001", null, "CANCEL", null));

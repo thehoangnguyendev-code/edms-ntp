@@ -69,7 +69,9 @@ public class AccessProfileService {
             EffectivePermissionService effectivePermissionService,
             SodConstraintRepository sodConstraintRepo,
             PermissionSetService permissionSetService,
-            com.eqms.repository.AuditLogRepository auditLogRepository) {
+            com.eqms.repository.AuditLogRepository auditLogRepository,
+            NotificationDispatcher notificationDispatcher) {
+        this.notificationDispatcher = notificationDispatcher;
         this.roleRepo = roleRepo;
         this.permSetRepo = permSetRepo;
         this.permissionSetItemRepo = permissionSetItemRepo;
@@ -85,6 +87,37 @@ public class AccessProfileService {
         this.sodConstraintRepo = sodConstraintRepo;
         this.permissionSetService = permissionSetService;
         this.auditLogRepository = auditLogRepository;
+    }
+
+    private final NotificationDispatcher notificationDispatcher;
+
+    /**
+     * Tells the person that an Access Profile was assigned to them or removed from them (event user.access_profile_changed).
+     * Sent after the change is committed, so a change that is rolled back tells nobody, and never lets a failure of the
+     * notice undo the change.
+     */
+    void notifyAccessChanged(UserAccount person, UUID profileId, String changeType) {
+        if (notificationDispatcher == null || person == null) return;
+        String profileName = roleRepo.findById(profileId).map(RoleDefinition::getName).orElse("an access profile");
+        Runnable send = () -> {
+            try {
+                notificationDispatcher.dispatchIndependently("user.access_profile_changed", List.of(person), java.util.Map.of(
+                        "profileName", profileName, "changeType", changeType, "actionUrl", "/"));
+            } catch (RuntimeException failure) {
+                org.slf4j.LoggerFactory.getLogger(AccessProfileService.class).warn("The notice of the access change of {} was not sent: {}", person.getUsername(), failure.getMessage());
+            }
+        };
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            send.run();
+                        }
+                    });
+        } else {
+            send.run();
+        }
     }
 
     // ── Migration report (master plan 18.3) ──────────────────────────────────
@@ -334,7 +367,7 @@ public class AccessProfileService {
             appWfRepo.save(link);
         }
         if (!workflowRoles.isEmpty()) {
-            summary.add("workflow roles: " + String.join(", ", workflowRoles));
+            summary.add("workflow roles: " + workflowRoles.stream().map(com.eqms.util.DisplayLabels::humanize).collect(java.util.stream.Collectors.joining(", ")));
         }
 
         Set<UUID> userIds = new LinkedHashSet<>(req.userIds() == null ? List.of() : req.userIds());
@@ -352,6 +385,7 @@ public class AccessProfileService {
             assignment.setAssignedBy(actor);
             uapRepo.save(assignment);
             assignedUsers.add(userLabel(targetUser));
+            notifyAccessChanged(targetUser, profileId, "assigned");
         }
         if (!assignedUsers.isEmpty()) {
             summary.add("users: " + String.join(", ", assignedUsers));
@@ -759,9 +793,11 @@ public class AccessProfileService {
                     assignment.setAccessProfileId(id);
                     assignment.setAssignedBy(actor);
                     uapRepo.save(assignment);
+                    notifyAccessChanged(targetUser, id, "assigned");
                 }
                 for (UUID userId : removedUsers) {
                     uapRepo.deleteByUserIdAndAccessProfileId(userId, id);
+                    userRepo.findById(userId).ifPresent(person -> notifyAccessChanged(person, id, "removed"));
                 }
                 addChange(changes, "Assigned Users",
                         currentUsers.size() + " user(s)", requestedUsers.size() + " user(s)");
@@ -871,6 +907,7 @@ public class AccessProfileService {
             a.setAccessProfileId(profileId);
             a.setAssignedBy(actor);
             uapRepo.save(a);
+            notifyAccessChanged(targetUser, profileId, "assigned");
             ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
                     SecurityChangeSignatureService.MEANING_USER_ACCESS_CHANGE,
                     ENTITY_TYPE, profile.getId(), profile.getName(), sig.reason(),
@@ -894,7 +931,12 @@ public class AccessProfileService {
         // enforces the general invariant (org must always keep at least one active user holding
         // ADMIN_GUARD_PERMISSION), which this profile's removal is checked against below.
         requireNotLastActiveAdmin(targetUser);
+        boolean hadTheProfile = uapRepo.existsByUserIdAndAccessProfileId(userId, profileId);
         uapRepo.deleteByUserIdAndAccessProfileId(userId, profileId);
+        // only a person who held the profile is told that it was removed
+        if (hadTheProfile) {
+            notifyAccessChanged(targetUser, profileId, "removed");
+        }
         ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
                 SecurityChangeSignatureService.MEANING_USER_ACCESS_CHANGE,
                 ENTITY_TYPE, profile.getId(), profile.getName(), sig.reason(),

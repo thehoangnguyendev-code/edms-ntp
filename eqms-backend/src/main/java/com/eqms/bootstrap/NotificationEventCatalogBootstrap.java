@@ -159,7 +159,7 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
         if (REPORT_TEMPLATE_REJECTED.equals(seed.code())) return new String[]{"[EQMS] Report Template Rejected: {{entityName}}",
                 "<p>The report template <b>{{entityName}}</b> was rejected by {{actorName}}.</p><p><b>Reason:</b> {{actionComment}}</p><p>Change the template and submit it again: {{actionUrl}}</p>"};
         if (EMAIL_CONTENT.containsKey(seed.code())) return EMAIL_CONTENT.get(seed.code());
-        if (AUDIT_VARS.equals(seed.variables())) return new String[]{"[EQMS] " + seed.name(), "<p>" + AUDIT_SUMMARY + "</p>"};
+        if (seed.variables().startsWith(AUDIT_VARS)) return new String[]{"[EQMS] " + seed.name(), "<p>" + AUDIT_SUMMARY + "</p>"};
         return seed.variables().startsWith(PASS_THROUGH_VARS) ? new String[]{"[EQMS] {{title}}", "<p>{{message}}</p>"} : null;
     }
 
@@ -298,6 +298,27 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                     "<p><b>The controlled copy you hold of {{documentNumber}} — {{documentTitle}} is void because the document has expired.</b></p>"
                     + "<p>Do not use the electronic copy or the printed copy issued to you. Document Control (DCO) will recall your printed copy.</p>"
                     + "<p>Link: {{actionUrl}}</p>"
+            },
+            // NOTIFICATION-REVIEW-2026-11-21: the person is told what happened to their account. Never a password or a sign-in detail.
+            "user.account_created", new String[]{
+                    "[EQMS] An account was created for you",
+                    "<p>An account was created for you in {{systemName}}.</p><p>Sign in with the details your administrator gave you. You will be asked to choose a new password the first time.</p>"
+            },
+            "user.account_reinstated", new String[]{
+                    "[EQMS] Your account was reinstated",
+                    "<p>Your {{systemName}} account was reinstated. You can sign in again.</p>"
+            },
+            "user.time_limited_access_changed", new String[]{
+                    "[EQMS] Your time-limited access changed",
+                    "<p>{{actionName}}.</p><p>{{actionComment}}</p>"
+            },
+            "user.time_limited_access_expiring", new String[]{
+                    "[EQMS] Your access ends soon",
+                    "<p>Your time-limited access ends on {{endDate}}; after that your account will be suspended. Ask your administrator if you need it longer.</p>"
+            },
+            "user.access_profile_changed", new String[]{
+                    "[EQMS] Your access changed",
+                    "<p>Your access profile <b>{{profileName}}</b> was {{changeType}}.</p><p>What you may do in {{systemName}} may have changed.</p>"
             });
 
     private static final String STD_VARS = "recipientName,documentNumber,documentTitle,revisionNumber,actionUrl,systemName";
@@ -308,6 +329,11 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
     static final String AUDIT_SUMMARY = "{{actionName}}: {{entityName}} by {{actorName}}. {{actionComment}}";
     /** REPORT-TEMPLATE-REJECT-NOTICE-2026-11-15: the author is told which template was rejected, by whom, and the reason in so many words (migration V790 does the same for a database that has the event). */
     static final String REPORT_TEMPLATE_REJECTED = "report.template_rejected";
+    /** In-app title and message of the audit-driven events that are written for the person they concern (index 0 title, 1 message). */
+    private static final java.util.Map<String, String[]> AUDIT_WORDING = java.util.Map.of(
+            "user.account_created", new String[]{"Your account was created", "An account was created for you in {{systemName}}. Sign in with the details your administrator gave you."},
+            "user.account_reinstated", new String[]{"Your account was reinstated", "Your {{systemName}} account was reinstated. You can sign in again."},
+            "user.time_limited_access_changed", new String[]{"Your time-limited access changed", "{{actionName}}. {{actionComment}}"});
     static final String REPORT_TEMPLATE_REJECTED_SUMMARY = "{{entityName}} was rejected by {{actorName}}. Reason: {{actionComment}}";
     private static final String AUDIT_VARS = PASS_THROUGH_VARS + ",actorName,entityName,actionComment,actionName";
 
@@ -337,7 +363,9 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
             }
             // the channel an event is sent on by default is in-app; an administrator turns the e-mail on
             all.add(new EventSeed(event.code(), event.name(), event.description(), event.module(), event.priority(), "NOTIFY", event.module(), "IN_APP",
-                    AUDIT_VARS, new String[]{}, event.name(), REPORT_TEMPLATE_REJECTED.equals(event.code()) ? REPORT_TEMPLATE_REJECTED_SUMMARY : AUDIT_SUMMARY, rules, event.defaultStatus()));
+                    // the wording of a campaign event says {{campaignName}} (the bridge gives the name of the audited record under that name too)
+                    event.code().contains("campaign") ? AUDIT_VARS + ",campaignName" : AUDIT_VARS, new String[]{}, AUDIT_WORDING.containsKey(event.code()) ? AUDIT_WORDING.get(event.code())[0] : event.name(),
+                    AUDIT_WORDING.containsKey(event.code()) ? AUDIT_WORDING.get(event.code())[1] : REPORT_TEMPLATE_REJECTED.equals(event.code()) ? REPORT_TEMPLATE_REJECTED_SUMMARY : AUDIT_SUMMARY, rules, event.defaultStatus()));
         }
         return all;
     }
@@ -452,12 +480,12 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                 new EventSeed(
                         // Owner decision DOCUMENT-EXPIRY-2026-10-16: every Active user is told when a document passes its
                         // Valid Until day. Sent by DocumentExpiryNotifier, not by a
-                        // recipient rule (the audience is every Active account).
+                        // recipient rule of its own: the people it passes are the audience (every Active account), so the rule is RECIPIENT (V840; an empty rule reached nobody).
                         "document.expired", "Document Expired",
                         "An Active document has reached its Valid Until date. Its controlled copies are voided and no copy can be requested.",
                         "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
                         "EXPIRE", "DOCUMENT", "IN_APP,EMAIL", STD_VARS,
-                        new String[]{},
+                        new String[]{"RECIPIENT"},
                         "Document expired", "{{documentNumber}} — {{documentTitle}} has passed its Valid Until date. Do not use it."
                 ),
                 new EventSeed(
@@ -465,7 +493,7 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                         "Sent to the holders of controlled copies that were voided because the document expired.",
                         "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
                         "EXPIRE", "DOCUMENT", "IN_APP,EMAIL", STD_VARS,
-                        new String[]{},
+                        new String[]{"RECIPIENT"},
                         "Your copy is void", "{{documentNumber}} — {{documentTitle}} has expired. Your copy is void. Do not use it; the DCO will recall the paper copy."
                 ),
                 new EventSeed(
@@ -533,9 +561,25 @@ new EventSeed(
                         "user.time_limited_access_expired", "Time-Limited User Access Expired",
                         "A \"Time-Limited User\" grant window has ended and the account was automatically suspended.",
                         "SECURITY", NotificationEventDefinition.PRIORITY_MEDIUM,
-                        "TIME_LIMITED_EXPIRE", "USER_ACCOUNT", "IN_APP", STD_VARS,
+                        "TIME_LIMITED_EXPIRE", "USER_ACCOUNT", "IN_APP", "recipientName,endDate,actionUrl,systemName",
                         new String[]{"OWNER"},
                         "Your access has expired", "Your time-limited access ended on {{endDate}} and your account has been suspended."
+                ),
+                new EventSeed(
+                        "user.time_limited_access_expiring", "Time-Limited User Access Ending Soon",
+                        "A \"Time-Limited User\" grant window ends in a few days; the person is told before the account is suspended.",
+                        "SECURITY", NotificationEventDefinition.PRIORITY_MEDIUM,
+                        "TIME_LIMITED_EXPIRING", "USER_ACCOUNT", "IN_APP", "recipientName,endDate,actionUrl,systemName",
+                        new String[]{"OWNER"},
+                        "Your access ends soon", "Your time-limited access ends on {{endDate}}; after that your account will be suspended."
+                ),
+                new EventSeed(
+                        "user.access_profile_changed", "Your Access Profile Changed",
+                        "An Access Profile was assigned to the person or removed from them. The person is told; nothing else about the change is in the notice.",
+                        "SECURITY", NotificationEventDefinition.PRIORITY_MEDIUM,
+                        "ACCESS_PROFILE_CHANGED", "USER_ACCOUNT", "IN_APP", "recipientName,profileName,changeType,actionUrl,systemName",
+                        new String[]{"AFFECTED_USERS"},
+                        "Your access changed", "Your access profile {{profileName}} was {{changeType}}."
                 ),
                 // Account e-mails that carry a secret or that the person cannot do without: e-mail only, always sent (NotificationMandatoryEvents)
                 new EventSeed(

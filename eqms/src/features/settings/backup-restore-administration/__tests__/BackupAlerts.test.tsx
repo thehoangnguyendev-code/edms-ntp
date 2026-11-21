@@ -29,6 +29,7 @@ const alert = (over: Partial<BackupAlertRecord> = {}): BackupAlertRecord => ({
   at: "2026-10-13T02:00:00Z",
   severity: "HIGH",
   code: "BACKUP_V2_MISSED",
+  codeLabel: undefined,
   detail: "The weekly V2 verification did not run on schedule",
   ref: null,
   acknowledgedAt: null,
@@ -80,13 +81,13 @@ const renderView = (tab?: string) =>
 describe("Backup alerts", () => {
   it("lists the open alerts from the server", async () => {
     renderView();
-    expect(await screen.findByText("BACKUP_V2_MISSED")).toBeTruthy();
+    expect(await screen.findByText("Backup v2 missed")).toBeTruthy();
     expect(api.alerts).toHaveBeenCalledWith(expect.objectContaining({ state: "OPEN", page: 1, limit: 10 }));
   });
 
   it("is a live screen: no sample data, no design-preview notice, no Save Changes bar", async () => {
     renderView();
-    await screen.findByText("BACKUP_V2_MISSED");
+    await screen.findByText("Backup v2 missed");
     expect(screen.queryByText("Design preview")).toBeNull();
     expect(screen.queryByText("Save Changes")).toBeNull();
     expect(screen.queryByDisplayValue("qa-admin@example.com")).toBeNull();
@@ -94,7 +95,7 @@ describe("Backup alerts", () => {
 
   it("sorts on the server by the key of the column clicked, and asks again from the first page", async () => {
     renderView();
-    await screen.findByText("BACKUP_V2_MISSED");
+    await screen.findByText("Backup v2 missed");
     const keys: Record<string, string> = { at: "at", severity: "severity", code: "code", ref: "ref", ack: "acknowledgedAt" };
     for (const [column, sortBy] of Object.entries(keys)) {
       fireEvent.click(document.querySelector(`[data-table-col="${column}"]`) as HTMLElement);
@@ -117,7 +118,7 @@ describe("Backup alerts", () => {
   it("offers no change to someone who may only view the alerts", async () => {
     perms.granted = new Set(["backup.admin.alerts.view"]);
     renderView();
-    await screen.findByText("BACKUP_V2_MISSED");
+    await screen.findByText("Backup v2 missed");
     expect(screen.queryByRole("button", { name: "Acknowledge" })).toBeNull();
   });
 });

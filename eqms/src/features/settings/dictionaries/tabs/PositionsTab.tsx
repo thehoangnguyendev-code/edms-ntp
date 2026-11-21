@@ -240,6 +240,7 @@ export const PositionsTab = React.forwardRef<
     { id: "name", header: "Position Name", label: "Position Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
     { id: "businessUnit", header: "Business Unit", label: "Business Unit", cell: (item) => item.businessUnit },
     { id: "department", header: "Department", label: "Department", cell: (item) => item.department },
+    { id: "employeeCount", header: "Employees", label: "Employees", cellClassName: "text-slate-700", cell: (item) => (item.employeeCount ?? 0).toLocaleString("en-US") },
     { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
     { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>) },
     { id: "modifiedDate", header: "Modified Date", label: "Modified Date", cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },

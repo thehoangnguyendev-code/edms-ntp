@@ -123,3 +123,23 @@ export const applyModuleVisibility = (
   if (level.codes.length > 0) def.baseCodes.forEach(add);
   return next;
 };
+
+/** The short wording and colour of the badge at the top of an Access Profile, per module and level ("Training Management: All departments"). */
+export const MODULE_VISIBILITY_BADGE: Record<ModuleVisibilityDef["key"], Record<string, { label: string; color: "emerald" | "blue" }>> = {
+  TRAINING: { DEPARTMENT: { label: "My department", color: "blue" }, ALL: { label: "All departments", color: "emerald" } },
+  REPORTS: { OWN: { label: "Own runs", color: "blue" }, ALL: { label: "All runs", color: "emerald" } },
+};
+
+/**
+ * The badges of the modules other than Document Control (which the server computes): Training Management is shown once the profile holds any
+ * training permission, Reports once it holds a level of its own. `granted` is everything the profile grants (its own and its shared sets).
+ */
+export const moduleVisibilityBadges = (granted: Iterable<string>): { module: string; label: string; color: "emerald" | "blue" }[] => {
+  const held = [...granted];
+  return MODULE_VISIBILITY.flatMap((def) => {
+    const touches = def.key !== "TRAINING" || held.some((code) => code.trim().toLowerCase().startsWith("training."));
+    const level = touches ? classifyModuleVisibility(def, held) : null;
+    const badge = level ? MODULE_VISIBILITY_BADGE[def.key][level] : undefined;
+    return badge ? [{ module: def.moduleName, ...badge }] : [];
+  });
+};

@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, CheckCheck, Trash2, MoreVertical, MoreHorizontal, Eye, Download, X, ListChecks, TriangleAlert, RefreshCw, Check } from "lucide-react";
 import { IconFilter2 } from "@tabler/icons-react";
-import { downloadTableExcel } from "@/services/api/tableExport";
+import { downloadTableExport, type TableExportOptions } from "@/services/api/tableExport";
+import { TableExportModal } from "@/components/ui/modal/TableExportModal";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { notifications as notificationsBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
@@ -354,6 +355,7 @@ export const NotificationsView: React.FC = () => {
   const [notificationSummary, setNotificationSummary] = useState<NotificationSummaryCounts>(createEmptyNotificationSummaryCounts());
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
   const hasLoadedRef = useRef(false);
   const requestSeqRef = useRef(0);
   const currentPageRef = useRef(currentPage);
@@ -536,10 +538,10 @@ export const NotificationsView: React.FC = () => {
   const handleBulkDelete = () => { if (selectedIds.size > 0) void runBulk(() => notificationApi.deleteNotifications(Array.from(selectedIds)), "Failed to delete selected"); };
   const handleClearAllRead = () => { void runBulk(() => notificationApi.clearAllRead(), "Failed to clear read notifications"); };
 
-  const handleExport = async () => {
+  const handleExport = async (options: TableExportOptions) => {
     setIsExporting(true);
     try {
-      await downloadTableExcel("notifications", {
+      await downloadTableExport("notifications", {
         scope: activeScope,
         search: search || undefined,
         module: module === "all" ? undefined : module,
@@ -549,7 +551,7 @@ export const NotificationsView: React.FC = () => {
         dateTo: dateTo || undefined,
         sortBy: "createdAt",
         sortDirection: "desc",
-      });
+      }, options);
     } catch (error) {
       fail("Failed to export notifications", error);
     } finally {
@@ -871,12 +873,21 @@ export const NotificationsView: React.FC = () => {
         />
       )}
 
+      <TableExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        dataset="notifications"
+        title="Notifications"
+        totalRecords={pagination.total}
+        onExport={handleExport}
+      />
+
       {/* The menu of the page */}
       {headerMenu.openId && (
         <PortalDropdownMenu isOpen={true} onClose={headerMenu.close} position={headerMenu.position} minWidth={192}>
           <div className="py-1">
             {[
-              { icon: Download, label: isExporting ? "Exporting..." : "Export to Excel", disabled: isExporting, run: () => void handleExport() },
+              { icon: Download, label: isExporting ? "Exporting..." : "Export", disabled: isExporting, run: () => setIsExportOpen(true) },
               { icon: Trash2, label: "Clear read", disabled: isBulkActionLoading, run: handleClearAllRead },
               { icon: ListChecks, label: "Select notifications", disabled: false, run: () => setSelectMode(true) },
             ].map(({ icon: Icon, label, disabled, run }) => (

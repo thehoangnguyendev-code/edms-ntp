@@ -373,7 +373,7 @@ export function ReportTemplateEditor() {
         onClose={() => setRejecting(undefined)}
         title="Reject Revision"
         description="The reason is required. The author is told, in the application and by e-mail, with this reason, and must change the template and submit it again."
-        confirmText="Continue to sign"
+        confirmText="Continue to Sign"
         confirmDisabled={!rejecting?.reason.trim() || saving}
         onConfirm={() => rejecting && setRejecting({ ...rejecting, step: "sign" })}
       >
@@ -415,7 +415,7 @@ export function ReportTemplateEditor() {
         onClose={() => setApproving(undefined)}
         title="Approve Revision"
         description="You approve this exact saved version. You must not be its author or the person who submitted it. Say what you checked."
-        confirmText="Continue to sign"
+        confirmText="Continue to Sign"
         confirmDisabled={!approving?.reason.trim()}
         onConfirm={() => approving && setApproving({ ...approving, step: "sign" })}
       >

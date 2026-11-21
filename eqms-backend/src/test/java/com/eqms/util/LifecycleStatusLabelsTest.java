@@ -19,7 +19,7 @@ class LifecycleStatusLabelsTest {
         assertEquals("Ready for Publishing", LifecycleStatusLabels.label("READY_FOR_PUBLISHING"));
         assertEquals("Ready for Distribution", LifecycleStatusLabels.label("READY_FOR_DISTRIBUTION"));
         assertEquals("Distributed", LifecycleStatusLabels.label("DISTRIBUTED"));
-        assertEquals("Closed / Cancelled", LifecycleStatusLabels.label("CLOSED_CANCELLED"));
+        assertEquals("Closed - Cancelled", LifecycleStatusLabels.label("CLOSED_CANCELLED"));
     }
 
     @Test

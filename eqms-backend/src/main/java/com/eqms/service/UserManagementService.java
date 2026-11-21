@@ -1312,7 +1312,7 @@ public class UserManagementService {
      * tuples require each permission code, normalizing the actionCode/capabilityCode naming
      * difference between {@link WorkflowActionPolicy} and {@link LifecycleStatePolicy}.
      */
-    private Map<String, List<PermissionLifecycleUsageResponse>> buildLifecycleUsagesByPermissionCode(Set<String> codes) {
+    Map<String, List<PermissionLifecycleUsageResponse>> buildLifecycleUsagesByPermissionCode(Set<String> codes) {
         if (codes.isEmpty()) {
             return Map.of();
         }
@@ -1795,6 +1795,8 @@ public class UserManagementService {
         }
     }
 
+    // writes the Audit Trail: the download of a person's certificate file is recorded (AUDIT_TRAIL_STANDARD 1.5)
+    @Transactional
     public CertificationFileDownload downloadCertificationFile(UUID userId, UUID certificationId) {
         UserCertification cert = requireCertification(userId, certificationId);
         if (!hasText(cert.getFileUrl())) {
@@ -1802,6 +1804,9 @@ public class UserManagementService {
         }
         try {
             byte[] content = fileStorageService.readFile(cert.getFileUrl());
+            UserAccount owner = cert.getUser();
+            auditTrailService.log("USER", owner.getFullName(), owner.getId(), "USER_CERTIFICATION_FILE_DOWNLOADED", null, null,
+                    "Downloaded the file of certification: " + cert.getName());
             return new CertificationFileDownload(content, cert.getFileName(), cert.getFileType());
         } catch (java.io.IOException ex) {
             throw new IllegalStateException("Failed to read certification file: " + ex.getMessage(), ex);

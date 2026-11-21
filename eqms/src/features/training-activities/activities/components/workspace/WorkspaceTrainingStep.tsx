@@ -9,5 +9,5 @@ export function WorkspaceTrainingStep({ activityId, mode, external, participants
   external: boolean;
   participants: TrainingParticipant[];
 }) {
-  return <TrainingActivityFilesTab key="ws-materials" part="materials" mode={mode} external={external} activityId={activityId} participants={participants} />;
+  return <TrainingActivityFilesTab key="ws-materials" part="materials" reader mode={mode} external={external} activityId={activityId} participants={participants} />;
 }
