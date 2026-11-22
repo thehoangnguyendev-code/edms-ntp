@@ -12,6 +12,7 @@ import { DesktopFilterPanel, type DesktopFilterField } from '@/components/ui/fil
 import { FilterOptionList } from '@/components/ui/filter/FilterOptionList';
 import { FilterSearchInput } from '@/components/ui/filter/FilterSearchInput';
 import { useBranding } from '@/components/branding/BrandLogo';
+import { useLanguage } from "@/i18n";
 
 interface DocumentFiltersProps {
   searchQuery: string;
@@ -143,6 +144,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
   showCard = true,
   onApplyFilters,
 }) => {
+  const { tLabel } = useLanguage();
   const { compactDesktopFilters = false } = useBranding();
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = React.useState(false);
   const [expandedSections, setExpandedSections] = React.useState<Set<string>>(
@@ -245,7 +247,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
     <div className="flex flex-col w-full">
       {!hideSearch && (
         <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tLabel("Search")}</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -286,7 +288,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         {!hideSearch && (
           <div className="w-full">
             <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-              Search
+              {tLabel("Search")}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -294,7 +296,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
               </div>
               <input
                 type="text"
-                placeholder="Search by document name, ID, author, department..."
+                placeholder={tLabel("Search by document name, ID, author, department...")}
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 className="block w-full pl-10 pr-3 h-9 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-colors placeholder:text-slate-400"

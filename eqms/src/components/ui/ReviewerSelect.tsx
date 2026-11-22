@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Select } from '@/components/ui/select/Select';
+import { tr } from "@/i18n";
 
 export interface ReviewerChoice {
   id: string;
@@ -31,13 +32,13 @@ export const ReviewerSelect: React.FC<Props> = ({ load, value, onChange, disable
   }, []);
   return (
     <Select
-      label="Reviewer"
+      label={tr("Reviewer")}
       value={value}
       onChange={(id: string) => onChange(id)}
       options={[{ value: '', label: 'Me (the person creating the campaign)' }, ...choices.map((choice) => ({ value: choice.id, label: choice.name }))]}
       enableSearch
       disabled={disabled}
-      aria-label="Reviewer"
+      aria-label={tr("Reviewer")}
     />
   );
 };

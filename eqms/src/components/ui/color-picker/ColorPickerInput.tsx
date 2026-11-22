@@ -2,6 +2,7 @@ import { observeOverlayPosition } from "@/utils/scroll";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/components/ui/utils";
+import { tr } from "@/i18n";
 
 const THEME_COLORS: string[][] = [
   ["#FFFFFF", "#F2F2F2", "#D9D9D9", "#BDBDBD", "#757575", "#424242", "#212121", "#000000"],
@@ -158,7 +159,7 @@ export const ColorPickerInput: React.FC<ColorPickerInputProps> = ({
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 pt-4 pb-2">
-              <p className="text-sm font-semibold text-slate-800">Color Picker</p>
+              <p className="text-sm font-semibold text-slate-800">{tr("Color Picker")}</p>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
@@ -171,13 +172,13 @@ export const ColorPickerInput: React.FC<ColorPickerInputProps> = ({
             {/* Theme colors */}
             <div className="px-4 pb-2">
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-xs font-medium text-slate-500">Theme color</p>
+                <p className="text-xs font-medium text-slate-500">{tr("Theme color")}</p>
                 <button
                   type="button"
                   onClick={() => nativeInputRef.current?.click()}
                   className="text-xs font-medium text-blue-600 hover:text-blue-700"
                 >
-                  Edit
+                  {tr("Edit")}
                 </button>
                 <input
                   ref={nativeInputRef}
@@ -210,13 +211,13 @@ export const ColorPickerInput: React.FC<ColorPickerInputProps> = ({
             {/* My colors */}
             <div className="border-t border-slate-100 px-4 pt-3 pb-3">
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-xs font-medium text-slate-500">My color</p>
+                <p className="text-xs font-medium text-slate-500">{tr("My color")}</p>
                 <button
                   type="button"
                   onClick={handleAddColor}
                   className="text-xs font-medium text-blue-600 hover:text-blue-700"
                 >
-                  + Add
+                  {tr("+ Add")}
                 </button>
               </div>
               <div className="flex flex-wrap gap-1.5">

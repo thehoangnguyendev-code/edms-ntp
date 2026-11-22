@@ -66,17 +66,24 @@ afterEach(cleanup);
 describe("The end of the training in the Session Workspace: one button at a time, in order", () => {
   it("shows no Confirm attendance button at all", async () => {
     renderWorkspace(activity({}, { sendAttendanceList: true }, [person(1, "ATTENDED", "PENDING"), person(2, "ABSENT", "PENDING")]));
-    await screen.findByRole("button", { name: "Send attendance list to QA" });
+    await screen.findByRole("button", { name: "Send Attendance List to QA" });
     expect(button("Confirm attendance")).toBeNull();
+  });
+
+  it("does not offer sending a fully recorded list without the server capability", async () => {
+    renderWorkspace(activity({}, { sendAttendanceList: false }));
+    await screen.findByRole("button", { name: "Training Attendance List" });
+    expect(button("Send Attendance List to QA")).toBeNull();
+    expect(api.sendAttendanceList).not.toHaveBeenCalled();
   });
 
   it("Send attendance list to QA is not shown while someone is not recorded, and appears once everyone is", async () => {
     const waiting = renderWorkspace(activity({}, { sendAttendanceList: true }, [person(1, "ATTENDED", "PENDING"), person(2, "INVITED", "PENDING")]));
     await screen.findAllByRole("button", { name: /Back/ });
-    expect(button("Send attendance list to QA")).toBeNull();
+    expect(button("Send Attendance List to QA")).toBeNull();
     waiting.unmount();
     renderWorkspace(activity({}, { sendAttendanceList: true }));
-    const on = (await screen.findByRole("button", { name: "Send attendance list to QA" })) as HTMLButtonElement;
+    const on = (await screen.findByRole("button", { name: "Send Attendance List to QA" })) as HTMLButtonElement;
     expect(on.disabled).toBe(false);
     expect(button("Finish Training")).toBeNull();
   });
@@ -88,23 +95,37 @@ describe("The end of the training in the Session Workspace: one button at a time
       return updated;
     });
     renderWorkspace(activity({}, { sendAttendanceList: true }));
-    fireEvent.click(await screen.findByRole("button", { name: "Send attendance list to QA" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Send Attendance List to QA" }));
+    expect(api.sendAttendanceList).not.toHaveBeenCalled();
     fireEvent.click(await screen.findByRole("button", { name: /SIGN: Send attendance list to QA/ }));
     await waitFor(() => expect(api.sendAttendanceList).toHaveBeenCalledWith("a1", 5, "tok"));
-    await waitFor(() => expect(button("Send attendance list to QA")).toBeNull());
+    expect(api.sendAttendanceList).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(button("Send Attendance List to QA")).toBeNull());
+  });
+
+  it("keeps the attendance action available when the server rejects the signed request", async () => {
+    api.sendAttendanceList.mockRejectedValue({ response: { status: 409, data: { message: "TRAINING_ATTENDANCE_PENDING" } } });
+    renderWorkspace(activity({}, { sendAttendanceList: true }));
+    fireEvent.click(await screen.findByRole("button", { name: "Send Attendance List to QA" }));
+    expect(api.sendAttendanceList).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("button", { name: /SIGN: Send attendance list to QA/ }));
+    await waitFor(() => expect(api.sendAttendanceList).toHaveBeenCalledWith("a1", 5, "tok"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Send Attendance List to QA" })).toBeEnabled());
+    expect(api.sendAttendanceList).toHaveBeenCalledTimes(1);
+    expect(button("Finish Training")).toBeNull();
   });
 
   it("after the list is sent only Finish Training shows (there is no separate Send results step), once the server says every result is in", async () => {
     renderWorkspace(activity({ attendanceSentAt: "24 Oct 2026" }, { finishTraining: true }));
     await screen.findByRole("button", { name: "Finish Training" });
-    expect(button("Send attendance list to QA")).toBeNull();
+    expect(button("Send Attendance List to QA")).toBeNull();
   });
 
   it("while results are missing, Finish Training does not show", async () => {
     renderWorkspace(activity({ attendanceSentAt: "24 Oct 2026" }, {}));
     await screen.findByRole("button", { name: "Training Attendance List" });
     expect(button("Finish Training")).toBeNull();
-    expect(button("Send attendance list to QA")).toBeNull();
+    expect(button("Send Attendance List to QA")).toBeNull();
   });
 
   it("Finish Training asks for ONE signature, calls the server once, and nothing more is offered: the results went to QA with it", async () => {
@@ -147,6 +168,6 @@ describe("The end of the training in the Session Workspace: one button at a time
     renderWorkspace(activity({ status: "PENDING_QA_CONFIRMATION", attendanceSentAt: "24 Oct 2026", resultsFinishedAt: "24 Oct 2026" }, {}));
     await screen.findByRole("button", { name: "Training Attendance List" });
     expect(button("Finish Training")).toBeNull();
-    expect(button("Send attendance list to QA")).toBeNull();
+    expect(button("Send Attendance List to QA")).toBeNull();
   });
 });

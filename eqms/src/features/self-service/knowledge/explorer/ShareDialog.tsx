@@ -118,7 +118,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({ target, onClose }) => 
       size="3xl"
     >
       {/* one size whatever is inside, so the dialog does not shrink and grow */}
-      <div className="h-[min(66vh,36rem)]">
+      <div className="h-[min(70dvh,36rem)] min-h-0">
       {loading && <SectionLoading text="Loading who has access..." />}
 
       {!loading && node && !node.shareable && (
@@ -129,7 +129,8 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({ target, onClose }) => 
       )}
 
       {!loading && shareable && node && (
-        <div className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden">
+          <div className="shrink-0 overflow-x-auto [scrollbar-width:none]">
           <TabNav
             tabs={tabs}
             activeTab={tab}
@@ -140,6 +141,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({ target, onClose }) => 
             variant="simple-underline"
             ariaLabel="Sharing"
           />
+          </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-5">
           <div hidden={tab !== "people"}><SharePeopleTab node={node} entries={entries} options={options} onChanged={onChanged} active={tab === "people"} registerAction={setAction} /></div>
           {opened.includes("links") && <div hidden={tab !== "links"}><ShareLinksTab node={node} active={tab === "links"} registerAction={setAction} /></div>}

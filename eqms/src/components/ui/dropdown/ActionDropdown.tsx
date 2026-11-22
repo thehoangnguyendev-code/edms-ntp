@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { MoreVertical } from 'lucide-react';
 import { SmartDropdown, DropdownItem, DropdownDivider } from './SmartDropdown';
 import { cn } from '../utils';
+import { tr } from "@/i18n";
 
 /**
  * ActionDropdown - Table row action menu component
@@ -112,7 +113,7 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
           disabled && 'bg-slate-100 text-slate-400 cursor-not-allowed hover:bg-slate-100',
           triggerClassName
         )}
-        aria-label="More actions"
+        aria-label={tr("More actions")}
         aria-haspopup="true"
         aria-expanded={isOpen}
       >

@@ -6,6 +6,7 @@ import { ChevronDown, Clock } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { cn } from '../utils';
 import { Button } from '../button/Button';
+import { tr } from "@/i18n";
 
 export interface TimePickerProps {
   /** Label displayed above picker */
@@ -246,7 +247,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
             <motion.div
               ref={popoverRef}
               role="dialog"
-              aria-label="Choose time"
+              aria-label={tr("Choose time")}
               initial={reduceMotion ? false : { opacity: 0, y: popoverStyle.top === 'auto' ? 10 : -10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: popoverStyle.top === 'auto' ? 10 : -10, scale: 0.98 }}
@@ -255,14 +256,14 @@ export const TimePicker: React.FC<TimePickerProps> = ({
               className="flex flex-col overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl"
             >
               <div className="flex items-start justify-center gap-3 px-4 pb-3 pt-4">
-                <TimeField label="Hour" value={hour} max={23} onChange={(next) => setDraft((d) => ({ ...d, hour: next }))} onEnter={apply} />
+                <TimeField label={tr("Hour")} value={hour} max={23} onChange={(next) => setDraft((d) => ({ ...d, hour: next }))} onEnter={apply} />
                 <span aria-hidden="true" className="pt-2.5 text-2xl font-semibold text-slate-300">:</span>
-                <TimeField label="Minute" value={minute} max={59} onChange={(next) => setDraft((d) => ({ ...d, minute: next }))} onEnter={apply} />
+                <TimeField label={tr("Minute")} value={minute} max={59} onChange={(next) => setDraft((d) => ({ ...d, minute: next }))} onEnter={apply} />
               </div>
 
               <div className="space-y-3 border-t border-slate-100 px-4 py-3">
                 <ChoiceGrid
-                  label="Hour"
+                  label={tr("Hour")}
                   unit="hours"
                   options={HOURS}
                   selected={hour}
@@ -270,7 +271,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
                   onPick={(next) => setDraft((d) => ({ ...d, hour: next }))}
                 />
                 <ChoiceGrid
-                  label="Minute"
+                  label={tr("Minute")}
                   unit="minutes"
                   options={MINUTES}
                   selected={minute}
@@ -281,14 +282,14 @@ export const TimePicker: React.FC<TimePickerProps> = ({
 
               <div className="flex items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/60 px-3 py-2.5">
                 <Button variant="ghost" size="sm" onClick={clear} className="text-slate-500 hover:bg-rose-50 hover:text-rose-600">
-                  Clear
+                  {tr("Clear")}
                 </Button>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={useNow}>
-                    Now
+                    {tr("Now")}
                   </Button>
                   <Button size="sm" onClick={apply} disabled={!complete} className="bg-emerald-600 text-white hover:bg-emerald-700">
-                    Set time
+                    {tr("Set time")}
                   </Button>
                 </div>
               </div>

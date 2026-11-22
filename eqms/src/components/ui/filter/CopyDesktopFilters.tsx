@@ -3,6 +3,7 @@ import { DesktopFilterPanel, type DesktopFilterField } from './DesktopFilterPane
 import type { SelectOption } from '@/components/ui/select/Select';
 import { FilterOptionList } from './FilterOptionList';
 import { DateRangePicker } from '@/components/ui/datetime-picker/DateRangePicker';
+import { tr } from "@/i18n";
 
 export function CopyDesktopFilters({ search, status, statusOptions, statusLocked, allStatus, dates, selects, onApply }: {
   search: React.ReactNode;
@@ -18,7 +19,7 @@ export function CopyDesktopFilters({ search, status, statusOptions, statusLocked
   const values: Record<string, string> = { status };
   const defaults: Record<string, string> = { status: statusLocked ? status : allStatus };
   const fields: DesktopFilterField[] = [{ id: 'status', label: 'Status', render: (draft, change) =>
-    <FilterOptionList label="Status" value={draft.status} options={statusOptions} disabled={statusLocked}
+    <FilterOptionList label={tr("Status")} value={draft.status} options={statusOptions} disabled={statusLocked}
       onChange={value => { if (!statusLocked) change('status', String(value)); }} /> }];
   for (const select of selects ?? []) {
     values[select.id] = select.value;

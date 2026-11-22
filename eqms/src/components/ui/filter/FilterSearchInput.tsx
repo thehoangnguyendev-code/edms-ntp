@@ -1,6 +1,7 @@
 import React from "react";
 import { Search, X } from "lucide-react";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { useLanguage } from "@/i18n";
 
 interface FilterSearchInputProps {
   value: string;
@@ -28,6 +29,7 @@ export const FilterSearchInput: React.FC<FilterSearchInputProps> = ({
   fullWidth = true,
   ...rest
 }) => {
+  const { tLabel } = useLanguage();
   const [draft, setDraft] = React.useState(value);
   const timer = React.useRef<number | undefined>(undefined);
   const onChangeRef = React.useRef(onChange);
@@ -80,8 +82,8 @@ export const FilterSearchInput: React.FC<FilterSearchInputProps> = ({
       </div>
       <input
         type="text"
-        aria-label={rest["aria-label"]}
-        placeholder={placeholder}
+        aria-label={tLabel(rest["aria-label"])}
+        placeholder={tLabel(placeholder)}
         value={draft}
         disabled={disabled}
         onChange={(event) => handleInput(event.target.value)}
@@ -90,7 +92,7 @@ export const FilterSearchInput: React.FC<FilterSearchInputProps> = ({
       {draft && !disabled && (
         <button
           type="button"
-          aria-label="Clear search"
+          aria-label={tLabel("Clear search")}
           onClick={clear}
           className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
         >

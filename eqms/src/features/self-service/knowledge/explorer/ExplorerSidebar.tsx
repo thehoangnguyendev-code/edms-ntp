@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Bell, ChevronLeft, ChevronRight, Eye, Home, Star, ThumbsUp } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, Eye, Home, Search, Star, ThumbsUp } from "lucide-react";
 import { BrandLogo } from "@/components/branding/BrandLogo";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/components/ui/utils";
@@ -9,6 +9,9 @@ import { ExplorerLibraryTree } from "./ExplorerLibraryTree";
 import { FOCUS_RING, GROUP_LABEL } from "./explorerStyles";
 import { type ExplorerNav, type SmartKey } from "./explorerModel";
 import { useFolderColor } from "./ExplorerIcons";
+import { useLanguage, LANGUAGE_OPTIONS } from "@/i18n";
+import type { ApplicationLanguage } from "@/i18n";
+import { TabNav } from "@/components/ui/tabs";
 
 interface ExplorerSidebarProps {
   overview: KnowledgePortalOverview | null;
@@ -17,6 +20,8 @@ interface ExplorerSidebarProps {
   onHierarchyChange: (id: string) => void;
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
+  /** Moves the person to the explorer's search box (a phone opens the drawer to search, then gets out of the way). */
+  onFocusSearch?: () => void;
 }
 
 const QUICK: { key: SmartKey | "home"; label: string; Icon: React.ElementType }[] = [
@@ -27,6 +32,14 @@ const QUICK: { key: SmartKey | "home"; label: string; Icon: React.ElementType }[
   { key: "subscribed", label: "Subscribed", Icon: Bell },
 ];
 
+const QUICK_MESSAGE: Record<SmartKey | "home", string> = {
+  home: "knowledge.home",
+  featured: "knowledge.featured",
+  viewed: "knowledge.mostViewed",
+  useful: "knowledge.mostHelpful",
+  subscribed: "knowledge.subscribed",
+};
+
 const itemClass = (active: boolean) =>
   cn(
     "flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium transition-colors md:gap-2.5 md:px-2.5 md:py-2",
@@ -34,9 +47,11 @@ const itemClass = (active: boolean) =>
     active ? "bg-emerald-50 text-emerald-700" : "text-slate-600 hover:bg-emerald-50/70 hover:text-emerald-700",
   );
 
-export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav, onGo, onHierarchyChange, collapsed = false, onToggleCollapsed }) => {
+export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav, onGo, onHierarchyChange, collapsed = false, onToggleCollapsed, onFocusSearch }) => {
   const reduceMotion = useReducedMotion();
   const colorOf = useFolderColor();
+  const { t, language, setLanguage } = useLanguage();
+  const languageTabs = LANGUAGE_OPTIONS.map((option) => ({ id: option.value, label: option.label }));
   // each press of a Quick access button shakes its icon once (the number of presses is the key, so the animation starts again)
   const [shakes, setShakes] = useState<Record<string, number>>({});
   const counts: Partial<Record<SmartKey, number>> = {
@@ -85,13 +100,27 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
       </div>
 
       <div className={cn("flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-3.5 custom-scrollbar", collapsed ? "px-2" : "px-2.5")}>
-        <h2 className={cn("overflow-hidden whitespace-nowrap px-2.5 text-base font-semibold text-slate-900 transition-[max-height,opacity,margin] duration-300 md:text-sm", collapsed ? "-mb-4 max-h-0 opacity-0" : "max-h-8 opacity-100 delay-100")}>Knowledge Base</h2>
+        <h2 className={cn("overflow-hidden whitespace-nowrap px-2.5 text-base font-semibold text-slate-900 transition-[max-height,opacity,margin] duration-300 md:text-sm", collapsed ? "-mb-4 max-h-0 opacity-0" : "max-h-8 opacity-100 delay-100")}>{t("knowledge.title", "Knowledge Base")}</h2>
+
+        {onFocusSearch && (
+          <button
+            type="button"
+            onClick={onFocusSearch}
+            aria-label={t("knowledge.searchDocuments", "Search documents")}
+            title={collapsed ? t("knowledge.searchDocuments", "Search documents") : undefined}
+            className={cn(itemClass(false), collapsed && "justify-center gap-0 px-2 md:gap-0 md:px-2")}
+          >
+            <Search className="h-5 w-5 shrink-0 md:h-4 md:w-4" aria-hidden="true" />
+            <span className={cn("min-w-0 truncate whitespace-nowrap transition-[max-width,opacity] duration-300", collapsed ? "max-w-0 flex-none opacity-0" : "max-w-[16rem] flex-1 opacity-100 delay-100")}>{t("knowledge.searchDocuments", "Search documents")}</span>
+          </button>
+        )}
 
         <div>
-          <p className={cn(GROUP_LABEL, "overflow-hidden whitespace-nowrap px-2.5 transition-[max-height,opacity,padding] duration-300", collapsed ? "max-h-0 pb-0 opacity-0" : "max-h-6 pb-1 opacity-100 delay-100")}>Quick access</p>
+          <p className={cn(GROUP_LABEL, "overflow-hidden whitespace-nowrap px-2.5 transition-[max-height,opacity,padding] duration-300", collapsed ? "max-h-0 pb-0 opacity-0" : "max-h-6 pb-1 opacity-100 delay-100")}>{t("knowledge.quickAccess", "Quick access")}</p>
           <ul className="space-y-0.5">
             {QUICK.map(({ key, label, Icon }) => {
               const count = key === "home" ? undefined : counts[key];
+              const displayLabel = t(QUICK_MESSAGE[key], label);
               return (
                 <li key={key}>
                   <button
@@ -99,13 +128,13 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
                     onClick={() => { setShakes((current) => ({ ...current, [key]: (current[key] ?? 0) + 1 })); onGo(key === "home" ? { kind: "home" } : { kind: "smart", key }); }}
                     aria-current={isActive(key) ? "page" : undefined}
                     className={cn(itemClass(isActive(key)), collapsed && "justify-center gap-0 px-2 md:gap-0 md:px-2")}
-                    title={collapsed ? label : undefined}
+                    title={collapsed ? displayLabel : undefined}
                   >
                     <span key={shakes[key] ?? 0} className={cn("inline-flex shrink-0", shakes[key] && "explorer-icon-shake")}>
                       <Icon className="h-5 w-5 shrink-0 md:h-4 md:w-4" aria-hidden="true" />
                     </span>
-                    <span className={cn("min-w-0 truncate whitespace-nowrap transition-[max-width,opacity] duration-300", collapsed ? "max-w-0 flex-none opacity-0" : "max-w-[16rem] flex-1 opacity-100 delay-100")}>{label}</span>
-                    {count !== undefined && <span className={cn("overflow-hidden text-xs tabular-nums text-slate-400 transition-[max-width,opacity] duration-300", collapsed ? "max-w-0 opacity-0" : "max-w-[4rem] opacity-100 delay-100")}>{count}</span>}
+                    <span className={cn("min-w-0 truncate whitespace-nowrap transition-[max-width,opacity] duration-300", collapsed ? "max-w-0 flex-none opacity-0" : "max-w-[16rem] flex-1 opacity-100 delay-100")}>{displayLabel}</span>
+                    {count !== undefined && <span className={cn("overflow-hidden text-xs tabular-nums text-slate-500 transition-[max-width,opacity] duration-300", collapsed ? "max-w-0 opacity-0" : "max-w-[4rem] opacity-100 delay-100")}>{count}</span>}
                   </button>
                 </li>
               );
@@ -146,12 +175,12 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
         )}
         <div className={cn("min-h-0", collapsed && "hidden")}>
           <p className={cn(GROUP_LABEL, "px-2.5 pb-1")}>
-            Library{overview?.determinatorLabel ? ` · by ${overview.determinatorLabel}` : ""}
+            {t("knowledge.library", "Library")}{overview?.determinatorLabel ? ` · ${t("knowledge.by", "by")} ${overview.determinatorLabel}` : ""}
           </p>
           {(overview?.hierarchies.length ?? 0) > 1 && (
             <div className="px-1 pb-2">
               <Select
-                label="Hierarchy"
+                label={t("knowledge.hierarchy", "Hierarchy")}
                 value={overview?.selectedHierarchyId ?? ""}
                 onChange={(value) => onHierarchyChange(String(value))}
                 options={(overview?.hierarchies ?? []).map((h) => ({ label: h.isDefault ? `${h.name} (default)` : h.name, value: h.id }))}
@@ -160,13 +189,38 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
             </div>
           )}
           {!overview?.selectedHierarchyId ? (
-            <p className="px-2.5 py-2 text-xs text-slate-500">No hierarchy is configured yet.</p>
+            <p className="px-2.5 py-2 text-xs text-slate-500">{t("knowledge.noHierarchy", "No hierarchy is configured yet.")}</p>
           ) : overview.knowledgeBases.length === 0 ? (
-            <p className="px-2.5 py-2 text-xs text-slate-500">No documents yet.</p>
+            <p className="px-2.5 py-2 text-xs text-slate-500">{t("knowledge.noDocumentsYet", "No documents yet.")}</p>
           ) : (
             <ExplorerLibraryTree overview={overview} nav={nav} onGo={onGo} />
           )}
         </div>
+      </div>
+
+      {/* This explorer is a page of its own: its sidebar carries the same language switch as the application sidebar. */}
+      <div className={cn("shrink-0 border-t border-slate-100 bg-white", collapsed ? "px-2 py-2" : "px-2.5 py-2")}>
+        {collapsed ? (
+          <button
+            type="button"
+            onClick={() => void setLanguage(language === "vi" ? "en" : "vi")}
+            title={t("shell.language", "Language")}
+            aria-label={`${t("shell.language", "Language")}: ${language === "vi" ? "Tiếng Việt" : "English"}`}
+            className="flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          >
+            {language === "vi" ? "VI" : "EN"}
+          </button>
+        ) : (
+          <TabNav
+            tabs={languageTabs}
+            activeTab={language}
+            onChange={(id) => void setLanguage(id as ApplicationLanguage)}
+            variant="pill"
+            fullWidth
+            ariaLabel={t("shell.language", "Language")}
+            tabIdPrefix="explorer-language"
+          />
+        )}
       </div>
     </nav>
   );

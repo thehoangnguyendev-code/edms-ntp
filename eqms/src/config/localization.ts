@@ -6,6 +6,18 @@
 export const LOCALIZATION_STORAGE_KEY = 'eqms.system.localization';
 export const LOCALIZATION_UPDATED_EVENT = 'eqms:localization-updated';
 
+export const APPLICATION_LANGUAGES = ['en', 'vi'] as const;
+export type ApplicationLanguage = (typeof APPLICATION_LANGUAGES)[number];
+export const DEFAULT_APPLICATION_LANGUAGE: ApplicationLanguage = 'en';
+
+export const normalizeApplicationLanguage = (value: unknown): ApplicationLanguage => {
+  if (typeof value !== 'string') return DEFAULT_APPLICATION_LANGUAGE;
+  const normalized = value.trim().toLowerCase();
+  return (APPLICATION_LANGUAGES as readonly string[]).includes(normalized)
+    ? normalized as ApplicationLanguage
+    : DEFAULT_APPLICATION_LANGUAGE;
+};
+
 export const APPLICATION_FONT_FAMILIES = [
   'INTER',
   'GOOGLE_SANS',
@@ -71,7 +83,7 @@ export const readSystemLocalizationSettings = (): SystemLocalizationSettings => 
   if (typeof window === 'undefined') return DEFAULT_LOCALIZATION_SETTINGS;
   try {
     const parsed = JSON.parse(window.localStorage.getItem(LOCALIZATION_STORAGE_KEY) || '{}') as Partial<SystemLocalizationSettings>;
-    return { ...DEFAULT_LOCALIZATION_SETTINGS, ...parsed, dateTimeFormat: DISPLAY_DATE_TIME_FORMAT_CODE, timeZone: SITE_TIME_ZONE, language: 'en', fontFamily: normalizeFontFamily(parsed.fontFamily) };
+    return { ...DEFAULT_LOCALIZATION_SETTINGS, ...parsed, dateTimeFormat: DISPLAY_DATE_TIME_FORMAT_CODE, timeZone: SITE_TIME_ZONE, language: normalizeApplicationLanguage(parsed.language), fontFamily: normalizeFontFamily(parsed.fontFamily) };
   } catch {
     return DEFAULT_LOCALIZATION_SETTINGS;
   }
@@ -82,7 +94,7 @@ export const writeSystemLocalizationSettings = (settings: SystemLocalizationSett
   const normalized = {
     ...DEFAULT_LOCALIZATION_SETTINGS,
     ...settings,
-    language: 'en',
+    language: normalizeApplicationLanguage(settings.language),
     fontFamily: normalizeFontFamily(settings.fontFamily),
   };
   window.localStorage.setItem(LOCALIZATION_STORAGE_KEY, JSON.stringify(normalized));

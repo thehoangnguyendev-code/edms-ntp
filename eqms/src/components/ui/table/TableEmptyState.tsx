@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import noResultImage from "@/assets/images/image-file/no_result.svg";
+import { useLanguage } from "@/i18n";
 
 export interface TableEmptyStateProps {
   /** Replaces the default "no result" illustration. */
@@ -39,6 +40,9 @@ export const TableEmptyState: React.FC<TableEmptyStateProps> = ({
   title = "No Results Found",
   description = "We couldn't find any items matching your filters. Try adjusting your search criteria.",
 }) => {
+  const { tLabel } = useLanguage();
+  const displayTitle = tLabel(title);
+  const displayDescription = tLabel(description);
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState<number | null>(null);
 
@@ -72,8 +76,8 @@ export const TableEmptyState: React.FC<TableEmptyStateProps> = ({
           />
         )}
       </div>
-      <h3 className="mb-1 text-sm font-bold text-slate-900 sm:text-base md:text-lg">{title}</h3>
-      <p className="mx-auto max-w-xs text-xs text-slate-500 sm:max-w-sm sm:text-sm md:text-base">{description}</p>
+      <h3 className="mb-1 text-sm font-bold text-slate-900 sm:text-base md:text-lg">{displayTitle}</h3>
+      <p className="mx-auto max-w-xs text-xs text-slate-500 sm:max-w-sm sm:text-sm md:text-base">{displayDescription}</p>
     </div>
   );
 };

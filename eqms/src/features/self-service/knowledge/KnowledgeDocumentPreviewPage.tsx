@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
-import { FileText } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { FileText, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ROUTES } from "@/app/routes.constants";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import {
   DocumentStateMessage,
@@ -29,6 +31,7 @@ const buildWatermarkDataUri = (lines: string[]) => {
 
 export const KnowledgeDocumentPreviewPage: React.FC = () => {
   const { documentId = "" } = useParams();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const documentName = searchParams.get("name") || "Document Preview";
@@ -51,6 +54,12 @@ export const KnowledgeDocumentPreviewPage: React.FC = () => {
   useEffect(() => {
     document.title = `${documentName} — Preview`;
   }, [documentName]);
+
+  // The preview opens in a tab of its own: closing that tab is the way out; when the browser refuses, the Knowledge Base is.
+  const closePreview = useCallback(() => {
+    window.close();
+    navigate(ROUTES.DOCUMENTS.KNOWLEDGE_EXPLORER, { replace: true });
+  }, [navigate]);
 
   useEffect(() => {
     if (!documentId) {
@@ -110,8 +119,8 @@ export const KnowledgeDocumentPreviewPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-50">
-      <div className="relative shrink-0 border-b border-slate-200 bg-white px-3 md:px-6 py-2.5 md:py-3 flex items-center justify-between gap-2 md:gap-4">
+    <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-slate-50 pb-[env(safe-area-inset-bottom)]">
+      <div className="relative flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))] md:gap-4 md:px-6 md:py-3">
         <img
           src={logo}
           alt="Ngoc Thien"
@@ -123,11 +132,20 @@ export const KnowledgeDocumentPreviewPage: React.FC = () => {
           </div>
           <div className="min-w-0">
             <p className="text-xs md:text-sm font-semibold text-slate-900 truncate">{documentName}</p>
-            <p className="text-2xs md:text-xs text-slate-500 truncate">
+            <p className="text-xs text-slate-600 truncate">
               {[documentNumber, revisionNumber && `Revision ${revisionNumber}`, departmentName].filter(Boolean).join(" · ")}
             </p>
           </div>
         </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={closePreview}
+          aria-label="Close preview"
+          className="relative z-10 shrink-0 text-slate-500 hover:text-slate-900"
+        >
+          <X className="h-4 w-4" />
+        </Button>
       </div>
 
       <div className="relative flex-1 min-h-0">

@@ -5,6 +5,8 @@ import { X } from 'lucide-react';
 import { Button } from '../button';
 import { cn } from '../utils';
 import styles from './Drawer.module.css';
+import { useLanguage } from '@/i18n';
+import { tr } from "@/i18n";
 
 export interface DrawerHandle { close: () => void }
 export interface DrawerProps {
@@ -28,6 +30,9 @@ export interface DrawerProps {
 const overlays: HTMLElement[] = [];
 let originalOverflow = '';
 const DrawerContent: React.FC<Omit<DrawerProps, 'open' | 'onExited'>> = ({ title, subtitle, subtitlePlacement = 'above', icon, headerActions, description, footer, bodyClassName, footerClassName, onClose, children }) => {
+  const { tLabel } = useLanguage();
+  const displayTitle = tLabel(title);
+  const displaySubtitle = typeof subtitle === 'string' ? tLabel(subtitle) : subtitle;
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const close = useRef(onClose); close.current = onClose;
@@ -85,7 +90,7 @@ const DrawerContent: React.FC<Omit<DrawerProps, 'open' | 'onExited'>> = ({ title
       style={mobile ? { height: `${height}dvh`, paddingBottom: 'env(safe-area-inset-bottom, 0px)', paddingTop: height >= 98 ? 'env(safe-area-inset-top, 0px)' : undefined } : undefined}
       initial={reduced ? { x: 0, y: 0 } : offset} animate={{ x: 0, y: 0, transition: { duration: reduced ? 0 : 0.5, ease: easing } }}
       exit={{ ...(reduced ? { x: 0, y: 0 } : offset), transition: { duration: reduced ? 0 : 0.35, ease: easing } }}>
-      {mobile && <button type="button" aria-label="Resize drawer" className="flex h-8 shrink-0 touch-none select-none items-center justify-center bg-white active:cursor-grabbing"
+      {mobile && <button type="button" aria-label={tr("Resize drawer")} className="flex h-8 shrink-0 touch-none select-none items-center justify-center bg-white active:cursor-grabbing"
         onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); drag.current = { y: event.clientY, height, current: height }; }}
         onPointerMove={event => { if (!drag.current) return; const next = Math.max(0, Math.min(100, drag.current.height + (drag.current.y - event.clientY) / window.innerHeight * 100)); drag.current.current = next; setHeight(next); }}
         onPointerUp={() => { if (!drag.current) return; const shouldClose = drag.current.current < 25; drag.current = null; if (shouldClose) onClose(); else setHeight(88); }}
@@ -103,7 +108,7 @@ const DrawerContent: React.FC<Omit<DrawerProps, 'open' | 'onExited'>> = ({ title
             {headerActions && <div className="flex flex-wrap items-center gap-2">{headerActions}</div>}
           </div>
         </div>
-        <Button variant="ghost" size="icon-sm" aria-label="Close drawer" onClick={onClose} className="shrink-0 text-slate-500"><X className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon-sm" aria-label={tr("Close drawer")} onClick={onClose} className="shrink-0 text-slate-500"><X className="h-4 w-4" /></Button>
       </header>
       <div className={cn(styles.body, 'min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50/30 p-4 md:p-5', bodyClassName)}>
         {description && <p className="mb-4 break-words text-sm text-slate-500">{description}</p>}

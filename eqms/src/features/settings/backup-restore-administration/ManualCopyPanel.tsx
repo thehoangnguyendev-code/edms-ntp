@@ -2,14 +2,12 @@ import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { FormField, Input, Textarea } from "@/components/ui/form/ResponsiveForm";
-import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { DataTable, TablePagination } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Fact } from "@/features/backup-restore/components/Fact";
-import { PagedTable } from "@/features/backup-restore/components/PagedTable";
 import { formatDate, formatDateTime } from "@/features/backup-restore/format";
 import { backupRestoreApi, type ManualCopyRecord, type ManualCopyStatus } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
@@ -21,16 +19,11 @@ const STATE: Record<ManualCopyStatus["state"], { label: string; color: "emerald"
   NOT_DECLARED: { label: "Not declared in the policy", color: "slate" },
 };
 
-/** Today in the picker's dd/MM/yyyy format. */
 const todayText = () => {
   const d = new Date();
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-};
-
-/** The picker's dd/MM/yyyy as the yyyy-mm-dd the server takes. */
-const toIsoDay = (value: string) => {
-  const m = value.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : value;
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
 };
 
 const EMPTY = () => ({ copiedOn: todayText(), backupNumber: "", place: "", madeBy: "", note: "" });
@@ -79,7 +72,7 @@ export const ManualCopyPanel: React.FC = () => {
     setBusy(true);
     try {
       await backupRestoreApi.recordManualCopy({
-        copiedOn: toIsoDay(form.copiedOn),
+        copiedOn: form.copiedOn,
         backupNumber: form.backupNumber.trim() || undefined,
         place: form.place.trim(),
         madeBy: form.madeBy.trim(),
@@ -123,7 +116,7 @@ export const ManualCopyPanel: React.FC = () => {
           </Button>
         </div>
       )}
-      <PagedTable
+      <DataTable
         rows={rows}
         getRowKey={(row) => row.id}
         columns={[
@@ -134,10 +127,18 @@ export const ManualCopyPanel: React.FC = () => {
           { id: "note", header: "Note", cell: (row) => <span className="block max-w-xs whitespace-normal break-words text-xs">{row.note ?? "—"}</span> },
           { id: "recorded", header: "Recorded", cell: (row) => `${row.recordedBy} · ${formatDateTime(row.recordedAt)}` },
         ]}
-        paging={{ page: page, pageSize: pageSize, totalItems: total, totalPages: totalPages, onPageChange: setPage, onPageSizeChange: (size) => {
+      />
+      <TablePagination
+        currentPage={page}
+        totalPages={totalPages}
+        totalItems={total}
+        itemsPerPage={pageSize}
+        onPageChange={setPage}
+        onItemsPerPageChange={(size) => {
           setPageSize(size);
           setPage(1);
-        }, pageSizeOptions: [5, 10, 20] }}
+        }}
+        itemsPerPageOptions={[5, 10, 20]}
       />
 
       <FormModal
@@ -150,26 +151,19 @@ export const ManualCopyPanel: React.FC = () => {
         onConfirm={save}
       >
         <div className="space-y-4">
-          <DateTimePicker
-            label={
-              <>
-                Day the copy was made <span className="text-red-500">*</span>
-              </>
-            }
-            value={form?.copiedOn ?? ""}
-            onChange={(value) => form && setForm({ ...form, copiedOn: value })}
-            placeholder="Select the day"
-          />
+          <FormField label="Day the copy was made" required>
+            <Input type="date" max={todayText()} value={form?.copiedOn ?? ""} onChange={(e) => form && setForm({ ...form, copiedOn: e.target.value })} />
+          </FormField>
           <FormField label="Where it is kept" required hint="For example: the safe at head office.">
             <Input maxLength={200} value={form?.place ?? ""} onChange={(e) => form && setForm({ ...form, place: e.target.value })} />
           </FormField>
           <FormField label="Who made it" required>
             <Input maxLength={120} value={form?.madeBy ?? ""} onChange={(e) => form && setForm({ ...form, madeBy: e.target.value })} />
           </FormField>
-          <FormField label="Newest backup it holds" hint="Optional. For example BK-20261110-1900-0001. It must be a completed backup.">
+          <FormField label="Newest backup it holds" hint="For example BK-20261110-1900-0001. It must be a completed backup.">
             <Input maxLength={40} value={form?.backupNumber ?? ""} onChange={(e) => form && setForm({ ...form, backupNumber: e.target.value })} />
           </FormField>
-          <FormField label="Note" hint="Optional.">
+          <FormField label="Note">
             <Textarea rows={3} maxLength={1000} value={form?.note ?? ""} onChange={(e) => form && setForm({ ...form, note: e.target.value })} />
           </FormField>
         </div>

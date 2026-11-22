@@ -1,6 +1,7 @@
 import React from 'react';
 import { FileText } from 'lucide-react';
 import { cn } from '@/components/ui/utils';
+import { useLanguage } from '@/i18n';
 
 export interface FormSectionProps {
   title: string;
@@ -34,9 +35,12 @@ export const FormSection: React.FC<FormSectionProps> = ({
   headerRight,
   contentClassName,
 }) => {
+  const { tLabel } = useLanguage();
   // Content is the only repeated generic section title in Notification Policy.
   // Supply a consistent document icon when callers do not provide one explicitly.
   const resolvedIcon = icon ?? (title === 'Content' ? <FileText className="h-4 w-4" /> : undefined);
+  const displayTitle = typeof title === 'string' ? tLabel(title) : title;
+  const displayDescription = typeof description === 'string' ? tLabel(description) : description;
   return (
     <div
       className={cn("bg-white rounded-xl border border-slate-200 overflow-hidden", className)}
@@ -49,9 +53,9 @@ export const FormSection: React.FC<FormSectionProps> = ({
             </span>
           )}
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-slate-900 tracking-tight truncate">{title}</h3>
-            {description && (
-              <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 truncate">{description}</p>
+            <h3 className="text-sm font-semibold text-slate-900 tracking-tight truncate">{displayTitle}</h3>
+            {displayDescription && (
+              <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 truncate">{displayDescription}</p>
             )}
           </div>
         </div>

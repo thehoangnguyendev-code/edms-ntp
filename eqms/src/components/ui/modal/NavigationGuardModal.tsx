@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "../button/Button";
 import { ButtonLoading } from "../loading/Loading";
 import { cn } from "../utils";
+import { tr } from "@/i18n";
 
 interface NavigationGuardModalProps {
   isOpen: boolean;
@@ -140,7 +141,7 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                   type="button"
                   onClick={onClose}
                   className="flex-shrink-0 rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-white hover:text-slate-700"
-                  aria-label="Close dialog"
+                  aria-label={tr("Close dialog")}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -158,7 +159,7 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                       <span className="font-semibold text-slate-900">{currentPageTitle || "this form"}</span> will be lost.
                     </p>
                     <p className="mt-3 text-xs leading-relaxed text-slate-500">
-                      This action cannot be undone.
+                      {tr("This action cannot be undone.")}
                     </p>
                   </div>
                 ) : (
@@ -172,7 +173,7 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div>
                           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Current page
+                            {tr("Current page")}
                           </div>
                           <div className="mt-1 font-medium text-slate-900">
                             {currentPageTitle || "This page"}
@@ -180,7 +181,7 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                         </div>
                         <div>
                           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Next Page
+                            {tr("Next Page")}
                           </div>
                           <div className="mt-1 font-medium text-amber-700">
                             {destinationLabel || "Another page"}
@@ -189,7 +190,7 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                       </div>
 
                       <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                        Your unsaved changes will not be recovered if you continue.
+                        {tr("Your unsaved changes will not be recovered if you continue.")}
                       </p>
                     </div>
                   </div>

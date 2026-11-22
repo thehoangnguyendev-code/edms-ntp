@@ -5,6 +5,7 @@ import { cn } from "@/components/ui/utils";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { tr } from "@/i18n";
 
 // ─── FilterAccordionItem ──────────────────────────────────────────────
 interface FilterAccordionItemProps {
@@ -49,7 +50,7 @@ export const FilterAccordionItem: React.FC<FilterAccordionItemProps> = ({
             {label}
           </span>
           {disabled && (
-            <Badge size="xs" color="slate">Read Only</Badge>
+            <Badge size="xs" color="slate">{tr("Read Only")}</Badge>
           )}
         </div>
         <motion.div

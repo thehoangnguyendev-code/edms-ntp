@@ -3,6 +3,7 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import type { KnowledgePortalDocument } from "@/services/api/knowledge";
 import { ExplorerInspector, type InspectorTarget } from "./ExplorerInspector";
 import type { FolderEntry } from "./explorerModel";
+import { useLanguage } from "@/i18n";
 
 interface ExplorerDetailsModalProps {
   /** What to show: a document or a folder; nothing (or a location) keeps the modal closed. */
@@ -22,11 +23,12 @@ interface ExplorerDetailsModalProps {
 export const ExplorerDetailsModal: React.FC<ExplorerDetailsModalProps> = ({
   target, canFeature, onClose, onShareDocument, onShareFolder, onOpenDocument, onOpenFolder, onToggleHelpful, onToggleFeatured, onToggleSubscribe,
 }) => {
+  const { t } = useLanguage();
   const shown = target && target.type !== "location" ? target : null;
   // an action that leaves the modal (open, share) closes it first
   const thenClose = <T,>(action: (value: T) => void) => (value: T) => { onClose(); action(value); };
   return (
-    <FormModal isOpen={shown !== null} onClose={onClose} title={shown?.type === "folder" ? "Folder Details" : "Document Details"} showFooter={false} size="md">
+    <FormModal isOpen={shown !== null} onClose={onClose} title={shown?.type === "folder" ? t("knowledge.folderDetails", "Folder Details") : t("knowledge.documentDetails", "Document Details")} showFooter={false} size="md">
       {shown && (
         <ExplorerInspector
           target={shown}

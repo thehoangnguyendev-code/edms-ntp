@@ -3,6 +3,7 @@ import { Check } from 'lucide-react';
 import type { SelectOption } from '@/components/ui/select/Select';
 import { FilterSearchInput } from './FilterSearchInput';
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 /** Single-value filter list. Values and server search remain identical to the existing Select contract. */
 export function FilterOptionList({ label, value, options, onChange, onSearch, disabled = false, active = true }: {
@@ -55,8 +56,8 @@ export function FilterOptionList({ label, value, options, onChange, onSearch, di
       <FilterSearchInput aria-label={`Search ${label}`} value={query} disabled={disabled} debounceMs={hasSearch ? 0 : 300}
         onChange={setQuery} placeholder={`Search ${label.toLocaleLowerCase()}...`} />
     </div>
-    {disabled && <p className="shrink-0 text-xs text-slate-500">This filter is fixed for the current view.</p>}
-    {loading && <p role="status" className="shrink-0 text-sm text-slate-500">Loading options...</p>}
+    {disabled && <p className="shrink-0 text-xs text-slate-500">{tr("This filter is fixed for the current view.")}</p>}
+    {loading && <p role="status" className="shrink-0 text-sm text-slate-500">{tr("Loading options...")}</p>}
     {failed && <div role="alert" className="shrink-0 text-sm text-red-600">Unable to load options. <button type="button" className="underline" onClick={() => setRetry(previous => previous + 1)}>Retry</button></div>}
     <div role="radiogroup" aria-label={label} aria-disabled={disabled} aria-busy={loading} className="max-h-72 overflow-y-auto divide-y divide-slate-100">
       {visible.map(option => <button key={String(option.value)} type="button" role="radio"
@@ -69,6 +70,6 @@ export function FilterOptionList({ label, value, options, onChange, onSearch, di
         {option.icon}<span className="min-w-0 break-words">{option.label}</span>
       </button>)}
     </div>
-    {!loading && !failed && visible.length === 0 && <p className="text-sm text-slate-500">No matching options.</p>}
+    {!loading && !failed && visible.length === 0 && <p className="text-sm text-slate-500">{tr("No matching options.")}</p>}
   </div>;
 }

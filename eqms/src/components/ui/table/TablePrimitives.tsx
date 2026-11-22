@@ -1,4 +1,5 @@
 import React from "react";
+import { useLanguage } from "@/i18n";
 
 export { TABLE_STYLES } from "./tableStyles";
 
@@ -22,8 +23,12 @@ function Foot(props: React.ComponentPropsWithRef<"tfoot">) {
 function Row(props: React.ComponentPropsWithRef<"tr">) {
   return <tr {...props} />;
 }
-function HeaderCell(props: React.ComponentPropsWithRef<"th">) {
-  return <th {...props} />;
+function HeaderCell({ children, ...props }: React.ComponentPropsWithRef<"th">) {
+  const { tLabel } = useLanguage();
+  // A header is a label, never a record value: translate its text, keep any icon or control untouched.
+  const translateNode = (node: React.ReactNode): React.ReactNode =>
+    typeof node === "string" ? tLabel(node) : Array.isArray(node) ? node.map(translateNode) : node;
+  return <th {...props}>{translateNode(children)}</th>;
 }
 function Cell(props: React.ComponentPropsWithRef<"td">) {
   return <td {...props} />;

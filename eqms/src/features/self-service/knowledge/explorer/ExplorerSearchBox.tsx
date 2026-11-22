@@ -7,6 +7,7 @@ import { useDebounce } from "@/hooks";
 import { knowledgeApi, type DocumentSuggestion } from "@/services/api/knowledge";
 import { typeBadgeColor } from "./explorerModel";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { useLanguage } from "@/i18n";
 
 /** Characters before the server is asked for suggestions, and the pause after the last key press. */
 export const MIN_SUGGEST_LENGTH = 2;
@@ -43,6 +44,7 @@ const Highlight: React.FC<{ text: string | null; query: string }> = ({ text, que
  * highlighted), Escape closes the list.
  */
 export const ExplorerSearchBox: React.FC<ExplorerSearchBoxProps> = ({ value, onChange, inputRef, onSubmit, onOpenSuggestion }) => {
+  const { t } = useLanguage();
   const listId = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const query = value.trim();
@@ -114,9 +116,10 @@ export const ExplorerSearchBox: React.FC<ExplorerSearchBoxProps> = ({ value, onC
       <SearchInput
         value={value}
         onChange={(next) => { onChange(next); setOpen(true); }}
-        placeholder="Search all documents"
-        ariaLabel="Search all documents"
+        placeholder={t("knowledge.searchAll", "Search all documents")}
+        ariaLabel={t("knowledge.searchAll", "Search all documents")}
         inputRef={inputRef}
+        className="[&>input]:h-10 [&>input]:text-base sm:[&>input]:h-9 sm:[&>input]:text-sm"
         inputProps={{
           role: "combobox",
           "aria-autocomplete": "list",
@@ -134,12 +137,12 @@ export const ExplorerSearchBox: React.FC<ExplorerSearchBoxProps> = ({ value, onC
           id={listId}
           role="listbox"
           aria-label="Suggested documents"
-          className="absolute left-0 right-0 top-full z-30 mt-1 max-h-96 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+          className="absolute left-0 right-0 top-full z-30 mt-1 max-h-[min(24rem,60dvh)] overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
         >
-          {waiting && <p role="status" className="px-3 py-2 text-xs text-slate-500">Searching...</p>}
-          {!waiting && status === "error" && <p role="status" className="px-3 py-2 text-xs text-red-600">Suggestions are not available right now. Press Enter to search.</p>}
+          {waiting && <p role="status" className="px-3 py-2 text-xs text-slate-500">{t("knowledge.searching", "Searching...")}</p>}
+          {!waiting && status === "error" && <p role="status" className="px-3 py-2 text-xs text-red-600">{t("knowledge.suggestionsUnavailable", "Suggestions are not available right now. Press Enter to search.")}</p>}
           {!waiting && status === "ready" && items.length === 0 && (
-            <p role="status" className="px-3 py-2 text-xs text-slate-500">No document you can open matches "{query}".</p>
+            <p role="status" className="px-3 py-2 text-xs text-slate-500">{t("knowledge.noSuggestionMatch", "No document you can open matches")} "{query}".</p>
           )}
           {!waiting && items.map((item, index) => (
             <div
@@ -150,7 +153,7 @@ export const ExplorerSearchBox: React.FC<ExplorerSearchBoxProps> = ({ value, onC
               onMouseDown={(event) => event.preventDefault()}
               onMouseEnter={() => setActive(index)}
               onClick={() => choose(index)}
-              className={cn("flex cursor-pointer items-start gap-2 px-3 py-2 text-sm", active === index ? "bg-emerald-50" : "hover:bg-slate-50")}
+              className={cn("flex min-h-11 cursor-pointer items-start gap-2 px-3 py-2.5 text-sm", active === index ? "bg-emerald-50" : "hover:bg-slate-50")}
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-slate-900"><Highlight text={item.documentName} query={query} /></p>
@@ -171,9 +174,9 @@ export const ExplorerSearchBox: React.FC<ExplorerSearchBoxProps> = ({ value, onC
               onMouseDown={(event) => event.preventDefault()}
               onMouseEnter={() => setActive(items.length)}
               onClick={() => choose(items.length)}
-              className={cn("flex cursor-pointer items-center gap-2 border-t border-slate-100 px-3 py-2 text-xs font-medium text-emerald-700", active === items.length ? "bg-emerald-50" : "hover:bg-slate-50")}
+              className={cn("flex min-h-11 cursor-pointer items-center gap-2 border-t border-slate-100 px-3 py-2.5 text-xs font-medium text-emerald-700", active === items.length ? "bg-emerald-50" : "hover:bg-slate-50")}
             >
-              <Search className="h-3.5 w-3.5" /> Search all documents for "{query}"
+              <Search className="h-3.5 w-3.5" /> {t("knowledge.searchAllFor", "Search all documents for")} "{query}"
             </div>
           )}
         </div>

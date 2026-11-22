@@ -20,6 +20,10 @@ import { documentApi, navigationApi } from "@/services/api";
 import { invalidateNavigationCache } from "@/services/api/navigation";
 import { cn } from "@/components/ui/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage, LANGUAGE_OPTIONS } from "@/i18n";
+import { LANGUAGE_FLAG_ICONS } from "@/components/ui/flags/Flags";
+import type { ApplicationLanguage } from "@/i18n";
+import { localizeNavItems } from "@/i18n/navigation";
 import { SearchDropdown } from "../header/SearchDropdown";
 import { NavigationGuardModal } from "@/components/ui/modal/NavigationGuardModal";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
@@ -236,6 +240,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
     const [navCounts, setNavCounts] = useState<Record<string, number>>({});
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { user, logout } = useAuth();
+    const { language, setLanguage, t, tLabel } = useLanguage();
     const favorites = useSidebarFavorites(user?.id);
     const { showSidebarUserProfile, knowledgeOpenInNewTab } = useBranding();
     // the administrator chooses (Configuration > General): a new tab (also when nothing was set) or the current one
@@ -393,18 +398,25 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
       [user?.permissions, authorizedNavigationIds, navigationLabels],
     );
 
+    // Only the labels change with the language: ids, paths and permissions stay exactly as the server decided.
+    const localizedQualityNav = useMemo(() => localizeNavItems(qualityNav, tLabel), [qualityNav, tLabel]);
+
     // Starred entries still open to this user, in the order they were starred; one the user lost access to is left out.
-    const favoriteItems = useMemo(() => favoriteTree(qualityNav, new Set(favorites.ids)), [qualityNav, favorites.ids]);
+    const favoriteItems = useMemo(() => favoriteTree(localizedQualityNav, new Set(favorites.ids)), [localizedQualityNav, favorites.ids]);
     const favoriteCount = useMemo(() => {
-      const index = indexNavigation(qualityNav);
+      const index = indexNavigation(localizedQualityNav);
       return favorites.ids.filter((id) => index.has(id)).length;
-    }, [qualityNav, favorites.ids]);
+    }, [localizedQualityNav, favorites.ids]);
     const sidebarTabs = useMemo<readonly TabItem[]>(
       () => [
-        { id: "all", label: "All Items" },
-        { id: "favorites", label: "Favourite", count: favoriteCount },
+        { id: "all", label: t("shell.allItems", "All Items") },
+        { id: "favorites", label: t("shell.favourites", "Favourite"), count: favoriteCount },
       ],
-      [favoriteCount],
+      [favoriteCount, t],
+    );
+    const languageTabs = useMemo<readonly TabItem[]>(
+      () => LANGUAGE_OPTIONS.map((option) => ({ id: option.value, label: option.label, icon: LANGUAGE_FLAG_ICONS[option.value] })),
+      [],
     );
 
     const [hoverMenu, setHoverMenu] = useState<HoverMenuState>({
@@ -930,8 +942,10 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 <FavouriteStar
                   starred={starred}
                   onToggle={() => favorites.toggle(branchIds(item))}
-                  ariaLabel={starred ? `Remove ${item.label} from favourites` : `Add ${item.label} to favourites`}
-                  title={hasChildren ? (starred ? "Remove with everything beneath it" : "Add with everything beneath it") : starred ? "Remove from favourites" : "Add to favourites"}
+                  ariaLabel={starred
+                    ? language === "vi" ? `Bỏ ${item.label} khỏi yêu thích` : `Remove ${item.label} from favourites`
+                    : language === "vi" ? `Thêm ${item.label} vào yêu thích` : `Add ${item.label} to favourites`}
+                  title={hasChildren ? (starred ? t("shell.removeWithChildren", "Remove with everything beneath it") : t("shell.addWithChildren", "Add with everything beneath it")) : starred ? t("shell.removeFavourite", "Remove from favourites") : t("shell.addFavourite", "Add to favourites")}
                   className={cn(
                     "absolute top-1/2 z-20 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md transition-[color,opacity]",
                     "outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
@@ -1141,8 +1155,10 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
             <FavouriteStar
               starred={starred}
               onToggle={() => favorites.toggle(branchIds(item))}
-              ariaLabel={starred ? `Remove ${item.label} from favourites` : `Add ${item.label} to favourites`}
-              title={hasChildren ? (starred ? "Remove with everything beneath it" : "Add with everything beneath it") : starred ? "Remove from favourites" : "Add to favourites"}
+              ariaLabel={starred
+          ? language === "vi" ? `Bỏ ${item.label} khỏi yêu thích` : `Remove ${item.label} from favourites`
+          : language === "vi" ? `Thêm ${item.label} vào yêu thích` : `Add ${item.label} to favourites`}
+              title={hasChildren ? (starred ? t("shell.removeWithChildren", "Remove with everything beneath it") : t("shell.addWithChildren", "Add with everything beneath it")) : starred ? t("shell.removeFavourite", "Remove from favourites") : t("shell.addFavourite", "Add to favourites")}
               className={cn(
                 "absolute right-2 top-1/2 z-20 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md transition-colors",
                 "outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
@@ -1520,13 +1536,13 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 >
                   {isCollapsed || sidebarTab === "all" ? (
                     <div role={isCollapsed ? undefined : "tabpanel"} id="sidebar-panel-all" aria-labelledby={isCollapsed ? undefined : "sidebar-tab-all"}>
-                      {qualityNav.map((item, index) => renderMenuItem(item, 0, index))}
+                      {localizedQualityNav.map((item, index) => renderMenuItem(item, 0, index))}
                     </div>
                   ) : (
                     <div role="tabpanel" id="sidebar-panel-favorites" aria-labelledby="sidebar-tab-favorites">
                       {favoriteItems.length === 0 ? (
                         <p className="mx-4 mt-3 rounded-lg border border-dashed border-slate-300 px-3 py-3 text-xs text-slate-500">
-                          No favourites yet. Press the star next to any menu in All Items to keep it here.
+                          {t("shell.noFavourites", "No favourites yet. Press the star next to any menu in All Items to keep it here.")}
                         </p>
                       ) : (
                         favoriteItems.map((item, index) => (
@@ -1549,6 +1565,37 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
               aria-hidden="true"
             />
           </motion.div>
+
+          {/* The interface language is part of the shell, so it sits in the sidebar on every screen. */}
+          <div className={cn("shrink-0 border-t border-slate-200 bg-white", isCollapsed ? "px-2 py-2" : "px-3 py-2")}>
+            {isCollapsed ? (
+              <button
+                type="button"
+                onClick={() => void setLanguage(language === "vi" ? "en" : "vi")}
+                title={t("shell.language", "Language")}
+                aria-label={`${t("shell.language", "Language")}: ${language === "vi" ? "Tiếng Việt" : "English"}`}
+                className={cn(
+                  "flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                )}
+              >
+                {(() => {
+                  const Flag = LANGUAGE_FLAG_ICONS[language];
+                  return Flag ? <Flag className="h-4" /> : (language === "vi" ? "VI" : "EN");
+                })()}
+              </button>
+            ) : (
+              <TabNav
+                tabs={languageTabs}
+                activeTab={language}
+                onChange={(id) => void setLanguage(id as ApplicationLanguage)}
+                variant="pill"
+                fullWidth
+                ariaLabel={t("shell.language", "Language")}
+                tabIdPrefix="sidebar-language"
+              />
+            )}
+          </div>
 
           {showSidebarUserProfile && user && (
             <div
@@ -1581,7 +1628,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                       className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
                     >
                       <IconUser className="h-4 w-4 shrink-0" />
-                      <span>Personal Information</span>
+                      <span>{t("shell.personalInfo", "Personal Information")}</span>
                     </button>
                     <div className="border-t border-slate-100">
                       <button
@@ -1593,7 +1640,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                         className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
                       >
                         <IconLogout className="h-4 w-4 shrink-0" />
-                        <span>Sign Out</span>
+                        <span>{t("shell.signOut", "Sign Out")}</span>
                       </button>
                     </div>
                   </motion.div>
@@ -1607,20 +1654,20 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                   "flex w-full items-center rounded-lg text-left transition-colors hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
                   isCollapsed ? "justify-center p-1.5" : "gap-2.5 p-2",
                 )}
-                title={isCollapsed ? "Personal Information" : undefined}
-                aria-label="Open user menu"
+                title={isCollapsed ? t("shell.personalInfo", "Personal Information") : undefined}
+                aria-label={t("shell.openUserMenu", "Open user menu")}
                 aria-expanded={isSidebarUserMenuOpen}
                 aria-haspopup="menu"
               >
                 <Avatar
-                  name={user.fullName || user.username || "User"}
+                  name={user.fullName || user.username || t("shell.user", "User")}
                   src={user.avatar}
                   tone="brand"
                   className="h-9 w-9"
                 />
                 {!isCollapsed && (
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-slate-700">{user.fullName || user.username || "User"}</span>
+                    <span className="block truncate text-sm font-semibold text-slate-700">{user.fullName || user.username || t("shell.user", "User")}</span>
                     <span className="block truncate text-xs text-slate-500">{user.position || "—"}</span>
                   </span>
                 )}
@@ -1646,10 +1693,10 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
           onClose={() => setIsSidebarLogoutModalOpen(false)}
           onConfirm={handleSidebarConfirmLogout}
           type="warning"
-          title="Confirm Sign Out"
-          description="Are you sure you want to log out? Any unsaved changes will be lost."
-          confirmText="Sign Out"
-          cancelText="Cancel"
+          title={t("shell.confirmSignOut", "Confirm Sign Out")}
+          description={t("shell.signOutWarning", "Are you sure you want to log out? Any unsaved changes will be lost.")}
+          confirmText={t("shell.signOut", "Sign Out")}
+          cancelText={t("shell.cancel", "Cancel")}
           isLoading={isSidebarLogoutLoading}
         />
 
@@ -1671,8 +1718,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
             setPendingNavLabel("");
             setPendingPageTitle("");
           }}
-          currentPageTitle={pendingPageTitle || currentScreenLabel || "this screen"}
-          destinationLabel={pendingNavLabel || "another page"}
+          currentPageTitle={pendingPageTitle || currentScreenLabel || t("shell.thisScreen", "this screen")}
+          destinationLabel={pendingNavLabel || t("shell.anotherPage", "another page")}
         />
       </>
     );

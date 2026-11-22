@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLanguage } from '@/i18n';
 import { cn } from '../utils';
 import { displayNode } from '@/utils/machineText';
 
@@ -108,6 +109,7 @@ export const Badge: React.FC<BadgeProps> = ({
   onClick,
   title,
 }) => {
+  const { tLabel } = useLanguage();
   const resolvedColor = semantic ? SEMANTIC_COLOR[semantic] : (color ?? 'slate');
   const isSolid = variant === 'solid';
   const isOutline = variant === 'outline';
@@ -132,7 +134,7 @@ export const Badge: React.FC<BadgeProps> = ({
         <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', isSolid ? 'bg-white' : DOT_COLOR[resolvedColor])} />
       )}
       {icon && <span className="shrink-0">{icon}</span>}
-      {displayNode(children)}
+      {displayNode(typeof children === 'string' ? tLabel(children) : children)}
     </span>
   );
 };
@@ -232,6 +234,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   showDot = false,
   label
 }) => {
+  const { tLabel } = useLanguage();
   const config = DOC_STATUS_MAP[status] || DOC_STATUS_MAP.draft;
   return (
     <Badge
@@ -241,7 +244,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       showDot={showDot}
       className={className}
     >
-      {label || config.label}
+      {label ? tLabel(label) : tLabel(config.label)}
     </Badge>
   );
 };
@@ -253,6 +256,7 @@ export interface TaskStatusBadgeProps {
 }
 
 export const TaskStatusBadge: React.FC<TaskStatusBadgeProps> = ({ status, ...props }) => {
+  const { tLabel } = useLanguage();
   const statusMap: Record<string, BadgeColor> = {
     'Pending': 'slate',
     'In-Progress': 'cyan',
@@ -260,7 +264,7 @@ export const TaskStatusBadge: React.FC<TaskStatusBadgeProps> = ({ status, ...pro
     'Completed': 'emerald',
     'Overdue': 'red',
   };
-  return <Badge color={statusMap[status]} {...props}>{status}</Badge>;
+  return <Badge color={statusMap[status]} {...props}>{tLabel(status)}</Badge>;
 };
 
 export interface PriorityBadgeProps {
@@ -269,13 +273,14 @@ export interface PriorityBadgeProps {
 }
 
 export const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority, ...props }) => {
+  const { tLabel } = useLanguage();
   const priorityMap: Record<string, BadgeColor> = {
     'Critical': 'rose',
     'High': 'red',
     'Medium': 'amber',
     'Low': 'slate',
   };
-  return <Badge color={priorityMap[priority]} {...props}>{priority}</Badge>;
+  return <Badge color={priorityMap[priority]} {...props}>{tLabel(priority)}</Badge>;
 };
 
 export interface ModuleBadgeProps {

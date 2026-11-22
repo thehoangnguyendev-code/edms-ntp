@@ -4,38 +4,9 @@
 <head>
   <meta charset="UTF-8" />
 
-  <!-- Viewport Configuration -->
-  <!-- Note: maximum-scale=1 prevents iOS Safari auto-zoom on input focus -->
-  <!-- user-scalable=no is avoided for accessibility, using font-size fix instead -->
-  <meta name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-
-  <!-- iOS Safari zoom prevention script -->
-  <script>
-    // Reset viewport zoom on page load and navigation
-    (function () {
-      function resetViewport() {
-        var viewport = document.querySelector('meta[name=viewport]');
-        if (viewport) {
-          // Temporarily allow scaling to reset, then lock again
-          viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=10.0, user-scalable=yes, viewport-fit=cover';
-          setTimeout(function () {
-            viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
-          }, 100);
-        }
-      }
-
-      // Reset on page load
-      if (document.readyState === 'complete') {
-        resetViewport();
-      } else {
-        window.addEventListener('load', resetViewport);
-      }
-
-      // Expose globally for React to call after navigation
-      window.__resetViewportZoom = resetViewport;
-    })();
-  </script>
+  <!-- Viewport configuration. Pinch-to-zoom is left to the person using the page (WCAG 1.4.4);
+       form inputs keep a 16px font size on phones so iOS does not zoom on focus. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
   <!-- Primary Meta Tags -->
   <title>Quality Management System</title>

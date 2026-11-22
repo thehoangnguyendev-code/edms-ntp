@@ -1,6 +1,7 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '../utils';
+import { useLanguage } from '@/i18n';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** Button style variant */
@@ -17,6 +18,14 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'default', size = 'default', fullWidth = false, loading = false, loadingText, type, children, disabled, ...props }, ref) => {
+    const { tLabel } = useLanguage();
+    // A button often carries an icon beside its words: translate the text entries, leave the icon untouched.
+    const translateNode = (node: React.ReactNode): React.ReactNode =>
+      typeof node === 'string' ? tLabel(node) : Array.isArray(node) ? node.map(translateNode) : node;
+    const content = translateNode(children);
+    const resolvedLoadingText = loadingText
+      ? (typeof loadingText === 'string' ? tLabel(loadingText) : loadingText)
+      : (typeof children === 'string' ? tLabel(children) : tLabel('Loading...'));
     const variants = {
       default: 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.97] transition-all duration-200',
       outline: 'border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-200 text-slate-900 active:scale-[0.97] transition-all duration-200',
@@ -59,9 +68,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {loading ? (
           <span className="inline-flex items-center justify-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span>{loadingText ?? (typeof children === 'string' ? children : 'Loading...')}</span>
+            <span>{resolvedLoadingText}</span>
           </span>
-        ) : children}
+        ) : content}
       </button>
     );
   }

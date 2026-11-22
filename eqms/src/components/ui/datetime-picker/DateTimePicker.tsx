@@ -7,6 +7,7 @@ import { IconCalendarWeek } from '@tabler/icons-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '../utils';
 import { Button } from '../button/Button';
+import { tr } from "@/i18n";
 
 /**
  * DateTimePicker component with calendar interface
@@ -373,13 +374,13 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
         <button
           type="button"
           onClick={() => setViewMode('calendar')}
-          aria-label="Back to calendar"
+          aria-label={tr("Back to calendar")}
           className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 min-w-[36px] min-h-[36px] flex items-center justify-center"
         >
           <ChevronLeft className="h-4 w-4 block shrink-0" />
         </button>
         <span className="font-semibold text-slate-900 text-sm" id={`${pickerId}-month-heading`}>
-          Select Month
+          {tr("Select Month")}
         </span>
         <div className="w-9" />
       </div>
@@ -414,7 +415,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
           <button
             type="button"
             onClick={() => navigateYearRange('prev')}
-            aria-label="Previous 12 years"
+            aria-label={tr("Previous 12 years")}
             className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 min-w-[36px] min-h-[36px] flex items-center justify-center"
           >
             <ChevronLeft className="h-4 w-4 block shrink-0" />
@@ -425,7 +426,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
           <button
             type="button"
             onClick={() => navigateYearRange('next')}
-            aria-label="Next 12 years"
+            aria-label={tr("Next 12 years")}
             className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 min-w-[36px] min-h-[36px] flex items-center justify-center"
           >
             <ChevronRight className="h-4 w-4 block shrink-0" />
@@ -511,7 +512,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
           <button
             type="button"
             onClick={() => navigateMonth('prev')}
-            aria-label="Previous month"
+            aria-label={tr("Previous month")}
             className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
           >
             <ChevronLeft className="h-4 w-4 block shrink-0" />
@@ -539,7 +540,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
           <button
             type="button"
             onClick={() => navigateMonth('next')}
-            aria-label="Next month"
+            aria-label={tr("Next month")}
             className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
           >
             <ChevronRight className="h-4 w-4 block shrink-0" />
@@ -720,7 +721,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
               ref={popoverRef}
               role="dialog"
               aria-modal="true"
-              aria-label="Choose date"
+              aria-label={tr("Choose date")}
               tabIndex={-1}
               initial={{ opacity: 0, y: popoverStyle.top === 'auto' ? 10 : -10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -740,7 +741,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
                     onClick={handleClear}
                     className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
                   >
-                    Clear
+                    {tr("Clear")}
                   </Button>
                   <div className="flex gap-2">
                     <Button
@@ -748,7 +749,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
                       size="sm"
                       onClick={closeAndReturn}
                     >
-                      Cancel
+                      {tr("Cancel")}
                     </Button>
                     <Button
                       size="sm"
@@ -756,7 +757,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
                       className="bg-emerald-600 hover:bg-emerald-700 text-white"
                       disabled={!selectedDate}
                     >
-                      Apply
+                      {tr("Apply")}
                     </Button>
                   </div>
                 </div>

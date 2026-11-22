@@ -7,6 +7,7 @@ import { WorkflowProgressStepper } from "@/components/ui/workflow-stepper/Workfl
 import type { WorkflowProgress } from "@/types/document";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import type { BreadcrumbItem } from "@/components/ui/breadcrumb/Breadcrumb";
+import { useLanguage } from "@/i18n";
 
 interface Props {
   title: string;
@@ -66,13 +67,14 @@ export function TrainingDetailLayout({ title, breadcrumbItems, onBack, workflow,
  * `placeholder` explains an empty field ("Auto-generated after Save"): it is shown in the light placeholder colour with an empty value, never as the value, so it is not mistaken for data.
  */
 export function ReadonlyField({ label, value, wide, multiline, placeholder = "—", hint, children }: { label: string; value?: string | null; wide?: boolean; multiline?: boolean; placeholder?: string; hint?: string; children?: ReactNode }) {
+  const { tLabel } = useLanguage();
   return (
     <div className={`flex flex-col gap-1.5${wide ? " md:col-span-2" : ""}`}>
-      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">{label}</label>
+      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">{tLabel(label)}</label>
       {children ?? (multiline
-        ? <textarea value={value ?? ""} readOnly rows={3} className={CONTROL_STATE_CLASSES.readonlyTextarea} placeholder={placeholder} />
-        : <input type="text" value={value ?? ""} readOnly className={CONTROL_STATE_CLASSES.readonlyField} placeholder={placeholder} />)}
-      {hint && <p className="text-xs text-slate-500">{hint}</p>}
+        ? <textarea value={value ?? ""} readOnly rows={3} className={CONTROL_STATE_CLASSES.readonlyTextarea} placeholder={tLabel(placeholder)} />
+        : <input type="text" value={value ?? ""} readOnly className={CONTROL_STATE_CLASSES.readonlyField} placeholder={tLabel(placeholder)} />)}
+      {hint && <p className="text-xs text-slate-500">{tLabel(hint)}</p>}
     </div>
   );
 }
@@ -91,13 +93,14 @@ export function TabBlock({ title, action, hint, count, children }: {
   count?: number;
   children: ReactNode;
 }) {
+  const { tLabel } = useLanguage();
   return (
     <div className="space-y-3">
       {(title || action) && (
         <div className={`flex flex-wrap items-center gap-2 ${title ? "justify-between" : "justify-end"}`}>
           {title && (
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+              <h3 className="text-sm font-semibold text-slate-800">{tLabel(title)}</h3>
               {count !== undefined && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{count}</span>}
               {hint && <Popover title={title} content={hint} contentClassName="w-80 max-w-[calc(100vw-2rem)]" triggerAriaLabel={`About ${title}`} />}
             </div>

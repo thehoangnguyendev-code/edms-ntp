@@ -135,7 +135,7 @@ describe("KnowledgeExplorerPage", () => {
   it("shows the knowledge bases as folders with their document counts and the widgets", async () => {
     renderPage();
     expect(await screen.findByRole("option", { name: /Manufacturing/ })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Welcome to Knowledge Base , Test User" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Welcome to Knowledge Base, Test User" })).toBeTruthy();
     expect(within(folder("Manufacturing")).getByText("3 documents")).toBeTruthy();
     expect(within(folder("Quality")).getByText("2 documents")).toBeTruthy();
     for (const title of ["Most viewed", "Most helpful", "Featured", "Subscriptions", "At a glance"]) {
@@ -410,6 +410,26 @@ describe("KnowledgeExplorerPage", () => {
       window.matchMedia = original;
     }
   });
+
+  it("offers a folder's actions in a bottom sheet on a small screen", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("max-width: 767px"),
+      media: query, addEventListener: () => undefined, removeEventListener: () => undefined,
+      addListener: () => undefined, removeListener: () => undefined, onchange: null, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      renderPage();
+      const mfg = await screen.findByRole("option", { name: /Manufacturing/ });
+      // a phone has no right-click: the visible "actions" button opens the sheet
+      fireEvent.click(within(mfg).getByRole("button", { name: "Actions for Manufacturing" }));
+      const sheet = await screen.findByRole("dialog", { name: "Actions for Manufacturing" });
+      expect(within(sheet).getByText("View Details")).toBeTruthy();
+      expect(within(sheet).getByText("Subscribe to new documents")).toBeTruthy();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
 });
 
 describe("KnowledgeExplorerPage document table", () => {
@@ -433,9 +453,17 @@ describe("KnowledgeExplorerPage document table", () => {
     vi.spyOn(window, "open").mockImplementation(() => null);
   });
 
+  // The list is a real table now: a folder is a row, found by the name it shows.
+  const rowWithText = async (name: string) => {
+    const nodes = await screen.findAllByText(name);
+    const row = nodes.map((node) => node.closest("tr")).find(Boolean);
+    if (!row) throw new Error(`No table row shows ${name}`);
+    return row as HTMLElement;
+  };
+
   const openLab = async () => {
-    fireEvent.doubleClick(await screen.findByRole("option", { name: /Manufacturing/ }));
-    fireEvent.doubleClick(await screen.findByRole("option", { name: /QC Laboratory/ }));
+    fireEvent.doubleClick(await rowWithText("Manufacturing"));
+    fireEvent.doubleClick(await rowWithText("QC Laboratory"));
     await screen.findByText("Balance calibration");
   };
 
@@ -473,9 +501,9 @@ describe("KnowledgeExplorerPage document table", () => {
 
   it("draws the folder of a Business Unit in the colour it was given and the others in an automatic one", async () => {
     renderPage();
-    const mfg = await screen.findByRole("option", { name: /Manufacturing/ });
+    const mfg = await rowWithText("Manufacturing");
     await waitFor(() => expect(mfg.querySelector("svg rect")?.getAttribute("fill")).toBe("#e11d48"));
-    const quality = screen.getByRole("option", { name: /Quality/ });
+    const quality = await rowWithText("Quality");
     expect(quality.querySelector("svg rect")?.getAttribute("fill")).not.toBe("#e11d48");
   });
 
@@ -493,10 +521,10 @@ describe("KnowledgeExplorerPage document table", () => {
     brandingState.names = "ABBREVIATION";
     try {
       renderPage();
-      const mfg = await screen.findByRole("option", { name: /MFG/ });
+      const mfg = await rowWithText("MFG");
       expect(mfg.querySelector("[title='Manufacturing']")).not.toBeNull();
       // a folder without an abbreviation keeps its name
-      expect(screen.getByRole("option", { name: /Quality/ })).toBeTruthy();
+      expect(await rowWithText("Quality")).toBeTruthy();
     } finally {
       brandingState.names = "FULL";
     }
@@ -507,7 +535,7 @@ describe("KnowledgeExplorerPage document table", () => {
     brandingState.sidebar = "ABBREVIATION";
     try {
       renderPage();
-      expect(await screen.findByRole("option", { name: /Manufacturing/ })).toBeTruthy();
+      expect(await rowWithText("Manufacturing")).toBeTruthy();
       const sidebar = await screen.findByRole("navigation", { name: "Knowledge Base navigation" });
       await waitFor(() => expect(within(sidebar).getByText("MFG")).toBeTruthy());
       expect(within(sidebar).queryByText("Manufacturing")).toBeNull();
@@ -518,8 +546,8 @@ describe("KnowledgeExplorerPage document table", () => {
 
   it("names the folders by their full name by default", async () => {
     renderPage();
-    expect(await screen.findByRole("option", { name: /Manufacturing/ })).toBeTruthy();
-    expect(screen.queryByRole("option", { name: /MFG/ })).toBeNull();
+    expect(await rowWithText("Manufacturing")).toBeTruthy();
+    expect(screen.queryByText("MFG")).toBeNull();
   });
 
   it("asks once for the icons the Document Types were designed with", async () => {

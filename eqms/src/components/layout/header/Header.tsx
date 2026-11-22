@@ -8,6 +8,7 @@ import { cn } from '../../ui/utils';
 import { Breadcrumb } from '../../ui/breadcrumb/Breadcrumb';
 import { NotificationsDropdown } from './NotificationsDropdown';
 import { GlobalSearchButton } from '@/features/global-search/GlobalSearchButton';
+import { useLanguage } from '@/i18n';
 import { MaintenanceCountdownChip } from '@/features/maintenance/MaintenanceCountdownChip';
 import { EnvironmentBadge } from './EnvironmentBadge';
 import { useBreadcrumb } from '@/contexts/BreadcrumbContext';
@@ -40,6 +41,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSidebarCollapsed, isMobileMenuOpen, onNavigateToProfile, onLogout, headerTitle, showHeaderTitle, scrollProgress = 0, pinSystemTitle = false }) => {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const { showSidebarUserProfile, systemHeaderTitle } = useBranding();
   const pinnedTitle = pinSystemTitle ? (systemHeaderTitle?.trim() || DEFAULT_SYSTEM_HEADER_TITLE) : null;
   const { breadcrumbs } = useBreadcrumb();
@@ -135,10 +137,10 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
         onClose={() => setIsLogoutModalOpen(false)}
         onConfirm={handleConfirmLogout}
         type="warning"
-        title="Confirm Sign Out"
-        description="Are you sure you want to log out? Any unsaved changes will be lost."
-        confirmText="Sign Out"
-        cancelText="Cancel"
+        title={t("shell.confirmSignOut", "Confirm Sign Out")}
+        description={t("shell.signOutWarning", "Are you sure you want to log out? Any unsaved changes will be lost.")}
+        confirmText={t("shell.signOut", "Sign Out")}
+        cancelText={t("shell.cancel", "Cancel")}
         isLoading={isLoading}
       />
       <header
@@ -282,11 +284,11 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
                       ref={userMenuRef}
                       className="flex items-center gap-1.5 md:gap-2 lg:gap-2.5 cursor-pointer min-h-[44px] min-w-[44px] px-1.5 py-1.5 lg:px-2 lg:py-1.5 rounded-lg border border-transparent transition-all select-none group"
                       onClick={handleToggleUserMenu}
-                      aria-label="User menu"
+                      aria-label={t("shell.userMenu", "User menu")}
                       aria-expanded={isUserMenuOpen}
                       aria-haspopup="true"
                     >
-                      <Avatar name={user?.fullName || user?.username || 'User'} src={user?.avatar} tone="brand" className="h-9 w-9 lg:h-10 lg:w-10 transition-colors" />
+                      <Avatar name={user?.fullName || user?.username || t("shell.user", "User")} src={user?.avatar} tone="brand" className="h-9 w-9 lg:h-10 lg:w-10 transition-colors" />
                       <div className="hidden lg:block text-left pr-1">
                         <p className="text-sm font-semibold text-slate-700 leading-6 group-hover:text-slate-900">{user?.fullName || '-'}</p>
                         <p className="text-xs text-slate-500 leading-tight">{user?.position || '-'}</p>
@@ -306,13 +308,13 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
                               <div className="py-0">
                                 <button type="button" className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-3 transition-colors" onClick={handleProfileClick}>
                                   <IconUser className="h-4 w-4 shrink-0" />
-                                  <span>Personal Information</span>
+                                  <span>{t("shell.personalInfo", "Personal Information")}</span>
                                 </button>
                               </div>
                               <div className="border-t border-slate-100">
                                 <button type="button" className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors" onClick={handleLogoutClick}>
                                   <IconLogout className="h-4 w-4 shrink-0" />
-                                  <span>Sign Out</span>
+                                  <span>{t("shell.signOut", "Sign Out")}</span>
                                 </button>
                               </div>
                             </motion.div>

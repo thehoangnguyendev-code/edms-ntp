@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import { IconLayoutGrid, IconChevronRight } from "@tabler/icons-react";
 import { cn } from "@/components/ui/utils";
 import { useFitLevel } from "@/components/ui/useFitLevel";
+import { useLanguage } from "@/i18n";
 
 // --- Types ---
 export interface BreadcrumbItem {
@@ -36,7 +37,9 @@ interface BreadcrumbProps {
  * ```
  */
 const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className }) => {
-  const safeItems = items.filter(Boolean) as BreadcrumbItem[];
+  const { t, tLabel } = useLanguage();
+  // Only the displayed name changes; the navigation target stays on the item.
+  const safeItems = items.filter(Boolean).map((item) => ({ ...item, label: tLabel(item.label) })) as BreadcrumbItem[];
   const rootRef = useRef<HTMLDivElement>(null);
   // The room, not the screen, decides: 0 = every label, 1 = the middle ones as "...", 2 = also the last one cut short.
   const level = useFitLevel(rootRef, 3, safeItems.map((item) => item.label).join("|"));
@@ -62,7 +65,7 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className }) => {
                     "transition-colors",
                     isActive ? "text-slate-600" : "hover:text-emerald-600"
                   )}
-                  aria-label="Dashboard"
+                  aria-label={t("shell.dashboard", "Dashboard")}
                 >
                   <IconLayoutGrid className="h-4 w-4 shrink-0" />
                 </button>

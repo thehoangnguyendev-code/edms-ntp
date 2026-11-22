@@ -2,6 +2,7 @@ import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/components/ui/utils";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 import { useCountBump } from "@/hooks/useCountBump";
+import { useLanguage } from "@/i18n";
 
 export interface TabItem {
   id: string;
@@ -421,7 +422,9 @@ export const TabNav: React.FC<TabNavProps> = ({
   fullWidth,
   compactVertical,
 }) => {
-  const safeTabs = tabs.filter(Boolean) as TabItem[];
+  const { tLabel } = useLanguage();
+  // Only the displayed name changes; the tab id, count and handlers stay as given.
+  const safeTabs = (tabs.filter(Boolean) as TabItem[]).map((tab) => ({ ...tab, label: tLabel(tab.label) }));
   if (variant === "vertical") {
     return (
       <VerticalTabs
@@ -429,7 +432,7 @@ export const TabNav: React.FC<TabNavProps> = ({
         activeTab={activeTab}
         onChange={onChange}
         className={className}
-        ariaLabel={ariaLabel}
+        ariaLabel={ariaLabel ? tLabel(ariaLabel) : undefined}
         tabIdPrefix={tabIdPrefix}
         panelIdPrefix={panelIdPrefix}
         compactVertical={compactVertical}
@@ -443,7 +446,7 @@ export const TabNav: React.FC<TabNavProps> = ({
       activeTab={activeTab}
       onChange={onChange}
       className={className}
-      ariaLabel={ariaLabel}
+      ariaLabel={ariaLabel ? tLabel(ariaLabel) : undefined}
       tabIdPrefix={tabIdPrefix}
       panelIdPrefix={panelIdPrefix}
       variant={variant}

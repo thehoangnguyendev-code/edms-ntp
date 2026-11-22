@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { useBreadcrumb } from "@/contexts/BreadcrumbContext";
 import { useBranding } from "@/components/branding/BrandLogo";
 import { resolveConfiguredNavigationLabel } from "@/app/navigation";
+import { useLanguage } from "@/i18n";
 
 interface PageHeaderProps {
   /** Main page title */
@@ -27,6 +28,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   className,
 }) => {
   const { setBreadcrumbs, clearBreadcrumbs } = useBreadcrumb();
+  const { tLabel } = useLanguage();
   const { navigationLabelOverrides } = useBranding();
   const resolvedBreadcrumbItems = useMemo(
     () => breadcrumbItems.map((item) => ({
@@ -35,7 +37,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
     })),
     [breadcrumbItems, navigationLabelOverrides],
   );
-  const resolvedTitle = resolveConfiguredNavigationLabel(title, navigationLabelOverrides);
+  const resolvedTitle = tLabel(resolveConfiguredNavigationLabel(title, navigationLabelOverrides));
 
   // Push breadcrumbs to header context; clear on unmount
   useEffect(() => {

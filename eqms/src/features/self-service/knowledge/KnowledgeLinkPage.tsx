@@ -60,7 +60,7 @@ export const KnowledgeLinkPage: React.FC = () => {
   }, [token, navigate]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-slate-50 px-4 py-8 pb-[calc(2rem+env(safe-area-inset-bottom))]">
       <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
         {!error && !folder && <SectionLoading text="Opening the link..." minHeight="120px" />}
         {error && (
@@ -72,6 +72,13 @@ export const KnowledgeLinkPage: React.FC = () => {
             <p className="mt-1.5 text-sm text-slate-600">{error}</p>
             <p className="mt-1 text-xs text-slate-500">Ask the person who sent it for a new link.</p>
             <Button className="mt-4" onClick={() => navigate(ROUTES.DOCUMENTS.KNOWLEDGE_EXPLORER, { replace: true })}>Go to the Knowledge Base</Button>
+            <button
+              type="button"
+              onClick={() => navigate(ROUTES.DASHBOARD, { replace: true })}
+              className="mt-3 block w-full text-xs font-medium text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline"
+            >
+              Go to the Dashboard
+            </button>
           </>
         )}
         {folder && (

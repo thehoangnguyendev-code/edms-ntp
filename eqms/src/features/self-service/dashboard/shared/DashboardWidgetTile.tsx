@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button/Button';
 import { TabNav } from '@/components/ui/tabs';
 import { cn } from '@/components/ui/utils';
 import type { DashboardWidgetSetting } from './dashboardLayout';
+import { useLanguage } from '@/i18n';
 import styles from './DashboardWidgets.module.css';
 
 type Props = {
@@ -21,6 +22,7 @@ const resizeMotion = { layout: { duration: 0.65, ease: [0.4, 0, 0.2, 1] as const
 
 /** Keep Motion's resize projection inside the element controlled by dnd-kit. */
 export function DashboardWidgetTile({ item, editing, disabled, sorting, resizeVersion, index, children, onWidth, onMove }: Props) {
+  const { tLabel, language } = useLanguage();
   const reduced = useReducedMotion();
   const [resizing, setResizing] = useState(false);
   const { ref, handleRef, isDragSource } = useSortable({
@@ -38,15 +40,15 @@ export function DashboardWidgetTile({ item, editing, disabled, sorting, resizeVe
         <motion.div layout={!sorting && !reduced ? 'position' : false} layoutDependency={resizeVersion} transition={resizeMotion}
           hidden={!editing} className={editing ? styles.controls : 'hidden'}>
           <Button ref={handleRef} data-dashboard-grip size="sm" variant="ghost" className={styles.grip}
-            aria-label={`Move ${item.label}`} title="Drag to move. Space to pick up, arrow keys to move, Space to drop, Escape to cancel." disabled={disabled || resizing}
+            aria-label={language === 'vi' ? `Di chuyển ${item.label}` : `Move ${item.label}`} title={tLabel("Drag to move. Space to pick up, arrow keys to move, Space to drop, Escape to cancel.")} disabled={disabled || resizing}
             onKeyDown={event => {
               // Direct arrow movement remains a shortcut when no sensor operation is active.
               if (!isDragSource && !sorting && ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown'].includes(event.key)) {
                 event.preventDefault(); onMove(event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1);
               }
-            }}><GripVertical className="h-4 w-4 shrink-0" /><span className="truncate">{item.label}</span></Button>
+            }}><GripVertical className="h-4 w-4 shrink-0" /><span className="truncate">{tLabel(item.label)}</span></Button>
           <fieldset className={cn(styles.sizes, 'min-w-0 border-0 p-0 disabled:opacity-50')} disabled={disabled || sorting}>
-            <TabNav tabs={widthTabs} activeTab={item.width} variant="pill" ariaLabel={`Width of ${item.label}`}
+            <TabNav tabs={widthTabs} activeTab={item.width} variant="pill" ariaLabel={language === 'vi' ? `Chiều rộng của ${item.label}` : `Width of ${item.label}`}
               tabIdPrefix={`dashboard-width-${item.id}`} onChange={width => {
                 if (!disabled && !sorting && (width === 'half' || width === 'full')) onWidth(width);
               }} />

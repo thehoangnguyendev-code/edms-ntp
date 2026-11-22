@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../utils';
+import { tr } from "@/i18n";
 
 /*
  * Skeleton placeholders for asynchronous READ phases only (first load of a list, a dashboard, or
@@ -20,7 +21,7 @@ export const Skeleton: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ class
 
 /** A run of text lines. The last line is shorter so the block reads as a paragraph. */
 export const SkeletonText: React.FC<{ lines?: number; className?: string }> = ({ lines = 3, className }) => (
-  <div className={cn('space-y-2', className)} role="status" aria-label="Loading">
+  <div className={cn('space-y-2', className)} role="status" aria-label={tr("Loading")}>
     {Array.from({ length: lines }, (_, index) => (
       <Skeleton key={index} className={cn('h-3', index === lines - 1 ? 'w-2/3' : 'w-full')} />
     ))}
@@ -38,7 +39,7 @@ export const SkeletonTable: React.FC<{ rows?: number; columns?: number; classNam
 }) => (
   <div
     role="status"
-    aria-label="Loading table"
+    aria-label={tr("Loading table")}
     className={cn('w-full overflow-hidden rounded-xl border border-slate-200 bg-white', className)}
   >
     <div className="grid gap-4 border-b-2 border-slate-200 bg-slate-50 px-4 py-3" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
@@ -60,7 +61,7 @@ export const SkeletonTable: React.FC<{ rows?: number; columns?: number; classNam
 
 /** Card-shaped placeholder for dashboards and stat tiles. */
 export const SkeletonCard: React.FC<{ className?: string }> = ({ className }) => (
-  <div role="status" aria-label="Loading" className={cn('rounded-xl border border-slate-200 bg-white p-5', className)}>
+  <div role="status" aria-label={tr("Loading")} className={cn('rounded-xl border border-slate-200 bg-white p-5', className)}>
     <Skeleton className="mb-4 h-4 w-1/3" />
     <SkeletonText lines={3} />
   </div>

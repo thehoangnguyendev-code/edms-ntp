@@ -55,10 +55,12 @@ import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives
 import { CustomColumnDrawer, useStickyPinnedColumns, useTableColumnPreferences } from "@/components/ui/table";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useBranding } from "@/components/branding/BrandLogo";
+import { useLanguage } from "@/i18n";
 
 // --- Main Component ---
 
 export const UserManagementView: React.FC = () => {
+  const { tLabel } = useLanguage();
   const navigate = useNavigate();
   const { showToast } = useToast();
 
@@ -788,7 +790,7 @@ export const UserManagementView: React.FC = () => {
                                   col.id === "no" && "justify-center",
                                 )}
                               >
-                                <span className="truncate">{col.label}</span>
+                                <span className="truncate">{tLabel(col.label)}</span>
                                 {canSort && (
                                   <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
                                     <ChevronUp

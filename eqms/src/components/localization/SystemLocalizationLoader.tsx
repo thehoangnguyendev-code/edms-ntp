@@ -43,7 +43,11 @@ const getLocalizationResource = (authenticated: boolean, userId?: string) => {
     const response = await api.get<SystemLocalizationSettings>('/localization');
     if (!authenticated) return response.data;
     const personal = await localizationApi.getMine();
-    return personal.useSystemDefaults ? response.data : { ...response.data, ...personal };
+    // The interface language is always the person's own choice, even when the regional formats follow the system.
+    const personalLanguage = personal.language ? { language: personal.language } : {};
+    return personal.useSystemDefaults
+      ? { ...response.data, ...personalLanguage }
+      : { ...response.data, ...personal };
   }, REFRESH_INTERVAL_MS);
   localizationResources.set(resourceKey, resource);
   return resource;

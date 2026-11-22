@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Kbd } from "@/components/ui/kbd";
 import { Bell, BellOff, Copy, ExternalLink, FolderOpen, Info, Share2, Sparkles, Star, ThumbsUp } from "lucide-react";
 import { useBranding } from "@/components/branding/BrandLogo";
+import { useLanguage } from "@/i18n";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/components/ui/utils";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -15,8 +17,9 @@ import {
   type SharingManaged,
 } from "@/services/api/knowledge";
 import { ExplorerContextMenu, type ContextMenuAction } from "./ExplorerContextMenu";
+import { ExplorerActionSheet } from "./ExplorerActionSheet";
 import { ExplorerDetailsModal } from "./ExplorerDetailsModal";
-import type { InspectorTarget } from "./ExplorerInspector";
+import { ExplorerInspector, type InspectorTarget } from "./ExplorerInspector";
 import { FolderStylesProvider, TypeIconsProvider, folderStyleKeys, typeIconKey, type FolderStyleOf, type TypeIcon } from "./ExplorerIcons";
 import { ExplorerEmpty, ExplorerItems, ExplorerLoading } from "./ExplorerItems";
 import { TablePagination } from "@/components/ui/table/TablePagination";
@@ -78,9 +81,12 @@ export const KnowledgeExplorerPage: React.FC = () => {
   const { user } = useAuth();
   const { hasPermissionAlias } = usePermissions();
   const branding = useBranding();
+  const { language, t, tLabel } = useLanguage();
   const canFeature = hasPermissionAlias("documents.admin.knowledge_categories.manage");
 
   const isMedium = useMediaQuery("(min-width: 768px)");
+  const isWide = useMediaQuery("(min-width: 1280px)");
+  const isCompact = useMediaQuery("(max-width: 767px)");
   const isTouch = useMediaQuery("(pointer: coarse)");
   const singleTapOpen = isTouch || !isMedium;
 
@@ -131,6 +137,8 @@ export const KnowledgeExplorerPage: React.FC = () => {
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<MenuState | null>(null);
+  /** A small screen has no right-click: the actions of the chosen item are shown in a bottom sheet. */
+  const [actionSheet, setActionSheet] = useState<Exclude<Selection, null> | null>(null);
   /** The Departments the user may share (a Department Head); empty for everyone else, who then never see "Share". */
   const [managed, setManaged] = useState<SharingManaged>({ departmentIds: [], businessUnitIds: [] });
   const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null);
@@ -145,14 +153,15 @@ export const KnowledgeExplorerPage: React.FC = () => {
     return () => { alive = false; };
   }, []);
 
-  useEffect(() => { document.title = `${branding.systemDisplayName || "EQMS"} · Knowledge Base`; }, [branding.systemDisplayName]);
+  useEffect(() => { document.title = `${branding.systemDisplayName || "EQMS"} · ${t("knowledge.title", "Knowledge Base")}`; }, [branding.systemDisplayName, t]);
 
   const { width: storedSidebarWidth } = useSidebarWidth();
   const explorerGridTemplateColumns = useMemo(() => {
     if (!isMedium) return "minmax(0, 1fr)";
     const sidebarWidth = sidebarCollapsed ? `${APP_SIDEBAR_COLLAPSED_WIDTH}px` : `${storedSidebarWidth}px`;
-    return `${sidebarWidth} minmax(0, 1fr)`;
-  }, [isMedium, sidebarCollapsed, storedSidebarWidth]);
+    // A wide screen keeps the details of the selection beside the list, so browsing does not open and close a dialog.
+    return isWide ? `${sidebarWidth} minmax(0, 1fr) 20rem` : `${sidebarWidth} minmax(0, 1fr)`;
+  }, [isMedium, isWide, sidebarCollapsed, storedSidebarWidth]);
 
   // ---- data -------------------------------------------------------------------------------
   // the colour and the abbreviation of each Business Unit, Department and Document Type, as folders (Dictionaries); read once
@@ -246,6 +255,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
     setDetailsOpen(false);
     setMenuOpen(false);
     setContextMenu(null);
+    setActionSheet(null);
     setSearchInput("");
     setSearchTerm("");
     setSortTouched(false);
@@ -344,6 +354,8 @@ export const KnowledgeExplorerPage: React.FC = () => {
     chooseSort(key, key === sort ? (sortDir === "asc" ? "desc" : "asc") : undefined);
   }, [chooseSort, sort, sortDir]);
   const showWidgets = nav.kind === "home" && !searchInput && widgetsVisible && overview !== null && overviewStatus === "ready";
+  // A list-view table that is the first thing on the page owns the top edge: no padding above it, so its header pins flush.
+  const tableAtTop = !isCompact && viewMode === "list" && nav.kind !== "home";
 
   const folderStylesValue = useMemo(() => ({
     styles: folderStyles,
@@ -352,7 +364,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
   }), [folderStyles, branding.knowledgeFolderNames, branding.knowledgeSidebarFolderNames]);
   const builtCrumbs = buildCrumbs(nav, browse?.path, searchActive ? searchTerm : searching ? searchInput.trim() : undefined);
   // the folders of the path are named as the folders themselves are (full name or abbreviation); the full name stays the label of the crumb for the title
-  const crumbs = nav.kind === "kb" && !searching && folderStylesValue.abbreviate
+  const presentedCrumbs = nav.kind === "kb" && !searching && folderStylesValue.abbreviate
     ? builtCrumbs.map((crumb, index) => {
         if (index === 0) return crumb;
         const key = browse?.path?.[index - 1]?.key ?? nav.kb.key;
@@ -360,7 +372,19 @@ export const KnowledgeExplorerPage: React.FC = () => {
         return style?.abbreviation ? { ...crumb, label: style.abbreviation } : crumb;
       })
     : builtCrumbs;
-  const locationTitle = searching ? "Search results" : nav.kind === "home" ? "Knowledge Base" : nav.kind === "smart" ? SMART_LABELS[nav.key] : crumbs[crumbs.length - 1]?.label ?? nav.kb.label;
+  const crumbs = presentedCrumbs.map((crumb) => ({
+    ...crumb,
+    label: crumb.label.startsWith("Search: ")
+      ? `${t("knowledge.search", "Search")}: ${crumb.label.slice("Search: ".length)}`
+      : tLabel(crumb.label),
+  }));
+  const locationTitle = searching
+    ? t("knowledge.searchResults", "Search results")
+    : nav.kind === "home"
+      ? t("knowledge.title", "Knowledge Base")
+      : nav.kind === "smart"
+        ? tLabel(SMART_LABELS[nav.key])
+        : crumbs[crumbs.length - 1]?.label ?? nav.kb.label;
 
   // ---- actions ----------------------------------------------------------------------------
   const folderTarget = useCallback((folder: FolderEntry): ExplorerNav => {
@@ -392,41 +416,43 @@ export const KnowledgeExplorerPage: React.FC = () => {
       await knowledgeApi.setSubscribed(overview.determinatorField, key, !card.subscribed);
       showToast({
         type: "success",
-        title: card.subscribed ? "Unsubscribed" : "Subscribed",
-        message: card.subscribed ? `You will no longer be told about new documents in ${card.label}.` : `You will be notified when a new document is published in ${card.label}.`,
+        title: card.subscribed ? t("knowledge.unsubscribedToast", "Unsubscribed") : t("knowledge.subscribedToast", "Subscribed"),
+        message: card.subscribed
+          ? `${t("knowledge.unsubscribeMessage", "You will no longer be told about new documents in")} ${card.label}.`
+          : `${t("knowledge.subscribeMessage", "You will be notified when a new document is published in")} ${card.label}.`,
       });
       refreshAll();
     } catch (error) {
-      showToast({ type: "error", title: "Could not update the subscription", message: errorMessage(error, "Please try again.") });
+      showToast({ type: "error", title: t("knowledge.subscriptionUpdateFailed", "Could not update the subscription"), message: errorMessage(error, t("knowledge.pleaseTryAgain", "Please try again.")) });
     }
-  }, [overview, refreshAll, showToast]);
+  }, [overview, refreshAll, showToast, t]);
 
   const toggleHelpful = useCallback(async (item: KnowledgePortalDocument) => {
     try {
       await knowledgeApi.giveFeedback(item.document.id, !item.myFeedback);
       refreshAll();
     } catch (error) {
-      showToast({ type: "error", title: "Could not save feedback", message: errorMessage(error, "Please try again.") });
+      showToast({ type: "error", title: t("knowledge.feedbackFailed", "Could not save feedback"), message: errorMessage(error, t("knowledge.pleaseTryAgain", "Please try again.")) });
     }
-  }, [refreshAll, showToast]);
+  }, [refreshAll, showToast, t]);
 
   const toggleFeatured = useCallback(async (item: KnowledgePortalDocument) => {
     try {
       await knowledgeApi.setFeatured(item.document.id, !item.featured);
       refreshAll();
     } catch (error) {
-      showToast({ type: "error", title: "Could not update Featured", message: errorMessage(error, "Please try again.") });
+      showToast({ type: "error", title: t("knowledge.featuredFailed", "Could not update Featured"), message: errorMessage(error, t("knowledge.pleaseTryAgain", "Please try again.")) });
     }
-  }, [refreshAll, showToast]);
+  }, [refreshAll, showToast, t]);
 
   const copyNumber = useCallback(async (item: KnowledgePortalDocument) => {
     try {
       await navigator.clipboard.writeText(item.document.documentNumber);
-      showToast({ type: "success", title: "Copied", message: `${item.document.documentNumber} copied to the clipboard.` });
+      showToast({ type: "success", title: t("knowledge.copiedTitle", "Copied"), message: `${item.document.documentNumber} ${t("knowledge.copiedMessage", "copied to the clipboard.")}` });
     } catch {
-      showToast({ type: "error", title: "Could not copy", message: "Your browser did not allow access to the clipboard." });
+      showToast({ type: "error", title: t("knowledge.copyFailedTitle", "Could not copy"), message: t("knowledge.clipboardDenied", "Your browser did not allow access to the clipboard.") });
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   const shareFolder = useCallback((folder: FolderEntry) => {
     if (folder.isKnowledgeBase) {
@@ -446,36 +472,62 @@ export const KnowledgeExplorerPage: React.FC = () => {
     setContextMenu({ x: event.clientX, y: event.clientY, selection: sel });
   }, []);
 
-  const contextActions = useMemo<ContextMenuAction[]>(() => {
-    if (!contextMenu) return [];
-    const sel = contextMenu.selection;
+  const actionsFor = useCallback((sel: Exclude<Selection, null>): ContextMenuAction[] => {
     if (sel.type === "folder") {
       const folder = content.folders.find((f) => f.key === sel.key);
       if (!folder) return [];
       const actions: ContextMenuAction[] = [
-        { id: "open", label: "Open folder", icon: <FolderOpen className="h-4 w-4" />, onSelect: () => openSelection(sel) },
-        { id: "details", label: "View Details", icon: <Info className="h-4 w-4" />, onSelect: () => setDetailsOpen(true) },
+        { id: "open", label: t("knowledge.openFolder", "Open folder"), icon: <FolderOpen className="h-4 w-4" />, onSelect: () => openSelection(sel) },
+        { id: "details", label: t("knowledge.viewDetails", "View Details"), icon: <Info className="h-4 w-4" />, onSelect: () => setDetailsOpen(true) },
       ];
       if (canShare) {
-        actions.push({ id: "share", label: "Share...", icon: <Share2 className="h-4 w-4" />, separatorBefore: true, onSelect: () => shareFolder(folder) });
+        actions.push({ id: "share", label: t("knowledge.share", "Share..."), icon: <Share2 className="h-4 w-4" />, separatorBefore: true, onSelect: () => shareFolder(folder) });
       }
       if (folder.isKnowledgeBase) {
-        actions.push({ id: "subscribe", label: folder.subscribed ? "Unsubscribe" : "Subscribe to new documents", icon: folder.subscribed ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />, onSelect: () => void toggleSubscribe(folder.key) });
+        actions.push({ id: "subscribe", label: folder.subscribed ? t("knowledge.unsubscribe", "Unsubscribe") : t("knowledge.subscribe", "Subscribe to new documents"), icon: folder.subscribed ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />, onSelect: () => void toggleSubscribe(folder.key) });
       }
       return actions;
     }
     const item = knownDocuments.get(sel.id);
     if (!item) return [];
     const actions: ContextMenuAction[] = [
-      { id: "open", label: "Open Document", icon: <ExternalLink className="h-4 w-4" />, onSelect: () => openSelection(sel) },
-      { id: "details", label: "View Details", icon: <Info className="h-4 w-4" />, onSelect: () => setDetailsOpen(true) },
-      { id: "helpful", label: item.myFeedback ? "Remove My Helpful Vote" : "Mark As Helpful", icon: <ThumbsUp className="h-4 w-4" />, onSelect: () => void toggleHelpful(item) },
+      { id: "open", label: t("knowledge.openDocument", "Open Document"), icon: <ExternalLink className="h-4 w-4" />, onSelect: () => openSelection(sel) },
+      { id: "details", label: t("knowledge.viewDetails", "View Details"), icon: <Info className="h-4 w-4" />, onSelect: () => setDetailsOpen(true) },
+      { id: "helpful", label: item.myFeedback ? t("knowledge.removeHelpfulVote", "Remove My Helpful Vote") : t("knowledge.markAsHelpful", "Mark As Helpful"), icon: <ThumbsUp className="h-4 w-4" />, onSelect: () => void toggleHelpful(item) },
     ];
-    if (canFeature) actions.push({ id: "feature", label: item.featured ? "Remove From Featured" : "Feature This document", icon: <Star className="h-4 w-4" />, onSelect: () => void toggleFeatured(item) });
-    if (canShare) actions.push({ id: "share", label: "Share", icon: <Share2 className="h-4 w-4" />, separatorBefore: true, onSelect: () => shareDocument(item) });
-    actions.push({ id: "copy", label: "Copy Document Number", icon: <Copy className="h-4 w-4" />, separatorBefore: true, onSelect: () => void copyNumber(item) });
+    if (canFeature) actions.push({ id: "feature", label: item.featured ? t("knowledge.removeFeatured", "Remove From Featured") : t("knowledge.featureThis", "Feature This document"), icon: <Star className="h-4 w-4" />, onSelect: () => void toggleFeatured(item) });
+    if (canShare) actions.push({ id: "share", label: t("knowledge.shareAction", "Share"), icon: <Share2 className="h-4 w-4" />, separatorBefore: true, onSelect: () => shareDocument(item) });
+    actions.push({ id: "copy", label: t("knowledge.copyNumber", "Copy Document Number"), icon: <Copy className="h-4 w-4" />, separatorBefore: true, onSelect: () => void copyNumber(item) });
     return actions;
-  }, [contextMenu, content.folders, knownDocuments, canFeature, canShare, openSelection, shareFolder, shareDocument, toggleSubscribe, toggleHelpful, toggleFeatured, copyNumber]);
+  }, [content.folders, knownDocuments, canFeature, canShare, openSelection, shareFolder, shareDocument, toggleSubscribe, toggleHelpful, toggleFeatured, copyNumber, t]);
+
+  const contextActions = useMemo<ContextMenuAction[]>(() => (contextMenu ? actionsFor(contextMenu.selection) : []), [contextMenu, actionsFor]);
+
+  /** A small screen opens the same actions as a bottom sheet; a mouse still gets the menu at the pointer. */
+  const openActions = useCallback((event: React.MouseEvent, sel: Exclude<Selection, null>) => {
+    if (isCompact || isTouch) {
+      setSelection(sel);
+      setContextMenu(null);
+      setMenuOpen(false);
+      setActionSheet(sel);
+      return;
+    }
+    openContextMenu(event, sel);
+  }, [isCompact, isTouch, openContextMenu]);
+
+  const actionSheetTitle = useMemo(() => {
+    if (!actionSheet) return "";
+    if (actionSheet.type === "folder") return content.folders.find((f) => f.key === actionSheet.key)?.label ?? "Folder";
+    return knownDocuments.get(actionSheet.id)?.document.documentName ?? "Document";
+  }, [actionSheet, content.folders, knownDocuments]);
+
+  const sheetActions = useMemo<ContextMenuAction[]>(() => {
+    if (!actionSheet) return [];
+    return actionsFor(actionSheet).map((action) => ({
+      ...action,
+      onSelect: () => { setActionSheet(null); action.onSelect(); },
+    }));
+  }, [actionSheet, actionsFor]);
 
   // ---- keyboard ---------------------------------------------------------------------------
   const orderedKeys = useMemo(() => [
@@ -488,6 +540,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
     const typing = target.tagName === "INPUT" || target.tagName === "SELECT" || target.tagName === "TEXTAREA";
     if (event.key === "/" && !typing) { event.preventDefault(); searchInputRef.current?.focus(); return; }
     if (event.key === "Escape") {
+      if (actionSheet) { setActionSheet(null); return; }
       if (contextMenu) { setContextMenu(null); return; }
       if (menuOpen) { setMenuOpen(false); return; }
       if (searchInput) { setSearchInput(""); setSearchTerm(""); return; }
@@ -527,6 +580,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
       onGo={go}
       onHierarchyChange={(id) => { setHierarchyId(id); go({ kind: "home" }); }}
       collapsed={collapsed}
+      onFocusSearch={() => { setMenuOpen(false); searchInputRef.current?.focus(); }}
       onToggleCollapsed={() => {
         setSidebarMoving(true);
         window.clearTimeout(sidebarMovingTimer.current);
@@ -538,24 +592,24 @@ export const KnowledgeExplorerPage: React.FC = () => {
 
   // ---- empty / message states -------------------------------------------------------------
   const emptyState = (() => {
-    if (failed) return <ExplorerEmpty title="This could not be loaded" description="Check your connection and try again." onRetry={refreshAll} />;
-    if (shortQuery) return <ExplorerEmpty title="Keep typing" description={`Enter at least ${MIN_SEARCH_LENGTH} characters to search all documents.`} />;
-    if (searching) return <ExplorerEmpty title={`No documents match "${trimmedSearch}"`} description="Try a different document number or a shorter part of the name." />;
+    if (failed) return <ExplorerEmpty title={t("knowledge.couldNotLoad", "This could not be loaded")} description={t("knowledge.connectionHint", "Check your connection and try again.")} onRetry={refreshAll} />;
+    if (shortQuery) return <ExplorerEmpty title={t("knowledge.keepTyping", "Keep typing")} description={t("knowledge.keepTypingHint", `Enter at least ${MIN_SEARCH_LENGTH} characters to search all documents.`)} />;
+    if (searching) return <ExplorerEmpty title={`${t("knowledge.noMatch", "No documents match")} "${trimmedSearch}"`} description={t("knowledge.noMatchHint", "Try a different document number or a shorter part of the name.")} />;
     if (nav.kind === "home") {
       return overview && !overview.selectedHierarchyId
-        ? <ExplorerEmpty title="No hierarchy configured" description="Ask an administrator to create a Knowledge Categories Hierarchy." />
-        : <ExplorerEmpty title="No documents yet" description="Effective documents you are allowed to see will appear here." />;
+        ? <ExplorerEmpty title={t("knowledge.noHierarchy", "No hierarchy configured")} description={t("knowledge.noHierarchyHint", "Ask an administrator to create a Knowledge Categories Hierarchy.")} />
+        : <ExplorerEmpty title={t("knowledge.noDocumentsYet", "No documents yet")} description={t("knowledge.noDocumentsHint", "Effective documents you are allowed to see will appear here.")} />;
     }
     if (nav.kind === "smart") {
       const text: Record<string, string> = {
-        featured: "Document Control has not featured any document yet.",
-        viewed: "Documents will be ranked here once people start opening them.",
-        useful: "Documents will be ranked here once readers mark them as helpful.",
-        subscribed: "Use the bell on a Knowledge Base to get an email when a new document is published.",
+        featured: t("knowledge.featuredNone", "Document Control has not featured any document yet."),
+        viewed: t("knowledge.viewedNone", "Documents will be ranked here once people start opening them."),
+        useful: t("knowledge.usefulNone", "Documents will be ranked here once readers mark them as helpful."),
+        subscribed: t("knowledge.subscribedNone", "Use the bell on a Knowledge Base to get an email when a new document is published."),
       };
-      return <ExplorerEmpty title="Nothing here yet" description={text[nav.key]} />;
+      return <ExplorerEmpty title={t("knowledge.nothingHere", "Nothing here yet")} description={text[nav.key]} />;
     }
-    return <ExplorerEmpty title="This folder is empty" description="There are no documents in this folder." />;
+    return <ExplorerEmpty title={t("knowledge.thisFolderEmpty", "This folder is empty")} description={t("knowledge.folderEmptyHint", "There are no documents in this folder.")} />;
   })();
 
   return (
@@ -599,7 +653,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
             onOpenMenu={() => setMenuOpen(true)}
           />
 
-          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 custom-scrollbar md:px-4" style={{ background: pageBackgroundCss(branding.knowledgeBackground) }} onClick={(e) => { if (!(e.target as HTMLElement).closest("[data-item],button,select,input,section")) setSelection(null); }}>
+          <div ref={scrollRef} className={cn("min-h-0 flex-1 overflow-auto px-3 custom-scrollbar md:px-4", tableAtTop ? "pb-4 pt-0" : "py-4")} style={{ background: pageBackgroundCss(branding.knowledgeBackground) }} onClick={(e) => { if (!(e.target as HTMLElement).closest("[data-item],button,select,input")) setSelection(null); }}>
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={`${navKey(nav)}|${searching ? "s" : ""}`}
@@ -614,15 +668,18 @@ export const KnowledgeExplorerPage: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: reduceMotion ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
                     aria-labelledby="knowledge-welcome-title"
-                    className="mb-4 flex flex-col gap-3 rounded-xl border border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between md:px-5"
+                    className="mb-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between md:px-5"
                   >
                     <div className="flex min-w-0 items-start gap-3">
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-600" aria-hidden="true">
+                        <Sparkles className="h-4 w-4" />
+                      </span>
                       <div className="min-w-0">
                         <h2 id="knowledge-welcome-title" className="text-sm font-semibold text-slate-900 md:text-base">
-                          Welcome to Knowledge Base {user?.fullName?.trim() ? `, ${user.fullName.trim()}` : ""}
+                          {t("knowledge.welcome", "Welcome to Knowledge Base")}{user?.fullName?.trim() ? `, ${user.fullName.trim()}` : ""}
                         </h2>
                         <p className="mt-0.5 text-xs leading-5 text-slate-600 md:text-sm">
-                          Browse the latest effective documents, or use search to find the information you need.
+                          {t("knowledge.welcomeBrowse", "Browse the latest effective documents, or use search to find the information you need.")}
                         </p>
                       </div>
                     </div>
@@ -651,6 +708,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
                     onSelect={select}
                     onOpen={openSelection}
                     onContextMenu={openContextMenu}
+                    onActions={openActions}
                     onToggleSubscribe={(key) => void toggleSubscribe(key)}
                   />
                 )}
@@ -673,12 +731,30 @@ export const KnowledgeExplorerPage: React.FC = () => {
             </div>
           )}
 
-          <div className="flex items-center gap-4 border-t border-slate-200 bg-white px-4 py-1.5 text-2xs text-slate-500 md:text-xs">
-            <span><span className="font-semibold tabular-nums text-slate-700">{itemCount}</span> {itemCount === 1 ? "item" : "items"}</span>
-            {selection && <span><span className="font-semibold text-slate-700">1</span> selected</span>}
-            <span className="ml-auto hidden lg:inline">{singleTapOpen ? "Tap to open" : "Double-click to open"} · Right-click for actions · <kbd className="rounded border border-b-2 border-slate-300 bg-white px-1 text-2xs">/</kbd> to search</span>
+          <div className="flex items-center gap-4 border-t border-slate-200 bg-white px-4 py-1.5 text-xs text-slate-600">
+            <span><span className="font-semibold tabular-nums text-slate-700">{itemCount}</span> {t(itemCount === 1 ? "knowledge.item" : "knowledge.items", itemCount === 1 ? "item" : "items")}</span>
+            {selection && <span><span className="font-semibold text-slate-700">1</span> {t("knowledge.selected", "selected")}</span>}
+            <span className="ml-auto hidden items-center gap-1.5 lg:inline-flex">
+              {t(singleTapOpen ? "knowledge.tapToOpen" : "knowledge.doubleClickToOpen", singleTapOpen ? "Tap to open" : "Double-click to open")} · {t("knowledge.rightClickActions", "Right-click or ⋯ for actions")} · <Kbd keys={["/"]} size="sm" /> {t("knowledge.searchHint", "to search")}
+            </span>
           </div>
         </section>
+
+        {isWide && (
+          <aside className="min-h-0 overflow-hidden border-l border-slate-200 bg-white" aria-label="Details">
+            <ExplorerInspector
+              target={inspectorTarget}
+              canFeature={canFeature}
+              onShareDocument={canShare ? shareDocument : undefined}
+              onShareFolder={canShare ? shareFolder : undefined}
+              onOpenDocument={openKnowledgePreview}
+              onOpenFolder={(folder) => go(folderTarget(folder))}
+              onToggleHelpful={(item) => void toggleHelpful(item)}
+              onToggleFeatured={(item) => void toggleFeatured(item)}
+              onToggleSubscribe={(key) => void toggleSubscribe(key)}
+            />
+          </aside>
+        )}
 
       </motion.div>
 
@@ -716,6 +792,13 @@ export const KnowledgeExplorerPage: React.FC = () => {
         onToggleHelpful={(item) => void toggleHelpful(item)}
         onToggleFeatured={(item) => void toggleFeatured(item)}
         onToggleSubscribe={(key) => void toggleSubscribe(key)}
+      />
+
+      <ExplorerActionSheet
+        open={actionSheet !== null}
+        title={actionSheetTitle}
+        actions={sheetActions}
+        onClose={() => setActionSheet(null)}
       />
 
       <ShareDialog target={shareTarget} onClose={() => setShareTarget(null)} />

@@ -12,6 +12,7 @@ import { DEFAULT_TOAST_HEX, DEFAULT_TOAST_SHADOW } from "@/styles/tokens";
 import { cn } from "../utils";
 import { IconAlertTriangle, IconCheck, IconX } from "@tabler/icons-react";
 import { useBranding } from "@/components/branding/BrandLogo";
+import { tr } from "@/i18n";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
@@ -267,7 +268,7 @@ const ToastItem: React.FC<{ toast: Toast; color?: string; shadow?: number; onRem
             </h4>
             <button
               className="shrink-0 -mr-1 p-1 rounded-lg text-slate-400 hover:text-slate-600 transition-all"
-              aria-label="Close"
+              aria-label={tr("Close")}
               onClick={(event) => { event.stopPropagation(); onRemove(toast.id); }}
             >
               <X className="h-4 w-4" />
@@ -284,7 +285,7 @@ const ToastItem: React.FC<{ toast: Toast; color?: string; shadow?: number; onRem
         <div
           className="h-full origin-left"
           role="progressbar"
-          aria-label="Time left"
+          aria-label={tr("Time left")}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(fraction * 100)}

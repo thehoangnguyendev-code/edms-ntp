@@ -7,6 +7,7 @@ import React, { ReactNode } from 'react';
 import { AuthProvider } from './AuthContext';
 import { ThemeProvider } from './ThemeContext';
 import { BreadcrumbProvider } from './BreadcrumbContext';
+import { LanguageProvider } from '@/i18n';
 
 interface AppProvidersProps {
   children: ReactNode;
@@ -16,9 +17,11 @@ export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BreadcrumbProvider>
-          {children}
-        </BreadcrumbProvider>
+        <LanguageProvider>
+          <BreadcrumbProvider>
+            {children}
+          </BreadcrumbProvider>
+        </LanguageProvider>
       </AuthProvider>
     </ThemeProvider>
   );

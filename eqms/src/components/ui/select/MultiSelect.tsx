@@ -12,6 +12,7 @@ import { Checkbox } from '../checkbox/Checkbox';
 import { Popover } from '../popover/Popover';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 export interface MultiSelectOption {
   label: string;
@@ -409,7 +410,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
         <div className="ml-1 flex shrink-0 items-center gap-1.5">
           {remainingCount > 0 && (
             <Popover
-              title="Selected"
+              title={tr("Selected")}
               placement="top"
               triggerAriaLabel={`View ${remainingCount} more selected items`}
               trigger={<span className="text-[10px] font-medium">+{remainingCount}</span>}
@@ -433,7 +434,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
               type="button"
               onClick={handleClearAll}
               className="inline-flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
-              aria-label="Clear all selections"
+              aria-label={tr("Clear all selections")}
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -507,7 +508,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                   </div>
                 ) : filteredOptions.length === 0 ? (
                   <div className="py-8 text-center text-sm text-slate-500">
-                    No results found
+                    {tr("No results found")}
                   </div>
                 ) : (
                   <>
@@ -550,7 +551,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                   disabled={value.length === 0}
                   className="h-8 px-3"
                 >
-                  Reset
+                  {tr("Reset")}
                 </Button>
 
                 <Button

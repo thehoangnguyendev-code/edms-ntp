@@ -2,6 +2,7 @@ import React, { useId } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { cn } from '../utils';
+import { useLanguage } from '@/i18n';
 
 /**
  * Responsive Form Components
@@ -39,6 +40,7 @@ export const FormField: React.FC<FormFieldProps> = ({
   layout = 'vertical',
   hint,
 }) => {
+  const { tLabel } = useLanguage();
   const generatedId = useId();
   const controlId = htmlFor ?? generatedId;
   const hintId = hint && !error ? `${controlId}-hint` : undefined;
@@ -83,7 +85,7 @@ export const FormField: React.FC<FormFieldProps> = ({
           layout === 'horizontal' && 'md:w-1/3 md:pt-2 md:mb-0 md:text-right',
         )}
       >
-        {label}
+        {tLabel(label)}
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
 

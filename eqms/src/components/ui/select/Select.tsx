@@ -9,6 +9,8 @@ import { InlineLoading } from '../loading/Loading';
 import { CONTROL_STATE_CLASSES } from '../controlState';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { useLanguage } from "@/i18n";
+import { tr } from "@/i18n";
 
 export interface SelectOption {
   label: string;
@@ -72,6 +74,10 @@ export const Select: React.FC<SelectProps> = ({
   minSearchLength = 0,
   'aria-label': ariaLabel,
 }) => {
+  const { tLabel } = useLanguage();
+  const displayLabel = typeof label === 'string' ? tLabel(label) : label;
+  const displayPlaceholder = tLabel(placeholder);
+  const displaySearchPlaceholder = tLabel(searchPlaceholder);
   const selectId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -111,7 +117,7 @@ export const Select: React.FC<SelectProps> = ({
 
   const filteredOptions = enableSearch && !onSearch
     ? displayOptions.filter((opt) =>
-      opt.label.toLowerCase().includes(localQuery.toLowerCase())
+      tLabel(opt.label).toLowerCase().includes(localQuery.toLowerCase())
     )
     : displayOptions;
 
@@ -120,7 +126,7 @@ export const Select: React.FC<SelectProps> = ({
     ? safeGroups.map(g => ({
       ...g,
       options: g.options.filter(opt =>
-        opt.label.toLowerCase().includes(localQuery.toLowerCase())
+        tLabel(opt.label).toLowerCase().includes(localQuery.toLowerCase())
       )
     })).filter(g => g.options.length > 0)
     : safeGroups;
@@ -338,14 +344,14 @@ export const Select: React.FC<SelectProps> = ({
 
   return (
     <div ref={containerRef} className={cn("relative w-full", className)}>
-      {label && (
+      {displayLabel && (
         <label htmlFor={`${selectId}-trigger`} className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-          {typeof label === "string" && /\*\s*$/.test(label) ? (
+          {typeof displayLabel === "string" && /\*\s*$/.test(displayLabel) ? (
             <>
-              {label.replace(/\s*\*\s*$/, "")} <span className="text-red-500">*</span>
+              {displayLabel.replace(/\s*\*\s*$/, "")} <span className="text-red-500">*</span>
             </>
           ) : (
-            label
+            displayLabel
           )}
         </label>
       )}
@@ -356,7 +362,7 @@ export const Select: React.FC<SelectProps> = ({
         id={`${selectId}-trigger`}
         type="button"
         role="combobox"
-        aria-label={label ? undefined : ariaLabel}
+        aria-label={displayLabel ? undefined : ariaLabel}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-controls={`${selectId}-listbox`}
@@ -378,7 +384,7 @@ export const Select: React.FC<SelectProps> = ({
           "min-w-0 flex-1 truncate text-left",
           selectedOption ? (disabled ? "text-slate-600" : "text-slate-700 font-medium") : "text-slate-400",
         )}>
-          {selectedOption ? displayText(selectedOption.label) : placeholder}
+          {selectedOption ? displayText(tLabel(selectedOption.label)) : displayPlaceholder}
         </span>
         <ChevronDown
           className={cn(
@@ -421,7 +427,7 @@ export const Select: React.FC<SelectProps> = ({
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={searchPlaceholder}
+                      placeholder={displaySearchPlaceholder}
                       className="w-full h-9 pl-9 pr-3 text-[16px] sm:text-sm bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                       autoComplete="off"
                       autoCorrect="off"
@@ -446,14 +452,14 @@ export const Select: React.FC<SelectProps> = ({
                   </div>
                 ) : filteredOptions.length === 0 ? (
                   <div className="py-8 text-center text-sm text-slate-500">
-                    No results found
+                    {tr("No results found")}
                   </div>
                 ) : groups && filteredGroups ? (
                   // Render grouped options
                   filteredGroups.map((group, groupIndex) => (
                     <div key={group.groupLabel} className="py-1">
                       <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider sticky top-0 bg-slate-50/95 backdrop-blur-sm border-b border-slate-200">
-                        {group.groupLabel}
+                        {tLabel(group.groupLabel)}
                       </div>
                       {group.options.map((option, optionIndex) => {
                         const flatIndex = filteredGroups
@@ -477,7 +483,7 @@ export const Select: React.FC<SelectProps> = ({
                             )}
                             style={{ height: rowHeight }}
                           >
-                            <span className={cn("flex-1 text-left", truncateOptions && "min-w-0 truncate")} title={truncateOptions ? displayText(option.label) : undefined}>{displayText(option.label)}</span>
+                            <span className={cn("flex-1 text-left", truncateOptions && "min-w-0 truncate")} title={truncateOptions ? displayText(tLabel(option.label)) : undefined}>{displayText(tLabel(option.label))}</span>
                             <span className="flex items-center gap-2 shrink-0 ml-2">
                               {option.icon}
                               {isSelected && (
@@ -510,7 +516,7 @@ export const Select: React.FC<SelectProps> = ({
                         )}
                         style={{ height: rowHeight }}
                       >
-                        <span className={cn("flex-1 text-left", truncateOptions && "min-w-0 truncate")} title={truncateOptions ? displayText(option.label) : undefined}>{displayText(option.label)}</span>
+                        <span className={cn("flex-1 text-left", truncateOptions && "min-w-0 truncate")} title={truncateOptions ? displayText(tLabel(option.label)) : undefined}>{displayText(tLabel(option.label))}</span>
                         <span className="flex items-center gap-2 shrink-0 ml-2">
                           {option.icon}
                           {isSelected && (

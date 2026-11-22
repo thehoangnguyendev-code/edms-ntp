@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../button/Button';
 import { cn } from '../utils';
 import { ButtonLoading } from '../loading/Loading';
+import { useLanguage } from '@/i18n';
+import { tr } from "@/i18n";
 
 export interface FormModalProps {
   isOpen: boolean;
@@ -62,6 +64,10 @@ export const FormModal: React.FC<FormModalProps> = ({
   className,
   dirty = false,
 }) => {
+  const { tLabel } = useLanguage();
+  const displayTitle = typeof title === 'string' ? tLabel(title) : title;
+  const displayConfirm = typeof confirmText === 'string' ? tLabel(confirmText) : confirmText;
+  const displayCancel = typeof cancelText === 'string' ? tLabel(cancelText) : cancelText;
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
@@ -207,14 +213,14 @@ export const FormModal: React.FC<FormModalProps> = ({
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   {title && (
-                    <h3 id={titleId} className="text-sm sm:text-base font-semibold text-slate-900 leading-tight truncate">{title}</h3>
+                    <h3 id={titleId} className="text-sm sm:text-base font-semibold text-slate-900 leading-tight truncate">{displayTitle}</h3>
                   )}
                 </div>
                 <button
                   type="button"
                   onClick={requestClose}
                   className="flex-shrink-0 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-                  aria-label="Close"
+                  aria-label={tr("Close")}
                 >
                   <X className="h-4 w-4 text-slate-500" />
                 </button>
@@ -237,7 +243,7 @@ export const FormModal: React.FC<FormModalProps> = ({
                   {footerExtra}
                   {showCancel && (
                     <Button size="sm" variant="outline" onClick={requestClose} disabled={isLoading}>
-                      {cancelText}
+                      {displayCancel}
                     </Button>
                   )}
                   <Button
@@ -246,7 +252,7 @@ export const FormModal: React.FC<FormModalProps> = ({
                     onClick={onConfirm || requestClose}
                     disabled={isLoading || confirmDisabled}
                   >
-                    {isLoading ? <ButtonLoading text="Processing..." light={confirmVariant === 'default' || confirmVariant === 'destructive'} /> : confirmText}
+                    {isLoading ? <ButtonLoading text={tLabel("Processing...")} light={confirmVariant === 'default' || confirmVariant === 'destructive'} /> : displayConfirm}
                   </Button>
                 </div>
               </div>
@@ -265,7 +271,7 @@ export const FormModal: React.FC<FormModalProps> = ({
         <NavigationGuardModal
           isOpen={isOpen && confirmingDiscard}
           mode="discard"
-          currentPageTitle={title}
+          currentPageTitle={typeof title === 'string' ? tLabel(title) : title}
           onClose={() => setConfirmingDiscard(false)}
           onConfirm={() => {
             setConfirmingDiscard(false);

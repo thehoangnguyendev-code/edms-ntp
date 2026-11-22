@@ -8,6 +8,7 @@ import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker
 import { ConfiguredDesktopFilters } from "@/components/ui/filter/ConfiguredDesktopFilters";
 import { FilterAccordionItem, FilterDrawer } from "@/components/ui/filter/FilterDrawer";
 import { FilterSearchInput } from "@/components/ui/filter/FilterSearchInput";
+import { useLanguage } from "@/i18n";
 
 export interface ReportSelectFilter {
   id: string;
@@ -38,6 +39,7 @@ export interface ReportDateFilter {
  * inside the compact filter panel: it marks its icon, and the global stylesheet then removes the bottom padding of the filter section.
  */
 function PlainSearch({ value, onChange, placeholder, height }: { value: string; onChange: (value: string) => void; placeholder: string; height: "h-9" | "h-10" }) {
+  const { tLabel } = useLanguage();
   return (
     <div className="relative">
       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -45,14 +47,14 @@ function PlainSearch({ value, onChange, placeholder, height }: { value: string; 
       </div>
       <input
         type="text"
-        aria-label="Search"
-        placeholder={placeholder}
+        aria-label={tLabel("Search")}
+        placeholder={tLabel(placeholder)}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className={`block w-full ${height} rounded-lg border border-slate-200 bg-white pl-10 pr-10 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500`}
       />
       {value && (
-        <button type="button" aria-label="Clear search" onClick={() => onChange("")} className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 transition-colors hover:text-slate-600">
+        <button type="button" aria-label={tLabel("Clear search")} onClick={() => onChange("")} className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 transition-colors hover:text-slate-600">
           <X className="h-4 w-4" />
         </button>
       )}
@@ -98,6 +100,7 @@ export function ReportListToolbar({
       else next.add(id);
       return next;
     });
+  const { tLabel } = useLanguage();
   const optionClass = (active: boolean) =>
     `flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left ${
       active ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-700 hover:bg-slate-50"
@@ -107,14 +110,14 @@ export function ReportListToolbar({
     <div className={flush ? "compact-filter-section flex flex-col pb-4" : "compact-filter-section flex flex-col px-4 pt-4 md:p-5"}>
       <div className="-mx-1.5 -mb-1.5 px-1.5 pb-1.5">
         <div className="mb-4 flex w-full flex-col gap-1.5 md:hidden">
-          <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">Search</label>
+          <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">{tLabel("Search")}</label>
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
               <PlainSearch value={search} onChange={onSearch} placeholder={searchPlaceholder} height="h-10" />
             </div>
             <Button variant="outline" onClick={() => setDrawerOpen(true)} className="gap-2 whitespace-nowrap">
               <IconFilter2 className="h-4 w-4" />
-              Filters
+              {tLabel("Filters")}
             </Button>
           </div>
         </div>
@@ -142,7 +145,7 @@ export function ReportListToolbar({
               (15rem each, measured on the card, not the screen: next to the open sidebar a tablet has far less room than its width). */}
           <div className="hidden items-end gap-4 md:grid [grid-template-columns:repeat(auto-fill,minmax(max(15rem,calc((100%-2rem)/3)),1fr))]">
             <div className="w-full">
-              <label className="mb-1.5 block text-xs font-medium text-slate-700 transition-colors sm:text-sm capitalize">Search</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-700 transition-colors sm:text-sm capitalize">{tLabel("Search")}</label>
               <PlainSearch value={search} onChange={onSearch} placeholder={searchPlaceholder} height="h-9" />
             </div>
             {filters.map((filter) => (

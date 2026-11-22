@@ -9,6 +9,8 @@ import { cn } from "@/components/ui/utils";
 import { MAX_PINNED_COLUMNS, normalizeColumnOrder, type CustomizableColumn } from "./useTableColumnPreferences";
 import { IconLock, IconPin, IconPinnedOff } from "@tabler/icons-react";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { useLanguage } from "@/i18n";
+import { tr } from "@/i18n";
 
 interface CustomColumnDrawerProps {
   columns: CustomizableColumn[];
@@ -49,6 +51,7 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
   fixedColumns = [],
   allowPin = true,
 }) => {
+  const { t, tLabel } = useLanguage();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<CustomizableColumn[]>([]);
   const [query, setQuery] = useState("");
@@ -129,8 +132,8 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
         aria-haspopup="dialog"
         disabled={disabled || saving}
         onClick={openDrawer}
-        title="Custom Column"
-        aria-label="Custom Column"
+        title={tLabel("Custom Column")}
+        aria-label={tLabel("Custom Column")}
         className="h-9 w-9 shrink-0 md:h-9 md:w-9"
       >
         {/* Icon only: the name is the tooltip and what a screen reader reads. As high as the buttons beside it in a filter row (Filter, Clear Filters: h-9); the icon-sm size has no horizontal padding, so the icon cannot be squeezed. */}
@@ -139,21 +142,21 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
 
       {open && (
         <Drawer
-          title="Custom Column"
+          title={tLabel("Custom Column")}
           subtitlePlacement="below"
-          subtitle={`Pin No. and Expand independently. Show, hide, pin and reorder up to ${MAX_PINNED_COLUMNS} additional columns.`}
+          subtitle={t("customColumns.subtitle", "Pin No. and Expand independently. Show, hide, pin and reorder up to {count} additional columns.").replace("{count}", String(MAX_PINNED_COLUMNS))}
           onClose={() => setOpen(false)}
           footer={
             <div className="flex items-center justify-between gap-2">
               <Button type="button" variant="ghost" size="sm" onClick={reset} disabled={saving}>
-                Reset to Default
+                {t("customColumns.reset", "Reset to Default")}
               </Button>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)} disabled={saving}>
-                  Cancel
+                  {tr("Cancel")}
                 </Button>
                 <Button type="button" size="sm" onClick={apply} disabled={saving}>
-                  Apply
+                  {tr("Apply")}
                 </Button>
               </div>
             </div>
@@ -161,8 +164,8 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
         >
           <div className="mb-3">
             <FilterSearchInput
-              aria-label="Search columns"
-              placeholder="Search columns..."
+              aria-label={tr("Search columns")}
+              placeholder={tr("Search columns...")}
               value={query}
               onChange={setQuery}
               debounceMs={SEARCH_DEBOUNCE_MS}
@@ -174,7 +177,7 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
             onReorder={reorder}
             header={visibleLocked.map((column) => (
               <div key={column.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                <IconLock aria-label="Always visible" className="h-4 w-4 shrink-0 text-slate-400" />
+                <IconLock aria-label={tr("Always visible")} className="h-4 w-4 shrink-0 text-slate-400" />
                 <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{column.label}</span>
                 {allowPin && (column.id === "no" || column.id === "expand") && (
                   <Button
@@ -237,7 +240,7 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
 /** A row the user cannot change: it shows a lock and no switch. */
 const LockedRow: React.FC<{ label: string }> = ({ label }) => (
   <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-    <IconLock aria-label="Fixed column" className="h-4 w-4 shrink-0 text-slate-400" />
+    <IconLock aria-label={tr("Fixed column")} className="h-4 w-4 shrink-0 text-slate-400" />
     <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{label}</span>
   </div>
 );

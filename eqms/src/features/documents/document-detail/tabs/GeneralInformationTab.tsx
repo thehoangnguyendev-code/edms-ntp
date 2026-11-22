@@ -5,6 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox/Checkbox';
 import { Popover } from "@/components/ui/popover/Popover";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
+import { useLanguage } from "@/i18n";
 
 interface DocumentDetail {
   documentNumber: string;
@@ -69,6 +70,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
   coAuthorOptions = [],
   onSearchWorkflowUsers,
 }) => {
+  const { t, tLabel } = useLanguage();
   const coAuthorIds = (document.coAuthors ?? []).map((coAuthor) => coAuthor.id);
   const coAuthorNames = (document.coAuthorNames?.length
     ? document.coAuthorNames
@@ -83,19 +85,19 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
         {/* Document Number (read-only, auto-generated) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Document Number</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Document Number")}</label>
           <input
             type="text"
             value={document.documentNumber}
             readOnly
             className={CONTROL_STATE_CLASSES.readonlyField}
-            placeholder="Auto-generated after save"
+            placeholder={tLabel("Auto-generated after save")}
           />
         </div>
 
         {/* Created (read-only, auto-generated) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Created Time</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Created Time")}</label>
           <input
             type="text"
             value={document.created}
@@ -109,7 +111,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
         <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
           {/* Opened By (read-only, auto-generated) */}
           <div className="flex flex-col gap-1.5 md:col-span-2">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Opened By</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Opened By")}</label>
             <input
               type="text"
               value={document.openedBy}
@@ -121,7 +123,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
           {/* Author */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Author<span className="text-red-500 ml-1">*</span></label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Author")}<span className="text-red-500 ml-1">*</span></label>
             {canEditFields ? (
               <Select
                 value={document.authorId || ""}
@@ -143,7 +145,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
           {/* Co-Authors */}
           <div className="flex flex-col gap-1.5 font-sans">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Co-Author(s)</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Co-Author(s)")}</label>
             {canEditFields ? (
               <MultiSelect
                 value={coAuthorIds}
@@ -201,7 +203,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Business Unit */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Business Unit<span className="text-red-500 ml-1">*</span></label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Business Unit")}<span className="text-red-500 ml-1">*</span></label>
           <input
             type="text"
             value={document.businessUnit}
@@ -212,7 +214,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Department */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Department</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Department")}</label>
           <input
             type="text"
             value={document.department}
@@ -223,7 +225,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Document Name - Full width */}
         <div className="flex flex-col gap-1.5 md:col-span-2">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Document Name<span className="text-red-500 ml-1">*</span></label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Document Name")}<span className="text-red-500 ml-1">*</span></label>
           <input
             type="text"
             value={document.documentName}
@@ -235,8 +237,8 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
         {/* Title in Local Language - Full width */}
         <div className="flex flex-col gap-1.5 md:col-span-2">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Title in Local Language
-            <span className="text-slate-400 text-xs font-normal ml-1.5">(optional)</span>
+            {tLabel("Title in Local Language")}
+            <span className="text-slate-400 text-xs font-normal ml-1.5">{tLabel("(optional)")}</span>
           </label>
           <input
             type="text"
@@ -249,13 +251,13 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Is Template */}
         <div className="flex items-center gap-3">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Is Template?</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700">{tLabel("Is Template?")}</label>
           <Checkbox id="isTemplate" checked={document.isTemplate} disabled={true} />
         </div>
 
         {/* Knowledge Base */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Knowledge Base</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Knowledge Base")}</label>
           <input
             type="text"
             value={document.knowledgeBase}
@@ -266,7 +268,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Document Type */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Document Type<span className="text-red-500 ml-1">*</span></label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Document Type")}<span className="text-red-500 ml-1">*</span></label>
           <input
             type="text"
             value={document.type}
@@ -277,7 +279,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Sub-Type */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Sub-Type</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Sub-Type")}</label>
           <input
             type="text"
             value={document.subType || "-"}
@@ -288,7 +290,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Periodic Review Cycle */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Periodic Review Cycle (Months)<span className="text-red-500 ml-1">*</span></label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Periodic Review Cycle (Months)")}<span className="text-red-500 ml-1">*</span></label>
           <input
             type="number"
             min={1}
@@ -312,7 +314,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Periodic Review Notification */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Periodic Review Notification (Days)<span className="text-red-500 ml-1">*</span></label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Periodic Review Notification (Days)")}<span className="text-red-500 ml-1">*</span></label>
           <input
             type="number"
             min={1}
@@ -336,32 +338,32 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Effective Date (read-only, auto-generated) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Effective Date</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Effective Date")}</label>
           <input
             type="text"
             value={document.effectiveDate}
             readOnly
             className={CONTROL_STATE_CLASSES.readonlyField}
-            placeholder="Set when approved"
+            placeholder={tLabel("Set when approved")}
           />
         </div>
 
         {/* Valid Until (read-only, auto-generated) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Valid Until</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Valid Until")}</label>
           <input
             type="text"
             value={document.validUntil}
             readOnly
             className={CONTROL_STATE_CLASSES.readonlyField}
-            placeholder={document.effectiveDate ? "No review cycle" : "Set when approved"}
+            placeholder={document.effectiveDate ? tLabel("No review cycle") : tLabel("Set when approved")}
           />
         </div>
 
         {/* Review Date */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Review Date
+            {tLabel("Review Date")}
             {/* Required while preparing an upgrade (Edit Revision for Upgrade unlocked the field). */}
             {canEditReviewDate && <span className="text-red-500 ml-1">*</span>}
           </label>
@@ -370,16 +372,16 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
             onChange={(value) => onDocumentChange?.({ ...document, reviewDate: value })}
             showTime={false}
             disabled={isReadOnly || !canEditReviewDate}
-            placeholder="Select review date"
+            placeholder={tLabel("Select review date")}
           />
           <p className="text-xs text-slate-500">
-            Enter manually when preparing an upgraded revision. The system does not calculate this date automatically.
+            {t("documents.reviewDateHint", "Enter manually when preparing an upgraded revision. The system does not calculate this date automatically.")}
           </p>
         </div>
 
         {/* Language */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Language</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Language")}</label>
           <input
             type="text"
             value={document.language}
@@ -390,7 +392,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Description - Full width */}
         <div className="flex flex-col gap-1.5 md:col-span-2">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Description <span className="text-red-500">*</span></label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tLabel("Description")} <span className="text-red-500">*</span></label>
           <textarea
             value={document.description}
             rows={4}

@@ -11,6 +11,8 @@ import type { KnowledgePortalDocument, KnowledgePortalOverview } from "@/service
 import { FileIcon, useFolderColor, useFolderLabel } from "./ExplorerIcons";
 import { FOCUS_RING } from "./explorerStyles";
 import { pluralize, type ExplorerNav } from "./explorerModel";
+import { useMediaQuery } from "./useMediaQuery";
+import { useLanguage } from "@/i18n";
 
 interface ExplorerWidgetsProps {
   overview: KnowledgePortalOverview;
@@ -45,7 +47,7 @@ const ListCard: React.FC<{ title: string; subtitle: string; count?: number; chil
   </Card>
 );
 
-const Empty: React.FC<{ text: string }> = ({ text }) => <p className="px-2 py-3 text-xs text-slate-500 md:text-sm">{text}</p>;
+const Empty: React.FC<{ text: string }> = ({ text }) => <p className="px-2 py-3 text-xs text-slate-600 md:text-sm">{text}</p>;
 
 const rowButton = cn("group w-full rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-emerald-50/50", FOCUS_RING);
 
@@ -83,16 +85,20 @@ const RankedRows: React.FC<{ items: KnowledgePortalDocument[]; value: (d: Knowle
 export const ExplorerWidgets: React.FC<ExplorerWidgetsProps> = ({ overview, onSelectDocument, onGo, onToggleSubscribe }) => {
   const colorOf = useFolderColor();
   const labelOf = useFolderLabel();
+  const { t, language } = useLanguage();
+  const documentCountLabel = (count: number) => language === "vi" ? `${count} tài liệu` : pluralize(count, "document");
+  // A chart that needs a legend and a tooltip needs room: below a laptop the lists carry the same information.
+  const showChart = useMediaQuery("(min-width: 1024px)");
   const subscribed = overview.knowledgeBases.filter((kb) => kb.subscribed);
   const withContent = overview.knowledgeBases.filter((kb) => kb.documentCount > 0).length;
 
   const cells = useMemo<KpiCellData[]>(
     () => [
-      { title: "Knowledge Bases", accent: "#10b981", value: overview.totalKnowledgeBases, footValue: withContent, footLabel: "with documents" },
-      { title: "Documents", accent: "#3b82f6", value: overview.totalDocuments, footValue: overview.featured.length, footLabel: "featured" },
-      { title: "Subscribed", accent: "#8b5cf6", value: subscribed.length, footValue: overview.totalKnowledgeBases - subscribed.length, footLabel: "not subscribed" },
+      { title: t("knowledge.knowledgeBases", "Knowledge Bases"), accent: "#10b981", value: overview.totalKnowledgeBases, footValue: withContent, footLabel: t("knowledge.withDocuments", "with documents") },
+      { title: t("knowledge.documents", "Documents"), accent: "#3b82f6", value: overview.totalDocuments, footValue: overview.featured.length, footLabel: t("knowledge.featuredFoot", "featured") },
+      { title: t("knowledge.subscribed", "Subscribed"), accent: "#8b5cf6", value: subscribed.length, footValue: overview.totalKnowledgeBases - subscribed.length, footLabel: t("knowledge.notSubscribed", "not subscribed") },
     ],
-    [overview, subscribed.length, withContent],
+    [overview, subscribed.length, withContent, t],
   );
 
   // One bar per Knowledge Base that holds documents, largest first: the same figures the folders show.
@@ -111,44 +117,48 @@ export const ExplorerWidgets: React.FC<ExplorerWidgetsProps> = ({ overview, onSe
 
   return (
     <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-2">
-      <Region label="At a glance" index={0} className="md:col-span-2">
-        <KpiStrip label="Knowledge Base totals" cells={cells} className="sm:grid-cols-3 xl:grid-cols-3" />
+      <Region label={t("knowledge.atAGlance", "At a glance")} index={0} className="md:col-span-2">
+        <KpiStrip label={t("knowledge.knowledgeBaseTotals", "Knowledge Base totals")} cells={cells} className="sm:grid-cols-1 lg:grid-cols-3 xl:grid-cols-3" />
         {overview.selectedHierarchyName && (
-          <p className="mt-2 truncate px-1 text-xs text-slate-500">Hierarchy: <span className="font-medium text-slate-700">{overview.selectedHierarchyName}</span></p>
+          <p className="mt-2 truncate px-1 text-xs text-slate-500">{t("knowledge.hierarchy", "Hierarchy")}: <span className="font-medium text-slate-700">{overview.selectedHierarchyName}</span></p>
         )}
       </Region>
 
-      <Region label="Documents per Knowledge Base" index={1} className="md:col-span-2">
-        <BreakdownPanel
-          title="Documents per Knowledge Base"
-          subtitle={(total, count) => `${pluralize(total, "document")} across ${pluralize(count, "Knowledge Base")}`}
-          idleSubtitle="Documents per Knowledge Base"
-          resource={perKb}
-          valueLabel="Documents"
-          centerCaption="Documents"
-          chartLabel="documents per Knowledge Base"
-          emptyLabel="No Knowledge Base holds a document yet"
-          errorMessage="Documents per Knowledge Base could not be loaded."
-          idPrefix="explorer-kb"
-        />
-      </Region>
+      {showChart && (
+        <Region label={t("knowledge.documentsPerKb", "Documents per Knowledge Base")} index={1} className="md:col-span-2">
+          <BreakdownPanel
+            title={t("knowledge.documentsPerKb", "Documents per Knowledge Base")}
+            subtitle={(total, count) => language === "vi"
+              ? `${total} tài liệu ${t("knowledge.across", "across")} ${count} Cơ sở tri thức`
+              : `${pluralize(total, "document")} across ${pluralize(count, "Knowledge Base")}`}
+            idleSubtitle={t("knowledge.documentsPerKb", "Documents per Knowledge Base")}
+            resource={perKb}
+            valueLabel={t("knowledge.documents", "Documents")}
+            centerCaption={t("knowledge.documents", "Documents")}
+            chartLabel={t("knowledge.documentsPerKb", "documents per Knowledge Base")}
+            emptyLabel={t("knowledge.noDocumentsYet", "No Knowledge Base holds a document yet")}
+            errorMessage={t("knowledge.couldNotLoad", "Documents per Knowledge Base could not be loaded.")}
+            idPrefix="explorer-kb"
+          />
+        </Region>
+      )}
 
-      <Region label="Most viewed" index={2}>
-        <ListCard title="Most viewed" subtitle="Documents readers opened most" count={overview.mostViewed.length}>
-          {overview.mostViewed.length === 0 ? <Empty text="No content to display" /> : <RankedRows items={overview.mostViewed} value={(d) => d.views} unit="views" onSelect={onSelectDocument} />}
+      <Region label={t("knowledge.mostViewed", "Most viewed")} index={2}>
+        <ListCard title={t("knowledge.mostViewed", "Most viewed")} subtitle={t("knowledge.mostViewedSubtitle", "Documents readers opened most")} count={overview.mostViewed.length}>
+          {overview.mostViewed.length === 0 ? <Empty text={t("knowledge.noContent", "No content to display")} /> : <RankedRows items={overview.mostViewed} value={(d) => d.views} unit={t("knowledge.views", "views")} onSelect={onSelectDocument} />}
         </ListCard>
       </Region>
 
-      <Region label="Most helpful" index={3}>
-        <ListCard title="Most helpful" subtitle="Documents with the most helpful votes" count={overview.mostUseful.length}>
-          {overview.mostUseful.length === 0 ? <Empty text="No content to display" /> : <RankedRows items={overview.mostUseful} value={(d) => d.helpfulVotes} unit="helpful votes" onSelect={onSelectDocument} />}
+      <Region label={t("knowledge.mostHelpful", "Most helpful")} index={3}>
+        <ListCard title={t("knowledge.mostHelpful", "Most helpful")} subtitle={t("knowledge.mostHelpfulSubtitle", "Documents with the most helpful votes")} count={overview.mostUseful.length}>
+          {overview.mostUseful.length === 0 ? <Empty text={t("knowledge.noContent", "No content to display")} /> : <RankedRows items={overview.mostUseful} value={(d) => d.helpfulVotes} unit={t("knowledge.helpfulVotes", "helpful votes")} onSelect={onSelectDocument} />}
         </ListCard>
       </Region>
 
-      <Region label="Featured" index={4}>
-        <ListCard title="Featured" subtitle="Chosen by Document Control" count={overview.featured.length}>
+      <Region label={t("knowledge.featured", "Featured")} index={4}>
+        <ListCard title={t("knowledge.featured", "Featured")} subtitle={t("knowledge.featuredSubtitle", "Chosen by Document Control")} count={overview.featured.length}>
           {overview.featured.length === 0 ? (
-            <Empty text="No content to display" />
+            <Empty text={t("knowledge.noContent", "No content to display")} />
           ) : (
             <ul className="space-y-0.5">
               {overview.featured.map((item) => (
@@ -167,10 +177,10 @@ export const ExplorerWidgets: React.FC<ExplorerWidgetsProps> = ({ overview, onSe
         </ListCard>
       </Region>
 
-      <Region label="Subscriptions" index={5}>
-        <ListCard title="Subscriptions" subtitle="Email when a new document is published" count={subscribed.length}>
+      <Region label={t("knowledge.subscriptions", "Subscriptions")} index={5}>
+        <ListCard title={t("knowledge.subscriptions", "Subscriptions")} subtitle={t("knowledge.subscriptionsSubtitle", "Email when a new document is published")} count={subscribed.length}>
           {subscribed.length === 0 ? (
-            <Empty text="You are not subscribed to any Knowledge Base. Use the bell on a folder to get an email when a new document is published." />
+            <Empty text={t("knowledge.notSubscribedAny", "You are not subscribed to any Knowledge Base. Use the bell on a folder to get an email when a new document is published.")} />
           ) : (
             <ul className="space-y-0.5">
               {subscribed.map((kb) => (
@@ -182,7 +192,7 @@ export const ExplorerWidgets: React.FC<ExplorerWidgetsProps> = ({ overview, onSe
                   >
                     <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ backgroundColor: colorOf(kb.key, kb.label) }} aria-hidden="true" />
                     <span className="min-w-0 truncate text-xs font-medium text-slate-900 md:text-sm" title={kb.label}>{labelOf(kb.key, kb.label)}</span>
-                    <span className="ml-auto shrink-0 text-2xs text-slate-500 md:text-xs">{pluralize(kb.documentCount, "document")}</span>
+                    <span className="ml-auto shrink-0 text-xs text-slate-500">{documentCountLabel(kb.documentCount)}</span>
                   </button>
                   <button
                     type="button"

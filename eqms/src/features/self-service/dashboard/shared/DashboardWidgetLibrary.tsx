@@ -7,6 +7,7 @@ import { cn } from "@/components/ui/utils";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 import { DASHBOARD_WIDGET_INFO, WIDGET_MODULES, type WidgetModule } from "./dashboardWidgetCatalog";
 import type { DashboardWidgetSetting } from "./dashboardLayout";
+import { useLanguage } from "@/i18n";
 
 type Props = {
   /** Every card this person may have, on the dashboard (visible) or in the library (not visible). */
@@ -36,6 +37,7 @@ type SectionProps = {
  * For people who ask their system for reduced motion it opens and closes at once.
  */
 function ModuleSection({ module, all, shown, expanded, disabled, onToggle, onAdd, onRemove }: SectionProps) {
+  const { t, tLabel, language } = useLanguage();
   const outer = useRef<HTMLDivElement>(null);
   const chevron = useRef<SVGSVGElement>(null);
   const [mounted, setMounted] = useState(expanded);
@@ -100,9 +102,9 @@ function ModuleSection({ module, all, shown, expanded, disabled, onToggle, onAdd
           onClick={onToggle}
           className="h-auto justify-between gap-3 rounded-none px-3.5 py-3 text-left font-normal"
         >
-          <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900">{module}</span>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900">{tLabel(module)}</span>
           <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-2xs font-medium", on > 0 ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600")}>
-            {on} of {all.length} added
+            {language === "vi" ? `${on}/${all.length} đã thêm` : `${on} of ${all.length} added`}
           </span>
           <ChevronDown ref={chevron} className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
         </Button>
@@ -110,27 +112,27 @@ function ModuleSection({ module, all, shown, expanded, disabled, onToggle, onAdd
       <div ref={outer}>
         {mounted && (
           <div data-accordion-panel>
-            <ul id={panelId} className="divide-y divide-slate-100 border-t border-slate-100 px-3.5" aria-label={`${module} widgets`}>
+            <ul id={panelId} className="divide-y divide-slate-100 border-t border-slate-100 px-3.5" aria-label={`${tLabel(module)} ${t("dashboard.widgets", "widgets")}`}>
               {shown.map((item) => {
                 const info = infoOf(item.id);
                 return (
                   <li key={item.id} className="flex items-start justify-between gap-3 py-3" data-widget-library-item={item.id}>
                     <div className="min-w-0">
                       <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-900">
-                        {item.label}
-                        {item.visible && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-2xs font-medium text-emerald-700">On dashboard</span>}
+                        {tLabel(item.label)}
+                        {item.visible && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-2xs font-medium text-emerald-700">{t("dashboard.onDashboard", "On dashboard")}</span>}
                       </p>
-                      {info.description && <p className="mt-0.5 text-xs text-slate-500">{info.description}</p>}
+                      {info.description && <p className="mt-0.5 text-xs text-slate-500">{tLabel(info.description)}</p>}
                     </div>
                     {item.visible ? (
-                      <Button size="sm" variant="outline" disabled={disabled} aria-label={`Remove ${item.label}`} onClick={() => onRemove(item.id)} className="shrink-0 gap-1.5">
+                      <Button size="sm" variant="outline" disabled={disabled} aria-label={language === "vi" ? `Xoá ${item.label}` : `Remove ${item.label}`} onClick={() => onRemove(item.id)} className="shrink-0 gap-1.5">
                         <X className="h-4 w-4 text-slate-400" />
-                        Remove
+                        {t("common.remove", "Remove")}
                       </Button>
                     ) : (
-                      <Button size="sm" variant="outline-emerald" disabled={disabled} aria-label={`Add ${item.label}`} onClick={() => onAdd(item.id)} className="shrink-0 gap-1.5">
+                      <Button size="sm" variant="outline-emerald" disabled={disabled} aria-label={language === "vi" ? `Thêm ${item.label}` : `Add ${item.label}`} onClick={() => onAdd(item.id)} className="shrink-0 gap-1.5">
                         <Plus className="h-4 w-4" />
-                        Add
+                        {t("common.add", "Add")}
                       </Button>
                     )}
                   </li>
@@ -149,6 +151,7 @@ function ModuleSection({ module, all, shown, expanded, disabled, onToggle, onAdd
  * Adding puts a card at the end of the dashboard. A search opens every module that has a match.
  */
 export function DashboardWidgetLibrary({ items, disabled, onAdd, onRemove, onClose }: Props) {
+  const { t, language } = useLanguage();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   const needle = query.trim().toLowerCase();
@@ -172,20 +175,20 @@ export function DashboardWidgetLibrary({ items, disabled, onAdd, onRemove, onClo
 
   return (
     <Drawer
-      title="Widget Library"
-      subtitle={`${added} of ${items.length} cards are on your dashboard.`}
+      title={t("dashboard.widgetLibrary", "Widget Library")}
+      subtitle={language === "vi" ? `${added}/${items.length} thẻ đang có trên bảng điều khiển.` : `${added} of ${items.length} cards are on your dashboard.`}
       subtitlePlacement="below"
       onClose={onClose}
       footer={
         <Button variant="outline" className="w-full" onClick={onClose} size="sm">
-          Done
+          {t("dashboard.done", "Done")}
         </Button>
       }
     >
       <div className="space-y-4">
-        <SearchInput value={query} onChange={setQuery} placeholder="Search cards…" ariaLabel="Search cards" />
+        <SearchInput value={query} onChange={setQuery} placeholder={t("dashboard.searchCards", "Search cards…")} ariaLabel={t("dashboard.searchCards", "Search cards")} />
         {sections.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-500">No card matches.</p>
+          <p className="py-8 text-center text-sm text-slate-500">{t("dashboard.noCardMatch", "No card matches.")}</p>
         ) : (
           <div className="space-y-2">
             {sections.map(({ module, all, shown }) => (

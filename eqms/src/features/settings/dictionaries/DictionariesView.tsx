@@ -12,6 +12,7 @@ import { DepartmentsTab } from "./tabs/DepartmentsTab";
 import { PositionsTab } from "./tabs/PositionsTab";
 import { StorageLocationsTab } from "./tabs/StorageLocationsTab";
 import { RetentionPoliciesTab } from "./tabs/RetentionPoliciesTab";
+import { useLanguage } from "@/i18n";
 
 // Order here is the left-to-right order of the old tab strip, now the top-to-bottom order of
 // the "Dictionaries" nav group's child menu items (NavigationService.java is authoritative;
@@ -30,6 +31,7 @@ const DICTIONARIES: Dictionary[] = [
  *  segment -- replaces the old single-page TabNav-switched view now that each dictionary has
  *  its own menu entry. */
 export const DictionariesView: React.FC = () => {
+  const { t, tLabel } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const category = location.pathname.split("/").filter(Boolean).pop();
@@ -84,7 +86,7 @@ export const DictionariesView: React.FC = () => {
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700"
             >
               <Plus className="h-4 w-4" />
-              New {activeDictionary.label}
+              {t("common.add", "New")} {tLabel(activeDictionary.label)}
             </Button>
           ) : undefined
         }

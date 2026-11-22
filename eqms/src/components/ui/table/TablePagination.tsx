@@ -4,6 +4,7 @@ import { Select } from '../select/Select';
 import { cn } from '../utils';
 import { useFitLevel } from '../useFitLevel';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useLanguage } from '@/i18n';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 
 export interface TablePaginationProps {
@@ -71,6 +72,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   showItemsPerPageSelector = true,
   itemsPerPageOptions = DEFAULT_PER_PAGE_OPTIONS,
 }) => {
+  const { t } = useLanguage();
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
@@ -123,13 +125,13 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
             <span className="font-medium text-slate-900">{startItem}</span> -{' '}
             <span className="font-medium text-slate-900">{endItem}</span> of{' '}
             <span className="font-medium text-slate-900">{totalItems}</span>
-            {level < 3 && <span> results</span>}
+            {level < 3 && <span> {t('common.results', 'results')}</span>}
           </div>
         )}
 
         {showItemsPerPageSelector && onItemsPerPageChange && (
           <div className="flex items-center gap-1.5 sm:gap-2">
-            {level < 4 && <span className="text-xs md:text-sm text-slate-600 whitespace-nowrap">Show:</span>}
+            {level < 4 && <span className="text-xs md:text-sm text-slate-600 whitespace-nowrap">{t('common.show', 'Show:')}</span>}
             <Select
               value={itemsPerPage}
               onChange={handleItemsPerPageChange}
@@ -138,7 +140,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
               triggerClassName="min-h-0 py-0 px-2 h-7 md:h-8 text-xs md:text-sm"
               enableSearch={false}
               disabled={isLoading}
-              aria-label="Rows per page"
+              aria-label={t('common.rowsPerPage', 'Rows per page')}
             />
           </div>
         )}
@@ -147,12 +149,12 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
       {/* Right: Navigation */}
       <div className="flex shrink-0 items-center gap-1 sm:gap-1.5 md:gap-2">
         {arrows ? (
-          <Button variant="outline" size="icon-sm" className="h-7 w-7" onClick={goPrev} disabled={currentPage === 1 || isLoading} aria-label="Previous page">
+          <Button variant="outline" size="icon-sm" className="h-7 w-7" onClick={goPrev} disabled={currentPage === 1 || isLoading} aria-label={t('common.previousPage', 'Previous page')}>
             <IconChevronLeft className="h-4 w-4" />
           </Button>
         ) : (
           <Button variant="outline" size="sm" className="flex h-7 px-2.5" onClick={goPrev} disabled={currentPage === 1 || isLoading}>
-            Previous
+            {t('common.previous', 'Previous')}
           </Button>
         )}
 
@@ -175,18 +177,18 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
         )}
 
         {showPageNumbers && !numbered && (
-          <span className="text-xs text-slate-500 px-1.5" aria-label={`Page ${currentPage} of ${totalPages}`}>
+          <span className="text-xs text-slate-500 px-1.5" aria-label={`${t('common.page', 'Page')} ${currentPage} ${t('common.of', 'of')} ${totalPages}`}>
             {currentPage}/{totalPages}
           </span>
         )}
 
         {arrows ? (
-          <Button variant="outline" size="icon-sm" className="h-7 w-7" onClick={goNext} disabled={currentPage === totalPages || isLoading} aria-label="Next page">
+          <Button variant="outline" size="icon-sm" className="h-7 w-7" onClick={goNext} disabled={currentPage === totalPages || isLoading} aria-label={t('common.nextPage', 'Next page')}>
             <IconChevronRight className="h-4 w-4" />
           </Button>
         ) : (
           <Button variant="outline" size="sm" className="flex h-7 px-2.5" onClick={goNext} disabled={currentPage === totalPages || isLoading}>
-            Next
+            {t('common.next', 'Next')}
           </Button>
         )}
       </div>

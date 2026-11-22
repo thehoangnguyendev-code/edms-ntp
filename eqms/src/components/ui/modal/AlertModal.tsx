@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "../button/Button";
 import { cn } from "../utils";
 import { ButtonLoading } from "../loading/Loading";
+import { useLanguage } from "@/i18n";
+import { tr } from "@/i18n";
 
 export type AlertModalType = "success" | "error" | "warning" | "info" | "confirm";
 
@@ -36,6 +38,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
   confirmDisabled = false,
   showCancel,
 }) => {
+  const { tLabel } = useLanguage();
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -125,7 +128,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
       ? showCancel
       : type === "confirm" || type === "warning";
 
-  const finalConfirmText = confirmText || currentConfig.defaultConfirmText;
+  const finalConfirmText = tLabel(confirmText || currentConfig.defaultConfirmText);
 
   // Custom button styles based on type
   const getConfirmButtonClass = () => {
@@ -189,7 +192,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
                     id="alert-modal-title"
                     className="text-sm md:text-base lg:text-lg font-semibold text-slate-900"
                   >
-                    {title}
+                    {tLabel(title)}
                   </h3>
                   {description && (
                     <div
@@ -204,7 +207,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
                   type="button"
                   onClick={onClose}
                   className="flex-shrink-0 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-                  aria-label="Close dialog"
+                  aria-label={tr("Close dialog")}
                 >
                   <X className="h-4 w-4 text-slate-500" />
                 </button>
@@ -219,7 +222,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
                   onClick={onClose}
                   disabled={isLoading}
                 >
-                  {cancelText}
+                  {tLabel(cancelText)}
                 </Button>
               )}
 

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useLanguage } from "@/i18n";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 import {
   dashboardApi,
@@ -143,6 +144,7 @@ const ComplianceCard: React.FC<{
 }> = ({ data, loading, error, onRetry }) => {
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
+  const { t, tLabel } = useLanguage();
   const rows: QueueRow[] = data
     ? [
         {
@@ -192,14 +194,14 @@ const ComplianceCard: React.FC<{
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-slate-900">
-                  {row.label}
+                  {tLabel(row.label)}
                 </p>
-                <p className="truncate text-xs text-slate-500">{row.caption}</p>
+                <p className="truncate text-xs text-slate-500">{tLabel(row.caption)}</p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <span
                   className={`inline-flex min-w-[28px] justify-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${row.count > 0 ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-500"}`}
-                  title={row.count > 0 ? `${row.count} open` : "None open"}
+                  title={row.count > 0 ? `${row.count} ${t("dashboard.open", "open")}` : tLabel("None open")}
                 >
                   {row.count.toLocaleString()}
                 </span>
@@ -209,7 +211,7 @@ const ComplianceCard: React.FC<{
                     onClick={() => navigate(row.to as string)}
                     className="text-xs font-semibold text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                   >
-                    Open
+                    {tLabel("Open")}
                   </button>
                 )}
               </div>

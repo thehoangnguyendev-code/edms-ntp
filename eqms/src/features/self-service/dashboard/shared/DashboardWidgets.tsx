@@ -13,6 +13,7 @@ import {
   type DashboardWidgetSetting,
 } from "./dashboardLayout";
 import styles from "./DashboardWidgets.module.css";
+import { useLanguage } from "@/i18n";
 import { expandDashboardWidgets } from "./dashboardWidgetCatalog";
 import { useToast } from "@/components/ui/toast/Toast";
 import { api } from "@/services/api/client";
@@ -35,6 +36,7 @@ type Setting = DashboardWidgetSetting;
 
 /** Only caller-provided, authorized widgets can be rendered; a stored ID cannot grant data access. */
 export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
+  const { t } = useLanguage();
   const defaults = useMemo(
     () =>
       widgets.map(({ id, label, width, defaultVisible }) => ({
@@ -167,8 +169,8 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
     } catch {
       showToast({
         type: "error",
-        title: "Unable to reset dashboard",
-        message: "Please try again.",
+        title: t("dashboard.resetFailed", "Unable to reset dashboard"),
+        message: t("knowledge.pleaseTryAgain", "Please try again."),
       });
     } finally {
       setSaving(false);
@@ -188,10 +190,10 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
           <>
             <div className="min-w-0">
               <p className="text-sm font-medium text-slate-900">
-                Customize Dashboard
+                {t("dashboard.customize", "Customize Dashboard")}
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
-                Drag a card to move it. Choose Half or Full to resize. Add more cards from the Widget Library.
+                {t("dashboard.customizeHint", "Drag a card to move it. Choose Half or Full to resize. Add more cards from the Widget Library.")}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -202,7 +204,7 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
                 onClick={() => setOpen(true)}
               >
                 <LayoutGrid className="mr-1.5 h-4 w-4" />
-                Widget Library
+                {t("dashboard.widgetLibrary", "Widget Library")}
               </Button>
               <Button
                 variant="ghost"
@@ -211,7 +213,7 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
                 onClick={() => void reset()}
               >
                 <RotateCcw className="mr-1.5 h-4 w-4" />
-                Reset
+                {t("dashboard.reset", "Reset")}
               </Button>
               <Button
                 variant="outline"
@@ -223,7 +225,7 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
                 }}
               >
                 <X className="mr-1.5 h-4 w-4" />
-                Cancel
+                {t("shell.cancel", "Cancel")}
               </Button>
               <Button
                 size="sm"
@@ -232,7 +234,7 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
                 onClick={() => void save()}
               >
                 <Check className="mr-1.5 h-4 w-4" />
-                Save Layout
+                {t("dashboard.saveLayout", "Save Layout")}
               </Button>
             </div>
           </>
@@ -250,7 +252,7 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
               }}
             >
               <LayoutGrid className="h-4 w-4" />
-              Add Widgets
+              {t("dashboard.addWidgets", "Add Widgets")}
             </Button>
             <Button
               variant="outline"
@@ -264,7 +266,7 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
               }}
             >
               <SlidersHorizontal className="h-4 w-4" />
-              Customize Dashboard
+              {t("dashboard.customize", "Customize Dashboard")}
             </Button>
           </div>
         )}
@@ -288,7 +290,7 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
         }}
       >
         <LayoutGroup>
-          <div ref={gridRef} className={styles.grid} aria-label="Dashboard widgets">
+          <div ref={gridRef} className={styles.grid} aria-label={t("dashboard.widgets", "Dashboard widgets")}>
             {layout
               .filter((item) => item.visible)
               .map((item, index) => (
@@ -316,7 +318,7 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
       </DragDropProvider>
       {!layout.some((item) => item.visible) && (
         <div className="rounded-xl border border-dashed border-slate-200 px-4 py-12 text-center text-sm text-slate-500">
-          No card is on the dashboard. Open the Widget Library to add one.
+          {t("dashboard.noCard", "No card is on the dashboard. Open the Widget Library to add one.")}
         </div>
       )}
       {open && (
@@ -330,9 +332,9 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
       )}
       <span role="status" className="sr-only">
         {dragging
-          ? "Moving dashboard card"
+          ? t("dashboard.movingCard", "Moving dashboard card")
           : editing
-            ? "Dashboard editing enabled. Focus a card handle. Space to pick up, arrow keys to move, Space to drop, Escape to cancel."
+            ? t("dashboard.editingHint", "Dashboard editing enabled. Focus a card handle. Space to pick up, arrow keys to move, Space to drop, Escape to cancel.")
             : ""}
       </span>
     </div>

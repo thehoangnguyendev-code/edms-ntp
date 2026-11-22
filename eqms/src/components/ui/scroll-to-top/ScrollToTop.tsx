@@ -2,6 +2,7 @@ import { preferredScrollBehavior } from "@/utils/scroll";
 import React, { useEffect, useState } from "react";
 import { cn } from "@/components/ui/utils";
 import { IconChevronUp } from "@tabler/icons-react";
+import { tr } from "@/i18n";
 
 interface ScrollToTopProps {
   /** Ref to the scrollable container element. Defaults to window if not provided. */
@@ -48,7 +49,7 @@ export const ScrollToTop: React.FC<ScrollToTopProps> = ({
   return (
     <button
       onClick={scrollToTop}
-      aria-label="Scroll to top"
+      aria-label={tr("Scroll to top")}
       className={cn(
         "fixed bottom-20 right-6 z-50 flex items-center justify-center",
         "h-10 w-10 rounded-full bg-emerald-600 text-white border border-emerald-500/50",

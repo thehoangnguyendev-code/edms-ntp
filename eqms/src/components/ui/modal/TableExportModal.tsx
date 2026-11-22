@@ -4,6 +4,7 @@ import { FormModal } from './FormModal';
 import { Checkbox } from '../checkbox';
 import { VisibilityOptions } from '../radio/VisibilityOptions';
 import { fetchTableExportColumns, type TableExportDataset, type TableExportFormat, type TableExportOptions } from '@/services/api/tableExport';
+import { tr } from "@/i18n";
 
 export interface TableExportModalProps {
   isOpen: boolean;
@@ -86,7 +87,7 @@ export const TableExportModal: React.FC<TableExportModalProps> = ({ isOpen, onCl
   const formatLabel = FORMATS.find((item) => item.value === format)?.label ?? '';
   const sizeLine = totalRecords === undefined
     ? 'The file size is known once it is made'
-    : `About ${formatBytes(estimateExportBytes(format, totalRecords, chosen.length))} · ${totalRecords.toLocaleString('en-US')} ${totalRecords === 1 ? 'record' : 'records'}`;
+    : `About ${formatBytes(estimateExportBytes(format, totalRecords, chosen.length))} · ${new Intl.NumberFormat('en-US').format(totalRecords)} ${totalRecords === 1 ? 'record' : 'records'}`;
 
   return (
     <FormModal
@@ -94,7 +95,7 @@ export const TableExportModal: React.FC<TableExportModalProps> = ({ isOpen, onCl
       onClose={() => { if (!busy) onClose(); }}
       onConfirm={() => void run()}
       title={title ? `Export ${title}` : 'Export'}
-      description="The file holds every record that matches the filters on the screen."
+      description={tr("The file holds every record that matches the filters on the screen.")}
       confirmText={`Export ${formatLabel}`}
       confirmDisabled={loading || loadError || chosen.length === 0}
       isLoading={busy}
@@ -103,19 +104,19 @@ export const TableExportModal: React.FC<TableExportModalProps> = ({ isOpen, onCl
     >
       <div className="space-y-5">
         <div>
-          <p className="mb-2 text-xs font-medium text-slate-500">Format</p>
+          <p className="mb-2 text-xs font-medium text-slate-500">{tr("Format")}</p>
           <VisibilityOptions name="export-format" value={format} options={FORMATS} onChange={(value) => setFormat(value as TableExportFormat)} />
         </div>
 
         <div>
           <div className="mb-2 flex items-center justify-between gap-3">
-            <p className="text-xs font-medium text-slate-500">Columns</p>
+            <p className="text-xs font-medium text-slate-500">{tr("Columns")}</p>
             {!loading && !loadError && (
               <span className="text-xs text-slate-500">{chosen.length} of {allColumns.length} columns</span>
             )}
           </div>
-          {loading && <p className="py-6 text-center text-sm text-slate-500">Loading columns...</p>}
-          {loadError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">The columns could not be loaded. Close this window and try again.</p>}
+          {loading && <p className="py-6 text-center text-sm text-slate-500">{tr("Loading columns...")}</p>}
+          {loadError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{tr("The columns could not be loaded. Close this window and try again.")}</p>}
           {!loading && !loadError && (
             <div className="overflow-hidden rounded-xl border border-slate-200">
               <div className="border-b border-slate-200 bg-slate-50 px-3 py-1.5">
@@ -123,10 +124,10 @@ export const TableExportModal: React.FC<TableExportModalProps> = ({ isOpen, onCl
                   checked={allChosen}
                   indeterminate={chosen.length > 0 && !allChosen}
                   onChange={(on) => setSelected(new Set(on ? allColumns : []))}
-                  label="Select all"
+                  label={tr("Select all")}
                 />
               </div>
-              <ul className="max-h-64 divide-y divide-slate-100 overflow-y-auto" aria-label="Columns to export">
+              <ul className="max-h-64 divide-y divide-slate-100 overflow-y-auto" aria-label={tr("Columns to export")}>
                 {allColumns.map((name) => (
                   <li key={name} className="px-3 py-1.5">
                     <Checkbox checked={selected.has(name)} onChange={(on) => toggle(name, on)} label={name} labelClassName="normal-case" />
@@ -136,7 +137,7 @@ export const TableExportModal: React.FC<TableExportModalProps> = ({ isOpen, onCl
             </div>
           )}
           {!loading && !loadError && chosen.length === 0 && (
-            <p className="mt-2 text-xs text-amber-700">Select at least one column.</p>
+            <p className="mt-2 text-xs text-amber-700">{tr("Select at least one column.")}</p>
           )}
         </div>
       </div>

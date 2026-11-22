@@ -7,6 +7,8 @@ import { IconCalendarWeek } from '@tabler/icons-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '../utils';
 import { Button } from '../button/Button';
+import { useLanguage } from '@/i18n';
+import { tr } from "@/i18n";
 
 export interface DateRangePickerProps {
   /** Label displayed above picker */
@@ -107,6 +109,9 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   applyLoading = false,
   inline = false,
 }) => {
+  const { t, tLabel } = useLanguage();
+  const displayLabel = typeof label === 'string' ? tLabel(label) : label;
+  const displayPlaceholder = tLabel(placeholder);
   const pickerIdRef = useRef(`date-range-picker-${Math.random().toString(36).slice(2, 11)}`);
   const pickerId = pickerIdRef.current;
   const dialogId = `${pickerId}-dialog`;
@@ -626,10 +631,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const s = formatDateDisplay(startDate, includeTime);
     const e = formatDateDisplay(endDate, includeTime);
     if (s && e) return `${s}  →  ${e}`;
-    if (s) return `From ${s}`;
-    if (e) return `To ${e}`;
-    return placeholder;
-  }, [startDate, endDate, placeholder, includeTime]);
+    if (s) return `${t('date.from', 'From')} ${s}`;
+    if (e) return `${t('date.to', 'To')} ${e}`;
+    return displayPlaceholder;
+  }, [startDate, endDate, displayPlaceholder, includeTime, t]);
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
@@ -640,10 +645,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     return (
       <div className="p-3">
         <div className={cn("flex items-center justify-between px-1", inline ? "mb-1" : "mb-2")}>
-          <button type="button" onClick={() => setViewMode('calendar')} className="min-w-[36px] min-h-[36px] p-1.5 hover:bg-slate-100 rounded-full text-slate-500 flex items-center justify-center" aria-label="Back to calendar view">
+          <button type="button" onClick={() => setViewMode('calendar')} className="min-w-[36px] min-h-[36px] p-1.5 hover:bg-slate-100 rounded-full text-slate-500 flex items-center justify-center" aria-label={tr("Back to calendar view")}>
             <ChevronLeft className="h-4 w-4 block shrink-0" />
           </button>
-          <span className="font-semibold text-slate-900 text-sm">Select Month</span>
+          <span className="font-semibold text-slate-900 text-sm">{t('date.selectMonth', 'Select Month')}</span>
           <div className="w-6" />
         </div>
         <div className="grid grid-cols-3 gap-1.5">
@@ -671,11 +676,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     return (
       <div className="p-3">
         <div className={cn("flex items-center justify-between px-1", inline ? "mb-1" : "mb-2")}>
-          <button type="button" onClick={() => { const d = new Date(viewDate); d.setFullYear(d.getFullYear() - 12); setViewDate(d); }} className="min-w-[36px] min-h-[36px] p-1.5 hover:bg-slate-100 rounded-full text-slate-500 flex items-center justify-center" aria-label="Previous year range">
+          <button type="button" onClick={() => { const d = new Date(viewDate); d.setFullYear(d.getFullYear() - 12); setViewDate(d); }} className="min-w-[36px] min-h-[36px] p-1.5 hover:bg-slate-100 rounded-full text-slate-500 flex items-center justify-center" aria-label={tr("Previous year range")}>
             <ChevronLeft className="h-4 w-4 block shrink-0" />
           </button>
           <span className="font-semibold text-slate-900 text-sm">{startYear} - {startYear + 11}</span>
-          <button type="button" onClick={() => { const d = new Date(viewDate); d.setFullYear(d.getFullYear() + 12); setViewDate(d); }} className="min-w-[36px] min-h-[36px] p-1.5 hover:bg-slate-100 rounded-full text-slate-500 flex items-center justify-center" aria-label="Next year range">
+          <button type="button" onClick={() => { const d = new Date(viewDate); d.setFullYear(d.getFullYear() + 12); setViewDate(d); }} className="min-w-[36px] min-h-[36px] p-1.5 hover:bg-slate-100 rounded-full text-slate-500 flex items-center justify-center" aria-label={tr("Next year range")}>
             <ChevronRight className="h-4 w-4 block shrink-0" />
           </button>
         </div>
@@ -769,7 +774,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             type="button"
             onClick={() => navigateMonth('prev')}
             className={cn("hover:bg-slate-100 rounded-full text-slate-400 transition-colors flex items-center justify-center", inline ? "h-7 w-7 p-1" : "min-w-[36px] min-h-[36px] p-1.5")}
-            aria-label="Previous month"
+            aria-label={tr("Previous month")}
           >
             <ChevronLeft className="h-4 w-4 block shrink-0" />
           </button>
@@ -778,7 +783,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               type="button"
               onClick={() => setViewMode('month')}
               className="font-semibold text-slate-900 text-sm hover:bg-slate-100 px-1.5 py-0.5 rounded transition-colors"
-              aria-label="Select month"
+              aria-label={tr("Select month")}
             >
               {monthNames[month]}
             </button>
@@ -786,7 +791,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               type="button"
               onClick={() => setViewMode('year')}
               className="font-semibold text-slate-900 text-sm hover:bg-slate-100 px-1.5 py-0.5 rounded transition-colors"
-              aria-label="Select year"
+              aria-label={tr("Select year")}
             >
               {year}
             </button>
@@ -795,7 +800,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             type="button"
             onClick={() => navigateMonth('next')}
             className={cn("hover:bg-slate-100 rounded-full text-slate-400 transition-colors flex items-center justify-center", inline ? "h-7 w-7 p-1" : "min-w-[36px] min-h-[36px] p-1.5")}
-            aria-label="Next month"
+            aria-label={tr("Next month")}
           >
             <ChevronRight className="h-4 w-4 block shrink-0" />
           </button>
@@ -813,7 +818,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         {/* Days grid */}
         <div
           role="grid"
-          aria-label="Calendar days"
+          aria-label={tr("Calendar days")}
           aria-multiselectable="false"
           onKeyDown={handleGridKeyDown}
           className={cn("grid grid-cols-7 gap-y-0.5", inline && "flex-1 auto-rows-fr items-center")}
@@ -902,7 +907,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             onClick={() => applyPreset(p.key as PresetKey)}
             className={cn("inline-flex items-center text-slate-600 bg-white border hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all font-medium whitespace-nowrap", inline ? "h-7 justify-start rounded-md border-slate-200 px-2 text-xs" : "justify-center lg:justify-start px-1.5 py-1 lg:px-2 lg:py-2 text-[10px] lg:text-sm border-slate-200 lg:border-transparent rounded-full lg:rounded-lg")}
           >
-            {p.label}
+            {tLabel(p.label)}
           </button>
         ))}
       </div>
@@ -911,7 +916,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
   const pickerContent = (
     <>
-              <div className="sr-only" id={dialogTitleId}>Choose date range</div>
+              <div className="sr-only" id={dialogTitleId}>{tr("Choose date range")}</div>
               <div className="sr-only" aria-live="polite" aria-atomic="true">{liveMessage}</div>
               <div className="min-w-0 flex-1 flex flex-col">
                 {/* Start / Due date inputs */}
@@ -920,7 +925,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                     {/* Start */}
                     <div className={cn("flex items-center justify-between gap-4", !includeTime && "flex-1")}> 
                       <div className="flex-1 min-w-0">
-                        <label htmlFor={startFieldId} className="text-xs font-medium text-slate-500 mb-1 block capitalize">Start Date</label>
+                        <label htmlFor={startFieldId} className="text-xs font-medium text-slate-500 mb-1 block capitalize">{tr("Start Date")}</label>
                         <button
                           id={startFieldId}
                           type="button"
@@ -950,7 +955,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                     {/* Due/End */}
                     <div className={cn("flex items-center justify-between gap-4", !includeTime && "flex-1")}> 
                       <div className="flex-1 min-w-0">
-                        <label htmlFor={endFieldId} className="text-xs font-medium text-slate-500 mb-1 block capitalize">End Date</label>
+                        <label htmlFor={endFieldId} className="text-xs font-medium text-slate-500 mb-1 block capitalize">{tr("End Date")}</label>
                         <button
                           id={endFieldId}
                           type="button"
@@ -994,7 +999,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                       onClick={handleReset}
                       className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
                     >
-                      Reset range
+                      {tr("Reset range")}
                     </Button>
                     <div className="flex gap-2">
                       <Button
@@ -1003,7 +1008,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                         onClick={() => closePopover()}
                         className="h-8 text-xs px-3"
                       >
-                        Cancel
+                        {t('date.cancel', 'Cancel')}
                       </Button>
                       <Button
                         size="sm"
@@ -1012,13 +1017,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                         className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-500 disabled:cursor-wait text-white h-8 text-xs px-4 inline-flex items-center gap-2"
                       >
                         {applyLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                        {applyLoading ? 'Applying...' : 'Apply'}
+                        {applyLoading ? t('date.applying', 'Applying...') : t('date.apply', 'Apply')}
                       </Button>
                     </div>
                   </div>
                 </div>}
                 {inline && <div className="border-t border-slate-200 px-2 py-1">
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleReset}>Reset range</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleReset}>{t('date.resetRange', 'Reset range')}</Button>
                 </div>}
               </div>
               {renderPresets()}
@@ -1039,7 +1044,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     <div className="relative w-full">
       {label && (
         <label htmlFor={`${pickerId}-trigger`} className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-          {label}
+          {displayLabel}
         </label>
       )}
       <button

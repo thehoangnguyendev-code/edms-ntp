@@ -19,6 +19,7 @@ import {
 } from "./useTableColumnPreferences";
 import { useColumnReorderMotion, type ColumnMotionHandle } from "./useColumnReorderMotion";
 import { useRowEntrance } from "./useRowEntrance";
+import { useLanguage } from "@/i18n";
 import { closeMenuRenderGate, menuRenderGateOpen, menuTouchesRow } from "./rowRenderGate";
 
 export type DataTableSortDirection = "asc" | "desc";
@@ -137,9 +138,9 @@ function assignRef<T>(ref: React.Ref<T> | undefined, value: T | null) {
   else if (ref && typeof ref === "object") (ref as React.MutableRefObject<T | null>).current = value;
 }
 
-function plainLabel<T>(column: DataTableColumn<T>): string {
-  if (column.label) return column.label;
-  return typeof column.header === "string" ? column.header : column.id;
+function plainLabel<T>(column: DataTableColumn<T>, translate: (text: string) => string = (text) => text): string {
+  if (column.label) return translate(column.label);
+  return typeof column.header === "string" ? translate(column.header) : column.id;
 }
 
 /**
@@ -152,6 +153,7 @@ export function useCustomColumnLayout<T>(
   columns: readonly DataTableColumn<T>[],
   action?: DataTableAction<T>,
 ): { layout: DataTableColumnLayout<T>; control: React.ReactNode; isDesktop: boolean } {
+  const { tLabel } = useLanguage();
   const { showToast } = useToast();
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
@@ -159,7 +161,7 @@ export function useCustomColumnLayout<T>(
     () =>
       columns.map((column, index) => ({
         id: column.id,
-        label: plainLabel(column),
+        label: plainLabel(column, tLabel),
         visible: true,
         order: index,
         pinned: false,
@@ -181,7 +183,7 @@ export function useCustomColumnLayout<T>(
   // Structural columns keep their position, but pinning is a separate per-user choice.
   const pinnedIds = isDesktop ? ordered.filter((column) => column.pinned).map((column) => column.id) : [];
 
-  const fixedActionLabel = action ? (typeof action.header === "string" ? action.header : "Action") : null;
+  const fixedActionLabel = action ? tLabel(typeof action.header === "string" ? action.header : "Action") : null;
 
   const control = isDesktop ? (
     <CustomColumnDrawer
@@ -340,6 +342,8 @@ function DataTableBase<T>({
   expandedRow,
   columnLayout,
 }: DataTableProps<T>) {
+  const { tLabel } = useLanguage();
+  const headerText = (value: React.ReactNode) => (typeof value === "string" ? tLabel(value) : value);
   // A Custom Column layout decides which columns are shown and in what order: the table never draws the default columns beside it,
   // so a screen cannot show a column the user hid, or an order that the drawer does not list.
   const columns = columnLayout ? columnLayout.columns : columnsProp;
@@ -427,7 +431,7 @@ function DataTableBase<T>({
                   >
                     {column.sort ? (
                       <div className="flex items-center justify-between gap-2 w-full">
-                        <span className="truncate">{column.header}</span>
+                        <span className="truncate">{headerText(column.header)}</span>
                         <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
                           <ChevronUp
                             className={cn(
@@ -446,7 +450,7 @@ function DataTableBase<T>({
                         </div>
                       </div>
                     ) : (
-                      column.header
+                      headerText(column.header)
                     )}
                   </TableMarkup.HeaderCell>
                 ))}
@@ -454,7 +458,7 @@ function DataTableBase<T>({
                   <TableMarkup.HeaderCell
                     className={cn(ACTION_HEADER_CLASS, action.headerClassName)}
                   >
-                    {action.header ?? "Action"}
+                    {headerText(action.header ?? "Action")}
                   </TableMarkup.HeaderCell>
                 )}
               </TableMarkup.Row>

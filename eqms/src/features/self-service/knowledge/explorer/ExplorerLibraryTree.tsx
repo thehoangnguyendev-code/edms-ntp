@@ -5,6 +5,7 @@ import { knowledgeApi } from "@/services/api/knowledge";
 import type { KnowledgePortalOverview } from "@/services/api/knowledge";
 import type { ExplorerNav } from "./explorerModel";
 import { useFolderColor, useFolderLabel } from "./ExplorerIcons";
+import { useLanguage } from "@/i18n";
 
 interface ExplorerLibraryTreeProps {
   overview: KnowledgePortalOverview;
@@ -32,6 +33,7 @@ export const ExplorerLibraryTree: React.FC<ExplorerLibraryTreeProps> = ({ overvi
   const hierarchyId = overview.selectedHierarchyId;
   const colorOf = useFolderColor();
   const labelOf = useFolderLabel("sidebar");
+  const { t } = useLanguage();
   const [open, setOpen] = useState<string[]>([]);
   const [loaded, setLoaded] = useState<Record<string, Loaded>>({});
   const requested = useRef(new Set<string>());
@@ -74,15 +76,15 @@ export const ExplorerLibraryTree: React.FC<ExplorerLibraryTreeProps> = ({ overvi
 
   const renderFolders = (kb: { key: string; label: string }, path: string[]) => {
     const state = loaded[idOf(kb.key, path)];
-    if (!state || state.status === "loading") return <p className="px-2 py-1.5 text-2xs text-slate-500 md:text-xs">Loading…</p>;
+    if (!state || state.status === "loading") return <p className="px-2 py-1.5 text-xs text-slate-500">{t("knowledge.loadingFolders", "Loading…")}</p>;
     if (state.status === "error") {
       return (
-        <button type="button" onClick={() => load(kb.key, path)} className="px-2 py-1.5 text-left text-2xs text-red-600 underline md:text-xs">
-          Could not load — try again
+        <button type="button" onClick={() => load(kb.key, path)} className="px-2 py-1.5 text-left text-xs text-red-600 underline">
+          {t("knowledge.couldNotLoadFolders", "Could not load — try again")}
         </button>
       );
     }
-    if (state.folders.length === 0) return <p className="px-2 py-1.5 text-2xs text-slate-500 md:text-xs">No folders</p>;
+    if (state.folders.length === 0) return <p className="px-2 py-1.5 text-xs text-slate-500">{t("knowledge.noFolders", "No folders")}</p>;
     return state.folders.map((folder) => {
       const childPath = [...path, folder.key];
       const active = nav.kind === "kb" && nav.kb.key === kb.key && nav.path.length === childPath.length && nav.path.every((key, index) => key === childPath[index]);

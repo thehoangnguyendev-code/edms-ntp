@@ -180,11 +180,12 @@ describe('OnlyOffice Preview: download and print of an editing session', () => {
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ viewer: { showFileName: true, editorAllowDownload: false } }));
   });
 
-  it('shows what is saved, and says it does not stop a photograph of the screen', () => {
+  it('shows the saved restrictions and explains the download and print controls', () => {
     renderTab({ editorAllowDownload: false, editorAllowPrint: false });
     expect(screen.getByRole('checkbox', { name: 'Allow download' })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Allow print' })).not.toBeChecked();
-    expect(screen.getByText(/not a photograph or a screenshot of the screen/)).toBeTruthy();
+    expect(screen.getByText('Off hides the Download button and the Download As entries of the File menu.')).toBeTruthy();
+    expect(screen.getByText('Off hides the Print button and menu entry, and Ctrl+P does nothing.')).toBeTruthy();
   });
 });
 

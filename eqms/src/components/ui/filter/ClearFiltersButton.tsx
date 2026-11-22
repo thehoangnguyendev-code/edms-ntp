@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button/Button";
 import { cn } from "@/components/ui/utils";
+import { tr } from "@/i18n";
 
 /**
  * What Clear Filters does on every list: it clears the search the person typed AND the filters of the screen. A screen gives the two parts, so none can
@@ -27,7 +28,7 @@ export function ClearFiltersButton({ onClearSearch, onClear, disabled, className
       disabled={disabled}
       className={cn("h-9 shrink-0 gap-2 whitespace-nowrap px-4 font-medium transition-all duration-200 hover:border-red-600 hover:bg-red-600 hover:text-white disabled:opacity-40", className)}
     >
-      Clear Filters
+      {tr("Clear Filters")}
     </Button>
   );
 }

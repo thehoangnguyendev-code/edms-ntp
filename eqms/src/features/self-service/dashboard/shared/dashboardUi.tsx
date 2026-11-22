@@ -5,28 +5,36 @@ import { CountUp } from '@/components/ui/animated-card';
 import { TableMarkup } from '@/components/ui/table/TablePrimitives';
 import { cn } from '@/components/ui/utils';
 import { LazyMount } from './LazyMount';
+import { useLanguage } from '@/i18n';
 
 /**
  * Flat building blocks for the dashboard: white cards on a 1px slate border, small medium-weight
  * titles, and tables with ruled cells. Nothing here invents data; every figure is passed in.
  */
 
-export const Card: React.FC<React.HTMLAttributes<HTMLElement>> = ({ className, ...props }) => (
-  <section className={cn('min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white', className)} {...props} />
-);
+export const Card: React.FC<React.HTMLAttributes<HTMLElement>> = ({ className, ...props }) => {
+  const { tLabel } = useLanguage();
+  const ariaLabel = typeof props['aria-label'] === 'string' ? tLabel(props['aria-label']) : props['aria-label'];
+  return <section className={cn('min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white', className)} {...props} aria-label={ariaLabel} />;
+};
 
-export const CardHeader: React.FC<{ title: string; subtitle?: React.ReactNode; right?: React.ReactNode; className?: string; badge?: React.ReactNode }> = ({ title, subtitle, right, className, badge }) => (
-  <div className={cn('flex items-start justify-between gap-3 px-4 pt-3.5', className)}>
-    <div className="min-w-0">
-      <div className="flex min-w-0 items-center gap-2">
-        <h2 className="truncate text-[15px] font-medium text-slate-900">{title}</h2>
-        {badge}
+export const CardHeader: React.FC<{ title: string; subtitle?: React.ReactNode; right?: React.ReactNode; className?: string; badge?: React.ReactNode }> = ({ title, subtitle, right, className, badge }) => {
+  const { tLabel } = useLanguage();
+  const displayTitle = tLabel(title);
+  const displaySubtitle = typeof subtitle === 'string' ? tLabel(subtitle) : subtitle;
+  return (
+    <div className={cn('flex items-start justify-between gap-3 px-4 pt-3.5', className)}>
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
+          <h2 className="truncate text-[15px] font-medium text-slate-900">{displayTitle}</h2>
+          {badge}
+        </div>
+        {displaySubtitle && <p className="mt-0.5 text-xs text-slate-500">{displaySubtitle}</p>}
       </div>
-      {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
+      {right && <div className="shrink-0">{right}</div>}
     </div>
-    {right && <div className="shrink-0">{right}</div>}
-  </div>
-);
+  );
+};
 
 export interface KpiCellData {
   title: string;
@@ -39,12 +47,14 @@ export interface KpiCellData {
   footLabel: string;
 }
 
-const KpiCell: React.FC<KpiCellData> = ({ title, accent, value, chip, footValue, footLabel }) => (
+const KpiCell: React.FC<KpiCellData> = ({ title, accent, value, chip, footValue, footLabel }) => {
+  const { tLabel } = useLanguage();
+  return (
   <div className="flex min-w-0 flex-col bg-white">
     <div className="px-4 pb-3 pt-3.5">
       <div className="flex items-center gap-2">
         <span aria-hidden className="h-3.5 w-[3px] shrink-0 rounded-full" style={{ backgroundColor: accent }} />
-        <h3 className="truncate text-[13px] font-medium text-slate-800">{title}</h3>
+        <h3 className="truncate text-[13px] font-medium text-slate-800">{tLabel(title)}</h3>
       </div>
       <div className="mt-2.5 flex items-baseline gap-2">
         <span className="text-[28px] font-medium leading-none tracking-tight text-slate-900">
@@ -60,17 +70,21 @@ const KpiCell: React.FC<KpiCellData> = ({ title, accent, value, chip, footValue,
         </span>
         {typeof footValue === 'number' ? footValue.toLocaleString() : footValue}
       </span>
-      <span className="truncate text-slate-600">{footLabel}</span>
+      <span className="truncate text-slate-600">{tLabel(footLabel)}</span>
     </div>
   </div>
-);
+  );
+};
 
 /** Four metrics in one ruled block, as in the reference. */
-export const KpiStrip: React.FC<{ cells: KpiCellData[]; label: string; /** Replaces the default columns, e.g. for a pane narrower than the window. */ className?: string }> = ({ cells, label, className }) => (
-  <section aria-label={label} className={cn('grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-4', className)}>
-    {cells.map((cell) => <KpiCell key={cell.title} {...cell} />)}
-  </section>
-);
+export const KpiStrip: React.FC<{ cells: KpiCellData[]; label: string; /** Replaces the default columns, e.g. for a pane narrower than the window. */ className?: string }> = ({ cells, label, className }) => {
+  const { tLabel } = useLanguage();
+  return (
+    <section aria-label={tLabel(label)} className={cn('grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-4', className)}>
+      {cells.map((cell) => <KpiCell key={cell.title} {...cell} />)}
+    </section>
+  );
+};
 
 export interface GrowthColumn {
   title: string;

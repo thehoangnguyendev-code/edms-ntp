@@ -5,6 +5,7 @@ import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import { ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button/Button";
 import { IconFilter2 } from "@tabler/icons-react";
+import { tr } from "@/i18n";
 
 export interface DesktopFilterField {
   id: string;
@@ -147,7 +148,7 @@ export function DesktopFilterPanel({
             ref={panel}
             id={panelId}
             role="dialog"
-            aria-label="Advanced filters"
+            aria-label={tr("Advanced filters")}
             aria-hidden={!open}
             inert={!open}
             initial={reducedMotion ? false : { opacity: 0, y: -8, scale: 0.98 }}
@@ -174,11 +175,11 @@ export function DesktopFilterPanel({
           >
             <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
               <h3 className="whitespace-nowrap text-sm font-semibold text-slate-900">
-                Advanced filters
+                {tr("Advanced filters")}
               </h3>
               <button
                 type="button"
-                aria-label="Close filters"
+                aria-label={tr("Close filters")}
                 onClick={close}
                 className="rounded p-1 text-slate-500 hover:bg-slate-100"
               >
@@ -187,7 +188,7 @@ export function DesktopFilterPanel({
             </div>
             <div className="grid min-h-0 flex-1 grid-cols-[max-content_minmax(0,1fr)]">
               <nav
-                aria-label="Filter fields"
+                aria-label={tr("Filter fields")}
                 className="overflow-y-auto border-r border-slate-100 p-2"
               >
                 <LayoutGroup id={panelId}>
@@ -273,7 +274,7 @@ export function DesktopFilterPanel({
                     size="sm"
                     onClick={() => setDraft({ ...defaults })}
                   >
-                    Clear all
+                    {tr("Clear all")}
                   </Button>
                   <div className="flex gap-2">
                     <Button
@@ -282,7 +283,7 @@ export function DesktopFilterPanel({
                       size="sm"
                       onClick={close}
                     >
-                      Cancel
+                      {tr("Cancel")}
                     </Button>
                     <Button
                       type="button"
@@ -292,7 +293,7 @@ export function DesktopFilterPanel({
                         close();
                       }}
                     >
-                      Apply
+                      {tr("Apply")}
                     </Button>
                   </div>
                 </div>

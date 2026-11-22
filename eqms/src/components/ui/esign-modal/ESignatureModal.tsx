@@ -8,6 +8,7 @@ import { Loading } from '../loading/Loading';
 import { cn } from "@/components/ui/utils";
 import { authApi } from "@/services/api/auth";
 import { electronicSignatureSettingsApi, type ElectronicSignatureMeaning } from "@/services/api/electronicSignatureSettings";
+import { tr } from "@/i18n";
 
 export interface ESignatureModalProps {
   isOpen: boolean;
@@ -277,16 +278,16 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                 </div>
                 <div className="min-w-0">
                   <h3 id={titleId} className="text-sm md:text-base font-semibold text-slate-900 leading-tight truncate">
-                    Electronic Signature
+                    {tr("Electronic Signature")}
                   </h3>
-                  <p className="text-xs text-slate-500 font-medium truncate">Compliant with FDA 21 CFR Part 11</p>
+                  <p className="text-xs text-slate-500 font-medium truncate">{tr("Compliant with FDA 21 CFR Part 11")}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={isSubmitting ? undefined : onClose}
                 disabled={isSubmitting}
-                aria-label="Close dialog"
+                aria-label={tr("Close dialog")}
                 className="flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <X className="h-4 w-4 text-slate-500" />
@@ -299,7 +300,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                 {/* The signature carries its meaning; what changed is recorded in the Audit Trail. */}
                 {effectiveMeaningDisplayName && (
                   <div className="flex items-baseline gap-3 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3.5 py-3">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">Meaning</span>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">{tr("Meaning")}</span>
                     <span className="text-xs sm:text-sm font-medium text-slate-900 wrap-break-word min-w-0">{effectiveMeaningDisplayName}</span>
                   </div>
                 )}
@@ -323,7 +324,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                         "w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm resize-none",
                         fieldErrors.reason ? "border-red-400" : "border-slate-200"
                       )}
-                      placeholder="Enter your reason..."
+                      placeholder={tr("Enter your reason...")}
                     />
 
                     {fieldErrors.reason && (
@@ -352,7 +353,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                         "w-full h-9 px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm",
                         fieldErrors.username ? "border-red-400" : "border-slate-200"
                       )}
-                      placeholder="Enter your username"
+                      placeholder={tr("Enter your username")}
                     />
                     {fieldErrors.username && <p id={`${modalId}-username-error`} className="text-xs text-red-600 leading-tight">{fieldErrors.username}</p>}
                   </div>
@@ -378,11 +379,11 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                           "w-full h-9 px-3 py-1.5 pr-10 border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm",
                           fieldErrors.password ? "border-red-400" : "border-slate-200"
                         )}
-                        placeholder="Enter your password"
+                        placeholder={tr("Enter your password")}
                       />
                       {isCapsLockOn && (
                         <div className="absolute inset-y-0 right-0 flex items-center pr-2">
-                          <div className="rounded-md border border-emerald-100 bg-emerald-50 p-1" title="Caps Lock is ON">
+                          <div className="rounded-md border border-emerald-100 bg-emerald-50 p-1" title={tr("Caps Lock is ON")}>
                             <IconArrowBigUpFilled className="h-4 w-4 text-emerald-700" />
                           </div>
                         </div>
@@ -405,10 +406,10 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
               {/* Footer */}
               <div className="flex-shrink-0 px-5 py-3 border-t border-slate-200 bg-slate-50/30 flex justify-end gap-2 min-h-[56px]">
                 <Button type="button" size="sm" variant="outline" onClick={onClose} className="min-w-[5rem]">
-                  Cancel
+                  {tr("Cancel")}
                 </Button>
                 <Button type="submit" size="sm" className="min-w-[5rem]" disabled={isSubmitting}>
-                  Sign & Confirm
+                  {tr("Sign & Confirm")}
                 </Button>
               </div>
             </form>

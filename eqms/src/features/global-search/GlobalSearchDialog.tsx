@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { CornerDownLeft, Search, X } from 'lucide-react';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import { Badge } from '@/components/ui/badge/Badge';
+import { Kbd } from '@/components/ui/kbd';
 import { cn } from '@/components/ui/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { gsap, prefersReducedMotion, useGSAP } from '@/lib/gsap';
@@ -284,7 +285,7 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
               <X className="h-4 w-4" />
             </button>
           )}
-          <kbd className="hidden rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-2xs font-medium text-slate-500 md:block">Esc</kbd>
+          <Kbd keys={['escape']} className="hidden md:inline-flex" />
           {loading && <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 animate-pulse bg-emerald-500" />}
         </div>
 
@@ -365,9 +366,9 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
         </div>
 
         <div className="hidden shrink-0 items-center gap-4 border-t border-slate-100 bg-slate-50/70 px-4 py-2 text-2xs text-slate-500 md:flex">
-          <span><kbd className="font-sans font-semibold">↑↓</kbd> to move</span>
-          <span><kbd className="font-sans font-semibold">Enter</kbd> to open</span>
-          <span><kbd className="font-sans font-semibold">Esc</kbd> to close</span>
+          <span className="inline-flex items-center gap-1.5"><span className="inline-flex gap-0.5"><Kbd keys={['up']} size="sm" className="bg-slate-200/70" /><Kbd keys={['down']} size="sm" className="bg-slate-200/70" /></span>to move</span>
+          <span className="inline-flex items-center gap-1.5"><Kbd keys={['enter']} size="sm" className="bg-slate-200/70" />to open</span>
+          <span className="inline-flex items-center gap-1.5"><Kbd keys={['escape']} size="sm" className="bg-slate-200/70" />to close</span>
         </div>
       </div>
     </div>,
